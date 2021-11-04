@@ -3,12 +3,12 @@ pragma solidity 0.7.6;
 
 import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
-import "../interface/IAssetMinter.sol";
+import "../interface/IAssetManager.sol";
 import "../interface/IAgentVault.sol";
 
 
 contract AgentVault is IAgentVault {
-    IAssetMinter public immutable assetMinter;
+    IAssetManager public immutable assetManager;
     WNat public immutable wnat;
     address public immutable override owner;
 
@@ -17,13 +17,13 @@ contract AgentVault is IAgentVault {
         _;
     }
 
-    modifier onlyAssetMinter {
+    modifier onlyAssetManager {
         require(msg.sender == owner, "only asset minter");
         _;
     }
     
-    constructor(IAssetMinter _assetMinter, WNat _wnat, address _owner) {
-        assetMinter = _assetMinter;
+    constructor(IAssetManager _assetManager, WNat _wnat, address _owner) {
+        assetManager = _assetManager;
         owner = _owner;
         wnat = _wnat;
     }
@@ -62,7 +62,7 @@ contract AgentVault is IAgentVault {
     }
     
     function withdraw(address payable _recipient, uint256 _amount) external override onlyOwner {
-        require(assetMinter.maxWithdrawAllowed(address(this)) >= _amount, "amount not allowed");
+        require(assetManager.maxWithdrawAllowed(address(this)) >= _amount, "amount not allowed");
         wnat.withdraw(_amount);
         _recipient.transfer(_amount);
     }
@@ -73,7 +73,7 @@ contract AgentVault is IAgentVault {
 
     // agent should make sure to claim rewards before calling destroy(), or they will be forfeit
     function destroy(address payable _recipient) external override onlyOwner {
-        require(assetMinter.canDestroy(address(this)), "destroy not allowed");
+        require(assetManager.canDestroy(address(this)), "destroy not allowed");
         wnat.undelegateAll();
         wnat.withdraw(wnat.balanceOf(address(this)));
         selfdestruct(_recipient);
@@ -82,7 +82,7 @@ contract AgentVault is IAgentVault {
     // Used by asset minter for liquidation and failed redemption.
     // Since _recipient is typically an unknown address, we do not directly send NAT,
     // but transfer WNAT (doesn't trigger any callbacks) which the recipient must withdraw.
-    function liquidate(address _recipient, uint256 _amount) external override onlyAssetMinter {
+    function liquidate(address _recipient, uint256 _amount) external override onlyAssetManager {
         wnat.transfer(_recipient, _amount);
     }
 }
