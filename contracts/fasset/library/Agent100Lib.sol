@@ -7,6 +7,7 @@ import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../interface/IAgentVault.sol";
 
+
 library Agent100Lib {
     using SafeMath for uint256;
     using SafePct for uint256;
