@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+      "target": "es2018",
+      "module": "commonjs",
+      "strict": true,
+      "esModuleInterop": true,
+      "outDir": "dist",
+      "typeRoots": [
+        "test/types",
+        "node_modules/@types",
+        "airdrop/utils/airdropTypes.tss"
+      ]
+    },
+    "include": [
+      "./airdrop",
+      "./scripts", 
+      "./test", 
+      "./typechain", 
+      "./typechain-truffle", 
+      "./deployment/scripts", 
+      "deployment/test/",
+      "deployment/test/deploy.ts", 
+      "deployment/test/priceSubmitter.ts", 
+      "./deployment/genesis", 
+      "deployment/test/activate-managers.ts", 
+      "deployment/test/deploy-contracts.ts", 
+      "deployment/test/daemonize-contracts.ts", 
+      "deployment/test/transfer-governance.ts", 
+      "./deployment/test/priceSubmitter.ts", 
+    ],
+    "files": ["./hardhat.config.ts", "./type-extensions.ts"]
+  }
+  
