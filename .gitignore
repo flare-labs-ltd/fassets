@@ -1,0 +1,75 @@
+### VisualStudioCode template
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Typescript 
+dist
+typechain
+typechain-truffle
+typechain-web3
+
+# Testing
+test_logs
+accounts.json
+
+## Build generated
+build/
+bin/
+crytic-export/
+
+## Node packages etc
+node_modules/
+.yarn-cache/
+.pip-cache/
+
+## code coverage files
+coverage.json
+.nyc_output/
+coverage/
+
+## hardhat?
+artifacts/
+cache/
+
+## yarn
+yarn-error.log
+
+## npm package file
+package-lock.json
+
+## gas report
+.gas-report.txt
+gasReporterOutput.json
+
+## Fake multiplatform /dev/null. On Win `1> nul` does not create a file
+## On Unix systems it creates a file 
+nul
+
+## Flattened contracts
+flattened
+
+## Annoying .DS_Store on Mac
+.DS_Store
+
+## Test deploys info
+deployment/deploys/*
+!deployment/deploys/staging.json
+!deployment/deploys/songbird.json
+!deployment/deploys/songbird_fix.json
+!deployment/deploys/songbird_ftso_v2.json
+
+## .env
+.env
+.idea
+
+## Slither working files
+slither.json
+
+## Tenderly 
+deployments
+
+## Airdrop transactions
+airdrop/files

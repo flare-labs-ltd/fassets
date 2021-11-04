@@ -1,0 +1,7 @@
+**/node_modules
+**/artifacts
+**/build
+**/cache
+**/typechain
+**/typechain-truffle
+**/test-logs
