@@ -37,9 +37,9 @@ library Agent100Lib {
     struct CollateralReservation {
         bytes32 agentUnderlyingAddress;
         bytes32 minterUnderlyingAddress;
-        uint192 underlyingValueABU;
+        uint192 underlyingValueUBA;
         uint64 firstUnderlyingBlock;
-        uint192 underlyingFeeABU;
+        uint192 underlyingFeeUBA;
         uint64 lastUnderlyingBlock;
         address agentVault;
         uint64 lots;
@@ -49,9 +49,9 @@ library Agent100Lib {
     struct RedemptionRequest {
         bytes32 agentUnderlyingAddress;
         bytes32 redeemerUnderlyingAddress;
-        uint192 underlyingValueABU;
+        uint192 underlyingValueUBA;
         uint64 firstUnderlyingBlock;
-        uint192 underlyingFeeABU;
+        uint192 underlyingFeeUBA;
         uint64 lastUnderlyingBlock;
         address agentVault;
         uint64 lots;
@@ -61,8 +61,8 @@ library Agent100Lib {
         bytes32 sourceAddress;
         bytes32 targetAddress;
         bytes32 paymentHash;
-        uint256 valueABU;
-        uint192 gasABU;
+        uint256 valueUBA;
+        uint192 gasUBA;
         uint64 underlyingBlock;
     }
     
@@ -132,8 +132,8 @@ library Agent100Lib {
         address indexed minter,
         uint256 reservationId,
         bytes32 underlyingAddress,
-        uint256 underlyingValueABU, 
-        uint256 underlyingFeeABU,
+        uint256 underlyingValueUBA, 
+        uint256 underlyingFeeUBA,
         uint256 lastUnderlyingBlock);
         
     event MintingExecuted(
@@ -220,14 +220,14 @@ library Agent100Lib {
         require(_freeCollateralLots(agent, _context) >= _lots, "not enough free collateral");
         uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
         agent.reservedLots = SafeMath64.add64(agent.reservedLots, _lots);
-        uint256 underlyingValueABU = _state.lotSizeUnderlying.mul(_lots);
-        uint256 underlyingFeeABU = underlyingValueABU.mulDiv(agent.feeBIPS, MAX_BIPS);
+        uint256 underlyingValueUBA = _state.lotSizeUnderlying.mul(_lots);
+        uint256 underlyingFeeUBA = underlyingValueUBA.mulDiv(agent.feeBIPS, MAX_BIPS);
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({
             agentUnderlyingAddress: agent.underlyingAddress,
             minterUnderlyingAddress: _minterUnderlyingAddress,
-            underlyingValueABU: uint192(underlyingValueABU),
-            underlyingFeeABU: uint192(underlyingFeeABU),
+            underlyingValueUBA: uint192(underlyingValueUBA),
+            underlyingFeeUBA: uint192(underlyingFeeUBA),
             agentVault: _agentVault,
             lots: SafeMath64.toUint64(_lots),
             minter: _minter,
@@ -235,7 +235,7 @@ library Agent100Lib {
             lastUnderlyingBlock: lastUnderlyingBlock
         });
         emit CollateralReserved(_minter, crtId, 
-            agent.underlyingAddress, underlyingValueABU, underlyingFeeABU, lastUnderlyingBlock);
+            agent.underlyingAddress, underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock);
         emit AgentFreeCollateralChanged(_agentVault, _freeCollateral(agent, _context));
     }
     
@@ -245,9 +245,9 @@ library Agent100Lib {
         uint64 _crtId
     ) internal {
         CollateralReservation storage crt = _getCollateralReservation(_state, _crtId);
-        uint256 expectedPaymentABU = uint256(crt.underlyingValueABU).add(crt.underlyingFeeABU);
+        uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA).add(crt.underlyingFeeUBA);
         _verifyRequiredPayment(_state, _paymentInfo, 
-            crt.minterUnderlyingAddress, crt.agentUnderlyingAddress, expectedPaymentABU, 
+            crt.minterUnderlyingAddress, crt.agentUnderlyingAddress, expectedPaymentUBA, 
             crt.firstUnderlyingBlock, crt.lastUnderlyingBlock);
         address agentVault = crt.agentVault;
         uint64 lots = crt.lots;
@@ -264,14 +264,14 @@ library Agent100Lib {
         UnderlyingPaymentInfo memory _paymentInfo,
         bytes32 _expectedSource,
         bytes32 _expectedTarget,
-        uint256 _expectedValueABU,
+        uint256 _expectedValueUBA,
         uint256 _firstExpectedBlock,
         uint256 _lastExpectedBlock
     ) internal {
         require(_state.verifiedPayments[_paymentInfo.paymentHash] == 0, "payment already verified");
         require(_paymentInfo.sourceAddress == _expectedSource, "invalid payment source");
         require(_paymentInfo.targetAddress == _expectedTarget, "invalid payment target");
-        require(_paymentInfo.valueABU == _expectedValueABU, "invalid payment value");
+        require(_paymentInfo.valueUBA == _expectedValueUBA, "invalid payment value");
         require(_paymentInfo.underlyingBlock >= _firstExpectedBlock, "payment too old");
         require(_paymentInfo.underlyingBlock <= _lastExpectedBlock, "payment too late");
         _markPaymentVerified(_state, _paymentInfo.paymentHash);
