@@ -7,6 +7,7 @@ import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../interface/IAgentVault.sol";
 
+
 library Agent100Lib {
     using SafeMath for uint256;
     using SafePct for uint256;
@@ -25,7 +26,7 @@ library Agent100Lib {
         uint64 reservedLots;
         uint64 mintedLots;
         uint32 minCollateralRatioBIPS;
-        uint64 mintQueuePos;    // (index in mint queue)+1; 0 = not in queue
+        uint64 availableAgentsForMintPos;    // (index in mint queue)+1; 0 = not in queue
         uint16 feeBIPS;
         uint32 mintingCollateralRatioBIPS;
         uint64 firstRedemptionTicketId;
@@ -34,16 +35,38 @@ library Agent100Lib {
     }
     
     struct CollateralReservation {
-        bytes32 underlyingAddress;
-        uint256 underlyingValue;  // in underlying wei/satoshi
-        uint256 underlyingFee;
+        bytes32 agentUnderlyingAddress;
+        bytes32 minterUnderlyingAddress;
+        uint192 underlyingValueABU;
+        uint64 firstUnderlyingBlock;
+        uint192 underlyingFeeABU;
+        uint64 lastUnderlyingBlock;
         address agentVault;
         uint64 lots;
         address minter;
-        uint64 lastUnderlyingBlock;
     }
     
-    struct MintQueueItem {
+    struct RedemptionRequest {
+        bytes32 agentUnderlyingAddress;
+        bytes32 redeemerUnderlyingAddress;
+        uint192 underlyingValueABU;
+        uint64 firstUnderlyingBlock;
+        uint192 underlyingFeeABU;
+        uint64 lastUnderlyingBlock;
+        address agentVault;
+        uint64 lots;
+    }
+    
+    struct UnderlyingPaymentInfo {
+        bytes32 sourceAddress;
+        bytes32 targetAddress;
+        bytes32 paymentHash;
+        uint256 valueABU;
+        uint192 gasABU;
+        uint64 underlyingBlock;
+    }
+    
+    struct AvailableAgentForMint {
         address agentVault;
         uint64 allowExitTimestamp;
     }
@@ -61,18 +84,25 @@ library Agent100Lib {
         // default values
         uint16 initialMinCollateralRatioBIPS;
         uint16 liquidationMinCollateralRatioBIPS;
-        uint64 minSecondsToExitQueue;
+        uint64 minSecondsToExitAvailableForMint;
         uint64 underlyingBlocksForPayment;
         uint256 lotSizeUnderlying;                              // in underlying asset wei/satoshi
+        uint256 redemptionFee;                                  // in underlying asset wei/satoshi
         //
         mapping(address => Agent) agents;                       // mapping agentVaultAddress=>agent
         mapping(uint64 => CollateralReservation) crts;          // mapping crt_id=>crt
         mapping(uint64 => RedemptionTicket) redemptionQueue;    // mapping redemption_id=>ticket
-        MintQueueItem[] mintQueue;
+        AvailableAgentForMint[] availableAgentsForMint;
         uint64 firstRedemptionTicketId;
         uint64 lastRedemptionTicketId;
         uint64 newRedemptionTicketId;       // increment before assigning to ticket (to avoid 0)
         uint64 newCrtId;                    // increment before assigning to ticket (to avoid 0)
+        // payment verification
+        // a store of payment hashes to prevent payment being used / challenged twice
+        mapping(bytes32 => bytes32) verifiedPayments;
+        // a linked list of payment hashes (one list per day) used for cleanup
+        mapping(uint256 => bytes32) verifiedPaymentsForDay;
+        uint256 verifiedPaymentsForDayStart;
     }
     
     struct CallContext {
@@ -81,6 +111,8 @@ library Agent100Lib {
     }
     
     uint256 internal constant MAX_BIPS = 10000;
+
+    uint256 internal constant VERIFICATION_CLEANUP_DAYS = 5;
     
     event AgentEnteredMintQueue(
         address vaultAddress, 
@@ -100,11 +132,11 @@ library Agent100Lib {
         address indexed minter,
         uint256 reservationId,
         bytes32 underlyingAddress,
-        uint256 underlyingValue, 
-        uint256 underlyingFee,
+        uint256 underlyingValueABU, 
+        uint256 underlyingFeeABU,
         uint256 lastUnderlyingBlock);
         
-    event MintingPerformed(
+    event MintingExecuted(
         address indexed vaultAddress,
         uint256 redemptionTicketId,
         uint256 lots);
@@ -126,7 +158,7 @@ library Agent100Lib {
         Agent storage agent = _state.agents[_agentVault];
         // checks
         require(agent.status == AgentStatus.NORMAL, "invalid agent status");
-        require(agent.mintQueuePos == 0, "agent already in queue");
+        require(agent.availableAgentsForMintPos == 0, "agent already in queue");
         require(_mintingCollateralRatioBIPS >= agent.minCollateralRatioBIPS, "collateral ratio too small");
         require(agent.reservedLots == 0, "re-entering minting queue not allowed with active CRTs");
         // check that there is enough free collateral for at least one lot
@@ -137,35 +169,40 @@ library Agent100Lib {
         agent.feeBIPS = _feeBIPS; 
         agent.mintingCollateralRatioBIPS = _mintingCollateralRatioBIPS;
         // add to queue
-        _state.mintQueue.push(MintQueueItem({ agentVault: _agentVault, allowExitTimestamp: 0 }));
-        agent.mintQueuePos = uint64(_state.mintQueue.length);    // index+1 (so that 0 means empty)
+        _state.availableAgentsForMint.push(AvailableAgentForMint({
+            agentVault: _agentVault, 
+            allowExitTimestamp: 0
+        }));
+        agent.availableAgentsForMintPos = uint64(_state.availableAgentsForMint.length);     // index+1 (0=not in list)
         emit AgentEnteredMintQueue(_agentVault, _feeBIPS, _mintingCollateralRatioBIPS, freeCollateral);
     }
 
-    function _anounceExitMintQueue(State storage _state, address _agentVault) internal {
+    function _anounceExitAvailableForMint(State storage _state, address _agentVault) internal {
         Agent storage agent = _state.agents[_agentVault];
-        require(agent.mintQueuePos != 0, "not in mint queue");
-        MintQueueItem storage item = _state.mintQueue[agent.mintQueuePos - 1];
+        require(agent.availableAgentsForMintPos != 0, "not in mint queue");
+        AvailableAgentForMint storage item = 
+            _state.availableAgentsForMint[agent.availableAgentsForMintPos - 1];
         require(item.allowExitTimestamp == 0, "already exiting");
-        item.allowExitTimestamp = uint64(block.timestamp.add(_state.minSecondsToExitQueue));
+        item.allowExitTimestamp = uint64(block.timestamp.add(_state.minSecondsToExitAvailableForMint));
         emit AgentExitAnounced(_agentVault);
     }
     
-    function _exitMintQueue(State storage _state, address _agentVault, bool _requireTwoStep) internal {
+    function _exitAvailableForMint(State storage _state, address _agentVault, bool _requireTwoStep) internal {
         Agent storage agent = _state.agents[_agentVault];
-        require(agent.mintQueuePos != 0, "not in mint queue");
-        uint256 ind = agent.mintQueuePos - 1;
+        require(agent.availableAgentsForMintPos != 0, "not in mint queue");
+        uint256 ind = agent.availableAgentsForMintPos - 1;
         if (_requireTwoStep) {
-            MintQueueItem storage item = _state.mintQueue[ind];
+            AvailableAgentForMint storage item = _state.availableAgentsForMint[ind];
             require(item.allowExitTimestamp != 0 && item.allowExitTimestamp <= block.timestamp,
                 "required two-step exit");
         }
-        if (ind + 1 < _state.mintQueue.length) {
-            _state.mintQueue[ind] = _state.mintQueue[_state.mintQueue.length - 1];
-            _state.agents[_state.mintQueue[ind].agentVault].mintQueuePos = uint64(ind + 1);
+        if (ind + 1 < _state.availableAgentsForMint.length) {
+            _state.availableAgentsForMint[ind] = 
+                _state.availableAgentsForMint[_state.availableAgentsForMint.length - 1];
+            _state.agents[_state.availableAgentsForMint[ind].agentVault].availableAgentsForMintPos = uint64(ind + 1);
         }
-        agent.mintQueuePos = 0;
-        _state.mintQueue.pop();
+        agent.availableAgentsForMintPos = 0;
+        _state.availableAgentsForMint.pop();
         emit AgentExitedMintQueue(_agentVault);
     }
     
@@ -173,37 +210,45 @@ library Agent100Lib {
         State storage _state, 
         CallContext memory _context,
         address _minter,
+        bytes32 _minterUnderlyingAddress,
         address _agentVault, 
         uint64 _lots,
         uint64 _currentUnderlyingBlock
     ) internal {
         Agent storage agent = _state.agents[_agentVault];
-        require(agent.mintQueuePos != 0, "agent not in mint queue");
+        require(agent.availableAgentsForMintPos != 0, "agent not in mint queue");
         require(_freeCollateralLots(agent, _context) >= _lots, "not enough free collateral");
         uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
         agent.reservedLots = SafeMath64.add64(agent.reservedLots, _lots);
-        uint256 underlyingValue = _state.lotSizeUnderlying.mul(_lots);
-        uint256 underlyingFee = underlyingValue.mulDiv(agent.feeBIPS, MAX_BIPS);
+        uint256 underlyingValueABU = _state.lotSizeUnderlying.mul(_lots);
+        uint256 underlyingFeeABU = underlyingValueABU.mulDiv(agent.feeBIPS, MAX_BIPS);
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({
-            underlyingAddress: agent.underlyingAddress,
-            underlyingValue: underlyingValue,
-            underlyingFee: underlyingFee,
+            agentUnderlyingAddress: agent.underlyingAddress,
+            minterUnderlyingAddress: _minterUnderlyingAddress,
+            underlyingValueABU: uint192(underlyingValueABU),
+            underlyingFeeABU: uint192(underlyingFeeABU),
             agentVault: _agentVault,
             lots: SafeMath64.toUint64(_lots),
             minter: _minter,
+            firstUnderlyingBlock: _currentUnderlyingBlock,
             lastUnderlyingBlock: lastUnderlyingBlock
         });
         emit CollateralReserved(_minter, crtId, 
-            agent.underlyingAddress, underlyingValue, underlyingFee, lastUnderlyingBlock);
+            agent.underlyingAddress, underlyingValueABU, underlyingFeeABU, lastUnderlyingBlock);
         emit AgentFreeCollateralChanged(_agentVault, _freeCollateral(agent, _context));
     }
     
-    function _mintingPerformed(
+    function _mintingExecuted(
         State storage _state,
+        UnderlyingPaymentInfo memory _paymentInfo,
         uint64 _crtId
     ) internal {
         CollateralReservation storage crt = _getCollateralReservation(_state, _crtId);
+        uint256 expectedPaymentABU = uint256(crt.underlyingValueABU).add(crt.underlyingFeeABU);
+        _verifyRequiredPayment(_state, _paymentInfo, 
+            crt.minterUnderlyingAddress, crt.agentUnderlyingAddress, expectedPaymentABU, 
+            crt.firstUnderlyingBlock, crt.lastUnderlyingBlock);
         address agentVault = crt.agentVault;
         uint64 lots = crt.lots;
         Agent storage agent = _state.agents[agentVault];
@@ -211,8 +256,67 @@ library Agent100Lib {
         agent.reservedLots = SafeMath64.sub64(agent.reservedLots, lots, "invalid reserved lots");
         agent.mintedLots = SafeMath64.add64(agent.mintedLots, lots);
         delete _state.crts[_crtId];
-        emit MintingPerformed(agentVault, redemptionTicketId, lots);
+        emit MintingExecuted(agentVault, redemptionTicketId, lots);
     }
+    
+    function _verifyRequiredPayment(
+        State storage _state,
+        UnderlyingPaymentInfo memory _paymentInfo,
+        bytes32 _expectedSource,
+        bytes32 _expectedTarget,
+        uint256 _expectedValueABU,
+        uint256 _firstExpectedBlock,
+        uint256 _lastExpectedBlock
+    ) internal {
+        require(_state.verifiedPayments[_paymentInfo.paymentHash] == 0, "payment already verified");
+        require(_paymentInfo.sourceAddress == _expectedSource, "invalid payment source");
+        require(_paymentInfo.targetAddress == _expectedTarget, "invalid payment target");
+        require(_paymentInfo.valueABU == _expectedValueABU, "invalid payment value");
+        require(_paymentInfo.underlyingBlock >= _firstExpectedBlock, "payment too old");
+        require(_paymentInfo.underlyingBlock <= _lastExpectedBlock, "payment too late");
+        _markPaymentVerified(_state, _paymentInfo.paymentHash);
+    }
+    
+    function _markPaymentVerified(State storage _state, bytes32 _paymentHash) internal {
+        uint256 day = block.timestamp / 86400;
+        bytes32 first = _state.verifiedPaymentsForDay[day];
+        _state.verifiedPayments[_paymentHash] = first != 0 ? first : _paymentHash;  // last in list points to itself
+        _state.verifiedPaymentsForDay[day] = _paymentHash;
+        if (_state.verifiedPaymentsForDayStart == 0) {
+            _state.verifiedPaymentsForDayStart = day;
+        }
+        // cleanup one old payment hash (> 5 days) for each new payment hash
+        _cleanupPaymentVerification(_state);
+    }
+    
+    function _cleanupPaymentVerification(State storage _state) internal {
+        uint256 startDay = _state.verifiedPaymentsForDayStart;
+        if (startDay == 0 || startDay > block.timestamp / 86400 - VERIFICATION_CLEANUP_DAYS) return;
+        bytes32 first = _state.verifiedPaymentsForDay[startDay];
+        if (first != 0) {
+            bytes32 next = _state.verifiedPayments[first];
+            _state.verifiedPayments[first] = 0;
+            if (next == first) {    // last one in the list points to itself
+                _state.verifiedPaymentsForDay[startDay] = 0;
+                _state.verifiedPaymentsForDayStart = startDay + 1;
+            } else {
+                _state.verifiedPaymentsForDay[startDay] = next;
+            }
+        } else {
+            _state.verifiedPaymentsForDayStart = startDay + 1;
+        }
+    }
+    
+    // function _redeemAgainstTicket(
+    //     State storage _state,
+    //     uint64 _redemptionTicketId,
+    //     uint64 _lots
+    // ) internal {
+    //     require(_redemptionTicketId != 0, "invalid redemption id");
+    //     RedemptionTicket storage ticket = _state.redemptionQueue[_redemptionTicketId];
+    //     require(ticket.lots != 0, "invalid redemption id");
+        
+    // }
 
     function _createRedemptionTicket(
         State storage _state, 
@@ -300,7 +404,7 @@ library Agent100Lib {
         internal view 
         returns (address[] memory _agents, uint256 _totalLength)
     {
-        _totalLength = _state.mintQueue.length;
+        _totalLength = _state.availableAgentsForMint.length;
         if (_start >= _totalLength) {
             return (new address[](0), _totalLength);
         }
@@ -309,7 +413,7 @@ library Agent100Lib {
         }
         _agents = new address[](_end - _start);
         for (uint256 i = _start; i < _end; i++) {
-            _agents[i - _start] = _state.mintQueue[i].agentVault;
+            _agents[i - _start] = _state.availableAgentsForMint[i].agentVault;
         }
     }
     
@@ -320,7 +424,7 @@ library Agent100Lib {
         require(_crtId > 0 && _state.crts[_crtId].lots != 0, "invalid crt id");
         return _state.crts[_crtId];
     }
-    
+
     function _getAgent(State storage _state, address _agentVault) internal view returns (Agent storage) {
         return _state.agents[_agentVault];
     }
