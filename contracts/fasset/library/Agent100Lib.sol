@@ -5,13 +5,13 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
 import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
 import "../../utils/lib/SafeMath64.sol";
+import "../../utils/lib/SafeMathX.sol";
 import "../interface/IAgentVault.sol";
 
 
 library Agent100Lib {
     using SafeMath for uint256;
     using SafePct for uint256;
-    using SafeMath64 for uint256;
     
     enum AgentStatus { 
         EMPTY,
@@ -91,6 +91,7 @@ library Agent100Lib {
     struct RedemptionTicket {
         address agentVault;
         uint64 lots;
+        bytes32 underlyingAddress;
         uint64 prev;
         uint64 next;
         uint64 prevForAgent;
@@ -104,17 +105,19 @@ library Agent100Lib {
         uint64 minSecondsToExitAvailableForMint;
         uint64 underlyingBlocksForPayment;
         uint64 underlyingBlocksForAllowedPayment;
-        uint256 lotSizeUnderlying;                              // in underlying asset wei/satoshi
+        uint256 lotSizeUBA;                              // in underlying asset wei/satoshi
         uint256 redemptionFee;                                  // in underlying asset wei/satoshi
         //
         mapping(address => Agent) agents;                       // mapping agentVaultAddress=>agent
         mapping(uint64 => CollateralReservation) crts;          // mapping crt_id=>crt
         mapping(uint64 => RedemptionTicket) redemptionQueue;    // mapping redemption_id=>ticket
+        mapping(uint64 => RedemptionRequest) redemptionRequests;    // mapping request_id=>request
         AvailableAgentForMint[] availableAgentsForMint;
         uint64 firstRedemptionTicketId;
         uint64 lastRedemptionTicketId;
         uint64 newRedemptionTicketId;       // increment before assigning to ticket (to avoid 0)
         uint64 newCrtId;                    // increment before assigning to ticket (to avoid 0)
+        uint64 newRedemptionRequestId;
         // payment verification
         // a store of payment hashes to prevent payment being used / challenged twice
         mapping(bytes32 => bytes32) verifiedPayments;
@@ -165,6 +168,13 @@ library Agent100Lib {
         uint64 firstUnderlyingBlock,
         uint64 lastUnderlyingBlock,
         uint64 announcementId);
+        
+    event RedemptionRequested(
+        bytes32 indexed underlyingAddress,
+        uint256 valueUBA,
+        uint64 firstUnderlyingBlock,
+        uint64 lastUnderlyingBlock,
+        uint64 requestId);
 
     function _initAgent(State storage _state, address _agentVault) internal {
         Agent storage agent = _state.agents[_agentVault];
@@ -250,14 +260,14 @@ library Agent100Lib {
         require(_freeCollateralLots(agent, _context) >= _lots, "not enough free collateral");
         uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
         agent.reservedLots = SafeMath64.add64(agent.reservedLots, _lots);
-        uint256 underlyingValueUBA = _state.lotSizeUnderlying.mul(_lots);
+        uint256 underlyingValueUBA = _state.lotSizeUBA.mul(_lots);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulDiv(agent.feeBIPS, MAX_BIPS);
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({
             agentUnderlyingAddress: agent.underlyingAddress,
             minterUnderlyingAddress: _minterUnderlyingAddress,
-            underlyingValueUBA: uint192(underlyingValueUBA),
-            underlyingFeeUBA: uint192(underlyingFeeUBA),
+            underlyingValueUBA: SafeMathX.toUint192(underlyingValueUBA),
+            underlyingFeeUBA: SafeMathX.toUint192(underlyingFeeUBA),
             agentVault: _agentVault,
             lots: SafeMath64.toUint64(_lots),
             minter: _minter,
@@ -284,7 +294,7 @@ library Agent100Lib {
             crt.firstUnderlyingBlock, crt.lastUnderlyingBlock);
         address agentVault = crt.agentVault;
         uint64 lots = crt.lots;
-        uint64 redemptionTicketId = _createRedemptionTicket(_state, agentVault, lots);
+        uint64 redemptionTicketId = _createRedemptionTicket(_state, agentVault, lots, crt.agentUnderlyingAddress);
         Agent storage agent = _state.agents[agentVault];
         if (crt.availabilityEnterCountMod2 == agent.availabilityEnterCountMod2) {
             agent.reservedLots = SafeMath64.sub64(agent.reservedLots, lots, "invalid reserved lots");
@@ -393,21 +403,47 @@ library Agent100Lib {
         }
     }
     
-    // function _redeemAgainstTicket(
-    //     State storage _state,
-    //     uint64 _redemptionTicketId,
-    //     uint64 _lots
-    // ) internal {
-    //     require(_redemptionTicketId != 0, "invalid redemption id");
-    //     RedemptionTicket storage ticket = _state.redemptionQueue[_redemptionTicketId];
-    //     require(ticket.lots != 0, "invalid redemption id");
-        
-    // }
+    function _redeemAgainstTicket(
+        State storage _state,
+        uint64 _redemptionTicketId,
+        uint64 _lots,
+        bytes32 _redeemerUnderlyingAddress,
+        uint64 _currentUnderlyingBlock
+    ) 
+        internal 
+        returns (uint64 _redeemedLots)
+    {
+        require(_redemptionTicketId != 0, "invalid redemption id");
+        RedemptionTicket storage ticket = _state.redemptionQueue[_redemptionTicketId];
+        require(ticket.lots != 0, "invalid redemption id");
+        uint64 requestId = ++_state.newRedemptionRequestId;
+        _redeemedLots = _lots <= ticket.lots ? _lots : ticket.lots;
+        uint256 redeemedValueUBA = SafeMath.mul(_redeemedLots, _state.lotSizeUBA);
+        uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
+        _state.redemptionRequests[requestId] = RedemptionRequest({
+            agentUnderlyingAddress: ticket.underlyingAddress,
+            redeemerUnderlyingAddress: _redeemerUnderlyingAddress,
+            underlyingValueUBA: SafeMathX.toUint192(redeemedValueUBA),
+            firstUnderlyingBlock: _currentUnderlyingBlock,
+            underlyingFeeUBA: SafeMathX.toUint192(_state.redemptionFee),
+            lastUnderlyingBlock: lastUnderlyingBlock,
+            agentVault: ticket.agentVault,
+            lots: ticket.lots
+        });
+        emit RedemptionRequested(ticket.underlyingAddress, 
+            redeemedValueUBA, _currentUnderlyingBlock, lastUnderlyingBlock, requestId);
+        if (_redeemedLots == ticket.lots) {
+            _deleteRedemptionTicket(_state, _redemptionTicketId);
+        } else {
+            ticket.lots -= _redeemedLots;
+        }
+    }
 
     function _createRedemptionTicket(
         State storage _state, 
         address _agentVault,
-        uint64 _lots
+        uint64 _lots,
+        bytes32 _underlyingAddress
     ) 
         internal 
         returns (uint64)
@@ -418,6 +454,7 @@ library Agent100Lib {
         _state.redemptionQueue[ticketId] = RedemptionTicket({
             agentVault: _agentVault,
             lots: _lots,
+            underlyingAddress: _underlyingAddress,
             prev: _state.lastRedemptionTicketId,
             next: 0,
             prevForAgent: agent.lastRedemptionTicketId,
@@ -447,13 +484,12 @@ library Agent100Lib {
     
     function _deleteRedemptionTicket(
         State storage _state, 
-        address _agentVault,
         uint64 ticketId
     )
         internal
     {
-        Agent storage agent = _state.agents[_agentVault];
         RedemptionTicket storage ticket = _state.redemptionQueue[ticketId];
+        Agent storage agent = _state.agents[ticket.agentVault];
         // unlink from global queue
         if (ticket.prev == 0) {
             assert(ticketId == _state.firstRedemptionTicketId);     // ticket is first in queue
