@@ -20,6 +20,7 @@ library Agent100Lib {
     }
 
     struct AllowedPaymentAnouncement {
+        bytes32 underlyingAddress;
         uint256 valueUBA;
         uint64 firstUnderlyingBlock;
         uint64 lastUnderlyingBlock;
@@ -102,6 +103,7 @@ library Agent100Lib {
         uint16 liquidationMinCollateralRatioBIPS;
         uint64 minSecondsToExitAvailableForMint;
         uint64 underlyingBlocksForPayment;
+        uint64 underlyingBlocksForAllowedPayment;
         uint256 lotSizeUnderlying;                              // in underlying asset wei/satoshi
         uint256 redemptionFee;                                  // in underlying asset wei/satoshi
         //
@@ -156,6 +158,13 @@ library Agent100Lib {
         address indexed vaultAddress,
         uint256 redemptionTicketId,
         uint256 lots);
+
+    event AllowedPaymentAnnounced(
+        bytes32 underlyingAddress,
+        uint256 valueUBA,
+        uint64 firstUnderlyingBlock,
+        uint64 lastUnderlyingBlock,
+        uint64 announcementId);
 
     function _initAgent(State storage _state, address _agentVault) internal {
         Agent storage agent = _state.agents[_agentVault];
@@ -304,30 +313,53 @@ library Agent100Lib {
         require(_paymentInfo.valueUBA == _expectedValueUBA, "invalid payment value");
         require(_paymentInfo.underlyingBlock >= _firstExpectedBlock, "payment too old");
         require(_paymentInfo.underlyingBlock <= _lastExpectedBlock, "payment too late");
+        // TODO: remove pending challenge
         _markPaymentVerified(_state, _paymentInfo.paymentHash);
     }
     
-    // function _anounceAllowedPayment(
-    //     State storage _state,
-    // )
-
-    function _verifyAllowedPayment(
+    function _anounceAllowedPayment(
         State storage _state,
-        UnderlyingPaymentInfo memory _paymentInfo,
-        bytes32 _expectedSource,
-        bytes32 _expectedTarget,
-        uint256 _expectedValueUBA,
-        uint256 _firstExpectedBlock,
-        uint256 _lastExpectedBlock
+        address _agentVault,
+        bytes32 _underlyingAddress,
+        uint256 _valueUBA,
+        uint64 _currentUnderlyingBlock
     )
         internal
     {
+        Agent storage agent = _state.agents[_agentVault];
+        require(agent.allowedUnderlyingPayments[_underlyingAddress] >= _valueUBA,
+            "payment larger than allowed");
+        agent.allowedUnderlyingPayments[_underlyingAddress] -= _valueUBA;   // guarded by require
+        uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, 
+            _state.underlyingBlocksForAllowedPayment);
+        agent.announcedUnderlyingPayments.push(AllowedPaymentAnouncement({
+            underlyingAddress: _underlyingAddress,
+            valueUBA: _valueUBA,
+            firstUnderlyingBlock: _currentUnderlyingBlock,
+            lastUnderlyingBlock: lastUnderlyingBlock
+        }));
+        emit AllowedPaymentAnnounced(_underlyingAddress, _valueUBA, _currentUnderlyingBlock, lastUnderlyingBlock,
+            SafeMath64.toUint64(agent.announcedUnderlyingPayments.length));
+    }
+    
+    function _reportAllowedPayment(
+        State storage _state,
+        UnderlyingPaymentInfo memory _paymentInfo,
+        address _agentVault,
+        uint64 _announcementId
+    )
+        internal
+    {
+        Agent storage agent = _state.agents[_agentVault];
+        require(_announcementId > 0, "invalid announcement id");
+        AllowedPaymentAnouncement storage announcement = agent.announcedUnderlyingPayments[_announcementId - 1];
+        require(announcement.valueUBA != 0, "invalid announcement id");
         require(_state.verifiedPayments[_paymentInfo.paymentHash] == 0, "payment already verified");
-        require(_paymentInfo.sourceAddress == _expectedSource, "invalid payment source");
-        require(_paymentInfo.targetAddress == _expectedTarget, "invalid payment target");
-        require(_paymentInfo.valueUBA == _expectedValueUBA, "invalid payment value");
-        require(_paymentInfo.underlyingBlock >= _firstExpectedBlock, "payment too old");
-        require(_paymentInfo.underlyingBlock <= _lastExpectedBlock, "payment too late");
+        require(_paymentInfo.sourceAddress == announcement.underlyingAddress, "invalid payment source");
+        require(_paymentInfo.valueUBA == announcement.valueUBA, "invalid payment value");
+        require(_paymentInfo.underlyingBlock >= announcement.firstUnderlyingBlock, "payment too old");
+        require(_paymentInfo.underlyingBlock <= announcement.lastUnderlyingBlock, "payment too late");
+        // TODO: remove pending challenge
         _markPaymentVerified(_state, _paymentInfo.paymentHash);
     }
     
