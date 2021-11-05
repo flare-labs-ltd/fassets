@@ -18,11 +18,18 @@ library Agent100Lib {
         NORMAL,
         LIQUIDATION
     }
+
+    struct AllowedPaymentAnouncement {
+        uint256 valueUBA;
+        uint64 firstUnderlyingBlock;
+        uint64 lastUnderlyingBlock;
+    }
     
     struct Agent {
         bytes32 underlyingAddress;
         // agent is allowed to withdraw fee or liquidated underlying amount (including gas)
-        uint256 allowedUnderlyingPayments;
+        mapping(bytes32 => uint256) allowedUnderlyingPayments;      // underlyingAddress -> allowedUBA
+        AllowedPaymentAnouncement[] announcedUnderlyingPayments;
         uint64 reservedLots;
         uint64 mintedLots;
         uint32 minCollateralRatioBIPS;
@@ -32,6 +39,14 @@ library Agent100Lib {
         uint64 firstRedemptionTicketId;
         uint64 lastRedemptionTicketId;
         AgentStatus status;
+        // When an agent exits and re-enters availability list, mintingCollateralRatio changes
+        // so we have to acocunt for that when calculating total reserved collateral.
+        // We simplify by only allowing one change before the old CRs are executed or cleared.
+        // Therefore we store relevant old values here and match old/new by 0/1 flag 
+        // named `availabilityEnterCountMod2` here and in CR.
+        uint64 oldReservedLots;
+        uint32 oldMintingCollateralRatioBIPS;
+        uint8 availabilityEnterCountMod2;
     }
     
     struct CollateralReservation {
@@ -44,6 +59,7 @@ library Agent100Lib {
         address agentVault;
         uint64 lots;
         address minter;
+        uint8 availabilityEnterCountMod2;
     }
     
     struct RedemptionRequest {
@@ -154,13 +170,15 @@ library Agent100Lib {
         address _agentVault,
         uint16 _feeBIPS,
         uint32 _mintingCollateralRatioBIPS
-    ) internal {
+    ) 
+        internal 
+    {
         Agent storage agent = _state.agents[_agentVault];
         // checks
         require(agent.status == AgentStatus.NORMAL, "invalid agent status");
         require(agent.availableAgentsForMintPos == 0, "agent already in queue");
         require(_mintingCollateralRatioBIPS >= agent.minCollateralRatioBIPS, "collateral ratio too small");
-        require(agent.reservedLots == 0, "re-entering minting queue not allowed with active CRTs");
+        require(agent.oldReservedLots == 0, "re-entering again too soon");
         // check that there is enough free collateral for at least one lot
         uint256 freeCollateral = _freeCollateral(agent, _context);
         require(freeCollateral >= _context.lotSizeWei.mulDiv(_mintingCollateralRatioBIPS, MAX_BIPS), 
@@ -174,6 +192,7 @@ library Agent100Lib {
             allowExitTimestamp: 0
         }));
         agent.availableAgentsForMintPos = uint64(_state.availableAgentsForMint.length);     // index+1 (0=not in list)
+        agent.availabilityEnterCountMod2 = (agent.availabilityEnterCountMod2 + 1) % 2;      // always 0/1
         emit AgentEnteredMintQueue(_agentVault, _feeBIPS, _mintingCollateralRatioBIPS, freeCollateral);
     }
 
@@ -214,7 +233,9 @@ library Agent100Lib {
         address _agentVault, 
         uint64 _lots,
         uint64 _currentUnderlyingBlock
-    ) internal {
+    )
+        internal
+    {
         Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsForMintPos != 0, "agent not in mint queue");
         require(_freeCollateralLots(agent, _context) >= _lots, "not enough free collateral");
@@ -232,7 +253,8 @@ library Agent100Lib {
             lots: SafeMath64.toUint64(_lots),
             minter: _minter,
             firstUnderlyingBlock: _currentUnderlyingBlock,
-            lastUnderlyingBlock: lastUnderlyingBlock
+            lastUnderlyingBlock: lastUnderlyingBlock,
+            availabilityEnterCountMod2: agent.availabilityEnterCountMod2
         });
         emit CollateralReserved(_minter, crtId, 
             agent.underlyingAddress, underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock);
@@ -243,7 +265,9 @@ library Agent100Lib {
         State storage _state,
         UnderlyingPaymentInfo memory _paymentInfo,
         uint64 _crtId
-    ) internal {
+    )
+        internal
+    {
         CollateralReservation storage crt = _getCollateralReservation(_state, _crtId);
         uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA).add(crt.underlyingFeeUBA);
         _verifyRequiredPayment(_state, _paymentInfo, 
@@ -251,9 +275,13 @@ library Agent100Lib {
             crt.firstUnderlyingBlock, crt.lastUnderlyingBlock);
         address agentVault = crt.agentVault;
         uint64 lots = crt.lots;
-        Agent storage agent = _state.agents[agentVault];
         uint64 redemptionTicketId = _createRedemptionTicket(_state, agentVault, lots);
-        agent.reservedLots = SafeMath64.sub64(agent.reservedLots, lots, "invalid reserved lots");
+        Agent storage agent = _state.agents[agentVault];
+        if (crt.availabilityEnterCountMod2 == agent.availabilityEnterCountMod2) {
+            agent.reservedLots = SafeMath64.sub64(agent.reservedLots, lots, "invalid reserved lots");
+        } else {
+            agent.oldReservedLots = SafeMath64.sub64(agent.oldReservedLots, lots, "invalid reserved lots");
+        }
         agent.mintedLots = SafeMath64.add64(agent.mintedLots, lots);
         delete _state.crts[_crtId];
         emit MintingExecuted(agentVault, redemptionTicketId, lots);
@@ -267,7 +295,33 @@ library Agent100Lib {
         uint256 _expectedValueUBA,
         uint256 _firstExpectedBlock,
         uint256 _lastExpectedBlock
-    ) internal {
+    )
+        internal
+    {
+        require(_state.verifiedPayments[_paymentInfo.paymentHash] == 0, "payment already verified");
+        require(_paymentInfo.sourceAddress == _expectedSource, "invalid payment source");
+        require(_paymentInfo.targetAddress == _expectedTarget, "invalid payment target");
+        require(_paymentInfo.valueUBA == _expectedValueUBA, "invalid payment value");
+        require(_paymentInfo.underlyingBlock >= _firstExpectedBlock, "payment too old");
+        require(_paymentInfo.underlyingBlock <= _lastExpectedBlock, "payment too late");
+        _markPaymentVerified(_state, _paymentInfo.paymentHash);
+    }
+    
+    // function _anounceAllowedPayment(
+    //     State storage _state,
+    // )
+
+    function _verifyAllowedPayment(
+        State storage _state,
+        UnderlyingPaymentInfo memory _paymentInfo,
+        bytes32 _expectedSource,
+        bytes32 _expectedTarget,
+        uint256 _expectedValueUBA,
+        uint256 _firstExpectedBlock,
+        uint256 _lastExpectedBlock
+    )
+        internal
+    {
         require(_state.verifiedPayments[_paymentInfo.paymentHash] == 0, "payment already verified");
         require(_paymentInfo.sourceAddress == _expectedSource, "invalid payment source");
         require(_paymentInfo.targetAddress == _expectedTarget, "invalid payment target");
@@ -363,7 +417,9 @@ library Agent100Lib {
         State storage _state, 
         address _agentVault,
         uint64 ticketId
-    ) internal {
+    )
+        internal
+    {
         Agent storage agent = _state.agents[_agentVault];
         RedemptionTicket storage ticket = _state.redemptionQueue[ticketId];
         // unlink from global queue
@@ -449,9 +505,12 @@ library Agent100Lib {
         // reserved collateral is calculated at minting ratio
         uint256 reservedCollateral = uint256(_agent.reservedLots).mul(_context.lotSizeWei)
             .mulDiv(_agent.mintingCollateralRatioBIPS, MAX_BIPS);
+        // old reserved collateral (from before agent exited and re-entered minting queue), at old minting ratio
+        uint256 oldReservedCollateral = uint256(_agent.oldReservedLots).mul(_context.lotSizeWei)
+            .mulDiv(_agent.oldMintingCollateralRatioBIPS, MAX_BIPS);
         // minted collateral is calculated at minimal ratio
         uint256 mintedCollateral = uint256(_agent.mintedLots).mul(_context.lotSizeWei)
             .mulDiv(_agent.minCollateralRatioBIPS, MAX_BIPS);
-        return reservedCollateral.add(mintedCollateral);
+        return reservedCollateral.add(oldReservedCollateral).add(mintedCollateral);
     }
 }
