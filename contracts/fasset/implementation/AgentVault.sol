@@ -6,6 +6,7 @@ import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "../interface/IAssetMinter.sol";
 import "../interface/IAgentVault.sol";
 
+
 contract AgentVault is IAgentVault {
     IAssetMinter public immutable assetMinter;
     WNat public immutable wnat;

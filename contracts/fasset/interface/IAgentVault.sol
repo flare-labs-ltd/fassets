@@ -5,6 +5,7 @@ import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "../interface/IAssetMinter.sol";
 
+
 interface IAgentVault {
     function owner() external returns (address);
 
