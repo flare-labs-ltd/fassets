@@ -19,7 +19,7 @@ library Agent100Lib {
         LIQUIDATION
     }
 
-    struct AllowedPaymentAnouncement {
+    struct AllowedPaymentAnnouncement {
         bytes32 underlyingAddress;
         uint256 valueUBA;
         uint64 firstUnderlyingBlock;
@@ -30,7 +30,7 @@ library Agent100Lib {
         bytes32 underlyingAddress;
         // agent is allowed to withdraw fee or liquidated underlying amount (including gas)
         mapping(bytes32 => uint256) allowedUnderlyingPayments;      // underlyingAddress -> allowedUBA
-        AllowedPaymentAnouncement[] announcedUnderlyingPayments;
+        AllowedPaymentAnnouncement[] announcedUnderlyingPayments;
         uint64 reservedLots;
         uint64 mintedLots;
         uint32 minCollateralRatioBIPS;
@@ -72,6 +72,7 @@ library Agent100Lib {
         uint64 lastUnderlyingBlock;
         address agentVault;
         uint64 lots;
+        address redeemer;
     }
     
     struct UnderlyingPaymentInfo {
@@ -106,7 +107,8 @@ library Agent100Lib {
         uint64 underlyingBlocksForPayment;
         uint64 underlyingBlocksForAllowedPayment;
         uint256 lotSizeUBA;                              // in underlying asset wei/satoshi
-        uint256 redemptionFee;                                  // in underlying asset wei/satoshi
+        uint256 redemptionFeeUBA;                        // in underlying asset wei/satoshi
+        uint32 redemptionFailureFactorBIPS;              // e.g 1.2 (12000)
         //
         mapping(address => Agent) agents;                       // mapping agentVaultAddress=>agent
         mapping(uint64 => CollateralReservation) crts;          // mapping crt_id=>crt
@@ -145,13 +147,13 @@ library Agent100Lib {
         address vaultAddress, 
         uint256 freeCollateral);
 
-    event AgentExitAnounced(address vaultAddress);
+    event AgentExitAnnounced(address vaultAddress);
 
     event AgentExitedMintQueue(address vaultAddress);
     
     event CollateralReserved(
         address indexed minter,
-        uint256 reservationId,
+        uint256 collateralReservationId,
         bytes32 underlyingAddress,
         uint256 underlyingValueUBA, 
         uint256 underlyingFeeUBA,
@@ -159,8 +161,11 @@ library Agent100Lib {
         
     event MintingExecuted(
         address indexed vaultAddress,
+        uint256 collateralReservationId,
         uint256 redemptionTicketId,
-        uint256 lots);
+        bytes32 underlyingAddress,
+        uint256 mintedLots,
+        uint256 receivedFeeUBA);
 
     event AllowedPaymentAnnounced(
         bytes32 underlyingAddress,
@@ -215,14 +220,14 @@ library Agent100Lib {
         emit AgentEnteredMintQueue(_agentVault, _feeBIPS, _mintingCollateralRatioBIPS, freeCollateral);
     }
 
-    function _anounceExitAvailableForMint(State storage _state, address _agentVault) internal {
+    function _announceExitAvailableForMint(State storage _state, address _agentVault) internal {
         Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsForMintPos != 0, "not in mint queue");
         AvailableAgentForMint storage item = 
             _state.availableAgentsForMint[agent.availableAgentsForMintPos - 1];
         require(item.allowExitTimestamp == 0, "already exiting");
         item.allowExitTimestamp = uint64(block.timestamp.add(_state.minSecondsToExitAvailableForMint));
-        emit AgentExitAnounced(_agentVault);
+        emit AgentExitAnnounced(_agentVault);
     }
     
     function _exitAvailableForMint(State storage _state, address _agentVault, bool _requireTwoStep) internal {
@@ -257,6 +262,7 @@ library Agent100Lib {
     {
         Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsForMintPos != 0, "agent not in mint queue");
+        require(_lots > 0, "cannot mint 0 blocks");
         require(_freeCollateralLots(agent, _context) >= _lots, "not enough free collateral");
         uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
         agent.reservedLots = SafeMath64.add64(agent.reservedLots, _lots);
@@ -302,8 +308,11 @@ library Agent100Lib {
             agent.oldReservedLots = SafeMath64.sub64(agent.oldReservedLots, lots, "invalid reserved lots");
         }
         agent.mintedLots = SafeMath64.add64(agent.mintedLots, lots);
+        agent.allowedUnderlyingPayments[crt.agentUnderlyingAddress] = 
+            agent.allowedUnderlyingPayments[crt.agentUnderlyingAddress].add(crt.underlyingFeeUBA);
         delete _state.crts[_crtId];
-        emit MintingExecuted(agentVault, redemptionTicketId, lots);
+        emit MintingExecuted(agentVault, _crtId, redemptionTicketId, 
+            crt.agentUnderlyingAddress, lots, crt.underlyingFeeUBA);
     }
     
     function _verifyRequiredPayment(
@@ -327,7 +336,7 @@ library Agent100Lib {
         _markPaymentVerified(_state, _paymentInfo.paymentHash);
     }
     
-    function _anounceAllowedPayment(
+    function _announceAllowedPayment(
         State storage _state,
         address _agentVault,
         bytes32 _underlyingAddress,
@@ -337,12 +346,13 @@ library Agent100Lib {
         internal
     {
         Agent storage agent = _state.agents[_agentVault];
+        require(_valueUBA > 0, "invalid value");
         require(agent.allowedUnderlyingPayments[_underlyingAddress] >= _valueUBA,
             "payment larger than allowed");
         agent.allowedUnderlyingPayments[_underlyingAddress] -= _valueUBA;   // guarded by require
         uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, 
             _state.underlyingBlocksForAllowedPayment);
-        agent.announcedUnderlyingPayments.push(AllowedPaymentAnouncement({
+        agent.announcedUnderlyingPayments.push(AllowedPaymentAnnouncement({
             underlyingAddress: _underlyingAddress,
             valueUBA: _valueUBA,
             firstUnderlyingBlock: _currentUnderlyingBlock,
@@ -362,7 +372,7 @@ library Agent100Lib {
     {
         Agent storage agent = _state.agents[_agentVault];
         require(_announcementId > 0, "invalid announcement id");
-        AllowedPaymentAnouncement storage announcement = agent.announcedUnderlyingPayments[_announcementId - 1];
+        AllowedPaymentAnnouncement storage announcement = agent.announcedUnderlyingPayments[_announcementId - 1];
         require(announcement.valueUBA != 0, "invalid announcement id");
         require(_state.verifiedPayments[_paymentInfo.paymentHash] == 0, "payment already verified");
         require(_paymentInfo.sourceAddress == announcement.underlyingAddress, "invalid payment source");
@@ -406,6 +416,7 @@ library Agent100Lib {
     function _redeemAgainstTicket(
         State storage _state,
         uint64 _redemptionTicketId,
+        address _redeemer,
         uint64 _lots,
         bytes32 _redeemerUnderlyingAddress,
         uint64 _currentUnderlyingBlock
@@ -413,6 +424,7 @@ library Agent100Lib {
         internal 
         returns (uint64 _redeemedLots)
     {
+        require(_lots != 0, "cannot redeem 0 lots");
         require(_redemptionTicketId != 0, "invalid redemption id");
         RedemptionTicket storage ticket = _state.redemptionQueue[_redemptionTicketId];
         require(ticket.lots != 0, "invalid redemption id");
@@ -425,18 +437,69 @@ library Agent100Lib {
             redeemerUnderlyingAddress: _redeemerUnderlyingAddress,
             underlyingValueUBA: SafeMathX.toUint192(redeemedValueUBA),
             firstUnderlyingBlock: _currentUnderlyingBlock,
-            underlyingFeeUBA: SafeMathX.toUint192(_state.redemptionFee),
+            underlyingFeeUBA: SafeMathX.toUint192(_state.redemptionFeeUBA),
             lastUnderlyingBlock: lastUnderlyingBlock,
+            redeemer: _redeemer,
             agentVault: ticket.agentVault,
             lots: ticket.lots
         });
+        uint256 paymentValueUBA = redeemedValueUBA.sub(_state.redemptionFeeUBA);
         emit RedemptionRequested(ticket.underlyingAddress, 
-            redeemedValueUBA, _currentUnderlyingBlock, lastUnderlyingBlock, requestId);
+            paymentValueUBA, _currentUnderlyingBlock, lastUnderlyingBlock, requestId);
         if (_redeemedLots == ticket.lots) {
             _deleteRedemptionTicket(_state, _redemptionTicketId);
         } else {
-            ticket.lots -= _redeemedLots;
+            ticket.lots -= _redeemedLots;   // safe, _redeemedLots = min(_lots, ticket.lots)
         }
+    }
+    
+    function _confirmRedemptionRequestPayment(
+        State storage _state,
+        UnderlyingPaymentInfo memory _paymentInfo,
+        uint64 _redemptionRequestId
+    )
+        internal
+    {
+        require(_redemptionRequestId != 0, "invalid request id");
+        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
+        require(request.lots != 0, "invalid request id");
+        uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
+        _verifyRequiredPayment(_state, _paymentInfo, 
+            request.agentUnderlyingAddress, request.redeemerUnderlyingAddress,
+            paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
+        Agent storage agent = _state.agents[request.agentVault];
+        agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
+        if (request.underlyingFeeUBA >= _paymentInfo.gasUBA) {
+            agent.allowedUnderlyingPayments[request.agentUnderlyingAddress] +=
+                request.underlyingFeeUBA - _paymentInfo.gasUBA;     // += cannot overflow - both are uint192
+        } else {
+            // TODO: require topup
+        }
+        delete _state.redemptionRequests[_redemptionRequestId];
+    }
+    
+    function _redemptionPaymentFailure(
+        State storage _state,
+        uint256 _lotSizeWei,
+        uint64 _redemptionRequestId,
+        uint64 _currentUnderlyingBlock
+    )
+        internal
+    {
+        require(_redemptionRequestId != 0, "invalid request id");
+        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
+        require(request.lots != 0, "invalid request id");
+        require(request.lastUnderlyingBlock <= _currentUnderlyingBlock, "too soon for default");
+        // pay redeemer in native currency
+        uint256 amount = _lotSizeWei.mul(request.lots).mulDiv(_state.redemptionFailureFactorBIPS, MAX_BIPS);
+        // TODO: move out of library?
+        IAgentVault(request.agentVault).liquidate(request.minter, amount);
+        // release agent collateral and underlying collateral
+        Agent storage agent = _state.agents[request.agentVault];
+        agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
+        agent.allowedUnderlyingPayments[request.agentUnderlyingAddress] +=
+                uint256(request.lots).mul(_state.lotSizeUBA);
+        delete _state.redemptionRequests[_redemptionRequestId];
     }
 
     function _createRedemptionTicket(
