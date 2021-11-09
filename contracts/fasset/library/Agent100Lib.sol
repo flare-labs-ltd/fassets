@@ -26,11 +26,19 @@ library Agent100Lib {
         uint64 lastUnderlyingBlock;
     }
     
+    struct TopupRequirement {
+        bytes32 underlyingAddress;
+        uint256 valueUBA;
+        uint64 firstUnderlyingBlock;
+        uint64 lastUnderlyingBlock;
+    }
+    
     struct Agent {
         bytes32 underlyingAddress;
         // agent is allowed to withdraw fee or liquidated underlying amount (including gas)
         mapping(bytes32 => uint256) allowedUnderlyingPayments;      // underlyingAddress -> allowedUBA
         AllowedPaymentAnnouncement[] announcedUnderlyingPayments;
+        TopupRequirement[] requiredUnderlyingTopups;
         uint64 reservedLots;
         uint64 mintedLots;
         uint32 minCollateralRatioBIPS;
@@ -106,6 +114,7 @@ library Agent100Lib {
         uint64 minSecondsToExitAvailableForMint;
         uint64 underlyingBlocksForPayment;
         uint64 underlyingBlocksForAllowedPayment;
+        uint64 underlyingBlocksForTopup;
         uint256 lotSizeUBA;                              // in underlying asset wei/satoshi
         uint256 redemptionFeeUBA;                        // in underlying asset wei/satoshi
         uint32 redemptionFailureFactorBIPS;              // e.g 1.2 (12000)
@@ -176,7 +185,16 @@ library Agent100Lib {
         uint64 announcementId);
         
     event RedemptionRequested(
-        bytes32 indexed underlyingAddress,
+        address indexed vaultAddress,
+        bytes32 underlyingAddress,
+        uint256 valueUBA,
+        uint64 firstUnderlyingBlock,
+        uint64 lastUnderlyingBlock,
+        uint64 requestId);
+        
+    event TopupRequired(
+        address indexed vaultAddress,
+        bytes32 underlyingAddress,
         uint256 valueUBA,
         uint64 firstUnderlyingBlock,
         uint64 lastUnderlyingBlock,
@@ -454,7 +472,7 @@ library Agent100Lib {
             lots: ticket.lots
         });
         uint256 paymentValueUBA = redeemedValueUBA.sub(_state.redemptionFeeUBA);
-        emit RedemptionRequested(ticket.underlyingAddress, 
+        emit RedemptionRequested(ticket.agentVault, ticket.underlyingAddress, 
             paymentValueUBA, _currentUnderlyingBlock, lastUnderlyingBlock, requestId);
         if (_redeemedLots == ticket.lots) {
             _deleteRedemptionTicket(_state, _redemptionTicketId);
@@ -466,7 +484,8 @@ library Agent100Lib {
     function _confirmRedemptionRequestPayment(
         State storage _state,
         UnderlyingPaymentInfo memory _paymentInfo,
-        uint64 _redemptionRequestId
+        uint64 _redemptionRequestId,
+        uint64 _currentUnderlyingBlock
     )
         internal
     {
@@ -479,13 +498,39 @@ library Agent100Lib {
             paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
         Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
+        // TODO: remove pending challenge
         if (request.underlyingFeeUBA >= _paymentInfo.gasUBA) {
             agent.allowedUnderlyingPayments[request.agentUnderlyingAddress] +=
                 request.underlyingFeeUBA - _paymentInfo.gasUBA;     // += cannot overflow - both are uint192
         } else {
-            // TODO: require topup
+            uint256 requiredTopup = _paymentInfo.gasUBA - request.underlyingFeeUBA;
+            _requireUnderlyingTopup(_state, request.agentVault, request.agentUnderlyingAddress, 
+                requiredTopup, _currentUnderlyingBlock);
         }
         delete _state.redemptionRequests[_redemptionRequestId];
+    }
+    
+    function _requireUnderlyingTopup(
+        State storage _state,
+        address _agentVault,
+        bytes32 _agentUnderlyingAddress,
+        uint256 _valueUBA,
+        uint64 _currentUnderlyingBlock
+    )
+        internal
+    {
+        Agent storage agent = _state.agents[_agentVault];
+        uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
+        agent.requiredUnderlyingTopups.push(TopupRequirement({
+            underlyingAddress: _agentUnderlyingAddress,
+            valueUBA: _valueUBA,
+            firstUnderlyingBlock: _currentUnderlyingBlock,
+            lastUnderlyingBlock: lastUnderlyingBlock
+        }));
+        agent.allowedUnderlyingPayments[_agentUnderlyingAddress] = 0;
+        emit TopupRequired(_agentVault, _agentUnderlyingAddress, _valueUBA, 
+            _currentUnderlyingBlock, lastUnderlyingBlock, 
+            SafeMath64.toUint64(agent.requiredUnderlyingTopups.length));
     }
     
     function _redemptionPaymentFailure(
