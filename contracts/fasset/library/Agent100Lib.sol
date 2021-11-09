@@ -114,6 +114,7 @@ library Agent100Lib {
         mapping(uint64 => CollateralReservation) crts;          // mapping crt_id=>crt
         mapping(uint64 => RedemptionTicket) redemptionQueue;    // mapping redemption_id=>ticket
         mapping(uint64 => RedemptionRequest) redemptionRequests;    // mapping request_id=>request
+        mapping(bytes32 => address) underlyingAddressOwner;
         AvailableAgentForMint[] availableAgentsForMint;
         uint64 firstRedemptionTicketId;
         uint64 lastRedemptionTicketId;
@@ -249,6 +250,14 @@ library Agent100Lib {
         emit AgentExitedMintQueue(_agentVault);
     }
     
+    function _claimMinterUnderlyingAddress(State storage _state, address _minter, bytes32 _address) internal {
+        if (_state.underlyingAddressOwner[_address] == address(0)) {
+            _state.underlyingAddressOwner[_address] = _minter;
+        } else if (_state.underlyingAddressOwner[_address] != _minter) {
+            revert("address belongs to other minter");
+        }
+    }
+    
     function _reserveCollateral(
         State storage _state, 
         CallContext memory _context,
@@ -264,6 +273,7 @@ library Agent100Lib {
         require(agent.availableAgentsForMintPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
         require(_freeCollateralLots(agent, _context) >= _lots, "not enough free collateral");
+        _claimMinterUnderlyingAddress(_state, _minter, _minterUnderlyingAddress);
         uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
         agent.reservedLots = SafeMath64.add64(agent.reservedLots, _lots);
         uint256 underlyingValueUBA = _state.lotSizeUBA.mul(_lots);
@@ -490,10 +500,11 @@ library Agent100Lib {
         RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
         require(request.lots != 0, "invalid request id");
         require(request.lastUnderlyingBlock <= _currentUnderlyingBlock, "too soon for default");
+        require(msg.sender == request.redeemer, "only redeemer");
         // pay redeemer in native currency
         uint256 amount = _lotSizeWei.mul(request.lots).mulDiv(_state.redemptionFailureFactorBIPS, MAX_BIPS);
         // TODO: move out of library?
-        IAgentVault(request.agentVault).liquidate(request.minter, amount);
+        IAgentVault(request.agentVault).liquidate(request.redeemer, amount);
         // release agent collateral and underlying collateral
         Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
