@@ -2,15 +2,13 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
+import "../../utils/lib/SafePctX.sol";
 import "./AssetManagerState.sol";
 
 
 library AgentCollateral {
     using SafeMath for uint256;
-    using SafePct for uint256;
-
-    uint256 internal constant MAX_BIPS = 10000;
+    using SafePctX for uint256;
 
     event AgentFreeCollateralChanged(
         address vaultAddress, 
@@ -25,7 +23,7 @@ library AgentCollateral {
         returns (uint256) 
     {
         uint256 freeCollateral = freeCollateralWei(_agent, _fullCollateral, _lotSizeWei);
-        uint256 lotCollateral = _lotSizeWei.mulDiv(_agent.mintingCollateralRatioBIPS, MAX_BIPS);
+        uint256 lotCollateral = _lotSizeWei.mulBips(_agent.mintingCollateralRatioBIPS);
         return freeCollateral.div(lotCollateral);
     }
 
@@ -51,13 +49,13 @@ library AgentCollateral {
     {
         // reserved collateral is calculated at minting ratio
         uint256 reservedCollateral = uint256(_agent.reservedLots).mul(_lotSizeWei)
-            .mulDiv(_agent.mintingCollateralRatioBIPS, MAX_BIPS);
+            .mulBips(_agent.mintingCollateralRatioBIPS);
         // old reserved collateral (from before agent exited and re-entered minting queue), at old minting ratio
         uint256 oldReservedCollateral = uint256(_agent.oldReservedLots).mul(_lotSizeWei)
-            .mulDiv(_agent.oldMintingCollateralRatioBIPS, MAX_BIPS);
+            .mulBips(_agent.oldMintingCollateralRatioBIPS);
         // minted collateral is calculated at minimal ratio
         uint256 mintedCollateral = uint256(_agent.mintedLots).mul(_lotSizeWei)
-            .mulDiv(_agent.minCollateralRatioBIPS, MAX_BIPS);
+            .mulBips(_agent.minCollateralRatioBIPS);
         return reservedCollateral.add(oldReservedCollateral).add(mintedCollateral);
     }
     
@@ -68,6 +66,6 @@ library AgentCollateral {
         internal view 
         returns (uint256) 
     {
-        return _lotSizeWei.mulDiv(_agent.mintingCollateralRatioBIPS, MAX_BIPS);
+        return _lotSizeWei.mulBips(_agent.mintingCollateralRatioBIPS);
     }
 }

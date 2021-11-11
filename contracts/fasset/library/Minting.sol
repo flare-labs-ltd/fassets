@@ -2,7 +2,6 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./AssetManagerState.sol";
 import "./CollateralReservations.sol";
@@ -10,7 +9,6 @@ import "./CollateralReservations.sol";
 
 library Minting {
     using SafeMath for uint256;
-    using SafePct for uint256;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentVerification for PaymentVerification.State;
     

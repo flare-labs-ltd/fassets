@@ -2,14 +2,12 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./PaymentVerification.sol";
 
 
 library IllegalPaymentChallenge {
     using SafeMath for uint256;
-    using SafePct for uint256;
     using PaymentVerification for PaymentVerification.State;
     
     struct Challenge {

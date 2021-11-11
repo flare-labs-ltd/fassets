@@ -3,7 +3,6 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
-import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
 import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./AssetManagerState.sol";
@@ -12,7 +11,6 @@ import "./AgentCollateral.sol";
 
 library AvailableAgents {
     using SafeMath for uint256;
-    using SafePct for uint256;
 
     struct AvailableAgentInfo {
         address agentVault;

@@ -2,7 +2,7 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
+import "../../utils/lib/SafePctX.sol";
 import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./AssetManagerState.sol";
@@ -12,11 +12,9 @@ import "./UnderlyingTopup.sol";
 
 library Redemption {
     using SafeMath for uint256;
-    using SafePct for uint256;
+    using SafePctX for uint256;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentVerification for PaymentVerification.State;
-    
-    uint256 internal constant MAX_BIPS = 10000;
     
     event RedemptionRequested(
         address indexed vaultAddress,
@@ -109,7 +107,7 @@ library Redemption {
         require(request.lastUnderlyingBlock <= _currentUnderlyingBlock, "too soon for default");
         require(msg.sender == request.redeemer, "only redeemer");
         // pay redeemer in native currency
-        uint256 amount = _lotSizeWei.mul(request.lots).mulDiv(_state.redemptionFailureFactorBIPS, MAX_BIPS);
+        uint256 amount = _lotSizeWei.mul(request.lots).mulBips(_state.redemptionFailureFactorBIPS);
         // TODO: move out of library?
         IAgentVault(request.agentVault).liquidate(request.redeemer, amount);
         // release agent collateral and underlying collateral

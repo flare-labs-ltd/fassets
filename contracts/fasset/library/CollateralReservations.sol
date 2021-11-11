@@ -2,18 +2,16 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeMathX.sol";
+import "../../utils/lib/SafePctX.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
 
 
 library CollateralReservations {
     using SafeMath for uint256;
-    using SafePct for uint256;
-    
-    uint256 internal constant MAX_BIPS = 10000;
+    using SafePctX for uint256;
     
     event CollateralReserved(
         address indexed minter,
@@ -58,7 +56,7 @@ library CollateralReservations {
         uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
         agent.reservedLots = SafeMath64.add64(agent.reservedLots, _lots);
         uint256 underlyingValueUBA = _state.lotSizeUBA.mul(_lots);
-        uint256 underlyingFeeUBA = underlyingValueUBA.mulDiv(agent.feeBIPS, MAX_BIPS);
+        uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = AssetManagerState.CollateralReservation({
             agentUnderlyingAddress: agent.underlyingAddress,
