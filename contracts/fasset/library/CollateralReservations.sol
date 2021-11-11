@@ -13,6 +13,8 @@ library CollateralReservations {
     using SafeMath for uint256;
     using SafePct for uint256;
     
+    uint256 internal constant MAX_BIPS = 10000;
+    
     event CollateralReserved(
         address indexed minter,
         uint256 collateralReservationId,
@@ -22,7 +24,7 @@ library CollateralReservations {
         uint256 lastUnderlyingBlock);
         
     function claimMinterUnderlyingAddress(
-        AssetManagerState storage _state, 
+        AssetManagerState.State storage _state, 
         address _minter, 
         bytes32 _address
     ) 
@@ -36,7 +38,7 @@ library CollateralReservations {
     }
     
     function reserveCollateral(
-        AssetManagerState storage _state, 
+        AssetManagerState.State storage _state, 
         address _minter,
         bytes32 _minterUnderlyingAddress,
         address _agentVault,
@@ -47,7 +49,7 @@ library CollateralReservations {
     )
         internal
     {
-        Agent storage agent = _state.agents[_agentVault];
+        AssetManagerState.Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
         require(AgentCollateral.freeCollateralLots(agent, _fullAgentCollateral, _lotSizeWei) >= _lots,
@@ -58,7 +60,7 @@ library CollateralReservations {
         uint256 underlyingValueUBA = _state.lotSizeUBA.mul(_lots);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulDiv(agent.feeBIPS, MAX_BIPS);
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
-        _state.crts[crtId] = CollateralReservation({
+        _state.crts[crtId] = AssetManagerState.CollateralReservation({
             agentUnderlyingAddress: agent.underlyingAddress,
             minterUnderlyingAddress: _minterUnderlyingAddress,
             underlyingValueUBA: SafeMathX.toUint192(underlyingValueUBA),
@@ -76,9 +78,12 @@ library CollateralReservations {
             AgentCollateral.freeCollateralWei(agent, _fullAgentCollateral, _lotSizeWei));
     }
 
-    function getCollateralReservation(AssetManagerState storage _state, uint64 _crtId) 
+    function getCollateralReservation(
+        AssetManagerState.State storage _state, 
+        uint64 _crtId
+    ) 
         internal view
-        returns (CollateralReservation storage) 
+        returns (AssetManagerState.CollateralReservation storage) 
     {
         require(_crtId > 0 && _state.crts[_crtId].lots != 0, "invalid crt id");
         return _state.crts[_crtId];

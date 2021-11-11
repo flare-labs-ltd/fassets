@@ -11,6 +11,8 @@ import "./CollateralReservations.sol";
 library Minting {
     using SafeMath for uint256;
     using SafePct for uint256;
+    using RedemptionQueue for RedemptionQueue.State;
+    using PaymentVerification for PaymentVerification.State;
     
     event MintingExecuted(
         address indexed vaultAddress,
@@ -21,22 +23,23 @@ library Minting {
         uint256 receivedFeeUBA);
 
     function mintingExecuted(
-        AssetManagerState storage _state,
-        UnderlyingPaymentInfo memory _paymentInfo,
+        AssetManagerState.State storage _state,
+        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         uint64 _crtId
     )
         internal
     {
-        CollateralReservation storage crt = CollateralReservations.getCollateralReservation(_state, _crtId);
+        AssetManagerState.CollateralReservation storage crt = 
+            CollateralReservations.getCollateralReservation(_state, _crtId);
         uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA).add(crt.underlyingFeeUBA);
-        PaymentVerification.verifyRequiredPayment(_state, _paymentInfo, 
+        _state.paymentVerifications.verifyPayment(_paymentInfo, 
             crt.minterUnderlyingAddress, crt.agentUnderlyingAddress, expectedPaymentUBA, 
             crt.firstUnderlyingBlock, crt.lastUnderlyingBlock);
         address agentVault = crt.agentVault;
         uint64 lots = crt.lots;
         uint64 redemptionTicketId = 
             _state.redemptionQueue.createRedemptionTicket(agentVault, lots, crt.agentUnderlyingAddress);
-        Agent storage agent = _state.agents[agentVault];
+        AssetManagerState.Agent storage agent = _state.agents[agentVault];
         if (crt.availabilityEnterCountMod2 == agent.availabilityEnterCountMod2) {
             agent.reservedLots = SafeMath64.sub64(agent.reservedLots, lots, "invalid reserved lots");
         } else {

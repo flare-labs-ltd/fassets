@@ -3,12 +3,20 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
-import {UnderlyingPaymentInfo} from "./types.sol";
 
 library PaymentVerification {
     using SafeMath for uint256;
     using SafePct for uint256;
     
+    struct UnderlyingPaymentInfo {
+        bytes32 sourceAddress;
+        bytes32 targetAddress;
+        bytes32 paymentHash;
+        uint256 valueUBA;
+        uint192 gasUBA;
+        uint64 underlyingBlock;
+    }
+
     struct State {
         // a store of payment hashes to prevent payment being used / challenged twice
         // structure: map of hash to the next hash in that day
@@ -23,7 +31,7 @@ library PaymentVerification {
     
     function verifyPayment(
         State storage _state,
-        UnderlyingPaymentInfo memory _paymentInfo,
+        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         bytes32 _expectedSource,
         bytes32 _expectedTarget,
         uint256 _expectedValueUBA,

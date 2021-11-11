@@ -11,8 +11,16 @@ library UnderlyingTopup {
     using SafeMath for uint256;
     using SafePct for uint256;
     
+    event TopupRequired(
+        address indexed vaultAddress,
+        bytes32 underlyingAddress,
+        uint256 valueUBA,
+        uint64 firstUnderlyingBlock,
+        uint64 lastUnderlyingBlock,
+        uint64 requestId);
+
     function requireUnderlyingTopup(
-        AssetManagerState storage _state,
+        AssetManagerState.State storage _state,
         address _agentVault,
         bytes32 _agentUnderlyingAddress,
         uint256 _valueUBA,
@@ -20,9 +28,10 @@ library UnderlyingTopup {
     )
         internal
     {
-        Agent storage agent = _state.agents[_agentVault];
-        uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForTopupPayment);
-        agent.requiredUnderlyingTopups.push(TopupRequirement({
+        AssetManagerState.Agent storage agent = _state.agents[_agentVault];
+        uint64 lastUnderlyingBlock = 
+            SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForTopup);
+        agent.requiredUnderlyingTopups.push(AssetManagerState.TopupRequirement({
             underlyingAddress: _agentUnderlyingAddress,
             valueUBA: _valueUBA,
             firstUnderlyingBlock: _currentUnderlyingBlock,

@@ -116,4 +116,8 @@ library RedemptionQueue {
         // delete storage
         delete _state.tickets[ticketId];
     }
+    
+    function getTicket(State storage _state, uint64 _id) internal view returns (Ticket storage) {
+        return _state.tickets[_id];
+    }
 }

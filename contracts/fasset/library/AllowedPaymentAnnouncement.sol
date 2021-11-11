@@ -2,9 +2,8 @@
 pragma solidity 0.7.6;
 
 import "../../utils/lib/SafeMath64.sol";
-import "./types.sol";
-import { PaymentVerification } from "./PaymentVerification.sol";
-import { AssetManagerState } from "./AssetManagerState.sol";
+import "./PaymentVerification.sol";
+import "./AssetManagerState.sol";
 
 
 library AllowedPaymentAnnouncement {
@@ -18,7 +17,7 @@ library AllowedPaymentAnnouncement {
         uint64 announcementId);
         
     function announceAllowedPayment(
-        AssetManagerState storage _state,
+        AssetManagerState.State storage _state,
         address _agentVault,
         bytes32 _underlyingAddress,
         uint256 _valueUBA,
@@ -26,7 +25,7 @@ library AllowedPaymentAnnouncement {
     )
         internal
     {
-        Agent storage agent = _state.agents[_agentVault];
+        AssetManagerState.Agent storage agent = _state.agents[_agentVault];
         require(_valueUBA > 0, "invalid value");
         require(agent.allowedUnderlyingPayments[_underlyingAddress] >= _valueUBA,
             "payment larger than allowed");
@@ -35,7 +34,7 @@ library AllowedPaymentAnnouncement {
             _state.underlyingBlocksForAllowedPayment);
         uint64 announcementId = ++_state.newPaymentAnnouncementId;
         bytes32 key = _announcementKey(_agentVault, announcementId);
-        _state.paymentAnnouncements[key] = PaymentAnnouncement({
+        _state.paymentAnnouncements[key] = AssetManagerState.PaymentAnnouncement({
             underlyingAddress: _underlyingAddress,
             valueUBA: _valueUBA,
             firstUnderlyingBlock: _currentUnderlyingBlock,
@@ -47,15 +46,15 @@ library AllowedPaymentAnnouncement {
     }
     
     function reportAllowedPayment(
-        AssetManagerState storage _state,
-        UnderlyingPaymentInfo memory _paymentInfo,
+        AssetManagerState.State storage _state,
+        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         address _agentVault,
         uint64 _announcementId
     )
         internal
     {
         bytes32 key = _announcementKey(_agentVault, _announcementId);
-        PaymentAnnouncement storage announcement = _state.paymentAnnouncements[key];
+        AssetManagerState.PaymentAnnouncement storage announcement = _state.paymentAnnouncements[key];
         require(announcement.underlyingAddress != 0, "invalid announcement id");
         _state.paymentVerifications.verifyPayment(_paymentInfo, 
             announcement.underlyingAddress, 0 /* target not needed for allowed payments */,

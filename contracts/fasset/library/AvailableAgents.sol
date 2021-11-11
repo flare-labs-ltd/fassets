@@ -34,7 +34,7 @@ library AvailableAgents {
     event AgentExited(address vaultAddress);
     
     function makeAvailable(
-        AssetManagerState storage _state,
+        AssetManagerState.State storage _state,
         address _agentVault,
         uint16 _feeBIPS,
         uint32 _mintingCollateralRatioBIPS,
@@ -43,8 +43,8 @@ library AvailableAgents {
     ) 
         internal 
     {
-        Agent storage agent = _state.agents[_agentVault];
-        require(agent.status == AgentStatus.NORMAL, "invalid agent status");
+        AssetManagerState.Agent storage agent = _state.agents[_agentVault];
+        require(agent.status == AssetManagerState.AgentStatus.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
         require(_mintingCollateralRatioBIPS >= agent.minCollateralRatioBIPS, "collateral ratio too small");
         require(agent.oldReservedLots == 0, "re-entering again too soon");
@@ -56,7 +56,7 @@ library AvailableAgents {
         require(freeCollateralWei >= AgentCollateral.mintingLotCollateral(agent, _lotSizeWei), 
             "not enough free collateral");
         // add to queue
-        _state.availableAgents.push(AvailableAgent({
+        _state.availableAgents.push(AssetManagerState.AvailableAgent({
             agentVault: _agentVault, 
             allowExitTimestamp: 0
         }));
@@ -66,15 +66,15 @@ library AvailableAgents {
     }
 
     function announceExit(
-        AssetManagerState storage _state, 
+        AssetManagerState.State storage _state, 
         address _agentVault,
         uint256 _secondsToExit
     ) 
         internal 
     {
-        Agent storage agent = _state.agents[_agentVault];
+        AssetManagerState.Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsPos != 0, "agent not available");
-        AvailableAgent storage item = _state.availableAgents[agent.availableAgentsPos - 1];
+        AssetManagerState.AvailableAgent storage item = _state.availableAgents[agent.availableAgentsPos - 1];
         require(item.allowExitTimestamp == 0, "already exiting");
         uint64 exitTime = SafeMath64.add64(block.timestamp, _secondsToExit);
         item.allowExitTimestamp = exitTime;
@@ -82,17 +82,17 @@ library AvailableAgents {
     }
     
     function exit(
-        AssetManagerState storage _state, 
+        AssetManagerState.State storage _state, 
         address _agentVault, 
         bool _requireTwoStep
     )
         internal
     {
-        Agent storage agent = _state.agents[_agentVault];
+        AssetManagerState.Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsPos != 0, "agent not available");
         uint256 ind = agent.availableAgentsPos - 1;
         if (_requireTwoStep) {
-            AvailableAgent storage item = _state.availableAgents[ind];
+            AssetManagerState.AvailableAgent storage item = _state.availableAgents[ind];
             require(item.allowExitTimestamp != 0 && item.allowExitTimestamp <= block.timestamp,
                 "required two-step exit");
         }
@@ -106,7 +106,7 @@ library AvailableAgents {
     }
     
     function getList(
-        AssetManagerState storage _state, 
+        AssetManagerState.State storage _state, 
         uint256 _start, 
         uint256 _end
     ) 
@@ -123,7 +123,7 @@ library AvailableAgents {
     }
 
     function getListWithInfo(
-        AssetManagerState storage _state, 
+        AssetManagerState.State storage _state, 
         WNat wnat,
         uint256 _lotSize,
         uint256 _start, 
@@ -139,7 +139,7 @@ library AvailableAgents {
         for (uint256 i = _start; i < _end; i++) {
             address agentVault = _state.availableAgents[i].agentVault;
             uint256 fullCollateral = wnat.balanceOf(agentVault);
-            Agent storage agent = _state.agents[agentVault];
+            AssetManagerState.Agent storage agent = _state.agents[agentVault];
             _agents[i - _start] = AvailableAgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,

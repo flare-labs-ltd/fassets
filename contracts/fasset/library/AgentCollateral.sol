@@ -10,12 +10,14 @@ library AgentCollateral {
     using SafeMath for uint256;
     using SafePct for uint256;
 
+    uint256 internal constant MAX_BIPS = 10000;
+
     event AgentFreeCollateralChanged(
         address vaultAddress, 
         uint256 freeCollateral);
-
+        
     function freeCollateralLots(
-        Agent storage _agent, 
+        AssetManagerState.Agent storage _agent, 
         uint256 _fullCollateral, 
         uint256 _lotSizeWei
     )
@@ -28,7 +30,7 @@ library AgentCollateral {
     }
 
     function freeCollateralWei(
-        Agent storage _agent, 
+        AssetManagerState.Agent storage _agent, 
         uint256 _fullCollateral, 
         uint256 _lotSizeWei
     )
@@ -41,7 +43,7 @@ library AgentCollateral {
     }
     
     function lockedCollateralWei(
-        Agent storage _agent, 
+        AssetManagerState.Agent storage _agent, 
         uint256 _lotSizeWei
     )
         internal view 
@@ -59,7 +61,13 @@ library AgentCollateral {
         return reservedCollateral.add(oldReservedCollateral).add(mintedCollateral);
     }
     
-    function mintingLotCollateral(Agent storage _agent, uint256 _lotSizeWei) internal view returns (uint256) {
+    function mintingLotCollateral(
+        AssetManagerState.Agent storage _agent, 
+        uint256 _lotSizeWei
+    ) 
+        internal view 
+        returns (uint256) 
+    {
         return _lotSizeWei.mulDiv(_agent.mintingCollateralRatioBIPS, MAX_BIPS);
     }
 }

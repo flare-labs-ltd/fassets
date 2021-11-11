@@ -3,9 +3,11 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
+import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./AssetManagerState.sol";
 import "./CollateralReservations.sol";
+import "./UnderlyingTopup.sol";
 
 
 library Redemption {
@@ -13,6 +15,8 @@ library Redemption {
     using SafePct for uint256;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentVerification for PaymentVerification.State;
+    
+    uint256 internal constant MAX_BIPS = 10000;
     
     event RedemptionRequested(
         address indexed vaultAddress,
@@ -23,7 +27,7 @@ library Redemption {
         uint64 requestId);
         
     function redeemAgainstTicket(
-        AssetManagerState storage _state,
+        AssetManagerState.State storage _state,
         uint64 _redemptionTicketId,
         address _redeemer,
         uint64 _lots,
@@ -35,13 +39,13 @@ library Redemption {
     {
         require(_lots != 0, "cannot redeem 0 lots");
         require(_redemptionTicketId != 0, "invalid redemption id");
-        RedemptionQueue.Ticket storage ticket = _state.redemptionQueue[_redemptionTicketId];
+        RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(_redemptionTicketId);
         require(ticket.lots != 0, "invalid redemption id");
         uint64 requestId = ++_state.newRedemptionRequestId;
         _redeemedLots = _lots <= ticket.lots ? _lots : ticket.lots;
         uint256 redeemedValueUBA = SafeMath.mul(_redeemedLots, _state.lotSizeUBA);
         uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
-        _state.redemptionRequests[requestId] = RedemptionRequest({
+        _state.redemptionRequests[requestId] = AssetManagerState.RedemptionRequest({
             agentUnderlyingAddress: ticket.underlyingAddress,
             redeemerUnderlyingAddress: _redeemerUnderlyingAddress,
             underlyingValueUBA: SafeMathX.toUint192(redeemedValueUBA),
@@ -63,21 +67,21 @@ library Redemption {
     }
     
     function confirmRedemptionRequestPayment(
-        AssetManagerState storage _state,
-        UnderlyingPaymentInfo memory _paymentInfo,
+        AssetManagerState.State storage _state,
+        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         uint64 _redemptionRequestId,
         uint64 _currentUnderlyingBlock
     )
         internal
     {
         require(_redemptionRequestId != 0, "invalid request id");
-        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
+        AssetManagerState.RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
         require(request.lots != 0, "invalid request id");
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
-        _verifyRequiredPayment(_state, _paymentInfo, 
+        _state.paymentVerifications.verifyPayment(_paymentInfo, 
             request.agentUnderlyingAddress, request.redeemerUnderlyingAddress,
             paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
-        Agent storage agent = _state.agents[request.agentVault];
+        AssetManagerState.Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
         // TODO: remove pending challenge
         if (request.underlyingFeeUBA >= _paymentInfo.gasUBA) {
@@ -85,14 +89,14 @@ library Redemption {
                 request.underlyingFeeUBA - _paymentInfo.gasUBA;     // += cannot overflow - both are uint192
         } else {
             uint256 requiredTopup = _paymentInfo.gasUBA - request.underlyingFeeUBA;
-            _requireUnderlyingTopup(_state, request.agentVault, request.agentUnderlyingAddress, 
+            UnderlyingTopup.requireUnderlyingTopup(_state, request.agentVault, request.agentUnderlyingAddress, 
                 requiredTopup, _currentUnderlyingBlock);
         }
         delete _state.redemptionRequests[_redemptionRequestId];
     }
     
     function redemptionPaymentFailure(
-        AssetManagerState storage _state,
+        AssetManagerState.State storage _state,
         uint256 _lotSizeWei,
         uint64 _redemptionRequestId,
         uint64 _currentUnderlyingBlock
@@ -100,7 +104,7 @@ library Redemption {
         internal
     {
         require(_redemptionRequestId != 0, "invalid request id");
-        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
+        AssetManagerState.RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
         require(request.lots != 0, "invalid request id");
         require(request.lastUnderlyingBlock <= _currentUnderlyingBlock, "too soon for default");
         require(msg.sender == request.redeemer, "only redeemer");
@@ -109,7 +113,7 @@ library Redemption {
         // TODO: move out of library?
         IAgentVault(request.agentVault).liquidate(request.redeemer, amount);
         // release agent collateral and underlying collateral
-        Agent storage agent = _state.agents[request.agentVault];
+        AssetManagerState.Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
         agent.allowedUnderlyingPayments[request.agentUnderlyingAddress] +=
                 uint256(request.lots).mul(_state.lotSizeUBA);
