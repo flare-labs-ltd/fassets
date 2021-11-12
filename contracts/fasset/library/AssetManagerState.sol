@@ -11,9 +11,7 @@ import "./AllowedPaymentAnnouncement.sol";
 
 
 library AssetManagerState {
-    
-    struct State {
-        // default values
+    struct Settings {
         uint16 initialMinCollateralRatioBIPS;
         uint16 liquidationMinCollateralRatioBIPS;
         uint64 minSecondsToExitAvailableForMint;
@@ -23,6 +21,10 @@ library AssetManagerState {
         uint256 lotSizeUBA;                              // in underlying asset wei/satoshi
         uint256 redemptionFeeUBA;                        // in underlying asset wei/satoshi
         uint32 redemptionFailureFactorBIPS;              // e.g 1.2 (12000)
+    }
+    
+    struct State {
+        Settings settings;
         //
         mapping(address => Agents.Agent) agents;                       // mapping agentVaultAddress=>agent
         mapping(uint64 => CollateralReservations.CollateralReservation) crts;          // mapping crt_id=>crt
@@ -39,4 +41,5 @@ library AssetManagerState {
         uint64 newRedemptionRequestId;
         uint64 newPaymentAnnouncementId;
     }
+    
 }

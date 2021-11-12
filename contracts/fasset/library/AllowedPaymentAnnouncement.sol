@@ -39,8 +39,8 @@ library AllowedPaymentAnnouncement {
         require(agent.allowedUnderlyingPayments[_underlyingAddress] >= _valueUBA,
             "payment larger than allowed");
         agent.allowedUnderlyingPayments[_underlyingAddress] -= _valueUBA;   // guarded by require
-        uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, 
-            _state.underlyingBlocksForAllowedPayment);
+        uint64 lastUnderlyingBlock = 
+            SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForAllowedPayment);
         uint64 announcementId = ++_state.newPaymentAnnouncementId;
         bytes32 key = _announcementKey(_agentVault, announcementId);
         _state.paymentAnnouncements[key] = PaymentAnnouncement({

@@ -56,20 +56,21 @@ library Redemption {
         require(ticket.lots != 0, "invalid redemption id");
         uint64 requestId = ++_state.newRedemptionRequestId;
         _redeemedLots = _lots <= ticket.lots ? _lots : ticket.lots;
-        uint256 redeemedValueUBA = SafeMath.mul(_redeemedLots, _state.lotSizeUBA);
-        uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
+        uint256 redeemedValueUBA = SafeMath.mul(_redeemedLots, _state.settings.lotSizeUBA);
+        uint64 lastUnderlyingBlock = 
+            SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
         _state.redemptionRequests[requestId] = RedemptionRequest({
             agentUnderlyingAddress: ticket.underlyingAddress,
             redeemerUnderlyingAddress: _redeemerUnderlyingAddress,
             underlyingValueUBA: SafeMathX.toUint192(redeemedValueUBA),
             firstUnderlyingBlock: _currentUnderlyingBlock,
-            underlyingFeeUBA: SafeMathX.toUint192(_state.redemptionFeeUBA),
+            underlyingFeeUBA: SafeMathX.toUint192(_state.settings.redemptionFeeUBA),
             lastUnderlyingBlock: lastUnderlyingBlock,
             redeemer: _redeemer,
             agentVault: ticket.agentVault,
             lots: ticket.lots
         });
-        uint256 paymentValueUBA = redeemedValueUBA.sub(_state.redemptionFeeUBA);
+        uint256 paymentValueUBA = redeemedValueUBA.sub(_state.settings.redemptionFeeUBA);
         emit RedemptionRequested(ticket.agentVault, ticket.underlyingAddress, 
             paymentValueUBA, _currentUnderlyingBlock, lastUnderlyingBlock, requestId);
         if (_redeemedLots == ticket.lots) {
@@ -122,14 +123,14 @@ library Redemption {
         require(request.lastUnderlyingBlock <= _currentUnderlyingBlock, "too soon for default");
         require(msg.sender == request.redeemer, "only redeemer");
         // pay redeemer in native currency
-        uint256 amount = _lotSizeWei.mul(request.lots).mulBips(_state.redemptionFailureFactorBIPS);
+        uint256 amount = _lotSizeWei.mul(request.lots).mulBips(_state.settings.redemptionFailureFactorBIPS);
         // TODO: move out of library?
         IAgentVault(request.agentVault).liquidate(request.redeemer, amount);
         // release agent collateral and underlying collateral
         Agents.Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
         agent.allowedUnderlyingPayments[request.agentUnderlyingAddress] +=
-                uint256(request.lots).mul(_state.lotSizeUBA);
+                uint256(request.lots).mul(_state.settings.lotSizeUBA);
         delete _state.redemptionRequests[_redemptionRequestId];
     }
 }

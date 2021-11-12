@@ -46,7 +46,7 @@ library Agents {
         Agent storage agent = _state.agents[_agentVault];
         require(agent.status == AgentStatus.EMPTY, "agent already exists");
         agent.status = AgentStatus.NORMAL;
-        agent.minCollateralRatioBIPS = _state.initialMinCollateralRatioBIPS;
+        agent.minCollateralRatioBIPS = _state.settings.initialMinCollateralRatioBIPS;
     }
     
     function getAgent(

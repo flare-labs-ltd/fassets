@@ -36,7 +36,7 @@ library UnderlyingTopup {
     {
         Agents.Agent storage agent = _state.agents[_agentVault];
         uint64 lastUnderlyingBlock = 
-            SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForTopup);
+            SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForTopup);
         agent.requiredUnderlyingTopups.push(TopupRequirement({
             underlyingAddress: _agentUnderlyingAddress,
             valueUBA: _valueUBA,

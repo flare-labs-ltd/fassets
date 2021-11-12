@@ -67,9 +67,10 @@ library CollateralReservations {
         require(_lots > 0, "cannot mint 0 blocks");
         require(agent.freeCollateralLots(_fullAgentCollateral, _lotSizeWei) >= _lots, "not enough free collateral");
         claimMinterUnderlyingAddress(_state, _minter, _minterUnderlyingAddress);
-        uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
+        uint64 lastUnderlyingBlock = 
+            SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
         agent.reservedLots = SafeMath64.add64(agent.reservedLots, _lots);
-        uint256 underlyingValueUBA = _state.lotSizeUBA.mul(_lots);
+        uint256 underlyingValueUBA = _state.settings.lotSizeUBA.mul(_lots);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({

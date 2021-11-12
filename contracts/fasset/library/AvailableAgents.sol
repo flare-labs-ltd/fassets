@@ -58,7 +58,7 @@ library AvailableAgents {
         agent.mintingCollateralRatioBIPS = _mintingCollateralRatioBIPS;
         // check that there is enough free collateral for at least one lot
         uint256 freeCollateralWei = agent.freeCollateralWei(_fullCollateralWei, _lotSizeWei);
-        require(freeCollateralWei >= agent.mintingLotCollateral(_lotSizeWei), 
+        require(freeCollateralWei >= agent.mintingLotCollateralWei(_lotSizeWei), 
             "not enough free collateral");
         // add to queue
         _state.availableAgents.push(AvailableAgent({

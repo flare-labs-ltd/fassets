@@ -59,7 +59,7 @@ library AgentCollateral {
         return reservedCollateral.add(oldReservedCollateral).add(mintedCollateral);
     }
     
-    function mintingLotCollateral(
+    function mintingLotCollateralWei(
         Agents.Agent storage _agent, 
         uint256 _lotSizeWei
     ) 
