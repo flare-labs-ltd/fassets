@@ -6,13 +6,12 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./Agents.sol";
-import "./AgentCollateral.sol";
 import "./AssetManagerState.sol";
 
 
 library AvailableAgents {
     using SafeMath for uint256;
-    using AgentCollateral for Agents.Agent;
+    using Agents for Agents.Agent;
 
     struct AvailableAgent {
         address agentVault;

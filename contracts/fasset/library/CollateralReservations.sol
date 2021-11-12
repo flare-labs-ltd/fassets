@@ -6,14 +6,13 @@ import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeMathX.sol";
 import "../../utils/lib/SafePctX.sol";
 import "./Agents.sol";
-import "./AgentCollateral.sol";
 import "./AssetManagerState.sol";
 
 
 library CollateralReservations {
     using SafeMath for uint256;
     using SafePctX for uint256;
-    using AgentCollateral for Agents.Agent;
+    using Agents for Agents.Agent;
     
     struct CollateralReservation {
         bytes32 agentUnderlyingAddress;
@@ -87,7 +86,7 @@ library CollateralReservations {
         });
         emit CollateralReserved(_minter, crtId, 
             agent.underlyingAddress, underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock);
-        emit AgentCollateral.AgentFreeCollateralChanged(_agentVault, 
+        emit Agents.AgentFreeCollateralChanged(_agentVault,
             agent.freeCollateralWei(_fullAgentCollateral, _lotSizeWei));
     }
 
