@@ -3,12 +3,20 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/lib/SafeMath64.sol";
+import "./Agents.sol";
 import "./AssetManagerState.sol";
 
 
 library UnderlyingTopup {
     using SafeMath for uint256;
     
+    struct TopupRequirement {
+        bytes32 underlyingAddress;
+        uint256 valueUBA;
+        uint64 firstUnderlyingBlock;
+        uint64 lastUnderlyingBlock;
+    }
+
     event TopupRequired(
         address indexed vaultAddress,
         bytes32 underlyingAddress,
@@ -26,10 +34,10 @@ library UnderlyingTopup {
     )
         internal
     {
-        AssetManagerState.Agent storage agent = _state.agents[_agentVault];
+        Agents.Agent storage agent = _state.agents[_agentVault];
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForTopup);
-        agent.requiredUnderlyingTopups.push(AssetManagerState.TopupRequirement({
+        agent.requiredUnderlyingTopups.push(TopupRequirement({
             underlyingAddress: _agentUnderlyingAddress,
             valueUBA: _valueUBA,
             firstUnderlyingBlock: _currentUnderlyingBlock,

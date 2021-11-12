@@ -2,12 +2,15 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "../../utils/lib/SafePctX.sol";
-import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";
-import "./AssetManagerState.sol";
-import "./CollateralReservations.sol";
+import "../../utils/lib/SafePctX.sol";
+import "../../utils/lib/SafeMathX.sol";
+import "../interface/IAgentVault.sol";
+import "./RedemptionQueue.sol";
+import "./PaymentVerification.sol";
+import "./Agents.sol";
 import "./UnderlyingTopup.sol";
+import "./AssetManagerState.sol";
 
 
 library Redemption {
@@ -16,6 +19,18 @@ library Redemption {
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentVerification for PaymentVerification.State;
     
+    struct RedemptionRequest {
+        bytes32 agentUnderlyingAddress;
+        bytes32 redeemerUnderlyingAddress;
+        uint192 underlyingValueUBA;
+        uint64 firstUnderlyingBlock;
+        uint192 underlyingFeeUBA;
+        uint64 lastUnderlyingBlock;
+        address agentVault;
+        uint64 lots;
+        address redeemer;
+    }
+
     event RedemptionRequested(
         address indexed vaultAddress,
         bytes32 underlyingAddress,
@@ -43,7 +58,7 @@ library Redemption {
         _redeemedLots = _lots <= ticket.lots ? _lots : ticket.lots;
         uint256 redeemedValueUBA = SafeMath.mul(_redeemedLots, _state.lotSizeUBA);
         uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
-        _state.redemptionRequests[requestId] = AssetManagerState.RedemptionRequest({
+        _state.redemptionRequests[requestId] = RedemptionRequest({
             agentUnderlyingAddress: ticket.underlyingAddress,
             redeemerUnderlyingAddress: _redeemerUnderlyingAddress,
             underlyingValueUBA: SafeMathX.toUint192(redeemedValueUBA),
@@ -73,13 +88,13 @@ library Redemption {
         internal
     {
         require(_redemptionRequestId != 0, "invalid request id");
-        AssetManagerState.RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
+        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
         require(request.lots != 0, "invalid request id");
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
         _state.paymentVerifications.verifyPayment(_paymentInfo, 
             request.agentUnderlyingAddress, request.redeemerUnderlyingAddress,
             paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
-        AssetManagerState.Agent storage agent = _state.agents[request.agentVault];
+        Agents.Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
         // TODO: remove pending challenge
         if (request.underlyingFeeUBA >= _paymentInfo.gasUBA) {
@@ -102,7 +117,7 @@ library Redemption {
         internal
     {
         require(_redemptionRequestId != 0, "invalid request id");
-        AssetManagerState.RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
+        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
         require(request.lots != 0, "invalid request id");
         require(request.lastUnderlyingBlock <= _currentUnderlyingBlock, "too soon for default");
         require(msg.sender == request.redeemer, "only redeemer");
@@ -111,7 +126,7 @@ library Redemption {
         // TODO: move out of library?
         IAgentVault(request.agentVault).liquidate(request.redeemer, amount);
         // release agent collateral and underlying collateral
-        AssetManagerState.Agent storage agent = _state.agents[request.agentVault];
+        Agents.Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
         agent.allowedUnderlyingPayments[request.agentUnderlyingAddress] +=
                 uint256(request.lots).mul(_state.lotSizeUBA);

@@ -5,14 +5,29 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeMathX.sol";
 import "../../utils/lib/SafePctX.sol";
-import "./AssetManagerState.sol";
+import "./Agents.sol";
 import "./AgentCollateral.sol";
+import "./AssetManagerState.sol";
 
 
 library CollateralReservations {
     using SafeMath for uint256;
     using SafePctX for uint256;
+    using AgentCollateral for Agents.Agent;
     
+    struct CollateralReservation {
+        bytes32 agentUnderlyingAddress;
+        bytes32 minterUnderlyingAddress;
+        uint192 underlyingValueUBA;
+        uint64 firstUnderlyingBlock;
+        uint192 underlyingFeeUBA;
+        uint64 lastUnderlyingBlock;
+        address agentVault;
+        uint64 lots;
+        address minter;
+        uint8 availabilityEnterCountMod2;
+    }
+
     event CollateralReserved(
         address indexed minter,
         uint256 collateralReservationId,
@@ -47,18 +62,17 @@ library CollateralReservations {
     )
         internal
     {
-        AssetManagerState.Agent storage agent = _state.agents[_agentVault];
+        Agents.Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
-        require(AgentCollateral.freeCollateralLots(agent, _fullAgentCollateral, _lotSizeWei) >= _lots,
-            "not enough free collateral");
+        require(agent.freeCollateralLots(_fullAgentCollateral, _lotSizeWei) >= _lots, "not enough free collateral");
         claimMinterUnderlyingAddress(_state, _minter, _minterUnderlyingAddress);
         uint64 lastUnderlyingBlock = SafeMath64.add64(_currentUnderlyingBlock, _state.underlyingBlocksForPayment);
         agent.reservedLots = SafeMath64.add64(agent.reservedLots, _lots);
         uint256 underlyingValueUBA = _state.lotSizeUBA.mul(_lots);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
-        _state.crts[crtId] = AssetManagerState.CollateralReservation({
+        _state.crts[crtId] = CollateralReservation({
             agentUnderlyingAddress: agent.underlyingAddress,
             minterUnderlyingAddress: _minterUnderlyingAddress,
             underlyingValueUBA: SafeMathX.toUint192(underlyingValueUBA),
@@ -73,7 +87,7 @@ library CollateralReservations {
         emit CollateralReserved(_minter, crtId, 
             agent.underlyingAddress, underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock);
         emit AgentCollateral.AgentFreeCollateralChanged(_agentVault, 
-            AgentCollateral.freeCollateralWei(agent, _fullAgentCollateral, _lotSizeWei));
+            agent.freeCollateralWei(_fullAgentCollateral, _lotSizeWei));
     }
 
     function getCollateralReservation(
@@ -81,7 +95,7 @@ library CollateralReservations {
         uint64 _crtId
     ) 
         internal view
-        returns (AssetManagerState.CollateralReservation storage) 
+        returns (CollateralReservation storage) 
     {
         require(_crtId > 0 && _state.crts[_crtId].lots != 0, "invalid crt id");
         return _state.crts[_crtId];

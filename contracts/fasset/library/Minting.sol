@@ -3,8 +3,9 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/lib/SafeMath64.sol";
-import "./AssetManagerState.sol";
+import "./Agents.sol";
 import "./CollateralReservations.sol";
+import "./AssetManagerState.sol";
 
 
 library Minting {
@@ -27,7 +28,7 @@ library Minting {
     )
         internal
     {
-        AssetManagerState.CollateralReservation storage crt = 
+        CollateralReservations.CollateralReservation storage crt = 
             CollateralReservations.getCollateralReservation(_state, _crtId);
         uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA).add(crt.underlyingFeeUBA);
         _state.paymentVerifications.verifyPayment(_paymentInfo, 
@@ -37,7 +38,7 @@ library Minting {
         uint64 lots = crt.lots;
         uint64 redemptionTicketId = 
             _state.redemptionQueue.createRedemptionTicket(agentVault, lots, crt.agentUnderlyingAddress);
-        AssetManagerState.Agent storage agent = _state.agents[agentVault];
+        Agents.Agent storage agent = _state.agents[agentVault];
         if (crt.availabilityEnterCountMod2 == agent.availabilityEnterCountMod2) {
             agent.reservedLots = SafeMath64.sub64(agent.reservedLots, lots, "invalid reserved lots");
         } else {

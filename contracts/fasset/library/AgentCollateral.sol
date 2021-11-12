@@ -3,7 +3,7 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/lib/SafePctX.sol";
-import "./AssetManagerState.sol";
+import "./Agents.sol";
 
 
 library AgentCollateral {
@@ -15,7 +15,7 @@ library AgentCollateral {
         uint256 freeCollateral);
         
     function freeCollateralLots(
-        AssetManagerState.Agent storage _agent, 
+        Agents.Agent storage _agent, 
         uint256 _fullCollateral, 
         uint256 _lotSizeWei
     )
@@ -28,7 +28,7 @@ library AgentCollateral {
     }
 
     function freeCollateralWei(
-        AssetManagerState.Agent storage _agent, 
+        Agents.Agent storage _agent, 
         uint256 _fullCollateral, 
         uint256 _lotSizeWei
     )
@@ -41,7 +41,7 @@ library AgentCollateral {
     }
     
     function lockedCollateralWei(
-        AssetManagerState.Agent storage _agent, 
+        Agents.Agent storage _agent, 
         uint256 _lotSizeWei
     )
         internal view 
@@ -60,7 +60,7 @@ library AgentCollateral {
     }
     
     function mintingLotCollateral(
-        AssetManagerState.Agent storage _agent, 
+        Agents.Agent storage _agent, 
         uint256 _lotSizeWei
     ) 
         internal view 

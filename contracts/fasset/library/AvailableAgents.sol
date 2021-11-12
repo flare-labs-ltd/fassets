@@ -5,13 +5,20 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
 import "../../utils/lib/SafeMath64.sol";
-import "./AssetManagerState.sol";
+import "./Agents.sol";
 import "./AgentCollateral.sol";
+import "./AssetManagerState.sol";
 
 
 library AvailableAgents {
     using SafeMath for uint256;
+    using AgentCollateral for Agents.Agent;
 
+    struct AvailableAgent {
+        address agentVault;
+        uint64 allowExitTimestamp;
+    }
+        
     struct AvailableAgentInfo {
         address agentVault;
         uint256 feeBIPS;
@@ -41,8 +48,8 @@ library AvailableAgents {
     ) 
         internal 
     {
-        AssetManagerState.Agent storage agent = _state.agents[_agentVault];
-        require(agent.status == AssetManagerState.AgentStatus.NORMAL, "invalid agent status");
+        Agents.Agent storage agent = _state.agents[_agentVault];
+        require(agent.status == Agents.AgentStatus.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
         require(_mintingCollateralRatioBIPS >= agent.minCollateralRatioBIPS, "collateral ratio too small");
         require(agent.oldReservedLots == 0, "re-entering again too soon");
@@ -50,11 +57,11 @@ library AvailableAgents {
         agent.feeBIPS = _feeBIPS; 
         agent.mintingCollateralRatioBIPS = _mintingCollateralRatioBIPS;
         // check that there is enough free collateral for at least one lot
-        uint256 freeCollateralWei = AgentCollateral.freeCollateralWei(agent, _fullCollateralWei, _lotSizeWei);
-        require(freeCollateralWei >= AgentCollateral.mintingLotCollateral(agent, _lotSizeWei), 
+        uint256 freeCollateralWei = agent.freeCollateralWei(_fullCollateralWei, _lotSizeWei);
+        require(freeCollateralWei >= agent.mintingLotCollateral(_lotSizeWei), 
             "not enough free collateral");
         // add to queue
-        _state.availableAgents.push(AssetManagerState.AvailableAgent({
+        _state.availableAgents.push(AvailableAgent({
             agentVault: _agentVault, 
             allowExitTimestamp: 0
         }));
@@ -70,9 +77,9 @@ library AvailableAgents {
     ) 
         internal 
     {
-        AssetManagerState.Agent storage agent = _state.agents[_agentVault];
+        Agents.Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsPos != 0, "agent not available");
-        AssetManagerState.AvailableAgent storage item = _state.availableAgents[agent.availableAgentsPos - 1];
+        AvailableAgent storage item = _state.availableAgents[agent.availableAgentsPos - 1];
         require(item.allowExitTimestamp == 0, "already exiting");
         uint64 exitTime = SafeMath64.add64(block.timestamp, _secondsToExit);
         item.allowExitTimestamp = exitTime;
@@ -86,11 +93,11 @@ library AvailableAgents {
     )
         internal
     {
-        AssetManagerState.Agent storage agent = _state.agents[_agentVault];
+        Agents.Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsPos != 0, "agent not available");
         uint256 ind = agent.availableAgentsPos - 1;
         if (_requireTwoStep) {
-            AssetManagerState.AvailableAgent storage item = _state.availableAgents[ind];
+            AvailableAgent storage item = _state.availableAgents[ind];
             require(item.allowExitTimestamp != 0 && item.allowExitTimestamp <= block.timestamp,
                 "required two-step exit");
         }
@@ -137,12 +144,12 @@ library AvailableAgents {
         for (uint256 i = _start; i < _end; i++) {
             address agentVault = _state.availableAgents[i].agentVault;
             uint256 fullCollateral = wnat.balanceOf(agentVault);
-            AssetManagerState.Agent storage agent = _state.agents[agentVault];
+            Agents.Agent storage agent = _state.agents[agentVault];
             _agents[i - _start] = AvailableAgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
                 mintingCollateralRatioBIPS: agent.mintingCollateralRatioBIPS,
-                freeCollateralWei: AgentCollateral.freeCollateralWei(agent, fullCollateral, _lotSize)
+                freeCollateralWei: agent.freeCollateralWei(fullCollateral, _lotSize)
             });
         }
     }

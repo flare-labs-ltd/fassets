@@ -3,11 +3,20 @@ pragma solidity 0.7.6;
 
 import "../../utils/lib/SafeMath64.sol";
 import "./PaymentVerification.sol";
+import "./Agents.sol";
 import "./AssetManagerState.sol";
 
 
 library AllowedPaymentAnnouncement {
     using PaymentVerification for PaymentVerification.State;
+    
+    struct PaymentAnnouncement {
+        bytes32 underlyingAddress;
+        uint256 valueUBA;
+        uint64 firstUnderlyingBlock;
+        uint64 lastUnderlyingBlock;
+        uint64 createdAtBlock;
+    }
     
     event AllowedPaymentAnnounced(
         bytes32 underlyingAddress,
@@ -25,7 +34,7 @@ library AllowedPaymentAnnouncement {
     )
         internal
     {
-        AssetManagerState.Agent storage agent = _state.agents[_agentVault];
+        Agents.Agent storage agent = _state.agents[_agentVault];
         require(_valueUBA > 0, "invalid value");
         require(agent.allowedUnderlyingPayments[_underlyingAddress] >= _valueUBA,
             "payment larger than allowed");
@@ -34,7 +43,7 @@ library AllowedPaymentAnnouncement {
             _state.underlyingBlocksForAllowedPayment);
         uint64 announcementId = ++_state.newPaymentAnnouncementId;
         bytes32 key = _announcementKey(_agentVault, announcementId);
-        _state.paymentAnnouncements[key] = AssetManagerState.PaymentAnnouncement({
+        _state.paymentAnnouncements[key] = PaymentAnnouncement({
             underlyingAddress: _underlyingAddress,
             valueUBA: _valueUBA,
             firstUnderlyingBlock: _currentUnderlyingBlock,
@@ -54,7 +63,7 @@ library AllowedPaymentAnnouncement {
         internal
     {
         bytes32 key = _announcementKey(_agentVault, _announcementId);
-        AssetManagerState.PaymentAnnouncement storage announcement = _state.paymentAnnouncements[key];
+        PaymentAnnouncement storage announcement = _state.paymentAnnouncements[key];
         require(announcement.underlyingAddress != 0, "invalid announcement id");
         _state.paymentVerifications.verifyPayment(_paymentInfo, 
             announcement.underlyingAddress, 0 /* target not needed for allowed payments */,
