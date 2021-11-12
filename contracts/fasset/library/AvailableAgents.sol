@@ -15,7 +15,7 @@ library AvailableAgents {
 
     struct AvailableAgent {
         address agentVault;
-        uint64 allowExitTimestamp;
+        uint64 exitAnnouncedAt;
     }
         
     struct AvailableAgentInfo {
@@ -32,8 +32,9 @@ library AvailableAgents {
         uint256 freeCollateralWei);
         
     event AgentExitAnnounced(
-        address vaultAddress,
-        uint64 exitTime);
+        address indexed vaultAddress,
+        uint256 exitTimeStart,
+        uint256 exitTimeEnd);
 
     event AgentExited(address vaultAddress);
     
@@ -62,7 +63,7 @@ library AvailableAgents {
         // add to queue
         _state.availableAgents.push(AvailableAgent({
             agentVault: _agentVault, 
-            allowExitTimestamp: 0
+            exitAnnouncedAt: 0
         }));
         agent.availableAgentsPos = uint64(_state.availableAgents.length);     // index+1 (0=not in list)
         agent.availabilityEnterCountMod2 = (agent.availabilityEnterCountMod2 + 1) % 2;      // always 0/1
@@ -71,33 +72,32 @@ library AvailableAgents {
 
     function announceExit(
         AssetManagerState.State storage _state, 
-        address _agentVault,
-        uint256 _secondsToExit
+        address _agentVault
     ) 
         internal 
     {
         Agents.Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsPos != 0, "agent not available");
         AvailableAgent storage item = _state.availableAgents[agent.availableAgentsPos - 1];
-        require(item.allowExitTimestamp == 0, "already exiting");
-        uint64 exitTime = SafeMath64.add64(block.timestamp, _secondsToExit);
-        item.allowExitTimestamp = exitTime;
-        emit AgentExitAnnounced(_agentVault, exitTime);
+        require(item.exitAnnouncedAt == 0, "already exiting");
+        item.exitAnnouncedAt = SafeMath64.toUint64(block.timestamp);
+        (uint256 startTime, uint256 endTime) = _exitTimeInterval(_state, block.timestamp);
+        emit AgentExitAnnounced(_agentVault, startTime, endTime);
     }
     
     function exit(
         AssetManagerState.State storage _state, 
-        address _agentVault, 
-        bool _requireTwoStep
+        address _agentVault
     )
         internal
     {
         Agents.Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsPos != 0, "agent not available");
         uint256 ind = agent.availableAgentsPos - 1;
-        if (_requireTwoStep) {
+        if (_state.settings.minSecondsToExitAvailableAgentsList != 0) {
             AvailableAgent storage item = _state.availableAgents[ind];
-            require(item.allowExitTimestamp != 0 && item.allowExitTimestamp <= block.timestamp,
+            (uint256 startTime, uint256 endTime) = _exitTimeInterval(_state, item.exitAnnouncedAt);
+            require(item.exitAnnouncedAt != 0 && startTime <= block.timestamp && block.timestamp <= endTime,
                 "required two-step exit");
         }
         if (ind + 1 < _state.availableAgents.length) {
@@ -151,5 +151,13 @@ library AvailableAgents {
                 freeCollateralWei: agent.freeCollateralWei(fullCollateral, _lotSize)
             });
         }
+    }
+    
+    function _exitTimeInterval(AssetManagerState.State storage _state, uint256 _fromTime)
+        private view
+        returns (uint256 _start, uint256 _end)
+    {
+        _start = _fromTime.add(_state.settings.minSecondsToExitAvailableAgentsList);
+        _end = _fromTime.add(_state.settings.maxSecondsToExitAvailableAgentsList);
     }
 }

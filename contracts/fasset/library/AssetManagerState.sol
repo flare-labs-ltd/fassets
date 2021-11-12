@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "./AssetManagerSettings.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentVerification.sol";
 import "./Agents.sol";
@@ -11,33 +12,35 @@ import "./AllowedPaymentAnnouncement.sol";
 
 
 library AssetManagerState {
-    struct Settings {
-        uint16 initialMinCollateralRatioBIPS;
-        uint16 liquidationMinCollateralRatioBIPS;
-        uint64 minSecondsToExitAvailableForMint;
-        uint64 underlyingBlocksForPayment;
-        uint64 underlyingBlocksForAllowedPayment;
-        uint64 underlyingBlocksForTopup;
-        uint256 lotSizeUBA;                              // in underlying asset wei/satoshi
-        uint256 redemptionFeeUBA;                        // in underlying asset wei/satoshi
-        uint32 redemptionFailureFactorBIPS;              // e.g 1.2 (12000)
-    }
-    
     struct State {
-        Settings settings;
-        //
-        mapping(address => Agents.Agent) agents;                       // mapping agentVaultAddress=>agent
-        mapping(uint64 => CollateralReservations.CollateralReservation) crts;          // mapping crt_id=>crt
-        mapping(uint64 => Redemption.RedemptionRequest) redemptionRequests;    // mapping request_id=>request
+        AssetManagerSettings.Settings settings;
+        
+        // mapping agentVaultAddress => agent
+        mapping(address => Agents.Agent) agents;
+        
+        // mapping crt_id => crt
+        mapping(uint64 => CollateralReservations.CollateralReservation) crts;
+        
+        // mapping redemptionRequest_id => request
+        mapping(uint64 => Redemption.RedemptionRequest) redemptionRequests;
+        
+        // mapping underlyingAddress => owner
         mapping(bytes32 => address) underlyingAddressOwner;
+        
+        // array of AvailableAgent; when one is deleted, its position is filled with last
         AvailableAgents.AvailableAgent[] availableAgents;
-        RedemptionQueue.State redemptionQueue;
-        PaymentVerification.State paymentVerifications;
         
         // mapping (agentVault, announcementId) => PaymentAnnouncement
         mapping(bytes32 => AllowedPaymentAnnouncement.PaymentAnnouncement) paymentAnnouncements;
         
-        uint64 newCrtId;                    // increment before assigning to ticket (to avoid 0)
+        // redemption queue
+        RedemptionQueue.State redemptionQueue;
+        
+        // verified payment hashes; expire in 5 days
+        PaymentVerification.State paymentVerifications;
+        
+        // new ids (listed here to save storage); all must be incremented before assigning, so 0 means empty
+        uint64 newCrtId;
         uint64 newRedemptionRequestId;
         uint64 newPaymentAnnouncementId;
     }

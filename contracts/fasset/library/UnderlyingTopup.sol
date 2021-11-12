@@ -48,4 +48,8 @@ library UnderlyingTopup {
             _currentUnderlyingBlock, lastUnderlyingBlock, 
             SafeMath64.toUint64(agent.requiredUnderlyingTopups.length));
     }
+
+    function _announcementKey(address _agentVault, uint64 _id) private pure returns (bytes32) {
+        return bytes32(uint256(_agentVault) | (uint256(_id) << 160));
+    }
 }
