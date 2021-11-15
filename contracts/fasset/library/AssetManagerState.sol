@@ -9,6 +9,7 @@ import "./AvailableAgents.sol";
 import "./CollateralReservations.sol";
 import "./Redemption.sol";
 import "./AllowedPaymentAnnouncement.sol";
+import "./IllegalPaymentChallenge.sol";
 
 
 library AssetManagerState {
@@ -18,28 +19,31 @@ library AssetManagerState {
         // mapping agentVaultAddress => agent
         mapping(address => Agents.Agent) agents;
         
-        // mapping crt_id => crt
-        mapping(uint64 => CollateralReservations.CollateralReservation) crts;
-        
-        // mapping redemptionRequest_id => request
-        mapping(uint64 => Redemption.RedemptionRequest) redemptionRequests;
+        // array of AvailableAgent; when one is deleted, its position is filled with last
+        AvailableAgents.AvailableAgent[] availableAgents;
         
         // mapping underlyingAddress => owner
         mapping(bytes32 => address) underlyingAddressOwner;
         
-        // array of AvailableAgent; when one is deleted, its position is filled with last
-        AvailableAgents.AvailableAgent[] availableAgents;
-        
-        // mapping (agentVault, announcementId) => PaymentAnnouncement
-        mapping(bytes32 => AllowedPaymentAnnouncement.PaymentAnnouncement) paymentAnnouncements;
+        // mapping crt_id => crt
+        mapping(uint64 => CollateralReservations.CollateralReservation) crts;
         
         // redemption queue
         RedemptionQueue.State redemptionQueue;
         
+        // mapping redemptionRequest_id => request
+        mapping(uint64 => Redemption.RedemptionRequest) redemptionRequests;
+        
         // verified payment hashes; expire in 5 days
         PaymentVerification.State paymentVerifications;
         
-        // new ids (listed here to save storage); all must be incremented before assigning, so 0 means empty
+        // mapping (agentVault, announcementId) => PaymentAnnouncement
+        mapping(bytes32 => AllowedPaymentAnnouncement.PaymentAnnouncement) paymentAnnouncements;
+        
+        // mapping underlyingTransactionHash => Challenge
+        mapping(bytes32 => IllegalPaymentChallenge.Challenge) paymentChallenges;
+        
+        // new ids (listed together to save storage); all must be incremented before assigning, so 0 means empty
         uint64 newCrtId;
         uint64 newRedemptionRequestId;
         uint64 newPaymentAnnouncementId;

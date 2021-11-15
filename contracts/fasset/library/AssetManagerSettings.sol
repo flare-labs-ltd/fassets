@@ -33,7 +33,7 @@ library AssetManagerSettings {
         // Topup is only needed when underlying gas is bigger that funds on allowed payments account plus
         // redemption fee, so it should be very rare.
         uint64 underlyingBlocksForTopup;
-        
+
         // Lot size in underlying currency base amount (UBA, e.g. wei or satoshi).
         uint256 lotSizeUBA;                              // in underlying asset wei/satoshi
         
@@ -44,5 +44,10 @@ library AssetManagerSettings {
         // redemption value recalculated in flare/sgb times redemption failure factor.
         // Expressed in BIPS, e.g. 12000 for factor of 1.2.
         uint32 redemptionFailureFactorBIPS;
+        
+        // After illegal payment challenge against an agent is triggered, there is some time to needed to wait 
+        // to allow the agent to respond with legal payment report (e.g. redemption payment; for fee withdrawal
+        // there needs to be prior announcement.)
+        uint64 paymentChallengeWaitMinSeconds;
     }
 }

@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./Agents.sol";
 import "./CollateralReservations.sol";
@@ -36,8 +37,9 @@ library Minting {
             crt.firstUnderlyingBlock, crt.lastUnderlyingBlock);
         address agentVault = crt.agentVault;
         uint64 lots = crt.lots;
+        bytes32 underlyingAddress = crt.agentUnderlyingAddress;
         uint64 redemptionTicketId = 
-            _state.redemptionQueue.createRedemptionTicket(agentVault, lots, crt.agentUnderlyingAddress);
+            _state.redemptionQueue.createRedemptionTicket(agentVault, lots, underlyingAddress);
         Agents.Agent storage agent = _state.agents[agentVault];
         if (crt.availabilityEnterCountMod2 == agent.availabilityEnterCountMod2) {
             agent.reservedLots = SafeMath64.sub64(agent.reservedLots, lots, "invalid reserved lots");
@@ -45,11 +47,11 @@ library Minting {
             agent.oldReservedLots = SafeMath64.sub64(agent.oldReservedLots, lots, "invalid reserved lots");
         }
         agent.mintedLots = SafeMath64.add64(agent.mintedLots, lots);
-        agent.allowedUnderlyingPayments[crt.agentUnderlyingAddress] = 
-            agent.allowedUnderlyingPayments[crt.agentUnderlyingAddress].add(crt.underlyingFeeUBA);
+        Agents.UnderlyingAddressFunds storage uaf = agent.perAddressFunds[underlyingAddress];
+        uaf.mintedLots = SafeMath64.add64(uaf.mintedLots, lots);
+        UnderlyingTopup.increasePrivateFunds(_state, crt.agentVault, underlyingAddress, crt.underlyingFeeUBA);
+        emit MintingExecuted(agentVault, _crtId, redemptionTicketId, underlyingAddress, lots, crt.underlyingFeeUBA);
         delete _state.crts[_crtId];
-        emit MintingExecuted(agentVault, _crtId, redemptionTicketId, 
-            crt.agentUnderlyingAddress, lots, crt.underlyingFeeUBA);
     }
     
 }

@@ -15,6 +15,7 @@ import "./AssetManagerState.sol";
 
 library Redemption {
     using SafeMath for uint256;
+    using SignedSafeMath for int256;
     using SafePctX for uint256;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentVerification for PaymentVerification.State;
@@ -98,14 +99,8 @@ library Redemption {
         Agents.Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
         // TODO: remove pending challenge
-        if (request.underlyingFeeUBA >= _paymentInfo.gasUBA) {
-            agent.allowedUnderlyingPayments[request.agentUnderlyingAddress] +=
-                request.underlyingFeeUBA - _paymentInfo.gasUBA;     // += cannot overflow - both are uint192
-        } else {
-            uint256 requiredTopup = _paymentInfo.gasUBA - request.underlyingFeeUBA;
-            UnderlyingTopup.requireUnderlyingTopup(_state, request.agentVault, request.agentUnderlyingAddress, 
-                requiredTopup, _currentUnderlyingBlock);
-        }
+        UnderlyingTopup.updatePrivateFunds(_state, request.agentVault, _paymentInfo.sourceAddress, 
+            request.underlyingFeeUBA, _paymentInfo.gasUBA, _currentUnderlyingBlock);
         delete _state.redemptionRequests[_redemptionRequestId];
     }
     
@@ -129,8 +124,11 @@ library Redemption {
         // release agent collateral and underlying collateral
         Agents.Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
-        agent.allowedUnderlyingPayments[request.agentUnderlyingAddress] +=
-                uint256(request.lots).mul(_state.settings.lotSizeUBA);
+        Agents.UnderlyingAddressFunds storage uaf = agent.perAddressFunds[request.agentUnderlyingAddress];
+        uaf.mintedLots = SafeMath64.add64(uaf.mintedLots, request.lots);
+        uint256 liquidatedUBA = uint256(request.lots).mul(_state.settings.lotSizeUBA);
+        UnderlyingTopup.increasePrivateFunds(_state, request.agentVault, request.agentUnderlyingAddress, 
+            liquidatedUBA);
         delete _state.redemptionRequests[_redemptionRequestId];
     }
 }

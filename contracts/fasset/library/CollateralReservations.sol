@@ -35,7 +35,7 @@ library CollateralReservations {
         uint256 underlyingFeeUBA,
         uint256 lastUnderlyingBlock);
         
-    function claimMinterUnderlyingAddress(
+    function claimUnderlyingAddress(
         AssetManagerState.State storage _state, 
         address _minter, 
         bytes32 _address
@@ -45,7 +45,7 @@ library CollateralReservations {
         if (_state.underlyingAddressOwner[_address] == address(0)) {
             _state.underlyingAddressOwner[_address] = _minter;
         } else if (_state.underlyingAddressOwner[_address] != _minter) {
-            revert("address belongs to other minter");
+            revert("address already claimed");
         }
     }
     
@@ -65,7 +65,7 @@ library CollateralReservations {
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
         require(agent.freeCollateralLots(_fullAgentCollateral, _lotSizeWei) >= _lots, "not enough free collateral");
-        claimMinterUnderlyingAddress(_state, _minter, _minterUnderlyingAddress);
+        claimUnderlyingAddress(_state, _minter, _minterUnderlyingAddress);
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
         agent.reservedLots = SafeMath64.add64(agent.reservedLots, _lots);

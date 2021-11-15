@@ -3,7 +3,6 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/lib/SafePctX.sol";
-import "./UnderlyingTopup.sol";
 import "./AssetManagerState.sol";
 
 
@@ -17,11 +16,21 @@ library Agents {
         LIQUIDATION
     }
 
+    struct UnderlyingAddressFunds {
+        int256 freeBalanceUBA;
+        uint64 mintedLots;
+        uint64 lastUnderlyingBlockForTopup;
+    }
+    
     struct Agent {
         bytes32 underlyingAddress;
-        // agent is allowed to withdraw fee or liquidated underlying amount (including gas)
-        mapping(bytes32 => uint256) allowedUnderlyingPayments;      // underlyingAddress -> allowedUBA
-        UnderlyingTopup.TopupRequirement[] requiredUnderlyingTopups;
+        
+        // Agent is allowed to withdraw fee or liquidated underlying amount.
+        // Allowed payments must cover withdrawal value when announced
+        // after withdrawal, underlying gas must also be covered, otherwise topup request is triggered.
+        // Mapping underlyingAddress => UnderlyingAddressFunds
+        mapping(bytes32 => UnderlyingAddressFunds) perAddressFunds;
+        
         uint64 reservedLots;
         uint64 mintedLots;
         uint32 minCollateralRatioBIPS;
