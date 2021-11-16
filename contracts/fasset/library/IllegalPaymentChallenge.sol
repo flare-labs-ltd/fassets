@@ -44,14 +44,13 @@ library IllegalPaymentChallenge {
     )
         internal
     {
-        Challenge storage challenge = _state.paymentChallenges[paymentInfo.paymentHash];
+        Challenge storage challenge = _state.paymentChallenges[paymentInfo.transactionHash];
         require(challenge.agentVault != address(0), "invalid transaction hash");
         require(challenge.challenger == _challenger, "only challenger");
         require(uint256(challenge.createdAtBlock).add(_state.settings.paymentChallengeWaitMinSeconds) <= block.number,
             "confirmation too early");
         require(challenge.underlyingSourceAddress == paymentInfo.sourceAddress, "source address doesn't match");
-        require(!_state.paymentVerifications.paymentVerified(paymentInfo.paymentHash), "payment already verified");
-        _state.paymentVerifications.markPaymentVerified(paymentInfo.paymentHash);
+        _state.paymentVerifications.verifyPayment(paymentInfo);
     }
     
     function deleteChallenge(

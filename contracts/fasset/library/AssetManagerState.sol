@@ -4,6 +4,8 @@ pragma solidity 0.7.6;
 import "./AssetManagerSettings.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentVerification.sol";
+import "./AgentUnderlyingFunds.sol";
+import "./UnderlyingAddressOwnership.sol";
 import "./Agents.sol";
 import "./AvailableAgents.sol";
 import "./CollateralReservations.sol";
@@ -16,16 +18,20 @@ library AssetManagerState {
     struct State {
         AssetManagerSettings.Settings settings;
         
-        // mapping agentVaultAddress => agent
+        // Agent in this system is always identified by theagent vault address.
+        // Therefore we keep a mapping from agent vault addressed to data about the agents.
+        // Type: mapping agentVaultAddress => agent
         mapping(address => Agents.Agent) agents;
         
-        // array of AvailableAgent; when one is deleted, its position is filled with last
+        // A list of all agents that are available for minting.
+        // Type: array of AvailableAgent; when one is deleted, its position is filled with last
         AvailableAgents.AvailableAgent[] availableAgents;
         
-        // mapping underlyingAddress => owner
-        mapping(bytes32 => address) underlyingAddressOwner;
+        // Ownership of underlying source addresses is needed to prevent someone
+        // overtaking the payer and presenting an underlying payment as his own.
+        UnderlyingAddressOwnership.State underlyingAddressOwnership;
         
-        // mapping crt_id => crt
+        // Type: mapping collateralReservationId => collateralReservation
         mapping(uint64 => CollateralReservations.CollateralReservation) crts;
         
         // redemption queue

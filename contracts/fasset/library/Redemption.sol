@@ -9,13 +9,12 @@ import "../interface/IAgentVault.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentVerification.sol";
 import "./Agents.sol";
-import "./UnderlyingTopup.sol";
+import "./AgentUnderlyingFunds.sol";
 import "./AssetManagerState.sol";
 
 
 library Redemption {
     using SafeMath for uint256;
-    using SignedSafeMath for int256;
     using SafePctX for uint256;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentVerification for PaymentVerification.State;
@@ -93,13 +92,13 @@ library Redemption {
         RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
         require(request.lots != 0, "invalid request id");
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
-        _state.paymentVerifications.verifyPayment(_paymentInfo, 
+        _state.paymentVerifications.verifyPaymentDetails(_paymentInfo, 
             request.agentUnderlyingAddress, request.redeemerUnderlyingAddress,
             paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
         Agents.Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
         // TODO: remove pending challenge
-        UnderlyingTopup.updatePrivateFunds(_state, request.agentVault, _paymentInfo.sourceAddress, 
+        AgentUnderlyingFunds.updateFreeBalance(_state, request.agentVault, _paymentInfo.sourceAddress, 
             request.underlyingFeeUBA, _paymentInfo.gasUBA, _currentUnderlyingBlock);
         delete _state.redemptionRequests[_redemptionRequestId];
     }
@@ -124,10 +123,10 @@ library Redemption {
         // release agent collateral and underlying collateral
         Agents.Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
-        Agents.UnderlyingAddressFunds storage uaf = agent.perAddressFunds[request.agentUnderlyingAddress];
+        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[request.agentUnderlyingAddress];
         uaf.mintedLots = SafeMath64.add64(uaf.mintedLots, request.lots);
         uint256 liquidatedUBA = uint256(request.lots).mul(_state.settings.lotSizeUBA);
-        UnderlyingTopup.increasePrivateFunds(_state, request.agentVault, request.agentUnderlyingAddress, 
+        AgentUnderlyingFunds.increaseFreeBalance(_state, request.agentVault, request.agentUnderlyingAddress, 
             liquidatedUBA);
         delete _state.redemptionRequests[_redemptionRequestId];
     }

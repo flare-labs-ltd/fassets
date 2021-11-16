@@ -129,7 +129,7 @@ library AvailableAgents {
     function getListWithInfo(
         AssetManagerState.State storage _state, 
         WNat wnat,
-        uint256 _lotSize,
+        uint256 _lotSizeWei,
         uint256 _start, 
         uint256 _end
     ) 
@@ -148,7 +148,7 @@ library AvailableAgents {
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
                 mintingCollateralRatioBIPS: agent.mintingCollateralRatioBIPS,
-                freeCollateralWei: agent.freeCollateralWei(fullCollateral, _lotSize)
+                freeCollateralWei: agent.freeCollateralWei(fullCollateral, _lotSizeWei)
             });
         }
     }

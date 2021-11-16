@@ -4,6 +4,8 @@ pragma solidity 0.7.6;
 import "../../utils/lib/SafeMath64.sol";
 import "./PaymentVerification.sol";
 import "./Agents.sol";
+import "./IllegalPaymentChallenge.sol";
+import "./AgentUnderlyingFunds.sol";
 import "./AssetManagerState.sol";
 
 
@@ -36,7 +38,7 @@ library AllowedPaymentAnnouncement {
     {
         Agents.Agent storage agent = _state.agents[_agentVault];
         require(_valueUBA > 0, "invalid value");
-        Agents.UnderlyingAddressFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
+        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
         require(uaf.freeBalanceUBA >= 0 && uint256(uaf.freeBalanceUBA) >= _valueUBA, 
             "payment larger than allowed");
         uaf.freeBalanceUBA -= int256(_valueUBA);   // guarded by require
@@ -59,18 +61,23 @@ library AllowedPaymentAnnouncement {
         AssetManagerState.State storage _state,
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         address _agentVault,
-        uint64 _announcementId
+        uint64 _announcementId,
+        uint64 _currentUnderlyingBlock
     )
         internal
     {
         bytes32 key = _announcementKey(_agentVault, _announcementId);
         PaymentAnnouncement storage announcement = _state.paymentAnnouncements[key];
         require(announcement.underlyingAddress != 0, "invalid announcement id");
-        _state.paymentVerifications.verifyPayment(_paymentInfo, 
+        // verify that it matches announcement and mark verified to prevent challenges
+        _state.paymentVerifications.verifyPaymentDetails(_paymentInfo, 
             announcement.underlyingAddress, 0 /* target not needed for allowed payments */,
             announcement.valueUBA, announcement.firstUnderlyingBlock, announcement.lastUnderlyingBlock);
-        // TODO: check and remove pending challenge
-        // TODO: possible topup for gas
+        // deduct gas from free balance
+        AgentUnderlyingFunds.updateFreeBalance(_state, _agentVault, _paymentInfo.sourceAddress, 
+            0, _paymentInfo.gasUBA, _currentUnderlyingBlock);
+        // delete pending challenge
+        IllegalPaymentChallenge.deleteChallenge(_state, _paymentInfo.transactionHash);
     }
     
     function _announcementKey(address _agentVault, uint64 _id) private pure returns (bytes32) {

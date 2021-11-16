@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./Agents.sol";
+import "./AgentUnderlyingFunds.sol";
 import "./CollateralReservations.sol";
 import "./AssetManagerState.sol";
 
@@ -32,7 +33,7 @@ library Minting {
         CollateralReservations.CollateralReservation storage crt = 
             CollateralReservations.getCollateralReservation(_state, _crtId);
         uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA).add(crt.underlyingFeeUBA);
-        _state.paymentVerifications.verifyPayment(_paymentInfo, 
+        _state.paymentVerifications.verifyPaymentDetails(_paymentInfo, 
             crt.minterUnderlyingAddress, crt.agentUnderlyingAddress, expectedPaymentUBA, 
             crt.firstUnderlyingBlock, crt.lastUnderlyingBlock);
         address agentVault = crt.agentVault;
@@ -47,9 +48,9 @@ library Minting {
             agent.oldReservedLots = SafeMath64.sub64(agent.oldReservedLots, lots, "invalid reserved lots");
         }
         agent.mintedLots = SafeMath64.add64(agent.mintedLots, lots);
-        Agents.UnderlyingAddressFunds storage uaf = agent.perAddressFunds[underlyingAddress];
+        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[underlyingAddress];
         uaf.mintedLots = SafeMath64.add64(uaf.mintedLots, lots);
-        UnderlyingTopup.increasePrivateFunds(_state, crt.agentVault, underlyingAddress, crt.underlyingFeeUBA);
+        AgentUnderlyingFunds.increaseFreeBalance(_state, crt.agentVault, underlyingAddress, crt.underlyingFeeUBA);
         emit MintingExecuted(agentVault, _crtId, redemptionTicketId, underlyingAddress, lots, crt.underlyingFeeUBA);
         delete _state.crts[_crtId];
     }

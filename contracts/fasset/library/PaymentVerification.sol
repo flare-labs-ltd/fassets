@@ -9,7 +9,7 @@ library PaymentVerification {
     struct UnderlyingPaymentInfo {
         bytes32 sourceAddress;
         bytes32 targetAddress;
-        bytes32 paymentHash;
+        bytes32 transactionHash;
         uint256 valueUBA;
         uint192 gasUBA;
         uint64 underlyingBlock;
@@ -27,9 +27,9 @@ library PaymentVerification {
     
     uint256 internal constant VERIFICATION_CLEANUP_DAYS = 5;
     
-    function verifyPayment(
+    function verifyPaymentDetails(
         State storage _state,
-        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
+        UnderlyingPaymentInfo memory _paymentInfo,
         bytes32 _expectedSource,
         bytes32 _expectedTarget,
         uint256 _expectedValueUBA,
@@ -38,7 +38,6 @@ library PaymentVerification {
     )
         internal
     {
-        require(_state.verifiedPayments[_paymentInfo.paymentHash] == 0, "payment already verified");
         // _expectedSource is zero for topups and non-zero otherwise
         if (_expectedSource != 0) {
             require(_paymentInfo.sourceAddress == _expectedSource, "invalid payment source");
@@ -50,20 +49,32 @@ library PaymentVerification {
         require(_paymentInfo.valueUBA == _expectedValueUBA, "invalid payment value");
         require(_paymentInfo.underlyingBlock >= _firstExpectedBlock, "payment too old");
         require(_paymentInfo.underlyingBlock <= _lastExpectedBlock, "payment too late");
+        verifyPayment(_state, _paymentInfo);
+    }
+
+    function verifyPayment(
+        State storage _state,
+        UnderlyingPaymentInfo memory _paymentInfo
+    )
+        internal
+    {
+        require(_state.verifiedPayments[_paymentInfo.transactionHash] == 0, "payment already verified");
         // TODO: remove pending challenge
-        markPaymentVerified(_state, _paymentInfo.paymentHash);
+        markPaymentVerified(_state, _paymentInfo.transactionHash);
     }
     
     function markPaymentVerified(
         State storage _state, 
-        bytes32 _paymentHash
+        bytes32 _transactionHash
     ) 
         internal 
     {
         uint256 day = block.timestamp / 86400;
         bytes32 first = _state.verifiedPaymentsForDay[day];
-        _state.verifiedPayments[_paymentHash] = first != 0 ? first : _paymentHash;  // last in list points to itself
-        _state.verifiedPaymentsForDay[day] = _paymentHash;
+        // set next linked list element - last in list points to itself
+        _state.verifiedPayments[_transactionHash] = first != 0 ? first : _transactionHash;
+        // set first linked list element
+        _state.verifiedPaymentsForDay[day] = _transactionHash;
         if (_state.verifiedPaymentsForDayStart == 0) {
             _state.verifiedPaymentsForDayStart = day;
         }
@@ -73,12 +84,12 @@ library PaymentVerification {
     
     function paymentVerified(
         State storage _state, 
-        bytes32 _paymentHash
+        bytes32 _transactionHash
     ) 
         internal view 
         returns (bool) 
     {
-        return _state.verifiedPayments[_paymentHash] != 0;
+        return _state.verifiedPayments[_transactionHash] != 0;
     }
     
     function _cleanupPaymentVerification(State storage _state) private {

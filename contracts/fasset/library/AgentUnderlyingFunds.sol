@@ -6,13 +6,16 @@ import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeMathX.sol";
 import "./Agents.sol";
+import "./UnderlyingAddressOwnership.sol";
 import "./PaymentVerification.sol";
 import "./AssetManagerState.sol";
 
 
-library UnderlyingTopup {
+library AgentUnderlyingFunds {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
+    using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
+    using PaymentVerification for PaymentVerification.State;
     
     event TopupRequired(
         address indexed vaultAddress,
@@ -20,7 +23,7 @@ library UnderlyingTopup {
         uint256 valueUBA,
         uint64 lastUnderlyingBlock);
 
-    function updatePrivateFunds(
+    function updateFreeBalance(
         AssetManagerState.State storage _state, 
         address _agentVault,
         bytes32 _underlyingAddress,
@@ -31,7 +34,7 @@ library UnderlyingTopup {
         internal
     {
         Agents.Agent storage agent = _state.agents[_agentVault];
-        Agents.UnderlyingAddressFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
+        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
         // assert((uaf.freeBalanceUBA >= 0) == (uaf.lastUnderlyingBlockForTopup == 0));
         int256 newBalance = uaf.freeBalanceUBA
             .add(SafeMathX.toInt256(_balanceAdd))
@@ -50,17 +53,17 @@ library UnderlyingTopup {
         }
     }
 
-    function increasePrivateFunds(
+    function increaseFreeBalance(
         AssetManagerState.State storage _state, 
         address _agentVault,
         bytes32 _underlyingAddress,
-        uint256 _balanceAdd
+        uint256 _balanceIncrease
     ) 
         internal
     {
         // _currentUnderlyingBlock can be 0 here, since if new balance is < 0, then
         // lastUnderlyingBlockForTopup must have been set before
-        updatePrivateFunds(_state, _agentVault, _underlyingAddress, _balanceAdd, 0, 0);
+        updateFreeBalance(_state, _agentVault, _underlyingAddress, _balanceIncrease, 0, 0);
     }
 
     function confirmTopupPayment(
@@ -70,9 +73,10 @@ library UnderlyingTopup {
     )
         internal
     {
-        // TODO: check source address not used by anybody else
         // TODO: check that payment info is not too old? (to prevent submitting already verified and expired proofs - 
         // probably not necessary, since state connector cannot prove such old payments)
-        increasePrivateFunds(_state, _agentVault, _paymentInfo.targetAddress, _paymentInfo.valueUBA);
+        _state.underlyingAddressOwnership.check(_agentVault, _paymentInfo.sourceAddress);
+        _state.paymentVerifications.verifyPayment(_paymentInfo);
+        increaseFreeBalance(_state, _agentVault, _paymentInfo.targetAddress, _paymentInfo.valueUBA);
     }
 }

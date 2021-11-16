@@ -6,6 +6,7 @@ import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeMathX.sol";
 import "../../utils/lib/SafePctX.sol";
 import "./Agents.sol";
+import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
 
 
@@ -13,6 +14,7 @@ library CollateralReservations {
     using SafeMath for uint256;
     using SafePctX for uint256;
     using Agents for Agents.Agent;
+    using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     
     struct CollateralReservation {
         bytes32 agentUnderlyingAddress;
@@ -35,20 +37,6 @@ library CollateralReservations {
         uint256 underlyingFeeUBA,
         uint256 lastUnderlyingBlock);
         
-    function claimUnderlyingAddress(
-        AssetManagerState.State storage _state, 
-        address _minter, 
-        bytes32 _address
-    ) 
-        internal 
-    {
-        if (_state.underlyingAddressOwner[_address] == address(0)) {
-            _state.underlyingAddressOwner[_address] = _minter;
-        } else if (_state.underlyingAddressOwner[_address] != _minter) {
-            revert("address already claimed");
-        }
-    }
-    
     function reserveCollateral(
         AssetManagerState.State storage _state, 
         address _minter,
@@ -65,7 +53,7 @@ library CollateralReservations {
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
         require(agent.freeCollateralLots(_fullAgentCollateral, _lotSizeWei) >= _lots, "not enough free collateral");
-        claimUnderlyingAddress(_state, _minter, _minterUnderlyingAddress);
+        _state.underlyingAddressOwnership.claim(_minter, _minterUnderlyingAddress);
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
         agent.reservedLots = SafeMath64.add64(agent.reservedLots, _lots);
