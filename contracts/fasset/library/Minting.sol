@@ -53,6 +53,7 @@ library Minting {
         UnderlyingFreeBalance.increaseFreeBalance(_state, crt.agentVault, underlyingAddress, crt.underlyingFeeUBA);
         emit MintingExecuted(agentVault, _crtId, redemptionTicketId, underlyingAddress, lots, crt.underlyingFeeUBA);
         delete _state.crts[_crtId];
+        // TODO: burn reservation fee?
     }
     
 }

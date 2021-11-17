@@ -38,6 +38,12 @@ library CollateralReservations {
         uint256 underlyingValueUBA, 
         uint256 underlyingFeeUBA,
         uint256 lastUnderlyingBlock);
+
+    event CollateralReservationTimeout(
+        address indexed agentVault,
+        address indexed minter,
+        uint256 collateralReservationId,
+        uint64 freedLots);
         
     function reserveCollateral(
         AssetManagerState.State storage _state, 
@@ -51,6 +57,7 @@ library CollateralReservations {
     )
         internal
     {
+        // TODO: check fee paid?
         Agents.Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
@@ -76,6 +83,20 @@ library CollateralReservations {
         });
         emit CollateralReserved(_agentVault, _minter, crtId, _lots, 
             agent.underlyingAddress, underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock);
+    }
+    
+    function reservationTimeout(
+        AssetManagerState.State storage _state, 
+        uint64 _crtId,
+        uint64 _currentUnderlyingBlock
+    )
+        internal
+    {
+        CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
+        require(_currentUnderlyingBlock >= crt.lastUnderlyingBlock, "timeout too early");
+        emit CollateralReservationTimeout(crt.agentVault, crt.minter, _crtId, crt.lots);
+        delete _state.crts[_crtId];
+        // TODO: pay fee to agent?
     }
 
     function getCollateralReservation(
