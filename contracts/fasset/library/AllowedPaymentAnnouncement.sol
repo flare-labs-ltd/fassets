@@ -27,6 +27,13 @@ library AllowedPaymentAnnouncement {
         uint64 lastUnderlyingBlock,
         uint64 announcementId);
         
+    event AllowedPaymentReported(
+        bytes32 underlyingAddress,
+        uint256 valueUBA,
+        uint256 gasUBA,
+        uint64 underlyingBlock,
+        uint64 announcementId);
+        
     function announceAllowedPayment(
         AssetManagerState.State storage _state,
         address _agentVault,
@@ -78,6 +85,9 @@ library AllowedPaymentAnnouncement {
             0, _paymentInfo.gasUBA, _currentUnderlyingBlock);
         // delete pending challenge
         IllegalPaymentChallenge.deleteChallenge(_state, _paymentInfo.transactionHash);
+        emit AllowedPaymentReported(_paymentInfo.sourceAddress, _paymentInfo.valueUBA, _paymentInfo.gasUBA, 
+            _paymentInfo.underlyingBlock, _announcementId);
+        delete _state.paymentAnnouncements[key];
     }
     
     function _announcementKey(address _agentVault, uint64 _id) private pure returns (bytes32) {

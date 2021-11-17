@@ -22,21 +22,22 @@ library AvailableAgents {
         address agentVault;
         uint256 feeBIPS;
         uint256 mintingCollateralRatioBIPS;
-        uint256 freeCollateralWei;
+        // Note: can change any time due to price changes or reservation/minting/redemption
+        uint256 freeCollateralLots;
     }   
      
     event AgentAvailable(
-        address vaultAddress, 
+        address agentVault, 
         uint256 feeBIPS, 
         uint256 mintingCollateralRatioBIPS,
-        uint256 freeCollateralWei);
+        uint256 freeCollateralLots);
         
     event AgentExitAnnounced(
-        address indexed vaultAddress,
+        address indexed agentVault,
         uint256 exitTimeStart,
         uint256 exitTimeEnd);
 
-    event AgentExited(address vaultAddress);
+    event AgentExited(address agentVault);
     
     function makeAvailable(
         AssetManagerState.State storage _state,
@@ -57,9 +58,8 @@ library AvailableAgents {
         agent.feeBIPS = _feeBIPS; 
         agent.mintingCollateralRatioBIPS = _mintingCollateralRatioBIPS;
         // check that there is enough free collateral for at least one lot
-        uint256 freeCollateralWei = agent.freeCollateralWei(_fullCollateralWei, _lotSizeWei);
-        require(freeCollateralWei >= agent.mintingLotCollateralWei(_lotSizeWei), 
-            "not enough free collateral");
+        uint256 freeCollateralLots = agent.freeCollateralLots(_fullCollateralWei, _lotSizeWei);
+        require(freeCollateralLots >= 1, "not enough free collateral");
         // add to queue
         _state.availableAgents.push(AvailableAgent({
             agentVault: _agentVault, 
@@ -67,7 +67,7 @@ library AvailableAgents {
         }));
         agent.availableAgentsPos = uint64(_state.availableAgents.length);     // index+1 (0=not in list)
         agent.availabilityEnterCountMod2 = (agent.availabilityEnterCountMod2 + 1) % 2;      // always 0/1
-        emit AgentAvailable(_agentVault, _feeBIPS, _mintingCollateralRatioBIPS, freeCollateralWei);
+        emit AgentAvailable(_agentVault, _feeBIPS, _mintingCollateralRatioBIPS, freeCollateralLots);
     }
 
     function announceExit(
@@ -148,7 +148,7 @@ library AvailableAgents {
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
                 mintingCollateralRatioBIPS: agent.mintingCollateralRatioBIPS,
-                freeCollateralWei: agent.freeCollateralWei(fullCollateral, _lotSizeWei)
+                freeCollateralLots: agent.freeCollateralLots(fullCollateral, _lotSizeWei)
             });
         }
     }

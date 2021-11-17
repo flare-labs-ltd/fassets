@@ -30,8 +30,10 @@ library CollateralReservations {
     }
 
     event CollateralReserved(
+        address indexed agentVault,
         address indexed minter,
         uint256 collateralReservationId,
+        uint64 reservedLots,
         bytes32 underlyingAddress,
         uint256 underlyingValueUBA, 
         uint256 underlyingFeeUBA,
@@ -66,16 +68,14 @@ library CollateralReservations {
             underlyingValueUBA: SafeMathX.toUint192(underlyingValueUBA),
             underlyingFeeUBA: SafeMathX.toUint192(underlyingFeeUBA),
             agentVault: _agentVault,
-            lots: SafeMath64.toUint64(_lots),
+            lots: _lots,
             minter: _minter,
             firstUnderlyingBlock: _currentUnderlyingBlock,
             lastUnderlyingBlock: lastUnderlyingBlock,
             availabilityEnterCountMod2: agent.availabilityEnterCountMod2
         });
-        emit CollateralReserved(_minter, crtId, 
+        emit CollateralReserved(_agentVault, _minter, crtId, _lots, 
             agent.underlyingAddress, underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock);
-        emit Agents.AgentFreeCollateralChanged(_agentVault,
-            agent.freeCollateralWei(_fullAgentCollateral, _lotSizeWei));
     }
 
     function getCollateralReservation(

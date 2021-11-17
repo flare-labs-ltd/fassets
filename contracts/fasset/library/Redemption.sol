@@ -32,11 +32,29 @@ library Redemption {
     }
 
     event RedemptionRequested(
-        address indexed vaultAddress,
+        address indexed agentVault,
         bytes32 underlyingAddress,
         uint256 valueUBA,
         uint64 firstUnderlyingBlock,
         uint64 lastUnderlyingBlock,
+        uint64 requestId);
+
+    event RedemptionPerformed(
+        address indexed agentVault,
+        address indexed redeemer,
+        uint256 valueUBA,
+        uint256 gasUBA,
+        uint256 feeUBA,
+        uint64 redeemedLots,
+        uint64 underlyingBlock,
+        uint64 requestId);
+
+    event RedemptionFailed(
+        address indexed agentVault,
+        address indexed redeemer,
+        uint256 redeemedCollateralWei,
+        uint256 freedBalanceUBA,
+        uint64 freedLots,
         uint64 requestId);
         
     function redeemAgainstTicket(
@@ -100,6 +118,9 @@ library Redemption {
         // TODO: remove pending challenge
         UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, _paymentInfo.sourceAddress, 
             request.underlyingFeeUBA, _paymentInfo.gasUBA, _currentUnderlyingBlock);
+        emit RedemptionPerformed(request.agentVault, request.redeemer,
+            _paymentInfo.valueUBA, _paymentInfo.gasUBA, request.underlyingFeeUBA,
+            request.lots, _paymentInfo.underlyingBlock, _redemptionRequestId);
         delete _state.redemptionRequests[_redemptionRequestId];
     }
     
@@ -117,9 +138,9 @@ library Redemption {
         require(request.lastUnderlyingBlock <= _currentUnderlyingBlock, "too soon for default");
         require(msg.sender == request.redeemer, "only redeemer");
         // pay redeemer in native currency
-        uint256 amount = _lotSizeWei.mul(request.lots).mulBips(_state.settings.redemptionFailureFactorBIPS);
+        uint256 amountWei = _lotSizeWei.mul(request.lots).mulBips(_state.settings.redemptionFailureFactorBIPS);
         // TODO: move out of library?
-        IAgentVault(request.agentVault).liquidate(request.redeemer, amount);
+        IAgentVault(request.agentVault).liquidate(request.redeemer, amountWei);
         // release agent collateral and underlying collateral
         Agents.Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
@@ -128,6 +149,8 @@ library Redemption {
         uint256 liquidatedUBA = uint256(request.lots).mul(_state.settings.lotSizeUBA);
         UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, request.agentUnderlyingAddress, 
             liquidatedUBA);
+        emit RedemptionFailed(request.agentVault, request.redeemer, 
+            amountWei, liquidatedUBA, request.lots, _redemptionRequestId);
         delete _state.redemptionRequests[_redemptionRequestId];
     }
 }

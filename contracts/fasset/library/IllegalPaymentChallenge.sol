@@ -18,6 +18,16 @@ library IllegalPaymentChallenge {
         uint64 createdAtBlock;
     }
     
+    event IllegalPaymentChallenged(
+        address indexed agentVault,
+        bytes32 underlyingAddress, 
+        bytes32 transactionHash);
+    
+    event IllegalPaymentConfirmed(
+        address indexed agentVault,
+        bytes32 underlyingAddress, 
+        bytes32 transactionHash);
+        
     function createChallenge(
         AssetManagerState.State storage _state,
         address _agentVault,
@@ -35,6 +45,7 @@ library IllegalPaymentChallenge {
             challenger: _challenger,
             createdAtBlock: SafeMath64.toUint64(block.number)
         });
+        emit IllegalPaymentChallenged(_agentVault, _underlyingSourceAddress, _transactionHash);
     }
     
     function confirmChallenge(
@@ -53,6 +64,8 @@ library IllegalPaymentChallenge {
         _state.paymentVerifications.verifyPayment(paymentInfo);
         deleteChallenge(_state, paymentInfo.transactionHash);
         // TODO: trigger liquidation, claim reward
+        emit IllegalPaymentConfirmed(challenge.agentVault, challenge.underlyingSourceAddress, 
+            paymentInfo.transactionHash);
     }
     
     function deleteChallenge(

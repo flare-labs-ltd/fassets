@@ -16,7 +16,7 @@ library Minting {
     using PaymentVerification for PaymentVerification.State;
     
     event MintingExecuted(
-        address indexed vaultAddress,
+        address indexed agentVault,
         uint256 collateralReservationId,
         uint256 redemptionTicketId,
         bytes32 underlyingAddress,

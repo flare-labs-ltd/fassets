@@ -18,7 +18,7 @@ library UnderlyingFreeBalance {
     using PaymentVerification for PaymentVerification.State;
     
     event TopupRequired(
-        address indexed vaultAddress,
+        address indexed agentVault,
         bytes32 underlyingAddress,
         uint256 valueUBA,
         uint64 lastUnderlyingBlock);

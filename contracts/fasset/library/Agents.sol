@@ -78,10 +78,6 @@ library Agents {
         AgentStatus status;
     }
     
-    event AgentFreeCollateralChanged(
-        address vaultAddress, 
-        uint256 freeCollateral);
-        
     function createAgent(
         AssetManagerState.State storage _state, 
         address _agentVault,
