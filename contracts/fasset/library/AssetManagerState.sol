@@ -4,7 +4,7 @@ pragma solidity 0.7.6;
 import "./AssetManagerSettings.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentVerification.sol";
-import "./AgentUnderlyingFunds.sol";
+import "./UnderlyingFreeBalance.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./Agents.sol";
 import "./AvailableAgents.sol";

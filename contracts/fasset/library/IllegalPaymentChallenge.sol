@@ -51,6 +51,8 @@ library IllegalPaymentChallenge {
             "confirmation too early");
         require(challenge.underlyingSourceAddress == paymentInfo.sourceAddress, "source address doesn't match");
         _state.paymentVerifications.verifyPayment(paymentInfo);
+        deleteChallenge(_state, paymentInfo.transactionHash);
+        // TODO: trigger liquidation, claim reward
     }
     
     function deleteChallenge(

@@ -5,7 +5,7 @@ import "../../utils/lib/SafeMath64.sol";
 import "./PaymentVerification.sol";
 import "./Agents.sol";
 import "./IllegalPaymentChallenge.sol";
-import "./AgentUnderlyingFunds.sol";
+import "./UnderlyingFreeBalance.sol";
 import "./AssetManagerState.sol";
 
 
@@ -74,7 +74,7 @@ library AllowedPaymentAnnouncement {
             announcement.underlyingAddress, 0 /* target not needed for allowed payments */,
             announcement.valueUBA, announcement.firstUnderlyingBlock, announcement.lastUnderlyingBlock);
         // deduct gas from free balance
-        AgentUnderlyingFunds.updateFreeBalance(_state, _agentVault, _paymentInfo.sourceAddress, 
+        UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, _paymentInfo.sourceAddress, 
             0, _paymentInfo.gasUBA, _currentUnderlyingBlock);
         // delete pending challenge
         IllegalPaymentChallenge.deleteChallenge(_state, _paymentInfo.transactionHash);

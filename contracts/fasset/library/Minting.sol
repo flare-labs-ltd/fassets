@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./Agents.sol";
-import "./AgentUnderlyingFunds.sol";
+import "./UnderlyingFreeBalance.sol";
 import "./CollateralReservations.sol";
 import "./AssetManagerState.sol";
 
@@ -50,7 +50,7 @@ library Minting {
         agent.mintedLots = SafeMath64.add64(agent.mintedLots, lots);
         Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[underlyingAddress];
         uaf.mintedLots = SafeMath64.add64(uaf.mintedLots, lots);
-        AgentUnderlyingFunds.increaseFreeBalance(_state, crt.agentVault, underlyingAddress, crt.underlyingFeeUBA);
+        UnderlyingFreeBalance.increaseFreeBalance(_state, crt.agentVault, underlyingAddress, crt.underlyingFeeUBA);
         emit MintingExecuted(agentVault, _crtId, redemptionTicketId, underlyingAddress, lots, crt.underlyingFeeUBA);
         delete _state.crts[_crtId];
     }

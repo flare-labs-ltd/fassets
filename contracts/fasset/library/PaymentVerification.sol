@@ -59,7 +59,6 @@ library PaymentVerification {
         internal
     {
         require(_state.verifiedPayments[_paymentInfo.transactionHash] == 0, "payment already verified");
-        // TODO: remove pending challenge
         markPaymentVerified(_state, _paymentInfo.transactionHash);
     }
     

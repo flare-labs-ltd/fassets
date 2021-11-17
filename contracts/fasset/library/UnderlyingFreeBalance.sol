@@ -11,7 +11,7 @@ import "./PaymentVerification.sol";
 import "./AssetManagerState.sol";
 
 
-library AgentUnderlyingFunds {
+library UnderlyingFreeBalance {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;

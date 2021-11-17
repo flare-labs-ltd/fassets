@@ -3,12 +3,14 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/lib/SafePctX.sol";
+import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
 
 
 library Agents {
     using SafeMath for uint256;
     using SafePctX for uint256;
+    using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     
     enum AgentStatus {
         EMPTY,
@@ -82,14 +84,29 @@ library Agents {
         
     function createAgent(
         AssetManagerState.State storage _state, 
-        address _agentVault
+        address _agentVault,
+        bytes32 _underlyingAddress
     ) 
         internal 
     {
+        // TODO: create vault here instead of passing _agentVault?
         Agent storage agent = _state.agents[_agentVault];
         require(agent.status == AgentStatus.EMPTY, "agent already exists");
         agent.status = AgentStatus.NORMAL;
         agent.minCollateralRatioBIPS = _state.settings.initialMinCollateralRatioBIPS;
+        setUnderlyingAddress(_state, _agentVault, _underlyingAddress);
+    }
+    
+    function setUnderlyingAddress(
+        AssetManagerState.State storage _state, 
+        address _agentVault,
+        bytes32 _underlyingAddress
+    )
+        internal
+    {
+        require(_underlyingAddress != 0, "zero underlying address");
+        _state.underlyingAddressOwnership.claim(_agentVault, _underlyingAddress);
+        _state.agents[_agentVault].underlyingAddress = _underlyingAddress;
     }
     
     function getAgent(

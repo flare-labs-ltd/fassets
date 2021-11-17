@@ -9,7 +9,7 @@ import "../interface/IAgentVault.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentVerification.sol";
 import "./Agents.sol";
-import "./AgentUnderlyingFunds.sol";
+import "./UnderlyingFreeBalance.sol";
 import "./AssetManagerState.sol";
 
 
@@ -98,7 +98,7 @@ library Redemption {
         Agents.Agent storage agent = _state.agents[request.agentVault];
         agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
         // TODO: remove pending challenge
-        AgentUnderlyingFunds.updateFreeBalance(_state, request.agentVault, _paymentInfo.sourceAddress, 
+        UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, _paymentInfo.sourceAddress, 
             request.underlyingFeeUBA, _paymentInfo.gasUBA, _currentUnderlyingBlock);
         delete _state.redemptionRequests[_redemptionRequestId];
     }
@@ -126,7 +126,7 @@ library Redemption {
         Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[request.agentUnderlyingAddress];
         uaf.mintedLots = SafeMath64.add64(uaf.mintedLots, request.lots);
         uint256 liquidatedUBA = uint256(request.lots).mul(_state.settings.lotSizeUBA);
-        AgentUnderlyingFunds.increaseFreeBalance(_state, request.agentVault, request.agentUnderlyingAddress, 
+        UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, request.agentUnderlyingAddress, 
             liquidatedUBA);
         delete _state.redemptionRequests[_redemptionRequestId];
     }
