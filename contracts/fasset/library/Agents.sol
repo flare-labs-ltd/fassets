@@ -101,8 +101,47 @@ library Agents {
         internal
     {
         require(_underlyingAddress != 0, "zero underlying address");
+        Agent storage agent = _state.agents[_agentVault];
+        bytes32 oldUnderlyingAddress = agent.underlyingAddress;
+        if (oldUnderlyingAddress == _underlyingAddress) return;  // no change
+        // claim the address to make sure no other agent is using it
         _state.underlyingAddressOwnership.claim(_agentVault, _underlyingAddress);
-        _state.agents[_agentVault].underlyingAddress = _underlyingAddress;
+        // set new address
+        agent.underlyingAddress = _underlyingAddress;
+        // if the old underlying address has no minted lots,
+        // then we can safely release it - no need for outpayment tracking
+        if (oldUnderlyingAddress != 0 && agent.perAddressFunds[oldUnderlyingAddress].mintedLots == 0) {
+            delete agent.perAddressFunds[oldUnderlyingAddress];
+        }
+    }
+    
+    function allocateMintedLots(
+        Agent storage _agent,
+        bytes32 _underlyingAddress,
+        uint64 _lots
+    )
+        internal
+    {
+        _agent.mintedLots = SafeMath64.add64(_agent.mintedLots, _lots);
+        Agents.UnderlyingFunds storage uaf = _agent.perAddressFunds[_underlyingAddress];
+        uaf.mintedLots = SafeMath64.add64(uaf.mintedLots, _lots);
+    }
+
+    function releaseMintedLots(
+        Agent storage _agent,
+        bytes32 _underlyingAddress,
+        uint64 _lots
+    )
+        internal
+    {
+        _agent.mintedLots = SafeMath64.sub64(_agent.mintedLots, _lots, "ERROR: not enough minted lots");
+        Agents.UnderlyingFunds storage uaf = _agent.perAddressFunds[_underlyingAddress];
+        uaf.mintedLots = SafeMath64.sub64(uaf.mintedLots, _lots, "ERROR: underlying minted lots");
+        // if the underlying address has no minted lots any more and it is not used for new mintings,
+        // then we can safely release it - no need for outpayment tracking
+        if (uaf.mintedLots == 0 && _underlyingAddress != _agent.underlyingAddress) {
+            delete _agent.perAddressFunds[_underlyingAddress];
+        }
     }
     
     function getAgent(

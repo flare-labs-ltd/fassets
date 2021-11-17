@@ -114,7 +114,7 @@ library Redemption {
             request.agentUnderlyingAddress, request.redeemerUnderlyingAddress,
             paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
         Agents.Agent storage agent = _state.agents[request.agentVault];
-        agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
+        Agents.releaseMintedLots(agent, request.agentUnderlyingAddress, request.lots);
         // TODO: remove pending challenge
         UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, _paymentInfo.sourceAddress, 
             request.underlyingFeeUBA, _paymentInfo.gasUBA, _currentUnderlyingBlock);
@@ -143,9 +143,7 @@ library Redemption {
         IAgentVault(request.agentVault).liquidate(request.redeemer, amountWei);
         // release agent collateral and underlying collateral
         Agents.Agent storage agent = _state.agents[request.agentVault];
-        agent.mintedLots = SafeMath64.sub64(agent.mintedLots, request.lots, "ERROR: not enough minted lots");
-        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[request.agentUnderlyingAddress];
-        uaf.mintedLots = SafeMath64.add64(uaf.mintedLots, request.lots);
+        Agents.releaseMintedLots(agent, request.agentUnderlyingAddress, request.lots);
         uint256 liquidatedUBA = uint256(request.lots).mul(_state.settings.lotSizeUBA);
         UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, request.agentUnderlyingAddress, 
             liquidatedUBA);

@@ -47,9 +47,7 @@ library Minting {
         } else {
             agent.oldReservedLots = SafeMath64.sub64(agent.oldReservedLots, lots, "invalid reserved lots");
         }
-        agent.mintedLots = SafeMath64.add64(agent.mintedLots, lots);
-        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[underlyingAddress];
-        uaf.mintedLots = SafeMath64.add64(uaf.mintedLots, lots);
+        Agents.allocateMintedLots(agent, underlyingAddress, lots);
         UnderlyingFreeBalance.increaseFreeBalance(_state, crt.agentVault, underlyingAddress, crt.underlyingFeeUBA);
         emit MintingExecuted(agentVault, _crtId, redemptionTicketId, underlyingAddress, lots, crt.underlyingFeeUBA);
         delete _state.crts[_crtId];
