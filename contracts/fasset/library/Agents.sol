@@ -12,8 +12,14 @@ library Agents {
     using SafePctX for uint256;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     
+    enum AgentType {
+        NONE,
+        AGENT_100,
+        AGENT_0,
+        SELF_MINTING
+    }
+    
     enum AgentStatus {
-        EMPTY,
         NORMAL,
         LIQUIDATION
     }
@@ -75,22 +81,25 @@ library Agents {
         uint8 availabilityEnterCountMod2;
         
         // Current status of the agent (changes for liquidation).
+        AgentType agentType;
         AgentStatus status;
     }
     
     function createAgent(
         AssetManagerState.State storage _state, 
+        AgentType _agentType,
         address _agentVault,
-        bytes32 _underlyingAddress
+        bytes32 _initialUnderlyingAddress
     ) 
         internal 
     {
         // TODO: create vault here instead of passing _agentVault?
         Agent storage agent = _state.agents[_agentVault];
-        require(agent.status == AgentStatus.EMPTY, "agent already exists");
+        require(agent.agentType == AgentType.NONE, "agent already exists");
+        agent.agentType = _agentType;
         agent.status = AgentStatus.NORMAL;
         agent.minCollateralRatioBIPS = _state.settings.initialMinCollateralRatioBIPS;
-        setUnderlyingAddress(_state, _agentVault, _underlyingAddress);
+        setUnderlyingAddress(_state, _agentVault, _initialUnderlyingAddress);
     }
     
     function setUnderlyingAddress(
