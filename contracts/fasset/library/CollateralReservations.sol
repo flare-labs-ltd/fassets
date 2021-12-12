@@ -2,9 +2,9 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
-import "../../utils/lib/SafeMathX.sol";
-import "../../utils/lib/SafePctX.sol";
+import "../../utils/lib/SafeBips.sol";
 import "./Agents.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
@@ -12,16 +12,16 @@ import "./AssetManagerState.sol";
 
 library CollateralReservations {
     using SafeMath for uint256;
-    using SafePctX for uint256;
+    using SafeBips for uint256;
     using Agents for Agents.Agent;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     
     struct CollateralReservation {
         bytes32 agentUnderlyingAddress;
         bytes32 minterUnderlyingAddress;
-        uint192 underlyingValueUBA;
+        uint128 underlyingValueUBA;
         uint64 firstUnderlyingBlock;
-        uint192 underlyingFeeUBA;
+        uint128 underlyingFeeUBA;
         uint64 lastUnderlyingBlock;
         address agentVault;
         uint64 lots;
@@ -72,8 +72,8 @@ library CollateralReservations {
         _state.crts[crtId] = CollateralReservation({
             agentUnderlyingAddress: agent.underlyingAddress,
             minterUnderlyingAddress: _minterUnderlyingAddress,
-            underlyingValueUBA: SafeMathX.toUint192(underlyingValueUBA),
-            underlyingFeeUBA: SafeMathX.toUint192(underlyingFeeUBA),
+            underlyingValueUBA: SafeCast.toUint128(underlyingValueUBA),
+            underlyingFeeUBA: SafeCast.toUint128(underlyingFeeUBA),
             agentVault: _agentVault,
             lots: _lots,
             minter: _minter,

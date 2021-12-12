@@ -2,14 +2,14 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "../../utils/lib/SafePctX.sol";
+import "../../utils/lib/SafeBips.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
 
 
 library Agents {
     using SafeMath for uint256;
-    using SafePctX for uint256;
+    using SafeBips for uint256;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     
     enum AgentType {
@@ -28,13 +28,13 @@ library Agents {
         // The amount of underlying funds that may be withdrawn by the agent
         // (fees, self-close and, amount released by liquidation).
         // May become negative (due to high underlying gas costs), in which case topup is required.
-        int256 freeBalanceUBA;
+        int64 freeBalanceAMG;
         
-        // The number of lots of fassets backed by this this underlying address
+        // The amount of fassets backed by this this underlying address
         // (there may be multiple underlying addresses for an agent).
-        uint64 mintedLots;
+        uint64 mintedAMG;
         
-        // When freeBalanceUBA becomes negative, agent has until this block to perform topup,
+        // When freeBalanceAMG becomes negative, agent has until this block to perform topup,
         // otherwise liquidation can be triggered by a challenger.
         uint64 lastUnderlyingBlockForTopup;
     }
@@ -50,11 +50,20 @@ library Agents {
         // Type: mapping underlyingAddress => Agents.UnderlyingFunds
         mapping(bytes32 => UnderlyingFunds) perAddressFunds;
         
+        // For agents to withdraw NAT collateral, they must first announce it and then wait 
+        // withdrawalAnnouncementSeconds. 
+        // The announced amount cannt be used as collateral for minting during that time.
+        // This makes sure that agents cannot just remove all collateral if they are challenged.
+        uint128 withdrawalAnnouncedNATWei;
+        
+        // The time when withdrawal was announced.
+        uint64 withdrawalAnnouncedAt;
+        
         // Number of lots locked by collateral reservation.
-        uint64 reservedLots;
+        uint64 reservedAMG;
         
         // Number of lots of collateral for minted fassets.
-        uint64 mintedLots;
+        uint64 mintedAMG;
         
         // Minimum native collateral ratio required for this agent. Changes during the liquidation.
         uint32 minCollateralRatioBIPS;
@@ -76,7 +85,7 @@ library Agents {
         // We simplify by only allowing one change before the old CRs are executed or cleared.
         // Therefore we store relevant old values here and match old/new by 0/1 flag 
         // named `availabilityEnterCountMod2` here and in CR.
-        uint64 oldReservedLots;
+        uint64 oldReservedAMG;
         uint32 oldMintingCollateralRatioBIPS;
         uint8 availabilityEnterCountMod2;
         
@@ -153,6 +162,19 @@ library Agents {
         }
     }
     
+    function announceWithdrawal(
+        AssetManagerState.State storage _state, 
+        address _agentVault,
+        uint128 _valueNATWei
+    )
+        internal
+    {
+        Agent storage agent = _state.agents[_agentVault];
+        require(_valueNATWei < freeCollateralWei(agent, _fullCollateral, _lotSizeWei),
+            "withdrawal: value too high");
+        agent.withdrawalAnnouncedNATWei = _valueNATWei;
+    }
+    
     function getAgent(
         AssetManagerState.State storage _state, 
         address _agentVault
@@ -196,6 +218,7 @@ library Agents {
         internal view 
         returns (uint256) 
     {
+        // reservedCollateral = _agent.reservedAMG * 
         // reserved collateral is calculated at minting ratio
         uint256 reservedCollateral = uint256(_agent.reservedLots).mul(_lotSizeWei)
             .mulBips(_agent.mintingCollateralRatioBIPS);

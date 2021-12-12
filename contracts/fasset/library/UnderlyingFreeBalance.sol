@@ -3,8 +3,8 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
-import "../../utils/lib/SafeMathX.sol";
 import "./Agents.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./PaymentVerification.sol";
@@ -37,8 +37,8 @@ library UnderlyingFreeBalance {
         Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
         // assert((uaf.freeBalanceUBA >= 0) == (uaf.lastUnderlyingBlockForTopup == 0));
         int256 newBalance = uaf.freeBalanceUBA
-            .add(SafeMathX.toInt256(_balanceAdd))
-            .sub(SafeMathX.toInt256(_balanceSub));
+            .add(SafeCast.toInt256(_balanceAdd))
+            .sub(SafeCast.toInt256(_balanceSub));
         uaf.freeBalanceUBA = newBalance;
         if (newBalance < 0) {
             if (uaf.lastUnderlyingBlockForTopup == 0) {
@@ -46,7 +46,7 @@ library UnderlyingFreeBalance {
                 uaf.lastUnderlyingBlockForTopup =
                     SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForTopup);
             }
-            uint256 topup = SafeMathX.toUint256(-newBalance);   // required topup is negative balance
+            uint256 topup = SafeCast.toUint256(-newBalance);   // required topup is negative balance
             emit TopupRequired(_agentVault, _underlyingAddress, topup, uaf.lastUnderlyingBlockForTopup);
         } else if (uaf.lastUnderlyingBlockForTopup != 0) {
             uaf.lastUnderlyingBlockForTopup = 0;

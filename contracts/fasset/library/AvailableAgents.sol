@@ -17,13 +17,14 @@ library AvailableAgents {
         address agentVault;
         uint64 exitAnnouncedAt;
     }
-        
+
     struct AvailableAgentInfo {
         address agentVault;
-        uint256 feeBIPS;
-        uint256 mintingCollateralRatioBIPS;
-        // Note: can change any time due to price changes or reservation/minting/redemption
-        uint256 freeCollateralLots;
+        uint32 feeBIPS;
+        uint32 mintingCollateralRatioBIPS;
+        // Note: freeCollateralLots is only informative since it can can change any time
+        // due to price changes, reservation, minting, redemption, or even lot size change
+        uint64 freeCollateralLots;
     }   
      
     event AgentAvailable(

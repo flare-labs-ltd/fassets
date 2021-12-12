@@ -6,17 +6,10 @@ library SafeMath128 {
     uint256 internal constant MAX_UINT128 = type(uint128).max;
     int256 internal constant MAX_INT128 = type(int128).max;
     
-    // downcasting from 256 bit
-    
-    function toUint128(uint256 a) internal pure returns (uint128) {
-        require(a <= MAX_UINT128, "SafeMath128: conversion overflow");
-        return uint128(a);
-    }
-
-    // signed/unsigned conversion
+    // 128 bit signed/unsigned conversion
     
     function toUint128(int256 a) internal pure returns (uint128) {
-        require(a >= 0, "SafeMath128: negative unsigned");
+        require(a >= 0, "SafeMath128: negative value");
         require(a <= int256(MAX_UINT128), "SafeMath128: conversion overflow");
         return uint128(a);
     }

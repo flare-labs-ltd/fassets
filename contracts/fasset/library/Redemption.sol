@@ -2,9 +2,9 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
-import "../../utils/lib/SafePctX.sol";
-import "../../utils/lib/SafeMathX.sol";
+import "../../utils/lib/SafeBips.sol";
 import "../interface/IAgentVault.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentVerification.sol";
@@ -15,19 +15,19 @@ import "./AssetManagerState.sol";
 
 library Redemption {
     using SafeMath for uint256;
-    using SafePctX for uint256;
+    using SafeBips for uint256;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentVerification for PaymentVerification.State;
     
     struct RedemptionRequest {
         bytes32 agentUnderlyingAddress;
         bytes32 redeemerUnderlyingAddress;
-        uint192 underlyingValueUBA;
+        uint128 underlyingValueUBA;
         uint64 firstUnderlyingBlock;
-        uint192 underlyingFeeUBA;
+        uint128 underlyingFeeUBA;
         uint64 lastUnderlyingBlock;
-        address agentVault;
         uint64 lots;
+        address agentVault;
         address redeemer;
     }
 
@@ -80,9 +80,9 @@ library Redemption {
         _state.redemptionRequests[requestId] = RedemptionRequest({
             agentUnderlyingAddress: ticket.underlyingAddress,
             redeemerUnderlyingAddress: _redeemerUnderlyingAddress,
-            underlyingValueUBA: SafeMathX.toUint192(redeemedValueUBA),
+            underlyingValueUBA: SafeCast.toUint128(redeemedValueUBA),
             firstUnderlyingBlock: _currentUnderlyingBlock,
-            underlyingFeeUBA: SafeMathX.toUint192(_state.settings.redemptionFeeUBA),
+            underlyingFeeUBA: SafeCast.toUint128(_state.settings.redemptionFeeUBA),
             lastUnderlyingBlock: lastUnderlyingBlock,
             redeemer: _redeemer,
             agentVault: ticket.agentVault,

@@ -6,22 +6,10 @@ library SafeMath64 {
     uint256 internal constant MAX_UINT64 = type(uint64).max;
     int256 internal constant MAX_INT64 = type(int64).max;
     
-    // downcasting from 256 or 128 bit
-    
-    function toUint64(uint256 a) internal pure returns (uint64) {
-        require(a <= MAX_UINT64, "SafeMath64: conversion overflow");
-        return uint64(a);
-    }
-
-    function toUint64(uint128 a) internal pure returns (uint64) {
-        require(a <= MAX_UINT64, "SafeMath64: conversion overflow");
-        return uint64(a);
-    }
-
-    // signed/unsigned conversion
+    // 64 bit signed/unsigned conversion
     
     function toUint64(int256 a) internal pure returns (uint64) {
-        require(a >= 0, "SafeMath64: negative unsigned");
+        require(a >= 0, "SafeMath64: negative value");
         require(a <= int256(MAX_UINT64), "SafeMath64: conversion overflow");
         return uint64(a);
     }

@@ -34,8 +34,12 @@ library AssetManagerSettings {
         // redemption fee, so it should be very rare.
         uint64 underlyingBlocksForTopup;
 
-        // Lot size in underlying currency base amount (UBA, e.g. wei or satoshi).
-        uint256 lotSizeUBA;                              // in underlying asset wei/satoshi
+        // the granularity in which lots are measured = the value of AMG (asset minting granularity) in UBA
+        // can only be changed via redeploy of AssetManager
+        uint64 assetMintingGranularityUBA;
+        
+        // Lot size in asset minting granularity. May change, which affects subsequent mintings and redemptions.
+        uint64 lotSizeAMG;
         
         // Redemption fee in underlying currency base amount (UBA).
         uint256 redemptionFeeUBA;
