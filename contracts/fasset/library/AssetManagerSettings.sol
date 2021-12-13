@@ -3,6 +3,16 @@ pragma solidity 0.7.6;
 
 library AssetManagerSettings {
     struct Settings {
+        // Asset unit value (e.g. 1 BTC or 1 ETH) in UBA = 10 ** assetToken.decimals()
+        uint64 assetUnitUBA;
+        
+        // the granularity in which lots are measured = the value of AMG (asset minting granularity) in UBA
+        // can only be changed via redeploy of AssetManager
+        uint64 assetMintingGranularityUBA;
+        
+        // Lot size in asset minting granularity. May change, which affects subsequent mintings and redemptions.
+        uint64 lotSizeAMG;
+        
         // Minimum collateral ratio for new agents.
         uint16 initialMinCollateralRatioBIPS;
         
@@ -34,13 +44,6 @@ library AssetManagerSettings {
         // redemption fee, so it should be very rare.
         uint64 underlyingBlocksForTopup;
 
-        // the granularity in which lots are measured = the value of AMG (asset minting granularity) in UBA
-        // can only be changed via redeploy of AssetManager
-        uint64 assetMintingGranularityUBA;
-        
-        // Lot size in asset minting granularity. May change, which affects subsequent mintings and redemptions.
-        uint64 lotSizeAMG;
-        
         // Redemption fee in underlying currency base amount (UBA).
         uint256 redemptionFeeUBA;
         
@@ -53,5 +56,9 @@ library AssetManagerSettings {
         // to allow the agent to respond with legal payment report (e.g. redemption payment; for fee withdrawal
         // there needs to be prior announcement.)
         uint64 paymentChallengeWaitMinSeconds;
+
+        // Agent has to announce any collateral withdrawal and then wait for at least withdrawalWaitMinSeconds.
+        // This prevents challenged agent to remove all collateral before challenge can be proved.
+        uint64 withdrawalWaitMinSeconds;
     }
 }

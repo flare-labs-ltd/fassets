@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../utils/lib/SafeBips.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
+import "./Conversion.sol";
 
 
 library Agents {
@@ -23,18 +24,18 @@ library Agents {
         NORMAL,
         LIQUIDATION
     }
-
+    
     struct UnderlyingFunds {
         // The amount of underlying funds that may be withdrawn by the agent
         // (fees, self-close and, amount released by liquidation).
         // May become negative (due to high underlying gas costs), in which case topup is required.
-        int64 freeBalanceAMG;
+        int128 freeBalanceUBA;
         
         // The amount of fassets backed by this this underlying address
         // (there may be multiple underlying addresses for an agent).
         uint64 mintedAMG;
         
-        // When freeBalanceAMG becomes negative, agent has until this block to perform topup,
+        // When freeBalanceUBA becomes negative, agent has until this block to perform topup,
         // otherwise liquidation can be triggered by a challenger.
         uint64 lastUnderlyingBlockForTopup;
     }
@@ -165,14 +166,46 @@ library Agents {
     function announceWithdrawal(
         AssetManagerState.State storage _state, 
         address _agentVault,
-        uint128 _valueNATWei
+        uint256 _valueNATWei,
+        uint256 _fullCollateral, 
+        uint256 _amgToNATWeiPrice
     )
         internal
     {
         Agent storage agent = _state.agents[_agentVault];
-        require(_valueNATWei < freeCollateralWei(agent, _fullCollateral, _lotSizeWei),
-            "withdrawal: value too high");
+        if (_valueNATWei > agent.withdrawalAnnouncedNATWei) {
+            // announcement increased - must check there is enough free collateral and then lock it
+            // in this case the wait to withdrawal restarts from this moment
+            uint256 increase = agent.withdrawalAnnouncedNATWei - _valueNATWei;
+            require(increase < freeCollateralWei(agent, _fullCollateral, _amgToNATWeiPrice),
+                "withdrawal: value too high");
+            agent.withdrawalAnnouncedAt = block.timestamp;
+        } else {
+            // announcement decreased or canceled - might be needed to get agent out of CCB
+            // if value is 0, we cancel announcement completely (i.e. set announcement time to 0)
+            // otherwise, for decreasing announcement, we can safely leave announcement time unchanged
+            if (_valueNATWei == 0) {
+                agent.withdrawalAnnouncedAt = 0;
+            }
+        }
         agent.withdrawalAnnouncedNATWei = _valueNATWei;
+    }
+    
+    function withdrawalExecuted(
+        AssetManagerState.State storage _state, 
+        address _agentVault,
+        uint256 _valueNATWei
+    )
+        internal
+    {
+        Agent storage agent = _state.agents[_agentVault];
+        require(agent.withdrawalAnnouncedAt != 0 &&
+            block.timestamp <= agent.withdrawalAnnouncedAt + _state.settings.withdrawalWaitMinSeconds,
+            "withdrawal: not announced");
+        require(_valueNATWei <= agent.withdrawalAnnouncedNATWei,
+            "withdrawal: more than announced");
+        agent.withdrawalAnnouncedAt = 0;
+        agent.withdrawalAnnouncedNATWei = 0;
     }
     
     function getAgent(
@@ -188,56 +221,62 @@ library Agents {
     function freeCollateralLots(
         Agents.Agent storage _agent, 
         uint256 _fullCollateral, 
-        uint256 _lotSizeWei
+        uint256 _lotSizeAMG,
+        uint256 _amgToNATWeiPrice
     )
         internal view 
         returns (uint256) 
     {
-        uint256 freeCollateral = freeCollateralWei(_agent, _fullCollateral, _lotSizeWei);
-        uint256 lotCollateral = _lotSizeWei.mulBips(_agent.mintingCollateralRatioBIPS);
+        uint256 freeCollateral = freeCollateralWei(_agent, _fullCollateral, _amgToNATWeiPrice);
+        uint256 lotCollateral = mintingLotCollateralWei(_lotSizeAMG, _amgToNATWeiPrice);
         return freeCollateral.div(lotCollateral);
     }
 
     function freeCollateralWei(
         Agents.Agent storage _agent, 
         uint256 _fullCollateral, 
-        uint256 _lotSizeWei
+        uint256 _amgToNATWeiPrice
     )
         internal view 
         returns (uint256) 
     {
-        uint256 lockedCollateral = lockedCollateralWei(_agent, _lotSizeWei);
+        uint256 lockedCollateral = lockedCollateralWei(_agent, _amgToNATWeiPrice);
         (, uint256 freeCollateral) = _fullCollateral.trySub(lockedCollateral);
         return freeCollateral;
     }
     
     function lockedCollateralWei(
         Agents.Agent storage _agent, 
-        uint256 _lotSizeWei
+        uint256 _amgToNATWeiPrice
     )
         internal view 
         returns (uint256) 
     {
         // reservedCollateral = _agent.reservedAMG * 
         // reserved collateral is calculated at minting ratio
-        uint256 reservedCollateral = uint256(_agent.reservedLots).mul(_lotSizeWei)
+        uint256 reservedCollateral = Conversion.convertAmgToWei(_agent.reservedAMG, _amgToNATWeiPrice)
             .mulBips(_agent.mintingCollateralRatioBIPS);
         // old reserved collateral (from before agent exited and re-entered minting queue), at old minting ratio
-        uint256 oldReservedCollateral = uint256(_agent.oldReservedLots).mul(_lotSizeWei)
+        uint256 oldReservedCollateral = Conversion.convertAmgToWei(_agent.oldReservedAMG, _amgToNATWeiPrice)
             .mulBips(_agent.oldMintingCollateralRatioBIPS);
         // minted collateral is calculated at minimal ratio
-        uint256 mintedCollateral = uint256(_agent.mintedLots).mul(_lotSizeWei)
+        uint256 mintedCollateral = Conversion.convertAmgToWei(_agent.mintedAMG, _amgToNATWeiPrice)
             .mulBips(_agent.minCollateralRatioBIPS);
-        return reservedCollateral.add(oldReservedCollateral).add(mintedCollateral);
+        return reservedCollateral
+            .add(oldReservedCollateral)
+            .add(mintedCollateral)
+            .add(_agent.withdrawalAnnouncedNATWei);
     }
     
     function mintingLotCollateralWei(
         Agents.Agent storage _agent, 
-        uint256 _lotSizeWei
+        uint256 _lotSizeAMG,
+        uint256 _amgToNATWeiPrice
     ) 
         internal view 
         returns (uint256) 
     {
-        return _lotSizeWei.mulBips(_agent.mintingCollateralRatioBIPS);
+        return Conversion.convertAmgToWei(_lotSizeAMG, _amgToNATWeiPrice)
+            .mulBips(_agent.mintingCollateralRatioBIPS);
     }
 }

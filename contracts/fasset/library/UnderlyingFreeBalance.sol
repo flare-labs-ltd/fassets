@@ -36,14 +36,14 @@ library UnderlyingFreeBalance {
         Agents.Agent storage agent = _state.agents[_agentVault];
         Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
         // assert((uaf.freeBalanceUBA >= 0) == (uaf.lastUnderlyingBlockForTopup == 0));
-        int256 newBalance = uaf.freeBalanceUBA
+        int256 newBalance = int256(uaf.freeBalanceUBA)
             .add(SafeCast.toInt256(_balanceAdd))
             .sub(SafeCast.toInt256(_balanceSub));
-        uaf.freeBalanceUBA = newBalance;
+        uaf.freeBalanceUBA = SafeCast.toInt128(newBalance);
         if (newBalance < 0) {
             if (uaf.lastUnderlyingBlockForTopup == 0) {
                 require(_currentUnderlyingBlock != 0, "cannot set last topup block");
-                uaf.lastUnderlyingBlockForTopup =
+                uaf.lastUnderlyingBlockForTopup = 
                     SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForTopup);
             }
             uint256 topup = SafeCast.toUint256(-newBalance);   // required topup is negative balance

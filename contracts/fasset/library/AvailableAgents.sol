@@ -18,13 +18,14 @@ library AvailableAgents {
         uint64 exitAnnouncedAt;
     }
 
+    // only used in memory - no packing
     struct AvailableAgentInfo {
         address agentVault;
-        uint32 feeBIPS;
-        uint32 mintingCollateralRatioBIPS;
-        // Note: freeCollateralLots is only informative since it can can change any time
+        uint256 feeBIPS;
+        uint256 mintingCollateralRatioBIPS;
+        // Note: freeCollateralLots is only informative since it can can change at any time
         // due to price changes, reservation, minting, redemption, or even lot size change
-        uint64 freeCollateralLots;
+        uint256 freeCollateralLots;
     }   
      
     event AgentAvailable(
@@ -54,7 +55,7 @@ library AvailableAgents {
         require(agent.status == Agents.AgentStatus.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
         require(_mintingCollateralRatioBIPS >= agent.minCollateralRatioBIPS, "collateral ratio too small");
-        require(agent.oldReservedLots == 0, "re-entering again too soon");
+        require(agent.oldReservedAMG == 0, "re-entering again too soon");
         // set parameters
         agent.feeBIPS = _feeBIPS; 
         agent.mintingCollateralRatioBIPS = _mintingCollateralRatioBIPS;
