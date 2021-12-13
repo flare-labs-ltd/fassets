@@ -8,8 +8,7 @@
       "typeRoots": [
         "test/types",
         "node_modules/flare-smart-contracts/test/types",
-        "node_modules/@types",
-        "airdrop/utils/airdropTypes.tss"
+        "node_modules/@types"
       ]
     },
     "include": [
