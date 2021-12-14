@@ -99,6 +99,11 @@ library Agents {
         AgentStatus status;
     }
     
+    event AddressDustChanged(
+        address indexed agentVault,
+        bytes32 underlyingAddress,
+        uint256 dustUBA);
+        
     function createAgent(
         AssetManagerState.State storage _state, 
         AgentType _agentType,
@@ -131,40 +136,40 @@ library Agents {
         _state.underlyingAddressOwnership.claim(_agentVault, _underlyingAddress);
         // set new address
         agent.underlyingAddress = _underlyingAddress;
-        // if the old underlying address isn't backing any minted assets,
-        // then we can safely release it - no need for outpayment tracking
-        if (oldUnderlyingAddress != 0 && agent.perAddressFunds[oldUnderlyingAddress].mintedAMG == 0) {
-            delete agent.perAddressFunds[oldUnderlyingAddress];
+        // if the old underlying address isn't backing any minted assets, we release it now
+        // otherwise it will be released when the last lot is redeemed or liquidated
+        if (oldUnderlyingAddress != 0) {
+            _deleteUnderlyingAddressIfUnused(agent, oldUnderlyingAddress);
         }
     }
     
     function allocateMintedAssets(
-        Agent storage _agent,
+        AssetManagerState.State storage _state, 
+        address _agentVault,
         bytes32 _underlyingAddress,
         uint64 _valueAMG
     )
         internal
     {
-        _agent.mintedAMG = SafeMath64.add64(_agent.mintedAMG, _valueAMG);
-        Agents.UnderlyingFunds storage uaf = _agent.perAddressFunds[_underlyingAddress];
+        Agent storage agent = _state.agents[_agentVault];
+        agent.mintedAMG = SafeMath64.add64(agent.mintedAMG, _valueAMG);
+        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
         uaf.mintedAMG = SafeMath64.add64(uaf.mintedAMG, _valueAMG);
     }
 
     function releaseMintedAssets(
-        Agent storage _agent,
+        AssetManagerState.State storage _state, 
+        address _agentVault,
         bytes32 _underlyingAddress,
         uint64 _valueAMG
     )
         internal
     {
-        _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "ERROR: not enough minted");
-        Agents.UnderlyingFunds storage uaf = _agent.perAddressFunds[_underlyingAddress];
+        Agent storage agent = _state.agents[_agentVault];
+        agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "ERROR: not enough minted");
+        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
         uaf.mintedAMG = SafeMath64.sub64(uaf.mintedAMG, _valueAMG, "ERROR: underlying minted");
-        // if the underlying address isn't backing any f-assets any more and it is not used for new mintings,
-        // then we can safely release it - no need for outpayment tracking
-        if (uaf.mintedAMG == 0 && _underlyingAddress != _agent.underlyingAddress) {
-            delete _agent.perAddressFunds[_underlyingAddress];
-        }
+        _deleteUnderlyingAddressIfUnused(agent, _underlyingAddress);
     }
     
     function announceWithdrawal(
@@ -194,6 +199,19 @@ library Agents {
         }
         agent.withdrawalAnnouncedNATWei = SafeCast.toUint128(_valueNATWei);
     }
+
+    function increaseDust(
+        AssetManagerState.State storage _state,
+        address _agentVault,
+        bytes32 _underlyingAddress,
+        uint64 _dustIncreaseAMG
+    )
+        internal
+    {
+        Agents.UnderlyingFunds storage uaf = getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
+        uaf.dustAMG = SafeMath64.add64(uaf.dustAMG, _dustIncreaseAMG);
+        emit AddressDustChanged(_agentVault, _underlyingAddress, uaf.dustAMG);
+    }
     
     function withdrawalExecuted(
         AssetManagerState.State storage _state, 
@@ -220,6 +238,18 @@ library Agents {
         returns (Agent storage) 
     {
         return _state.agents[_agentVault];
+    }
+    
+    function getUnderlyingFunds(
+        AssetManagerState.State storage _state, 
+        address _agentVault,
+        bytes32 _underlyingAddress
+    )
+        internal view
+        returns (Agents.UnderlyingFunds storage)
+    {
+        Agents.Agent storage agent = _state.agents[_agentVault];
+        return agent.perAddressFunds[_underlyingAddress];
     }
 
     function freeCollateralLots(
@@ -282,5 +312,19 @@ library Agents {
     {
         return Conversion.convertAmgToNATWei(_settings.lotSizeAMG, _amgToNATWeiPrice)
             .mulBips(_agent.mintingCollateralRatioBIPS);
+    }
+
+    function _deleteUnderlyingAddressIfUnused(
+        Agent storage _agent,
+        bytes32 _underlyingAddress
+    )
+        private
+    {
+        // if the underlying address isn't backing any f-assets any more and it is not used for new mintings,
+        // then we can safely release it - no need for outpayment tracking
+        Agents.UnderlyingFunds storage uaf = _agent.perAddressFunds[_underlyingAddress];
+        if (uaf.mintedAMG == 0 && _underlyingAddress != _agent.underlyingAddress) {
+            delete _agent.perAddressFunds[_underlyingAddress];
+        }
     }
 }

@@ -17,11 +17,6 @@ library UnderlyingFreeBalance {
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     using PaymentVerification for PaymentVerification.State;
 
-    event AddressDustChanged(
-        address indexed agentVault,
-        bytes32 underlyingAddress,
-        uint256 dustUBA);
-        
     event TopupRequired(
         address indexed agentVault,
         bytes32 underlyingAddress,
@@ -38,8 +33,7 @@ library UnderlyingFreeBalance {
     ) 
         internal
     {
-        Agents.Agent storage agent = _state.agents[_agentVault];
-        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
+        Agents.UnderlyingFunds storage uaf = Agents.getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
         // assert((uaf.freeBalanceUBA >= 0) == (uaf.lastUnderlyingBlockForTopup == 0));
         int256 newBalance = int256(uaf.freeBalanceUBA)
             .add(SafeCast.toInt256(_balanceAdd))
@@ -56,6 +50,7 @@ library UnderlyingFreeBalance {
         } else if (uaf.lastUnderlyingBlockForTopup != 0) {
             uaf.lastUnderlyingBlockForTopup = 0;
         }
+        // TODO: trigger liquidation if topup not paid in time
     }
 
     function increaseFreeBalance(
@@ -83,21 +78,5 @@ library UnderlyingFreeBalance {
         _state.underlyingAddressOwnership.check(_agentVault, _paymentInfo.sourceAddress);
         _state.paymentVerifications.verifyPayment(_paymentInfo);
         increaseFreeBalance(_state, _agentVault, _paymentInfo.targetAddress, _paymentInfo.valueUBA);
-    }
-    
-    // TODO: trigger liquidation if topup not paid in time
-    
-    function increaseDust(
-        AssetManagerState.State storage _state,
-        address _agentVault,
-        bytes32 _underlyingAddress,
-        uint64 _dustIncreaseAMG
-    )
-        internal
-    {
-        Agents.Agent storage agent = _state.agents[_agentVault];
-        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
-        uaf.dustAMG = SafeMath64.add64(uaf.dustAMG, _dustIncreaseAMG);
-        emit AddressDustChanged(_agentVault, _underlyingAddress, uaf.dustAMG);
     }
 }

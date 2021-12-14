@@ -111,8 +111,7 @@ library Redemption {
         _state.paymentVerifications.verifyPaymentDetails(_paymentInfo, 
             request.agentUnderlyingAddress, request.redeemerUnderlyingAddress,
             paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
-        Agents.Agent storage agent = _state.agents[request.agentVault];
-        Agents.releaseMintedAssets(agent, request.agentUnderlyingAddress, request.valueAMG);
+        Agents.releaseMintedAssets(_state, request.agentVault, request.agentUnderlyingAddress, request.valueAMG);
         // TODO: remove pending challenge
         UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, _paymentInfo.sourceAddress, 
             request.underlyingFeeUBA, _paymentInfo.gasUBA, _currentUnderlyingBlock);
@@ -140,8 +139,7 @@ library Redemption {
         // TODO: move out of library?
         IAgentVault(request.agentVault).liquidate(request.redeemer, amountWei);
         // release agent collateral and underlying collateral
-        Agents.Agent storage agent = _state.agents[request.agentVault];
-        Agents.releaseMintedAssets(agent, request.agentUnderlyingAddress, request.valueAMG);
+        Agents.releaseMintedAssets(_state, request.agentVault, request.agentUnderlyingAddress, request.valueAMG);
         uint256 liquidatedUBA = uint256(request.valueAMG).mul(_state.settings.assetMintingGranularityUBA);
         UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, request.agentUnderlyingAddress, 
             liquidatedUBA);
@@ -162,7 +160,7 @@ library Redemption {
         if (remainingAMG == 0) {
             _state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
         } else if (remainingAMG < _state.settings.lotSizeAMG) {   // dust created
-            UnderlyingFreeBalance.increaseDust(_state, ticket.agentVault, ticket.underlyingAddress, remainingAMG);
+            Agents.increaseDust(_state, ticket.agentVault, ticket.underlyingAddress, remainingAMG);
             _state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
         } else {
             ticket.valueAMG = remainingAMG;
