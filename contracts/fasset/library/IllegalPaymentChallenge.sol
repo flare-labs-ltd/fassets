@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./PaymentVerification.sol";
 import "./AssetManagerState.sol";
@@ -13,9 +14,11 @@ library IllegalPaymentChallenge {
     
     struct Challenge {
         address agentVault;
-        bytes32 underlyingSourceAddress;
-        address challenger;
         uint64 createdAtBlock;
+        bytes32 underlyingSourceAddress;
+        bytes32 transactionHash;
+        address challenger;
+        uint64 createdAt;
     }
     
     event IllegalPaymentChallenged(
@@ -42,8 +45,10 @@ library IllegalPaymentChallenge {
         _state.paymentChallenges[_transactionHash] = Challenge({
             agentVault: _agentVault,
             underlyingSourceAddress: _underlyingSourceAddress,
+            transactionHash: _transactionHash,
             challenger: _challenger,
-            createdAtBlock: SafeMath64.toUint64(block.number)
+            createdAtBlock: SafeCast.toUint64(block.number),
+            createdAt: SafeCast.toUint64(block.timestamp)
         });
         emit IllegalPaymentChallenged(_agentVault, _underlyingSourceAddress, _transactionHash);
     }
@@ -58,7 +63,7 @@ library IllegalPaymentChallenge {
         Challenge storage challenge = _state.paymentChallenges[paymentInfo.transactionHash];
         require(challenge.agentVault != address(0), "invalid transaction hash");
         require(challenge.challenger == _challenger, "only challenger");
-        require(uint256(challenge.createdAtBlock).add(_state.settings.paymentChallengeWaitMinSeconds) <= block.number,
+        require(uint256(challenge.createdAt).add(_state.settings.paymentChallengeWaitMinSeconds) <= block.timestamp,
             "confirmation too early");
         require(challenge.underlyingSourceAddress == paymentInfo.sourceAddress, "source address doesn't match");
         _state.paymentVerifications.verifyPayment(paymentInfo);

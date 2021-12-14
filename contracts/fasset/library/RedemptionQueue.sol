@@ -9,7 +9,7 @@ library RedemptionQueue {
     
     struct Ticket {
         address agentVault;
-        uint64 lots;
+        uint64 valueAMG;
         bytes32 underlyingAddress;
         uint64 prev;
         uint64 next;
@@ -33,7 +33,7 @@ library RedemptionQueue {
     function createRedemptionTicket(
         State storage _state, 
         address _agentVault,
-        uint64 _lots,
+        uint64 _valueAMG,
         bytes32 _underlyingAddress
     ) 
         internal 
@@ -44,7 +44,7 @@ library RedemptionQueue {
         // insert new ticket to the last place in global and agent redemption queues
         _state.tickets[ticketId] = Ticket({
             agentVault: _agentVault,
-            lots: _lots,
+            valueAMG: _valueAMG,
             underlyingAddress: _underlyingAddress,
             prev: _state.lastTicketId,
             next: 0,

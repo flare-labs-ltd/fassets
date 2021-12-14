@@ -39,6 +39,11 @@ library SafeMath64 {
         return uint64(c);
     }
 
+    function div64(uint64 a, uint64 b) internal pure returns (uint64) {
+        require(b != 0, "SafeMath64: div by zero");
+        return a / b;
+    }
+
     // // functions that add/subtract and cast result from 256 bits to 64 bits
         
     // function add64(uint256 a, uint256 b) internal pure returns (uint64) {

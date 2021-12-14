@@ -39,20 +39,20 @@ library SafeMath128 {
         return uint128(c);
     }
 
-    // functions that simultaneously add/sub and cast from 256 bits to 128 bits
+    // // functions that simultaneously add/sub and cast from 256 bits to 128 bits
         
-    function add128(uint256 a, uint256 b) internal pure returns (uint128) {
-        uint256 c = a + b;
-        require(a <= MAX_UINT128 && b <= MAX_UINT128 && c <= MAX_UINT128, "SafeMath128: addition overflow");
-        return uint128(c);
-    }
+    // function add128(uint256 a, uint256 b) internal pure returns (uint128) {
+    //     uint256 c = a + b;
+    //     require(a <= MAX_UINT128 && b <= MAX_UINT128 && c <= MAX_UINT128, "SafeMath128: addition overflow");
+    //     return uint128(c);
+    // }
 
-    function sub128(uint256 a, uint256 b, string memory message) internal pure returns (uint128) {
-        require(a >= b, message);
-        uint256 c = a - b;
-        require(c <= MAX_UINT128, "SafeMath128: sub above 128bit");
-        return uint128(c);
-    }
+    // function sub128(uint256 a, uint256 b, string memory message) internal pure returns (uint128) {
+    //     require(a >= b, message);
+    //     uint256 c = a - b;
+    //     require(c <= MAX_UINT128, "SafeMath128: sub above 128bit");
+    //     return uint128(c);
+    // }
 
     // cheaper version of safe mulDiv - no need for handling uint256 overflow
     

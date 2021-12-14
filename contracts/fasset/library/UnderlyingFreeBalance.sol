@@ -16,7 +16,12 @@ library UnderlyingFreeBalance {
     using SignedSafeMath for int256;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     using PaymentVerification for PaymentVerification.State;
-    
+
+    event AddressDustChanged(
+        address indexed agentVault,
+        bytes32 underlyingAddress,
+        uint256 dustUBA);
+        
     event TopupRequired(
         address indexed agentVault,
         bytes32 underlyingAddress,
@@ -78,5 +83,21 @@ library UnderlyingFreeBalance {
         _state.underlyingAddressOwnership.check(_agentVault, _paymentInfo.sourceAddress);
         _state.paymentVerifications.verifyPayment(_paymentInfo);
         increaseFreeBalance(_state, _agentVault, _paymentInfo.targetAddress, _paymentInfo.valueUBA);
+    }
+    
+    // TODO: trigger liquidation if topup not paid in time
+    
+    function increaseDust(
+        AssetManagerState.State storage _state,
+        address _agentVault,
+        bytes32 _underlyingAddress,
+        uint64 _dustIncreaseAMG
+    )
+        internal
+    {
+        Agents.Agent storage agent = _state.agents[_agentVault];
+        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
+        uaf.dustAMG = SafeMath64.add64(uaf.dustAMG, _dustIncreaseAMG);
+        emit AddressDustChanged(_agentVault, _underlyingAddress, uaf.dustAMG);
     }
 }

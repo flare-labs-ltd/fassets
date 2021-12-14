@@ -48,7 +48,7 @@ library AllowedPaymentAnnouncement {
         Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
         require(uaf.freeBalanceUBA >= 0 && uint256(uaf.freeBalanceUBA) >= _valueUBA, 
             "payment larger than allowed");
-        uaf.freeBalanceUBA -= int256(_valueUBA);   // guarded by require
+        uaf.freeBalanceUBA -= int128(_valueUBA);   // guarded by require
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForAllowedPayment);
         uint64 announcementId = ++_state.newPaymentAnnouncementId;
@@ -58,7 +58,7 @@ library AllowedPaymentAnnouncement {
             valueUBA: _valueUBA,
             firstUnderlyingBlock: _currentUnderlyingBlock,
             lastUnderlyingBlock: lastUnderlyingBlock,
-            createdAtBlock: SafeMath64.toUint64(block.number)
+            createdAtBlock: SafeCast.toUint64(block.number)
         });
         emit AllowedPaymentAnnounced(_underlyingAddress, _valueUBA, 
             _currentUnderlyingBlock, lastUnderlyingBlock, announcementId);

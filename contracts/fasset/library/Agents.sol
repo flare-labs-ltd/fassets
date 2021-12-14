@@ -38,6 +38,10 @@ library Agents {
         // When freeBalanceUBA becomes negative, agent has until this block to perform topup,
         // otherwise liquidation can be triggered by a challenger.
         uint64 lastUnderlyingBlockForTopup;
+        
+        // When lot size changes, there may be some leftover after redemtpion that doesn't fit
+        // a whole lot size. It is added to dustAMG and can be recovered via self-close.
+        uint64 dustAMG;
     }
 
     struct Agent {
@@ -60,10 +64,10 @@ library Agents {
         // The time when withdrawal was announced.
         uint64 withdrawalAnnouncedAt;
         
-        // Number of lots locked by collateral reservation.
+        // Amount of collateral locked by collateral reservation.
         uint64 reservedAMG;
         
-        // Number of lots of collateral for minted fassets.
+        // Amount of collateral backing minted fassets.
         uint64 mintedAMG;
         
         // Minimum native collateral ratio required for this agent. Changes during the liquidation.
@@ -127,38 +131,38 @@ library Agents {
         _state.underlyingAddressOwnership.claim(_agentVault, _underlyingAddress);
         // set new address
         agent.underlyingAddress = _underlyingAddress;
-        // if the old underlying address has no minted lots,
+        // if the old underlying address isn't backing any minted assets,
         // then we can safely release it - no need for outpayment tracking
-        if (oldUnderlyingAddress != 0 && agent.perAddressFunds[oldUnderlyingAddress].mintedLots == 0) {
+        if (oldUnderlyingAddress != 0 && agent.perAddressFunds[oldUnderlyingAddress].mintedAMG == 0) {
             delete agent.perAddressFunds[oldUnderlyingAddress];
         }
     }
     
-    function allocateMintedLots(
+    function allocateMintedAssets(
         Agent storage _agent,
         bytes32 _underlyingAddress,
-        uint64 _lots
+        uint64 _valueAMG
     )
         internal
     {
-        _agent.mintedLots = SafeMath64.add64(_agent.mintedLots, _lots);
+        _agent.mintedAMG = SafeMath64.add64(_agent.mintedAMG, _valueAMG);
         Agents.UnderlyingFunds storage uaf = _agent.perAddressFunds[_underlyingAddress];
-        uaf.mintedLots = SafeMath64.add64(uaf.mintedLots, _lots);
+        uaf.mintedAMG = SafeMath64.add64(uaf.mintedAMG, _valueAMG);
     }
 
-    function releaseMintedLots(
+    function releaseMintedAssets(
         Agent storage _agent,
         bytes32 _underlyingAddress,
-        uint64 _lots
+        uint64 _valueAMG
     )
         internal
     {
-        _agent.mintedLots = SafeMath64.sub64(_agent.mintedLots, _lots, "ERROR: not enough minted lots");
+        _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "ERROR: not enough minted");
         Agents.UnderlyingFunds storage uaf = _agent.perAddressFunds[_underlyingAddress];
-        uaf.mintedLots = SafeMath64.sub64(uaf.mintedLots, _lots, "ERROR: underlying minted lots");
-        // if the underlying address has no minted lots any more and it is not used for new mintings,
+        uaf.mintedAMG = SafeMath64.sub64(uaf.mintedAMG, _valueAMG, "ERROR: underlying minted");
+        // if the underlying address isn't backing any f-assets any more and it is not used for new mintings,
         // then we can safely release it - no need for outpayment tracking
-        if (uaf.mintedLots == 0 && _underlyingAddress != _agent.underlyingAddress) {
+        if (uaf.mintedAMG == 0 && _underlyingAddress != _agent.underlyingAddress) {
             delete _agent.perAddressFunds[_underlyingAddress];
         }
     }
@@ -179,7 +183,7 @@ library Agents {
             uint256 increase = agent.withdrawalAnnouncedNATWei - _valueNATWei;
             require(increase < freeCollateralWei(agent, _fullCollateral, _amgToNATWeiPrice),
                 "withdrawal: value too high");
-            agent.withdrawalAnnouncedAt = block.timestamp;
+            agent.withdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
         } else {
             // announcement decreased or canceled - might be needed to get agent out of CCB
             // if value is 0, we cancel announcement completely (i.e. set announcement time to 0)
@@ -188,7 +192,7 @@ library Agents {
                 agent.withdrawalAnnouncedAt = 0;
             }
         }
-        agent.withdrawalAnnouncedNATWei = _valueNATWei;
+        agent.withdrawalAnnouncedNATWei = SafeCast.toUint128(_valueNATWei);
     }
     
     function withdrawalExecuted(
@@ -220,15 +224,15 @@ library Agents {
 
     function freeCollateralLots(
         Agents.Agent storage _agent, 
+        AssetManagerSettings.Settings storage _settings,
         uint256 _fullCollateral, 
-        uint256 _lotSizeAMG,
         uint256 _amgToNATWeiPrice
     )
         internal view 
         returns (uint256) 
     {
         uint256 freeCollateral = freeCollateralWei(_agent, _fullCollateral, _amgToNATWeiPrice);
-        uint256 lotCollateral = mintingLotCollateralWei(_lotSizeAMG, _amgToNATWeiPrice);
+        uint256 lotCollateral = mintingLotCollateralWei(_agent, _settings, _amgToNATWeiPrice);
         return freeCollateral.div(lotCollateral);
     }
 
@@ -254,13 +258,13 @@ library Agents {
     {
         // reservedCollateral = _agent.reservedAMG * 
         // reserved collateral is calculated at minting ratio
-        uint256 reservedCollateral = Conversion.convertAmgToWei(_agent.reservedAMG, _amgToNATWeiPrice)
+        uint256 reservedCollateral = Conversion.convertAmgToNATWei(_agent.reservedAMG, _amgToNATWeiPrice)
             .mulBips(_agent.mintingCollateralRatioBIPS);
         // old reserved collateral (from before agent exited and re-entered minting queue), at old minting ratio
-        uint256 oldReservedCollateral = Conversion.convertAmgToWei(_agent.oldReservedAMG, _amgToNATWeiPrice)
+        uint256 oldReservedCollateral = Conversion.convertAmgToNATWei(_agent.oldReservedAMG, _amgToNATWeiPrice)
             .mulBips(_agent.oldMintingCollateralRatioBIPS);
         // minted collateral is calculated at minimal ratio
-        uint256 mintedCollateral = Conversion.convertAmgToWei(_agent.mintedAMG, _amgToNATWeiPrice)
+        uint256 mintedCollateral = Conversion.convertAmgToNATWei(_agent.mintedAMG, _amgToNATWeiPrice)
             .mulBips(_agent.minCollateralRatioBIPS);
         return reservedCollateral
             .add(oldReservedCollateral)
@@ -270,13 +274,13 @@ library Agents {
     
     function mintingLotCollateralWei(
         Agents.Agent storage _agent, 
-        uint256 _lotSizeAMG,
+        AssetManagerSettings.Settings storage _settings,
         uint256 _amgToNATWeiPrice
     ) 
         internal view 
         returns (uint256) 
     {
-        return Conversion.convertAmgToWei(_lotSizeAMG, _amgToNATWeiPrice)
+        return Conversion.convertAmgToNATWei(_settings.lotSizeAMG, _amgToNATWeiPrice)
             .mulBips(_agent.mintingCollateralRatioBIPS);
     }
 }

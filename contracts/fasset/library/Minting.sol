@@ -20,7 +20,6 @@ library Minting {
         uint256 collateralReservationId,
         uint256 redemptionTicketId,
         bytes32 underlyingAddress,
-        uint256 mintedLots,
         uint256 receivedFeeUBA);
 
     function mintingExecuted(
@@ -37,20 +36,15 @@ library Minting {
             crt.minterUnderlyingAddress, crt.agentUnderlyingAddress, expectedPaymentUBA, 
             crt.firstUnderlyingBlock, crt.lastUnderlyingBlock);
         address agentVault = crt.agentVault;
-        uint64 lots = crt.lots;
+        uint64 valueAMG = crt.valueAMG;
         bytes32 underlyingAddress = crt.agentUnderlyingAddress;
         uint64 redemptionTicketId = 
-            _state.redemptionQueue.createRedemptionTicket(agentVault, lots, underlyingAddress);
+            _state.redemptionQueue.createRedemptionTicket(agentVault, valueAMG, underlyingAddress);
+        emit MintingExecuted(agentVault, _crtId, redemptionTicketId, underlyingAddress, crt.underlyingFeeUBA);
         Agents.Agent storage agent = _state.agents[agentVault];
-        if (crt.availabilityEnterCountMod2 == agent.availabilityEnterCountMod2) {
-            agent.reservedLots = SafeMath64.sub64(agent.reservedLots, lots, "invalid reserved lots");
-        } else {
-            agent.oldReservedLots = SafeMath64.sub64(agent.oldReservedLots, lots, "invalid reserved lots");
-        }
-        Agents.allocateMintedLots(agent, underlyingAddress, lots);
+        Agents.allocateMintedAssets(agent, underlyingAddress, valueAMG);
         UnderlyingFreeBalance.increaseFreeBalance(_state, crt.agentVault, underlyingAddress, crt.underlyingFeeUBA);
-        emit MintingExecuted(agentVault, _crtId, redemptionTicketId, underlyingAddress, lots, crt.underlyingFeeUBA);
-        delete _state.crts[_crtId];
+        CollateralReservations.releaseCollateralReservation(_state, crt, _crtId);   // crt can't be used after this
         // TODO: burn reservation fee?
     }
     

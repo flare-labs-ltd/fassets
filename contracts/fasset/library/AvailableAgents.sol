@@ -3,6 +3,7 @@ pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./Agents.sol";
@@ -47,7 +48,7 @@ library AvailableAgents {
         uint16 _feeBIPS,
         uint32 _mintingCollateralRatioBIPS,
         uint256 _fullCollateralWei,
-        uint256 _lotSizeWei
+        uint256 _amgToNATWeiPrice
     ) 
         internal 
     {
@@ -60,7 +61,7 @@ library AvailableAgents {
         agent.feeBIPS = _feeBIPS; 
         agent.mintingCollateralRatioBIPS = _mintingCollateralRatioBIPS;
         // check that there is enough free collateral for at least one lot
-        uint256 freeCollateralLots = agent.freeCollateralLots(_fullCollateralWei, _lotSizeWei);
+        uint256 freeCollateralLots = agent.freeCollateralLots(_state.settings, _fullCollateralWei, _amgToNATWeiPrice);
         require(freeCollateralLots >= 1, "not enough free collateral");
         // add to queue
         _state.availableAgents.push(AvailableAgent({
@@ -82,7 +83,7 @@ library AvailableAgents {
         require(agent.availableAgentsPos != 0, "agent not available");
         AvailableAgent storage item = _state.availableAgents[agent.availableAgentsPos - 1];
         require(item.exitAnnouncedAt == 0, "already exiting");
-        item.exitAnnouncedAt = SafeMath64.toUint64(block.timestamp);
+        item.exitAnnouncedAt = SafeCast.toUint64(block.timestamp);
         (uint256 startTime, uint256 endTime) = _exitTimeInterval(_state, block.timestamp);
         emit AgentExitAnnounced(_agentVault, startTime, endTime);
     }
@@ -131,7 +132,7 @@ library AvailableAgents {
     function getListWithInfo(
         AssetManagerState.State storage _state, 
         WNat wnat,
-        uint256 _lotSizeWei,
+        uint256 _amgToNATWeiPrice,
         uint256 _start, 
         uint256 _end
     ) 
@@ -150,7 +151,7 @@ library AvailableAgents {
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
                 mintingCollateralRatioBIPS: agent.mintingCollateralRatioBIPS,
-                freeCollateralLots: agent.freeCollateralLots(fullCollateral, _lotSizeWei)
+                freeCollateralLots: agent.freeCollateralLots(_state.settings, fullCollateral, _amgToNATWeiPrice)
             });
         }
     }
