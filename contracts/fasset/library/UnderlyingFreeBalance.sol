@@ -80,4 +80,18 @@ library UnderlyingFreeBalance {
         _state.paymentVerifications.confirmPayment(_paymentInfo);
         increaseFreeBalance(_state, _agentVault, _paymentInfo.targetAddress, _paymentInfo.valueUBA);
     }
+    
+    function triggerTopupLiquidation(
+        AssetManagerState.State storage _state,
+        address _agentVault,
+        bytes32 _underlyingAddress,
+        uint64 _currentUnderlyingBlock
+    )
+        internal
+    {
+        Agents.UnderlyingFunds storage uaf = Agents.getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
+        require(uaf.lastUnderlyingBlockForTopup != 0 && uaf.lastUnderlyingBlockForTopup < _currentUnderlyingBlock,
+            "no overdue topup");
+        // TODO: start liquidation until address balance is healthy
+    }
 }
