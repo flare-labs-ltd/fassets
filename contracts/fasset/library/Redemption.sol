@@ -11,6 +11,8 @@ import "./Conversion.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentVerification.sol";
 import "./Agents.sol";
+import "./PaymentReport.sol";
+import "./IllegalPaymentChallenge.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./AssetManagerState.sol";
 
@@ -39,6 +41,15 @@ library Redemption {
         uint256 valueUBA,
         uint64 firstUnderlyingBlock,
         uint64 lastUnderlyingBlock,
+        uint64 requestId);
+
+    event RedemptionPaymentReported(
+        address indexed agentVault,
+        address indexed redeemer,
+        uint256 valueUBA,
+        uint256 gasUBA,
+        uint256 feeUBA,
+        uint64 underlyingBlock,
         uint64 requestId);
 
     event RedemptionPerformed(
@@ -95,6 +106,33 @@ library Redemption {
             paymentValueUBA, _currentUnderlyingBlock, lastUnderlyingBlock, requestId);
         _removeFromTicket(_state, _redemptionTicketId, redeemedAMG);
     }
+
+    function reportRedemptionRequestPayment(
+        AssetManagerState.State storage _state,
+        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
+        uint64 _redemptionRequestId
+    )
+        internal
+    {
+        require(_redemptionRequestId != 0, "invalid request id");
+        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
+        require(request.valueAMG != 0, "invalid request id");
+        Agents.requireAgent(request.agentVault);
+        // check details
+        uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
+        PaymentVerification.validatePaymentDetails(_paymentInfo, 
+            request.agentUnderlyingAddress, request.redeemerUnderlyingAddress,
+            paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
+        // report can be submitted several times (e.g. perhaps the gas price has to be raised for tx to be accepted),
+        // but once the transaction has been proved, reporting it is pointless
+        require(!PaymentVerification.paymentConfirmed(_state.paymentVerifications, _paymentInfo),
+            "payment report after confirm");
+        // create the report
+        PaymentReport.createReport(_state.paymentReports, _paymentInfo);
+        emit RedemptionPaymentReported(request.agentVault, request.redeemer,
+            _paymentInfo.valueUBA, _paymentInfo.gasUBA, request.underlyingFeeUBA,
+            _paymentInfo.underlyingBlock, _redemptionRequestId);
+    }
     
     function confirmRedemptionRequestPayment(
         AssetManagerState.State storage _state,
@@ -107,14 +145,20 @@ library Redemption {
         require(_redemptionRequestId != 0, "invalid request id");
         RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
         require(request.valueAMG != 0, "invalid request id");
+        require(PaymentReport.reportMatch(_state.paymentReports, _paymentInfo) != PaymentReport.ReportMatch.MISMATCH,
+            "mismatching report exists");
+        Agents.requireAgent(request.agentVault);
+        // confirm payment proof
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
-        _state.paymentVerifications.verifyPaymentDetails(_paymentInfo, 
+        _state.paymentVerifications.confirmPaymentDetails(_paymentInfo, 
             request.agentUnderlyingAddress, request.redeemerUnderlyingAddress,
             paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
+        // update balance accounting on underlying address
         Agents.releaseMintedAssets(_state, request.agentVault, request.agentUnderlyingAddress, request.valueAMG);
-        // TODO: remove pending challenge
         UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, _paymentInfo.sourceAddress, 
             request.underlyingFeeUBA, _paymentInfo.gasUBA, _currentUnderlyingBlock);
+        // delete pending challenge
+        IllegalPaymentChallenge.deleteChallenge(_state, _paymentInfo);
         emit RedemptionPerformed(request.agentVault, request.redeemer,
             _paymentInfo.valueUBA, _paymentInfo.gasUBA, request.underlyingFeeUBA,
             _paymentInfo.underlyingBlock, _redemptionRequestId);

@@ -31,8 +31,9 @@ library Minting {
     {
         CollateralReservations.CollateralReservation storage crt = 
             CollateralReservations.getCollateralReservation(_state, _crtId);
+        Agents.requireAgent(crt.agentVault);
         uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA).add(crt.underlyingFeeUBA);
-        _state.paymentVerifications.verifyPaymentDetails(_paymentInfo, 
+        _state.paymentVerifications.confirmPaymentDetails(_paymentInfo, 
             crt.minterUnderlyingAddress, crt.agentUnderlyingAddress, expectedPaymentUBA, 
             crt.firstUnderlyingBlock, crt.lastUnderlyingBlock);
         address agentVault = crt.agentVault;

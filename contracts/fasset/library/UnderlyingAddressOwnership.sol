@@ -49,9 +49,10 @@ library UnderlyingAddressOwnership {
         bytes32 _underlyingAddress
     )
         internal view
+        returns (bool)
     {
         Ownership storage ownership = _state.ownership[_underlyingAddress];
-        require(ownership.owner == _owner, "address not owned");
+        return ownership.owner == _owner;
     }
     
     function _checkReservation(State storage _state, address _owner, bytes32 _underlyingAddress) private {

@@ -28,7 +28,7 @@ library PaymentVerification {
     
     uint256 internal constant VERIFICATION_CLEANUP_DAYS = 5;
     
-    function verifyPaymentDetails(
+    function confirmPaymentDetails(
         State storage _state,
         UnderlyingPaymentInfo memory _paymentInfo,
         bytes32 _expectedSource,
@@ -38,6 +38,64 @@ library PaymentVerification {
         uint256 _lastExpectedBlock
     )
         internal
+    {
+        validatePaymentDetails(_paymentInfo, 
+            _expectedSource, _expectedTarget, _expectedValueUBA, _firstExpectedBlock, _lastExpectedBlock);
+        confirmPayment(_state, _paymentInfo);
+    }
+    
+    function confirmPayment(
+        State storage _state,
+        UnderlyingPaymentInfo memory _paymentInfo
+    ) 
+        internal 
+    {
+        bytes32 txKey = transactionKey(_paymentInfo);
+        require(_state.verifiedPayments[txKey] == 0, "payment already confirmed");
+        // add to cleanup list
+        uint256 day = block.timestamp / 86400;
+        bytes32 first = _state.verifiedPaymentsForDay[day];
+        // set next linked list element - last in list points to itself
+        _state.verifiedPayments[txKey] = first != 0 ? first : txKey;
+        // set first linked list element
+        _state.verifiedPaymentsForDay[day] = txKey;
+        if (_state.verifiedPaymentsForDayStart == 0) {
+            _state.verifiedPaymentsForDayStart = day;
+        }
+        // cleanup one old payment hash (> 5 days) for each new payment hash
+        _cleanupPaymentVerification(_state);
+    }
+    
+    function paymentConfirmed(
+        State storage _state, 
+        UnderlyingPaymentInfo memory _paymentInfo
+    ) 
+        internal view 
+        returns (bool) 
+    {
+        bytes32 txKey = transactionKey(_paymentInfo);
+        return _state.verifiedPayments[txKey] != 0;
+    }
+
+    function paymentConfirmed(
+        State storage _state, 
+        bytes32 _transactionKey
+    ) 
+        internal view 
+        returns (bool) 
+    {
+        return _state.verifiedPayments[_transactionKey] != 0;
+    }
+    
+    function validatePaymentDetails(
+        UnderlyingPaymentInfo memory _paymentInfo,
+        bytes32 _expectedSource,
+        bytes32 _expectedTarget,
+        uint256 _expectedValueUBA,
+        uint256 _firstExpectedBlock,
+        uint256 _lastExpectedBlock
+    )
+        internal pure
     {
         // _expectedSource is zero for topups and non-zero otherwise
         if (_expectedSource != 0) {
@@ -50,46 +108,25 @@ library PaymentVerification {
         require(_paymentInfo.valueUBA == _expectedValueUBA, "invalid payment value");
         require(_paymentInfo.underlyingBlock >= _firstExpectedBlock, "payment too old");
         require(_paymentInfo.underlyingBlock <= _lastExpectedBlock, "payment too late");
-        verifyPayment(_state, _paymentInfo);
     }
 
-    function verifyPayment(
-        State storage _state,
-        UnderlyingPaymentInfo memory _paymentInfo
-    )
-        internal
+    // the same transaction hash could perform several underlying payments if it is smart contract
+    // for now this is illegal, but might change for some smart contract chains
+    // therefore the mapping key for transaction is always the combination of
+    // underlying address (from which funds were removed) and transaction hash
+    function transactionKey(bytes32 _underlyingSourceAddress, bytes32 _transactionHash) 
+        internal pure 
+        returns (bytes32) 
     {
-        require(_state.verifiedPayments[_paymentInfo.transactionHash] == 0, "payment already verified");
-        markPaymentVerified(_state, _paymentInfo.transactionHash);
+        return keccak256(abi.encode(_underlyingSourceAddress, _transactionHash));
     }
     
-    function markPaymentVerified(
-        State storage _state, 
-        bytes32 _transactionHash
-    ) 
-        internal 
+    // shortcut for transactionKey(_paymentInfo.sourceAddress, _paymentInfo.transactionHash)
+    function transactionKey(UnderlyingPaymentInfo memory _paymentInfo)
+        internal pure 
+        returns (bytes32)
     {
-        uint256 day = block.timestamp / 86400;
-        bytes32 first = _state.verifiedPaymentsForDay[day];
-        // set next linked list element - last in list points to itself
-        _state.verifiedPayments[_transactionHash] = first != 0 ? first : _transactionHash;
-        // set first linked list element
-        _state.verifiedPaymentsForDay[day] = _transactionHash;
-        if (_state.verifiedPaymentsForDayStart == 0) {
-            _state.verifiedPaymentsForDayStart = day;
-        }
-        // cleanup one old payment hash (> 5 days) for each new payment hash
-        _cleanupPaymentVerification(_state);
-    }
-    
-    function paymentVerified(
-        State storage _state, 
-        bytes32 _transactionHash
-    ) 
-        internal view 
-        returns (bool) 
-    {
-        return _state.verifiedPayments[_transactionHash] != 0;
+        return keccak256(abi.encode(_paymentInfo.sourceAddress, _paymentInfo.transactionHash));
     }
     
     function _cleanupPaymentVerification(State storage _state) private {

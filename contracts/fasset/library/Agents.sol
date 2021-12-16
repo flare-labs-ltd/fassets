@@ -2,6 +2,7 @@
 pragma solidity 0.7.6;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeBips.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
@@ -312,6 +313,10 @@ library Agents {
     {
         return Conversion.convertAmgToNATWei(_settings.lotSizeAMG, _amgToNATWeiPrice)
             .mulBips(_agent.mintingCollateralRatioBIPS);
+    }
+    
+    function requireAgent(address _agentVault) internal view {
+        require(msg.sender == IAgentVault(_agentVault).owner(), "only agent");
     }
 
     function _deleteUnderlyingAddressIfUnused(

@@ -75,8 +75,9 @@ library UnderlyingFreeBalance {
     {
         // TODO: check that payment info is not too old? (to prevent submitting already verified and expired proofs - 
         // probably not necessary, since state connector cannot prove such old payments)
-        _state.underlyingAddressOwnership.check(_agentVault, _paymentInfo.sourceAddress);
-        _state.paymentVerifications.verifyPayment(_paymentInfo);
+        require(_state.underlyingAddressOwnership.check(_agentVault, _paymentInfo.sourceAddress), 
+            "address not owned by the agent");
+        _state.paymentVerifications.confirmPayment(_paymentInfo);
         increaseFreeBalance(_state, _agentVault, _paymentInfo.targetAddress, _paymentInfo.valueUBA);
     }
 }

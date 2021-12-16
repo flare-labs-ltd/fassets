@@ -6,8 +6,6 @@ import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "../interface/IAssetManager.sol";
 
 interface IAgentVault {
-    function owner() external returns (address);
-
     function deposit() external payable;
 
     function delegate(address _to, uint256 _bips) external;
@@ -33,4 +31,6 @@ interface IAgentVault {
     // Since _recipient is typically an unknown address, we do not directly send NAT,
     // but transfer WNAT (doesn't trigger any callbacks) which the recipient must withdraw.
     function liquidate(address _recipient, uint256 _amount) external;
+
+    function owner() external view returns (address);
 }

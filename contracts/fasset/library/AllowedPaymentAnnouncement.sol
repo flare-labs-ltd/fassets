@@ -10,8 +10,6 @@ import "./AssetManagerState.sol";
 
 
 library AllowedPaymentAnnouncement {
-    using PaymentVerification for PaymentVerification.State;
-    
     struct PaymentAnnouncement {
         bytes32 underlyingAddress;
         uint256 valueUBA;
@@ -43,6 +41,7 @@ library AllowedPaymentAnnouncement {
     )
         internal
     {
+        Agents.requireAgent(_agentVault);
         Agents.Agent storage agent = _state.agents[_agentVault];
         require(_valueUBA > 0, "invalid value");
         Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
@@ -73,18 +72,27 @@ library AllowedPaymentAnnouncement {
     )
         internal
     {
+        Agents.requireAgent(_agentVault);
         bytes32 key = _announcementKey(_agentVault, _announcementId);
         PaymentAnnouncement storage announcement = _state.paymentAnnouncements[key];
         require(announcement.underlyingAddress != 0, "invalid announcement id");
-        // verify that it matches announcement and mark verified to prevent challenges
-        _state.paymentVerifications.verifyPaymentDetails(_paymentInfo, 
-            announcement.underlyingAddress, 0 /* target not needed for allowed payments */,
+        // if payment is challenged, make sure announcement was made strictly before challenge
+        IllegalPaymentChallenge.Challenge storage challenge = 
+            IllegalPaymentChallenge.getChallenge(_state, _paymentInfo.sourceAddress, _paymentInfo.transactionHash);
+        require(challenge.agentVault == address(0) || challenge.createdAtBlock > announcement.createdAtBlock,
+            "challenged before announcement");
+        // verify that details match announcement
+        PaymentVerification.validatePaymentDetails(_paymentInfo, 
+            announcement.underlyingAddress, 0, /* target not needed for allowed payments */
             announcement.valueUBA, announcement.firstUnderlyingBlock, announcement.lastUnderlyingBlock);
-        // deduct gas from free balance
+        // once the transaction has been proved, reporting it is pointless
+        require(!PaymentVerification.paymentConfirmed(_state.paymentVerifications, _paymentInfo),
+            "payment report after confirm");
+        // create the report
+        PaymentReport.createReport(_state.paymentReports, _paymentInfo);
+        // deduct gas from free balance (don't report multiple times or gas will be deducted every time)
         UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, _paymentInfo.sourceAddress, 
             0, _paymentInfo.gasUBA, _currentUnderlyingBlock);
-        // delete pending challenge
-        IllegalPaymentChallenge.deleteChallenge(_state, _paymentInfo.transactionHash);
         emit AllowedPaymentReported(_paymentInfo.sourceAddress, _paymentInfo.valueUBA, _paymentInfo.gasUBA, 
             _paymentInfo.underlyingBlock, _announcementId);
         delete _state.paymentAnnouncements[key];

@@ -12,6 +12,7 @@ import "./CollateralReservations.sol";
 import "./Redemption.sol";
 import "./AllowedPaymentAnnouncement.sol";
 import "./IllegalPaymentChallenge.sol";
+import "./PaymentReport.sol";
 
 
 library AssetManagerState {
@@ -46,8 +47,11 @@ library AssetManagerState {
         // mapping (agentVault, announcementId) => PaymentAnnouncement
         mapping(bytes32 => AllowedPaymentAnnouncement.PaymentAnnouncement) paymentAnnouncements;
         
-        // mapping underlyingTransactionHash => Challenge
-        mapping(bytes32 => IllegalPaymentChallenge.Challenge) paymentChallenges;
+        // Payment challenges state
+        IllegalPaymentChallenge.Challenges paymentChallenges;
+        
+        // Redemption payment reports and announced payment reports
+        PaymentReport.Reports paymentReports;
         
         // new ids (listed together to save storage); all must be incremented before assigning, so 0 means empty
         uint64 newCrtId;

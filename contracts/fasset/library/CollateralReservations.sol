@@ -95,6 +95,7 @@ library CollateralReservations {
     {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
         require(_currentUnderlyingBlock >= crt.lastUnderlyingBlock, "timeout too early");
+        Agents.requireAgent(crt.agentVault);
         emit CollateralReservationTimeout(crt.agentVault, crt.minter, _crtId);
         releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this
         // TODO: pay fee to agent?
