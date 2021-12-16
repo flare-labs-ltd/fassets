@@ -75,7 +75,7 @@ library Redemption {
         uint64 requestId = ++_state.newRedemptionRequestId;
         uint64 maxRedeemLots = SafeMath64.div64(ticket.valueAMG, _state.settings.lotSizeAMG);
         _redeemedLots = _lots <= maxRedeemLots ? _lots : maxRedeemLots;
-        uint64 redeemedAMG = SafeMath64.div64(_redeemedLots, _state.settings.lotSizeAMG);
+        uint64 redeemedAMG = SafeMath64.mul64(_redeemedLots, _state.settings.lotSizeAMG);
         uint128 redeemedValueUBA = uint128(redeemedAMG) * uint128(_state.settings.assetMintingGranularityUBA);
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
