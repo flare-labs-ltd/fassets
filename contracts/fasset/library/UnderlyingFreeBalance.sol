@@ -81,6 +81,20 @@ library UnderlyingFreeBalance {
         increaseFreeBalance(_state, _agentVault, _paymentInfo.targetAddress, _paymentInfo.valueUBA);
     }
     
+    function withdrawFreeFunds(
+        AssetManagerState.State storage _state,
+        address _agentVault,
+        bytes32 _underlyingAddress,
+        uint256 _valueUBA
+    )
+        internal
+    {
+        Agents.UnderlyingFunds storage uaf = Agents.getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
+        require(uaf.freeBalanceUBA >= 0 && uint256(uaf.freeBalanceUBA) >= _valueUBA, 
+            "payment larger than allowed");
+        uaf.freeBalanceUBA -= int128(_valueUBA);   // guarded by require
+    }
+    
     function triggerTopupLiquidation(
         AssetManagerState.State storage _state,
         address _agentVault,
