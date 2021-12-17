@@ -158,7 +158,18 @@ library Agents {
         uaf.mintedAMG = SafeMath64.add64(uaf.mintedAMG, _valueAMG);
     }
 
-    function releaseMintedAssets(
+    function releaseMintedCollateral(
+        AssetManagerState.State storage _state, 
+        address _agentVault,
+        uint64 _valueAMG
+    )
+        internal
+    {
+        Agent storage agent = _state.agents[_agentVault];
+        agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "ERROR: not enough minted");
+    }
+
+    function releaseUnderlyingAssets(
         AssetManagerState.State storage _state, 
         address _agentVault,
         bytes32 _underlyingAddress,
@@ -167,7 +178,6 @@ library Agents {
         internal
     {
         Agent storage agent = _state.agents[_agentVault];
-        agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "ERROR: not enough minted");
         Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
         uaf.mintedAMG = SafeMath64.sub64(uaf.mintedAMG, _valueAMG, "ERROR: underlying minted");
         _deleteUnderlyingAddressIfUnused(agent, _underlyingAddress);
@@ -211,7 +221,8 @@ library Agents {
     {
         Agents.UnderlyingFunds storage uaf = getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
         uaf.dustAMG = SafeMath64.add64(uaf.dustAMG, _dustIncreaseAMG);
-        emit AddressDustChanged(_agentVault, _underlyingAddress, uaf.dustAMG);
+        uint256 dustUBA = uint256(uaf.dustAMG).mul(_state.settings.assetMintingGranularityUBA);
+        emit AddressDustChanged(_agentVault, _underlyingAddress, dustUBA);
     }
     
     function withdrawalExecuted(
@@ -328,7 +339,7 @@ library Agents {
         // if the underlying address isn't backing any f-assets any more and it is not used for new mintings,
         // then we can safely release it - no need for outpayment tracking
         Agents.UnderlyingFunds storage uaf = _agent.perAddressFunds[_underlyingAddress];
-        if (uaf.mintedAMG == 0 && _underlyingAddress != _agent.underlyingAddress) {
+        if (uaf.mintedAMG == 0 && uaf.dustAMG == 0 && _underlyingAddress != _agent.underlyingAddress) {
             delete _agent.perAddressFunds[_underlyingAddress];
         }
     }

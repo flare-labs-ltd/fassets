@@ -101,9 +101,14 @@ library Redemption {
             agentVault: ticket.agentVault,
             valueAMG: redeemedAMG
         });
+        // no need for underlying backing any more - fAssets were burned already
+        // so we decrease mintedAMG, but do not add it to freeBalance yet (only after failed redemption payment)
+        Agents.releaseUnderlyingAssets(_state, ticket.agentVault, ticket.underlyingAddress, redeemedAMG);
+        // emit event to remind agent to pay
         uint256 paymentValueUBA = SafeMath128.sub128(redeemedValueUBA, _state.settings.redemptionFeeUBA, "?");
         emit RedemptionRequested(ticket.agentVault, ticket.underlyingAddress, 
             paymentValueUBA, _currentUnderlyingBlock, lastUnderlyingBlock, requestId);
+        // _removeFromTicket may delete ticket data, so we call it at end
         _removeFromTicket(_state, _redemptionTicketId, redeemedAMG);
     }
 
@@ -153,15 +158,17 @@ library Redemption {
         _state.paymentVerifications.confirmPaymentDetails(_paymentInfo, 
             request.agentUnderlyingAddress, request.redeemerUnderlyingAddress,
             paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
-        // update balance accounting on underlying address
-        Agents.releaseMintedAssets(_state, request.agentVault, request.agentUnderlyingAddress, request.valueAMG);
+        // release agent collateral
+        Agents.releaseMintedCollateral(_state, request.agentVault, request.valueAMG);
+        // update underlying free balance with fee and gas
         UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, _paymentInfo.sourceAddress, 
             request.underlyingFeeUBA, _paymentInfo.gasUBA, _currentUnderlyingBlock);
-        // delete pending challenge
+        // delete possible pending challenge
         IllegalPaymentChallenge.deleteChallenge(_state, _paymentInfo);
         emit RedemptionPerformed(request.agentVault, request.redeemer,
             _paymentInfo.valueUBA, _paymentInfo.gasUBA, request.underlyingFeeUBA,
             _paymentInfo.underlyingBlock, _redemptionRequestId);
+        // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
     }
     
@@ -177,18 +184,23 @@ library Redemption {
         RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
         require(request.valueAMG != 0, "invalid request id");
         require(request.lastUnderlyingBlock <= _currentUnderlyingBlock, "too soon for default");
+        // we allow only redeemers to trigger redemption failures, since they may want
+        // to do it at some particular time
         require(msg.sender == request.redeemer, "only redeemer");
         // pay redeemer in native currency
         uint256 amountWei = Conversion.convertAmgToNATWei(request.valueAMG, _amgToNATWeiPrice);
         // TODO: move out of library?
         IAgentVault(request.agentVault).liquidate(request.redeemer, amountWei);
-        // release agent collateral and underlying collateral
-        Agents.releaseMintedAssets(_state, request.agentVault, request.agentUnderlyingAddress, request.valueAMG);
+        // release remaining agent collateral
+        Agents.releaseMintedCollateral(_state, request.agentVault, request.valueAMG);
+        // underlying backing collateral was removed from mintedAMG accounting at redemption request
+        // now we add it to free balance since it wasn't paid to the redeemer
         uint256 liquidatedUBA = uint256(request.valueAMG).mul(_state.settings.assetMintingGranularityUBA);
         UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, request.agentUnderlyingAddress, 
             liquidatedUBA);
         emit RedemptionFailed(request.agentVault, request.redeemer, 
             amountWei, liquidatedUBA, _redemptionRequestId);
+        // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
     }
 
