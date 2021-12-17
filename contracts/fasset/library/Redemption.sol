@@ -67,6 +67,11 @@ library Redemption {
         uint256 redeemedCollateralWei,
         uint256 freedBalanceUBA,
         uint64 requestId);
+
+    event SelfClose(
+        address indexed agentVault,
+        bytes32 underlyingAddress,
+        uint256 valueUBA);
         
     function redeemAgainstTicket(
         AssetManagerState.State storage _state,
@@ -202,6 +207,57 @@ library Redemption {
             amountWei, liquidatedUBA, _redemptionRequestId);
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
+    }
+
+    function selfCloseAgainstTicket(
+        AssetManagerState.State storage _state,
+        uint64 _redemptionTicketId,
+        uint64 _lots
+    ) 
+        internal 
+        returns (uint64 _redeemedLots)
+    {
+        require(_lots != 0, "cannot redeem 0 lots");
+        require(_redemptionTicketId != 0, "invalid redemption id");
+        RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(_redemptionTicketId);
+        require(ticket.valueAMG != 0, "invalid redemption id");
+        Agents.requireAgent(ticket.agentVault);
+        uint64 maxRedeemLots = SafeMath64.div64(ticket.valueAMG, _state.settings.lotSizeAMG);
+        _redeemedLots = _lots <= maxRedeemLots ? _lots : maxRedeemLots;
+        uint64 redeemedAMG = SafeMath64.mul64(_redeemedLots, _state.settings.lotSizeAMG);
+        // self close is one step, so we can release underlying collateral and backing collateral in same step
+        Agents.releaseUnderlyingAssets(_state, ticket.agentVault, ticket.underlyingAddress, redeemedAMG);
+        Agents.releaseMintedCollateral(_state, ticket.agentVault, redeemedAMG);
+        // all the self-closed amount is added to free balance
+        uint256 redeemedUBA = uint256(redeemedAMG).mul(_state.settings.assetMintingGranularityUBA);
+        UnderlyingFreeBalance.increaseFreeBalance(_state, ticket.agentVault, ticket.underlyingAddress, redeemedUBA);
+        // send event
+        emit SelfClose(ticket.agentVault, ticket.underlyingAddress, redeemedUBA);
+        // _removeFromTicket may delete ticket data, so we call it at end
+        _removeFromTicket(_state, _redemptionTicketId, redeemedAMG);
+    }
+
+    function selfCloseAddressDust(
+        AssetManagerState.State storage _state,
+        address _agentVault,
+        bytes32 _underlyingAddress
+    ) 
+        internal 
+        returns (uint256 _selfClosedUBA)
+    {
+        Agents.requireAgent(_agentVault);
+        Agents.UnderlyingFunds storage uaf = Agents.getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
+        uint64 redeemedAMG = uaf.dustAMG;
+        // clear dust
+        uaf.dustAMG = 0;
+        // self close is one step, so we can release underlying collateral and backing collateral in same step
+        Agents.releaseUnderlyingAssets(_state, _agentVault, _underlyingAddress, redeemedAMG);
+        Agents.releaseMintedCollateral(_state, _agentVault, redeemedAMG);
+        // all the self-closed amount is added to free balance
+        _selfClosedUBA = uint256(redeemedAMG).mul(_state.settings.assetMintingGranularityUBA);
+        UnderlyingFreeBalance.increaseFreeBalance(_state, _agentVault, _underlyingAddress, _selfClosedUBA);
+        // send event
+        emit SelfClose(_agentVault, _underlyingAddress, _selfClosedUBA);
     }
 
     function _removeFromTicket(
