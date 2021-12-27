@@ -23,7 +23,9 @@ library Liquidation {
         internal
     {
         Agents.Agent storage agent = _state.agents[_agentVault];
+        require(agent.status != Agents.AgentStatus.LIQUIDATION, "already in liquidation");
         agent.status = Agents.AgentStatus.LIQUIDATION;
+        agent.minCollateralRatioBIPS = _state.settings.liquidationMinCollateralRatioBIPS;
         agent.liquidationState.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
     }
 
@@ -39,7 +41,7 @@ library Liquidation {
         Agents.Agent storage agent = _state.agents[_agentVault];
         require(Agents.lockedCollateralWei(agent, _amgToNATWeiPrice) <= _fullCollateral, "collateral too small");
         agent.status = Agents.AgentStatus.NORMAL;
-
+        agent.minCollateralRatioBIPS = _state.settings.initialMinCollateralRatioBIPS;
         delete agent.liquidationState;
     }
 
@@ -116,7 +118,7 @@ library Liquidation {
         require(agent.addressInLiquidation[_underlyingAddress].liquidationStartedAt > 0, "not in liquidation");
 
         RedemptionQueue.AgentQueue storage agentQueue = _state.redemptionQueue.agents[_agentVault];
-        uint64 ticketId = agentQueue.firstTicketId;
+        uint64 ticketId = agentQueue.underlyingAddressFirstTicketId[_underlyingAddress];
 
         while (ticketId != 0 && _lots > _redeemedLots) {
             RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(ticketId);
@@ -128,15 +130,5 @@ library Liquidation {
             }
             ticketId = nextTicketId;
         }
-    }
-    
-    function checkLiquidationStatus(
-        AssetManagerState.State storage _state, 
-        Agents.UnderlyingFunds storage uaf
-    ) 
-        internal view 
-        returns (bool) 
-    {
-        
     }
 }

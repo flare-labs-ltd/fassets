@@ -20,6 +20,8 @@ library RedemptionQueue {
     struct AgentQueue {
         uint64 firstTicketId;
         uint64 lastTicketId;
+        // mapping from underlyingAddress to first ticket id for that address
+        mapping(bytes32 => uint64) underlyingAddressFirstTicketId;
     }
 
     struct State {
@@ -69,6 +71,10 @@ library RedemptionQueue {
             _state.tickets[agent.lastTicketId].next = ticketId;
         }
         agent.lastTicketId = ticketId;
+        // update first ticket id for _underlyingAddress
+        if (agent.underlyingAddressFirstTicketId[_underlyingAddress] == 0) {
+            agent.underlyingAddressFirstTicketId[_underlyingAddress] = ticketId;
+        }
         // return the new redemption ticket's id
         return ticketId;
     }
@@ -110,6 +116,16 @@ library RedemptionQueue {
         } else {
             assert(ticketId != agent.lastTicketId);     // ticket is not last in agent queue
             _state.tickets[ticket.nextForAgent].prevForAgent = ticket.prevForAgent;
+        }
+        // if ticketId is the id of the first ticket for underlying address - update or delete mapping
+        bytes32 underlyingAddress = ticket.underlyingAddress;
+        if (ticketId == agent.underlyingAddressFirstTicketId[underlyingAddress]) {
+            // update if underlying address is the same for next agent's ticket
+            if (underlyingAddress == _state.tickets[ticket.nextForAgent].underlyingAddress) {
+                agent.underlyingAddressFirstTicketId[underlyingAddress] = ticket.nextForAgent;
+            } else { // delete otherwise - last for that address (can be used only once) or last in agent queue
+                delete agent.underlyingAddressFirstTicketId[underlyingAddress];
+            }
         }
         // delete storage
         delete _state.tickets[ticketId];
