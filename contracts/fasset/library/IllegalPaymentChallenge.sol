@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./Agents.sol";
+import "./Liquidation.sol";
 import "./PaymentVerification.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./PaymentReport.sol";
@@ -164,7 +165,8 @@ library IllegalPaymentChallenge {
     ) 
         private
     {
-        // TODO
+        // start address full liquidation
+        Liquidation.startAddressLiquidation(_state, _agentVault, _underlyingAddress, true);
     }
     
     function _rewardChallengers(

@@ -72,6 +72,12 @@ library Redemption {
         address indexed agentVault,
         bytes32 underlyingAddress,
         uint256 valueUBA);
+
+    event LiquidationPerformed(
+        address indexed agentVault,
+        address indexed liquidator,
+        bytes32 underlyingAddress,
+        uint256 valueUBA);
         
     function redeemAgainstTicket(
         AssetManagerState.State storage _state,
@@ -193,7 +199,8 @@ library Redemption {
         // to do it at some particular time
         require(msg.sender == request.redeemer, "only redeemer");
         // pay redeemer in native currency
-        uint256 amountWei = Conversion.convertAmgToNATWei(request.valueAMG, _amgToNATWeiPrice);
+        uint256 amountWei = Conversion.convertAmgToNATWei(request.valueAMG, _amgToNATWeiPrice)
+            .mulBips(_state.settings.redemptionFailureFactorBIPS);
         // TODO: move out of library?
         IAgentVault(request.agentVault).liquidate(request.redeemer, amountWei);
         // release remaining agent collateral
@@ -258,6 +265,36 @@ library Redemption {
         UnderlyingFreeBalance.increaseFreeBalance(_state, _agentVault, _underlyingAddress, _selfClosedUBA);
         // send event
         emit SelfClose(_agentVault, _underlyingAddress, _selfClosedUBA);
+    }
+
+    function liquidateAgainstTicket(
+        AssetManagerState.State storage _state,
+        address liquidator,
+        uint64 _redemptionTicketId,
+        uint64 _lots
+    ) 
+        internal 
+        returns (uint64 _redeemedLots)
+    {
+        require(_lots != 0, "cannot redeem 0 lots");
+        require(_redemptionTicketId != 0, "invalid redemption id");
+        RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(_redemptionTicketId);
+        require(ticket.valueAMG != 0, "invalid redemption id");
+        require(Agents.isAgentInLiquidation(_state, ticket.agentVault, ticket.underlyingAddress),
+            "not in liquidation");
+        uint64 maxRedeemLots = SafeMath64.div64(ticket.valueAMG, _state.settings.lotSizeAMG);
+        _redeemedLots = _lots <= maxRedeemLots ? _lots : maxRedeemLots;
+        uint64 redeemedAMG = SafeMath64.mul64(_redeemedLots, _state.settings.lotSizeAMG);
+        // liquidation is one step, so we can release underlying collateral and backing collateral in same step
+        Agents.releaseUnderlyingAssets(_state, ticket.agentVault, ticket.underlyingAddress, redeemedAMG);
+        Agents.releaseMintedCollateral(_state, ticket.agentVault, redeemedAMG);
+        // all the liquidated amount is added to free balance
+        uint256 redeemedUBA = uint256(redeemedAMG).mul(_state.settings.assetMintingGranularityUBA);
+        UnderlyingFreeBalance.increaseFreeBalance(_state, ticket.agentVault, ticket.underlyingAddress, redeemedUBA);
+        // send event
+        emit LiquidationPerformed(ticket.agentVault, liquidator, ticket.underlyingAddress, redeemedUBA);
+        // _removeFromTicket may delete ticket data, so we call it at end
+        _removeFromTicket(_state, _redemptionTicketId, redeemedAMG);
     }
 
     function _removeFromTicket(

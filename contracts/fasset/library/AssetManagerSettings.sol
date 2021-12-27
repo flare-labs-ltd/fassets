@@ -60,5 +60,24 @@ library AssetManagerSettings {
         // Agent has to announce any collateral withdrawal and then wait for at least withdrawalWaitMinSeconds.
         // This prevents challenged agent to remove all collateral before challenge can be proved.
         uint64 withdrawalWaitMinSeconds;
+
+        // In first step of liquidation this share of agent's position is liquidated.
+        // Expressed in BIPS, e.g. 5000 for 50%.
+        uint64 initialLiquidationShareFactorBIPS;
+
+        // In first step of liquidation, liquidator is compensated with
+        // value recalculated in flare/sgb times liquidation price premium factor.
+        // Expressed in BIPS, e.g. 12500 for factor of 1.25.
+        uint64 liquidationPricePremiumBIPS;
+
+        // After first step, instead of price premium, percentage of collateral is offered.
+        // Expressed in BIPS, e.g. [6000, 8000, 10000] for 60%, 80% and 100%.
+        // CAREFUL: values in array must increase and be <= 10000
+        uint64[] liquidationCollateralPremiumBIPS;
+
+        // If there was no liquidator for the current liquidation offer, 
+        // go to the next step of liquidation after a certain period of time
+        uint64 newLiquidationStepAfterMinSeconds;
+
     }
 }

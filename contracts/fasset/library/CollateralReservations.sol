@@ -60,8 +60,10 @@ library CollateralReservations {
         Agents.Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
+        require(!Agents.isAgentInLiquidation(_state, _agentVault, agent.underlyingAddress), "agent in liquidation");
         require(agent.freeCollateralLots(_state.settings, _fullAgentCollateral, _amgToNATWeiPrice) >= _lots,
             "not enough free collateral");
+
         _state.underlyingAddressOwnership.claim(_minter, _minterUnderlyingAddress);
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);

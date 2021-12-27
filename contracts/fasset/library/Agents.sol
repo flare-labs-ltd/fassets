@@ -45,6 +45,18 @@ library Agents {
         uint64 dustAMG;
     }
 
+    struct LiquidationState {
+
+        uint64 liquidationStartedAt;
+    }
+
+    struct AddressLiquidationState {
+
+        uint64 liquidationStartedAt;
+
+        bool fullLiquidation;
+    }
+
     struct Agent {
         // Current address for underlying agent's collateral.
         // Agent can change this address anytime and it affects future mintings.
@@ -98,6 +110,13 @@ library Agents {
         // Current status of the agent (changes for liquidation).
         AgentType agentType;
         AgentStatus status;
+        LiquidationState liquidationState;
+
+        // 1) When no topup is performed, partial liquidation for underlyingAddress is started
+        // 2) When illegal payment challenge is confirmed, agent's underlyingAddress should be fully liquidated
+        //    All redemption tickets for that underlyingAddress should be liquidated
+        // Type: mapping underlyingAddress => Agents.AddressLiquidationState
+        mapping(bytes32 => AddressLiquidationState) addressInLiquidation;
     }
     
     event AddressDustChanged(
@@ -196,8 +215,8 @@ library Agents {
         if (_valueNATWei > agent.withdrawalAnnouncedNATWei) {
             // announcement increased - must check there is enough free collateral and then lock it
             // in this case the wait to withdrawal restarts from this moment
-            uint256 increase = agent.withdrawalAnnouncedNATWei - _valueNATWei;
-            require(increase < freeCollateralWei(agent, _fullCollateral, _amgToNATWeiPrice),
+            uint256 increase = _valueNATWei - agent.withdrawalAnnouncedNATWei;
+            require(increase <= freeCollateralWei(agent, _fullCollateral, _amgToNATWeiPrice),
                 "withdrawal: value too high");
             agent.withdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
         } else {
@@ -262,6 +281,19 @@ library Agents {
     {
         Agents.Agent storage agent = _state.agents[_agentVault];
         return agent.perAddressFunds[_underlyingAddress];
+    }
+
+    function isAgentInLiquidation(
+        AssetManagerState.State storage _state, 
+        address _agentVault,
+        bytes32 _underlyingAddress
+    )
+        internal view
+        returns (bool)
+    {
+        Agents.Agent storage agent = _state.agents[_agentVault];
+        return agent.liquidationState.liquidationStartedAt > 0 ||
+            agent.addressInLiquidation[_underlyingAddress].liquidationStartedAt > 0;
     }
 
     function freeCollateralLots(

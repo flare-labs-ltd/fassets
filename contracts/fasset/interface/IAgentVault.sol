@@ -27,7 +27,7 @@ interface IAgentVault {
     // agent should make sure to claim rewards before calling destroy(), or they will be forfeit
     function destroy(address payable _recipient) external;
 
-    // Used by asset minter for liquidation and failed redemption.
+    // Used by asset manager for liquidation and failed redemption.
     // Since _recipient is typically an unknown address, we do not directly send NAT,
     // but transfer WNAT (doesn't trigger any callbacks) which the recipient must withdraw.
     function liquidate(address _recipient, uint256 _amount) external;

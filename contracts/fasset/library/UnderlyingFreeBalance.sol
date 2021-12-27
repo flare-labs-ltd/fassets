@@ -9,6 +9,7 @@ import "./Agents.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./PaymentVerification.sol";
 import "./AssetManagerState.sol";
+import "./Liquidation.sol";
 
 
 library UnderlyingFreeBalance {
@@ -106,6 +107,7 @@ library UnderlyingFreeBalance {
         Agents.UnderlyingFunds storage uaf = Agents.getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
         require(uaf.lastUnderlyingBlockForTopup != 0 && uaf.lastUnderlyingBlockForTopup < _currentUnderlyingBlock,
             "no overdue topup");
-        // TODO: start liquidation until address balance is healthy
+        // start liquidation until address balance is healthy
+        Liquidation.startAddressLiquidation(_state, _agentVault, _underlyingAddress, false);
     }
 }
