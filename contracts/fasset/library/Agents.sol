@@ -142,7 +142,7 @@ library Agents {
     )
         internal
     {
-        Agent storage agent = _state.agents[_agentVault];
+        Agent storage agent = getAgent(_state, _agentVault);
         agent.mintedAMG = SafeMath64.add64(agent.mintedAMG, _valueAMG);
     }
 
@@ -153,7 +153,7 @@ library Agents {
     )
         internal
     {
-        Agent storage agent = _state.agents[_agentVault];
+        Agent storage agent = getAgent(_state, _agentVault);
         agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "ERROR: not enough minted");
     }
 
@@ -164,7 +164,7 @@ library Agents {
     )
         internal
     {
-        Agent storage agent = _state.agents[_agentVault];
+        Agent storage agent = getAgent(_state, _agentVault);
         agent.redeemingAMG = SafeMath64.add64(agent.redeemingAMG, _valueAMG);
         agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "ERROR: not enough minted");
     }
@@ -176,7 +176,7 @@ library Agents {
     )
         internal
     {
-        Agent storage agent = _state.agents[_agentVault];
+        Agent storage agent = getAgent(_state, _agentVault);
         agent.redeemingAMG = SafeMath64.sub64(agent.redeemingAMG, _valueAMG, "ERROR: not enough redeeming");
     }
     
@@ -189,7 +189,7 @@ library Agents {
     )
         internal
     {
-        Agent storage agent = _state.agents[_agentVault];
+        Agent storage agent = getAgent(_state, _agentVault);
         if (_valueNATWei > agent.withdrawalAnnouncedNATWei) {
             // announcement increased - must check there is enough free collateral and then lock it
             // in this case the wait to withdrawal restarts from this moment
@@ -215,7 +215,7 @@ library Agents {
     )
         internal
     {
-        Agent storage agent = _state.agents[_agentVault];
+        Agent storage agent = getAgent(_state, _agentVault);
         agent.dustAMG = SafeMath64.add64(agent.dustAMG, _dustIncreaseAMG);
         uint256 dustUBA = uint256(agent.dustAMG).mul(_state.settings.assetMintingGranularityUBA);
         emit DustChanged(_agentVault, dustUBA);
@@ -228,7 +228,7 @@ library Agents {
     )
         internal
     {
-        Agent storage agent = _state.agents[_agentVault];
+        Agent storage agent = getAgent(_state, _agentVault);
         require(agent.withdrawalAnnouncedAt != 0 &&
             block.timestamp <= agent.withdrawalAnnouncedAt + _state.settings.withdrawalWaitMinSeconds,
             "withdrawal: not announced");
@@ -247,6 +247,16 @@ library Agents {
     {
         _agent = _state.agents[_agentVault];
         require(_agent.agentType != AgentType.NONE, "agent does not exist");
+    }
+
+    function getAgentNoCheck(
+        AssetManagerState.State storage _state, 
+        address _agentVault
+    ) 
+        internal view 
+        returns (Agent storage _agent) 
+    {
+        _agent = _state.agents[_agentVault];
     }
     
     function isAgentInLiquidation(

@@ -22,7 +22,7 @@ library Liquidation {
     )
         internal
     {
-        Agents.Agent storage agent = _state.agents[_agentVault];
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.status != Agents.AgentStatus.LIQUIDATION, "already in liquidation");
         agent.status = Agents.AgentStatus.LIQUIDATION;
         agent.minCollateralRatioBIPS = _state.settings.liquidationMinCollateralRatioBIPS;
@@ -38,7 +38,7 @@ library Liquidation {
     )
         internal
     {
-        Agents.Agent storage agent = _state.agents[_agentVault];
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(Agents.lockedCollateralWei(agent, _amgToNATWeiPrice) <= _fullCollateral, "collateral too small");
         agent.status = Agents.AgentStatus.NORMAL;
         agent.minCollateralRatioBIPS = _state.settings.initialMinCollateralRatioBIPS;
@@ -54,7 +54,7 @@ library Liquidation {
         internal
         returns (uint64 _redeemedLots)
     {
-        Agents.Agent storage agent = _state.agents[_agentVault];
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.liquidationState.liquidationStartedAt > 0, "not in liquidation");
 
         RedemptionQueue.AgentQueue storage agentQueue = _state.redemptionQueue.agents[_agentVault];
@@ -79,7 +79,7 @@ library Liquidation {
     )
         internal
     {
-        // Agents.Agent storage agent = _state.agents[_agentVault];
+        // Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // Agents.AddressLiquidationState storage liquidation = agent.addressInLiquidation[_underlyingAddress];
         // if (liquidation.liquidationStartedAt == 0) {
         //     liquidation.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
@@ -97,7 +97,7 @@ library Liquidation {
     )
         internal
     {
-        // Agents.Agent storage agent = _state.agents[_agentVault];
+        // Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // require(!agent.addressInLiquidation[_underlyingAddress].fullLiquidation, "full liquidation");
         // require(agent.perAddressFunds[_underlyingAddress].freeUnderlyingBalanceUBA >= 0, "free balance negative");
         // delete agent.addressInLiquidation[_underlyingAddress];
@@ -113,7 +113,7 @@ library Liquidation {
         internal
         returns (uint64 _redeemedLots)
     {
-        // Agents.Agent storage agent = _state.agents[_agentVault];
+        // Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // require(agent.addressInLiquidation[_underlyingAddress].liquidationStartedAt > 0, "not in liquidation");
 
         // RedemptionQueue.AgentQueue storage agentQueue = _state.redemptionQueue.agents[_agentVault];

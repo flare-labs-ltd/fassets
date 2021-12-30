@@ -52,7 +52,7 @@ library AvailableAgents {
     ) 
         internal 
     {
-        Agents.Agent storage agent = _state.agents[_agentVault];
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.status == Agents.AgentStatus.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
         require(_mintingCollateralRatioBIPS >= agent.minCollateralRatioBIPS, "collateral ratio too small");
@@ -79,7 +79,7 @@ library AvailableAgents {
     ) 
         internal 
     {
-        Agents.Agent storage agent = _state.agents[_agentVault];
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
         AvailableAgent storage item = _state.availableAgents[agent.availableAgentsPos - 1];
         require(item.exitAnnouncedAt == 0, "already exiting");
@@ -94,7 +94,7 @@ library AvailableAgents {
     )
         internal
     {
-        Agents.Agent storage agent = _state.agents[_agentVault];
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
         uint256 ind = agent.availableAgentsPos - 1;
         if (_state.settings.minSecondsToExitAvailableAgentsList != 0) {
@@ -105,7 +105,8 @@ library AvailableAgents {
         }
         if (ind + 1 < _state.availableAgents.length) {
             _state.availableAgents[ind] = _state.availableAgents[_state.availableAgents.length - 1];
-            _state.agents[_state.availableAgents[ind].agentVault].availableAgentsPos = uint64(ind + 1);
+            Agents.Agent storage movedAgent = Agents.getAgent(_state, _state.availableAgents[ind].agentVault);
+            movedAgent.availableAgentsPos = uint64(ind + 1);
         }
         agent.availableAgentsPos = 0;
         _state.availableAgents.pop();
@@ -146,7 +147,7 @@ library AvailableAgents {
         for (uint256 i = _start; i < _end; i++) {
             address agentVault = _state.availableAgents[i].agentVault;
             uint256 fullCollateral = wnat.balanceOf(agentVault);
-            Agents.Agent storage agent = _state.agents[agentVault];
+            Agents.Agent storage agent = Agents.getAgentNoCheck(_state, agentVault);
             _agents[i - _start] = AvailableAgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,

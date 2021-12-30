@@ -55,7 +55,7 @@ library CollateralReservations {
         internal
     {
         // TODO: check fee paid?
-        Agents.Agent storage agent = _state.agents[_agentVault];
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
         require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
@@ -107,7 +107,7 @@ library CollateralReservations {
     )
         internal
     {
-        Agents.Agent storage agent = _state.agents[crt.agentVault];
+        Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
         if (crt.availabilityEnterCountMod2 == agent.availabilityEnterCountMod2) {
             agent.reservedAMG = SafeMath64.sub64(agent.reservedAMG, crt.valueAMG, "invalid reservation");
         } else {
