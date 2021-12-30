@@ -124,6 +124,9 @@ library Agents {
         agent.agentType = _agentType;
         agent.status = AgentStatus.NORMAL;
         agent.minCollateralRatioBIPS = _state.settings.initialMinCollateralRatioBIPS;
+        // claim the address to make sure no other agent is using it
+        _state.underlyingAddressOwnership.claim(_agentVault, _underlyingAddress);
+        // TODO: also check the address is not contract
         agent.underlyingAddress = _underlyingAddress;
     }
     
