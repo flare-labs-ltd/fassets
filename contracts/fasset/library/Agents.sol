@@ -65,6 +65,7 @@ library Agents {
         
         // When lot size changes, there may be some leftover after redemtpion that doesn't fit
         // a whole lot size. It is added to dustAMG and can be recovered via self-close.
+        // Unlike redeemingAMG, dustAMG is still counted in the mintedAMG.
         uint64 dustAMG;
         
         // Minimum native collateral ratio required for this agent. Changes during the liquidation.
@@ -77,19 +78,10 @@ library Agents {
         // Minting fee in BIPS (collected in underlying currency).
         uint16 feeBIPS;
         
-        // Minimum collateral ratio at which minting can occur.
+        // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio when entering the available agent list,
         // but it must always be greater than minimum collateral ratio.
-        uint32 mintingCollateralRatioBIPS;
-        
-        // When an agent exits and re-enters availability list, mintingCollateralRatio changes
-        // so we have to acocunt for that when calculating total reserved collateral.
-        // We simplify by only allowing one change before the old CRs are executed or cleared.
-        // Therefore we store relevant old values here and match old/new by 0/1 flag 
-        // named `availabilityEnterCountMod2` here and in CR.
-        uint64 oldReservedAMG;
-        uint32 oldMintingCollateralRatioBIPS;
-        uint8 availabilityEnterCountMod2;
+        uint32 agentMinCollateralRatioBIPS;
         
         // Current status of the agent (changes for liquidation).
         AgentType agentType;
@@ -306,20 +298,10 @@ library Agents {
         internal view 
         returns (uint256) 
     {
-        // reservedCollateral = _agent.reservedAMG * 
-        // reserved collateral is calculated at minting ratio
-        uint256 reservedCollateral = Conversion.convertAmgToNATWei(_agent.reservedAMG, _amgToNATWeiPrice)
-            .mulBips(_agent.mintingCollateralRatioBIPS);
-        // old reserved collateral (from before agent exited and re-entered minting queue), at old minting ratio
-        uint256 oldReservedCollateral = Conversion.convertAmgToNATWei(_agent.oldReservedAMG, _amgToNATWeiPrice)
-            .mulBips(_agent.oldMintingCollateralRatioBIPS);
-        // minted collateral is calculated at minimal ratio
-        uint256 mintedCollateral = Conversion.convertAmgToNATWei(_agent.mintedAMG, _amgToNATWeiPrice)
-            .mulBips(_agent.minCollateralRatioBIPS);
-        return reservedCollateral
-            .add(oldReservedCollateral)
-            .add(mintedCollateral)
-            .add(_agent.withdrawalAnnouncedNATWei);
+        uint256 lockedAMG = uint256(_agent.reservedAMG).add(_agent.mintedAMG).add(_agent.redeemingAMG);
+        uint256 usedCollateral = Conversion.convertAmgToNATWei(lockedAMG, _amgToNATWeiPrice)
+            .mulBips(_agent.agentMinCollateralRatioBIPS);
+        return usedCollateral.add(_agent.withdrawalAnnouncedNATWei);
     }
     
     function mintingLotCollateralWei(
@@ -331,7 +313,7 @@ library Agents {
         returns (uint256) 
     {
         return Conversion.convertAmgToNATWei(_settings.lotSizeAMG, _amgToNATWeiPrice)
-            .mulBips(_agent.mintingCollateralRatioBIPS);
+            .mulBips(_agent.agentMinCollateralRatioBIPS);
     }
     
     function requireOwnerAgent(address _agentVault) internal view {

@@ -25,7 +25,6 @@ library CollateralReservations {
         address agentVault;
         uint64 valueAMG;
         address minter;
-        uint8 availabilityEnterCountMod2;
     }
 
     event CollateralReserved(
@@ -78,8 +77,7 @@ library CollateralReservations {
             valueAMG: valueAMG,
             minter: _minter,
             firstUnderlyingBlock: _currentUnderlyingBlock,
-            lastUnderlyingBlock: lastUnderlyingBlock,
-            availabilityEnterCountMod2: agent.availabilityEnterCountMod2
+            lastUnderlyingBlock: lastUnderlyingBlock
         });
         emit CollateralReserved(_agentVault, _minter, crtId, _lots, 
             underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock);
@@ -108,11 +106,7 @@ library CollateralReservations {
         internal
     {
         Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
-        if (crt.availabilityEnterCountMod2 == agent.availabilityEnterCountMod2) {
-            agent.reservedAMG = SafeMath64.sub64(agent.reservedAMG, crt.valueAMG, "invalid reservation");
-        } else {
-            agent.oldReservedAMG = SafeMath64.sub64(agent.oldReservedAMG, crt.valueAMG, "invalid reservation");
-        }
+        agent.reservedAMG = SafeMath64.sub64(agent.reservedAMG, crt.valueAMG, "invalid reservation");
         delete _state.crts[_crtId];
     }
 

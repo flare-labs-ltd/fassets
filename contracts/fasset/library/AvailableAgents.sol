@@ -23,7 +23,7 @@ library AvailableAgents {
     struct AvailableAgentInfo {
         address agentVault;
         uint256 feeBIPS;
-        uint256 mintingCollateralRatioBIPS;
+        uint256 agentMinCollateralRatioBIPS;
         // Note: freeCollateralLots is only informative since it can can change at any time
         // due to price changes, reservation, minting, redemption, or even lot size change
         uint256 freeCollateralLots;
@@ -32,7 +32,7 @@ library AvailableAgents {
     event AgentAvailable(
         address agentVault, 
         uint256 feeBIPS, 
-        uint256 mintingCollateralRatioBIPS,
+        uint256 agentMinCollateralRatioBIPS,
         uint256 freeCollateralLots);
         
     event AgentExitAnnounced(
@@ -46,7 +46,7 @@ library AvailableAgents {
         AssetManagerState.State storage _state,
         address _agentVault,
         uint16 _feeBIPS,
-        uint32 _mintingCollateralRatioBIPS,
+        uint32 _agentMinCollateralRatioBIPS,
         uint256 _fullCollateralWei,
         uint256 _amgToNATWeiPrice
     ) 
@@ -55,11 +55,10 @@ library AvailableAgents {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.status == Agents.AgentStatus.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
-        require(_mintingCollateralRatioBIPS >= agent.minCollateralRatioBIPS, "collateral ratio too small");
-        require(agent.oldReservedAMG == 0, "re-entering again too soon");
+        require(_agentMinCollateralRatioBIPS >= agent.minCollateralRatioBIPS, "collateral ratio too small");
         // set parameters
         agent.feeBIPS = _feeBIPS; 
-        agent.mintingCollateralRatioBIPS = _mintingCollateralRatioBIPS;
+        agent.agentMinCollateralRatioBIPS = _agentMinCollateralRatioBIPS;
         // check that there is enough free collateral for at least one lot
         uint256 freeCollateralLots = agent.freeCollateralLots(_state.settings, _fullCollateralWei, _amgToNATWeiPrice);
         require(freeCollateralLots >= 1, "not enough free collateral");
@@ -69,8 +68,7 @@ library AvailableAgents {
             exitAnnouncedAt: 0
         }));
         agent.availableAgentsPos = uint64(_state.availableAgents.length);     // index+1 (0=not in list)
-        agent.availabilityEnterCountMod2 = (agent.availabilityEnterCountMod2 + 1) % 2;      // always 0/1
-        emit AgentAvailable(_agentVault, _feeBIPS, _mintingCollateralRatioBIPS, freeCollateralLots);
+        emit AgentAvailable(_agentVault, _feeBIPS, _agentMinCollateralRatioBIPS, freeCollateralLots);
     }
 
     function announceExit(
@@ -151,7 +149,7 @@ library AvailableAgents {
             _agents[i - _start] = AvailableAgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
-                mintingCollateralRatioBIPS: agent.mintingCollateralRatioBIPS,
+                agentMinCollateralRatioBIPS: agent.agentMinCollateralRatioBIPS,
                 freeCollateralLots: agent.freeCollateralLots(_state.settings, fullCollateral, _amgToNATWeiPrice)
             });
         }
