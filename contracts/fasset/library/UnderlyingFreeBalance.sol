@@ -20,36 +20,34 @@ library UnderlyingFreeBalance {
 
     event TopupRequired(
         address indexed agentVault,
-        bytes32 underlyingAddress,
         uint256 valueUBA,
         uint64 lastUnderlyingBlock);
 
     function updateFreeBalance(
         AssetManagerState.State storage _state, 
         address _agentVault,
-        bytes32 _underlyingAddress,
         uint256 _balanceAdd,
         uint256 _balanceSub,
         uint64 _currentUnderlyingBlock
     ) 
         internal
     {
-        Agents.UnderlyingFunds storage uaf = Agents.getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
-        // assert((uaf.freeBalanceUBA >= 0) == (uaf.lastUnderlyingBlockForTopup == 0));
-        int256 newBalance = int256(uaf.freeBalanceUBA)
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        // assert((uaf.freeUnderlyingBalanceUBA >= 0) == (uaf.lastUnderlyingBlockForTopup == 0));
+        int256 newBalance = int256(agent.freeUnderlyingBalanceUBA)
             .add(SafeCast.toInt256(_balanceAdd))
             .sub(SafeCast.toInt256(_balanceSub));
-        uaf.freeBalanceUBA = SafeCast.toInt128(newBalance);
+        agent.freeUnderlyingBalanceUBA = SafeCast.toInt128(newBalance);
         if (newBalance < 0) {
-            if (uaf.lastUnderlyingBlockForTopup == 0) {
+            if (agent.lastUnderlyingBlockForTopup == 0) {
                 require(_currentUnderlyingBlock != 0, "cannot set last topup block");
-                uaf.lastUnderlyingBlockForTopup = 
+                agent.lastUnderlyingBlockForTopup = 
                     SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForTopup);
             }
             uint256 topup = SafeCast.toUint256(-newBalance);   // required topup is negative balance
-            emit TopupRequired(_agentVault, _underlyingAddress, topup, uaf.lastUnderlyingBlockForTopup);
-        } else if (uaf.lastUnderlyingBlockForTopup != 0) {
-            uaf.lastUnderlyingBlockForTopup = 0;
+            emit TopupRequired(_agentVault, topup, agent.lastUnderlyingBlockForTopup);
+        } else if (agent.lastUnderlyingBlockForTopup != 0) {
+            agent.lastUnderlyingBlockForTopup = 0;
         }
         // TODO: trigger liquidation if topup not paid in time
     }
@@ -57,14 +55,13 @@ library UnderlyingFreeBalance {
     function increaseFreeBalance(
         AssetManagerState.State storage _state, 
         address _agentVault,
-        bytes32 _underlyingAddress,
         uint256 _balanceIncrease
     ) 
         internal
     {
         // _currentUnderlyingBlock can be 0 here, since if new balance is < 0, then
         // lastUnderlyingBlockForTopup must have been set before
-        updateFreeBalance(_state, _agentVault, _underlyingAddress, _balanceIncrease, 0, 0);
+        updateFreeBalance(_state, _agentVault, _balanceIncrease, 0, 0);
     }
 
     function confirmTopupPayment(
@@ -74,40 +71,41 @@ library UnderlyingFreeBalance {
     )
         internal
     {
-        // TODO: check that payment info is not too old? (to prevent submitting already verified and expired proofs - 
-        // probably not necessary, since state connector cannot prove such old payments)
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        require(agent.underlyingAddress == _paymentInfo.sourceAddress, 
+            "not underlying address");
         require(_state.underlyingAddressOwnership.check(_agentVault, _paymentInfo.sourceAddress), 
             "address not owned by the agent");
+        // TODO: check that payment info is not too old? (to prevent submitting already verified and expired proofs - 
+        // probably not necessary, since state connector cannot prove such old payments)
         _state.paymentVerifications.confirmPayment(_paymentInfo);
-        increaseFreeBalance(_state, _agentVault, _paymentInfo.targetAddress, _paymentInfo.valueUBA);
+        increaseFreeBalance(_state, _agentVault, _paymentInfo.valueUBA);
     }
     
     function withdrawFreeFunds(
         AssetManagerState.State storage _state,
         address _agentVault,
-        bytes32 _underlyingAddress,
         uint256 _valueUBA
     )
         internal
     {
-        Agents.UnderlyingFunds storage uaf = Agents.getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
-        require(uaf.freeBalanceUBA >= 0 && uint256(uaf.freeBalanceUBA) >= _valueUBA, 
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        require(agent.freeUnderlyingBalanceUBA >= 0 && uint256(agent.freeUnderlyingBalanceUBA) >= _valueUBA, 
             "payment larger than allowed");
-        uaf.freeBalanceUBA -= int128(_valueUBA);   // guarded by require
+        agent.freeUnderlyingBalanceUBA -= int128(_valueUBA);   // guarded by require
     }
     
     function triggerTopupLiquidation(
         AssetManagerState.State storage _state,
         address _agentVault,
-        bytes32 _underlyingAddress,
         uint64 _currentUnderlyingBlock
     )
         internal
     {
-        Agents.UnderlyingFunds storage uaf = Agents.getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
-        require(uaf.lastUnderlyingBlockForTopup != 0 && uaf.lastUnderlyingBlockForTopup < _currentUnderlyingBlock,
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        require(agent.lastUnderlyingBlockForTopup != 0 && agent.lastUnderlyingBlockForTopup < _currentUnderlyingBlock,
             "no overdue topup");
         // start liquidation until address balance is healthy
-        Liquidation.startAddressLiquidation(_state, _agentVault, _underlyingAddress, false);
+        Liquidation.startAddressLiquidation(_state, _agentVault, false);
     }
 }

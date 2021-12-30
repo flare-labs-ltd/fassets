@@ -19,7 +19,6 @@ library Minting {
         address indexed agentVault,
         uint256 collateralReservationId,
         uint256 redemptionTicketId,
-        bytes32 underlyingAddress,
         uint256 receivedFeeUBA);
 
     function mintingExecuted(
@@ -31,19 +30,18 @@ library Minting {
     {
         CollateralReservations.CollateralReservation storage crt = 
             CollateralReservations.getCollateralReservation(_state, _crtId);
-        Agents.requireAgent(crt.agentVault);
+        Agents.requireOwnerAgent(crt.agentVault);
+        Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
         uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA).add(crt.underlyingFeeUBA);
         _state.paymentVerifications.confirmPaymentDetails(_paymentInfo, 
-            crt.minterUnderlyingAddress, crt.agentUnderlyingAddress, expectedPaymentUBA, 
+            crt.minterUnderlyingAddress, agent.underlyingAddress, expectedPaymentUBA, 
             crt.firstUnderlyingBlock, crt.lastUnderlyingBlock);
         address agentVault = crt.agentVault;
         uint64 valueAMG = crt.valueAMG;
-        bytes32 underlyingAddress = crt.agentUnderlyingAddress;
-        uint64 redemptionTicketId = 
-            _state.redemptionQueue.createRedemptionTicket(agentVault, valueAMG, underlyingAddress);
-        emit MintingExecuted(agentVault, _crtId, redemptionTicketId, underlyingAddress, crt.underlyingFeeUBA);
-        Agents.allocateMintedAssets(_state, agentVault, underlyingAddress, valueAMG);
-        UnderlyingFreeBalance.increaseFreeBalance(_state, crt.agentVault, underlyingAddress, crt.underlyingFeeUBA);
+        uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, valueAMG);
+        emit MintingExecuted(agentVault, _crtId, redemptionTicketId, crt.underlyingFeeUBA);
+        Agents.allocateMintedAssets(_state, agentVault, valueAMG);
+        UnderlyingFreeBalance.increaseFreeBalance(_state, crt.agentVault, crt.underlyingFeeUBA);
         CollateralReservations.releaseCollateralReservation(_state, crt, _crtId);   // crt can't be used after this
         // TODO: burn reservation fee?
     }

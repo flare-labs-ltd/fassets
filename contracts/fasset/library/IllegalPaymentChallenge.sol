@@ -47,44 +47,39 @@ library IllegalPaymentChallenge {
     
     event IllegalPaymentChallenged(
         address indexed agentVault,
-        bytes32 underlyingAddress, 
         bytes32 transactionHash);
     
     event IllegalPaymentConfirmed(
         address indexed agentVault,
-        bytes32 underlyingAddress, 
         bytes32 transactionHash);
         
     event WrongPaymentReportConfirmed(
         address indexed agentVault,
-        bytes32 underlyingAddress, 
         bytes32 transactionHash);
         
     function createChallenge(
         AssetManagerState.State storage _state,
         address _agentVault,
-        bytes32 _underlyingSourceAddress,
         bytes32 _transactionHash
     )
         internal
     {
-        bytes32 txKey = PaymentVerification.transactionKey(_underlyingSourceAddress, _transactionHash);
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        bytes32 txKey = PaymentVerification.transactionKey(agent.underlyingAddress, _transactionHash);
         // only one challenge per (source addres, transaction hash) pair
         require(!_challengeExists(_state, txKey), "challenge already exists");
         // cannot challenge confirmed transactions
         require(!_state.paymentVerifications.paymentConfirmed(txKey), "payment already confirmed");
-        // check that the address belongs to the agent
-        Agents.UnderlyingFunds storage uaf = _checkAgentsAddress(_state, _agentVault, _underlyingSourceAddress);
         // and that it actually backs any minting
-        require(uaf.mintedAMG > 0, "address empty");
+        require(agent.mintedAMG > 0, "address empty");
         _state.paymentChallenges.challenges[txKey] = Challenge({
             agentVault: _agentVault,
             challenger: msg.sender,
             createdAtBlock: SafeCast.toUint64(block.number),
             createdAt: SafeCast.toUint64(block.timestamp),
-            mintedAMG: uaf.mintedAMG
+            mintedAMG: agent.mintedAMG
         });
-        emit IllegalPaymentChallenged(_agentVault, _underlyingSourceAddress, _transactionHash);
+        emit IllegalPaymentChallenged(_agentVault, _transactionHash);
     }
     
     function confirmChallenge(
@@ -105,9 +100,9 @@ library IllegalPaymentChallenge {
             "matching report exists");
         // check that proof of this tx wasn't used before and mark it as used
         _state.paymentVerifications.confirmPayment(_paymentInfo);
-        _startLiquidation(_state, challenge.agentVault, _paymentInfo.sourceAddress);
+        _startLiquidation(_state, challenge.agentVault);
         _rewardChallengers(_state, challenge.challenger, msg.sender, challenge.mintedAMG);
-        emit IllegalPaymentConfirmed(challenge.agentVault, _paymentInfo.sourceAddress, _paymentInfo.transactionHash);
+        emit IllegalPaymentConfirmed(challenge.agentVault, _paymentInfo.transactionHash);
         deleteChallenge(_state, _paymentInfo);
     }
     
@@ -120,17 +115,16 @@ library IllegalPaymentChallenge {
     {
         require(PaymentReport.reportMatch(_state.paymentReports, _paymentInfo) == PaymentReport.ReportMatch.MISMATCH,
             "no report mismatch");
-        // check that the address belongs to the agent
-        Agents.UnderlyingFunds storage uaf = _checkAgentsAddress(_state, _agentVault, _paymentInfo.sourceAddress);
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // check that proof of this tx wasn't used before and mark it as used
         _state.paymentVerifications.confirmPayment(_paymentInfo);
         // challenge (if it exists) is needed to reward original challenger and get amount of minting at the time
         Challenge storage challenge = getChallenge(_state, _paymentInfo.sourceAddress, _paymentInfo.transactionHash);
         // if the challenge exists, use its mintedAMG value (cannot be 0), otherwise use current for the address
-        uint64 backingAMG = challenge.mintedAMG != 0 ? challenge.mintedAMG : uaf.mintedAMG;
-        _startLiquidation(_state, _agentVault, _paymentInfo.sourceAddress);
+        uint64 backingAMG = challenge.mintedAMG != 0 ? challenge.mintedAMG : agent.mintedAMG;
+        _startLiquidation(_state, _agentVault);
         _rewardChallengers(_state, challenge.challenger, msg.sender, backingAMG);
-        emit WrongPaymentReportConfirmed(_agentVault, _paymentInfo.sourceAddress, _paymentInfo.transactionHash);
+        emit WrongPaymentReportConfirmed(_agentVault, _paymentInfo.transactionHash);
         deleteChallenge(_state, _paymentInfo);
     }
 
@@ -160,13 +154,12 @@ library IllegalPaymentChallenge {
     
     function _startLiquidation(
         AssetManagerState.State storage _state,
-        address _agentVault,
-        bytes32 _underlyingAddress
+        address _agentVault
     ) 
         private
     {
         // start address full liquidation
-        Liquidation.startAddressLiquidation(_state, _agentVault, _underlyingAddress, true);
+        Liquidation.startAddressLiquidation(_state, _agentVault, true);
     }
     
     function _rewardChallengers(
@@ -188,20 +181,5 @@ library IllegalPaymentChallenge {
         returns (bool) 
     {
         return _state.paymentChallenges.challenges[_sourceTxHash].agentVault != address(0);
-    }
-    
-    function _checkAgentsAddress(
-        AssetManagerState.State storage _state,
-        address _agentVault,
-        bytes32 _underlyingAddress
-    )
-        private view
-        returns (Agents.UnderlyingFunds storage)
-    {
-        require(_state.underlyingAddressOwnership.check(_agentVault, _underlyingAddress), 
-            "address not owned by the agent");
-        Agents.UnderlyingFunds storage uaf = Agents.getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
-        require(uaf.mintedAMG > 0, "address empty");
-        return uaf;
     }
 }

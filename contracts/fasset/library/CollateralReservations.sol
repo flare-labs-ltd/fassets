@@ -17,7 +17,6 @@ library CollateralReservations {
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     
     struct CollateralReservation {
-        bytes32 agentUnderlyingAddress;
         bytes32 minterUnderlyingAddress;
         uint128 underlyingValueUBA;
         uint64 firstUnderlyingBlock;
@@ -34,7 +33,6 @@ library CollateralReservations {
         address indexed minter,
         uint256 collateralReservationId,
         uint64 reservedLots,
-        bytes32 underlyingAddress,
         uint256 underlyingValueUBA, 
         uint256 underlyingFeeUBA,
         uint256 lastUnderlyingBlock);
@@ -60,7 +58,7 @@ library CollateralReservations {
         Agents.Agent storage agent = _state.agents[_agentVault];
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
-        require(!Agents.isAgentInLiquidation(_state, _agentVault, agent.underlyingAddress), "agent in liquidation");
+        require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
         require(agent.freeCollateralLots(_state.settings, _fullAgentCollateral, _amgToNATWeiPrice) >= _lots,
             "not enough free collateral");
 
@@ -73,7 +71,6 @@ library CollateralReservations {
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({
-            agentUnderlyingAddress: agent.underlyingAddress,
             minterUnderlyingAddress: _minterUnderlyingAddress,
             underlyingValueUBA: SafeCast.toUint128(underlyingValueUBA),
             underlyingFeeUBA: SafeCast.toUint128(underlyingFeeUBA),
@@ -85,7 +82,7 @@ library CollateralReservations {
             availabilityEnterCountMod2: agent.availabilityEnterCountMod2
         });
         emit CollateralReserved(_agentVault, _minter, crtId, _lots, 
-            agent.underlyingAddress, underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock);
+            underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock);
     }
     
     function reservationTimeout(
@@ -97,7 +94,7 @@ library CollateralReservations {
     {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
         require(_currentUnderlyingBlock >= crt.lastUnderlyingBlock, "timeout too early");
-        Agents.requireAgent(crt.agentVault);
+        Agents.requireOwnerAgent(crt.agentVault);
         emit CollateralReservationTimeout(crt.agentVault, crt.minter, _crtId);
         releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this
         // TODO: pay fee to agent?

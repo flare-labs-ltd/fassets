@@ -11,7 +11,6 @@ import "./AssetManagerState.sol";
 
 library AllowedPaymentAnnouncement {
     struct PaymentAnnouncement {
-        bytes32 underlyingAddress;
         uint256 valueUBA;
         uint64 firstUnderlyingBlock;
         uint64 lastUnderlyingBlock;
@@ -19,14 +18,14 @@ library AllowedPaymentAnnouncement {
     }
     
     event AllowedPaymentAnnounced(
-        bytes32 underlyingAddress,
+        address agentVault,
         uint256 valueUBA,
         uint64 firstUnderlyingBlock,
         uint64 lastUnderlyingBlock,
         uint64 announcementId);
         
     event AllowedPaymentReported(
-        bytes32 underlyingAddress,
+        address agentVault,
         uint256 valueUBA,
         uint256 gasUBA,
         uint64 underlyingBlock,
@@ -35,27 +34,25 @@ library AllowedPaymentAnnouncement {
     function announceAllowedPayment(
         AssetManagerState.State storage _state,
         address _agentVault,
-        bytes32 _underlyingAddress,
         uint256 _valueUBA,
         uint64 _currentUnderlyingBlock
     )
         internal
     {
-        Agents.requireAgent(_agentVault);
+        Agents.requireOwnerAgent(_agentVault);
         require(_valueUBA > 0, "invalid value");
-        UnderlyingFreeBalance.withdrawFreeFunds(_state, _agentVault, _underlyingAddress, _valueUBA);
+        UnderlyingFreeBalance.withdrawFreeFunds(_state, _agentVault, _valueUBA);
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForAllowedPayment);
         uint64 announcementId = ++_state.newPaymentAnnouncementId;
         bytes32 key = _announcementKey(_agentVault, announcementId);
         _state.paymentAnnouncements[key] = PaymentAnnouncement({
-            underlyingAddress: _underlyingAddress,
             valueUBA: _valueUBA,
             firstUnderlyingBlock: _currentUnderlyingBlock,
             lastUnderlyingBlock: lastUnderlyingBlock,
             createdAtBlock: SafeCast.toUint64(block.number)
         });
-        emit AllowedPaymentAnnounced(_underlyingAddress, _valueUBA, 
+        emit AllowedPaymentAnnounced(_agentVault, _valueUBA, 
             _currentUnderlyingBlock, lastUnderlyingBlock, announcementId);
     }
     
@@ -68,10 +65,11 @@ library AllowedPaymentAnnouncement {
     )
         internal
     {
-        Agents.requireAgent(_agentVault);
+        Agents.requireOwnerAgent(_agentVault);
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         bytes32 key = _announcementKey(_agentVault, _announcementId);
         PaymentAnnouncement storage announcement = _state.paymentAnnouncements[key];
-        require(announcement.underlyingAddress != 0, "invalid announcement id");
+        require(announcement.createdAtBlock != 0, "invalid announcement id");
         // if payment is challenged, make sure announcement was made strictly before challenge
         IllegalPaymentChallenge.Challenge storage challenge = 
             IllegalPaymentChallenge.getChallenge(_state, _paymentInfo.sourceAddress, _paymentInfo.transactionHash);
@@ -79,7 +77,7 @@ library AllowedPaymentAnnouncement {
             "challenged before announcement");
         // verify that details match announcement
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
-            announcement.underlyingAddress, 0, /* target not needed for allowed payments */
+            agent.underlyingAddress, 0, /* target not needed for allowed payments */
             announcement.valueUBA, announcement.firstUnderlyingBlock, announcement.lastUnderlyingBlock);
         // once the transaction has been proved, reporting it is pointless
         require(!PaymentVerification.paymentConfirmed(_state.paymentVerifications, _paymentInfo),
@@ -87,9 +85,8 @@ library AllowedPaymentAnnouncement {
         // create the report
         PaymentReport.createReport(_state.paymentReports, _paymentInfo);
         // deduct gas from free balance (don't report multiple times or gas will be deducted every time)
-        UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, _paymentInfo.sourceAddress, 
-            0, _paymentInfo.gasUBA, _currentUnderlyingBlock);
-        emit AllowedPaymentReported(_paymentInfo.sourceAddress, _paymentInfo.valueUBA, _paymentInfo.gasUBA, 
+        UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, 0, _paymentInfo.gasUBA, _currentUnderlyingBlock);
+        emit AllowedPaymentReported(_agentVault, _paymentInfo.valueUBA, _paymentInfo.gasUBA, 
             _paymentInfo.underlyingBlock, _announcementId);
         delete _state.paymentAnnouncements[key];
     }

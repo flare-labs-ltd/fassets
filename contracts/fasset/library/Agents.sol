@@ -26,25 +26,6 @@ library Agents {
         LIQUIDATION
     }
     
-    struct UnderlyingFunds {
-        // The amount of underlying funds that may be withdrawn by the agent
-        // (fees, self-close and, amount released by liquidation).
-        // May become negative (due to high underlying gas costs), in which case topup is required.
-        int128 freeBalanceUBA;
-        
-        // The amount of fassets backed by this this underlying address
-        // (there may be multiple underlying addresses for an agent).
-        uint64 mintedAMG;
-        
-        // When freeBalanceUBA becomes negative, agent has until this block to perform topup,
-        // otherwise liquidation can be triggered by a challenger.
-        uint64 lastUnderlyingBlockForTopup;
-        
-        // When lot size changes, there may be some leftover after redemtpion that doesn't fit
-        // a whole lot size. It is added to dustAMG and can be recovered via self-close.
-        uint64 dustAMG;
-    }
-
     struct LiquidationState {
 
         uint64 liquidationStartedAt;
@@ -62,12 +43,6 @@ library Agents {
         // Agent can change this address anytime and it affects future mintings.
         bytes32 underlyingAddress;
         
-        // Agent is allowed to withdraw fee or liquidated underlying amount.
-        // Allowed payments must cover withdrawal value when announced
-        // after withdrawal, underlying gas must also be covered, otherwise topup request is triggered.
-        // Type: mapping underlyingAddress => Agents.UnderlyingFunds
-        mapping(bytes32 => UnderlyingFunds) perAddressFunds;
-        
         // For agents to withdraw NAT collateral, they must first announce it and then wait 
         // withdrawalAnnouncementSeconds. 
         // The announced amount cannt be used as collateral for minting during that time.
@@ -82,6 +57,15 @@ library Agents {
         
         // Amount of collateral backing minted fassets.
         uint64 mintedAMG;
+        
+        // The amount of fassets being redeemed. In this case, the fassets were already burned,
+        // but the collateral must still be locked to allow payment in case of redemption failure.
+        // The distinction between 'minted' and 'redeemed' assets is important in case of challenge.
+        uint64 redeemingAMG;
+        
+        // When lot size changes, there may be some leftover after redemtpion that doesn't fit
+        // a whole lot size. It is added to dustAMG and can be recovered via self-close.
+        uint64 dustAMG;
         
         // Minimum native collateral ratio required for this agent. Changes during the liquidation.
         uint32 minCollateralRatioBIPS;
@@ -117,67 +101,52 @@ library Agents {
         //    All redemption tickets for that underlyingAddress should be liquidated
         // Type: mapping underlyingAddress => Agents.AddressLiquidationState
         mapping(bytes32 => AddressLiquidationState) addressInLiquidation;
+
+        // The amount of underlying funds that may be withdrawn by the agent
+        // (fees, self-close and, amount released by liquidation).
+        // May become negative (due to high underlying gas costs), in which case topup is required.
+        int128 freeUnderlyingBalanceUBA;
+        
+        // When freeUnderlyingBalanceUBA becomes negative, agent has until this block to perform topup,
+        // otherwise liquidation can be triggered by a challenger.
+        uint64 lastUnderlyingBlockForTopup;
     }
     
-    event AddressDustChanged(
+    event DustChanged(
         address indexed agentVault,
-        bytes32 underlyingAddress,
         uint256 dustUBA);
         
     function createAgent(
         AssetManagerState.State storage _state, 
         AgentType _agentType,
         address _agentVault,
-        bytes32 _initialUnderlyingAddress
+        bytes32 _underlyingAddress
     ) 
         internal 
     {
         // TODO: create vault here instead of passing _agentVault?
+        require(_agentVault != address(0), "zero vault address");
+        require(_underlyingAddress != 0, "zero underlying address");
         Agent storage agent = _state.agents[_agentVault];
         require(agent.agentType == AgentType.NONE, "agent already exists");
         agent.agentType = _agentType;
         agent.status = AgentStatus.NORMAL;
         agent.minCollateralRatioBIPS = _state.settings.initialMinCollateralRatioBIPS;
-        setUnderlyingAddress(_state, _agentVault, _initialUnderlyingAddress);
-    }
-    
-    function setUnderlyingAddress(
-        AssetManagerState.State storage _state, 
-        address _agentVault,
-        bytes32 _underlyingAddress
-    )
-        internal
-    {
-        require(_underlyingAddress != 0, "zero underlying address");
-        Agent storage agent = _state.agents[_agentVault];
-        bytes32 oldUnderlyingAddress = agent.underlyingAddress;
-        if (oldUnderlyingAddress == _underlyingAddress) return;  // no change
-        // claim the address to make sure no other agent is using it
-        _state.underlyingAddressOwnership.claim(_agentVault, _underlyingAddress);
-        // set new address
         agent.underlyingAddress = _underlyingAddress;
-        // if the old underlying address isn't backing any minted assets, we release it now
-        // otherwise it will be released when the last lot is redeemed or liquidated
-        if (oldUnderlyingAddress != 0) {
-            _deleteUnderlyingAddressIfUnused(agent, oldUnderlyingAddress);
-        }
     }
     
     function allocateMintedAssets(
         AssetManagerState.State storage _state, 
         address _agentVault,
-        bytes32 _underlyingAddress,
         uint64 _valueAMG
     )
         internal
     {
         Agent storage agent = _state.agents[_agentVault];
         agent.mintedAMG = SafeMath64.add64(agent.mintedAMG, _valueAMG);
-        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
-        uaf.mintedAMG = SafeMath64.add64(uaf.mintedAMG, _valueAMG);
     }
 
-    function releaseMintedCollateral(
+    function releaseMintedAssets(
         AssetManagerState.State storage _state, 
         address _agentVault,
         uint64 _valueAMG
@@ -188,18 +157,27 @@ library Agents {
         agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "ERROR: not enough minted");
     }
 
-    function releaseUnderlyingAssets(
+    function startRedeemingAssets(
         AssetManagerState.State storage _state, 
         address _agentVault,
-        bytes32 _underlyingAddress,
         uint64 _valueAMG
     )
         internal
     {
         Agent storage agent = _state.agents[_agentVault];
-        Agents.UnderlyingFunds storage uaf = agent.perAddressFunds[_underlyingAddress];
-        uaf.mintedAMG = SafeMath64.sub64(uaf.mintedAMG, _valueAMG, "ERROR: underlying minted");
-        _deleteUnderlyingAddressIfUnused(agent, _underlyingAddress);
+        agent.redeemingAMG = SafeMath64.add64(agent.redeemingAMG, _valueAMG);
+        agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "ERROR: not enough minted");
+    }
+
+    function endRedeemingAssets(
+        AssetManagerState.State storage _state, 
+        address _agentVault,
+        uint64 _valueAMG
+    )
+        internal
+    {
+        Agent storage agent = _state.agents[_agentVault];
+        agent.redeemingAMG = SafeMath64.sub64(agent.redeemingAMG, _valueAMG, "ERROR: not enough redeeming");
     }
     
     function announceWithdrawal(
@@ -233,15 +211,14 @@ library Agents {
     function increaseDust(
         AssetManagerState.State storage _state,
         address _agentVault,
-        bytes32 _underlyingAddress,
         uint64 _dustIncreaseAMG
     )
         internal
     {
-        Agents.UnderlyingFunds storage uaf = getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
-        uaf.dustAMG = SafeMath64.add64(uaf.dustAMG, _dustIncreaseAMG);
-        uint256 dustUBA = uint256(uaf.dustAMG).mul(_state.settings.assetMintingGranularityUBA);
-        emit AddressDustChanged(_agentVault, _underlyingAddress, dustUBA);
+        Agent storage agent = _state.agents[_agentVault];
+        agent.dustAMG = SafeMath64.add64(agent.dustAMG, _dustIncreaseAMG);
+        uint256 dustUBA = uint256(agent.dustAMG).mul(_state.settings.assetMintingGranularityUBA);
+        emit DustChanged(_agentVault, dustUBA);
     }
     
     function withdrawalExecuted(
@@ -266,34 +243,23 @@ library Agents {
         address _agentVault
     ) 
         internal view 
-        returns (Agent storage) 
+        returns (Agent storage _agent) 
     {
-        return _state.agents[_agentVault];
+        _agent = _state.agents[_agentVault];
+        require(_agent.agentType != AgentType.NONE, "agent does not exist");
     }
     
-    function getUnderlyingFunds(
-        AssetManagerState.State storage _state, 
-        address _agentVault,
-        bytes32 _underlyingAddress
-    )
-        internal view
-        returns (Agents.UnderlyingFunds storage)
-    {
-        Agents.Agent storage agent = _state.agents[_agentVault];
-        return agent.perAddressFunds[_underlyingAddress];
-    }
-
     function isAgentInLiquidation(
         AssetManagerState.State storage _state, 
-        address _agentVault,
-        bytes32 _underlyingAddress
+        address _agentVault
     )
         internal view
         returns (bool)
     {
         Agents.Agent storage agent = _state.agents[_agentVault];
-        return agent.liquidationState.liquidationStartedAt > 0 ||
-            agent.addressInLiquidation[_underlyingAddress].liquidationStartedAt > 0;
+        return agent.liquidationState.liquidationStartedAt > 0;
+        // || agent.addressInLiquidation[_underlyingAddress].liquidationStartedAt > 0;
+        // TODO: handle address liquidation
     }
 
     function freeCollateralLots(
@@ -358,21 +324,7 @@ library Agents {
             .mulBips(_agent.mintingCollateralRatioBIPS);
     }
     
-    function requireAgent(address _agentVault) internal view {
+    function requireOwnerAgent(address _agentVault) internal view {
         require(msg.sender == IAgentVault(_agentVault).owner(), "only agent");
-    }
-
-    function _deleteUnderlyingAddressIfUnused(
-        Agent storage _agent,
-        bytes32 _underlyingAddress
-    )
-        private
-    {
-        // if the underlying address isn't backing any f-assets any more and it is not used for new mintings,
-        // then we can safely release it - no need for outpayment tracking
-        Agents.UnderlyingFunds storage uaf = _agent.perAddressFunds[_underlyingAddress];
-        if (uaf.mintedAMG == 0 && uaf.dustAMG == 0 && _underlyingAddress != _agent.underlyingAddress) {
-            delete _agent.perAddressFunds[_underlyingAddress];
-        }
     }
 }

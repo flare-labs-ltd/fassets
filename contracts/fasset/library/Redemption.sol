@@ -24,7 +24,6 @@ library Redemption {
     using PaymentVerification for PaymentVerification.State;
     
     struct RedemptionRequest {
-        bytes32 agentUnderlyingAddress;
         bytes32 redeemerUnderlyingAddress;
         uint128 underlyingValueUBA;
         uint64 firstUnderlyingBlock;
@@ -37,7 +36,6 @@ library Redemption {
 
     event RedemptionRequested(
         address indexed agentVault,
-        bytes32 underlyingAddress,
         uint256 valueUBA,
         uint64 firstUnderlyingBlock,
         uint64 lastUnderlyingBlock,
@@ -70,13 +68,11 @@ library Redemption {
 
     event SelfClose(
         address indexed agentVault,
-        bytes32 underlyingAddress,
         uint256 valueUBA);
 
     event LiquidationPerformed(
         address indexed agentVault,
         address indexed liquidator,
-        bytes32 underlyingAddress,
         uint256 valueUBA);
         
     function redeemAgainstTicket(
@@ -102,7 +98,6 @@ library Redemption {
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
         _state.redemptionRequests[requestId] = RedemptionRequest({
-            agentUnderlyingAddress: ticket.underlyingAddress,
             redeemerUnderlyingAddress: _redeemerUnderlyingAddress,
             underlyingValueUBA: redeemedValueUBA,
             firstUnderlyingBlock: _currentUnderlyingBlock,
@@ -112,12 +107,12 @@ library Redemption {
             agentVault: ticket.agentVault,
             valueAMG: redeemedAMG
         });
-        // no need for underlying backing any more - fAssets were burned already
-        // so we decrease mintedAMG, but do not add it to freeBalance yet (only after failed redemption payment)
-        Agents.releaseUnderlyingAssets(_state, ticket.agentVault, ticket.underlyingAddress, redeemedAMG);
+        // decrease mintedAMG and mark it to redeemingAMG
+        // do not add it to freeBalance yet (only after failed redemption payment)
+        Agents.startRedeemingAssets(_state, ticket.agentVault, redeemedAMG);
         // emit event to remind agent to pay
         uint256 paymentValueUBA = SafeMath128.sub128(redeemedValueUBA, _state.settings.redemptionFeeUBA, "?");
-        emit RedemptionRequested(ticket.agentVault, ticket.underlyingAddress, 
+        emit RedemptionRequested(ticket.agentVault,
             paymentValueUBA, _currentUnderlyingBlock, lastUnderlyingBlock, requestId);
         // _removeFromTicket may delete ticket data, so we call it at end
         _removeFromTicket(_state, _redemptionTicketId, redeemedAMG);
@@ -133,11 +128,12 @@ library Redemption {
         require(_redemptionRequestId != 0, "invalid request id");
         RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
         require(request.valueAMG != 0, "invalid request id");
-        Agents.requireAgent(request.agentVault);
+        Agents.requireOwnerAgent(request.agentVault);
+        Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
         // check details
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
-            request.agentUnderlyingAddress, request.redeemerUnderlyingAddress,
+            agent.underlyingAddress, request.redeemerUnderlyingAddress,
             paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
         // report can be submitted several times (e.g. perhaps the gas price has to be raised for tx to be accepted),
         // but once the transaction has been proved, reporting it is pointless
@@ -163,16 +159,17 @@ library Redemption {
         require(request.valueAMG != 0, "invalid request id");
         require(PaymentReport.reportMatch(_state.paymentReports, _paymentInfo) != PaymentReport.ReportMatch.MISMATCH,
             "mismatching report exists");
-        Agents.requireAgent(request.agentVault);
+        Agents.requireOwnerAgent(request.agentVault);
+        Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
         // confirm payment proof
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
         _state.paymentVerifications.confirmPaymentDetails(_paymentInfo, 
-            request.agentUnderlyingAddress, request.redeemerUnderlyingAddress,
+            agent.underlyingAddress, request.redeemerUnderlyingAddress,
             paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
         // release agent collateral
-        Agents.releaseMintedCollateral(_state, request.agentVault, request.valueAMG);
+        Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         // update underlying free balance with fee and gas
-        UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, _paymentInfo.sourceAddress, 
+        UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault,
             request.underlyingFeeUBA, _paymentInfo.gasUBA, _currentUnderlyingBlock);
         // delete possible pending challenge
         IllegalPaymentChallenge.deleteChallenge(_state, _paymentInfo);
@@ -204,12 +201,11 @@ library Redemption {
         // TODO: move out of library?
         IAgentVault(request.agentVault).liquidate(request.redeemer, amountWei);
         // release remaining agent collateral
-        Agents.releaseMintedCollateral(_state, request.agentVault, request.valueAMG);
+        Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         // underlying backing collateral was removed from mintedAMG accounting at redemption request
         // now we add it to free balance since it wasn't paid to the redeemer
         uint256 liquidatedUBA = uint256(request.valueAMG).mul(_state.settings.assetMintingGranularityUBA);
-        UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, request.agentUnderlyingAddress, 
-            liquidatedUBA);
+        UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, liquidatedUBA);
         emit RedemptionFailed(request.agentVault, request.redeemer, 
             amountWei, liquidatedUBA, _redemptionRequestId);
         // delete redemption request at end when we don't need data any more
@@ -228,43 +224,40 @@ library Redemption {
         require(_redemptionTicketId != 0, "invalid redemption id");
         RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(_redemptionTicketId);
         require(ticket.valueAMG != 0, "invalid redemption id");
-        Agents.requireAgent(ticket.agentVault);
+        Agents.requireOwnerAgent(ticket.agentVault);
         uint64 maxRedeemLots = SafeMath64.div64(ticket.valueAMG, _state.settings.lotSizeAMG);
         _redeemedLots = _lots <= maxRedeemLots ? _lots : maxRedeemLots;
         uint64 redeemedAMG = SafeMath64.mul64(_redeemedLots, _state.settings.lotSizeAMG);
-        // self close is one step, so we can release underlying collateral and backing collateral in same step
-        Agents.releaseUnderlyingAssets(_state, ticket.agentVault, ticket.underlyingAddress, redeemedAMG);
-        Agents.releaseMintedCollateral(_state, ticket.agentVault, redeemedAMG);
+        // self close is one step, so we can release minted assets without redeeming step
+        Agents.releaseMintedAssets(_state, ticket.agentVault, redeemedAMG);
         // all the self-closed amount is added to free balance
         uint256 redeemedUBA = uint256(redeemedAMG).mul(_state.settings.assetMintingGranularityUBA);
-        UnderlyingFreeBalance.increaseFreeBalance(_state, ticket.agentVault, ticket.underlyingAddress, redeemedUBA);
+        UnderlyingFreeBalance.increaseFreeBalance(_state, ticket.agentVault, redeemedUBA);
         // send event
-        emit SelfClose(ticket.agentVault, ticket.underlyingAddress, redeemedUBA);
+        emit SelfClose(ticket.agentVault, redeemedUBA);
         // _removeFromTicket may delete ticket data, so we call it at end
         _removeFromTicket(_state, _redemptionTicketId, redeemedAMG);
     }
 
-    function selfCloseAddressDust(
+    function selfCloseDust(
         AssetManagerState.State storage _state,
-        address _agentVault,
-        bytes32 _underlyingAddress
+        address _agentVault
     ) 
         internal 
         returns (uint256 _selfClosedUBA)
     {
-        Agents.requireAgent(_agentVault);
-        Agents.UnderlyingFunds storage uaf = Agents.getUnderlyingFunds(_state, _agentVault, _underlyingAddress);
-        uint64 redeemedAMG = uaf.dustAMG;
+        Agents.requireOwnerAgent(_agentVault);
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        uint64 redeemedAMG = agent.dustAMG;
         // clear dust
-        uaf.dustAMG = 0;
-        // self close is one step, so we can release underlying collateral and backing collateral in same step
-        Agents.releaseUnderlyingAssets(_state, _agentVault, _underlyingAddress, redeemedAMG);
-        Agents.releaseMintedCollateral(_state, _agentVault, redeemedAMG);
+        agent.dustAMG = 0;
+        // self close is one step, so we can release minted assets without redeeming step
+        Agents.releaseMintedAssets(_state, _agentVault, redeemedAMG);
         // all the self-closed amount is added to free balance
         _selfClosedUBA = uint256(redeemedAMG).mul(_state.settings.assetMintingGranularityUBA);
-        UnderlyingFreeBalance.increaseFreeBalance(_state, _agentVault, _underlyingAddress, _selfClosedUBA);
+        UnderlyingFreeBalance.increaseFreeBalance(_state, _agentVault, _selfClosedUBA);
         // send event
-        emit SelfClose(_agentVault, _underlyingAddress, _selfClosedUBA);
+        emit SelfClose(_agentVault, _selfClosedUBA);
     }
 
     function liquidateAgainstTicket(
@@ -280,19 +273,18 @@ library Redemption {
         require(_redemptionTicketId != 0, "invalid redemption id");
         RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(_redemptionTicketId);
         require(ticket.valueAMG != 0, "invalid redemption id");
-        require(Agents.isAgentInLiquidation(_state, ticket.agentVault, ticket.underlyingAddress),
+        require(Agents.isAgentInLiquidation(_state, ticket.agentVault),
             "not in liquidation");
         uint64 maxRedeemLots = SafeMath64.div64(ticket.valueAMG, _state.settings.lotSizeAMG);
         _redeemedLots = _lots <= maxRedeemLots ? _lots : maxRedeemLots;
         uint64 redeemedAMG = SafeMath64.mul64(_redeemedLots, _state.settings.lotSizeAMG);
-        // liquidation is one step, so we can release underlying collateral and backing collateral in same step
-        Agents.releaseUnderlyingAssets(_state, ticket.agentVault, ticket.underlyingAddress, redeemedAMG);
-        Agents.releaseMintedCollateral(_state, ticket.agentVault, redeemedAMG);
+        // liquidation is one step, so we can release minted assets without redeeming step
+        Agents.releaseMintedAssets(_state, ticket.agentVault, redeemedAMG);
         // all the liquidated amount is added to free balance
         uint256 redeemedUBA = uint256(redeemedAMG).mul(_state.settings.assetMintingGranularityUBA);
-        UnderlyingFreeBalance.increaseFreeBalance(_state, ticket.agentVault, ticket.underlyingAddress, redeemedUBA);
+        UnderlyingFreeBalance.increaseFreeBalance(_state, ticket.agentVault, redeemedUBA);
         // send event
-        emit LiquidationPerformed(ticket.agentVault, liquidator, ticket.underlyingAddress, redeemedUBA);
+        emit LiquidationPerformed(ticket.agentVault, liquidator, redeemedUBA);
         // _removeFromTicket may delete ticket data, so we call it at end
         _removeFromTicket(_state, _redemptionTicketId, redeemedAMG);
     }
@@ -309,7 +301,7 @@ library Redemption {
         if (remainingAMG == 0) {
             _state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
         } else if (remainingAMG < _state.settings.lotSizeAMG) {   // dust created
-            Agents.increaseDust(_state, ticket.agentVault, ticket.underlyingAddress, remainingAMG);
+            Agents.increaseDust(_state, ticket.agentVault, remainingAMG);
             _state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
         } else {
             ticket.valueAMG = remainingAMG;

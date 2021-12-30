@@ -75,19 +75,18 @@ library Liquidation {
     function startAddressLiquidation(
         AssetManagerState.State storage _state,
         address _agentVault,
-        bytes32 _underlyingAddress,
         bool _fullLiquidation
     )
         internal
     {
-        Agents.Agent storage agent = _state.agents[_agentVault];
-        Agents.AddressLiquidationState storage liquidation = agent.addressInLiquidation[_underlyingAddress];
-        if (liquidation.liquidationStartedAt == 0) {
-            liquidation.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
-        }
-        if (_fullLiquidation) {
-            liquidation.fullLiquidation = true;
-        }
+        // Agents.Agent storage agent = _state.agents[_agentVault];
+        // Agents.AddressLiquidationState storage liquidation = agent.addressInLiquidation[_underlyingAddress];
+        // if (liquidation.liquidationStartedAt == 0) {
+        //     liquidation.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
+        // }
+        // if (_fullLiquidation) {
+        //     liquidation.fullLiquidation = true;
+        // }
     }
 
     // Cancel agent's address liquidation - only possible if not full liquidation
@@ -98,10 +97,10 @@ library Liquidation {
     )
         internal
     {
-        Agents.Agent storage agent = _state.agents[_agentVault];
-        require(!agent.addressInLiquidation[_underlyingAddress].fullLiquidation, "full liquidation");
-        require(agent.perAddressFunds[_underlyingAddress].freeBalanceUBA >= 0, "free balance negative");
-        delete agent.addressInLiquidation[_underlyingAddress];
+        // Agents.Agent storage agent = _state.agents[_agentVault];
+        // require(!agent.addressInLiquidation[_underlyingAddress].fullLiquidation, "full liquidation");
+        // require(agent.perAddressFunds[_underlyingAddress].freeUnderlyingBalanceUBA >= 0, "free balance negative");
+        // delete agent.addressInLiquidation[_underlyingAddress];
     }
     
     // liquidate some agent's redemption tickets for specific underlying address
@@ -114,21 +113,21 @@ library Liquidation {
         internal
         returns (uint64 _redeemedLots)
     {
-        Agents.Agent storage agent = _state.agents[_agentVault];
-        require(agent.addressInLiquidation[_underlyingAddress].liquidationStartedAt > 0, "not in liquidation");
+        // Agents.Agent storage agent = _state.agents[_agentVault];
+        // require(agent.addressInLiquidation[_underlyingAddress].liquidationStartedAt > 0, "not in liquidation");
 
-        RedemptionQueue.AgentQueue storage agentQueue = _state.redemptionQueue.agents[_agentVault];
-        uint64 ticketId = agentQueue.underlyingAddressFirstTicketId[_underlyingAddress];
+        // RedemptionQueue.AgentQueue storage agentQueue = _state.redemptionQueue.agents[_agentVault];
+        // uint64 ticketId = agentQueue.underlyingAddressFirstTicketId[_underlyingAddress];
 
-        while (ticketId != 0 && _lots > _redeemedLots) {
-            RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(ticketId);
-            uint64 nextTicketId = ticket.nextForAgent;
-            if (ticket.underlyingAddress == _underlyingAddress) {
-                uint64 redeemedLots = 
-                    Redemption.liquidateAgainstTicket(_state, msg.sender, ticketId, _lots - _redeemedLots);
-                _redeemedLots = SafeMath64.add64(_redeemedLots, redeemedLots);
-            }
-            ticketId = nextTicketId;
-        }
+        // while (ticketId != 0 && _lots > _redeemedLots) {
+        //     RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(ticketId);
+        //     uint64 nextTicketId = ticket.nextForAgent;
+        //     if (ticket.underlyingAddress == _underlyingAddress) {
+        //         uint64 redeemedLots = 
+        //             Redemption.liquidateAgainstTicket(_state, msg.sender, ticketId, _lots - _redeemedLots);
+        //         _redeemedLots = SafeMath64.add64(_redeemedLots, redeemedLots);
+        //     }
+        //     ticketId = nextTicketId;
+        // }
     }
 }
