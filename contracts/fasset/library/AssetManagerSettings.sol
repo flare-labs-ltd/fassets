@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import {IPriceSubmitter} from "../../ScInterfaces/userInterfaces/IPriceSubmitter.sol";
+
 library AssetManagerSettings {
     struct Settings {
+        // Ftso settings
+        IPriceSubmitter priceSubmitter;
+        uint16 assetIndex;
+
+        // This is here temporary as the fee will be set by governance
+        uint256 collateralReservationFee;
+        address burnAddress;
         // Asset unit value (e.g. 1 BTC or 1 ETH) in UBA = 10 ** assetToken.decimals()
         uint64 assetUnitUBA;
         
@@ -80,4 +89,14 @@ library AssetManagerSettings {
         uint64 newLiquidationStepAfterMinSeconds;
 
     }
+
+    // Temporary solution until the governance will be able to set the fee
+    function getCollateralReservationFee(Settings storage _settings) public view returns (uint256 crf){
+        return _settings.collateralReservationFee;
+    }
+
+    function getBurnAddress(Settings storage _settings) public view returns (address){
+        return _settings.burnAddress;
+    }
+
 }

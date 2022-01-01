@@ -44,6 +44,7 @@ library Minting {
         UnderlyingFreeBalance.increaseFreeBalance(_state, crt.agentVault, crt.underlyingFeeUBA);
         CollateralReservations.releaseCollateralReservation(_state, crt, _crtId);   // crt can't be used after this
         // TODO: burn reservation fee?
+        // Few things to check: what is the burn address, how much to burn (what if crf changes between mint and now?), reentrancy
     }
     
 }

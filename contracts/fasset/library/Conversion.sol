@@ -4,11 +4,25 @@ pragma solidity 0.7.6;
 import "./AssetManagerSettings.sol";
 import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
 
+import {IFtsoRegistry} from "../../ScInterfaces/userInterfaces/IFtsoRegistry.sol";
+import {IFtso} from "../../ScInterfaces/userInterfaces/IFtso.sol";
+
+
 library Conversion {
     using SafePct for uint256;
     
     uint256 internal constant AMG_NATWEI_PRICE_SCALE = 1e9;
     uint256 internal constant NAT_WEI = 1e18;
+
+    function calculateAmgToNATWeiPrice(
+        AssetManagerSettings.Settings storage _settings
+    ) internal view returns (uint256) 
+    {
+        IFtsoRegistry ftsoRegistry = _settings.priceSubmitter.getFtsoRegistry();
+        (uint256 natPrice, ) = ftsoRegistry.getNatFtso().getCurrentPrice();
+        (uint256 assetPrice, ) = ftsoRegistry.getFtso(_settings.assetIndex).getCurrentPrice();
+        return amgToNATWeiPrice(_settings, natPrice, assetPrice);
+    }
 
     function amgToNATWeiPrice(
         AssetManagerSettings.Settings storage _settings,

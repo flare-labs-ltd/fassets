@@ -323,4 +323,11 @@ library Agents {
     function requireOwnerAgent(address _agentVault) internal view {
         require(msg.sender == IAgentVault(_agentVault).owner(), "only agent");
     }
+
+    function fullAgentCollateral(
+        AssetManagerState.State storage _state, 
+        address _agentVault
+    ) internal view returns (uint256 fullCollateral) {
+        return _agentVault.balance - getAgent(_state, _agentVault).withdrawalAnnouncedNATWei;
+    }
 }
