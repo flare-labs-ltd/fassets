@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeBips.sol";
+import "./RedemptionQueue.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
 import "./Conversion.sol";
@@ -14,6 +15,7 @@ library Agents {
     using SafeMath for uint256;
     using SafeBips for uint256;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
+    using RedemptionQueue for RedemptionQueue.State;
     
     enum AgentType {
         NONE,
@@ -212,8 +214,15 @@ library Agents {
         internal
     {
         Agent storage agent = getAgent(_state, _agentVault);
-        agent.dustAMG = SafeMath64.add64(agent.dustAMG, _dustIncreaseAMG);
-        uint256 dustUBA = uint256(agent.dustAMG).mul(_state.settings.assetMintingGranularityUBA);
+        uint64 newDustAMG = SafeMath64.add64(agent.dustAMG, _dustIncreaseAMG);
+        // if dust is more than 1 lot, create a new redemption ticket
+        if (newDustAMG >= _state.settings.lotSizeAMG) {
+            uint64 remainingDustAMG = newDustAMG % _state.settings.lotSizeAMG;
+            _state.redemptionQueue.createRedemptionTicket(_agentVault, newDustAMG - remainingDustAMG);
+            newDustAMG = remainingDustAMG;
+        }
+        agent.dustAMG = newDustAMG;
+        uint256 dustUBA = uint256(newDustAMG).mul(_state.settings.assetMintingGranularityUBA);
         emit DustChanged(_agentVault, dustUBA);
     }
     
