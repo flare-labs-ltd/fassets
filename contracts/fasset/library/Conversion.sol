@@ -37,6 +37,17 @@ library Conversion {
                 _natPriceUSDDec5 * _settings.assetUnitUBA);
     }
     
+    function convertAmgToUBA(
+        AssetManagerSettings.Settings storage _settings, 
+        uint64 _valueAMG
+    )
+        internal view
+        returns (uint256) 
+    {
+        // safe multiplication - both values are 64 bit
+        return uint256(_valueAMG) * _settings.assetMintingGranularityUBA;
+    }
+    
     function convertAmgToNATWei(uint256 _valueAMG, uint256 _amgToNATWeiPrice) internal pure returns (uint256) {
         return _valueAMG.mulDiv(_amgToNATWeiPrice, AMG_NATWEI_PRICE_SCALE);
     }

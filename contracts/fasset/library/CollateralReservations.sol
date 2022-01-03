@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
+import "./Conversion.sol";
 import "./Agents.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
@@ -66,7 +67,7 @@ library CollateralReservations {
             SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
         uint64 valueAMG = SafeMath64.mul64(_lots, _state.settings.lotSizeAMG);
         agent.reservedAMG = SafeMath64.add64(agent.reservedAMG, valueAMG);
-        uint256 underlyingValueUBA = uint256(_state.settings.assetMintingGranularityUBA).mul(valueAMG);
+        uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({

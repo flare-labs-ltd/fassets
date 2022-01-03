@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeBips.sol";
+import "./Conversion.sol";
 import "./RedemptionQueue.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
@@ -222,7 +223,7 @@ library Agents {
             newDustAMG = remainingDustAMG;
         }
         agent.dustAMG = newDustAMG;
-        uint256 dustUBA = uint256(newDustAMG).mul(_state.settings.assetMintingGranularityUBA);
+        uint256 dustUBA = Conversion.convertAmgToUBA(_state.settings, newDustAMG);
         emit DustChanged(_agentVault, dustUBA);
     }
     
