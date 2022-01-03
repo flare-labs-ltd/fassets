@@ -33,6 +33,16 @@ library Redemption {
         address agentVault;
         address redeemer;
     }
+    
+    struct AgentRedemptionData {
+        address agentVault;
+        uint64 valueAMG;
+    }
+
+    struct AgentRedemptionList {
+        AgentRedemptionData[] items;
+        uint256 length;
+    }
 
     event RedemptionRequested(
         address indexed agentVault,
@@ -40,6 +50,10 @@ library Redemption {
         uint64 firstUnderlyingBlock,
         uint64 lastUnderlyingBlock,
         uint64 requestId);
+        
+    event RedemptionRequestIncomplete(
+        address indexed redeemer,
+        uint256 remainingLots);
 
     event RedemptionPaymentReported(
         address indexed agentVault,
@@ -75,47 +89,103 @@ library Redemption {
         address indexed liquidator,
         uint256 valueUBA);
         
-    function redeemAgainstTicket(
+    function redeem(
         AssetManagerState.State storage _state,
-        uint64 _redemptionTicketId,
         address _redeemer,
         uint64 _lots,
         bytes32 _redeemerUnderlyingAddress,
         uint64 _currentUnderlyingBlock
-    ) 
-        internal 
+    )
+        internal
         returns (uint64 _redeemedLots)
     {
         require(_lots != 0, "cannot redeem 0 lots");
-        require(_redemptionTicketId != 0, "invalid redemption id");
-        RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(_redemptionTicketId);
-        require(ticket.valueAMG != 0, "invalid redemption id");
-        uint64 requestId = ++_state.newRedemptionRequestId;
+        uint256 maxRedeemedTickets = _state.settings.maxRedeemedTickets;
+        AgentRedemptionList memory redemptionList = AgentRedemptionList({ 
+            length: 0, 
+            items: new AgentRedemptionData[](maxRedeemedTickets)
+        });
+        _redeemedLots = 0;
+        for (uint256 i = 0; i < maxRedeemedTickets && _redeemedLots < _lots; i++) {
+            uint64 redeemedForTicket = _redeemFirstTicket(_state, _lots - _redeemedLots, redemptionList);
+            if (redeemedForTicket == 0) {
+                break;   // queue empty
+            }
+            _redeemedLots = SafeMath64.add64(_redeemedLots, redeemedForTicket);
+        }
+        for (uint256 i = 0; i < redemptionList.length; i++) {
+            _createRemptionRequest(_state, redemptionList.items[i], 
+                _redeemer, _redeemerUnderlyingAddress, _currentUnderlyingBlock);
+        }
+        // notify redeemer of incomplete requests
+        if (_redeemedLots < _lots) {
+            emit RedemptionRequestIncomplete(_redeemer, _lots - _redeemedLots);
+        }
+    }
+
+    function _redeemFirstTicket(
+        AssetManagerState.State storage _state,
+        uint64 _lots,
+        AgentRedemptionList memory _list
+    )
+        private
+        returns (uint64 _redeemedLots)
+    {
+        uint64 ticketId = _state.redemptionQueue.firstTicketId;
+        if (ticketId == 0) {
+            return 0;    // empty redemption queue
+        }
+        RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(ticketId);
         uint64 maxRedeemLots = SafeMath64.div64(ticket.valueAMG, _state.settings.lotSizeAMG);
         _redeemedLots = _lots <= maxRedeemLots ? _lots : maxRedeemLots;
         uint64 redeemedAMG = SafeMath64.mul64(_redeemedLots, _state.settings.lotSizeAMG);
-        uint128 redeemedValueUBA = uint128(redeemedAMG) * uint128(_state.settings.assetMintingGranularityUBA);
+        address agentVault = ticket.agentVault;
+        // find list index for ticket's agent
+        uint256 index = 0;
+        while (index < _list.length && _list.items[index].agentVault != agentVault) {
+            ++index;
+        }
+        // add to list item or create new item
+        if (index < _list.length) {
+            _list.items[index].valueAMG = SafeMath64.add64(_list.items[index].valueAMG, redeemedAMG);
+        } else {
+            _list.items[_list.length++] = AgentRedemptionData({ agentVault: agentVault, valueAMG: redeemedAMG });
+        }
+        // _removeFromTicket may delete ticket data, so we call it at end
+        _removeFromTicket(_state, ticketId, redeemedAMG);
+    }
+    
+    function _createRemptionRequest(
+        AssetManagerState.State storage _state,
+        AgentRedemptionData memory _data,
+        address _redeemer,
+        bytes32 _redeemerUnderlyingAddress,
+        uint64 _currentUnderlyingBlock
+    )
+        private 
+    {
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
+        uint128 redeemedValueUBA = uint128(_data.valueAMG) * uint128(_state.settings.assetMintingGranularityUBA);
+        uint64 requestId = ++_state.newRedemptionRequestId;
+        uint128 redemptionFeeUBA = _state.settings.redemptionFeeUBA;  // TODO: must be percentage of redemption value
         _state.redemptionRequests[requestId] = RedemptionRequest({
             redeemerUnderlyingAddress: _redeemerUnderlyingAddress,
             underlyingValueUBA: redeemedValueUBA,
             firstUnderlyingBlock: _currentUnderlyingBlock,
-            underlyingFeeUBA: _state.settings.redemptionFeeUBA,
+            underlyingFeeUBA: redemptionFeeUBA,
             lastUnderlyingBlock: lastUnderlyingBlock,
             redeemer: _redeemer,
-            agentVault: ticket.agentVault,
-            valueAMG: redeemedAMG
+            agentVault: _data.agentVault,
+            valueAMG: _data.valueAMG
         });
         // decrease mintedAMG and mark it to redeemingAMG
         // do not add it to freeBalance yet (only after failed redemption payment)
-        Agents.startRedeemingAssets(_state, ticket.agentVault, redeemedAMG);
+        Agents.startRedeemingAssets(_state, _data.agentVault, _data.valueAMG);
         // emit event to remind agent to pay
-        uint256 paymentValueUBA = SafeMath128.sub128(redeemedValueUBA, _state.settings.redemptionFeeUBA, "?");
-        emit RedemptionRequested(ticket.agentVault,
+        uint256 paymentValueUBA = SafeMath128.sub128(redeemedValueUBA, redemptionFeeUBA, "?");
+        emit RedemptionRequested(_data.agentVault,
             paymentValueUBA, _currentUnderlyingBlock, lastUnderlyingBlock, requestId);
-        // _removeFromTicket may delete ticket data, so we call it at end
-        _removeFromTicket(_state, _redemptionTicketId, redeemedAMG);
     }
 
     function reportRedemptionRequestPayment(
