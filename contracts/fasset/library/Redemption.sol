@@ -137,7 +137,7 @@ library Redemption {
         }
         RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(ticketId);
         uint64 maxRedeemLots = SafeMath64.div64(ticket.valueAMG, _state.settings.lotSizeAMG);
-        _redeemedLots = _lots <= maxRedeemLots ? _lots : maxRedeemLots;
+        _redeemedLots = SafeMath64.min64(_lots, maxRedeemLots);
         uint64 redeemedAMG = SafeMath64.mul64(_redeemedLots, _state.settings.lotSizeAMG);
         address agentVault = ticket.agentVault;
         // find list index for ticket's agent
@@ -292,6 +292,11 @@ library Redemption {
     {
         Agents.requireOwnerAgent(_agentVault);
         require(_valueAMG != 0, "self close of 0");
+        // self close dust first
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        _closedAMG = SafeMath64.min64(_valueAMG, agent.dustAMG);
+        agent.dustAMG -= _closedAMG;    // guarded by previous min64
+        // self close redemption tickets
         uint256 maxRedeemedTickets = _state.settings.maxRedeemedTickets;
         for (uint256 i = 0; i < maxRedeemedTickets && _closedAMG < _valueAMG; i++) {
             uint64 ticketId = _state.redemptionQueue.agents[_agentVault].firstTicketId;
@@ -299,10 +304,7 @@ library Redemption {
                 break;  // no more tickets for this agent
             }
             RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(ticketId);
-            uint64 ticketClosedAMG = _valueAMG - _closedAMG;
-            if (ticketClosedAMG > ticket.valueAMG) {
-                ticketClosedAMG = ticket.valueAMG;
-            }
+            uint64 ticketClosedAMG = SafeMath64.min64(_valueAMG - _closedAMG, ticket.valueAMG);
             // only remove from tickets and add to total, do everything else after the loop
             _removeFromTicket(_state, ticketId, ticketClosedAMG);
             _closedAMG = SafeMath64.add64(_closedAMG, ticketClosedAMG);

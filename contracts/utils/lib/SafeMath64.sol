@@ -43,6 +43,10 @@ library SafeMath64 {
         require(b != 0, "SafeMath64: div by zero");
         return a / b;
     }
+    
+    function min64(uint64 a, uint64 b) internal pure returns (uint64) {
+        return a <= b ? a : b;
+    }
 
     // // functions that add/subtract and cast result from 256 bits to 64 bits
         
