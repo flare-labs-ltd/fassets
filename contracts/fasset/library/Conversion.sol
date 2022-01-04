@@ -19,7 +19,7 @@ library Conversion {
     ) internal view returns (uint256) 
     {
         IFtsoRegistry ftsoRegistry = _settings.priceSubmitter.getFtsoRegistry();
-        (uint256 natPrice, ) = ftsoRegistry.getNatFtso().getCurrentPrice();
+        (uint256 natPrice, ) = ftsoRegistry.getFtso(_settings.wnatAssetIndex).getCurrentPrice();
         (uint256 assetPrice, ) = ftsoRegistry.getFtso(_settings.assetIndex).getCurrentPrice();
         return amgToNATWeiPrice(_settings, natPrice, assetPrice);
     }

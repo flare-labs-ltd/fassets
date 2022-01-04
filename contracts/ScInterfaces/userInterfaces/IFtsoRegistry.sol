@@ -17,7 +17,7 @@ interface IFtsoRegistry {
     function getCurrentPrice(string memory _symbol) external view returns(uint256 _price, uint256 _timestamp);
 
     // This is new, but very useful in general
-    function getNatFtso() external view returns(IFtso _wnatFtso);
+    // function getNatFtso() external view returns(IFtso _wnatFtso);
 
     function getSupportedIndicesAndFtsos() external view 
         returns(uint256[] memory _supportedIndices, IFtso[] memory _ftsos);
