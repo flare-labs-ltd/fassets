@@ -5,11 +5,8 @@ import {IPriceSubmitter} from "../../ScInterfaces/userInterfaces/IPriceSubmitter
 
 library AssetManagerSettings {
     struct Settings {
-        // Ftso settings
-        // TODO: Space optimize this
-        IPriceSubmitter priceSubmitter;
+        // Asset specific settings
         uint16 assetIndex;
-        uint8 wnatAssetIndex;
 
         // This is here temporary as the fee will be set by governance
         uint256 collateralReservationFee;

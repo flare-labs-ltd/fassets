@@ -4,6 +4,8 @@ pragma solidity 0.7.6;
 import "./AssetManagerSettings.sol";
 import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
 
+import {Constants} from "./Constants.sol";
+
 import {IFtsoRegistry} from "../../ScInterfaces/userInterfaces/IFtsoRegistry.sol";
 import {IFtso} from "../../ScInterfaces/userInterfaces/IFtso.sol";
 
@@ -18,8 +20,8 @@ library Conversion {
         AssetManagerSettings.Settings storage _settings
     ) internal view returns (uint256) 
     {
-        IFtsoRegistry ftsoRegistry = _settings.priceSubmitter.getFtsoRegistry();
-        (uint256 natPrice, ) = ftsoRegistry.getFtso(_settings.wnatAssetIndex).getCurrentPrice();
+        IFtsoRegistry ftsoRegistry = Constants.PRICE_SUBMITTER.getFtsoRegistry();
+        (uint256 natPrice, ) = ftsoRegistry.getFtso(Constants.WNAT_ASSET_INDEX).getCurrentPrice();
         (uint256 assetPrice, ) = ftsoRegistry.getFtso(_settings.assetIndex).getCurrentPrice();
         return amgToNATWeiPrice(_settings, natPrice, assetPrice);
     }
