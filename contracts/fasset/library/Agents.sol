@@ -153,7 +153,7 @@ library Agents {
         internal
     {
         Agent storage agent = getAgent(_state, _agentVault);
-        agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "ERROR: not enough minted");
+        agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "not enough minted");
     }
 
     function startRedeemingAssets(
@@ -165,7 +165,7 @@ library Agents {
     {
         Agent storage agent = getAgent(_state, _agentVault);
         agent.redeemingAMG = SafeMath64.add64(agent.redeemingAMG, _valueAMG);
-        agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "ERROR: not enough minted");
+        agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "not enough minted");
     }
 
     function endRedeemingAssets(
@@ -176,7 +176,7 @@ library Agents {
         internal
     {
         Agent storage agent = getAgent(_state, _agentVault);
-        agent.redeemingAMG = SafeMath64.sub64(agent.redeemingAMG, _valueAMG, "ERROR: not enough redeeming");
+        agent.redeemingAMG = SafeMath64.sub64(agent.redeemingAMG, _valueAMG, "not enough redeeming");
     }
     
     function announceWithdrawal(
@@ -216,15 +216,39 @@ library Agents {
     {
         Agent storage agent = getAgent(_state, _agentVault);
         uint64 newDustAMG = SafeMath64.add64(agent.dustAMG, _dustIncreaseAMG);
-        // if dust is more than 1 lot, create a new redemption ticket
-        if (newDustAMG >= _state.settings.lotSizeAMG) {
-            uint64 remainingDustAMG = newDustAMG % _state.settings.lotSizeAMG;
-            _state.redemptionQueue.createRedemptionTicket(_agentVault, newDustAMG - remainingDustAMG);
-            newDustAMG = remainingDustAMG;
-        }
         agent.dustAMG = newDustAMG;
         uint256 dustUBA = Conversion.convertAmgToUBA(_state.settings, newDustAMG);
         emit DustChanged(_agentVault, dustUBA);
+    }
+
+    function decreaseDust(
+        AssetManagerState.State storage _state,
+        address _agentVault,
+        uint64 _dustDecreaseAMG
+    )
+        internal
+    {
+        Agent storage agent = getAgent(_state, _agentVault);
+        uint64 newDustAMG = SafeMath64.sub64(agent.dustAMG, _dustDecreaseAMG, "not enough dust");
+        agent.dustAMG = newDustAMG;
+        uint256 dustUBA = Conversion.convertAmgToUBA(_state.settings, newDustAMG);
+        emit DustChanged(_agentVault, dustUBA);
+    }
+    
+    function convertDustToTickets(
+        AssetManagerState.State storage _state,
+        address _agentVault
+    )
+        internal
+    {
+        requireOwnerAgent(_agentVault);
+        Agent storage agent = getAgent(_state, _agentVault);
+        // if dust is more than 1 lot, create a new redemption ticket
+        if (agent.dustAMG >= _state.settings.lotSizeAMG) {
+            uint64 remainingDustAMG = agent.dustAMG % _state.settings.lotSizeAMG;
+            _state.redemptionQueue.createRedemptionTicket(_agentVault, agent.dustAMG - remainingDustAMG);
+            agent.dustAMG = remainingDustAMG;
+        }
     }
     
     function withdrawalExecuted(

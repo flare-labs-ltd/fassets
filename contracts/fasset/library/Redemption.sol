@@ -295,7 +295,7 @@ library Redemption {
         // self close dust first
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         _closedAMG = SafeMath64.min64(_valueAMG, agent.dustAMG);
-        agent.dustAMG -= _closedAMG;    // guarded by previous min64
+        Agents.decreaseDust(_state, _agentVault, _closedAMG);
         // self close redemption tickets
         uint256 maxRedeemedTickets = _state.settings.maxRedeemedTickets;
         for (uint256 i = 0; i < maxRedeemedTickets && _closedAMG < _valueAMG; i++) {
