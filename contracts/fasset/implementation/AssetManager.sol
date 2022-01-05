@@ -23,9 +23,9 @@ contract AssetManager {
         state.settings = _state;
     }
 
-    function reserveCollateral(
-        bytes32 _minterUnderlyingAddress, address _selectedAgent, uint64 _lotsToMintWei
-    ) public payable 
+    function collateralReservationTransaction(
+        bytes32 _minterUnderlyingAddress, address _selectedAgent, uint64 _lotsToMint
+    ) external payable 
         returns (bytes32 agentsUnderlyingAddress, uint256 crtId)
     {
         // Check fee paid
@@ -38,7 +38,7 @@ contract AssetManager {
             _selectedAgent, 
             Agents.fullAgentCollateral(state, _selectedAgent),
             Conversion.calculateAmgToNATWeiPrice(state.settings),
-            _lotsToMintWei,
+            _lotsToMint,
             0 // TODO: Check lates block of transaction on state connector
         );
 
@@ -48,7 +48,7 @@ contract AssetManager {
     function mintfAsset(
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         uint64 _crtId
-    ) public 
+    ) external 
     {
         Minting.mintingExecuted(state, _paymentInfo, _crtId);
     }
@@ -56,7 +56,7 @@ contract AssetManager {
     function calculateLots(
         uint256 _underlyingValueUBA, address _selectedAgent
     ) 
-        public view returns (uint64 lots, uint256 baseValueUBA, uint256 fullBaseValueUBA) 
+        external view returns (uint64 lots, uint256 baseValueUBA, uint256 fullBaseValueUBA) 
     {
         uint256 coef = state.settings.assetMintingGranularityUBA * state.settings.lotSizeAMG;
         uint256 target = _underlyingValueUBA / coef; 
