@@ -24,7 +24,7 @@ contract AssetManager {
     }
 
     function collateralReservationTransaction(
-        bytes32 _minterUnderlyingAddress, address _selectedAgent, uint64 _lotsToMint
+        bytes32 _minterUnderlyingAddress, address _selectedAgent, uint64 _lotsToMint, uint64 _currentUnderlyingBlock
     ) external payable 
         returns (bytes32 agentsUnderlyingAddress, uint256 crtId)
     {
@@ -39,7 +39,7 @@ contract AssetManager {
             Agents.fullAgentCollateral(state, _selectedAgent),
             Conversion.calculateAmgToNATWeiPrice(state.settings),
             _lotsToMint,
-            0 // TODO: Check lates block of transaction on state connector
+            _currentUnderlyingBlock // This can be challanged in state connector if too high
         );
 
         return (Agents.getAgent(state, _selectedAgent).underlyingAddress, state.newCrtId);
