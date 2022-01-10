@@ -4,7 +4,7 @@ pragma solidity 0.7.6;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
-import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
+import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./Agents.sol";
 import "./AssetManagerState.sol";
@@ -55,7 +55,8 @@ library AvailableAgents {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.status == Agents.AgentStatus.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
-        require(_agentMinCollateralRatioBIPS >= agent.minCollateralRatioBIPS, "collateral ratio too small");
+        require(_agentMinCollateralRatioBIPS >= _state.settings.initialMinCollateralRatioBIPS,
+            "collateral ratio too small");
         // set parameters
         agent.feeBIPS = _feeBIPS; 
         agent.agentMinCollateralRatioBIPS = _agentMinCollateralRatioBIPS;
@@ -130,7 +131,6 @@ library AvailableAgents {
 
     function getListWithInfo(
         AssetManagerState.State storage _state, 
-        WNat wnat,
         uint256 _amgToNATWeiPrice,
         uint256 _start, 
         uint256 _end
@@ -144,7 +144,7 @@ library AvailableAgents {
         _agents = new AvailableAgentInfo[](_end - _start);
         for (uint256 i = _start; i < _end; i++) {
             address agentVault = _state.availableAgents[i].agentVault;
-            uint256 fullCollateral = wnat.balanceOf(agentVault);
+            uint256 fullCollateral = IAgentVault(agentVault).fullCollateral();
             Agents.Agent storage agent = Agents.getAgentNoCheck(_state, agentVault);
             _agents[i - _start] = AvailableAgentInfo({
                 agentVault: agentVault,

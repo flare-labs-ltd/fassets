@@ -27,19 +27,20 @@ library Agents {
     
     enum AgentStatus {
         NORMAL,
-        LIQUIDATION
+        LIQUIDATION, // CCB, liquidation due to CR or topup
+        FULL_LIQUIDATION // illegal payment liquidation
+    }
+
+    enum LiquidationPhase {
+        CCB,
+        PRICE_PREMIUM,
+        COLLATERAL_PREMIUM
     }
     
     struct LiquidationState {
-
         uint64 liquidationStartedAt;
-    }
-
-    struct AddressLiquidationState {
-
-        uint64 liquidationStartedAt;
-
-        bool fullLiquidation;
+        LiquidationPhase initialLiquidationPhase; // at the time when liquidation started
+        uint16 initialPremiumFactorBIPS; // at the time when liquidation started
     }
 
     struct Agent {
@@ -72,9 +73,6 @@ library Agents {
         // Unlike redeemingAMG, dustAMG is still counted in the mintedAMG.
         uint64 dustAMG;
         
-        // Minimum native collateral ratio required for this agent. Changes during the liquidation.
-        uint32 minCollateralRatioBIPS;
-        
         // Position of this agent in the list of agents available for minting.
         // Value is actually `list index + 1`, so that 0 means 'not in list'.
         uint64 availableAgentsPos;
@@ -91,12 +89,6 @@ library Agents {
         AgentType agentType;
         AgentStatus status;
         LiquidationState liquidationState;
-
-        // 1) When no topup is performed, partial liquidation for underlyingAddress is started
-        // 2) When illegal payment challenge is confirmed, agent's underlyingAddress should be fully liquidated
-        //    All redemption tickets for that underlyingAddress should be liquidated
-        // Type: mapping underlyingAddress => Agents.AddressLiquidationState
-        mapping(bytes32 => AddressLiquidationState) addressInLiquidation;
 
         // The amount of underlying funds that may be withdrawn by the agent
         // (fees, self-close and, amount released by liquidation).
@@ -127,7 +119,6 @@ library Agents {
         require(agent.agentType == AgentType.NONE, "agent already exists");
         agent.agentType = _agentType;
         agent.status = AgentStatus.NORMAL;
-        agent.minCollateralRatioBIPS = _state.settings.initialMinCollateralRatioBIPS;
         // claim the address to make sure no other agent is using it
         _state.underlyingAddressOwnership.claim(_agentVault, _underlyingAddress);
         // TODO: also check the address is not contract
@@ -193,7 +184,7 @@ library Agents {
             // announcement increased - must check there is enough free collateral and then lock it
             // in this case the wait to withdrawal restarts from this moment
             uint256 increase = _valueNATWei - agent.withdrawalAnnouncedNATWei;
-            require(increase <= freeCollateralWei(agent, _fullCollateral, _amgToNATWeiPrice),
+            require(increase <= freeCollateralWei(agent, _state.settings, _fullCollateral, _amgToNATWeiPrice),
                 "withdrawal: value too high");
             agent.withdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
         } else {
@@ -298,8 +289,6 @@ library Agents {
     {
         Agents.Agent storage agent = _state.agents[_agentVault];
         return agent.liquidationState.liquidationStartedAt > 0;
-        // || agent.addressInLiquidation[_underlyingAddress].liquidationStartedAt > 0;
-        // TODO: handle address liquidation
     }
 
     function freeCollateralLots(
@@ -311,35 +300,50 @@ library Agents {
         internal view 
         returns (uint256) 
     {
-        uint256 freeCollateral = freeCollateralWei(_agent, _fullCollateral, _amgToNATWeiPrice);
+        uint256 freeCollateral = freeCollateralWei(_agent, _settings, _fullCollateral, _amgToNATWeiPrice);
         uint256 lotCollateral = mintingLotCollateralWei(_agent, _settings, _amgToNATWeiPrice);
         return freeCollateral.div(lotCollateral);
     }
 
     function freeCollateralWei(
         Agents.Agent storage _agent, 
+        AssetManagerSettings.Settings storage _settings, 
         uint256 _fullCollateral, 
         uint256 _amgToNATWeiPrice
     )
         internal view 
         returns (uint256) 
     {
-        uint256 lockedCollateral = lockedCollateralWei(_agent, _amgToNATWeiPrice);
+        uint256 lockedCollateral = lockedCollateralWei(_agent, _settings, _amgToNATWeiPrice);
         (, uint256 freeCollateral) = _fullCollateral.trySub(lockedCollateral);
         return freeCollateral;
     }
     
     function lockedCollateralWei(
         Agents.Agent storage _agent, 
+        AssetManagerSettings.Settings storage _settings, 
         uint256 _amgToNATWeiPrice
     )
         internal view 
         returns (uint256) 
     {
-        uint256 lockedAMG = uint256(_agent.reservedAMG).add(_agent.mintedAMG).add(_agent.redeemingAMG);
-        uint256 usedCollateral = Conversion.convertAmgToNATWei(lockedAMG, _amgToNATWeiPrice)
+        uint256 mintingAMG = uint256(_agent.reservedAMG).add(_agent.mintedAMG);
+        uint256 mintingCollateral = Conversion.convertAmgToNATWei(mintingAMG, _amgToNATWeiPrice)
             .mulBips(_agent.agentMinCollateralRatioBIPS);
-        return usedCollateral.add(_agent.withdrawalAnnouncedNATWei);
+        uint256 redeemingCollateral = lockedRedeemingCollateralWei(_agent, _settings, _amgToNATWeiPrice);
+        return mintingCollateral.add(redeemingCollateral).add(_agent.withdrawalAnnouncedNATWei);
+    }
+
+    function lockedRedeemingCollateralWei(
+        Agents.Agent storage _agent, 
+        AssetManagerSettings.Settings storage _settings, 
+        uint256 _amgToNATWeiPrice
+    )
+        internal view 
+        returns (uint256) 
+    {
+        return Conversion.convertAmgToNATWei(_agent.redeemingAMG, _amgToNATWeiPrice)
+            .mulBips(_settings.initialMinCollateralRatioBIPS);
     }
     
     function mintingLotCollateralWei(
@@ -356,12 +360,5 @@ library Agents {
     
     function requireOwnerAgent(address _agentVault) internal view {
         require(msg.sender == IAgentVault(_agentVault).owner(), "only agent");
-    }
-
-    function fullAgentCollateral(
-        AssetManagerState.State storage _state, 
-        address _agentVault
-    ) internal view returns (uint256 fullCollateral) {
-        return _agentVault.balance - getAgent(_state, _agentVault).withdrawalAnnouncedNATWei;
     }
 }

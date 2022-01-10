@@ -158,8 +158,8 @@ library IllegalPaymentChallenge {
     ) 
         private
     {
-        // start address full liquidation
-        Liquidation.startAddressLiquidation(_state, _agentVault, true);
+        // start full liquidation
+        Liquidation.startLiquidation(_state, _agentVault, true);
     }
     
     function _rewardChallengers(

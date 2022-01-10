@@ -2,6 +2,8 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
+
+import "../interface/IAgentVault.sol";
 import {Agents} from "../library/Agents.sol";
 import {AssetManagerState} from "../library/AssetManagerState.sol";
 import {AssetManagerSettings} from "../library/AssetManagerSettings.sol";
@@ -36,7 +38,7 @@ contract AssetManager {
             msg.sender, 
             _minterUnderlyingAddress,
             _selectedAgent, 
-            Agents.fullAgentCollateral(state, _selectedAgent),
+            IAgentVault(_selectedAgent).fullCollateral(),
             Conversion.calculateAmgToNATWeiPrice(state.settings),
             _lotsToMint,
             _currentUnderlyingBlock // This can be challanged in state connector if too high

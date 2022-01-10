@@ -106,6 +106,6 @@ library UnderlyingFreeBalance {
         require(agent.lastUnderlyingBlockForTopup != 0 && agent.lastUnderlyingBlockForTopup < _currentUnderlyingBlock,
             "no overdue topup");
         // start liquidation until address balance is healthy
-        Liquidation.startAddressLiquidation(_state, _agentVault, false);
+        Liquidation.startLiquidation(_state, _agentVault, false);
     }
 }

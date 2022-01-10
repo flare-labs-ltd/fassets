@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "../interface/IAssetManager.sol";
+
 
 interface IAgentVault {
     function deposit() external payable;
@@ -33,4 +33,6 @@ interface IAgentVault {
     function liquidate(address _recipient, uint256 _amount) external;
 
     function owner() external view returns (address);
+
+    function fullCollateral() external view returns (uint256);
 }

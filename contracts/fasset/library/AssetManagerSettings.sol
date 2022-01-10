@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {IPriceSubmitter} from "../../ScInterfaces/userInterfaces/IPriceSubmitter.sol";
-
 library AssetManagerSettings {
     struct Settings {
         // Asset specific settings
@@ -23,6 +21,9 @@ library AssetManagerSettings {
         
         // Minimum collateral ratio for new agents.
         uint16 initialMinCollateralRatioBIPS;
+
+        // Collateral call band - CCB
+        uint16 liquidationMinCollateralCallBandBIPS;
         
         // Minimum collateral ratio required to get agent out of liquidation.
         uint16 liquidationMinCollateralRatioBIPS;
@@ -72,24 +73,19 @@ library AssetManagerSettings {
         // This prevents challenged agent to remove all collateral before challenge can be proved.
         uint64 withdrawalWaitMinSeconds;
 
-        // In first step of liquidation this share of agent's position is liquidated.
-        // Expressed in BIPS, e.g. 5000 for 50%.
-        uint64 initialLiquidationShareFactorBIPS;
-
-        // In first step of liquidation, liquidator is compensated with
+        // In first phase of liquidation, liquidator is compensated with
         // value recalculated in flare/sgb times liquidation price premium factor.
         // Expressed in BIPS, e.g. 12500 for factor of 1.25.
-        uint64 liquidationPricePremiumBIPS;
+        uint16 liquidationPricePremiumBIPS;
 
-        // After first step, instead of price premium, percentage of collateral is offered.
+        // After first phase, instead of price premium, percentage of collateral is offered.
         // Expressed in BIPS, e.g. [6000, 8000, 10000] for 60%, 80% and 100%.
         // CAREFUL: values in array must increase and be <= 10000
-        uint64[] liquidationCollateralPremiumBIPS;
+        uint16[] liquidationCollateralPremiumBIPS;
 
         // If there was no liquidator for the current liquidation offer, 
-        // go to the next step of liquidation after a certain period of time
+        // go to the next step of liquidation after a certain period of time.
         uint64 newLiquidationStepAfterMinSeconds;
-
     }
 
     // Temporary solution until the governance will be able to set the fee
