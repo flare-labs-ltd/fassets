@@ -80,6 +80,12 @@ library Redemption {
         uint256 freedBalanceUBA,
         uint64 requestId);
 
+    event RedemptionBlocked(
+        address indexed agentVault,
+        address indexed redeemer,
+        uint256 freedBalanceUBA,
+        uint64 requestId);
+
     event SelfClose(
         address indexed agentVault,
         uint256 valueUBA);
@@ -278,6 +284,31 @@ library Redemption {
         UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, liquidatedUBA);
         emit RedemptionFailed(request.agentVault, request.redeemer, 
             amountWei, liquidatedUBA, _redemptionRequestId);
+        // delete redemption request at end when we don't need data any more
+        delete _state.redemptionRequests[_redemptionRequestId];
+    }
+
+    function redemptionPaymentBlocked(
+        AssetManagerState.State storage _state,
+        uint64 _redemptionRequestId
+    )
+        internal
+    {
+        // TODO: prove blocking on state connector
+        require(_redemptionRequestId != 0, "invalid request id");
+        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
+        require(request.valueAMG != 0, "invalid request id");
+        // we allow only agent to trigger blocked payment, since they may want
+        // to do it at some particular time
+        Agents.requireOwnerAgent(request.agentVault);
+        // the agent may keep all the underlying backing and redeemer gets nothing
+        // underlying backing collateral was removed from mintedAMG accounting at redemption request
+        // now we add it to free balance since it couldn't be paid to the redeemer
+        Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
+        uint256 liquidatedUBA = Conversion.convertAmgToUBA(_state.settings, request.valueAMG);
+        UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, liquidatedUBA);
+        // notify
+        emit RedemptionBlocked(request.agentVault, request.redeemer, liquidatedUBA, _redemptionRequestId);
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
     }
