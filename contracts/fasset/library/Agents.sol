@@ -232,7 +232,8 @@ library Agents {
     )
         internal
     {
-        requireOwnerAgent(_agentVault);
+        // we do NOT check that the caller is the agent owner, since we want to
+        // allow anyone to convert dust to tickets to increase asset fungibility
         Agent storage agent = getAgent(_state, _agentVault);
         // if dust is more than 1 lot, create a new redemption ticket
         if (agent.dustAMG >= _state.settings.lotSizeAMG) {
