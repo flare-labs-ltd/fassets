@@ -265,6 +265,7 @@ library Redemption {
     function redemptionPaymentFailure(
         AssetManagerState.State storage _state,
         uint256 _amgToNATWeiPrice,
+        uint256 _fullAgentCollateral,
         uint64 _redemptionRequestId,
         uint64 _currentUnderlyingBlock
     )
@@ -279,8 +280,14 @@ library Redemption {
         // to do it at some particular time
         require(msg.sender == request.redeemer, "only redeemer");
         // pay redeemer in native currency
+        // paid amount is  min(flr_amount * (1 + extra), total collateral share for the amount)
+        Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
         uint256 amountWei = Conversion.convertAmgToNATWei(request.valueAMG, _amgToNATWeiPrice)
             .mulBips(_state.settings.redemptionFailureFactorBIPS);
+        uint256 maxAmountWei = Agents.collateralShare(agent, _fullAgentCollateral, request.valueAMG);
+        if (amountWei > maxAmountWei) {
+            amountWei = maxAmountWei;
+        }
         // TODO: move out of library?
         IAgentVault(request.agentVault).liquidate(request.redeemer, amountWei);
         // release remaining agent collateral

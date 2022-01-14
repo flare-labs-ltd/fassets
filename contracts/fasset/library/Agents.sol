@@ -15,6 +15,7 @@ import "./Conversion.sol";
 library Agents {
     using SafeMath for uint256;
     using SafeBips for uint256;
+    using SafePct for uint256;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     using RedemptionQueue for RedemptionQueue.State;
     
@@ -357,6 +358,20 @@ library Agents {
     {
         return Conversion.convertAmgToNATWei(_settings.lotSizeAMG, _amgToNATWeiPrice)
             .mulBips(_agent.agentMinCollateralRatioBIPS);
+    }
+    
+    function collateralShare(
+        Agents.Agent storage _agent, 
+        uint256 _fullCollateral, 
+        uint256 _valueAMG
+    )
+        internal view 
+        returns (uint256) 
+    {
+        // safe - all are uint64
+        uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG);
+        require(totalAMG < _valueAMG, "value larger than total");
+        return _fullCollateral.mulDiv(_valueAMG, totalAMG);
     }
     
     function requireOwnerAgent(address _agentVault) internal view {
