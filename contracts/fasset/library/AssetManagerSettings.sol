@@ -43,6 +43,12 @@ library AssetManagerSettings {
         //          to get more data closer to the price epoch end, but it can be even more when redeploying ftsos).
         uint64 underlyingBlocksForPayment;
         
+        // Minimum time to allow for agent to pay for redemption or respond to invalid underlyingBlock 
+        // in redemption request. Redemption failure can be called only after both
+        // underlyingBlocksForPayment are mined on underlying chain and minSecondsForPayment time elapses.
+        // Also time allowed for minter to respond to underlyingBlockheight challenge.
+        uint64 minSecondsForPayment;
+        
         // Number of underlying blocks that the agent is allowed to perform allowed underlying payment
         // (e.g. fee withdrawal). It can be much longer than the limit for required payments - it's only here
         // to make sure payment happens before payment verification data is expired in a few days.

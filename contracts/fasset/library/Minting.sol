@@ -33,9 +33,9 @@ library Minting {
         Agents.requireOwnerAgent(crt.agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
         uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA).add(crt.underlyingFeeUBA);
-        _state.paymentVerifications.confirmPaymentDetails(_paymentInfo, 
-            crt.minterUnderlyingAddress, agent.underlyingAddress, expectedPaymentUBA, 
-            crt.firstUnderlyingBlock, crt.lastUnderlyingBlock);
+        PaymentVerification.validatePaymentDetails(_paymentInfo, 
+            crt.minterUnderlyingAddress, agent.underlyingAddress, expectedPaymentUBA);
+        _state.paymentVerifications.confirmPayment(_paymentInfo);
         address agentVault = crt.agentVault;
         uint64 valueAMG = crt.valueAMG;
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, valueAMG);

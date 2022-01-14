@@ -14,6 +14,8 @@ library PaymentVerification {
         uint256 valueUBA;
         uint256 gasUBA;
         uint64 underlyingBlock;
+        // TODO: prevent underlyingTimestamp to be more than 2 days old
+        // uint64 underlyingTimestamp;
     }
 
     struct State {
@@ -27,22 +29,6 @@ library PaymentVerification {
     }
     
     uint256 internal constant VERIFICATION_CLEANUP_DAYS = 5;
-    
-    function confirmPaymentDetails(
-        State storage _state,
-        UnderlyingPaymentInfo memory _paymentInfo,
-        bytes32 _expectedSource,
-        bytes32 _expectedTarget,
-        uint256 _expectedValueUBA,
-        uint256 _firstExpectedBlock,
-        uint256 _lastExpectedBlock
-    )
-        internal
-    {
-        validatePaymentDetails(_paymentInfo, 
-            _expectedSource, _expectedTarget, _expectedValueUBA, _firstExpectedBlock, _lastExpectedBlock);
-        confirmPayment(_state, _paymentInfo);
-    }
     
     function confirmPayment(
         State storage _state,
@@ -91,9 +77,7 @@ library PaymentVerification {
         UnderlyingPaymentInfo memory _paymentInfo,
         bytes32 _expectedSource,
         bytes32 _expectedTarget,
-        uint256 _expectedValueUBA,
-        uint256 _firstExpectedBlock,
-        uint256 _lastExpectedBlock
+        uint256 _expectedValueUBA
     )
         internal pure
     {
@@ -106,8 +90,6 @@ library PaymentVerification {
             require(_paymentInfo.targetAddress == _expectedTarget, "invalid payment target");
         }
         require(_paymentInfo.valueUBA == _expectedValueUBA, "invalid payment value");
-        require(_paymentInfo.underlyingBlock >= _firstExpectedBlock, "payment too old");
-        require(_paymentInfo.underlyingBlock <= _lastExpectedBlock, "payment too late");
     }
 
     // the same transaction hash could perform several underlying payments if it is smart contract

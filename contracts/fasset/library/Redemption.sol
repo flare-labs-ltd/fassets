@@ -26,10 +26,10 @@ library Redemption {
     struct RedemptionRequest {
         bytes32 redeemerUnderlyingAddress;
         uint128 underlyingValueUBA;
-        uint64 firstUnderlyingBlock;
+        uint64 underlyingBlock;     // underlying block at redemption request time
         uint128 underlyingFeeUBA;
-        uint64 lastUnderlyingBlock;
         uint64 valueAMG;
+        uint64 timestamp;           // timestamp at redemption request time
         address agentVault;
         address redeemer;
     }
@@ -47,9 +47,15 @@ library Redemption {
     event RedemptionRequested(
         address indexed agentVault,
         uint256 valueUBA,
-        uint64 firstUnderlyingBlock,
-        uint64 lastUnderlyingBlock,
-        uint64 requestId);
+        uint256 requestUnderlyingBlock,
+        uint256 lastUnderlyingBlock,
+        uint256 requestId);
+
+    event RedemptionUnderlyingBlockChanged(
+        address indexed agentVault,
+        uint256 requestUnderlyingBlock,
+        uint256 lastUnderlyingBlock,
+        uint256 requestId);
         
     event RedemptionRequestIncomplete(
         address indexed redeemer,
@@ -105,7 +111,6 @@ library Redemption {
         internal
         returns (uint64 _redeemedLots)
     {
-        require(_lots != 0, "cannot redeem 0 lots");
         uint256 maxRedeemedTickets = _state.settings.maxRedeemedTickets;
         AgentRedemptionList memory redemptionList = AgentRedemptionList({ 
             length: 0, 
@@ -119,6 +124,7 @@ library Redemption {
             }
             _redeemedLots = SafeMath64.add64(_redeemedLots, redeemedForTicket);
         }
+        require(_redeemedLots != 0, "redeem 0 lots");
         for (uint256 i = 0; i < redemptionList.length; i++) {
             _createRemptionRequest(_state, redemptionList.items[i], 
                 _redeemer, _redeemerUnderlyingAddress, _currentUnderlyingBlock);
@@ -170,17 +176,15 @@ library Redemption {
     )
         private 
     {
-        uint64 lastUnderlyingBlock = 
-            SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
         uint128 redeemedValueUBA = SafeCast.toUint128(Conversion.convertAmgToUBA(_state.settings, _data.valueAMG));
         uint64 requestId = ++_state.newRedemptionRequestId;
         uint128 redemptionFeeUBA = _state.settings.redemptionFeeUBA;  // TODO: must be percentage of redemption value
         _state.redemptionRequests[requestId] = RedemptionRequest({
             redeemerUnderlyingAddress: _redeemerUnderlyingAddress,
             underlyingValueUBA: redeemedValueUBA,
-            firstUnderlyingBlock: _currentUnderlyingBlock,
+            underlyingBlock: _currentUnderlyingBlock,
+            timestamp: SafeCast.toUint64(block.timestamp),
             underlyingFeeUBA: redemptionFeeUBA,
-            lastUnderlyingBlock: lastUnderlyingBlock,
             redeemer: _redeemer,
             agentVault: _data.agentVault,
             valueAMG: _data.valueAMG
@@ -190,8 +194,9 @@ library Redemption {
         Agents.startRedeemingAssets(_state, _data.agentVault, _data.valueAMG);
         // emit event to remind agent to pay
         uint256 paymentValueUBA = SafeMath128.sub128(redeemedValueUBA, redemptionFeeUBA, "?");
+        uint256 lastBlock = uint256(_currentUnderlyingBlock).add(_state.settings.underlyingBlocksForPayment);
         emit RedemptionRequested(_data.agentVault,
-            paymentValueUBA, _currentUnderlyingBlock, lastUnderlyingBlock, requestId);
+            paymentValueUBA, _currentUnderlyingBlock, lastBlock, requestId);
     }
 
     function reportRedemptionRequestPayment(
@@ -209,8 +214,7 @@ library Redemption {
         // check details
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
-            agent.underlyingAddress, request.redeemerUnderlyingAddress,
-            paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
+            agent.underlyingAddress, request.redeemerUnderlyingAddress, paymentValueUBA);
         // report can be submitted several times (e.g. perhaps the gas price has to be raised for tx to be accepted),
         // but once the transaction has been proved, reporting it is pointless
         require(!PaymentVerification.paymentConfirmed(_state.paymentVerifications, _paymentInfo),
@@ -225,8 +229,7 @@ library Redemption {
     function confirmRedemptionRequestPayment(
         AssetManagerState.State storage _state,
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
-        uint64 _redemptionRequestId,
-        uint64 _currentUnderlyingBlock
+        uint64 _redemptionRequestId
     )
         internal
     {
@@ -235,18 +238,21 @@ library Redemption {
         require(request.valueAMG != 0, "invalid request id");
         require(PaymentReport.reportMatch(_state.paymentReports, _paymentInfo) != PaymentReport.ReportMatch.MISMATCH,
             "mismatching report exists");
+        // TODO: should we check that payment is on time or rely on redeemer to punish late payment confirmation?
         Agents.requireOwnerAgent(request.agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
         // confirm payment proof
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
-        _state.paymentVerifications.confirmPaymentDetails(_paymentInfo, 
-            agent.underlyingAddress, request.redeemerUnderlyingAddress,
-            paymentValueUBA, request.firstUnderlyingBlock, request.lastUnderlyingBlock);
+        PaymentVerification.validatePaymentDetails(_paymentInfo, 
+            agent.underlyingAddress, request.redeemerUnderlyingAddress, paymentValueUBA);
+        _state.paymentVerifications.confirmPayment(_paymentInfo);
         // release agent collateral
         Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         // update underlying free balance with fee and gas
+        uint64 startBlockForTopup = 
+            SafeMath64.add64(_paymentInfo.underlyingBlock, _state.settings.underlyingBlocksForPayment);
         UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault,
-            request.underlyingFeeUBA, _paymentInfo.gasUBA, _currentUnderlyingBlock);
+            request.underlyingFeeUBA, _paymentInfo.gasUBA, startBlockForTopup);
         // delete possible pending challenge
         IllegalPaymentChallenge.deleteChallenge(_state, _paymentInfo);
         emit RedemptionPerformed(request.agentVault, request.redeemer,
@@ -267,7 +273,8 @@ library Redemption {
         require(_redemptionRequestId != 0, "invalid request id");
         RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
         require(request.valueAMG != 0, "invalid request id");
-        require(request.lastUnderlyingBlock <= _currentUnderlyingBlock, "too soon for default");
+        require(!_isPaymentOnTime(_state, request, _currentUnderlyingBlock),
+            "redemption payment not late");
         // we allow only redeemers to trigger redemption failures, since they may want
         // to do it at some particular time
         require(msg.sender == request.redeemer, "only redeemer");
@@ -286,6 +293,44 @@ library Redemption {
             amountWei, liquidatedUBA, _redemptionRequestId);
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
+    }
+
+    function _isPaymentOnTime(
+        AssetManagerState.State storage _state,
+        RedemptionRequest storage request,
+        uint256 _underlyingBlock
+    ) 
+        private view 
+        returns (bool)
+    {
+        // is block number ok?
+        uint256 lastBlock = uint256(request.underlyingBlock).add(_state.settings.underlyingBlocksForPayment);
+        if (_underlyingBlock <= lastBlock) return true;
+        // if block number is too large, it is still ok as long as not too much time has passed
+        // (to allow block height challenges)
+        uint256 lastTimestamp = uint256(request.timestamp).add(_state.settings.minSecondsForPayment);
+        return block.timestamp <= lastTimestamp;
+    }
+    
+    function challengeRedemptionRequestUnderlyingBlock(
+        AssetManagerState.State storage _state,
+        uint64 _redemptionRequestId,
+        uint64 _currentUnderlyingBlock  // must be proved via block height attestation!
+    )
+        internal
+    {
+        require(_redemptionRequestId != 0, "invalid request id");
+        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
+        // check that challenge is within minSecondsForPayment from redemption request
+        uint256 lastTimestamp = uint256(request.timestamp).add(_state.settings.minSecondsForPayment);
+        require(block.timestamp <= lastTimestamp, "block number challenge late");
+        // if proved _currentUnderlyingBlock is greater then one in request, increase it
+        if (_currentUnderlyingBlock > request.underlyingBlock) {
+            request.underlyingBlock = _currentUnderlyingBlock;
+            uint256 lastBlock = uint256(_currentUnderlyingBlock).add(_state.settings.underlyingBlocksForPayment);
+            emit RedemptionUnderlyingBlockChanged(request.agentVault,
+                _currentUnderlyingBlock, lastBlock, _redemptionRequestId);
+        }
     }
 
     function redemptionPaymentBlocked(
@@ -312,7 +357,7 @@ library Redemption {
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
     }
-
+    
     function selfClose(
         AssetManagerState.State storage _state,
         address _agentVault,
