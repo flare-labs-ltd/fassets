@@ -21,11 +21,12 @@ library CollateralReservations {
         bytes32 minterUnderlyingAddress;
         uint128 underlyingValueUBA;
         uint64 firstUnderlyingBlock;
+        uint64 underlyingBlockChallengeTimestamp;
         uint128 underlyingFeeUBA;
-        uint64 lastUnderlyingBlock;
         address agentVault;
         uint64 valueAMG;
         address minter;
+        bool underlyingBlockVerified;
     }
 
     event CollateralReserved(
@@ -42,6 +43,15 @@ library CollateralReservations {
         address indexed minter,
         uint256 collateralReservationId);
         
+    event CRUnderlyingBlockChallenged(
+        address indexed minter,
+        uint256 collateralReservationId);
+        
+    event CRUnderlyingBlockChallengeTimeout(
+        address indexed agentVault,
+        address indexed minter,
+        uint256 collateralReservationId);
+
     function reserveCollateral(
         AssetManagerState.State storage _state, 
         address _minter,
@@ -78,7 +88,8 @@ library CollateralReservations {
             valueAMG: valueAMG,
             minter: _minter,
             firstUnderlyingBlock: _currentUnderlyingBlock,
-            lastUnderlyingBlock: lastUnderlyingBlock
+            underlyingBlockChallengeTimestamp: 0,   // not challenged
+            underlyingBlockVerified: false
         });
         emit CollateralReserved(_agentVault, _minter, crtId, _lots, 
             underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock);
@@ -87,18 +98,19 @@ library CollateralReservations {
     function reservationTimeout(
         AssetManagerState.State storage _state, 
         uint64 _crtId,
-        uint64 _currentUnderlyingBlock
+        uint64 _currentUnderlyingBlock  // must be proved
     )
         internal
     {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
-        require(_currentUnderlyingBlock >= crt.lastUnderlyingBlock, "timeout too early");
+        uint64 lastUnderlyingBlock = 
+            SafeMath64.add64(crt.firstUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
+        require(_currentUnderlyingBlock >= lastUnderlyingBlock, "timeout too early");
         Agents.requireOwnerAgent(crt.agentVault);
         emit CollateralReservationTimeout(crt.agentVault, crt.minter, _crtId);
-        releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this
-        // TODO: pay fee to agent?
+        _cancelCollateralReservation(_state, crt, _crtId);
     }
-
+    
     function releaseCollateralReservation(
         AssetManagerState.State storage _state,
         CollateralReservations.CollateralReservation storage crt,
@@ -111,6 +123,47 @@ library CollateralReservations {
         delete _state.crts[_crtId];
     }
 
+    function challengeReservationUnderlyingBlock(
+        AssetManagerState.State storage _state, 
+        uint64 _crtId
+    )
+        internal
+    {
+        // TODO: should only agent be allowed to do this?
+        CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
+        require(!crt.underlyingBlockVerified, "underlying block verified");
+        crt.underlyingBlockChallengeTimestamp = SafeCast.toUint64(block.timestamp);
+        emit CRUnderlyingBlockChallenged(crt.minter, _crtId);
+    }
+    
+    function verifyUnderlyingBlock(
+        AssetManagerState.State storage _state, 
+        uint64 _crtId,
+        uint256 _provedUnderlyingBlock    // must be proved
+    )
+        internal
+    {
+        CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
+        require(_provedUnderlyingBlock >= crt.firstUnderlyingBlock, "proved block too low");
+        crt.underlyingBlockVerified = true;
+    }
+
+    function underlyingBlockChallengeTimeout(
+        AssetManagerState.State storage _state, 
+        uint64 _crtId
+    )
+        internal
+    {
+        CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
+        require(!crt.underlyingBlockVerified, "underlying block verified");
+        uint256 lastTimestamp = uint256(crt.underlyingBlockChallengeTimestamp)
+            .add(_state.settings.minSecondsForBlockChallengeResponse);
+        require(block.timestamp > lastTimestamp, "not late for block proof");
+        Agents.requireOwnerAgent(crt.agentVault);
+        emit CRUnderlyingBlockChallengeTimeout(crt.agentVault, crt.minter, _crtId);
+        _cancelCollateralReservation(_state, crt, _crtId);
+    }
+
     function getCollateralReservation(
         AssetManagerState.State storage _state, 
         uint64 _crtId
@@ -120,5 +173,16 @@ library CollateralReservations {
     {
         require(_crtId > 0 && _state.crts[_crtId].valueAMG != 0, "invalid crt id");
         return _state.crts[_crtId];
+    }
+    
+    function _cancelCollateralReservation(
+        AssetManagerState.State storage _state,
+        CollateralReservations.CollateralReservation storage crt,
+        uint64 _crtId
+    )
+        private
+    {
+        // TODO: pay fee to agent
+        releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this        
     }
 }

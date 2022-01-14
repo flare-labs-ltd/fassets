@@ -46,8 +46,10 @@ library AssetManagerSettings {
         // Minimum time to allow for agent to pay for redemption or respond to invalid underlyingBlock 
         // in redemption request. Redemption failure can be called only after both
         // underlyingBlocksForPayment are mined on underlying chain and minSecondsForPayment time elapses.
-        // Also time allowed for minter to respond to underlyingBlockheight challenge.
         uint64 minSecondsForPayment;
+
+        // Time allowed for minter to respond to underlyingBlockheight challenge.
+        uint64 minSecondsForBlockChallengeResponse;
         
         // Number of underlying blocks that the agent is allowed to perform allowed underlying payment
         // (e.g. fee withdrawal). It can be much longer than the limit for required payments - it's only here
