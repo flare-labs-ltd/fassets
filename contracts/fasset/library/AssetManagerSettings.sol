@@ -62,7 +62,7 @@ library AssetManagerSettings {
         uint64 underlyingBlocksForTopup;
 
         // Redemption fee in underlying currency base amount (UBA).
-        uint128 redemptionFeeUBA;
+        uint16 redemptionFeeBips;
         
         // On redemption underlying payment failure, redeemer is compensated with
         // redemption value recalculated in flare/sgb times redemption failure factor.

@@ -178,7 +178,8 @@ library Redemption {
     {
         uint128 redeemedValueUBA = SafeCast.toUint128(Conversion.convertAmgToUBA(_state.settings, _data.valueAMG));
         uint64 requestId = ++_state.newRedemptionRequestId;
-        uint128 redemptionFeeUBA = _state.settings.redemptionFeeUBA;  // TODO: must be percentage of redemption value
+        uint128 redemptionFeeUBA = SafeCast.toUint128(
+            SafeBips.mulBips128(redeemedValueUBA, _state.settings.redemptionFeeBips));
         _state.redemptionRequests[requestId] = RedemptionRequest({
             redeemerUnderlyingAddress: _redeemerUnderlyingAddress,
             underlyingValueUBA: redeemedValueUBA,
