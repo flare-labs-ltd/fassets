@@ -4,6 +4,7 @@ pragma solidity 0.7.6;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
+import "./AMEvents.sol";
 import "./Agents.sol";
 import "./Liquidation.sol";
 import "./PaymentVerification.sol";
@@ -45,18 +46,6 @@ library IllegalPaymentChallenge {
         mapping(bytes32 => Challenge) challenges;
     }
     
-    event IllegalPaymentChallenged(
-        address indexed agentVault,
-        bytes32 transactionHash);
-    
-    event IllegalPaymentConfirmed(
-        address indexed agentVault,
-        bytes32 transactionHash);
-        
-    event WrongPaymentReportConfirmed(
-        address indexed agentVault,
-        bytes32 transactionHash);
-        
     function createChallenge(
         AssetManagerState.State storage _state,
         address _agentVault,
@@ -79,7 +68,7 @@ library IllegalPaymentChallenge {
             createdAt: SafeCast.toUint64(block.timestamp),
             mintedAMG: agent.mintedAMG
         });
-        emit IllegalPaymentChallenged(_agentVault, _transactionHash);
+        emit AMEvents.IllegalPaymentChallenged(_agentVault, _transactionHash);
     }
     
     function confirmChallenge(
@@ -102,7 +91,7 @@ library IllegalPaymentChallenge {
         _state.paymentVerifications.confirmPayment(_paymentInfo);
         _startLiquidation(_state, challenge.agentVault);
         _rewardChallengers(_state, challenge.challenger, msg.sender, challenge.mintedAMG);
-        emit IllegalPaymentConfirmed(challenge.agentVault, _paymentInfo.transactionHash);
+        emit AMEvents.IllegalPaymentConfirmed(challenge.agentVault, _paymentInfo.transactionHash);
         deleteChallenge(_state, _paymentInfo);
     }
     
@@ -124,7 +113,7 @@ library IllegalPaymentChallenge {
         uint64 backingAMG = challenge.mintedAMG != 0 ? challenge.mintedAMG : agent.mintedAMG;
         _startLiquidation(_state, _agentVault);
         _rewardChallengers(_state, challenge.challenger, msg.sender, backingAMG);
-        emit WrongPaymentReportConfirmed(_agentVault, _paymentInfo.transactionHash);
+        emit AMEvents.WrongPaymentReportConfirmed(_agentVault, _paymentInfo.transactionHash);
         deleteChallenge(_state, _paymentInfo);
     }
 

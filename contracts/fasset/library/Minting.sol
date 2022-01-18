@@ -4,6 +4,7 @@ pragma solidity 0.7.6;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "../../utils/lib/SafeMath64.sol";
+import "./AMEvents.sol";
 import "./Agents.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./CollateralReservations.sol";
@@ -15,12 +16,6 @@ library Minting {
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentVerification for PaymentVerification.State;
     
-    event MintingExecuted(
-        address indexed agentVault,
-        uint256 collateralReservationId,
-        uint256 redemptionTicketId,
-        uint256 receivedFeeUBA);
-
     function mintingExecuted(
         AssetManagerState.State storage _state,
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
@@ -39,7 +34,7 @@ library Minting {
         address agentVault = crt.agentVault;
         uint64 valueAMG = crt.valueAMG;
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, valueAMG);
-        emit MintingExecuted(agentVault, _crtId, redemptionTicketId, crt.underlyingFeeUBA);
+        emit AMEvents.MintingExecuted(agentVault, _crtId, redemptionTicketId, crt.underlyingFeeUBA);
         Agents.allocateMintedAssets(_state, agentVault, valueAMG);
         UnderlyingFreeBalance.increaseFreeBalance(_state, crt.agentVault, crt.underlyingFeeUBA);
         CollateralReservations.releaseCollateralReservation(_state, crt, _crtId);   // crt can't be used after this

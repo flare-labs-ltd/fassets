@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
+import "./AMEvents.sol";
 import "./Agents.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./PaymentVerification.sol";
@@ -17,11 +18,6 @@ library UnderlyingFreeBalance {
     using SignedSafeMath for int256;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     using PaymentVerification for PaymentVerification.State;
-
-    event TopupRequired(
-        address indexed agentVault,
-        uint256 valueUBA,
-        uint64 lastUnderlyingBlock);
 
     function updateFreeBalance(
         AssetManagerState.State storage _state, 
@@ -45,7 +41,7 @@ library UnderlyingFreeBalance {
                     SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForTopup);
             }
             uint256 topup = SafeCast.toUint256(-newBalance);   // required topup is negative balance
-            emit TopupRequired(_agentVault, topup, agent.lastUnderlyingBlockForTopup);
+            emit AMEvents.TopupRequired(_agentVault, topup, agent.lastUnderlyingBlockForTopup);
         } else if (agent.lastUnderlyingBlockForTopup != 0) {
             agent.lastUnderlyingBlockForTopup = 0;
         }

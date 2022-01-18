@@ -4,6 +4,7 @@ pragma solidity 0.7.6;
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./PaymentVerification.sol";
+import "./AMEvents.sol";
 import "./Agents.sol";
 import "./IllegalPaymentChallenge.sol";
 import "./UnderlyingFreeBalance.sol";
@@ -16,18 +17,6 @@ library AllowedPaymentAnnouncement {
         uint64 createdAtBlock;
     }
     
-    event AllowedPaymentAnnounced(
-        address agentVault,
-        uint256 valueUBA,
-        uint64 announcementId);
-        
-    event AllowedPaymentReported(
-        address agentVault,
-        uint256 valueUBA,
-        uint256 gasUBA,
-        uint64 underlyingBlock,
-        uint64 announcementId);
-        
     function announceAllowedPayment(
         AssetManagerState.State storage _state,
         address _agentVault,
@@ -44,7 +33,7 @@ library AllowedPaymentAnnouncement {
             valueUBA: SafeCast.toUint128(_valueUBA),
             createdAtBlock: SafeCast.toUint64(block.number)
         });
-        emit AllowedPaymentAnnounced(_agentVault, _valueUBA, announcementId);
+        emit AMEvents.AllowedPaymentAnnounced(_agentVault, _valueUBA, announcementId);
     }
     
     function reportAllowedPayment(
@@ -76,7 +65,7 @@ library AllowedPaymentAnnouncement {
         // deduct gas from free balance (don't report multiple times or gas will be deducted every time)
         UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, 0, _paymentInfo.gasUBA, 
             _paymentInfo.underlyingBlock);
-        emit AllowedPaymentReported(_agentVault, _paymentInfo.valueUBA, _paymentInfo.gasUBA, 
+        emit AMEvents.AllowedPaymentReported(_agentVault, _paymentInfo.valueUBA, _paymentInfo.gasUBA, 
             _paymentInfo.underlyingBlock, _announcementId);
         delete _state.paymentAnnouncements[key];
     }

@@ -7,6 +7,7 @@ import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeMath128.sol";
 import "../../utils/lib/SafeBips.sol";
 import "../interface/IAgentVault.sol";
+import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentVerification.sol";
@@ -44,63 +45,6 @@ library Redemption {
         uint256 length;
     }
 
-    event RedemptionRequested(
-        address indexed agentVault,
-        uint256 valueUBA,
-        uint256 requestUnderlyingBlock,
-        uint256 lastUnderlyingBlock,
-        uint256 requestId);
-
-    event RedemptionUnderlyingBlockChanged(
-        address indexed agentVault,
-        uint256 requestUnderlyingBlock,
-        uint256 lastUnderlyingBlock,
-        uint256 requestId);
-        
-    event RedemptionRequestIncomplete(
-        address indexed redeemer,
-        uint256 remainingLots);
-
-    event RedemptionPaymentReported(
-        address indexed agentVault,
-        address indexed redeemer,
-        uint256 valueUBA,
-        uint256 gasUBA,
-        uint256 feeUBA,
-        uint64 underlyingBlock,
-        uint64 requestId);
-
-    event RedemptionPerformed(
-        address indexed agentVault,
-        address indexed redeemer,
-        uint256 valueUBA,
-        uint256 gasUBA,
-        uint256 feeUBA,
-        uint64 underlyingBlock,
-        uint64 requestId);
-
-    event RedemptionFailed(
-        address indexed agentVault,
-        address indexed redeemer,
-        uint256 redeemedCollateralWei,
-        uint256 freedBalanceUBA,
-        uint64 requestId);
-
-    event RedemptionBlocked(
-        address indexed agentVault,
-        address indexed redeemer,
-        uint256 freedBalanceUBA,
-        uint64 requestId);
-
-    event SelfClose(
-        address indexed agentVault,
-        uint256 valueUBA);
-
-    event LiquidationPerformed(
-        address indexed agentVault,
-        address indexed liquidator,
-        uint256 valueUBA);
-        
     function redeem(
         AssetManagerState.State storage _state,
         address _redeemer,
@@ -131,7 +75,7 @@ library Redemption {
         }
         // notify redeemer of incomplete requests
         if (_redeemedLots < _lots) {
-            emit RedemptionRequestIncomplete(_redeemer, _lots - _redeemedLots);
+            emit AMEvents.RedemptionRequestIncomplete(_redeemer, _lots - _redeemedLots);
         }
     }
 
@@ -196,7 +140,7 @@ library Redemption {
         // emit event to remind agent to pay
         uint256 paymentValueUBA = SafeMath128.sub128(redeemedValueUBA, redemptionFeeUBA, "?");
         uint256 lastBlock = uint256(_currentUnderlyingBlock).add(_state.settings.underlyingBlocksForPayment);
-        emit RedemptionRequested(_data.agentVault,
+        emit AMEvents.RedemptionRequested(_data.agentVault,
             paymentValueUBA, _currentUnderlyingBlock, lastBlock, requestId);
     }
 
@@ -222,7 +166,7 @@ library Redemption {
             "payment report after confirm");
         // create the report
         PaymentReport.createReport(_state.paymentReports, _paymentInfo);
-        emit RedemptionPaymentReported(request.agentVault, request.redeemer,
+        emit AMEvents.RedemptionPaymentReported(request.agentVault, request.redeemer,
             _paymentInfo.valueUBA, _paymentInfo.gasUBA, request.underlyingFeeUBA,
             _paymentInfo.underlyingBlock, _redemptionRequestId);
     }
@@ -256,7 +200,7 @@ library Redemption {
             request.underlyingFeeUBA, _paymentInfo.gasUBA, startBlockForTopup);
         // delete possible pending challenge
         IllegalPaymentChallenge.deleteChallenge(_state, _paymentInfo);
-        emit RedemptionPerformed(request.agentVault, request.redeemer,
+        emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
             _paymentInfo.valueUBA, _paymentInfo.gasUBA, request.underlyingFeeUBA,
             _paymentInfo.underlyingBlock, _redemptionRequestId);
         // delete redemption request at end when we don't need data any more
@@ -297,7 +241,7 @@ library Redemption {
         // now we add it to free balance since it wasn't paid to the redeemer
         uint256 liquidatedUBA = Conversion.convertAmgToUBA(_state.settings, request.valueAMG);
         UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, liquidatedUBA);
-        emit RedemptionFailed(request.agentVault, request.redeemer, 
+        emit AMEvents.RedemptionFailed(request.agentVault, request.redeemer, 
             amountWei, liquidatedUBA, _redemptionRequestId);
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
@@ -336,7 +280,7 @@ library Redemption {
         if (_currentUnderlyingBlock > request.underlyingBlock) {
             request.underlyingBlock = _currentUnderlyingBlock;
             uint256 lastBlock = uint256(_currentUnderlyingBlock).add(_state.settings.underlyingBlocksForPayment);
-            emit RedemptionUnderlyingBlockChanged(request.agentVault,
+            emit AMEvents.RedemptionUnderlyingBlockChanged(request.agentVault,
                 _currentUnderlyingBlock, lastBlock, _redemptionRequestId);
         }
     }
@@ -361,7 +305,7 @@ library Redemption {
         uint256 liquidatedUBA = Conversion.convertAmgToUBA(_state.settings, request.valueAMG);
         UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, liquidatedUBA);
         // notify
-        emit RedemptionBlocked(request.agentVault, request.redeemer, liquidatedUBA, _redemptionRequestId);
+        emit AMEvents.RedemptionBlocked(request.agentVault, request.redeemer, liquidatedUBA, _redemptionRequestId);
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
     }
@@ -379,7 +323,7 @@ library Redemption {
         uint256 closedUBA;
         (_closedAMG, closedUBA) = _selfCloseOrLiquidate(_state, _agentVault, _amountAMG);
         // send event
-        emit SelfClose(_agentVault, closedUBA);
+        emit AMEvents.SelfClose(_agentVault, closedUBA);
     }
 
     function liquidate(
@@ -395,7 +339,7 @@ library Redemption {
         uint256 liquidatedUBA;
         (_liquidatedAMG, liquidatedUBA) = _selfCloseOrLiquidate(_state, _agentVault, _amountAMG);
         // send event
-        emit LiquidationPerformed(_agentVault, _liquidator, liquidatedUBA);
+        emit AMEvents.LiquidationPerformed(_agentVault, _liquidator, liquidatedUBA);
     }
 
     function _selfCloseOrLiquidate(

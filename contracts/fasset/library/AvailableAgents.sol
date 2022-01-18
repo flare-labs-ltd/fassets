@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";
+import "./AMEvents.sol";
 import "./Agents.sol";
 import "./AssetManagerState.sol";
 
@@ -29,19 +30,6 @@ library AvailableAgents {
         uint256 freeCollateralLots;
     }   
      
-    event AgentAvailable(
-        address agentVault, 
-        uint256 feeBIPS, 
-        uint256 agentMinCollateralRatioBIPS,
-        uint256 freeCollateralLots);
-        
-    event AgentExitAnnounced(
-        address indexed agentVault,
-        uint256 exitTimeStart,
-        uint256 exitTimeEnd);
-
-    event AgentExited(address agentVault);
-    
     function makeAvailable(
         AssetManagerState.State storage _state,
         address _agentVault,
@@ -69,7 +57,7 @@ library AvailableAgents {
             exitAnnouncedAt: 0
         }));
         agent.availableAgentsPos = uint64(_state.availableAgents.length);     // index+1 (0=not in list)
-        emit AgentAvailable(_agentVault, _feeBIPS, _agentMinCollateralRatioBIPS, freeCollateralLots);
+        emit AMEvents.AgentAvailable(_agentVault, _feeBIPS, _agentMinCollateralRatioBIPS, freeCollateralLots);
     }
 
     function announceExit(
@@ -84,7 +72,7 @@ library AvailableAgents {
         require(item.exitAnnouncedAt == 0, "already exiting");
         item.exitAnnouncedAt = SafeCast.toUint64(block.timestamp);
         (uint256 startTime, uint256 endTime) = _exitTimeInterval(_state, block.timestamp);
-        emit AgentExitAnnounced(_agentVault, startTime, endTime);
+        emit AMEvents.AgentExitAnnounced(_agentVault, startTime, endTime);
     }
     
     function exit(
@@ -109,7 +97,7 @@ library AvailableAgents {
         }
         agent.availableAgentsPos = 0;
         _state.availableAgents.pop();
-        emit AgentExited(_agentVault);
+        emit AMEvents.AgentExited(_agentVault);
     }
     
     function getList(

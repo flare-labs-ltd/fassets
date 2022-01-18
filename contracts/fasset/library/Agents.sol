@@ -5,11 +5,11 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeBips.sol";
+import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./RedemptionQueue.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
-import "./Conversion.sol";
 
 
 library Agents {
@@ -101,10 +101,6 @@ library Agents {
         uint64 lastUnderlyingBlockForTopup;
     }
     
-    event DustChanged(
-        address indexed agentVault,
-        uint256 dustUBA);
-        
     function createAgent(
         AssetManagerState.State storage _state, 
         AgentType _agentType,
@@ -210,7 +206,7 @@ library Agents {
         uint64 newDustAMG = SafeMath64.add64(agent.dustAMG, _dustIncreaseAMG);
         agent.dustAMG = newDustAMG;
         uint256 dustUBA = Conversion.convertAmgToUBA(_state.settings, newDustAMG);
-        emit DustChanged(_agentVault, dustUBA);
+        emit AMEvents.DustChanged(_agentVault, dustUBA);
     }
 
     function decreaseDust(
@@ -224,7 +220,7 @@ library Agents {
         uint64 newDustAMG = SafeMath64.sub64(agent.dustAMG, _dustDecreaseAMG, "not enough dust");
         agent.dustAMG = newDustAMG;
         uint256 dustUBA = Conversion.convertAmgToUBA(_state.settings, newDustAMG);
-        emit DustChanged(_agentVault, dustUBA);
+        emit AMEvents.DustChanged(_agentVault, dustUBA);
     }
     
     function convertDustToTickets(

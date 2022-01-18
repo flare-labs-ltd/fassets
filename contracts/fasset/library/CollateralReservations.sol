@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
 import "./Conversion.sol";
+import "./AMEvents.sol";
 import "./Agents.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
@@ -28,29 +29,6 @@ library CollateralReservations {
         address minter;
         bool underlyingBlockVerified;
     }
-
-    event CollateralReserved(
-        address indexed agentVault,
-        address indexed minter,
-        uint256 collateralReservationId,
-        uint64 reservedLots,
-        uint256 underlyingValueUBA, 
-        uint256 underlyingFeeUBA,
-        uint256 lastUnderlyingBlock);
-
-    event CollateralReservationTimeout(
-        address indexed agentVault,
-        address indexed minter,
-        uint256 collateralReservationId);
-        
-    event CRUnderlyingBlockChallenged(
-        address indexed minter,
-        uint256 collateralReservationId);
-        
-    event CRUnderlyingBlockChallengeTimeout(
-        address indexed agentVault,
-        address indexed minter,
-        uint256 collateralReservationId);
 
     function reserveCollateral(
         AssetManagerState.State storage _state, 
@@ -91,7 +69,7 @@ library CollateralReservations {
             underlyingBlockChallengeTimestamp: 0,   // not challenged
             underlyingBlockVerified: false
         });
-        emit CollateralReserved(_agentVault, _minter, crtId, _lots, 
+        emit AMEvents.CollateralReserved(_agentVault, _minter, crtId, _lots, 
             underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock);
     }
     
@@ -107,7 +85,7 @@ library CollateralReservations {
             SafeMath64.add64(crt.firstUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
         require(_currentUnderlyingBlock >= lastUnderlyingBlock, "timeout too early");
         Agents.requireOwnerAgent(crt.agentVault);
-        emit CollateralReservationTimeout(crt.agentVault, crt.minter, _crtId);
+        emit AMEvents.CollateralReservationTimeout(crt.agentVault, crt.minter, _crtId);
         _cancelCollateralReservation(_state, crt, _crtId);
     }
     
@@ -133,7 +111,7 @@ library CollateralReservations {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
         require(!crt.underlyingBlockVerified, "underlying block verified");
         crt.underlyingBlockChallengeTimestamp = SafeCast.toUint64(block.timestamp);
-        emit CRUnderlyingBlockChallenged(crt.minter, _crtId);
+        emit AMEvents.CRUnderlyingBlockChallenged(crt.minter, _crtId);
     }
     
     function verifyUnderlyingBlock(
@@ -160,7 +138,7 @@ library CollateralReservations {
             .add(_state.settings.minSecondsForBlockChallengeResponse);
         require(block.timestamp > lastTimestamp, "not late for block proof");
         Agents.requireOwnerAgent(crt.agentVault);
-        emit CRUnderlyingBlockChallengeTimeout(crt.agentVault, crt.minter, _crtId);
+        emit AMEvents.CRUnderlyingBlockChallengeTimeout(crt.agentVault, crt.minter, _crtId);
         _cancelCollateralReservation(_state, crt, _crtId);
     }
 
