@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import {IPriceSubmitter} from "../../ScInterfaces/userInterfaces/IPriceSubmitter.sol";
+import {IPriceSubmitter} from "flare-smart-contracts/contracts/userInterfaces/IPriceSubmitter.sol";
 
 library Constants {
     address public constant PRICE_SUBMITTER_ADDRESS = 0x1000000000000000000000000000000000000003;

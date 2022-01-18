@@ -6,8 +6,8 @@ import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
 
 import {Constants} from "./Constants.sol";
 
-import {IFtsoRegistry} from "../../ScInterfaces/userInterfaces/IFtsoRegistry.sol";
-import {IFtso} from "../../ScInterfaces/userInterfaces/IFtso.sol";
+import {IFtsoRegistry} from "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
+import {IFtso} from "flare-smart-contracts/contracts/userInterfaces/IFtso.sol";
 
 
 library Conversion {
@@ -20,7 +20,8 @@ library Conversion {
         AssetManagerSettings.Settings storage _settings
     ) internal view returns (uint256) 
     {
-        IFtsoRegistry ftsoRegistry = Constants.PRICE_SUBMITTER.getFtsoRegistry();
+        // Force cast here to circument architecure in original contracts 
+        IFtsoRegistry ftsoRegistry = IFtsoRegistry(address(Constants.PRICE_SUBMITTER.getFtsoRegistry()));
         (uint256 natPrice, ) = ftsoRegistry.getFtso(Constants.WNAT_ASSET_INDEX).getCurrentPrice();
         (uint256 assetPrice, ) = ftsoRegistry.getFtso(_settings.assetIndex).getCurrentPrice();
         return amgToNATWeiPrice(_settings, natPrice, assetPrice);
