@@ -42,6 +42,8 @@ library Liquidation {
             agent.liquidationState.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
             agent.liquidationState.initialLiquidationPhase = liquidationPhase;
             agent.liquidationState.initialPremiumFactorBIPS = premiumFactorBIPS;
+            emit AMEvents.LiquidationStarted(_agentVault, 
+                liquidationPhase == Agents.LiquidationPhase.CCB, _fullLiquidation);
         }
     }
 
@@ -52,6 +54,7 @@ library Liquidation {
         uint64 _amountAMG
     )
         internal
+        returns (uint64 _liquidationAmountAMG)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.status != Agents.AgentStatus.NORMAL, "not in liquidation");
@@ -63,19 +66,27 @@ library Liquidation {
 
         uint64 fAssetAMG = agent.reservedAMG.add64(agent.mintedAMG).add64(agent.redeemingAMG);
         uint64 amountToLiquidateAMG = Math.min(maxAmountAMG, _amountAMG).toUint64();
-        uint64 liquidatedAmountAMG = Redemption.liquidate(_state, msg.sender, _agentVault, amountToLiquidateAMG);
+        _liquidationAmountAMG = Redemption.liquidate(_state, msg.sender, _agentVault, amountToLiquidateAMG);
 
         uint256 liquidationValueNATWei;
         if (!isEnough) { // 100% collateral premium is not enough - calculate proportion
             liquidationValueNATWei = (fullCollateral.sub(agent.withdrawalAnnouncedNATWei))
-                .mulDiv(liquidatedAmountAMG, fAssetAMG);
+                .mulDiv(_liquidationAmountAMG, fAssetAMG);
         } else {
-            liquidationValueNATWei = Conversion.convertAmgToNATWei(liquidatedAmountAMG, amgToNATWeiPrice);
+            liquidationValueNATWei = Conversion.convertAmgToNATWei(_liquidationAmountAMG, amgToNATWeiPrice);
             if (liquidationPhase == Agents.LiquidationPhase.COLLATERAL_PREMIUM) { // get collateral
                 liquidationValueNATWei = liquidationValueNATWei.mulBips(_state.settings.initialMinCollateralRatioBIPS);
             }
             // multiply with price or collateral premium
             liquidationValueNATWei = liquidationValueNATWei.mulBips(premiumFactorBIPS);
+
+            // cancel liquidation if possible
+            if (agent.status == Agents.AgentStatus.LIQUIDATION && agent.freeUnderlyingBalanceUBA >= 0 && 
+                isAgentHealthy(agent, _state.settings, fullCollateral.sub(liquidationValueNATWei), amgToNATWeiPrice)) {
+                agent.status = Agents.AgentStatus.NORMAL;
+                delete agent.liquidationState;
+                emit AMEvents.LiquidationCancelled(_agentVault);
+            }
         }
 
         IAgentVault(_agentVault).liquidate(msg.sender, liquidationValueNATWei);
@@ -96,6 +107,7 @@ library Liquidation {
         require(agent.freeUnderlyingBalanceUBA >= 0, "free underlying balance < 0");
         agent.status = Agents.AgentStatus.NORMAL;
         delete agent.liquidationState;
+        emit AMEvents.LiquidationCancelled(_agentVault);
     }
 
     function isAgentHealthy(

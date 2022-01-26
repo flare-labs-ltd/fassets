@@ -174,6 +174,15 @@ library AMEvents {
     event DustChanged(
         address indexed agentVault,
         uint256 dustUBA);
+
+    /**
+     * Due to unhealty agent's position or due to illegal payment (full liquidation),
+     * agent entered liquidation state.
+     */
+    event LiquidationStarted(
+        address indexed agentVault,
+        bool collateralCallBand,
+        bool fullLiquidation);
         
     /**
      * Some of agent's position was liquidated, by burning liquidator's fassets.
@@ -185,6 +194,12 @@ library AMEvents {
         address indexed agentVault,
         address indexed liquidator,
         uint256 valueUBA);
+
+    /**
+     * Agent exited liquidation state as agent's position was healthy again and not in full liquidation.
+     */
+    event LiquidationCancelled(
+        address indexed agentVault);
 
     /**
      * Part of balance the agent's underlying address is "free balance" that the agent can withdraw.
