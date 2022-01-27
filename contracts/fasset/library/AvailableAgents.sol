@@ -17,7 +17,6 @@ library AvailableAgents {
 
     struct AvailableAgent {
         address agentVault;
-        uint64 exitAnnouncedAt;
     }
 
     // only used in memory - no packing
@@ -53,28 +52,12 @@ library AvailableAgents {
         require(freeCollateralLots >= 1, "not enough free collateral");
         // add to queue
         _state.availableAgents.push(AvailableAgent({
-            agentVault: _agentVault, 
-            exitAnnouncedAt: 0
+            agentVault: _agentVault
         }));
         agent.availableAgentsPos = uint64(_state.availableAgents.length);     // index+1 (0=not in list)
         emit AMEvents.AgentAvailable(_agentVault, _feeBIPS, _agentMinCollateralRatioBIPS, freeCollateralLots);
     }
 
-    function announceExit(
-        AssetManagerState.State storage _state, 
-        address _agentVault
-    ) 
-        internal 
-    {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        require(agent.availableAgentsPos != 0, "agent not available");
-        AvailableAgent storage item = _state.availableAgents[agent.availableAgentsPos - 1];
-        require(item.exitAnnouncedAt == 0, "already exiting");
-        item.exitAnnouncedAt = SafeCast.toUint64(block.timestamp);
-        (uint256 startTime, uint256 endTime) = _exitTimeInterval(_state, block.timestamp);
-        emit AMEvents.AgentExitAnnounced(_agentVault, startTime, endTime);
-    }
-    
     function exit(
         AssetManagerState.State storage _state, 
         address _agentVault
@@ -84,12 +67,6 @@ library AvailableAgents {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
         uint256 ind = agent.availableAgentsPos - 1;
-        if (_state.settings.minSecondsToExitAvailableAgentsList != 0) {
-            AvailableAgent storage item = _state.availableAgents[ind];
-            (uint256 startTime, uint256 endTime) = _exitTimeInterval(_state, item.exitAnnouncedAt);
-            require(item.exitAnnouncedAt != 0 && startTime <= block.timestamp && block.timestamp <= endTime,
-                "required two-step exit");
-        }
         if (ind + 1 < _state.availableAgents.length) {
             _state.availableAgents[ind] = _state.availableAgents[_state.availableAgents.length - 1];
             Agents.Agent storage movedAgent = Agents.getAgent(_state, _state.availableAgents[ind].agentVault);
@@ -141,13 +118,5 @@ library AvailableAgents {
                 freeCollateralLots: agent.freeCollateralLots(_state.settings, fullCollateral, _amgToNATWeiPrice)
             });
         }
-    }
-    
-    function _exitTimeInterval(AssetManagerState.State storage _state, uint256 _fromTime)
-        private view
-        returns (uint256 _start, uint256 _end)
-    {
-        _start = _fromTime.add(_state.settings.minSecondsToExitAvailableAgentsList);
-        _end = _fromTime.add(_state.settings.maxSecondsToExitAvailableAgentsList);
     }
 }

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.7.6;
+
 library AMEvents {
 
     /**
@@ -9,14 +12,6 @@ library AMEvents {
         uint256 agentMinCollateralRatioBIPS,
         uint256 freeCollateralLots);
         
-    /**
-     * Agent announced exit from available agents list.
-     */ 
-    event AgentExitAnnounced(
-        address indexed agentVault,
-        uint256 exitTimeStart,
-        uint256 exitTimeEnd);
-
     /**
      * Agent exited from available agents list.
      */ 
