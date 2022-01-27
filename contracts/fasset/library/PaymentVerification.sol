@@ -31,29 +31,33 @@ library PaymentVerification {
     
     uint256 internal constant VERIFICATION_CLEANUP_DAYS = 5;
     
+    /**
+     * For payment transaction, we record `tx hash`, so that the same transaction can only be used once for payment.
+     * (For redemption it can have only one source anyway, but for minting there can be several sources.)
+     */
     function confirmPayment(
         State storage _state,
         UnderlyingPaymentInfo memory _paymentInfo
     ) 
         internal 
     {
-        bytes32 txKey = transactionKey(_paymentInfo);
-        require(_state.verifiedPayments[txKey] == 0, "payment already confirmed");
-        // add to cleanup list
-        uint256 day = block.timestamp / 86400;
-        bytes32 first = _state.verifiedPaymentsForDay[day];
-        // set next linked list element - last in list points to itself
-        _state.verifiedPayments[txKey] = first != 0 ? first : txKey;
-        // set first linked list element
-        _state.verifiedPaymentsForDay[day] = txKey;
-        if (_state.verifiedPaymentsForDayStart == 0) {
-            _state.verifiedPaymentsForDayStart = day;
-        }
-        // cleanup one old payment hash (> 5 days) for each new payment hash
-        _cleanupPaymentVerification(_state);
+        _recordPaymentVerification(_state, _paymentInfo.transactionHash);
     }
-    
-    function paymentConfirmed(
+
+    /**
+     * For source decreasing transaction, we record `(source address, tx hash)` pair, since illegal
+     * transactions on utxo chains can have multiple input addresses.
+     */
+    function confirmSourceDecreasingTransaction(
+        State storage _state,
+        UnderlyingPaymentInfo memory _paymentInfo
+    ) 
+        internal 
+    {
+        _recordPaymentVerification(_state, transactionKey(_paymentInfo));
+    }
+
+    function transactionConfirmed(
         State storage _state, 
         UnderlyingPaymentInfo memory _paymentInfo
     ) 
@@ -64,7 +68,7 @@ library PaymentVerification {
         return _state.verifiedPayments[txKey] != 0;
     }
 
-    function paymentConfirmed(
+    function transactionConfirmed(
         State storage _state, 
         bytes32 _transactionKey
     ) 
@@ -110,6 +114,27 @@ library PaymentVerification {
         returns (bytes32)
     {
         return keccak256(abi.encode(_paymentInfo.sourceAddress, _paymentInfo.transactionHash));
+    }
+    
+    function _recordPaymentVerification(
+        State storage _state,
+        bytes32 _txKey
+    ) 
+        private
+    {
+        require(_state.verifiedPayments[_txKey] == 0, "payment already confirmed");
+        // add to cleanup list
+        uint256 day = block.timestamp / 86400;
+        bytes32 first = _state.verifiedPaymentsForDay[day];
+        // set next linked list element - last in list points to itself
+        _state.verifiedPayments[_txKey] = first != 0 ? first : _txKey;
+        // set first linked list element
+        _state.verifiedPaymentsForDay[day] = _txKey;
+        if (_state.verifiedPaymentsForDayStart == 0) {
+            _state.verifiedPaymentsForDayStart = day;
+        }
+        // cleanup one old payment hash (> 5 days) for each new payment hash
+        _cleanupPaymentVerification(_state);
     }
     
     function _cleanupPaymentVerification(State storage _state) private {

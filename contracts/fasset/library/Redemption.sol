@@ -162,7 +162,7 @@ library Redemption {
             agent.underlyingAddress, request.redeemerUnderlyingAddress, paymentValueUBA);
         // report can be submitted several times (e.g. perhaps the gas price has to be raised for tx to be accepted),
         // but once the transaction has been proved, reporting it is pointless
-        require(!PaymentVerification.paymentConfirmed(_state.paymentVerifications, _paymentInfo),
+        require(!PaymentVerification.transactionConfirmed(_state.paymentVerifications, _paymentInfo),
             "payment report after confirm");
         // create the report
         PaymentReport.createReport(_state.paymentReports, _paymentInfo);
@@ -190,7 +190,10 @@ library Redemption {
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
             agent.underlyingAddress, request.redeemerUnderlyingAddress, paymentValueUBA);
+        // record payment so that it cannot be used twice in redemption
         _state.paymentVerifications.confirmPayment(_paymentInfo);
+        // record source decreasing transaction so that it cannot be challenged
+        _state.paymentVerifications.confirmSourceDecreasingTransaction(_paymentInfo);
         // release agent collateral
         Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         // update underlying free balance with fee and gas
@@ -203,6 +206,8 @@ library Redemption {
         emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
             _paymentInfo.valueUBA, _paymentInfo.gasUBA, request.underlyingFeeUBA,
             _paymentInfo.underlyingBlock, _redemptionRequestId);
+        // delete report - not needed anymore since we store confirmation
+        PaymentReport.deleteReport(_state.paymentReports, _paymentInfo);
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
     }

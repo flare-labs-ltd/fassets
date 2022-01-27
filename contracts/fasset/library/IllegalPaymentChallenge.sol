@@ -56,7 +56,7 @@ library IllegalPaymentChallenge {
         // only one challenge per (source addres, transaction hash) pair
         require(!_challengeExists(_state, txKey), "challenge already exists");
         // cannot challenge confirmed transactions
-        require(!_state.paymentVerifications.paymentConfirmed(txKey), "payment already confirmed");
+        require(!_state.paymentVerifications.transactionConfirmed(txKey), "payment already confirmed");
         // and that it actually backs any minting
         require(agent.mintedAMG > 0, "address empty");
         _state.paymentChallenges.challenges[txKey] = Challenge({
@@ -83,14 +83,19 @@ library IllegalPaymentChallenge {
         require(uint256(challenge.createdAt).add(_state.settings.paymentChallengeWaitMinSeconds) <= block.timestamp,
             "confirmation too early");
         // cannot challenge if there is a matching report
-        require(PaymentReport.reportMatch(_state.paymentReports, _paymentInfo) != PaymentReport.ReportMatch.MATCH,
+        PaymentReport.ReportMatch reportMatch = PaymentReport.reportMatch(_state.paymentReports, _paymentInfo);
+        require(reportMatch != PaymentReport.ReportMatch.MATCH,
             "matching report exists");
         // check that proof of this tx wasn't used before and mark it as used
-        _state.paymentVerifications.confirmPayment(_paymentInfo);
+        _state.paymentVerifications.confirmSourceDecreasingTransaction(_paymentInfo);
         _startLiquidation(_state, challenge.agentVault);
         _rewardChallengers(_state, challenge.challenger, msg.sender, challenge.mintedAMG);
         emit AMEvents.IllegalPaymentConfirmed(challenge.agentVault, _paymentInfo.transactionHash);
         deleteChallenge(_state, _paymentInfo);
+        // delete report if it exists
+        if (reportMatch != PaymentReport.ReportMatch.DOES_NOT_EXIST) {
+            PaymentReport.deleteReport(_state.paymentReports, _paymentInfo);
+        }
     }
     
     function confirmWrongReportChallenge(
@@ -104,15 +109,18 @@ library IllegalPaymentChallenge {
             "no report mismatch");
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // check that proof of this tx wasn't used before and mark it as used
-        _state.paymentVerifications.confirmPayment(_paymentInfo);
+        _state.paymentVerifications.confirmSourceDecreasingTransaction(_paymentInfo);
         // challenge (if it exists) is needed to reward original challenger and get amount of minting at the time
         Challenge storage challenge = getChallenge(_state, _paymentInfo.sourceAddress, _paymentInfo.transactionHash);
-        // if the challenge exists, use its mintedAMG value (cannot be 0), otherwise use current for the address
+        // if the challenge exists, use its mintedAMG value (cannot be 0), otherwise use current value for the address
         uint64 backingAMG = challenge.mintedAMG != 0 ? challenge.mintedAMG : agent.mintedAMG;
         _startLiquidation(_state, _agentVault);
         _rewardChallengers(_state, challenge.challenger, msg.sender, backingAMG);
         emit AMEvents.WrongPaymentReportConfirmed(_agentVault, _paymentInfo.transactionHash);
+        // no need for challenge any more
         deleteChallenge(_state, _paymentInfo);
+        // delete the invalid report
+        PaymentReport.deleteReport(_state.paymentReports, _paymentInfo);
     }
 
     function deleteChallenge(

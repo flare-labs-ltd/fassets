@@ -72,8 +72,6 @@ library UnderlyingFreeBalance {
             "not underlying address");
         require(_paymentInfo.paymentReference == TOPUP_PAYMENT_REFERENCE,
             "not a topup payment");
-        // TODO: check that payment info is not too old? (to prevent submitting already verified and expired proofs - 
-        // probably not necessary, since state connector cannot prove such old payments)
         _state.paymentVerifications.confirmPayment(_paymentInfo);
         increaseFreeBalance(_state, _agentVault, _paymentInfo.valueUBA);
     }

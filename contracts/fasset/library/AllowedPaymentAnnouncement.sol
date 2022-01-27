@@ -58,7 +58,7 @@ library AllowedPaymentAnnouncement {
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
             agent.underlyingAddress, 0 /* target not needed for allowed payments */, announcement.valueUBA);
         // once the transaction has been proved, reporting it is pointless
-        require(!PaymentVerification.paymentConfirmed(_state.paymentVerifications, _paymentInfo),
+        require(!PaymentVerification.transactionConfirmed(_state.paymentVerifications, key),
             "payment report after confirm");
         // create the report
         PaymentReport.createReport(_state.paymentReports, _paymentInfo);
