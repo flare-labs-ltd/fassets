@@ -11,6 +11,7 @@ library PaymentVerification {
         bytes32 sourceAddress;
         bytes32 targetAddress;
         bytes32 transactionHash;
+        bytes32 paymentReference;      // used in minting to identify sender
         uint256 valueUBA;
         uint256 gasUBA;
         uint64 underlyingBlock;

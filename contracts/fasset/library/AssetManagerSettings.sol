@@ -94,6 +94,10 @@ library AssetManagerSettings {
         // If there was no liquidator for the current liquidation offer, 
         // go to the next step of liquidation after a certain period of time.
         uint64 newLiquidationStepAfterMinSeconds;
+        
+        // for some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address
+        // this must be done by presenting a payment proof from that address
+        bool requireEOAAddressProof;
     }
 
     // Temporary solution until the governance will be able to set the fee

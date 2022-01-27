@@ -8,7 +8,6 @@ import "./AMEvents.sol";
 import "./Agents.sol";
 import "./Liquidation.sol";
 import "./PaymentVerification.sol";
-import "./UnderlyingAddressOwnership.sol";
 import "./PaymentReport.sol";
 import "./AssetManagerState.sol";
 
@@ -16,7 +15,6 @@ import "./AssetManagerState.sol";
 library IllegalPaymentChallenge {
     using SafeMath for uint256;
     using PaymentVerification for PaymentVerification.State;
-    using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     
     struct Challenge {
         // underlying source address and transaction hash are not recorded in this structure, 

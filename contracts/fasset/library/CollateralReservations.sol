@@ -8,7 +8,6 @@ import "../../utils/lib/SafeBips.sol";
 import "./Conversion.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
-import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
 
 
@@ -16,7 +15,6 @@ library CollateralReservations {
     using SafeMath for uint256;
     using SafeBips for uint256;
     using Agents for Agents.Agent;
-    using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     
     struct CollateralReservation {
         bytes32 minterUnderlyingAddress;
@@ -29,7 +27,7 @@ library CollateralReservations {
         address minter;
         bool underlyingBlockVerified;
     }
-
+    
     function reserveCollateral(
         AssetManagerState.State storage _state, 
         address _minter,
@@ -49,8 +47,6 @@ library CollateralReservations {
         require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
         require(agent.freeCollateralLots(_state.settings, _fullAgentCollateral, _amgToNATWeiPrice) >= _lots,
             "not enough free collateral");
-
-        _state.underlyingAddressOwnership.claim(_minter, _minterUnderlyingAddress);
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
         uint64 valueAMG = SafeMath64.mul64(_lots, _state.settings.lotSizeAMG);
@@ -70,7 +66,8 @@ library CollateralReservations {
             underlyingBlockVerified: false
         });
         emit AMEvents.CollateralReserved(_agentVault, _minter, crtId, _lots, 
-            underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock);
+            underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock,
+            mintingPaymentReference(crtId));
     }
     
     function reservationTimeout(
@@ -151,6 +148,15 @@ library CollateralReservations {
     {
         require(_crtId > 0 && _state.crts[_crtId].valueAMG != 0, "invalid crt id");
         return _state.crts[_crtId];
+    }
+    
+    function mintingPaymentReference(uint256 _crtId) 
+        internal pure
+        returns (bytes32)
+    {
+        // TODO: should add some larger constant or hash with something to differentiate 
+        // from other possible reference types?
+        return bytes32(1 + _crtId);
     }
     
     function _cancelCollateralReservation(

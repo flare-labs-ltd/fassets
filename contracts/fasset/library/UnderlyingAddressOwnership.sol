@@ -1,46 +1,45 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "./PaymentVerification.sol";
 
 library UnderlyingAddressOwnership {
     struct Ownership {
         address owner;
+        
+        // there was a payment proof indicating this is externally owned account
+        bool provedEOA;
     }
     
     struct State {
-        // reservation has to be made at least one block before to prevent frontrunning
-        // mapping hash(owner, underlyingAddress) => block_number
-        mapping (bytes32 => uint256) reservations;
-        
         // mapping underlyingAddress => Ownership
         mapping (bytes32 => Ownership) ownership;
     }
 
-    // reservation is required before claim to prevent frontrunning    
-    function reserve(
-        State storage _state, 
-        bytes32 _hash
-    ) 
-        internal
-    {
-        _state.reservations[_hash] = block.number;
-    }
-    
-    //
     function claim(
         State storage _state, 
         address _owner, 
-        bytes32 _underlyingAddress
+        bytes32 _underlyingAddress,
+        bool _requireEOA
     ) 
         internal 
     {
-        Ownership storage ownership = _state.ownership[_underlyingAddress];
-        if (ownership.owner == address(0)) {
-            _checkReservation(_state, _owner, _underlyingAddress);
-            ownership.owner = _owner;
-        } else {
-            require(ownership.owner == _owner, "address already claimed");
-        }
+        Ownership storage ownership = _claim(_state, _owner, _underlyingAddress, false);
+        require(!_requireEOA || ownership.provedEOA, "underlying address not EOA");
+    }
+    
+    function claimWithProof(
+        State storage _state,
+        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo, 
+        address _owner, 
+        bytes32 _underlyingAddress
+    )
+        internal
+    {
+        bool proofValid = _paymentInfo.sourceAddress == _underlyingAddress
+            && _paymentInfo.paymentReference == bytes32(uint256(_owner));
+        require(proofValid, "invalid address ownership proof");
+        _claim(_state, _owner, _underlyingAddress, true);
     }
     
     function check(
@@ -54,15 +53,24 @@ library UnderlyingAddressOwnership {
         Ownership storage ownership = _state.ownership[_underlyingAddress];
         return ownership.owner == _owner;
     }
-    
-    function _checkReservation(State storage _state, address _owner, bytes32 _underlyingAddress) private {
-        bytes32 key = _ownerAddressHash(_owner, _underlyingAddress);
-        uint256 reservationBlock = _state.reservations[key];
-        require(reservationBlock != 0 && reservationBlock < block.number, "source address not reserved");
-        delete _state.reservations[key];
+
+    function _claim(
+        State storage _state, 
+        address _owner, 
+        bytes32 _underlyingAddress,
+        bool _provedEOA
+    ) 
+        private
+        returns (Ownership storage)
+    {
+        Ownership storage ownership = _state.ownership[_underlyingAddress];
+        if (ownership.owner == address(0)) {
+            ownership.owner = _owner;
+            ownership.provedEOA = _provedEOA;
+        } else {
+            require(ownership.owner == _owner, "address already claimed");
+        }
+        return ownership;
     }
     
-    function _ownerAddressHash(address _owner, bytes32 _underlyingAddress) private pure returns (bytes32) {
-        return keccak256(abi.encode(_owner, _underlyingAddress));
-    }
 }

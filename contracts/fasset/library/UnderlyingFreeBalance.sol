@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
-import "./UnderlyingAddressOwnership.sol";
 import "./PaymentVerification.sol";
 import "./AssetManagerState.sol";
 import "./Liquidation.sol";
@@ -16,9 +15,10 @@ import "./Liquidation.sol";
 library UnderlyingFreeBalance {
     using SafeMath for uint256;
     using SignedSafeMath for int256;
-    using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     using PaymentVerification for PaymentVerification.State;
 
+    bytes32 internal constant TOPUP_PAYMENT_REFERENCE = 0;
+    
     function updateFreeBalance(
         AssetManagerState.State storage _state, 
         address _agentVault,
@@ -70,8 +70,8 @@ library UnderlyingFreeBalance {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.underlyingAddress == _paymentInfo.sourceAddress, 
             "not underlying address");
-        require(_state.underlyingAddressOwnership.check(_agentVault, _paymentInfo.sourceAddress), 
-            "address not owned by the agent");
+        require(_paymentInfo.paymentReference == TOPUP_PAYMENT_REFERENCE,
+            "not a topup payment");
         // TODO: check that payment info is not too old? (to prevent submitting already verified and expired proofs - 
         // probably not necessary, since state connector cannot prove such old payments)
         _state.paymentVerifications.confirmPayment(_paymentInfo);

@@ -28,7 +28,8 @@ library AMEvents {
         uint64 reservedLots,
         uint256 underlyingValueUBA, 
         uint256 underlyingFeeUBA,
-        uint256 lastUnderlyingBlock);
+        uint256 lastUnderlyingBlock,
+        bytes32 paymentReference);
 
     /**
      * Minter failed to pay underlying funds in time. Collateral reservation fee was paid to the agent.
