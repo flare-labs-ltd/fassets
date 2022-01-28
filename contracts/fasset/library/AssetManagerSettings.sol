@@ -5,6 +5,9 @@ library AssetManagerSettings {
     struct Settings {
         // Asset specific settings
         uint16 assetIndex;
+        
+        // Must match attestation data chainId.
+        uint32 chainId;
 
         // This is here temporary as the fee will be set by governance
         uint256 collateralReservationFee;
