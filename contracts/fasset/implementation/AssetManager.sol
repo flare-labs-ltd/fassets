@@ -3,36 +3,48 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../interface/IAgentVault.sol";
-import {Agents} from "../library/Agents.sol";
-import {AssetManagerState} from "../library/AssetManagerState.sol";
-import {AssetManagerSettings} from "../library/AssetManagerSettings.sol";
-import {CollateralReservations} from "../library/CollateralReservations.sol";
-import {Conversion} from "../library/Conversion.sol";
-import {Minting} from "../library/Minting.sol";
-import {PaymentVerification} from "../library/PaymentVerification.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/SafeCast.sol";
-import {SafeBips} from "../../utils/lib/SafeBips.sol";
-import {SafeMath64} from "../../utils/lib/SafeMath64.sol";
+import "../interface/IAssetManager.sol";
+import "../interface/IAttestationClient.sol";
+import "../interface/IFAsset.sol";
+import "../library/Agents.sol";
+import "../library/AssetManagerState.sol";
+import "../library/AssetManagerSettings.sol";
+import "../library/CollateralReservations.sol";
+import "../library/Conversion.sol";
+import "../library/Minting.sol";
+import "../library/PaymentVerification.sol";
+import "../library/TransactionAttestation.sol";
+import "../../utils/lib/SafeBips.sol";
+import "../../utils/lib/SafeMath64.sol";
 
 // One asset manager per fAsset type
-contract AssetManager {
+contract AssetManager is ReentrancyGuard {
     using AssetManagerState for AssetManagerState.State;
 
     AssetManagerState.State private state;
+    IFAsset public immutable fAsset;
 
-    constructor(AssetManagerSettings.Settings memory _state) {
-        state.settings = _state;
+    constructor(
+        AssetManagerSettings.Settings memory _settings,
+        IFAsset _fAsset
+    ) {
+        // TODO: check settings validity
+        state.settings = _settings;
+        fAsset = _fAsset;
     }
 
-    function collateralReservationTransaction(
-        bytes32 _minterUnderlyingAddress, address _selectedAgent, uint64 _lotsToMint, uint64 _currentUnderlyingBlock
-    ) external payable 
+    function reserveCollateral(
+        bytes32 _minterUnderlyingAddress, 
+        address _selectedAgent, 
+        uint64 _lotsToMint, 
+        uint64 _currentUnderlyingBlock
+    ) 
+        external payable 
         returns (bytes32 agentsUnderlyingAddress, uint256 crtId)
     {
-        // Check fee paid
-        require(msg.value >= AssetManagerSettings.getCollateralReservationFee(state.settings), "Insufficient fee");
-
         CollateralReservations.reserveCollateral(
             state,
             msg.sender, 
@@ -47,23 +59,29 @@ contract AssetManager {
         return (Agents.getAgent(state, _selectedAgent).underlyingAddress, state.newCrtId);
     }
 
-    function mintfAsset(
-        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
+    function executeMinting(
+        IAttestationClient.LegalPayment calldata _payment,
         uint64 _crtId
-    ) external 
+    ) 
+        external 
+        nonReentrant
     {
-        Minting.mintingExecuted(state, _paymentInfo, _crtId);
+        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
+            TransactionAttestation.verifyLegalPayment(state.settings, _payment, false);
+        (address minter, uint256 mintValue) = Minting.mintingExecuted(state, paymentInfo, _crtId);
+        fAsset.mint(minter, mintValue);
     }
 
     function calculateLots(
-        uint256 _underlyingValueUBA, address _selectedAgent
+        uint256 _underlyingValueUBA, 
+        address _selectedAgent
     ) 
-        external view returns (uint64 lots, uint256 baseValueUBA, uint256 fullBaseValueUBA) 
+        external view 
+        returns (uint64 lots, uint256 baseValueUBA, uint256 fullBaseValueUBA) 
     {
         uint256 coef = state.settings.assetMintingGranularityUBA * state.settings.lotSizeAMG;
         uint256 target = _underlyingValueUBA / coef; 
         uint256 agentFeeBips = Agents.getAgent(state, _selectedAgent).feeBIPS;
         return (SafeCast.toUint64(target), target * coef, SafeBips.mulBips(target * coef, agentFeeBips));
     }
-
 }

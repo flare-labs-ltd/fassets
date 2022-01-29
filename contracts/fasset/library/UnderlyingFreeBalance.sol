@@ -73,7 +73,7 @@ library UnderlyingFreeBalance {
         require(_paymentInfo.paymentReference == TOPUP_PAYMENT_REFERENCE,
             "not a topup payment");
         _state.paymentVerifications.confirmPayment(_paymentInfo);
-        increaseFreeBalance(_state, _agentVault, _paymentInfo.valueUBA);
+        increaseFreeBalance(_state, _agentVault, _paymentInfo.deliveredUBA);
     }
     
     function withdrawFreeFunds(

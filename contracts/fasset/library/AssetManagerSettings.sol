@@ -1,17 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
+import "../interface/IAttestationClient.sol";
+
 library AssetManagerSettings {
     struct Settings {
+        // Required contracts.
+        // Can be changed by AddressUpdater.
+        IAttestationClient attestationClient;
+        
         // Asset specific settings
+        // immutable?
         uint16 assetIndex;
         
         // Must match attestation data chainId.
+        // immutable
         uint32 chainId;
 
-        // This is here temporary as the fee will be set by governance
-        uint256 collateralReservationFee;
-        address burnAddress;
+        // Collateral reservation fee that must be paid by the minter.
+        // Payment is in NAT, but is proportional to the value of assets to be minted.
+        uint256 collateralReservationFeeBIPS;
+        
+        // Collateral reservation fee is burned on successful minting.
+        address payable burnAddress;
+
         // Asset unit value (e.g. 1 BTC or 1 ETH) in UBA = 10 ** assetToken.decimals()
         uint64 assetUnitUBA;
         
@@ -101,15 +113,6 @@ library AssetManagerSettings {
         // for some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address
         // this must be done by presenting a payment proof from that address
         bool requireEOAAddressProof;
-    }
-
-    // Temporary solution until the governance will be able to set the fee
-    function getCollateralReservationFee(Settings storage _settings) public view returns (uint256 crf){
-        return _settings.collateralReservationFee;
-    }
-
-    function getBurnAddress(Settings storage _settings) public view returns (address){
-        return _settings.burnAddress;
     }
 
 }

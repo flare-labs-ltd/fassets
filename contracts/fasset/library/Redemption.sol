@@ -167,7 +167,7 @@ library Redemption {
         // create the report
         PaymentReport.createReport(_state.paymentReports, _paymentInfo);
         emit AMEvents.RedemptionPaymentReported(request.agentVault, request.redeemer,
-            _paymentInfo.valueUBA, _paymentInfo.gasUBA, request.underlyingFeeUBA,
+            _paymentInfo.deliveredUBA, _paymentInfo.spentUBA, request.underlyingFeeUBA,
             _paymentInfo.underlyingBlock, _redemptionRequestId);
     }
     
@@ -199,12 +199,13 @@ library Redemption {
         // update underlying free balance with fee and gas
         uint64 startBlockForTopup = 
             SafeMath64.add64(_paymentInfo.underlyingBlock, _state.settings.underlyingBlocksForPayment);
+        uint256 usedGas = PaymentVerification.usedGas(_paymentInfo);
         UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault,
-            request.underlyingFeeUBA, _paymentInfo.gasUBA, startBlockForTopup);
+            request.underlyingFeeUBA, usedGas, startBlockForTopup);
         // delete possible pending challenge
         IllegalPaymentChallenge.deleteChallenge(_state, _paymentInfo);
         emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
-            _paymentInfo.valueUBA, _paymentInfo.gasUBA, request.underlyingFeeUBA,
+            _paymentInfo.deliveredUBA, usedGas, request.underlyingFeeUBA,
             _paymentInfo.underlyingBlock, _redemptionRequestId);
         // delete report - not needed anymore since we store confirmation
         PaymentReport.deleteReport(_state.paymentReports, _paymentInfo);

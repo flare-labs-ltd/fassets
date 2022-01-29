@@ -9,6 +9,7 @@ import "./Conversion.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
 import "./AssetManagerState.sol";
+import "../interface/IAgentVault.sol";
 
 
 library CollateralReservations {
@@ -26,6 +27,7 @@ library CollateralReservations {
         uint64 valueAMG;
         address minter;
         bool underlyingBlockVerified;
+        uint128 reservationFeeNatWei;
     }
     
     function reserveCollateral(
@@ -40,7 +42,6 @@ library CollateralReservations {
     )
         internal
     {
-        // TODO: check fee paid?
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
@@ -53,6 +54,10 @@ library CollateralReservations {
         agent.reservedAMG = SafeMath64.add64(agent.reservedAMG, valueAMG);
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
+        uint256 reservationFee = SafeBips.mulBips(Conversion.convertAmgToNATWei(valueAMG, _amgToNATWeiPrice),
+            _state.settings.collateralReservationFeeBIPS);
+        require(msg.value >= reservationFee, "not enough fee paid");
+        // TODO: what if paid fee is too big?
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({
             minterUnderlyingAddress: _minterUnderlyingAddress,
@@ -63,7 +68,8 @@ library CollateralReservations {
             minter: _minter,
             firstUnderlyingBlock: _currentUnderlyingBlock,
             underlyingBlockChallengeTimestamp: 0,   // not challenged
-            underlyingBlockVerified: false
+            underlyingBlockVerified: false,
+            reservationFeeNatWei: SafeCast.toUint128(reservationFee)
         });
         emit AMEvents.CollateralReserved(_agentVault, _minter, crtId, _lots, 
             underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock,
@@ -166,7 +172,9 @@ library CollateralReservations {
     )
         private
     {
-        // TODO: pay fee to agent
+        // transfer crt fee to the agent's vault
+        IAgentVault(crt.agentVault).deposit{value: crt.reservationFeeNatWei}();
+        // release agent's reserved collateral
         releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this        
     }
 }

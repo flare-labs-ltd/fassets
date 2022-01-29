@@ -10,11 +10,13 @@ library PaymentReport {
     enum ReportMatch { DOES_NOT_EXIST, MATCH, MISMATCH }
     
     struct Report {
-        // hash of (sourceAddress, targetAddress, valueUBA, gasUBA)
-        bytes24 detailsHash;
+        // hash of (sourceAddress, targetAddress, deliveredUBA, spentUBA)
+        // matched if challenger provides LegalPayment proof (includes target data)
+        bytes16 fullDetailsHash;
         
-        // report timestamp, to know when report is eligible for cleanup
-        uint64 timestamp;
+        // hash of (sourceAddress, spentUBA)
+        // matched if challenger provides SourceUsingTransaction proof (no target data)
+        bytes16 sourceDetailsHash;
     }
     
     struct Reports {
@@ -32,8 +34,8 @@ library PaymentReport {
     {
         bytes32 txKey = PaymentVerification.transactionKey(_paymentInfo);
         _state.reports[txKey] = Report({
-            detailsHash: _detailsHash(_paymentInfo),
-            timestamp: uint64(block.timestamp)     // cannot overflow
+            fullDetailsHash: _fullDetailsHash(_paymentInfo),
+            sourceDetailsHash: _sourceDetailsHash(_paymentInfo)
         });
     }
 
@@ -47,18 +49,6 @@ library PaymentReport {
         delete _state.reports[txKey];
     }
 
-    function cleanupReport(
-        Reports storage _state,
-        bytes32 _transactionKey
-    )
-        internal
-    {
-        Report storage report = _state.reports[_transactionKey];
-        require(uint256(report.timestamp).add(REPORT_CLEANUP_SECONDS) <= block.timestamp,
-            "payment report cleanup too soon");
-        delete _state.reports[_transactionKey];
-    }
-
     function reportMatch(
         Reports storage _state,
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo
@@ -68,23 +58,37 @@ library PaymentReport {
     {
         bytes32 txKey = PaymentVerification.transactionKey(_paymentInfo);
         Report storage report = _state.reports[txKey];
-        if (report.detailsHash == 0) {
+        if (report.fullDetailsHash == 0) {
             return ReportMatch.DOES_NOT_EXIST;
-        } else if (report.detailsHash == _detailsHash(_paymentInfo)) {
-            return ReportMatch.MATCH;
-        } else {
-            return ReportMatch.MISMATCH;
         }
+        bool matches = _paymentInfo.targetAddress != 0
+            ? report.fullDetailsHash == _fullDetailsHash(_paymentInfo) 
+            : report.sourceDetailsHash == _sourceDetailsHash(_paymentInfo);
+        if (matches) {
+            return ReportMatch.MATCH;
+        }
+        return ReportMatch.MISMATCH;
     }
     
-    function _detailsHash(
+    function _fullDetailsHash(
         PaymentVerification.UnderlyingPaymentInfo memory _pi
     )
         private pure
-        returns (bytes24)
+        returns (bytes16)
     {
         bytes32 detailsHash = keccak256(
-            abi.encode(_pi.sourceAddress, _pi.targetAddress, _pi.valueUBA, _pi.gasUBA));
-        return bytes24(detailsHash);
+            abi.encode(_pi.sourceAddress, _pi.targetAddress, _pi.deliveredUBA, _pi.spentUBA));
+        return bytes16(detailsHash);
+    }
+
+    function _sourceDetailsHash(
+        PaymentVerification.UnderlyingPaymentInfo memory _pi
+    )
+        private pure
+        returns (bytes16)
+    {
+        bytes32 detailsHash = keccak256(
+            abi.encode(_pi.sourceAddress, _pi.deliveredUBA, _pi.spentUBA));
+        return bytes16(detailsHash);
     }
 }

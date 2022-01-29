@@ -12,11 +12,9 @@ library PaymentVerification {
         bytes32 targetAddress;
         bytes32 transactionHash;
         bytes32 paymentReference;      // used in minting to identify sender
-        uint256 valueUBA;
-        uint256 gasUBA;
+        uint256 deliveredUBA;
+        uint256 spentUBA;
         uint64 underlyingBlock;
-        // TODO: prevent underlyingTimestamp to be more than 2 days old
-        // uint64 underlyingTimestamp;
     }
 
     struct State {
@@ -94,7 +92,7 @@ library PaymentVerification {
         if (_expectedTarget != 0) {
             require(_paymentInfo.targetAddress == _expectedTarget, "invalid payment target");
         }
-        require(_paymentInfo.valueUBA == _expectedValueUBA, "invalid payment value");
+        require(_paymentInfo.deliveredUBA == _expectedValueUBA, "invalid payment value");
     }
 
     // the same transaction hash could perform several underlying payments if it is smart contract
@@ -114,6 +112,13 @@ library PaymentVerification {
         returns (bytes32)
     {
         return keccak256(abi.encode(_paymentInfo.sourceAddress, _paymentInfo.transactionHash));
+    }
+    
+    function usedGas(UnderlyingPaymentInfo memory _paymentInfo)
+        internal pure
+        returns (uint256 _gasUBA)
+    {
+        (, _gasUBA) = _paymentInfo.spentUBA.trySub(_paymentInfo.deliveredUBA);
     }
     
     function _recordPaymentVerification(

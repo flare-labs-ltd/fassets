@@ -111,7 +111,7 @@ library AMEvents {
         address indexed agentVault,
         address indexed redeemer,
         uint256 valueUBA,
-        uint256 gasUBA,
+        uint256 spentUBA,
         uint256 feeUBA,
         uint64 underlyingBlock,
         uint64 requestId);
@@ -124,8 +124,8 @@ library AMEvents {
         address indexed agentVault,
         address indexed redeemer,
         uint256 valueUBA,
-        uint256 gasUBA,
-        uint256 feeUBA,
+        uint256 usedGasUBA,
+        uint256 redemptionFeeUBA,
         uint64 underlyingBlock,
         uint64 requestId);
 
@@ -218,7 +218,7 @@ library AMEvents {
     event AllowedPaymentReported(
         address agentVault,
         uint256 valueUBA,
-        uint256 gasUBA,
+        uint256 spentUBA,
         uint64 underlyingBlock,
         uint64 announcementId);
         
