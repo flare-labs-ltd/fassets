@@ -5,6 +5,9 @@ pragma abicoder v2;
 
 interface IAttestationClient {
     struct LegalPayment {
+        // Buffer number (epoch id) of the state connector request
+        uint256 stateConnectorBuffer;
+        
         // Merkle proof needed to verify the existence of transaction with the below fields.
         bytes32[] merkleProof;
         

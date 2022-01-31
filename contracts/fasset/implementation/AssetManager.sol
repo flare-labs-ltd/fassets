@@ -26,14 +26,25 @@ contract AssetManager is ReentrancyGuard {
 
     AssetManagerState.State private state;
     IFAsset public immutable fAsset;
+    address public assetManagerController;  // TODO: should be replaceable?
 
     constructor(
         AssetManagerSettings.Settings memory _settings,
-        IFAsset _fAsset
+        IFAsset _fAsset,
+        address _assetManagerController
     ) {
-        // TODO: check settings validity
-        state.settings = _settings;
         fAsset = _fAsset;
+        assetManagerController = _assetManagerController;
+        _updateSettings(_settings);
+    }
+
+    function updateSettings(
+        AssetManagerSettings.Settings memory _settings
+    ) 
+        external
+    {
+        require(msg.sender == assetManagerController, "only asset manager controller");
+        _updateSettings(_settings);
     }
 
     function reserveCollateral(
@@ -83,5 +94,10 @@ contract AssetManager is ReentrancyGuard {
         uint256 target = _underlyingValueUBA / coef; 
         uint256 agentFeeBips = Agents.getAgent(state, _selectedAgent).feeBIPS;
         return (SafeCast.toUint64(target), target * coef, SafeBips.mulBips(target * coef, agentFeeBips));
+    }
+
+    function _updateSettings(AssetManagerSettings.Settings memory _settings) private {
+        // TODO: check settings validity
+        state.settings = _settings;
     }
 }
