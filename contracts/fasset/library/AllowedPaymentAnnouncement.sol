@@ -24,7 +24,7 @@ library AllowedPaymentAnnouncement {
     )
         internal
     {
-        Agents.requireOwnerAgent(_agentVault);
+        Agents.requireAgentVaultOwner(_agentVault);
         require(_valueUBA > 0, "invalid value");
         UnderlyingFreeBalance.withdrawFreeFunds(_state, _agentVault, _valueUBA);
         uint64 announcementId = ++_state.newPaymentAnnouncementId;
@@ -44,7 +44,7 @@ library AllowedPaymentAnnouncement {
     )
         internal
     {
-        Agents.requireOwnerAgent(_agentVault);
+        Agents.requireAgentVaultOwner(_agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         bytes32 key = _announcementKey(_agentVault, _announcementId);
         PaymentAnnouncement storage announcement = _state.paymentAnnouncements[key];

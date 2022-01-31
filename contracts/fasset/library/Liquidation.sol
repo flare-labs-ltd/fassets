@@ -32,7 +32,7 @@ library Liquidation {
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         uint256 fullCollateral = IAgentVault(_agentVault).fullCollateral();
-        uint256 amgToNATWeiPrice = Conversion.calculateAmgToNATWeiPrice(_state.settings);
+        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
         (Agents.LiquidationPhase liquidationPhase, uint16 premiumFactorBIPS) = 
             getInitialLiquidationPhase(agent, _state.settings, fullCollateral, amgToNATWeiPrice, _fullLiquidation);
 
@@ -59,7 +59,7 @@ library Liquidation {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.status != Agents.AgentStatus.NORMAL, "not in liquidation");
         uint256 fullCollateral = IAgentVault(_agentVault).fullCollateral();
-        uint256 amgToNATWeiPrice = Conversion.calculateAmgToNATWeiPrice(_state.settings);
+        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
         (Agents.LiquidationPhase liquidationPhase, bool isEnough, uint64 maxAmountAMG, uint16 premiumFactorBIPS) = 
             getCurrentLiquidationPhase(agent, _state.settings, fullCollateral, amgToNATWeiPrice);
         require(liquidationPhase != Agents.LiquidationPhase.CCB, "in CCB");

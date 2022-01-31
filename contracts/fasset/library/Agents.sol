@@ -171,18 +171,18 @@ library Agents {
     function announceWithdrawal(
         AssetManagerState.State storage _state, 
         address _agentVault,
-        uint256 _valueNATWei,
-        uint256 _fullCollateral, 
-        uint256 _amgToNATWeiPrice
+        uint256 _valueNATWei
     )
         internal
     {
         Agent storage agent = getAgent(_state, _agentVault);
+        uint256 fullCollateral = IAgentVault(_agentVault).fullCollateral();
+        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
         if (_valueNATWei > agent.withdrawalAnnouncedNATWei) {
             // announcement increased - must check there is enough free collateral and then lock it
             // in this case the wait to withdrawal restarts from this moment
             uint256 increase = _valueNATWei - agent.withdrawalAnnouncedNATWei;
-            require(increase <= freeCollateralWei(agent, _state.settings, _fullCollateral, _amgToNATWeiPrice),
+            require(increase <= freeCollateralWei(agent, _state.settings, fullCollateral, amgToNATWeiPrice),
                 "withdrawal: value too high");
             agent.withdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
         } else {
@@ -230,8 +230,6 @@ library Agents {
     )
         internal
     {
-        // we do NOT check that the caller is the agent owner, since we want to
-        // allow anyone to convert dust to tickets to increase asset fungibility
         Agent storage agent = getAgent(_state, _agentVault);
         // if dust is more than 1 lot, create a new redemption ticket
         if (agent.dustAMG >= _state.settings.lotSizeAMG) {
@@ -249,13 +247,14 @@ library Agents {
         internal
     {
         Agent storage agent = getAgent(_state, _agentVault);
+        require(_valueNATWei <= agent.withdrawalAnnouncedNATWei,
+            "withdrawal: more than announced");
         require(agent.withdrawalAnnouncedAt != 0 &&
             block.timestamp <= agent.withdrawalAnnouncedAt + _state.settings.withdrawalWaitMinSeconds,
             "withdrawal: not announced");
-        require(_valueNATWei <= agent.withdrawalAnnouncedNATWei,
-            "withdrawal: more than announced");
-        agent.withdrawalAnnouncedAt = 0;
-        agent.withdrawalAnnouncedNATWei = 0;
+        agent.withdrawalAnnouncedNATWei -= uint128(_valueNATWei);    // guarded by above require
+        // could reset agent.withdrawalAnnouncedAt if agent.withdrawalAnnouncedNATWei == 0, 
+        // but it's not needed, since no withdrawal can be made anyway
     }
     
     function getAgent(
@@ -266,7 +265,7 @@ library Agents {
         returns (Agent storage _agent) 
     {
         _agent = _state.agents[_agentVault];
-        require(_agent.agentType != AgentType.NONE, "agent does not exist");
+        require(_agent.agentType != AgentType.NONE, "invalid agent vault address");
     }
 
     function getAgentNoCheck(
@@ -371,7 +370,8 @@ library Agents {
         return _fullCollateral.mulDiv(_valueAMG, totalAMG);
     }
     
-    function requireOwnerAgent(address _agentVault) internal view {
-        require(msg.sender == IAgentVault(_agentVault).owner(), "only agent");
+    function requireAgentVaultOwner(address _agentVault) internal view {
+        address owner = IAgentVault(_agentVault).owner();
+        require(msg.sender == owner, "only agent vault owner");
     }
 }

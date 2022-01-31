@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "../interface/IAttestationClient.sol";
 import "../library/AssetManagerSettings.sol";
 import "../library/PaymentVerification.sol";
@@ -13,6 +14,11 @@ library TransactionAttestation {
     
     // must be strictly smaller than PaymentVerification.VERIFICATION_CLEANUP_DAYS
     uint256 internal constant MAX_VALID_PROOF_AGE_SECONDS = 2 days;
+
+    // payment status constants
+    uint8 internal constant PAYMENT_SUCCESS = 0;
+    uint8 internal constant PAYMENT_FAILED = 1;
+    uint8 internal constant PAYMENT_BLOCKED = 2;
     
     function verifyLegalPayment(
         AssetManagerSettings.Settings storage _settings,
@@ -50,11 +56,11 @@ library TransactionAttestation {
         IAttestationClient.BlockHeightExists calldata _attestationData
     ) 
         internal view
-        returns (uint256 _minBlockHeight)
+        returns (uint64 _minBlockHeight)
     {
         require(_settings.attestationClient.verifyBlockHeightExists(_settings.chainId, _attestationData), 
             "block height not proved");
-        return _attestationData.blockNumber;
+        return SafeCast.toUint64(_attestationData.blockNumber);
     }
     
     function decodeLegalPayment(

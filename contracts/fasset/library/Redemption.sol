@@ -144,6 +144,18 @@ library Redemption {
             paymentValueUBA, _currentUnderlyingBlock, lastBlock, requestId);
     }
 
+    function getRedemptionRequest(
+        AssetManagerState.State storage _state,
+        uint64 _redemptionRequestId
+    )
+        internal view
+        returns (RedemptionRequest storage _request)
+    {
+        require(_redemptionRequestId != 0, "invalid request id");
+        _request = _state.redemptionRequests[_redemptionRequestId];
+        require(_request.valueAMG != 0, "invalid request id");
+    }
+    
     function reportRedemptionRequestPayment(
         AssetManagerState.State storage _state,
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
@@ -151,10 +163,8 @@ library Redemption {
     )
         internal
     {
-        require(_redemptionRequestId != 0, "invalid request id");
-        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
-        require(request.valueAMG != 0, "invalid request id");
-        Agents.requireOwnerAgent(request.agentVault);
+        RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
+        Agents.requireAgentVaultOwner(request.agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
         // check details
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
@@ -178,13 +188,12 @@ library Redemption {
     )
         internal
     {
-        require(_redemptionRequestId != 0, "invalid request id");
-        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
-        require(request.valueAMG != 0, "invalid request id");
+        RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
         require(PaymentReport.reportMatch(_state.paymentReports, _paymentInfo) != PaymentReport.ReportMatch.MISMATCH,
             "mismatching report exists");
+        // we require the agent to trigger confirmation
+        Agents.requireAgentVaultOwner(request.agentVault);
         // TODO: should we check that payment is on time or rely on redeemer to punish late payment confirmation?
-        Agents.requireOwnerAgent(request.agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
         // confirm payment proof
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
@@ -213,29 +222,27 @@ library Redemption {
         delete _state.redemptionRequests[_redemptionRequestId];
     }
     
-    function redemptionPaymentFailure(
+    function redemptionPaymentTimeout(
         AssetManagerState.State storage _state,
-        uint256 _amgToNATWeiPrice,
-        uint256 _fullAgentCollateral,
         uint64 _redemptionRequestId,
         uint64 _currentUnderlyingBlock
     )
         internal
     {
-        require(_redemptionRequestId != 0, "invalid request id");
-        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
-        require(request.valueAMG != 0, "invalid request id");
+        RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
         require(!_isPaymentOnTime(_state, request, _currentUnderlyingBlock),
-            "redemption payment not late");
+            "to soon for redemption timeout");
         // we allow only redeemers to trigger redemption failures, since they may want
         // to do it at some particular time
         require(msg.sender == request.redeemer, "only redeemer");
         // pay redeemer in native currency
         // paid amount is  min(flr_amount * (1 + extra), total collateral share for the amount)
         Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
-        uint256 amountWei = Conversion.convertAmgToNATWei(request.valueAMG, _amgToNATWeiPrice)
+        uint256 fullAgentCollateral = IAgentVault(request.agentVault).fullCollateral();
+        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        uint256 amountWei = Conversion.convertAmgToNATWei(request.valueAMG, amgToNATWeiPrice)
             .mulBips(_state.settings.redemptionFailureFactorBIPS);
-        uint256 maxAmountWei = Agents.collateralShare(agent, _fullAgentCollateral, request.valueAMG);
+        uint256 maxAmountWei = Agents.collateralShare(agent, fullAgentCollateral, request.valueAMG);
         if (amountWei > maxAmountWei) {
             amountWei = maxAmountWei;
         }
@@ -277,8 +284,7 @@ library Redemption {
     )
         internal
     {
-        require(_redemptionRequestId != 0, "invalid request id");
-        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
+        RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
         // check that challenge is within minSecondsForPayment from redemption request
         uint256 lastTimestamp = uint256(request.timestamp).add(_state.settings.minSecondsForPayment);
         require(block.timestamp <= lastTimestamp, "block number challenge late");
@@ -297,13 +303,11 @@ library Redemption {
     )
         internal
     {
-        // TODO: prove blocking on state connector
-        require(_redemptionRequestId != 0, "invalid request id");
-        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
-        require(request.valueAMG != 0, "invalid request id");
+        // blocking proof checked in AssetManager
+        RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
         // we allow only agent to trigger blocked payment, since they may want
         // to do it at some particular time
-        Agents.requireOwnerAgent(request.agentVault);
+        Agents.requireAgentVaultOwner(request.agentVault);
         // the agent may keep all the underlying backing and redeemer gets nothing
         // underlying backing collateral was removed from mintedAMG accounting at redemption request
         // now we add it to free balance since it couldn't be paid to the redeemer
@@ -319,17 +323,17 @@ library Redemption {
     function selfClose(
         AssetManagerState.State storage _state,
         address _agentVault,
-        uint64 _amountAMG
+        uint256 _amountUBA
     ) 
         internal 
-        returns (uint64 _closedAMG)
+        returns (uint256 _closedUBA)
     {
-        Agents.requireOwnerAgent(_agentVault);
-        require(_amountAMG != 0, "self close of 0");
-        uint256 closedUBA;
-        (_closedAMG, closedUBA) = _selfCloseOrLiquidate(_state, _agentVault, _amountAMG);
+        Agents.requireAgentVaultOwner(_agentVault);
+        require(_amountUBA != 0, "self close of 0");
+        uint64 amountAMG = Conversion.convertUBAToAmg(_state.settings, _amountUBA);
+        (, _closedUBA) = _selfCloseOrLiquidate(_state, _agentVault, amountAMG);
         // send event
-        emit AMEvents.SelfClose(_agentVault, closedUBA);
+        emit AMEvents.SelfClose(_agentVault, _closedUBA);
     }
 
     function liquidate(

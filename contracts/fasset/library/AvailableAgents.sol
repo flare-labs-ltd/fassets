@@ -9,6 +9,7 @@ import "../../utils/lib/SafeMath64.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
 import "./AssetManagerState.sol";
+import "./Conversion.sol";
 
 
 library AvailableAgents {
@@ -32,10 +33,8 @@ library AvailableAgents {
     function makeAvailable(
         AssetManagerState.State storage _state,
         address _agentVault,
-        uint16 _feeBIPS,
-        uint32 _agentMinCollateralRatioBIPS,
-        uint256 _fullCollateralWei,
-        uint256 _amgToNATWeiPrice
+        uint256 _feeBIPS,
+        uint256 _agentMinCollateralRatioBIPS
     ) 
         internal 
     {
@@ -45,10 +44,12 @@ library AvailableAgents {
         require(_agentMinCollateralRatioBIPS >= _state.settings.initialMinCollateralRatioBIPS,
             "collateral ratio too small");
         // set parameters
-        agent.feeBIPS = _feeBIPS; 
-        agent.agentMinCollateralRatioBIPS = _agentMinCollateralRatioBIPS;
+        agent.feeBIPS = SafeCast.toUint16(_feeBIPS); 
+        agent.agentMinCollateralRatioBIPS = SafeCast.toUint32(_agentMinCollateralRatioBIPS);
         // check that there is enough free collateral for at least one lot
-        uint256 freeCollateralLots = agent.freeCollateralLots(_state.settings, _fullCollateralWei, _amgToNATWeiPrice);
+        uint256 fullCollateral = IAgentVault(_agentVault).fullCollateral();
+        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        uint256 freeCollateralLots = agent.freeCollateralLots(_state.settings, fullCollateral, amgToNATWeiPrice);
         require(freeCollateralLots >= 1, "not enough free collateral");
         // add to queue
         _state.availableAgents.push(AvailableAgent({

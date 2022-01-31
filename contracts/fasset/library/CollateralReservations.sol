@@ -18,7 +18,6 @@ library CollateralReservations {
     using Agents for Agents.Agent;
     
     struct CollateralReservation {
-        bytes32 minterUnderlyingAddress;
         uint128 underlyingValueUBA;
         uint64 firstUnderlyingBlock;
         uint64 underlyingBlockChallengeTimestamp;
@@ -33,20 +32,19 @@ library CollateralReservations {
     function reserveCollateral(
         AssetManagerState.State storage _state, 
         address _minter,
-        bytes32 _minterUnderlyingAddress,
         address _agentVault,
-        uint256 _fullAgentCollateral,
-        uint256 _amgToNATWeiPrice,
         uint64 _lots,
         uint64 _currentUnderlyingBlock
     )
         internal
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        uint256 fullAgentCollateral = IAgentVault(_agentVault).fullCollateral();
+        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
         require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
-        require(agent.freeCollateralLots(_state.settings, _fullAgentCollateral, _amgToNATWeiPrice) >= _lots,
+        require(agent.freeCollateralLots(_state.settings, fullAgentCollateral, amgToNATWeiPrice) >= _lots,
             "not enough free collateral");
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
@@ -54,13 +52,12 @@ library CollateralReservations {
         agent.reservedAMG = SafeMath64.add64(agent.reservedAMG, valueAMG);
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
-        uint256 reservationFee = SafeBips.mulBips(Conversion.convertAmgToNATWei(valueAMG, _amgToNATWeiPrice),
+        uint256 reservationFee = SafeBips.mulBips(Conversion.convertAmgToNATWei(valueAMG, amgToNATWeiPrice),
             _state.settings.collateralReservationFeeBIPS);
         require(msg.value >= reservationFee, "not enough fee paid");
         // TODO: what if paid fee is too big?
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({
-            minterUnderlyingAddress: _minterUnderlyingAddress,
             underlyingValueUBA: SafeCast.toUint128(underlyingValueUBA),
             underlyingFeeUBA: SafeCast.toUint128(underlyingFeeUBA),
             agentVault: _agentVault,
@@ -76,7 +73,7 @@ library CollateralReservations {
             mintingPaymentReference(crtId));
     }
     
-    function reservationTimeout(
+    function collateralReservationTimeout(
         AssetManagerState.State storage _state, 
         uint64 _crtId,
         uint64 _currentUnderlyingBlock  // must be proved
@@ -84,26 +81,17 @@ library CollateralReservations {
         internal
     {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
+        // check requirements
+        Agents.requireAgentVaultOwner(crt.agentVault);
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(crt.firstUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
         require(_currentUnderlyingBlock >= lastUnderlyingBlock, "timeout too early");
-        Agents.requireOwnerAgent(crt.agentVault);
+        // send event
         emit AMEvents.CollateralReservationTimeout(crt.agentVault, crt.minter, _crtId);
+        // pay the agent crf and delete 
         _cancelCollateralReservation(_state, crt, _crtId);
     }
     
-    function releaseCollateralReservation(
-        AssetManagerState.State storage _state,
-        CollateralReservations.CollateralReservation storage crt,
-        uint64 _crtId
-    )
-        internal
-    {
-        Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
-        agent.reservedAMG = SafeMath64.sub64(agent.reservedAMG, crt.valueAMG, "invalid reservation");
-        delete _state.crts[_crtId];
-    }
-
     function challengeReservationUnderlyingBlock(
         AssetManagerState.State storage _state, 
         uint64 _crtId
@@ -140,9 +128,22 @@ library CollateralReservations {
         uint256 lastTimestamp = uint256(crt.underlyingBlockChallengeTimestamp)
             .add(_state.settings.minSecondsForBlockChallengeResponse);
         require(block.timestamp > lastTimestamp, "not late for block proof");
-        Agents.requireOwnerAgent(crt.agentVault);
+        Agents.requireAgentVaultOwner(crt.agentVault);
         emit AMEvents.CRUnderlyingBlockChallengeTimeout(crt.agentVault, crt.minter, _crtId);
+        // pay the agent crf and delete 
         _cancelCollateralReservation(_state, crt, _crtId);
+    }
+
+    function releaseCollateralReservation(
+        AssetManagerState.State storage _state,
+        CollateralReservations.CollateralReservation storage crt,
+        uint64 _crtId
+    )
+        internal
+    {
+        Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
+        agent.reservedAMG = SafeMath64.sub64(agent.reservedAMG, crt.valueAMG, "invalid reservation");
+        delete _state.crts[_crtId];
     }
 
     function getCollateralReservation(

@@ -34,7 +34,7 @@ library Minting {
         _mintValueUBA = crt.underlyingValueUBA;
         uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA).add(crt.underlyingFeeUBA);
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
-            crt.minterUnderlyingAddress, agent.underlyingAddress, expectedPaymentUBA);
+            0 /* not used */, agent.underlyingAddress, expectedPaymentUBA);
         _state.paymentVerifications.confirmPayment(_paymentInfo);
         address agentVault = crt.agentVault;
         uint64 valueAMG = crt.valueAMG;

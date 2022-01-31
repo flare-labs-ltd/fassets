@@ -62,7 +62,9 @@ contract AgentVault is IAgentVault {
     }
     
     function withdraw(address payable _recipient, uint256 _amount) external override onlyOwner {
-        require(assetManager.maxWithdrawAllowed(address(this)) >= _amount, "amount not allowed");
+        // check that enough was announced and reduce announcement
+        assetManager.withdrawCollateral(_amount);
+        // withdraw from wnat contract and transfer it to _recipient
         wNat.withdraw(_amount);
         _recipient.transfer(_amount);
     }
