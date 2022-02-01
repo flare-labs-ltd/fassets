@@ -78,7 +78,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         external
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyLegalPayment(state.settings, _payment, true);
+            TransactionAttestation.verifyLegalPaymentSuccess(state.settings, _payment, true);
         UnderlyingAddressOwnership.claimWithProof(state.underlyingAddressOwnership, 
             paymentInfo, msg.sender, paymentInfo.sourceAddressHash);
     }
@@ -320,7 +320,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         nonReentrant
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyLegalPayment(state.settings, _payment, false);
+            TransactionAttestation.verifyLegalPaymentSuccess(state.settings, _payment, false);
         (address minter, uint256 mintedUBA) = Minting.mintingExecuted(state, paymentInfo, _crtId);
         fAsset.mint(minter, mintedUBA);
     }
@@ -354,7 +354,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     {
         Agents.requireAgentVaultOwner(_agentVault);
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyLegalPayment(state.settings, _payment, false);
+            TransactionAttestation.verifyLegalPaymentSuccess(state.settings, _payment, false);
         uint256 mintedUBA = Minting.selfMint(state, paymentInfo, _agentVault, _lots);
         fAsset.mint(msg.sender, mintedUBA);
     }
@@ -430,7 +430,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         external
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyLegalPayment(state.settings, _payment, false);
+            TransactionAttestation.verifyLegalPaymentSuccess(state.settings, _payment, false);
         Redemption.confirmRedemptionPayment(state, paymentInfo, _redemptionRequestId);
     }
 
@@ -516,7 +516,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         external
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyLegalPayment(state.settings, _payment, false);
+            TransactionAttestation.verifyLegalPaymentSuccess(state.settings, _payment, false);
         UnderlyingFreeBalance.confirmTopupPayment(state, paymentInfo, _agentVault);
     }
     

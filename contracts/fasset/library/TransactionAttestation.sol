@@ -19,6 +19,18 @@ library TransactionAttestation {
     uint8 internal constant PAYMENT_SUCCESS = 0;
     uint8 internal constant PAYMENT_FAILED = 1;
     uint8 internal constant PAYMENT_BLOCKED = 2;
+
+    function verifyLegalPaymentSuccess(
+        AssetManagerSettings.Settings storage _settings,
+        IAttestationClient.LegalPayment calldata _attestationData,
+        bool _requireSingleSource
+    ) 
+        internal view
+        returns (PaymentVerification.UnderlyingPaymentInfo memory)
+    {
+        require(_attestationData.status == PAYMENT_SUCCESS, "payment failed");
+        return verifyLegalPayment(_settings, _attestationData, _requireSingleSource);
+    }
     
     function verifyLegalPayment(
         AssetManagerSettings.Settings storage _settings,
