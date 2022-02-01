@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeBips.sol";
 import "./AMEvents.sol";
@@ -11,6 +11,7 @@ import "./RedemptionQueue.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
+
 
 library Agents {
     using SafeMath for uint256;

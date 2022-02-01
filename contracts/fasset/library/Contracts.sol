@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity 0.8.11;
 
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtso.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IPriceSubmitter.sol";
-import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
+import "../interface/IWNat.sol";
 import "./AssetManagerSettings.sol";
 
 
@@ -21,7 +21,7 @@ library Contracts {
         return getFtsoRegistry().getFtso(_ftsoIndex);
     }
     
-    function getWNat(AssetManagerSettings.Settings storage _settings) internal view returns (WNat) {
-        return WNat(payable(address(getFtsoRegistry().getFtso(_settings.wnatIndex).wNat())));
+    function getWNat(AssetManagerSettings.Settings storage _settings) internal view returns (IWNat) {
+        return IWNat(address(getFtsoRegistry().getFtso(_settings.wnatIndex).wNat()));
     }
 }

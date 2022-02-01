@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
-pragma abicoder v2;
+pragma solidity 0.8.11;
 
-
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IAttestationClient.sol";
 import "../library/AssetManagerSettings.sol";
 import "../library/PaymentVerification.sol";
+
 
 library TransactionAttestation {
     using SafeMath for uint256;

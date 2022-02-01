@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity 0.8.11;
 
-import "flare-smart-contracts/contracts/token/implementation/WNat.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
+import "../interface/IWNat.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAgentVault.sol";
 
 
 contract AgentVault is IAgentVault {
     IAssetManager public immutable assetManager;
-    WNat public immutable wNat;
+    IWNat public immutable wNat;
     address public immutable override owner;
 
     modifier onlyOwner {
@@ -22,7 +22,7 @@ contract AgentVault is IAgentVault {
         _;
     }
     
-    constructor(IAssetManager _assetManager, WNat _wNat, address _owner) {
+    constructor(IAssetManager _assetManager, IWNat _wNat, address _owner) {
         assetManager = _assetManager;
         owner = _owner;
         wNat = _wNat;

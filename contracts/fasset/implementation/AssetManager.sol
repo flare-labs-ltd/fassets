@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
-pragma abicoder v2;
+pragma solidity 0.8.11;
 
-
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../interface/IAgentVault.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAttestationClient.sol";
@@ -27,7 +25,11 @@ import "../library/Liquidation.sol";
 import "../library/AllowedPaymentAnnouncement.sol";
 import "../library/UnderlyingFreeBalance.sol";
 
-// One asset manager per fAsset type
+
+/**
+ * The contract that can mint and burn f-assets while managing collateral and backing funds.
+ * There is one instance of AssetManager per f-asset type.
+ */
 contract AssetManager is ReentrancyGuard, IAssetManager {
     AssetManagerState.State private state;
     IFAsset public immutable fAsset;

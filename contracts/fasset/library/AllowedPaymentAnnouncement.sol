@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./PaymentVerification.sol";
 import "./AMEvents.sol";
@@ -71,6 +71,6 @@ library AllowedPaymentAnnouncement {
     }
     
     function _announcementKey(address _agentVault, uint64 _id) private pure returns (bytes32) {
-        return bytes32(uint256(_agentVault) | (uint256(_id) << 160));
+        return bytes32(uint256(uint160(_agentVault)) | (uint256(_id) << 160));
     }
 }

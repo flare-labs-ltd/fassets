@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity 0.8.11;
 
-import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
-import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
 import "./Agents.sol";
@@ -14,6 +14,7 @@ import "./Conversion.sol";
 import "./Redemption.sol";
 import "../interface/IAgentVault.sol";
 import "./AgentCollateral.sol";
+
 
 library Liquidation {
     using SafeCast for uint256;
@@ -192,9 +193,9 @@ library Liquidation {
 
         uint256 freeUnderlyingBalanceLiquidationAmountAMG = 0;
         if (_agent.freeUnderlyingBalanceUBA < 0) {
-            freeUnderlyingBalanceLiquidationAmountAMG = uint256(-_agent.freeUnderlyingBalanceUBA)
+            freeUnderlyingBalanceLiquidationAmountAMG = uint256(-int256(_agent.freeUnderlyingBalanceUBA))
                 .div(_settings.assetMintingGranularityUBA);
-            if (_agent.freeUnderlyingBalanceUBA % _settings.assetMintingGranularityUBA != 0) {
+            if (_agent.freeUnderlyingBalanceUBA % int64(_settings.assetMintingGranularityUBA) != 0) {
                 freeUnderlyingBalanceLiquidationAmountAMG += 1;
             }
             if (freeUnderlyingBalanceLiquidationAmountAMG > _agent.mintedAMG) {

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/math/SignedSafeMath.sol";
-import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SignedSafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
@@ -84,9 +84,9 @@ library UnderlyingFreeBalance {
         internal
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        require(agent.freeUnderlyingBalanceUBA >= 0 && uint256(agent.freeUnderlyingBalanceUBA) >= _valueUBA, 
+        require(agent.freeUnderlyingBalanceUBA >= 0 && uint128(agent.freeUnderlyingBalanceUBA) >= _valueUBA, 
             "payment larger than allowed");
-        agent.freeUnderlyingBalanceUBA -= int128(_valueUBA);   // guarded by require
+        agent.freeUnderlyingBalanceUBA -= int128(int256(_valueUBA));   // guarded by require
     }
     
     function triggerTopupLiquidation(

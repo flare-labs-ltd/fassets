@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity 0.8.11;
 
 import "./PaymentVerification.sol";
+
 
 library UnderlyingAddressOwnership {
     struct Ownership {
@@ -37,7 +38,7 @@ library UnderlyingAddressOwnership {
         internal
     {
         bool proofValid = _paymentInfo.sourceAddressHash == _underlyingAddressHash
-            && _paymentInfo.paymentReference == bytes32(uint256(_owner));
+            && _paymentInfo.paymentReference == bytes32(uint256(uint160(_owner)));
         require(proofValid, "invalid address ownership proof");
         _claim(_state, _owner, _underlyingAddressHash, true);
     }

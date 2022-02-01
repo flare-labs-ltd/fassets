@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity 0.8.11;
 
-import "flare-smart-contracts/contracts/utils/implementation/SafePct.sol";
+import "./SafePct.sol";
 import "./SafeMath64.sol";
 import "./SafeMath128.sol";
+
 
 library SafeBips {
     uint256 internal constant MAX_BIPS = 10000;

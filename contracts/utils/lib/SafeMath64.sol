@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity 0.8.11;
 
 
 library SafeMath64 {
@@ -11,12 +11,12 @@ library SafeMath64 {
     function toUint64(int256 a) internal pure returns (uint64) {
         require(a >= 0, "SafeMath64: negative value");
         require(a <= int256(MAX_UINT64), "SafeMath64: conversion overflow");
-        return uint64(a);
+        return uint64(uint256(a));
     }
 
     function toInt64(uint256 a) internal pure returns (int64) {
         require(a <= uint256(MAX_INT64), "SafeMath64: conversion overflow");
-        return int64(a);
+        return int64(int256(a));
     }
     
     // 64 bit arithmetic - no need for 256 bit overflow checks
