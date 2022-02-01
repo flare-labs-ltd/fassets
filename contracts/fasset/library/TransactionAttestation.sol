@@ -70,8 +70,8 @@ library TransactionAttestation {
         returns (PaymentVerification.UnderlyingPaymentInfo memory)
     {
         return PaymentVerification.UnderlyingPaymentInfo({
-            sourceAddress: _attestationData.spendingAddress,
-            targetAddress: _attestationData.receivingAddress,
+            sourceAddressHash: _attestationData.spendingAddress,
+            targetAddressHash: _attestationData.receivingAddress,
             transactionHash: _attestationData.transactionHash,
             paymentReference: _attestationData.paymentReference,
             deliveredUBA: _attestationData.receivedAmount,
@@ -87,8 +87,8 @@ library TransactionAttestation {
         returns (PaymentVerification.UnderlyingPaymentInfo memory)
     {
         return PaymentVerification.UnderlyingPaymentInfo({
-            sourceAddress: _attestationData.spendingAddress,
-            targetAddress: 0,       // not important
+            sourceAddressHash: _attestationData.spendingAddress,
+            targetAddressHash: 0,       // not important
             transactionHash: _attestationData.transactionHash,
             paymentReference: 0,    // not important
             deliveredUBA: 0,

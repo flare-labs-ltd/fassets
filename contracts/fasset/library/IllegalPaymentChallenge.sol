@@ -38,7 +38,7 @@ library IllegalPaymentChallenge {
     }
     
     struct Challenges {
-        // type: mapping(PaymentVerification.transactionKey(underlyingSourceAddress, transactionHash) => Challenge)
+        // type: mapping(PaymentVerification.transactionKey(sourceAddressHash, transactionHash) => Challenge)
         // illegal transaction on smart contract chain can affect several addresses,
         // therefore the key is combined transaction hash and affected underlying source address
         mapping(bytes32 => Challenge) challenges;
@@ -52,7 +52,7 @@ library IllegalPaymentChallenge {
         internal
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        bytes32 txKey = PaymentVerification.transactionKey(agent.underlyingAddress, _transactionHash);
+        bytes32 txKey = PaymentVerification.transactionKey(agent.underlyingAddressHash, _transactionHash);
         // only one challenge per (source addres, transaction hash) pair
         require(!_challengeExists(_state, txKey), "challenge already exists");
         // cannot challenge confirmed transactions
@@ -75,7 +75,8 @@ library IllegalPaymentChallenge {
     )
         internal
     {
-        Challenge storage challenge = getChallenge(_state, _paymentInfo.sourceAddress, _paymentInfo.transactionHash);
+        Challenge storage challenge = 
+            getChallenge(_state, _paymentInfo.sourceAddressHash, _paymentInfo.transactionHash);
         require(challenge.agentVault != address(0), 
             "challenge does not exist");
         // there is a minimum time required before challenge and challenge confirmation
@@ -111,7 +112,8 @@ library IllegalPaymentChallenge {
         // check that proof of this tx wasn't used before and mark it as used
         _state.paymentVerifications.confirmSourceDecreasingTransaction(_paymentInfo);
         // challenge (if it exists) is needed to reward original challenger and get amount of minting at the time
-        Challenge storage challenge = getChallenge(_state, _paymentInfo.sourceAddress, _paymentInfo.transactionHash);
+        Challenge storage challenge = 
+            getChallenge(_state, _paymentInfo.sourceAddressHash, _paymentInfo.transactionHash);
         // if the challenge exists, use its mintedAMG value (cannot be 0), otherwise use current value for the address
         uint64 backingAMG = challenge.mintedAMG != 0 ? challenge.mintedAMG : agent.mintedAMG;
         _startLiquidation(_state, _agentVault);
@@ -137,13 +139,13 @@ library IllegalPaymentChallenge {
     
     function getChallenge(
         AssetManagerState.State storage _state,
-        bytes32 _sourceAddress,
+        bytes32 _sourceAddressHash,
         bytes32 _transactionHash
     )
         internal view
         returns (Challenge storage)
     {
-        bytes32 txKey = PaymentVerification.transactionKey(_sourceAddress, _transactionHash);
+        bytes32 txKey = PaymentVerification.transactionKey(_sourceAddressHash, _transactionHash);
         return _state.paymentChallenges.challenges[txKey];
     }
     

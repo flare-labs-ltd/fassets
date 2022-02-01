@@ -10,11 +10,11 @@ library PaymentReport {
     enum ReportMatch { DOES_NOT_EXIST, MATCH, MISMATCH }
     
     struct Report {
-        // hash of (sourceAddress, targetAddress, deliveredUBA, spentUBA)
+        // hash of (sourceAddressHash, targetAddressHash, deliveredUBA, spentUBA, paymentReference)
         // matched if challenger provides LegalPayment proof (includes target data)
         bytes16 fullDetailsHash;
         
-        // hash of (sourceAddress, spentUBA)
+        // hash of (sourceAddressHash, spentUBA)
         // matched if challenger provides SourceUsingTransaction proof (no target data)
         bytes16 sourceDetailsHash;
     }
@@ -61,7 +61,7 @@ library PaymentReport {
         if (report.fullDetailsHash == 0) {
             return ReportMatch.DOES_NOT_EXIST;
         }
-        bool matches = _paymentInfo.targetAddress != 0
+        bool matches = _paymentInfo.targetAddressHash != 0
             ? report.fullDetailsHash == _fullDetailsHash(_paymentInfo) 
             : report.sourceDetailsHash == _sourceDetailsHash(_paymentInfo);
         if (matches) {
@@ -76,8 +76,8 @@ library PaymentReport {
         private pure
         returns (bytes16)
     {
-        bytes32 detailsHash = keccak256(
-            abi.encode(_pi.sourceAddress, _pi.targetAddress, _pi.deliveredUBA, _pi.spentUBA));
+        bytes32 detailsHash = keccak256(abi.encode(
+            _pi.sourceAddressHash, _pi.targetAddressHash, _pi.deliveredUBA, _pi.spentUBA, _pi.paymentReference));
         return bytes16(detailsHash);
     }
 
@@ -88,7 +88,7 @@ library PaymentReport {
         returns (bytes16)
     {
         bytes32 detailsHash = keccak256(
-            abi.encode(_pi.sourceAddress, _pi.deliveredUBA, _pi.spentUBA));
+            abi.encode(_pi.sourceAddressHash, _pi.deliveredUBA, _pi.spentUBA));
         return bytes16(detailsHash);
     }
 }

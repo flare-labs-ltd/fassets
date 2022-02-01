@@ -47,7 +47,11 @@ library Agents {
     struct Agent {
         // Current address for underlying agent's collateral.
         // Agent can change this address anytime and it affects future mintings.
-        bytes32 underlyingAddress;
+        bytes underlyingAddressString;
+        
+        // `underlyingAddressString` is only used for sending the minter a correct payment address;
+        // for matching payment addresses we always use `underlyingAddressHash = keccak256(underlyingAddressString)`
+        bytes32 underlyingAddressHash;
         
         // For agents to withdraw NAT collateral, they must first announce it and then wait 
         // withdrawalAnnouncementSeconds. 
@@ -105,22 +109,25 @@ library Agents {
         AssetManagerState.State storage _state, 
         AgentType _agentType,
         address _agentVault,
-        bytes32 _underlyingAddress
+        bytes memory _underlyingAddressString
     ) 
         internal 
     {
         // TODO: create vault here instead of passing _agentVault?
         require(_agentVault != address(0), "zero vault address");
-        require(_underlyingAddress != 0, "zero underlying address");
+        require(_underlyingAddressString.length != 0, "empty underlying address");
         Agent storage agent = _state.agents[_agentVault];
         require(agent.agentType == AgentType.NONE, "agent already exists");
         agent.agentType = _agentType;
         agent.status = AgentStatus.NORMAL;
         // claim the address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
-        _state.underlyingAddressOwnership.claim(_agentVault, _underlyingAddress, 
+        bytes32 underlyingAddressHash = keccak256(_underlyingAddressString);
+        _state.underlyingAddressOwnership.claim(_agentVault, underlyingAddressHash, 
             _state.settings.requireEOAAddressProof);
-        agent.underlyingAddress = _underlyingAddress;
+        agent.underlyingAddressString = _underlyingAddressString;
+        agent.underlyingAddressHash = underlyingAddressHash;
+        emit AMEvents.AgentCreated(_agentVault, _underlyingAddressString);
     }
     
     function allocateMintedAssets(

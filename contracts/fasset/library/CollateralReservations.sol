@@ -102,7 +102,7 @@ library CollateralReservations {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
         require(!crt.underlyingBlockVerified, "underlying block verified");
         crt.underlyingBlockChallengeTimestamp = SafeCast.toUint64(block.timestamp);
-        emit AMEvents.CRUnderlyingBlockChallenged(crt.minter, _crtId);
+        emit AMEvents.CollateralReservationBlockNumberChallenged(crt.minter, _crtId);
     }
     
     function verifyUnderlyingBlock(
@@ -129,7 +129,7 @@ library CollateralReservations {
             .add(_state.settings.minSecondsForBlockChallengeResponse);
         require(block.timestamp > lastTimestamp, "not late for block proof");
         Agents.requireAgentVaultOwner(crt.agentVault);
-        emit AMEvents.CRUnderlyingBlockChallengeTimeout(crt.agentVault, crt.minter, _crtId);
+        emit AMEvents.CollateralReservationBlockNumberChallengeTimeout(crt.agentVault, crt.minter, _crtId);
         // pay the agent crf and delete 
         _cancelCollateralReservation(_state, crt, _crtId);
     }

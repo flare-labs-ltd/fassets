@@ -2,6 +2,9 @@
 pragma solidity 0.7.6;
 
 library AMEvents {
+    event AgentCreated(
+        address agentVault,
+        bytes underlyingAddress);
 
     /**
      * Agent was added to the list of available agents and can accept collateral reservation requests.
@@ -44,7 +47,7 @@ library AMEvents {
      * Agent challenged the current underlying block number provided by the minter.
      * Minter is expected to provide proof of existence of this or later block on the underlying chain.
      */ 
-    event CRUnderlyingBlockChallenged(
+    event CollateralReservationBlockNumberChallenged(
         address indexed minter,
         uint256 collateralReservationId);
         
@@ -52,7 +55,7 @@ library AMEvents {
      * Agent challenged the current underlying block number provided by the minter
      * and the minter failed to provide proof of existence of this or later block in time.
      */ 
-    event CRUnderlyingBlockChallengeTimeout(
+    event CollateralReservationBlockNumberChallengeTimeout(
         address indexed agentVault,
         address indexed minter,
         uint256 collateralReservationId);
@@ -76,6 +79,7 @@ library AMEvents {
      */ 
     event RedemptionRequested(
         address indexed agentVault,
+        bytes redeemerUnderlyingAddress,
         uint256 valueUBA,
         uint256 requestUnderlyingBlock,
         uint256 lastUnderlyingBlock,

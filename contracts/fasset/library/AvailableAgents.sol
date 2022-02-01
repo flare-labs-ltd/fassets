@@ -39,6 +39,7 @@ library AvailableAgents {
         internal 
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        require(agent.agentType == Agents.AgentType.AGENT_100, "only AGENT_100");
         require(agent.status == Agents.AgentStatus.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
         require(_agentMinCollateralRatioBIPS >= _state.settings.initialMinCollateralRatioBIPS,

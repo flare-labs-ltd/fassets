@@ -50,13 +50,13 @@ library AllowedPaymentAnnouncement {
         PaymentAnnouncement storage announcement = _state.paymentAnnouncements[key];
         require(announcement.createdAtBlock != 0, "invalid announcement id");
         // if payment is challenged, make sure announcement was made strictly before challenge
-        IllegalPaymentChallenge.Challenge storage challenge = 
-            IllegalPaymentChallenge.getChallenge(_state, _paymentInfo.sourceAddress, _paymentInfo.transactionHash);
+        IllegalPaymentChallenge.Challenge storage challenge = IllegalPaymentChallenge.getChallenge(
+            _state, _paymentInfo.sourceAddressHash, _paymentInfo.transactionHash);
         require(challenge.agentVault == address(0) || challenge.createdAtBlock > announcement.createdAtBlock,
             "challenged before announcement");
         // verify that details match announcement
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
-            agent.underlyingAddress, 0 /* target not needed for allowed payments */, announcement.valueUBA);
+            agent.underlyingAddressHash, 0 /* target not needed for allowed payments */, announcement.valueUBA);
         // once the transaction has been proved, reporting it is pointless
         require(!PaymentVerification.transactionConfirmed(_state.paymentVerifications, key),
             "payment report after confirm");

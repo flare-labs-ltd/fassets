@@ -5,6 +5,7 @@ import {IPriceSubmitter} from "flare-smart-contracts/contracts/userInterfaces/IP
 
 library Constants {
     address public constant PRICE_SUBMITTER_ADDRESS = 0x1000000000000000000000000000000000000003;
+    
     IPriceSubmitter public constant PRICE_SUBMITTER = IPriceSubmitter(PRICE_SUBMITTER_ADDRESS);
 
     // TODO: Fix this when deploying to mainnet

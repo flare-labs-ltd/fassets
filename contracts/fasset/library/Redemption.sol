@@ -25,7 +25,7 @@ library Redemption {
     using PaymentVerification for PaymentVerification.State;
     
     struct RedemptionRequest {
-        bytes32 redeemerUnderlyingAddress;
+        bytes32 redeemerUnderlyingAddressHash;
         uint128 underlyingValueUBA;
         uint64 underlyingBlock;     // underlying block at redemption request time
         uint128 underlyingFeeUBA;
@@ -49,7 +49,7 @@ library Redemption {
         AssetManagerState.State storage _state,
         address _redeemer,
         uint64 _lots,
-        bytes32 _redeemerUnderlyingAddress,
+        bytes memory _redeemerUnderlyingAddress,
         uint64 _currentUnderlyingBlock
     )
         internal
@@ -115,7 +115,7 @@ library Redemption {
         AssetManagerState.State storage _state,
         AgentRedemptionData memory _data,
         address _redeemer,
-        bytes32 _redeemerUnderlyingAddress,
+        bytes memory _redeemerUnderlyingAddressString,
         uint64 _currentUnderlyingBlock
     )
         private 
@@ -125,7 +125,7 @@ library Redemption {
         uint128 redemptionFeeUBA = SafeCast.toUint128(
             SafeBips.mulBips128(redeemedValueUBA, _state.settings.redemptionFeeBips));
         _state.redemptionRequests[requestId] = RedemptionRequest({
-            redeemerUnderlyingAddress: _redeemerUnderlyingAddress,
+            redeemerUnderlyingAddressHash: keccak256(_redeemerUnderlyingAddressString),
             underlyingValueUBA: redeemedValueUBA,
             underlyingBlock: _currentUnderlyingBlock,
             timestamp: SafeCast.toUint64(block.timestamp),
@@ -141,7 +141,7 @@ library Redemption {
         uint256 paymentValueUBA = SafeMath128.sub128(redeemedValueUBA, redemptionFeeUBA, "?");
         uint256 lastBlock = uint256(_currentUnderlyingBlock).add(_state.settings.underlyingBlocksForPayment);
         emit AMEvents.RedemptionRequested(_data.agentVault,
-            paymentValueUBA, _currentUnderlyingBlock, lastBlock, requestId);
+            _redeemerUnderlyingAddressString, paymentValueUBA, _currentUnderlyingBlock, lastBlock, requestId);
     }
 
     function getRedemptionRequest(
@@ -169,7 +169,7 @@ library Redemption {
         // check details
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
-            agent.underlyingAddress, request.redeemerUnderlyingAddress, paymentValueUBA);
+            agent.underlyingAddressHash, request.redeemerUnderlyingAddressHash, paymentValueUBA);
         // report can be submitted several times (e.g. perhaps the gas price has to be raised for tx to be accepted),
         // but once the transaction has been proved, reporting it is pointless
         require(!PaymentVerification.transactionConfirmed(_state.paymentVerifications, _paymentInfo),
@@ -198,7 +198,7 @@ library Redemption {
         // confirm payment proof
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
-            agent.underlyingAddress, request.redeemerUnderlyingAddress, paymentValueUBA);
+            agent.underlyingAddressHash, request.redeemerUnderlyingAddressHash, paymentValueUBA);
         // record payment so that it cannot be used twice in redemption
         _state.paymentVerifications.confirmPayment(_paymentInfo);
         // record source decreasing transaction so that it cannot be challenged

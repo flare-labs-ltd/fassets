@@ -8,8 +8,8 @@ library PaymentVerification {
     
     // only used in-memory, so no bit optimization is necessary
     struct UnderlyingPaymentInfo {
-        bytes32 sourceAddress;
-        bytes32 targetAddress;
+        bytes32 sourceAddressHash;
+        bytes32 targetAddressHash;
         bytes32 transactionHash;
         bytes32 paymentReference;      // used in minting to identify sender
         uint256 deliveredUBA;
@@ -78,19 +78,19 @@ library PaymentVerification {
     
     function validatePaymentDetails(
         UnderlyingPaymentInfo memory _paymentInfo,
-        bytes32 _expectedSource,
-        bytes32 _expectedTarget,
+        bytes32 _expectedSourceHash,
+        bytes32 _expectedTargetHash,
         uint256 _expectedValueUBA
     )
         internal pure
     {
-        // _expectedSource is zero for topups and non-zero otherwise
-        if (_expectedSource != 0) {
-            require(_paymentInfo.sourceAddress == _expectedSource, "invalid payment source");
+        // _expectedSourceHash is zero for topups and non-zero otherwise
+        if (_expectedSourceHash != 0) {
+            require(_paymentInfo.sourceAddressHash == _expectedSourceHash, "invalid payment source");
         }
-        // _expectedTarget is zero for allowed payments and non-zero for required payments
-        if (_expectedTarget != 0) {
-            require(_paymentInfo.targetAddress == _expectedTarget, "invalid payment target");
+        // _expectedTargetHash is zero for allowed payments and non-zero for required payments
+        if (_expectedTargetHash != 0) {
+            require(_paymentInfo.targetAddressHash == _expectedTargetHash, "invalid payment target");
         }
         require(_paymentInfo.deliveredUBA == _expectedValueUBA, "invalid payment value");
     }
@@ -99,19 +99,19 @@ library PaymentVerification {
     // for now this is illegal, but might change for some smart contract chains
     // therefore the mapping key for transaction is always the combination of
     // underlying address (from which funds were removed) and transaction hash
-    function transactionKey(bytes32 _underlyingSourceAddress, bytes32 _transactionHash) 
+    function transactionKey(bytes32 _underlyingSourceAddressHash, bytes32 _transactionHash) 
         internal pure 
         returns (bytes32) 
     {
-        return keccak256(abi.encode(_underlyingSourceAddress, _transactionHash));
+        return keccak256(abi.encode(_underlyingSourceAddressHash, _transactionHash));
     }
     
-    // shortcut for transactionKey(_paymentInfo.sourceAddress, _paymentInfo.transactionHash)
+    // shortcut for transactionKey(_paymentInfo.sourceAddressHash, _paymentInfo.transactionHash)
     function transactionKey(UnderlyingPaymentInfo memory _paymentInfo)
         internal pure 
         returns (bytes32)
     {
-        return keccak256(abi.encode(_paymentInfo.sourceAddress, _paymentInfo.transactionHash));
+        return keccak256(abi.encode(_paymentInfo.sourceAddressHash, _paymentInfo.transactionHash));
     }
     
     function usedGas(UnderlyingPaymentInfo memory _paymentInfo)

@@ -72,7 +72,6 @@ contract AssetManager is ReentrancyGuard {
      */
     function claimAgentUnderlyingAddress(
         IAttestationClient.LegalPayment calldata _payment,
-        bytes32 _underlyingAddress,
         address _agentVault
     )
         external
@@ -80,9 +79,8 @@ contract AssetManager is ReentrancyGuard {
         Agents.requireAgentVaultOwner(_agentVault);
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
             TransactionAttestation.verifyLegalPayment(state.settings, _payment, true);
-        require(paymentInfo.sourceAddress == _underlyingAddress, "wrong underlying address");
         UnderlyingAddressOwnership.claimWithProof(state.underlyingAddressOwnership, 
-            paymentInfo, _agentVault, _underlyingAddress);
+            paymentInfo, _agentVault, paymentInfo.sourceAddressHash);
     }
     
     /**
@@ -94,12 +92,12 @@ contract AssetManager is ReentrancyGuard {
     function createAgent(
         Agents.AgentType _agentType,
         address _agentVault,
-        bytes32 _underlyingAddress
+        bytes memory _underlyingAddressString
     ) 
         external
     {
         Agents.requireAgentVaultOwner(_agentVault);
-        Agents.createAgent(state, _agentType, _agentVault, _underlyingAddress);
+        Agents.createAgent(state, _agentType, _agentVault, _underlyingAddressString);
     }
 
     /**
@@ -317,19 +315,19 @@ contract AssetManager is ReentrancyGuard {
      * are burned and redeemed and the redeemer can execute this method again for the remaining lots.
      * In such case `RedemptionRequestIncomplete` event will be emitted, indicating the number of remaining lots.
      * @param _lots number of lots to redeem
-     * @param _redeemerUnderlyingAddress the address to which the agent must transfer underlyng amount
+     * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlyng amount
      * @param _currentUnderlyingBlock current block height on the underlyng chain, used to calculate the block 
      *   height by which the agent must pay; can be challenged by agent if it is too small
      */
     function redeem(
         uint64 _lots,
-        bytes32 _redeemerUnderlyingAddress,
+        bytes memory _redeemerUnderlyingAddressString,
         uint64 _currentUnderlyingBlock
     )
         external
     {
         uint64 redeemedLots = Redemption.redeem(state, msg.sender, _lots, 
-            _redeemerUnderlyingAddress, _currentUnderlyingBlock);
+            _redeemerUnderlyingAddressString, _currentUnderlyingBlock);
         uint256 redeemedUBA = Conversion.convertLotsToUBA(state.settings, redeemedLots);
         fAsset.burn(msg.sender, redeemedUBA);
     }
