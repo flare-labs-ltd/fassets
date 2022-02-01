@@ -39,14 +39,14 @@ library AvailableAgents {
         internal 
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        require(agent.agentType == Agents.AgentType.AGENT_100, "only AGENT_100");
+        require(agent.agentType == Agents.AgentType.AGENT_100, "only agent 100");
         require(agent.status == Agents.AgentStatus.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
-        require(_agentMinCollateralRatioBIPS >= _state.settings.initialMinCollateralRatioBIPS,
-            "collateral ratio too small");
         // set parameters
         agent.feeBIPS = SafeCast.toUint16(_feeBIPS); 
-        agent.agentMinCollateralRatioBIPS = SafeCast.toUint32(_agentMinCollateralRatioBIPS);
+        // when agent becomes available, it is a good idea to set agent's min collateral ratio higher than
+        // global min collateral ratio (otherwise he can quickly go to liquidation), so we always do it here
+        Agents.setAgentMinCollateralRatioBIPS(_state, _agentVault, _agentMinCollateralRatioBIPS);
         // check that there is enough free collateral for at least one lot
         uint256 fullCollateral = IAgentVault(_agentVault).fullCollateral();
         uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);

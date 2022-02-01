@@ -115,6 +115,20 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         require(_agentVault == msg.sender, "call agentVault.destroy()");
         Agents.destroyAgent(state, _agentVault);
     }
+    
+    /**
+     * Set the ratio at which free collateral for the minting will be accounted.
+     */
+    function setAgentMinCollateralRatioBIPS(
+        address _agentVault,
+        uint256 _agentMinCollateralRatioBIPS
+    )
+        external
+    {
+        Agents.requireAgentVaultOwner(_agentVault);
+        Agents.setAgentMinCollateralRatioBIPS(state, _agentVault, _agentMinCollateralRatioBIPS);
+    }
+    
 
     /**
      * Agent is going to withdraw `_valueNATWei` amount of collateral from agent vault.
@@ -167,6 +181,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     /**
      * Add the agent to the list of publicly available agents.
      * Other agents can only self-mint.
+     * @param _feeBIPS fee charged to minters (paid in underlying currency along with backing assets)
+     * @param _agentMinCollateralRatioBIPS when agent is created, free colateral is accounted at the
+     *  global min collateral ratio; for public agents this can very quickly lead to liquidation,
+     *  therefore it is required for agent to set it when becoming available.
+     *  Note that agentMinCollateralRatioBIPS can also be set separately by setAgentMinCollateralRatioBIPS method.
      */    
     function makeAgentAvailable(
         address _agentVault,
@@ -302,8 +321,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
             TransactionAttestation.verifyLegalPayment(state.settings, _payment, false);
-        (address minter, uint256 mintValue) = Minting.mintingExecuted(state, paymentInfo, _crtId);
-        fAsset.mint(minter, mintValue);
+        (address minter, uint256 mintedUBA) = Minting.mintingExecuted(state, paymentInfo, _crtId);
+        fAsset.mint(minter, mintedUBA);
     }
 
     /**
@@ -319,6 +338,25 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     {
         uint64 underlyingBlock = TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
         CollateralReservations.collateralReservationTimeout(state, _crtId, underlyingBlock);
+    }
+    
+    /**
+     * Agent can mint against himself. In that case, this is a one-step process, skipping collateral reservation
+     * and no collateral reservation fee payment.
+     * Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
+     */
+    function selfMint(
+        IAttestationClient.LegalPayment calldata _payment,
+        address _agentVault,
+        uint64 _lots
+    ) 
+        external 
+    {
+        Agents.requireAgentVaultOwner(_agentVault);
+        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
+            TransactionAttestation.verifyLegalPayment(state.settings, _payment, false);
+        uint256 mintedUBA = Minting.selfMint(state, paymentInfo, _agentVault, _lots);
+        fAsset.mint(msg.sender, mintedUBA);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

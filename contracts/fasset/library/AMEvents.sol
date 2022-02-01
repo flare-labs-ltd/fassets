@@ -4,6 +4,7 @@ pragma solidity 0.7.6;
 library AMEvents {
     event AgentCreated(
         address indexed owner,
+        uint8 agentType,
         address agentVault,
         bytes underlyingAddress);
 
@@ -68,11 +69,13 @@ library AMEvents {
     /**
      * Minter paid underlying funds in time and received the fassets.
      * Agents collateral is locked.
+     * This event is also emitted for self-minting. In this case, `collateralReservationId` is 0.
      */ 
     event MintingExecuted(
         address indexed agentVault,
         uint256 collateralReservationId,
         uint256 redemptionTicketId,
+        uint256 mintedAmountUBA,
         uint256 receivedFeeUBA);
 
     /**

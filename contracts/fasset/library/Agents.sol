@@ -22,8 +22,7 @@ library Agents {
     enum AgentType {
         NONE,
         AGENT_100,
-        AGENT_0,
-        SELF_MINTING
+        AGENT_0
     }
     
     enum AgentStatus {
@@ -113,13 +112,16 @@ library Agents {
     ) 
         internal 
     {
-        
-        require(_agentVault != address(0), "zero vault address");
-        require(_underlyingAddressString.length != 0, "empty underlying address");
         Agent storage agent = _state.agents[_agentVault];
         require(agent.agentType == AgentType.NONE, "agent already exists");
+        require(_agentType == AgentType.AGENT_100, "agent type not supported");
+        require(_underlyingAddressString.length != 0, "empty underlying address");
         agent.agentType = _agentType;
         agent.status = AgentStatus.NORMAL;
+        // initially, agentMinCollateralRatioBIPS is the same as global min collateral ratio
+        // this setting is ok for self-minting, but not for public minting since it quickly leads to liquidation
+        // it can be changed with setAgentMinCollateralRatioBIPS or when agent becomes available
+        agent.agentMinCollateralRatioBIPS = _state.settings.initialMinCollateralRatioBIPS;
         // claim the address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
         bytes32 underlyingAddressHash = keccak256(_underlyingAddressString);
@@ -127,7 +129,7 @@ library Agents {
             _state.settings.requireEOAAddressProof);
         agent.underlyingAddressString = _underlyingAddressString;
         agent.underlyingAddressHash = underlyingAddressHash;
-        emit AMEvents.AgentCreated(msg.sender, _agentVault, _underlyingAddressString);
+        emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), _agentVault, _underlyingAddressString);
     }
     
     function destroyAgent(
@@ -143,6 +145,19 @@ library Agents {
         }
         delete _state.agents[_agentVault];
         emit AMEvents.AgentDestroyed(_agentVault);
+    }
+    
+    function setAgentMinCollateralRatioBIPS(
+        AssetManagerState.State storage _state, 
+        address _agentVault,
+        uint256 _agentMinCollateralRatioBIPS
+    )
+        internal
+    {
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        require(_agentMinCollateralRatioBIPS >= _state.settings.initialMinCollateralRatioBIPS,
+            "collateral ratio too small");
+        agent.agentMinCollateralRatioBIPS = SafeCast.toUint32(_agentMinCollateralRatioBIPS);
     }
     
     function allocateMintedAssets(
