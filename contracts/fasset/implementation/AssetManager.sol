@@ -410,16 +410,20 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * agent must report payment before proof is available. After reporting, challenge
      * can only be executed if it can prove that report is lying about some data.
      */
-    function reportRedemptionRequestPayment(
+    function reportRedemptionPayment(
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,  // TODO: rename fields to be like LegalPayment
         uint64 _redemptionRequestId
     )
         external
     {
-        Redemption.reportRedemptionRequestPayment(state, _paymentInfo, _redemptionRequestId);
+        Redemption.reportRedemptionPayment(state, _paymentInfo, _redemptionRequestId);
     }
-    
-    function confirmRedemptionRequestPayment(
+
+    /**
+     * After paying to the redeemer, the agent must call this method to unlock the collateral
+     * and to make sure that the redeemer cannot demand payment in collateral on timeout.
+     */    
+    function confirmRedemptionPayment(
         IAttestationClient.LegalPayment calldata _payment,
         uint64 _redemptionRequestId
     )
@@ -427,9 +431,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
             TransactionAttestation.verifyLegalPayment(state.settings, _payment, false);
-        Redemption.confirmRedemptionRequestPayment(state, paymentInfo, _redemptionRequestId);
+        Redemption.confirmRedemptionPayment(state, paymentInfo, _redemptionRequestId);
     }
-    
+
+    /**
+     * If the agent doesn't transfer the redeemed underlying assets in time (until the last allowed block on
+     * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
+     */    
     function redemptionPaymentTimeout(
         IAttestationClient.BlockHeightExists calldata _proof,
         uint64 _redemptionRequestId
@@ -440,6 +448,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         Redemption.redemptionPaymentTimeout(state, _redemptionRequestId, underlyingBlock);
     }
     
+    /**
+     * If the agent cannot perform the payment due to redeemer's fault (redeemer blocking the target address,
+     * which is for example possible with a contract on EVM chains), the agent doesn't have to pay anymore,
+     * and can keep both the collateral and underlying funds.
+     */
     function redemptionPaymentBlocked(
         IAttestationClient.LegalPayment calldata _payment,
         uint64 _redemptionRequestId
@@ -455,6 +468,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     ////////////////////////////////////////////////////////////////////////////////////
     // Self-close
     
+    /**
+     * Agent can "redeem against himself" by calling selfClose, which burns agent's own f-assets
+     * and unlocks agent's collateral. The underlying funds backing the f-assets are released
+     * as agent's free underlying funds and can be later withdrawn after announcement.
+     */
     function selfClose(
         address _agentVault,
         uint256 _amountUBA

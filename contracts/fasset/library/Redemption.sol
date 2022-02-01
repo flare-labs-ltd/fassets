@@ -63,6 +63,7 @@ library Redemption {
         });
         _redeemedLots = 0;
         for (uint256 i = 0; i < maxRedeemedTickets && _redeemedLots < _lots; i++) {
+            // each loop, firstTicketId will change since we delete the first ticket
             uint64 redeemedForTicket = _redeemFirstTicket(_state, _lots - _redeemedLots, redemptionList);
             if (redeemedForTicket == 0) {
                 break;   // queue empty
@@ -157,7 +158,7 @@ library Redemption {
         require(_request.valueAMG != 0, "invalid request id");
     }
     
-    function reportRedemptionRequestPayment(
+    function reportRedemptionPayment(
         AssetManagerState.State storage _state,
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         uint64 _redemptionRequestId
@@ -182,7 +183,7 @@ library Redemption {
             _paymentInfo.underlyingBlock, _redemptionRequestId);
     }
     
-    function confirmRedemptionRequestPayment(
+    function confirmRedemptionPayment(
         AssetManagerState.State storage _state,
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         uint64 _redemptionRequestId
@@ -368,6 +369,7 @@ library Redemption {
         // redemption tickets
         uint256 maxRedeemedTickets = _state.settings.maxRedeemedTickets;
         for (uint256 i = 0; i < maxRedeemedTickets && _valueAMG < _amountAMG; i++) {
+            // each loop, firstTicketId will change since we delete the first ticket
             uint64 ticketId = _state.redemptionQueue.agents[_agentVault].firstTicketId;
             if (ticketId == 0) {
                 break;  // no more tickets for this agent
