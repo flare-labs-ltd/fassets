@@ -8,6 +8,7 @@ import "../interface/IAgentVault.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAttestationClient.sol";
 import "../interface/IFAsset.sol";
+import "../implementation/AgentVault.sol";
 import "../../utils/lib/SafeBips.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../library/Agents.sol";
@@ -15,6 +16,7 @@ import "../library/AssetManagerState.sol";
 import "../library/AssetManagerSettings.sol";
 import "../library/CollateralReservations.sol";
 import "../library/Conversion.sol";
+import "../library/Contracts.sol";
 import "../library/Minting.sol";
 import "../library/PaymentVerification.sol";
 import "../library/TransactionAttestation.sol";
@@ -26,7 +28,7 @@ import "../library/AllowedPaymentAnnouncement.sol";
 import "../library/UnderlyingFreeBalance.sol";
 
 // One asset manager per fAsset type
-contract AssetManager is ReentrancyGuard {
+contract AssetManager is ReentrancyGuard, IAssetManager {
     AssetManagerState.State private state;
     IFAsset public immutable fAsset;
     address public assetManagerController;  // TODO: should be replaceable?
@@ -63,24 +65,22 @@ contract AssetManager is ReentrancyGuard {
     // Agent handling
     
     /**
-     * This method fixes the underlying address to be used with given `_agentVault`.
+     * This method fixes the underlying address to be used by given agent owner.
      * A proof of payment (can be minimal or to itself) from this address must be provided,
-     * with payment reference being equal to `_agentVault` address.
+     * with payment reference being equal to this method caller's address.
      * NOTE: calling this method before `createAgent()` is optional on most chains,
      * but is required on smart contract chains to make sure the agent is using EOA address
      * (depends on setting `requireEOAAddressProof`).
      */
     function claimAgentUnderlyingAddress(
-        IAttestationClient.LegalPayment calldata _payment,
-        address _agentVault
+        IAttestationClient.LegalPayment calldata _payment
     )
         external
     {
-        Agents.requireAgentVaultOwner(_agentVault);
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
             TransactionAttestation.verifyLegalPayment(state.settings, _payment, true);
         UnderlyingAddressOwnership.claimWithProof(state.underlyingAddressOwnership, 
-            paymentInfo, _agentVault, paymentInfo.sourceAddressHash);
+            paymentInfo, msg.sender, paymentInfo.sourceAddressHash);
     }
     
     /**
@@ -91,13 +91,29 @@ contract AssetManager is ReentrancyGuard {
      */
     function createAgent(
         Agents.AgentType _agentType,
-        address _agentVault,
         bytes memory _underlyingAddressString
     ) 
         external
     {
-        Agents.requireAgentVaultOwner(_agentVault);
-        Agents.createAgent(state, _agentType, _agentVault, _underlyingAddressString);
+        IAgentVault agentVault = new AgentVault(this, Contracts.getWNat(state.settings), msg.sender);
+        Agents.createAgent(state, _agentType, address(agentVault), _underlyingAddressString);
+    }
+    
+    /**
+     * Delete all agent data. Only used internally by AgentVault.destroy().
+     * Procedure for destroying agent:
+     * - exit available agents list
+     * - wait until all assets are redeemed or self-close
+     * - announce withdrawal of full collateral (and wait the required time)
+     * - call agentVault.destroy()
+     */
+    function destroyAgent(
+        address _agentVault
+    )
+        external override
+    {
+        require(_agentVault == msg.sender, "call agentVault.destroy()");
+        Agents.destroyAgent(state, _agentVault);
     }
 
     /**
@@ -122,7 +138,7 @@ contract AssetManager is ReentrancyGuard {
     function withdrawCollateral(
         uint256 _valueNATWei
     )
-        external
+        external override
     {
         // Agents.withdrawalExecuted makes sure that only a registered agent vault can call
         Agents.withdrawalExecuted(state, msg.sender, _valueNATWei);

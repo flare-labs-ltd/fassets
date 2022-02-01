@@ -9,9 +9,11 @@ library AssetManagerSettings {
         // Can be changed by AddressUpdater.
         IAttestationClient attestationClient;
         
-        // Asset specific settings
-        // immutable?
-        uint16 assetIndex;
+        // Wrapped NAT specific settings
+        uint16 wnatIndex;  // immutable?
+        
+        // Managed f-asset index in FtsoRegistry
+        uint16 assetIndex;  // immutable?
         
         // Must match attestation data chainId.
         // immutable
@@ -19,7 +21,7 @@ library AssetManagerSettings {
 
         // Collateral reservation fee that must be paid by the minter.
         // Payment is in NAT, but is proportional to the value of assets to be minted.
-        uint256 collateralReservationFeeBIPS;
+        uint16 collateralReservationFeeBIPS;
         
         // Collateral reservation fee is burned on successful minting.
         address payable burnAddress;

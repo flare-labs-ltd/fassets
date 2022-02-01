@@ -113,7 +113,7 @@ library Agents {
     ) 
         internal 
     {
-        // TODO: create vault here instead of passing _agentVault?
+        
         require(_agentVault != address(0), "zero vault address");
         require(_underlyingAddressString.length != 0, "empty underlying address");
         Agent storage agent = _state.agents[_agentVault];
@@ -123,11 +123,26 @@ library Agents {
         // claim the address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
         bytes32 underlyingAddressHash = keccak256(_underlyingAddressString);
-        _state.underlyingAddressOwnership.claim(_agentVault, underlyingAddressHash, 
+        _state.underlyingAddressOwnership.claim(msg.sender, underlyingAddressHash, 
             _state.settings.requireEOAAddressProof);
         agent.underlyingAddressString = _underlyingAddressString;
         agent.underlyingAddressHash = underlyingAddressHash;
-        emit AMEvents.AgentCreated(_agentVault, _underlyingAddressString);
+        emit AMEvents.AgentCreated(msg.sender, _agentVault, _underlyingAddressString);
+    }
+    
+    function destroyAgent(
+        AssetManagerState.State storage _state, 
+        address _agentVault
+    )
+        internal
+    {
+        uint256 fullCollateral = IAgentVault(_agentVault).fullCollateral();
+        if (fullCollateral > 0) {
+            // checks that all collateral has been announced for withdrawal
+            withdrawalExecuted(_state, _agentVault, fullCollateral);
+        }
+        delete _state.agents[_agentVault];
+        emit AMEvents.AgentDestroyed(_agentVault);
     }
     
     function allocateMintedAssets(

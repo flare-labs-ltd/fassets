@@ -3,14 +3,18 @@ pragma solidity 0.7.6;
 
 library AMEvents {
     event AgentCreated(
+        address indexed owner,
         address agentVault,
         bytes underlyingAddress);
+
+    event AgentDestroyed(
+        address indexed agentVault);
 
     /**
      * Agent was added to the list of available agents and can accept collateral reservation requests.
      */ 
     event AgentAvailable(
-        address agentVault, 
+        address indexed agentVault, 
         uint256 feeBIPS, 
         uint256 agentMinCollateralRatioBIPS,
         uint256 freeCollateralLots);
@@ -18,7 +22,8 @@ library AMEvents {
     /**
      * Agent exited from available agents list.
      */ 
-    event AgentExited(address agentVault);
+    event AvailableAgentExited(
+        address indexed agentVault);
 
     /**
      * Minter reserved collateral, paid the reservation fee, and is expected to pay the underlying funds.

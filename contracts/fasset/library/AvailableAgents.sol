@@ -76,7 +76,7 @@ library AvailableAgents {
         }
         agent.availableAgentsPos = 0;
         _state.availableAgents.pop();
-        emit AMEvents.AgentExited(_agentVault);
+        emit AMEvents.AvailableAgentExited(_agentVault);
     }
     
     function getList(
