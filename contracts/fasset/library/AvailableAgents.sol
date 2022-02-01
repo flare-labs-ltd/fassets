@@ -97,7 +97,6 @@ library AvailableAgents {
 
     function getListWithInfo(
         AssetManagerState.State storage _state, 
-        uint256 _amgToNATWeiPrice,
         uint256 _start, 
         uint256 _end
     ) 
@@ -108,6 +107,7 @@ library AvailableAgents {
         _end = Math.min(_end, _totalLength);
         _start = Math.min(_start, _end);
         _agents = new AvailableAgentInfo[](_end - _start);
+        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
         for (uint256 i = _start; i < _end; i++) {
             address agentVault = _state.availableAgents[i].agentVault;
             uint256 fullCollateral = IAgentVault(agentVault).fullCollateral();
@@ -116,7 +116,7 @@ library AvailableAgents {
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
                 agentMinCollateralRatioBIPS: agent.agentMinCollateralRatioBIPS,
-                freeCollateralLots: agent.freeCollateralLots(_state.settings, fullCollateral, _amgToNATWeiPrice)
+                freeCollateralLots: agent.freeCollateralLots(_state.settings, fullCollateral, amgToNATWeiPrice)
             });
         }
     }

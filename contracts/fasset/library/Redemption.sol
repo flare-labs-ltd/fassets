@@ -336,6 +336,7 @@ library Redemption {
         emit AMEvents.SelfClose(_agentVault, _closedUBA);
     }
 
+    // only use by Liquidation.liquidate
     function liquidate(
         AssetManagerState.State storage _state,
         address _liquidator,

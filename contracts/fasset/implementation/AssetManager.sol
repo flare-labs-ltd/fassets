@@ -8,6 +8,8 @@ import "../interface/IAgentVault.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAttestationClient.sol";
 import "../interface/IFAsset.sol";
+import "../../utils/lib/SafeBips.sol";
+import "../../utils/lib/SafeMath64.sol";
 import "../library/Agents.sol";
 import "../library/AssetManagerState.sol";
 import "../library/AssetManagerSettings.sol";
@@ -19,8 +21,9 @@ import "../library/TransactionAttestation.sol";
 import "../library/UnderlyingAddressOwnership.sol";
 import "../library/Redemption.sol";
 import "../library/IllegalPaymentChallenge.sol";
-import "../../utils/lib/SafeBips.sol";
-import "../../utils/lib/SafeMath64.sol";
+import "../library/Liquidation.sol";
+import "../library/AllowedPaymentAnnouncement.sol";
+import "../library/UnderlyingFreeBalance.sol";
 
 // One asset manager per fAsset type
 contract AssetManager is ReentrancyGuard {
@@ -38,6 +41,9 @@ contract AssetManager is ReentrancyGuard {
         _updateSettings(_settings);
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Settings update
+    
     function updateSettings(
         AssetManagerSettings.Settings memory _settings
     ) 
@@ -143,7 +149,11 @@ contract AssetManager is ReentrancyGuard {
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Manage list of agents, publicly available for minting
-    
+
+    /**
+     * Add the agent to the list of publicly available agents.
+     * Other agents can only self-mint.
+     */    
     function makeAgentAvailable(
         address _agentVault,
         uint256 _feeBIPS,
@@ -155,6 +165,9 @@ contract AssetManager is ReentrancyGuard {
         AvailableAgents.makeAvailable(state, _agentVault, _feeBIPS, _agentMinCollateralRatioBIPS);
     }
     
+    /**
+     * Exit the publicly available agents list.
+     */
     function exitAvailableAgentList(
         address _agentVault
     )
@@ -164,6 +177,10 @@ contract AssetManager is ReentrancyGuard {
         AvailableAgents.exit(state, _agentVault);
     }
     
+    /**
+     * Get (a part of) the list of available agents.
+     * The list must be retrieved in parts since retrieving the whole list can consume too much gas for one block.
+     */
     function getAvailableAgentsList(
         uint256 _start, 
         uint256 _end
@@ -174,6 +191,13 @@ contract AssetManager is ReentrancyGuard {
         return AvailableAgents.getList(state, _start, _end);
     }
 
+    /**
+     * Get (a part of) the list of available agents with extra information about agents' fee, min collateral ratio
+     * and available collateral (in lots).
+     * The list must be retrieved in parts since retrieving the whole list can consume too much gas for one block.
+     * NOTE: agent's available collateral can change anytime due to price changes, minting, or changes 
+     * in agent's min collateral ratio, so it is only to be used as estimate.
+     */
     function getAvailableAgentsDetailedList(
         uint256 _start, 
         uint256 _end
@@ -181,8 +205,7 @@ contract AssetManager is ReentrancyGuard {
         external view 
         returns (AvailableAgents.AvailableAgentInfo[] memory _agents, uint256 _totalLength)
     {
-        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(state.settings);
-        return AvailableAgents.getListWithInfo(state, amgToNATWeiPrice,_start, _end);
+        return AvailableAgents.getListWithInfo(state, _start, _end);
     }
         
     ////////////////////////////////////////////////////////////////////////////////////
@@ -292,6 +315,11 @@ contract AssetManager is ReentrancyGuard {
      * NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or
      * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
      * are burned and redeemed and the redeemer can execute this method again for the remaining lots.
+     * In such case `RedemptionRequestIncomplete` event will be emitted, indicating the number of remaining lots.
+     * @param _lots number of lots to redeem
+     * @param _redeemerUnderlyingAddress the address to which the agent must transfer underlyng amount
+     * @param _currentUnderlyingBlock current block height on the underlyng chain, used to calculate the block 
+     *   height by which the agent must pay; can be challenged by agent if it is too small
      */
     function redeem(
         uint64 _lots,
@@ -306,6 +334,14 @@ contract AssetManager is ReentrancyGuard {
         fAsset.burn(msg.sender, redeemedUBA);
     }
     
+    /**
+     * If redeemer provides to small block height in `redeem` request, the agent may provide proof
+     * of existing higher block with this method. For this, the agent's time for redemption payment is
+     * until both the target underlying block height is achieved and some timestamp is reached 
+     * (enough to react to to small provided block height with this challenge).
+     * After this method is called, agent's block when payment must be proved is increased, based
+     * on the block height provided in this proof.
+     */
     function challengeRedemptionRequestBlock(
         IAttestationClient.BlockHeightExists calldata _proof,
         uint64 _redemptionRequestId
@@ -317,6 +353,11 @@ contract AssetManager is ReentrancyGuard {
         Redemption.challengeRedemptionRequestUnderlyingBlock(state, _redemptionRequestId, underlyingBlock);
     }
     
+    /**
+     * To prevent illegal payment challenge proof from overtaking payment proof,
+     * agent must report payment before proof is available. After reporting, challenge
+     * can only be executed if it can prove that report is lying about some data.
+     */
     function reportRedemptionRequestPayment(
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,  // TODO: rename fields to be like LegalPayment
         uint64 _redemptionRequestId
@@ -374,7 +415,53 @@ contract AssetManager is ReentrancyGuard {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Challenge
+    // Allowed payment announcements
+    
+    function announceAllowedPayment(
+        address _agentVault,
+        uint256 _valueUBA
+    )
+        external
+    {
+        AllowedPaymentAnnouncement.announceAllowedPayment(state, _agentVault, _valueUBA);
+    }
+    
+    function reportAllowedPayment(
+        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
+        address _agentVault,
+        uint64 _announcementId
+    )
+        external
+    {
+        AllowedPaymentAnnouncement.reportAllowedPayment(state, _paymentInfo, _agentVault, _announcementId);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Underlying balance topup
+
+    function confirmTopupPayment(
+        IAttestationClient.LegalPayment calldata _payment,
+        address _agentVault
+    )
+        external
+    {
+        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
+            TransactionAttestation.verifyLegalPayment(state.settings, _payment, false);
+        UnderlyingFreeBalance.confirmTopupPayment(state, paymentInfo, _agentVault);
+    }
+    
+    function triggerTopupLiquidation(
+        IAttestationClient.BlockHeightExists calldata _proof,
+        address _agentVault
+    )
+        internal
+    {
+        uint64 underlyingBlock = TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
+        UnderlyingFreeBalance.triggerTopupLiquidation(state, _agentVault, underlyingBlock);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Illegal payment and wrong payment report challenges
     
     function createIllegalPaymentChallenge(
         address _agentVault,
@@ -420,4 +507,31 @@ contract AssetManager is ReentrancyGuard {
     ////////////////////////////////////////////////////////////////////////////////////
     // Liquidation
 
+    function startLiquidation(
+        address _agentVault
+    )
+        external
+    {
+        Liquidation.startLiquidation(state, _agentVault, false);
+    }
+    
+    function liquidate(
+        address _agentVault,
+        uint256 _amountUBA
+    )
+        external
+    {
+        uint64 amountAMG = Conversion.convertUBAToAmg(state.settings, _amountUBA);
+        uint64 liquidatedAMG = Liquidation.liquidate(state, _agentVault, amountAMG);
+        uint256 liquidatedUBA = Conversion.convertAmgToUBA(state.settings, liquidatedAMG);
+        fAsset.burn(msg.sender, liquidatedUBA);
+    }
+    
+    function cancelLiquidation(
+        address _agentVault
+    )
+        external
+    {
+        Liquidation.cancelLiquidation(state, _agentVault);
+    }
 }

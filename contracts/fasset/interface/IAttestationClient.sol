@@ -36,7 +36,7 @@ interface IAttestationClient {
         // The amount that what went out of source address (or all source addresses), in smallest underlying units.
         // It includes both payment value and fee / gas.
         // For utxo chains it can be negative, that's why signed int256 is used.
-        int256 spentAmount;
+        uint256 spentAmount;
         
         // The amount the receiving address received, in smallest underlying units.
         uint256 receivedAmount;

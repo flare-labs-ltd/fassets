@@ -95,15 +95,15 @@ library Liquidation {
     // Cancel agent's liquidation
     function cancelLiquidation(
         AssetManagerState.State storage _state,
-        address _agentVault,
-        uint256 _fullCollateral,
-        uint256 _amgToNATWeiPrice
+        address _agentVault
     )
         internal
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        uint256 fullAgentCollateral = IAgentVault(_agentVault).fullCollateral();
+        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
         require(agent.status == Agents.AgentStatus.LIQUIDATION, "not in (normal) liquidation");
-        require(isAgentHealthy(agent, _state.settings, _fullCollateral, _amgToNATWeiPrice), "collateral too small");
+        require(isAgentHealthy(agent, _state.settings, fullAgentCollateral, amgToNATWeiPrice), "collateral too small");
         require(agent.freeUnderlyingBalanceUBA >= 0, "free underlying balance < 0");
         agent.status = Agents.AgentStatus.NORMAL;
         delete agent.liquidationState;
