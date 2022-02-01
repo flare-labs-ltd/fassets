@@ -10,12 +10,12 @@ import "./AMEvents.sol";
 import "./Agents.sol";
 import "./AssetManagerState.sol";
 import "../interface/IAgentVault.sol";
-
+import "./AgentCollateral.sol";
 
 library CollateralReservations {
     using SafeMath for uint256;
     using SafeBips for uint256;
-    using Agents for Agents.Agent;
+    using AgentCollateral for AgentCollateral.Data;
     
     struct CollateralReservation {
         uint128 underlyingValueUBA;
@@ -39,21 +39,19 @@ library CollateralReservations {
         internal
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        uint256 fullAgentCollateral = IAgentVault(_agentVault).fullCollateral();
-        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
         require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
-        require(agent.freeCollateralLots(_state.settings, fullAgentCollateral, amgToNATWeiPrice) >= _lots,
-            "not enough free collateral");
+        require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
         uint64 lastUnderlyingBlock = 
             SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
         uint64 valueAMG = SafeMath64.mul64(_lots, _state.settings.lotSizeAMG);
         agent.reservedAMG = SafeMath64.add64(agent.reservedAMG, valueAMG);
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
-        uint256 reservationFee = SafeBips.mulBips(Conversion.convertAmgToNATWei(valueAMG, amgToNATWeiPrice),
-            _state.settings.collateralReservationFeeBIPS);
+        uint256 valueNATWei = Conversion.convertAmgToNATWei(valueAMG, collateralData.amgToNATWeiPrice); 
+        uint256 reservationFee = SafeBips.mulBips(valueNATWei, _state.settings.collateralReservationFeeBIPS);
         require(msg.value >= reservationFee, "not enough fee paid");
         // TODO: what if paid fee is too big?
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0

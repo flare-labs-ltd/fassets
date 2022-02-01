@@ -16,13 +16,14 @@ import "./PaymentReport.sol";
 import "./IllegalPaymentChallenge.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./AssetManagerState.sol";
-
+import "./AgentCollateral.sol";
 
 library Redemption {
     using SafeMath for uint256;
     using SafeBips for uint256;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentVerification for PaymentVerification.State;
+    using AgentCollateral for AgentCollateral.Data;
     
     struct RedemptionRequest {
         bytes32 redeemerUnderlyingAddressHash;
@@ -238,11 +239,10 @@ library Redemption {
         // pay redeemer in native currency
         // paid amount is  min(flr_amount * (1 + extra), total collateral share for the amount)
         Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
-        uint256 fullAgentCollateral = IAgentVault(request.agentVault).fullCollateral();
-        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
-        uint256 amountWei = Conversion.convertAmgToNATWei(request.valueAMG, amgToNATWeiPrice)
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, request.agentVault);
+        uint256 amountWei = Conversion.convertAmgToNATWei(request.valueAMG, collateralData.amgToNATWeiPrice)
             .mulBips(_state.settings.redemptionFailureFactorBIPS);
-        uint256 maxAmountWei = Agents.collateralShare(agent, fullAgentCollateral, request.valueAMG);
+        uint256 maxAmountWei = collateralData.collateralShare(agent, request.valueAMG);
         if (amountWei > maxAmountWei) {
             amountWei = maxAmountWei;
         }

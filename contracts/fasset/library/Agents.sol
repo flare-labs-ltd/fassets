@@ -10,7 +10,7 @@ import "./Conversion.sol";
 import "./RedemptionQueue.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
-
+import "./AgentCollateral.sol";
 
 library Agents {
     using SafeMath for uint256;
@@ -18,6 +18,7 @@ library Agents {
     using SafePct for uint256;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     using RedemptionQueue for RedemptionQueue.State;
+    using AgentCollateral for AgentCollateral.Data;
     
     enum AgentType {
         NONE,
@@ -213,13 +214,12 @@ library Agents {
         internal
     {
         Agent storage agent = getAgent(_state, _agentVault);
-        uint256 fullCollateral = IAgentVault(_agentVault).fullCollateral();
-        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
         if (_valueNATWei > agent.withdrawalAnnouncedNATWei) {
             // announcement increased - must check there is enough free collateral and then lock it
             // in this case the wait to withdrawal restarts from this moment
             uint256 increase = _valueNATWei - agent.withdrawalAnnouncedNATWei;
-            require(increase <= freeCollateralWei(agent, _state.settings, fullCollateral, amgToNATWeiPrice),
+            require(increase <= collateralData.freeCollateralWei(agent, _state.settings),
                 "withdrawal: value too high");
             agent.withdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
         } else {
@@ -326,87 +326,6 @@ library Agents {
         return agent.liquidationState.liquidationStartedAt > 0;
     }
 
-    function freeCollateralLots(
-        Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings,
-        uint256 _fullCollateral, 
-        uint256 _amgToNATWeiPrice
-    )
-        internal view 
-        returns (uint256) 
-    {
-        uint256 freeCollateral = freeCollateralWei(_agent, _settings, _fullCollateral, _amgToNATWeiPrice);
-        uint256 lotCollateral = mintingLotCollateralWei(_agent, _settings, _amgToNATWeiPrice);
-        return freeCollateral.div(lotCollateral);
-    }
-
-    function freeCollateralWei(
-        Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings, 
-        uint256 _fullCollateral, 
-        uint256 _amgToNATWeiPrice
-    )
-        internal view 
-        returns (uint256) 
-    {
-        uint256 lockedCollateral = lockedCollateralWei(_agent, _settings, _amgToNATWeiPrice);
-        (, uint256 freeCollateral) = _fullCollateral.trySub(lockedCollateral);
-        return freeCollateral;
-    }
-    
-    function lockedCollateralWei(
-        Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings, 
-        uint256 _amgToNATWeiPrice
-    )
-        internal view 
-        returns (uint256) 
-    {
-        uint256 mintingAMG = uint256(_agent.reservedAMG).add(_agent.mintedAMG);
-        uint256 mintingCollateral = Conversion.convertAmgToNATWei(mintingAMG, _amgToNATWeiPrice)
-            .mulBips(_agent.agentMinCollateralRatioBIPS);
-        uint256 redeemingCollateral = lockedRedeemingCollateralWei(_agent, _settings, _amgToNATWeiPrice);
-        return mintingCollateral.add(redeemingCollateral).add(_agent.withdrawalAnnouncedNATWei);
-    }
-
-    function lockedRedeemingCollateralWei(
-        Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings, 
-        uint256 _amgToNATWeiPrice
-    )
-        internal view 
-        returns (uint256) 
-    {
-        return Conversion.convertAmgToNATWei(_agent.redeemingAMG, _amgToNATWeiPrice)
-            .mulBips(_settings.initialMinCollateralRatioBIPS);
-    }
-    
-    function mintingLotCollateralWei(
-        Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings,
-        uint256 _amgToNATWeiPrice
-    ) 
-        internal view 
-        returns (uint256) 
-    {
-        return Conversion.convertAmgToNATWei(_settings.lotSizeAMG, _amgToNATWeiPrice)
-            .mulBips(_agent.agentMinCollateralRatioBIPS);
-    }
-    
-    function collateralShare(
-        Agents.Agent storage _agent, 
-        uint256 _fullCollateral, 
-        uint256 _valueAMG
-    )
-        internal view 
-        returns (uint256) 
-    {
-        // safe - all are uint64
-        uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG);
-        require(totalAMG < _valueAMG, "value larger than total");
-        return _fullCollateral.mulDiv(_valueAMG, totalAMG);
-    }
-    
     function requireAgentVaultOwner(address _agentVault) internal view {
         address owner = IAgentVault(_agentVault).owner();
         require(msg.sender == owner, "only agent vault owner");

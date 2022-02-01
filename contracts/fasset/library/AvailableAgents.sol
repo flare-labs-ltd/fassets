@@ -10,11 +10,11 @@ import "./AMEvents.sol";
 import "./Agents.sol";
 import "./AssetManagerState.sol";
 import "./Conversion.sol";
-
+import "./AgentCollateral.sol";
 
 library AvailableAgents {
     using SafeMath for uint256;
-    using Agents for Agents.Agent;
+    using AgentCollateral for AgentCollateral.Data;
 
     struct AvailableAgent {
         address agentVault;
@@ -48,9 +48,8 @@ library AvailableAgents {
         // global min collateral ratio (otherwise he can quickly go to liquidation), so we always do it here
         Agents.setAgentMinCollateralRatioBIPS(_state, _agentVault, _agentMinCollateralRatioBIPS);
         // check that there is enough free collateral for at least one lot
-        uint256 fullCollateral = IAgentVault(_agentVault).fullCollateral();
-        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
-        uint256 freeCollateralLots = agent.freeCollateralLots(_state.settings, fullCollateral, amgToNATWeiPrice);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        uint256 freeCollateralLots = collateralData.freeCollateralLots(agent, _state.settings);
         require(freeCollateralLots >= 1, "not enough free collateral");
         // add to queue
         _state.availableAgents.push(AvailableAgent({
@@ -111,13 +110,16 @@ library AvailableAgents {
         uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
         for (uint256 i = _start; i < _end; i++) {
             address agentVault = _state.availableAgents[i].agentVault;
-            uint256 fullCollateral = IAgentVault(agentVault).fullCollateral();
             Agents.Agent storage agent = Agents.getAgentNoCheck(_state, agentVault);
+            AgentCollateral.Data memory collateralData = AgentCollateral.Data({
+                fullCollateral: IAgentVault(agentVault).fullCollateral(), 
+                amgToNATWeiPrice: amgToNATWeiPrice
+            });
             _agents[i - _start] = AvailableAgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
                 agentMinCollateralRatioBIPS: agent.agentMinCollateralRatioBIPS,
-                freeCollateralLots: agent.freeCollateralLots(_state.settings, fullCollateral, amgToNATWeiPrice)
+                freeCollateralLots: collateralData.freeCollateralLots(agent, _state.settings)
             });
         }
     }
