@@ -146,11 +146,15 @@ library Agents {
     )
         internal
     {
+        Agent storage agent = getAgent(_state, _agentVault);
+        require(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0, "agent still active");
+        require(agent.availableAgentsPos == 0, "agent still available");
+        // check that all collateral has been announced for withdrawal
         uint256 fullCollateral = IAgentVault(_agentVault).fullCollateral();
         if (fullCollateral > 0) {
-            // checks that all collateral has been announced for withdrawal
             withdrawalExecuted(_state, _agentVault, fullCollateral);
         }
+        // delete agent data
         delete _state.agents[_agentVault];
         emit AMEvents.AgentDestroyed(_agentVault);
     }
