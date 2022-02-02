@@ -219,6 +219,7 @@ library Redemption {
         emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
             _paymentInfo.deliveredUBA, usedGas, request.underlyingFeeUBA,
             _paymentInfo.underlyingBlock, _redemptionRequestId);
+        // cleanup
         // delete report - not needed anymore since we store confirmation
         PaymentReport.deleteReport(_state.paymentReports, _paymentInfo);
         // delete redemption request at end when we don't need data any more

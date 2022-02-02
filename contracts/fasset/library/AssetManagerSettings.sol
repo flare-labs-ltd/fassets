@@ -94,6 +94,14 @@ library AssetManagerSettings {
         // to allow the agent to respond with legal payment report (e.g. redemption payment; for fee withdrawal
         // there needs to be prior announcement.)
         uint64 paymentChallengeWaitMinSeconds;
+        
+        // Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).
+        // This is the proportional part (in BIPS).
+        uint16 paymentChallengeRewardBIPS;
+        
+        // Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).
+        // This is the fixed part (in underlying AMG, so that we can easily set it as some percent of lot size).
+        uint64 paymentChallengeRewardAMG;
 
         // Agent has to announce any collateral withdrawal and then wait for at least withdrawalWaitMinSeconds.
         // This prevents challenged agent to remove all collateral before challenge can be proved.

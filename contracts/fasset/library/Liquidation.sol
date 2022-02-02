@@ -33,10 +33,21 @@ library Liquidation {
     )
         internal
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        startLiquidation(_state, _agentVault, collateralData, _fullLiquidation);
+    }
+
+    function startLiquidation(
+        AssetManagerState.State storage _state,
+        address _agentVault,
+        AgentCollateral.Data memory _collateralData,
+        bool _fullLiquidation
+    )
+        internal
+    {
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         (Agents.LiquidationPhase liquidationPhase, uint16 premiumFactorBIPS) = 
-            getInitialLiquidationPhase(agent, _state.settings, collateralData, _fullLiquidation);
+            getInitialLiquidationPhase(agent, _state.settings, _collateralData, _fullLiquidation);
 
         if (agent.status == Agents.AgentStatus.NORMAL || 
                 (_fullLiquidation && agent.status == Agents.AgentStatus.LIQUIDATION)) {

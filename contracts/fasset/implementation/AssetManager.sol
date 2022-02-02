@@ -413,7 +413,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * can only be executed if it can prove that report is lying about some data.
      */
     function reportRedemptionPayment(
-        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,  // TODO: rename fields to be like LegalPayment
+        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         uint64 _redemptionRequestId
     )
         external
@@ -562,6 +562,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
             TransactionAttestation.verifyLegalPayment(state.settings, _payment, false);
+        // TODO: check address ownership
         IllegalPaymentChallenge.confirmWrongReportChallenge(state, paymentInfo, _agentVault);
     }
     
@@ -573,6 +574,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
             TransactionAttestation.verifySourceUsingTransaction(state.settings, _transaction);
+        // TODO: check address ownership
         IllegalPaymentChallenge.confirmWrongReportChallenge(state, paymentInfo, _agentVault);
     }
     

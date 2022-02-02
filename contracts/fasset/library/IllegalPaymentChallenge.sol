@@ -4,16 +4,21 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
+import "../../utils/lib/SafeBips.sol";
+import "../interface/IAgentVault.sol";
 import "./AMEvents.sol";
+import "./Conversion.sol";
 import "./Agents.sol";
 import "./Liquidation.sol";
 import "./PaymentVerification.sol";
 import "./PaymentReport.sol";
 import "./AssetManagerState.sol";
+import "./AgentCollateral.sol";
 
 
 library IllegalPaymentChallenge {
     using SafeMath for uint256;
+    using AgentCollateral for AgentCollateral.Data;
     using PaymentVerification for PaymentVerification.State;
     
     struct Challenge {
@@ -59,6 +64,8 @@ library IllegalPaymentChallenge {
         require(!_state.paymentVerifications.transactionConfirmed(txKey), "payment already confirmed");
         // and that it actually backs any minting
         require(agent.mintedAMG > 0, "address empty");
+        // if a challenge was alerady proved, we do not accept new challenges
+        require(agent.successfulPaymentChallenges == 0, "a challenge already proved");
         _state.paymentChallenges.challenges[txKey] = Challenge({
             agentVault: _agentVault,
             challenger: msg.sender,
@@ -77,23 +84,23 @@ library IllegalPaymentChallenge {
     {
         Challenge storage challenge = 
             getChallenge(_state, _paymentInfo.sourceAddressHash, _paymentInfo.transactionHash);
-        require(challenge.agentVault != address(0), 
-            "challenge does not exist");
+        address agentVault = challenge.agentVault;
+        require(agentVault != address(0), "challenge does not exist");
         // there is a minimum time required before challenge and challenge confirmation
         // TODO: is this still needed - one reason was to allow agent time for report, but now report is mandatory
-        require(uint256(challenge.createdAt).add(_state.settings.paymentChallengeWaitMinSeconds) <= block.timestamp,
-            "confirmation too early");
+        uint256 earliestTime = uint256(challenge.createdAt).add(_state.settings.paymentChallengeWaitMinSeconds);
+        require(earliestTime <= block.timestamp, "confirmation too early");
         // cannot challenge if there is a matching report
         PaymentReport.ReportMatch reportMatch = PaymentReport.reportMatch(_state.paymentReports, _paymentInfo);
-        require(reportMatch != PaymentReport.ReportMatch.MATCH,
-            "matching report exists");
+        require(reportMatch != PaymentReport.ReportMatch.MATCH, "matching report exists");
         // check that proof of this tx wasn't used before and mark it as used
         _state.paymentVerifications.confirmSourceDecreasingTransaction(_paymentInfo);
-        _startLiquidation(_state, challenge.agentVault);
-        _rewardChallengers(_state, challenge.challenger, msg.sender, challenge.mintedAMG);
-        emit AMEvents.IllegalPaymentConfirmed(challenge.agentVault, _paymentInfo.transactionHash);
+        // start liquidation and reward challengers
+        _liquidateAndRewardChallengers(_state, agentVault, challenge.challenger, msg.sender, challenge.mintedAMG);
+        // emit events
+        emit AMEvents.IllegalPaymentConfirmed(agentVault, _paymentInfo.transactionHash);
+        // cleanup
         deleteChallenge(_state, _paymentInfo);
-        // delete report if it exists
         if (reportMatch != PaymentReport.ReportMatch.DOES_NOT_EXIST) {
             PaymentReport.deleteReport(_state.paymentReports, _paymentInfo);
         }
@@ -114,14 +121,19 @@ library IllegalPaymentChallenge {
         // challenge (if it exists) is needed to reward original challenger and get amount of minting at the time
         Challenge storage challenge = 
             getChallenge(_state, _paymentInfo.sourceAddressHash, _paymentInfo.transactionHash);
+        bool challengeExists = challenge.challenger != address(0);
+        // wrong report challenge is accepted only if an unproved challenge exists for this tx hash 
+        // or if this is the first successful challenge
+        require(challengeExists || agent.successfulPaymentChallenges == 0, "a challenge already proved");
         // if the challenge exists, use its mintedAMG value (cannot be 0), otherwise use current value for the address
         uint64 backingAMG = challenge.mintedAMG != 0 ? challenge.mintedAMG : agent.mintedAMG;
-        _startLiquidation(_state, _agentVault);
-        _rewardChallengers(_state, challenge.challenger, msg.sender, backingAMG);
+        _liquidateAndRewardChallengers(_state, _agentVault, challenge.challenger, msg.sender, backingAMG);
+        // emit events
         emit AMEvents.WrongPaymentReportConfirmed(_agentVault, _paymentInfo.transactionHash);
-        // no need for challenge any more
-        deleteChallenge(_state, _paymentInfo);
-        // delete the invalid report
+        // cleanup
+        if (challengeExists) {
+            deleteChallenge(_state, _paymentInfo);
+        }
         PaymentReport.deleteReport(_state.paymentReports, _paymentInfo);
     }
 
@@ -149,25 +161,35 @@ library IllegalPaymentChallenge {
         return _state.paymentChallenges.challenges[txKey];
     }
     
-    function _startLiquidation(
+    function _liquidateAndRewardChallengers(
         AssetManagerState.State storage _state,
-        address _agentVault
-    ) 
-        private
-    {
-        // start full liquidation
-        Liquidation.startLiquidation(_state, _agentVault, true);
-    }
-    
-    function _rewardChallengers(
-        AssetManagerState.State storage _state,
+        address _agentVault,
         address _challenger, 
         address _challengeProver,
         uint64 _backingAMGAtChallenge
     ) 
         private
     {
-        // TODO
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        // start full liquidation
+        Liquidation.startLiquidation(_state, _agentVault, collateralData, true);
+        // calculate the reward
+        uint256 rewardAMG = SafeBips.mulBips(_backingAMGAtChallenge, _state.settings.paymentChallengeRewardBIPS)
+            .add(_state.settings.paymentChallengeRewardAMG);
+        uint256 rewardNATWei = Conversion.convertAmgToNATWei(rewardAMG, collateralData.amgToNATWeiPrice);
+        // divide reward by `2 ** agent.successfulPaymentChallenges` so that in case of multiple successful 
+        // challenges each next challenge gets only half the reward of the previous, summing to at most twice the
+        // original reward sum
+        rewardNATWei /= 2 ** agent.successfulPaymentChallenges;
+        // if challenger is different from challenge prover, the reward is split between them
+        if (_challenger != address(0) && _challenger != _challengeProver) {
+            rewardNATWei /= 2;
+            IAgentVault(_agentVault).liquidate(_challenger, rewardNATWei);
+        }
+        IAgentVault(_agentVault).liquidate(_challengeProver, rewardNATWei);
+        // update successful challenge count
+        agent.successfulPaymentChallenges += 1;
     }
     
     function _challengeExists(
