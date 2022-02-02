@@ -22,7 +22,7 @@ library AllowedPaymentAnnouncement {
         address _agentVault,
         uint256 _valueUBA
     )
-        internal
+        external
     {
         Agents.requireAgentVaultOwner(_agentVault);
         require(_valueUBA > 0, "invalid value");
@@ -42,7 +42,7 @@ library AllowedPaymentAnnouncement {
         address _agentVault,
         uint64 _announcementId
     )
-        internal
+        external
     {
         Agents.requireAgentVaultOwner(_agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);

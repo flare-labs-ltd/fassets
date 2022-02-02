@@ -54,7 +54,7 @@ library Redemption {
         bytes memory _redeemerUnderlyingAddress,
         uint64 _currentUnderlyingBlock
     )
-        internal
+        external
         returns (uint64 _redeemedLots)
     {
         uint256 maxRedeemedTickets = _state.settings.maxRedeemedTickets;
@@ -164,7 +164,7 @@ library Redemption {
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         uint64 _redemptionRequestId
     )
-        internal
+        external
     {
         RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
         Agents.requireAgentVaultOwner(request.agentVault);
@@ -189,7 +189,7 @@ library Redemption {
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         uint64 _redemptionRequestId
     )
-        internal
+        external
     {
         RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
         require(PaymentReport.reportMatch(_state.paymentReports, _paymentInfo) != PaymentReport.ReportMatch.MISMATCH,
@@ -232,7 +232,7 @@ library Redemption {
         uint64 _redemptionRequestId,
         uint64 _currentUnderlyingBlock
     )
-        internal
+        external
     {
         RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
         require(!_isPaymentOnTime(_state, request, _currentUnderlyingBlock),
@@ -295,7 +295,7 @@ library Redemption {
         uint64 _redemptionRequestId,
         uint64 _currentUnderlyingBlock  // must be proved via block height attestation!
     )
-        internal
+        external
     {
         // TODO: should only agent call this?
         RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
@@ -315,7 +315,7 @@ library Redemption {
         AssetManagerState.State storage _state,
         uint64 _redemptionRequestId
     )
-        internal
+        external
     {
         // blocking proof checked in AssetManager
         RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
@@ -339,7 +339,7 @@ library Redemption {
         address _agentVault,
         uint256 _amountUBA
     ) 
-        internal 
+        external 
         returns (uint256 _closedUBA)
     {
         Agents.requireAgentVaultOwner(_agentVault);

@@ -7,18 +7,17 @@ import "../interface/IAssetManager.sol";
 import "../interface/IAttestationClient.sol";
 import "../interface/IFAsset.sol";
 import "../implementation/AgentVault.sol";
-import "../../utils/lib/SafeBips.sol";
-import "../../utils/lib/SafeMath64.sol";
-import "../library/Agents.sol";
 import "../library/AssetManagerState.sol";
 import "../library/AssetManagerSettings.sol";
-import "../library/CollateralReservations.sol";
 import "../library/Conversion.sol";
 import "../library/Contracts.sol";
-import "../library/Minting.sol";
-import "../library/PaymentVerification.sol";
 import "../library/TransactionAttestation.sol";
-import "../library/UnderlyingAddressOwnership.sol";
+import "../library/PaymentVerification.sol";
+// external
+import "../library/AvailableAgents.sol";
+import "../library/Agents.sol";
+import "../library/CollateralReservations.sol";
+import "../library/Minting.sol";
 import "../library/Redemption.sol";
 import "../library/IllegalPaymentChallenge.sol";
 import "../library/Liquidation.sol";
@@ -525,7 +524,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         IAttestationClient.BlockHeightExists calldata _proof,
         address _agentVault
     )
-        internal
+        external
     {
         uint64 underlyingBlock = TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
         UnderlyingFreeBalance.triggerTopupLiquidation(state, _agentVault, underlyingBlock);

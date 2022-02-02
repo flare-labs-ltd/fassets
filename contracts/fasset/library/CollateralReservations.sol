@@ -37,7 +37,7 @@ library CollateralReservations {
         uint64 _lots,
         uint64 _currentUnderlyingBlock
     )
-        internal
+        external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
@@ -77,7 +77,7 @@ library CollateralReservations {
         uint64 _crtId,
         uint64 _currentUnderlyingBlock  // must be proved
     )
-        internal
+        external
     {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
         // check requirements
@@ -95,7 +95,7 @@ library CollateralReservations {
         AssetManagerState.State storage _state, 
         uint64 _crtId
     )
-        internal
+        external
     {
         // TODO: should only agent be allowed to do this?
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
@@ -109,7 +109,7 @@ library CollateralReservations {
         uint64 _crtId,
         uint256 _provedUnderlyingBlock    // must be proved
     )
-        internal
+        external
     {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
         require(_provedUnderlyingBlock >= crt.firstUnderlyingBlock, "proved block too low");
@@ -120,7 +120,7 @@ library CollateralReservations {
         AssetManagerState.State storage _state, 
         uint64 _crtId
     )
-        internal
+        external
     {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
         require(!crt.underlyingBlockVerified, "underlying block verified");

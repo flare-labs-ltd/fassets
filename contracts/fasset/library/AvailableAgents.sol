@@ -37,7 +37,7 @@ library AvailableAgents {
         uint256 _feeBIPS,
         uint256 _agentMinCollateralRatioBIPS
     ) 
-        internal 
+        external 
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.agentType == Agents.AgentType.AGENT_100, "only agent 100");
@@ -64,7 +64,7 @@ library AvailableAgents {
         AssetManagerState.State storage _state, 
         address _agentVault
     )
-        internal
+        external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
@@ -84,7 +84,7 @@ library AvailableAgents {
         uint256 _start, 
         uint256 _end
     ) 
-        internal view 
+        external view 
         returns (address[] memory _agents, uint256 _totalLength)
     {
         _totalLength = _state.availableAgents.length;
@@ -101,7 +101,7 @@ library AvailableAgents {
         uint256 _start, 
         uint256 _end
     ) 
-        internal view 
+        external view 
         returns (AvailableAgentInfo[] memory _agents, uint256 _totalLength)
     {
         _totalLength = _state.availableAgents.length;

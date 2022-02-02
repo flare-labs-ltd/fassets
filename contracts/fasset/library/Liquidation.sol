@@ -31,7 +31,7 @@ library Liquidation {
         address _agentVault,
         bool _fullLiquidation
     )
-        internal
+        external
     {
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
         startLiquidation(_state, _agentVault, collateralData, _fullLiquidation);
@@ -43,7 +43,7 @@ library Liquidation {
         AgentCollateral.Data memory _collateralData,
         bool _fullLiquidation
     )
-        internal
+        public
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         (Agents.LiquidationPhase liquidationPhase, uint16 premiumFactorBIPS) = 
@@ -66,7 +66,7 @@ library Liquidation {
         address _agentVault,
         uint64 _amountAMG
     )
-        internal
+        external
         returns (uint64 _liquidationAmountAMG)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
@@ -115,7 +115,7 @@ library Liquidation {
         AssetManagerState.State storage _state,
         address _agentVault
     )
-        internal
+        external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);

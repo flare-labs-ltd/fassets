@@ -54,7 +54,7 @@ library IllegalPaymentChallenge {
         address _agentVault,
         bytes32 _transactionHash
     )
-        internal
+        external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         bytes32 txKey = PaymentVerification.transactionKey(agent.underlyingAddressHash, _transactionHash);
@@ -80,7 +80,7 @@ library IllegalPaymentChallenge {
         AssetManagerState.State storage _state,
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo
     )
-        internal
+        external
     {
         Challenge storage challenge = 
             getChallenge(_state, _paymentInfo.sourceAddressHash, _paymentInfo.transactionHash);
@@ -111,7 +111,7 @@ library IllegalPaymentChallenge {
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         address _agentVault
     )
-        internal
+        external
     {
         require(PaymentReport.reportMatch(_state.paymentReports, _paymentInfo) == PaymentReport.ReportMatch.MISMATCH,
             "no report mismatch");

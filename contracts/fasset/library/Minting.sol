@@ -23,7 +23,7 @@ library Minting {
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         uint64 _crtId
     )
-        internal
+        external
         returns (address _minter, uint256 _mintValueUBA)
     {
         CollateralReservations.CollateralReservation storage crt = 
@@ -56,7 +56,7 @@ library Minting {
         address _agentVault,
         uint64 _lots
     )
-        internal
+        external
         returns (uint256 _mintValueUBA)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);

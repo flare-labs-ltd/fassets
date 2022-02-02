@@ -118,7 +118,7 @@ library Agents {
         address _agentVault,
         bytes memory _underlyingAddressString
     ) 
-        internal 
+        external 
     {
         Agent storage agent = _state.agents[_agentVault];
         require(agent.agentType == AgentType.NONE, "agent already exists");
@@ -144,7 +144,7 @@ library Agents {
         AssetManagerState.State storage _state, 
         address _agentVault
     )
-        internal
+        external
     {
         Agent storage agent = getAgent(_state, _agentVault);
         require(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0, "agent still active");
@@ -222,7 +222,7 @@ library Agents {
         address _agentVault,
         uint256 _valueNATWei
     )
-        internal
+        external
     {
         Agent storage agent = getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
@@ -276,7 +276,7 @@ library Agents {
         AssetManagerState.State storage _state,
         address _agentVault
     )
-        internal
+        external
     {
         Agent storage agent = getAgent(_state, _agentVault);
         // if dust is more than 1 lot, create a new redemption ticket
@@ -292,7 +292,7 @@ library Agents {
         address _agentVault,
         uint256 _valueNATWei
     )
-        internal
+        public
     {
         Agent storage agent = getAgent(_state, _agentVault);
         require(_valueNATWei <= agent.withdrawalAnnouncedNATWei,

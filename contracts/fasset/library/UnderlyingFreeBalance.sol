@@ -64,7 +64,7 @@ library UnderlyingFreeBalance {
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         address _agentVault
     )
-        internal
+        external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.underlyingAddressHash == _paymentInfo.sourceAddressHash, 
@@ -93,7 +93,7 @@ library UnderlyingFreeBalance {
         address _agentVault,
         uint64 _currentUnderlyingBlock
     )
-        internal
+        external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.lastUnderlyingBlockForTopup != 0 && agent.lastUnderlyingBlockForTopup < _currentUnderlyingBlock,
