@@ -45,7 +45,6 @@ library UnderlyingFreeBalance {
         } else if (agent.lastUnderlyingBlockForTopup != 0) {
             agent.lastUnderlyingBlockForTopup = 0;
         }
-        // TODO: trigger liquidation if topup not paid in time
     }
 
     function increaseFreeBalance(

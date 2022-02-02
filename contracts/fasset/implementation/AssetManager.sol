@@ -402,7 +402,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     )
         external
     {
-        // TODO: should only agent call this?
         uint64 underlyingBlock = TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
         Redemption.challengeRedemptionRequestUnderlyingBlock(state, _redemptionRequestId, underlyingBlock);
     }

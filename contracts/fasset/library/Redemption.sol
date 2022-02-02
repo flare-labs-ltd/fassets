@@ -196,7 +196,8 @@ library Redemption {
             "mismatching report exists");
         // we require the agent to trigger confirmation
         Agents.requireAgentVaultOwner(request.agentVault);
-        // TODO: should we check that payment is on time or rely on redeemer to punish late payment confirmation?
+        // NOTE: we don't check that confirmation is on time - if it isn't, it's the agent's risk anyway,
+        // since the redeemer can demand payment in collateral anytime
         Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
         // confirm payment proof
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
@@ -240,27 +241,36 @@ library Redemption {
         // to do it at some particular time
         require(msg.sender == request.redeemer, "only redeemer");
         // pay redeemer in native currency
-        // paid amount is  min(flr_amount * (1 + extra), total collateral share for the amount)
-        Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, request.agentVault);
-        uint256 amountWei = Conversion.convertAmgToNATWei(request.valueAMG, collateralData.amgToNATWeiPrice)
-            .mulBips(_state.settings.redemptionFailureFactorBIPS);
-        uint256 maxAmountWei = collateralData.collateralShare(agent, request.valueAMG);
-        if (amountWei > maxAmountWei) {
-            amountWei = maxAmountWei;
-        }
-        // TODO: move out of library?
-        IAgentVault(request.agentVault).liquidate(request.redeemer, amountWei);
+        uint256 paidAmountWei = _collateralAmountForRedemption(_state, request.agentVault, request.valueAMG);
+        IAgentVault(request.agentVault).liquidate(request.redeemer, paidAmountWei);
         // release remaining agent collateral
         Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         // underlying backing collateral was removed from mintedAMG accounting at redemption request
         // now we add it to free balance since it wasn't paid to the redeemer
         uint256 liquidatedUBA = Conversion.convertAmgToUBA(_state.settings, request.valueAMG);
         UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, liquidatedUBA);
+        // send events
         emit AMEvents.RedemptionFailed(request.agentVault, request.redeemer, 
-            amountWei, liquidatedUBA, _redemptionRequestId);
+            paidAmountWei, liquidatedUBA, _redemptionRequestId);
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
+    }
+    
+    function _collateralAmountForRedemption(
+        AssetManagerState.State storage _state,
+        address _agentVault,
+        uint64 _requestValueAMG
+    )
+        internal view
+        returns (uint256)
+    {
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        // paid amount is  min(flr_amount * (1 + extra), total collateral share for the amount)
+        uint256 amountWei = Conversion.convertAmgToNATWei(_requestValueAMG, collateralData.amgToNATWeiPrice)
+            .mulBips(_state.settings.redemptionFailureFactorBIPS);
+        uint256 maxAmountWei = collateralData.collateralShare(agent, _requestValueAMG);
+        return amountWei <= maxAmountWei ? amountWei : maxAmountWei;
     }
 
     function _isPaymentOnTime(
@@ -287,6 +297,7 @@ library Redemption {
     )
         internal
     {
+        // TODO: should only agent call this?
         RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
         // check that challenge is within minSecondsForPayment from redemption request
         uint256 lastTimestamp = uint256(request.timestamp).add(_state.settings.minSecondsForPayment);

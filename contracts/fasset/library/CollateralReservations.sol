@@ -160,8 +160,8 @@ library CollateralReservations {
         internal pure
         returns (bytes32)
     {
-        // TODO: should add some larger constant or hash with something to differentiate 
-        // from other possible reference types?
+        // TODO: should add some larger constant or hash with something?
+        // (to differentiate from other possible reference types)
         return bytes32(1 + _crtId);
     }
     
