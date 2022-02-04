@@ -6007,9 +6007,9 @@ find-yarn-workspace-root@^2.0.0:
   dependencies:
     micromatch "^4.0.2"
 
-"flare-smart-contracts@https://gitlab.com/flarenetwork/flare-smart-contracts.git":
+"flare-smart-contracts@git+https://gitlab.com/flarenetwork/flare-smart-contracts.git":
   version "0.0.1"
-  resolved "https://gitlab.com/flarenetwork/flare-smart-contracts.git#750d12f1c6650a546a4039395d846202900f4ff3"
+  resolved "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#11398e1068728c38a24815ddf380a973f36f57f6"
   dependencies:
     "@openzeppelin/contracts" "3.4.0"
     "@tenderly/hardhat-tenderly" "1.0.12"
