@@ -23,8 +23,8 @@ task(TASK_COMPILE)
             // if (text.match(/Warning: SPDX license identifier not provided in source file/)) return '';
             if (/MockContract.sol/.test(text) &&
                 /Warning: This contract has a payable fallback function, but no receive ether function/.test(text)) return '';
-            // if (/VPToken.sol/.test(text) &&
-            //     /Warning: Visibility for constructor is ignored./.test(text)) return '';
+            if (/VPToken.sol/.test(text) &&
+                /Warning: Visibility for constructor is ignored./.test(text)) return '';
             if (/ReentrancyGuard.sol/.test(text) &&
                 /Warning: Visibility for constructor is ignored/.test(text)) return '';
             return text;
