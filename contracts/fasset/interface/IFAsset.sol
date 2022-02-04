@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.11;
+pragma solidity >=0.7.6 <0.9;
 
 
 interface IFAsset {
@@ -19,5 +19,5 @@ interface IFAsset {
      * Get the asset manager, corresponding to this fAsset.
      * fAssets and asset managers are in 1:1 correspondence.
      */
-    function assetManager() external view;
+    function assetManager() external view returns (address);
 }

@@ -46,16 +46,4 @@ extendEnvironment((hre) => {
     hre.getChainConfigParameters = getChainConfigParameters;
 });
 
-// // Rig up deployment tasks
-// task("deploy-contracts", "Deploy all contracts")
-//     .addFlag("quiet", "Suppress console output")
-//     .setAction(async (args, hre, runSuper) => {
-//         const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
-//         if (parameters) {
-//             await deployContracts(hre, parameters, args.quiet);
-//         } else {
-//             throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
-//         }
-//     });
-
 export default config;

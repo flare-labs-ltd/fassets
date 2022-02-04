@@ -11,6 +11,10 @@
   "license": "MIT",
   "directories": {},
   "scripts": {
+    "---------HOOKS": "",
+    "postinstall": "echo Running install in flare-smart-contracts... && cd node_modules/flare-smart-contracts && yarn",
+    "prepare": "yarn flaten-dependency node_modules/flare-smart-contracts contracts/token/implementation/VPToken.sol cache/flattened/VPToken.sol",
+    
     "---------TEST---SCRIPTS": "",
     "test": "yarn hardhat test",
     "coverage": "env NODE_OPTIONS=\"--max_old_space_size=8192\" yarn hardhat coverage --testfiles",
@@ -29,6 +33,7 @@
     "flatten": "yarn hardhat flatten",
     "slither": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json 2> /dev/null || true; node node_modules/flare-smart-contracts/scripts/slither-parse.js ./slither.json",
     "slither-show-stderr": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json || true; node node_modules/flare-smart-contracts/scripts/slither-parse.js ./slither.json",
+    "flaten-dependency": "node scripts/bash.js scripts/flatten-dependency.sh",
 
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",
