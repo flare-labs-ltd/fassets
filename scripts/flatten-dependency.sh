@@ -9,10 +9,14 @@ FILE=$2
 OUTFILE=$3
 TMPFILE="/tmp/$(basename $2)"
 
+if [[ "$SUBPROJECT_DIR" =~ flare-smart-contracts ]]; then
+    HHCONFIG="--config hardhatSetup.config.ts"
+fi
+
 mkdir -p "$(dirname $OUTFILE)"
 pushd "$SUBPROJECT_DIR" > /dev/null
 PRAGMA_SOLIDITY=$(grep '^pragma solidity' "$FILE")
-yarn hardhat flatten "$FILE" > "$TMPFILE"
+yarn hardhat $HHCONFIG flatten "$FILE" > "$TMPFILE"
 popd > /dev/null
 
 echo "// SPDX-License-Identifier: MIT" > "$OUTFILE"
