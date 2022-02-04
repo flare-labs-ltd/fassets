@@ -5,7 +5,7 @@
   "main": "",
   "repository": {
     "type": "git",
-    "url": "git+https://gitlab.com/flarenetwork/flare_smart_contracts.git"
+    "url": "git+https://gitlab.com/flarenetwork/fasset.git"
   },
   "author": "Flare SC team",
   "license": "MIT",
@@ -55,7 +55,7 @@
     "hardhat": "2.8.3",
     "solhint": "3.3.6",
     "solidity-coverage": "0.7.18",
-    "flare-smart-contracts": "https://gitlab.com/flarenetwork/flare-smart-contracts.git"
+    "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git"
   },
   "devDependencies": {
     "@gnosis.pm/mock-contract": "4.0.0",
