@@ -3,7 +3,7 @@ pragma solidity >=0.7.6 <0.9;
 
 
 interface IAttestationClient {
-    struct LegalPayment {
+    struct PaymentProof {
         // Buffer number (epoch id) of the state connector request
         uint256 stateConnectorBuffer;
         
@@ -19,9 +19,12 @@ interface IAttestationClient {
         // Hash of the transaction on the underlying chain.
         bytes32 transactionHash;
         
+        // Output index for transactions with multiple outputs.
+        uint8 utxo;
+        
         // In case of single source address (required for redemptions): hash of the source address as a string.
         // For multi-source payments (allowed for minting and topup): must be zero.
-        bytes32 spendingAddress;
+        bytes32 sourceAddress;
         
         // Hash of the receiving address as a string (there can only be a single address for this type).
         bytes32 receivingAddress;
@@ -34,11 +37,14 @@ interface IAttestationClient {
 
         // The amount that what went out of source address (or all source addresses), in smallest underlying units.
         // It includes both payment value and fee / gas.
-        // For utxo chains it can be negative, that's why signed int256 is used.
         uint256 spentAmount;
         
         // The amount the receiving address received, in smallest underlying units.
         uint256 receivedAmount;
+        
+        // True if the transaction has exactly one source address and 
+        // exactly one receiving address (different from source).
+        bool oneToOne;
 
         // Transaction success status, can have 3 values:
         // 0 - Success
@@ -47,7 +53,10 @@ interface IAttestationClient {
         uint8 status;
     }
     
-    struct SourceUsingTransaction {
+    struct BalanceDecreasingTransaction {
+        // Buffer number (epoch id) of the state connector request
+        uint256 stateConnectorBuffer;
+        
         // Merkle proof needed to verify the existence of transaction with the below fields.
         bytes32[] merkleProof;
         
@@ -62,15 +71,18 @@ interface IAttestationClient {
         
         // Must always be a single address. For utxo transactions with multiple addresses,
         // it is the one for which `spent` is calculated and was indicated in the state connector instructions.
-        bytes32 spendingAddress;
+        bytes32 sourceAddress;
 
-        // The amount that what went out of spending address, in smallest underlying units.
+        // The amount that what went out of source address, in smallest underlying units.
         // It includes both payment value and fee (gas).
         // For utxo chains it can be negative, that's why signed int256 is used.
         int256 spentAmount;
     }
     
     struct BlockHeightExists {
+        // Buffer number (epoch id) of the state connector request
+        uint256 stateConnectorBuffer;
+        
         // Merkle proof needed to verify the existence of transaction with the below fields.
         bytes32[] merkleProof;
         
@@ -79,15 +91,15 @@ interface IAttestationClient {
     }
 
     // When verifying state connector proofs, the data verified will be
-    // `keccak256(abi.encode(attestationType, _chainId, all _data fields except merkleProof))`
+    // `keccak256(abi.encode(attestationType, _chainId, all _data fields except merkleProof, stateConnectorBuffer))`
     // where `attestationType` (`uint16`) is a different constant for each of the methods below
     // (possible values are defined in attestation specs).
     
-    function verifyLegalPayment(uint32 _chainId, LegalPayment calldata _data) 
+    function verifyPaymentProof(uint32 _chainId, PaymentProof calldata _data) 
         external view
         returns (bool _proved);
     
-    function verifySourceUsingTransaction(uint32 _chainId, SourceUsingTransaction calldata _data) 
+    function verifyBalanceDecreasingTransaction(uint32 _chainId, BalanceDecreasingTransaction calldata _data) 
         external view
         returns (bool _proved);
     

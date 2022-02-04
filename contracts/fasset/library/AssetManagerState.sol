@@ -12,7 +12,7 @@ import "./CollateralReservations.sol";
 import "./Redemption.sol";
 import "./AllowedPaymentAnnouncement.sol";
 import "./IllegalPaymentChallenge.sol";
-import "./PaymentReport.sol";
+import "./PaymentReports.sol";
 
 
 library AssetManagerState {
@@ -51,7 +51,7 @@ library AssetManagerState {
         IllegalPaymentChallenge.Challenges paymentChallenges;
         
         // Redemption payment reports and announced payment reports
-        PaymentReport.Reports paymentReports;
+        PaymentReports.Reports paymentReports;
         
         // new ids (listed together to save storage); all must be incremented before assigning, so 0 means empty
         uint64 newCrtId;

@@ -61,7 +61,7 @@ library AllowedPaymentAnnouncement {
         require(!PaymentVerification.transactionConfirmed(_state.paymentVerifications, key),
             "payment report after confirm");
         // create the report
-        PaymentReport.createReport(_state.paymentReports, _paymentInfo);
+        PaymentReports.createReport(_state.paymentReports, _paymentInfo);
         // deduct gas from free balance (don't report multiple times or gas will be deducted every time)
         UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, 0, PaymentVerification.usedGas(_paymentInfo),
             _paymentInfo.underlyingBlock);

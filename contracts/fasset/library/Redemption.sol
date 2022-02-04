@@ -12,7 +12,7 @@ import "./Conversion.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentVerification.sol";
 import "./Agents.sol";
-import "./PaymentReport.sol";
+import "./PaymentReports.sol";
 import "./IllegalPaymentChallenge.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./AssetManagerState.sol";
@@ -178,7 +178,7 @@ library Redemption {
         require(!PaymentVerification.transactionConfirmed(_state.paymentVerifications, _paymentInfo),
             "payment report after confirm");
         // create the report
-        PaymentReport.createReport(_state.paymentReports, _paymentInfo);
+        PaymentReports.createReport(_state.paymentReports, _paymentInfo);
         emit AMEvents.RedemptionPaymentReported(request.agentVault, request.redeemer,
             _paymentInfo.deliveredUBA, _paymentInfo.spentUBA, request.underlyingFeeUBA,
             _paymentInfo.underlyingBlock, _redemptionRequestId);
@@ -192,7 +192,7 @@ library Redemption {
         external
     {
         RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
-        require(PaymentReport.reportMatch(_state.paymentReports, _paymentInfo) != PaymentReport.ReportMatch.MISMATCH,
+        require(PaymentReports.reportMatch(_state.paymentReports, _paymentInfo) != PaymentReports.ReportMatch.MISMATCH,
             "mismatching report exists");
         // we require the agent to trigger confirmation
         Agents.requireAgentVaultOwner(request.agentVault);
@@ -222,7 +222,7 @@ library Redemption {
             _paymentInfo.underlyingBlock, _redemptionRequestId);
         // cleanup
         // delete report - not needed anymore since we store confirmation
-        PaymentReport.deleteReport(_state.paymentReports, _paymentInfo);
+        PaymentReports.deleteReport(_state.paymentReports, _paymentInfo);
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
     }

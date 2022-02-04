@@ -11,7 +11,7 @@ import "./Conversion.sol";
 import "./Agents.sol";
 import "./Liquidation.sol";
 import "./PaymentVerification.sol";
-import "./PaymentReport.sol";
+import "./PaymentReports.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
 
@@ -91,8 +91,8 @@ library IllegalPaymentChallenge {
         uint256 earliestTime = uint256(challenge.createdAt).add(_state.settings.paymentChallengeWaitMinSeconds);
         require(earliestTime <= block.timestamp, "confirmation too early");
         // cannot challenge if there is a matching report
-        PaymentReport.ReportMatch reportMatch = PaymentReport.reportMatch(_state.paymentReports, _paymentInfo);
-        require(reportMatch != PaymentReport.ReportMatch.MATCH, "matching report exists");
+        PaymentReports.ReportMatch reportMatch = PaymentReports.reportMatch(_state.paymentReports, _paymentInfo);
+        require(reportMatch != PaymentReports.ReportMatch.MATCH, "matching report exists");
         // check that proof of this tx wasn't used before and mark it as used
         _state.paymentVerifications.confirmSourceDecreasingTransaction(_paymentInfo);
         // start liquidation and reward challengers
@@ -101,8 +101,8 @@ library IllegalPaymentChallenge {
         emit AMEvents.IllegalPaymentConfirmed(agentVault, _paymentInfo.transactionHash);
         // cleanup
         deleteChallenge(_state, _paymentInfo);
-        if (reportMatch != PaymentReport.ReportMatch.DOES_NOT_EXIST) {
-            PaymentReport.deleteReport(_state.paymentReports, _paymentInfo);
+        if (reportMatch != PaymentReports.ReportMatch.DOES_NOT_EXIST) {
+            PaymentReports.deleteReport(_state.paymentReports, _paymentInfo);
         }
     }
     
@@ -113,7 +113,7 @@ library IllegalPaymentChallenge {
     )
         external
     {
-        require(PaymentReport.reportMatch(_state.paymentReports, _paymentInfo) == PaymentReport.ReportMatch.MISMATCH,
+        require(PaymentReports.reportMatch(_state.paymentReports, _paymentInfo) == PaymentReports.ReportMatch.MISMATCH,
             "no report mismatch");
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // check that proof of this tx wasn't used before and mark it as used
@@ -134,7 +134,7 @@ library IllegalPaymentChallenge {
         if (challengeExists) {
             deleteChallenge(_state, _paymentInfo);
         }
-        PaymentReport.deleteReport(_state.paymentReports, _paymentInfo);
+        PaymentReports.deleteReport(_state.paymentReports, _paymentInfo);
     }
 
     function deleteChallenge(

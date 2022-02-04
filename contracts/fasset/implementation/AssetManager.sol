@@ -74,12 +74,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * (depends on setting `requireEOAAddressProof`).
      */
     function claimAgentUnderlyingAddress(
-        IAttestationClient.LegalPayment calldata _payment
+        IAttestationClient.PaymentProof calldata _payment
     )
         external
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyLegalPaymentSuccess(state.settings, _payment, true);
+            TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, true);
         UnderlyingAddressOwnership.claimWithProof(state.underlyingAddressOwnership, 
             paymentInfo, msg.sender, paymentInfo.sourceAddressHash);
     }
@@ -314,14 +314,14 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * and collect the minted f-assets.
      */
     function executeMinting(
-        IAttestationClient.LegalPayment calldata _payment,
+        IAttestationClient.PaymentProof calldata _payment,
         uint64 _crtId
     ) 
         external 
         nonReentrant
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyLegalPaymentSuccess(state.settings, _payment, false);
+            TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
         (address minter, uint256 mintedUBA) = Minting.mintingExecuted(state, paymentInfo, _crtId);
         fAsset.mint(minter, mintedUBA);
     }
@@ -347,7 +347,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
      */
     function selfMint(
-        IAttestationClient.LegalPayment calldata _payment,
+        IAttestationClient.PaymentProof calldata _payment,
         address _agentVault,
         uint64 _lots
     ) 
@@ -355,7 +355,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     {
         Agents.requireAgentVaultOwner(_agentVault);
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyLegalPaymentSuccess(state.settings, _payment, false);
+            TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
         uint256 mintedUBA = Minting.selfMint(state, paymentInfo, _agentVault, _lots);
         fAsset.mint(msg.sender, mintedUBA);
     }
@@ -411,12 +411,14 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * can only be executed if it can prove that report is lying about some data.
      */
     function reportRedemptionPayment(
-        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
+        PaymentReport calldata _paymentReport,
         uint64 _redemptionRequestId
     )
         external
     {
-        Redemption.reportRedemptionPayment(state, _paymentInfo, _redemptionRequestId);
+        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
+            TransactionAttestation.decodePaymentReport(_paymentReport);
+        Redemption.reportRedemptionPayment(state, paymentInfo, _redemptionRequestId);
     }
 
     /**
@@ -424,13 +426,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * and to make sure that the redeemer cannot demand payment in collateral on timeout.
      */    
     function confirmRedemptionPayment(
-        IAttestationClient.LegalPayment calldata _payment,
+        IAttestationClient.PaymentProof calldata _payment,
         uint64 _redemptionRequestId
     )
         external
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyLegalPaymentSuccess(state.settings, _payment, false);
+            TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
         Redemption.confirmRedemptionPayment(state, paymentInfo, _redemptionRequestId);
     }
 
@@ -454,12 +456,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * and can keep both the collateral and underlying funds.
      */
     function redemptionPaymentBlocked(
-        IAttestationClient.LegalPayment calldata _payment,
+        IAttestationClient.PaymentProof calldata _payment,
         uint64 _redemptionRequestId
     )
         external
     {
-        TransactionAttestation.verifyLegalPayment(state.settings, _payment, true);
+        TransactionAttestation.verifyPaymentProof(state.settings, _payment, true);
         require(_payment.status == TransactionAttestation.PAYMENT_BLOCKED,
             "redemption payment not blocked");
         Redemption.redemptionPaymentBlocked(state, _redemptionRequestId);
@@ -497,26 +499,28 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     }
     
     function reportAllowedPayment(
-        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
+        PaymentReport calldata _paymentReport,
         address _agentVault,
         uint64 _announcementId
     )
         external
     {
-        AllowedPaymentAnnouncement.reportAllowedPayment(state, _paymentInfo, _agentVault, _announcementId);
+        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
+            TransactionAttestation.decodePaymentReport(_paymentReport);
+        AllowedPaymentAnnouncement.reportAllowedPayment(state, paymentInfo, _agentVault, _announcementId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Underlying balance topup
 
     function confirmTopupPayment(
-        IAttestationClient.LegalPayment calldata _payment,
+        IAttestationClient.PaymentProof calldata _payment,
         address _agentVault
     )
         external
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyLegalPaymentSuccess(state.settings, _payment, false);
+            TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
         UnderlyingFreeBalance.confirmTopupPayment(state, paymentInfo, _agentVault);
     }
     
@@ -543,35 +547,35 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     }
     
     function confirmIllegalPaymentChallenge(
-        IAttestationClient.SourceUsingTransaction calldata _transaction
+        IAttestationClient.BalanceDecreasingTransaction calldata _transaction
     )
         external
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifySourceUsingTransaction(state.settings, _transaction);
+            TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _transaction);
         IllegalPaymentChallenge.confirmChallenge(state, paymentInfo);
     }
     
     function challengeWrongPaymentReportWithPayment(
-        IAttestationClient.LegalPayment calldata _payment,
+        IAttestationClient.PaymentProof calldata _payment,
         address _agentVault
     )
         external
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyLegalPayment(state.settings, _payment, false);
+            TransactionAttestation.verifyPaymentProof(state.settings, _payment, false);
         // TODO: check address ownership
         IllegalPaymentChallenge.confirmWrongReportChallenge(state, paymentInfo, _agentVault);
     }
     
     function challengeWrongPaymentReportWithTransaction(
-        IAttestationClient.SourceUsingTransaction calldata _transaction,
+        IAttestationClient.BalanceDecreasingTransaction calldata _transaction,
         address _agentVault
     )
         external
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifySourceUsingTransaction(state.settings, _transaction);
+            TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _transaction);
         // TODO: check address ownership
         IllegalPaymentChallenge.confirmWrongReportChallenge(state, paymentInfo, _agentVault);
     }

@@ -5,18 +5,18 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./PaymentVerification.sol";
 
 
-library PaymentReport {
+library PaymentReports {
     using SafeMath for uint256;
 
     enum ReportMatch { DOES_NOT_EXIST, MATCH, MISMATCH }
     
     struct Report {
         // hash of (sourceAddressHash, targetAddressHash, deliveredUBA, spentUBA, paymentReference)
-        // matched if challenger provides LegalPayment proof (includes target data)
+        // matched if challenger provides PaymentProof proof (includes target data)
         bytes16 fullDetailsHash;
         
         // hash of (sourceAddressHash, spentUBA)
-        // matched if challenger provides SourceUsingTransaction proof (no target data)
+        // matched if challenger provides BalanceDecreasingTransaction proof (no target data)
         bytes16 sourceDetailsHash;
     }
     

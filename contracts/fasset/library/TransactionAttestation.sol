@@ -4,6 +4,7 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IAttestationClient.sol";
+import "../interface/IAssetManager.sol";
 import "../library/AssetManagerSettings.sol";
 import "../library/PaymentVerification.sol";
 
@@ -19,47 +20,47 @@ library TransactionAttestation {
     uint8 internal constant PAYMENT_FAILED = 1;
     uint8 internal constant PAYMENT_BLOCKED = 2;
 
-    function verifyLegalPaymentSuccess(
+    function verifyPaymentProofSuccess(
         AssetManagerSettings.Settings storage _settings,
-        IAttestationClient.LegalPayment calldata _attestationData,
+        IAttestationClient.PaymentProof calldata _attestationData,
         bool _requireSingleSource
     ) 
         internal view
         returns (PaymentVerification.UnderlyingPaymentInfo memory)
     {
         require(_attestationData.status == PAYMENT_SUCCESS, "payment failed");
-        return verifyLegalPayment(_settings, _attestationData, _requireSingleSource);
+        return verifyPaymentProof(_settings, _attestationData, _requireSingleSource);
     }
     
-    function verifyLegalPayment(
+    function verifyPaymentProof(
         AssetManagerSettings.Settings storage _settings,
-        IAttestationClient.LegalPayment calldata _attestationData,
+        IAttestationClient.PaymentProof calldata _attestationData,
         bool _requireSingleSource
     ) 
         internal view
         returns (PaymentVerification.UnderlyingPaymentInfo memory)
     {
-        require(_settings.attestationClient.verifyLegalPayment(_settings.chainId, _attestationData), 
+        require(_settings.attestationClient.verifyPaymentProof(_settings.chainId, _attestationData), 
             "legal payment not proved");
         require(_attestationData.blockTimestamp >= block.timestamp.sub(MAX_VALID_PROOF_AGE_SECONDS),
             "verified transaction too old");
-        require(!_requireSingleSource || _attestationData.spendingAddress != 0,
+        require(!_requireSingleSource || _attestationData.sourceAddress != 0,
             "required single source payment");
-        return decodeLegalPayment(_attestationData);
+        return decodePaymentProof(_attestationData);
     }
     
-    function verifySourceUsingTransaction(
+    function verifyBalanceDecreasingTransaction(
         AssetManagerSettings.Settings storage _settings,
-        IAttestationClient.SourceUsingTransaction calldata _attestationData
+        IAttestationClient.BalanceDecreasingTransaction calldata _attestationData
     ) 
         internal view
         returns (PaymentVerification.UnderlyingPaymentInfo memory)
     {
-        require(_settings.attestationClient.verifySourceUsingTransaction(_settings.chainId, _attestationData), 
+        require(_settings.attestationClient.verifyBalanceDecreasingTransaction(_settings.chainId, _attestationData), 
             "transaction not proved");
         require(_attestationData.blockTimestamp >= block.timestamp.sub(MAX_VALID_PROOF_AGE_SECONDS),
             "verified transaction too old");
-        return decodeSourceUsingTransaction(_attestationData);
+        return decodeBalanceDecreasingTransaction(_attestationData);
     }
     
     function verifyBlockHeightExists(
@@ -74,14 +75,14 @@ library TransactionAttestation {
         return SafeCast.toUint64(_attestationData.blockNumber);
     }
     
-    function decodeLegalPayment(
-        IAttestationClient.LegalPayment calldata _attestationData
+    function decodePaymentProof(
+        IAttestationClient.PaymentProof calldata _attestationData
     ) 
         internal pure
         returns (PaymentVerification.UnderlyingPaymentInfo memory)
     {
         return PaymentVerification.UnderlyingPaymentInfo({
-            sourceAddressHash: _attestationData.spendingAddress,
+            sourceAddressHash: _attestationData.sourceAddress,
             targetAddressHash: _attestationData.receivingAddress,
             transactionHash: _attestationData.transactionHash,
             paymentReference: _attestationData.paymentReference,
@@ -91,14 +92,14 @@ library TransactionAttestation {
         });
     }
 
-    function decodeSourceUsingTransaction(
-        IAttestationClient.SourceUsingTransaction calldata _attestationData
+    function decodeBalanceDecreasingTransaction(
+        IAttestationClient.BalanceDecreasingTransaction calldata _attestationData
     ) 
         internal pure
         returns (PaymentVerification.UnderlyingPaymentInfo memory)
     {
         return PaymentVerification.UnderlyingPaymentInfo({
-            sourceAddressHash: _attestationData.spendingAddress,
+            sourceAddressHash: _attestationData.sourceAddress,
             targetAddressHash: 0,       // not important
             transactionHash: _attestationData.transactionHash,
             paymentReference: 0,    // not important
@@ -109,12 +110,29 @@ library TransactionAttestation {
     }
 
     function decodeBlockHeightExists(
-        IAttestationClient.SourceUsingTransaction calldata _attestationData
+        IAttestationClient.BalanceDecreasingTransaction calldata _attestationData
     ) 
         internal pure
         returns (uint256 _minBlockHeight)
     {
         return _attestationData.blockNumber;
+    }
+    
+    function decodePaymentReport(
+        IAssetManager.PaymentReport calldata _paymentReport
+    )
+        internal pure
+        returns (PaymentVerification.UnderlyingPaymentInfo memory)
+    {
+        return PaymentVerification.UnderlyingPaymentInfo({
+            sourceAddressHash: _paymentReport.sourceAddress,
+            targetAddressHash: _paymentReport.receivingAddress,
+            transactionHash: _paymentReport.transactionHash,
+            paymentReference: _paymentReport.paymentReference,
+            deliveredUBA: _paymentReport.receivedAmount,
+            spentUBA: _paymentReport.spentAmount,
+            underlyingBlock: 0  // TODO: not used in payment reportfor now
+        });
     }
     
     function _positive(int256 _value) private pure returns (uint256) {
