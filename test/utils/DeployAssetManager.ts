@@ -1,22 +1,22 @@
-import { constants } from "@openzeppelin/test-helpers";
-import { getTestFile } from "flare-smart-contracts/test/utils/constants";
-import { WNatInstance, AssetManagerContract } from "../../typechain-truffle";
+import { AssetManagerContract, AssetManagerInstance, FAssetInstance } from "../../typechain-truffle";
 
 export type AssetManagerSettings = Parameters<AssetManagerContract['new']>[0];
 
-// TODO: fix parameters
-export async function deployAssetManager(assetManagerControllerAddress: string, settings: AssetManagerSettings) {
-    // libraries without dependencies
+export async function newAssetManager(governanceAddress: string,
+    assetManagerControllerAddress: string,
+    name: string, symbol: string, decimals: number,
+    assetManagerSettings: AssetManagerSettings
+): Promise<[AssetManagerInstance, FAssetInstance]> {
     const AssetManager = await linkAssetManager();
-    //return AssetManagerContract.new()
     const FAsset = artifacts.require('FAsset');
-    const fAsset = await FAsset.new("", "", "", "");
-    const assetManager = await AssetManager.new(settings, fAsset.address, "");
+    const fAsset = await FAsset.new(governanceAddress, name, symbol, decimals);
+    const assetManager = await AssetManager.new(assetManagerSettings, fAsset.address, assetManagerControllerAddress);
     await fAsset.setAssetManager(assetManager.address);
     return [assetManager, fAsset];
 }
 
 export async function linkAssetManager() {
+    // libraries without dependencies
     const Agents = await artifacts.require('Agents' as any).new();
     const AllowedPaymentAnnouncement = await artifacts.require('AllowedPaymentAnnouncement' as any).new();
     const AvailableAgents = await artifacts.require('AvailableAgents' as any).new();
