@@ -129,22 +129,6 @@ const config: HardhatUserConfig = {
             }
         ],
         overrides: {
-            "contracts/utils/Imports.sol": {
-                version: "0.6.12",
-                settings: {}
-            },
-            "contracts/ftso/mock/FtsoManagerMock.sol": {
-                version: "0.6.12",
-                settings: {}
-            },
-            "contracts/inflation/mock/InflationMock.sol": {
-                version: "0.6.12",
-                settings: {}
-            },
-            "contracts/genesis/mock/FlareDaemonMock.sol": {
-                version: "0.6.12",
-                settings: {}
-            },
             "@gnosis.pm/mock-contract/contracts/MockContract.sol": {
                 version: "0.6.12",
                 settings: {}

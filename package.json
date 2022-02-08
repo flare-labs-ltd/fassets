@@ -13,7 +13,7 @@
   "scripts": {
     "---------HOOKS": "",
     "postinstall": "echo Running install in flare-smart-contracts... && cd node_modules/flare-smart-contracts && yarn",
-    "prepare": "yarn flaten-dependency node_modules/flare-smart-contracts contracts/token/implementation/VPToken.sol cache/flattened/VPToken.sol",
+    "prepare": "yarn flaten-dependency node_modules/flare-smart-contracts scripts/flatten-files.txt",
     
     "---------TEST---SCRIPTS": "",
     "test": "yarn hardhat test",
@@ -28,7 +28,7 @@
     "c": "yarn compile",
     "lint": "yarn solhint \"contracts/**/*.sol\"",
     "typechain-ethers-v5": "yarn typechain --target=ethers-v5 --out-dir typechain \"artifacts/!(build-info)/**/+([a-zA-Z0-9_]).json\" 1> nul",
-    "typechain-truffle-v5": "yarn typechain --target=truffle-v5 --out-dir typechain-truffle \"artifacts/!(build-info)/**/+([a-zA-Z0-9_]).json\" 1> nul",
+    "typechain-truffle-v5": "yarn typechain --target=truffle-v5 --out-dir typechain-truffle \"artifacts/!(build-info)/**/+([a-zA-Z0-9_]).json\"",
     "size": "yarn run hardhat size-contracts",
     "flatten": "yarn hardhat flatten",
     "slither": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json 2> /dev/null || true; node node_modules/flare-smart-contracts/scripts/slither-parse.js ./slither.json",

@@ -9,7 +9,7 @@ contract FAsset is IFAsset, VPToken {
      * Get the asset manager, corresponding to this fAsset.
      * fAssets and asset managers are in 1:1 correspondence.
      */
-    address public immutable override assetManager;
+    address public override assetManager;
     
     modifier onlyAssetManager {
         require(msg.sender == assetManager, "only asset manager");
@@ -20,13 +20,24 @@ contract FAsset is IFAsset, VPToken {
         address _governance,
         string memory _name, 
         string memory _symbol,
-        uint8 _decimals,
-        address _assetManager
+        uint8 _decimals
     ) 
         VPToken(_governance, _name, _symbol)
     {
-        assetManager = _assetManager;
         _setupDecimals(_decimals);
+    }
+    
+    /**
+     * Set asset manager contract this can be done only once and must be just after deploy
+     * (otherwise nothing can be minted).
+     */
+    function setAssetManager(address _assetManager)
+        external
+        onlyGovernance
+    {
+        require(_assetManager != address(0), "zero asset manager");
+        require(assetManager == address(0), "cannot replace asset manager");
+        assetManager = _assetManager;
     }
     
     /**

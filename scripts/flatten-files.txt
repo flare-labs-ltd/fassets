@@ -1,0 +1,2 @@
+contracts/token/implementation/VPToken.sol  cache/flattened/VPToken.sol
+contracts/token/implementation/WNat.sol     cache/flattened/WNat.sol
