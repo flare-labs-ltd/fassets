@@ -35,11 +35,12 @@ library AMEvents {
         address indexed agentVault,
         address indexed minter,
         uint256 collateralReservationId,
-        uint64 reservedLots,
         uint256 underlyingValueUBA, 
         uint256 underlyingFeeUBA,
         uint256 lastUnderlyingBlock,
-        bytes32 paymentReference);
+        uint256 lastUnderlyingTimestamp,
+        bytes paymentAddress,
+        uint256 paymentReference);
 
     /**
      * Minter failed to pay underlying funds in time. Collateral reservation fee was paid to the agent.
@@ -88,11 +89,12 @@ library AMEvents {
      */ 
     event RedemptionRequested(
         address indexed agentVault,
+        uint256 requestId,
         bytes redeemerUnderlyingAddress,
         uint256 valueUBA,
-        uint256 requestUnderlyingBlock,
         uint256 lastUnderlyingBlock,
-        uint256 requestId);
+        uint256 lastUnderlyingTimestamp,
+        uint256 paymentReference);
 
     /**
      * In case there were not enough tickets or more than allowed number would have to be redeemed,

@@ -9,6 +9,7 @@ contract AttestationClientMock is IAttestationClient {
     uint16 public constant PAYMENT_PROOF = 1;
     uint16 public constant BALANCE_DECREASING_TRANSACION = 2;
     uint16 public constant BLOCK_HEIGHT_EXISTS = 3;
+    uint16 public constant REFERENCED_PAYMENT_NONEXISTENCE = 3;
     
     mapping (bytes32 => bool) private _proofs;
 
@@ -24,6 +25,12 @@ contract AttestationClientMock is IAttestationClient {
         external
     {
         _proofs[_hashBalanceDecreasingTransaction(_chainId, _data)] = true;
+    }
+
+    function proveReferencedPaymentNonexistence(uint32 _chainId, ReferencedPaymentNonexistence calldata _data) 
+        external
+    {
+        _proofs[_hashReferencedPaymentNonexistence(_chainId, _data)] = true;
     }
     
     function proveBlockHeightExists(uint32 _chainId, BlockHeightExists calldata _data) 
@@ -44,6 +51,13 @@ contract AttestationClientMock is IAttestationClient {
         returns (bool _proved)
     {
         return _proofs[_hashBalanceDecreasingTransaction(_chainId, _data)];
+    }
+
+    function verifyReferencedPaymentNonexistence(uint32 _chainId, ReferencedPaymentNonexistence calldata _data) 
+        external view override
+        returns (bool _proved)
+    {
+        return _proofs[_hashReferencedPaymentNonexistence(_chainId, _data)];
     }
     
     function verifyBlockHeightExists(uint32 _chainId, BlockHeightExists calldata _data) 
@@ -88,6 +102,25 @@ contract AttestationClientMock is IAttestationClient {
             _data.spentAmount
         ));
     }
+
+    function _hashReferencedPaymentNonexistence(uint32 _chainId, ReferencedPaymentNonexistence calldata _data)
+        private pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(
+            REFERENCED_PAYMENT_NONEXISTENCE,
+            _chainId, 
+            _data.endTimestamp, 
+            _data.endBlock, 
+            _data.destinationAddress, 
+            _data.paymentReference, 
+            _data.amount,
+            _data.firstCheckedBlock,
+            _data.firstCheckedBlockTimestamp,
+            _data.firstOverflowBlock,
+            _data.firstOverflowBlockTimestamp
+        ));
+    }
     
     function _hashBlockHeightExists(uint32 _chainId, BlockHeightExists calldata _data) 
         private pure
@@ -96,7 +129,8 @@ contract AttestationClientMock is IAttestationClient {
         return keccak256(abi.encode(
             BLOCK_HEIGHT_EXISTS,
             _chainId, 
-            _data.blockNumber
+            _data.blockNumber,
+            _data.blockTimestamp
         ));
     }
 }

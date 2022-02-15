@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import "./PaymentVerification.sol";
+import "./PaymentReference.sol";
 
 
 library UnderlyingAddressOwnership {
@@ -38,7 +39,7 @@ library UnderlyingAddressOwnership {
         internal
     {
         bool proofValid = _paymentInfo.sourceAddressHash == _underlyingAddressHash
-            && _paymentInfo.paymentReference == bytes32(uint256(uint160(_owner)));
+            && _paymentInfo.paymentReference == PaymentReference.addressOwnership(_owner);
         require(proofValid, "invalid address ownership proof");
         _claim(_state, _owner, _underlyingAddressHash, true);
     }

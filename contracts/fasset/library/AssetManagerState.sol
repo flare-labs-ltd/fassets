@@ -53,10 +53,17 @@ library AssetManagerState {
         // Redemption payment reports and announced payment reports
         PaymentReports.Reports paymentReports;
         
-        // new ids (listed together to save storage); all must be incremented before assigning, so 0 means empty
+        // New ids (listed together to save storage); all must be incremented before assigning, so 0 means empty
         uint64 newCrtId;
         uint64 newRedemptionRequestId;
         uint64 newPaymentAnnouncementId;
+        
+        // Current block number and timestamp on the underlying chain
+        uint64 currentUnderlyingBlock;
+        uint64 currentUnderlyingBlockTimestamp;
+        
+        // The timestamp (on this network) when the underlying block was last updated
+        uint64 currentUnderlyingBlockUpdatedAt;
     }
     
 }

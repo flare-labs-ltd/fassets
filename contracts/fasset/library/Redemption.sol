@@ -17,6 +17,7 @@ import "./IllegalPaymentChallenge.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
+import "./PaymentReference.sol";
 
 
 library Redemption {
@@ -29,10 +30,11 @@ library Redemption {
     struct RedemptionRequest {
         bytes32 redeemerUnderlyingAddressHash;
         uint128 underlyingValueUBA;
-        uint64 underlyingBlock;     // underlying block at redemption request time
+        uint64 firstUnderlyingBlock;
+        uint64 lastUnderlyingBlock;
+        uint64 lastUnderlyingTimestamp;
         uint128 underlyingFeeUBA;
         uint64 valueAMG;
-        uint64 timestamp;           // timestamp at redemption request time
         address agentVault;
         address redeemer;
     }
@@ -51,8 +53,7 @@ library Redemption {
         AssetManagerState.State storage _state,
         address _redeemer,
         uint64 _lots,
-        bytes memory _redeemerUnderlyingAddress,
-        uint64 _currentUnderlyingBlock
+        bytes memory _redeemerUnderlyingAddress
     )
         external
         returns (uint64 _redeemedLots)
@@ -73,8 +74,7 @@ library Redemption {
         }
         require(_redeemedLots != 0, "redeem 0 lots");
         for (uint256 i = 0; i < redemptionList.length; i++) {
-            _createRemptionRequest(_state, redemptionList.items[i], 
-                _redeemer, _redeemerUnderlyingAddress, _currentUnderlyingBlock);
+            _createRemptionRequest(_state, redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress);
         }
         // notify redeemer of incomplete requests
         if (_redeemedLots < _lots) {
@@ -118,20 +118,21 @@ library Redemption {
         AssetManagerState.State storage _state,
         AgentRedemptionData memory _data,
         address _redeemer,
-        bytes memory _redeemerUnderlyingAddressString,
-        uint64 _currentUnderlyingBlock
+        bytes memory _redeemerUnderlyingAddressString
     )
         private 
     {
         uint128 redeemedValueUBA = SafeCast.toUint128(Conversion.convertAmgToUBA(_state.settings, _data.valueAMG));
         uint64 requestId = ++_state.newRedemptionRequestId;
+        (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
         uint128 redemptionFeeUBA = SafeCast.toUint128(
             SafeBips.mulBips128(redeemedValueUBA, _state.settings.redemptionFeeBips));
         _state.redemptionRequests[requestId] = RedemptionRequest({
             redeemerUnderlyingAddressHash: keccak256(_redeemerUnderlyingAddressString),
             underlyingValueUBA: redeemedValueUBA,
-            underlyingBlock: _currentUnderlyingBlock,
-            timestamp: SafeCast.toUint64(block.timestamp),
+            firstUnderlyingBlock: _state.currentUnderlyingBlock,
+            lastUnderlyingBlock: lastUnderlyingBlock,
+            lastUnderlyingTimestamp: lastUnderlyingTimestamp,
             underlyingFeeUBA: redemptionFeeUBA,
             redeemer: _redeemer,
             agentVault: _data.agentVault,
@@ -141,10 +142,13 @@ library Redemption {
         // do not add it to freeBalance yet (only after failed redemption payment)
         Agents.startRedeemingAssets(_state, _data.agentVault, _data.valueAMG);
         // emit event to remind agent to pay
-        uint256 paymentValueUBA = SafeMath128.sub128(redeemedValueUBA, redemptionFeeUBA, "?");
-        uint256 lastBlock = uint256(_currentUnderlyingBlock).add(_state.settings.underlyingBlocksForPayment);
         emit AMEvents.RedemptionRequested(_data.agentVault,
-            _redeemerUnderlyingAddressString, paymentValueUBA, _currentUnderlyingBlock, lastBlock, requestId);
+            requestId,
+            _redeemerUnderlyingAddressString, 
+            redeemedValueUBA - redemptionFeeUBA,
+            lastUnderlyingBlock, 
+            lastUnderlyingTimestamp,
+            PaymentReference.redemption(requestId));
     }
 
     function getRedemptionRequest(
@@ -229,14 +233,22 @@ library Redemption {
     
     function redemptionPaymentTimeout(
         AssetManagerState.State storage _state,
-        uint64 _redemptionRequestId,
-        uint64 _currentUnderlyingBlock
+        IAttestationClient.ReferencedPaymentNonexistence calldata _nonPayment,
+        uint64 _redemptionRequestId
     )
         external
     {
         RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
-        require(!_isPaymentOnTime(_state, request, _currentUnderlyingBlock),
-            "to soon for redemption timeout");
+        // check non-payment proof
+        require(_nonPayment.paymentReference == PaymentReference.redemption(_redemptionRequestId) &&
+            _nonPayment.destinationAddress == request.redeemerUnderlyingAddressHash &&
+            _nonPayment.amount == request.underlyingValueUBA - request.underlyingFeeUBA,
+            "redemption non-payment mismatch");
+        require(_nonPayment.firstOverflowBlock > request.lastUnderlyingBlock && 
+            _nonPayment.firstOverflowBlockTimestamp > request.lastUnderlyingTimestamp, 
+            "redemption default too early");
+        require(_nonPayment.firstCheckedBlock <= request.firstUnderlyingBlock,
+            "redemption request too old");
         // we allow only redeemers to trigger redemption failures, since they may want
         // to do it at some particular time
         require(msg.sender == request.redeemer, "only redeemer");
@@ -271,44 +283,6 @@ library Redemption {
             .mulBips(_state.settings.redemptionFailureFactorBIPS);
         uint256 maxAmountWei = collateralData.collateralShare(agent, _requestValueAMG);
         return amountWei <= maxAmountWei ? amountWei : maxAmountWei;
-    }
-
-    function _isPaymentOnTime(
-        AssetManagerState.State storage _state,
-        RedemptionRequest storage request,
-        uint256 _underlyingBlock
-    ) 
-        private view 
-        returns (bool)
-    {
-        // is block number ok?
-        uint256 lastBlock = uint256(request.underlyingBlock).add(_state.settings.underlyingBlocksForPayment);
-        if (_underlyingBlock <= lastBlock) return true;
-        // if block number is too large, it is still ok as long as not too much time has passed
-        // (to allow block height challenges)
-        uint256 lastTimestamp = uint256(request.timestamp).add(_state.settings.minSecondsForPayment);
-        return block.timestamp <= lastTimestamp;
-    }
-    
-    function challengeRedemptionRequestUnderlyingBlock(
-        AssetManagerState.State storage _state,
-        uint64 _redemptionRequestId,
-        uint64 _currentUnderlyingBlock  // must be proved via block height attestation!
-    )
-        external
-    {
-        // TODO: should only agent call this?
-        RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
-        // check that challenge is within minSecondsForPayment from redemption request
-        uint256 lastTimestamp = uint256(request.timestamp).add(_state.settings.minSecondsForPayment);
-        require(block.timestamp <= lastTimestamp, "block number challenge late");
-        // if proved _currentUnderlyingBlock is greater then one in request, increase it
-        if (_currentUnderlyingBlock > request.underlyingBlock) {
-            request.underlyingBlock = _currentUnderlyingBlock;
-            uint256 lastBlock = uint256(_currentUnderlyingBlock).add(_state.settings.underlyingBlocksForPayment);
-            emit AMEvents.RedemptionUnderlyingBlockChanged(request.agentVault,
-                _currentUnderlyingBlock, lastBlock, _redemptionRequestId);
-        }
     }
 
     function redemptionPaymentBlocked(
@@ -417,5 +391,18 @@ library Redemption {
         } else {
             ticket.valueAMG = remainingAMG;
         }
+    }
+
+    function _lastPaymentBlock(AssetManagerState.State storage _state)
+        private view
+        returns (uint64 _lastUnderlyingBlock, uint64 _lastUnderlyingTimestamp)
+    {
+        // timeshift amortizes for the time that passed from the last underlying block update
+        uint64 timeshift = 
+            SafeCast.toUint64(block.timestamp) - _state.currentUnderlyingBlockUpdatedAt;
+        _lastUnderlyingBlock =
+            _state.currentUnderlyingBlock + _state.settings.underlyingBlocksForPayment;
+        _lastUnderlyingTimestamp = 
+            _state.currentUnderlyingBlockTimestamp + timeshift + _state.settings.underlyingSecondsForPayment;
     }
 }

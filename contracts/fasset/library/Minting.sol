@@ -10,6 +10,7 @@ import "./UnderlyingFreeBalance.sol";
 import "./CollateralReservations.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
+import "./PaymentReference.sol";
 
 
 library Minting {
@@ -29,8 +30,7 @@ library Minting {
         CollateralReservations.CollateralReservation storage crt = 
             CollateralReservations.getCollateralReservation(_state, _crtId);
         require(msg.sender == crt.minter, "only minter");
-        require(_paymentInfo.paymentReference == CollateralReservations.mintingPaymentReference(_crtId),
-            "invalid payment reference");
+        require(_paymentInfo.paymentReference == PaymentReference.minting(_crtId), "invalid payment reference");
         Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
         _minter = crt.minter;
         _mintValueUBA = crt.underlyingValueUBA;
@@ -64,7 +64,7 @@ library Minting {
         require(_lots > 0, "cannot mint 0 blocks");
         require(agent.agentType == Agents.AgentType.AGENT_100, "wrong agent type for self-mint");
         require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
-        require(_paymentInfo.paymentReference == bytes32(uint256(uint160(_agentVault))), "invalid payment reference");
+        require(_paymentInfo.paymentReference == PaymentReference.selfMint(_agentVault), "invalid payment reference");
         require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
         uint64 valueAMG = SafeMath64.mul64(_lots, _state.settings.lotSizeAMG);
         _mintValueUBA = uint256(valueAMG) * _state.settings.assetMintingGranularityUBA;

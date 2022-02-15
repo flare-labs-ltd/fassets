@@ -10,6 +10,7 @@ import "./Agents.sol";
 import "./PaymentVerification.sol";
 import "./AssetManagerState.sol";
 import "./Liquidation.sol";
+import "./PaymentReference.sol";
 
 
 library UnderlyingFreeBalance {
@@ -17,8 +18,6 @@ library UnderlyingFreeBalance {
     using SignedSafeMath for int256;
     using PaymentVerification for PaymentVerification.State;
 
-    bytes32 internal constant TOPUP_PAYMENT_REFERENCE = 0;
-    
     function updateFreeBalance(
         AssetManagerState.State storage _state, 
         address _agentVault,
@@ -69,7 +68,7 @@ library UnderlyingFreeBalance {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.underlyingAddressHash == _paymentInfo.sourceAddressHash, 
             "not underlying address");
-        require(_paymentInfo.paymentReference == TOPUP_PAYMENT_REFERENCE,
+        require(_paymentInfo.paymentReference == PaymentReference.addressTopup(_agentVault),
             "not a topup payment");
         _state.paymentVerifications.confirmPayment(_paymentInfo);
         increaseFreeBalance(_state, _agentVault, _paymentInfo.deliveredUBA);

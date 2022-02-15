@@ -56,19 +56,20 @@ library AssetManagerSettings {
         
         // Number of underlying blocks that the minter or agent is allowed to pay underlying value.
         // If payment not reported in that time, minting/redemption can be challenged and default action triggered.
-        // CAREFUL: Count starts from the current ftso reported underlying block height, which can be
-        //          from 0.5 to 2.5 ftso price epochs in the past (usually it's less than 1.5, because we expect 
-        //          to get more data closer to the price epoch end, but it can be even more when redeploying ftsos).
+        // CAREFUL: Count starts from the current proved block height, so the minters and agents should 
+        // make sure that current block height is fresh, otherwise they might not have enough time for payment.
         uint64 underlyingBlocksForPayment;
         
-        // Minimum time to allow for agent to pay for redemption or respond to invalid underlyingBlock 
-        // in redemption request. Redemption failure can be called only after both
-        // underlyingBlocksForPayment are mined on underlying chain and minSecondsForPayment time elapses.
-        uint64 minSecondsForPayment;
+        // Minimum time to allow agent to pay for redemption or minter to pay for minting.
+        // This is useful for fast chains, when there can be more than one block per second.
+        // Redemption/minting payment failure can be called only after underlyingSecondsForPayment have elapsed
+        // on underlying chain.
+        // CAREFUL: Count starts from the current proved block timestamp, so the minters and agents should 
+        // make sure that current block timestamp is fresh, otherwise they might not have enough time for payment.
+        // This is partially mitigated by adding local duration since the last block height update to
+        // the current underlying block timestamp.
+        uint64 underlyingSecondsForPayment;
 
-        // Time allowed for minter to respond to underlyingBlockheight challenge.
-        uint64 minSecondsForBlockChallengeResponse;
-        
         // Number of underlying blocks that the agent is allowed to perform allowed underlying payment
         // (e.g. fee withdrawal). It can be much longer than the limit for required payments - it's only here
         // to make sure payment happens before payment verification data is expired in a few days.

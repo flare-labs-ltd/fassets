@@ -241,6 +241,37 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     {
         return AvailableAgents.getListWithInfo(state, _start, _end);
     }
+    
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Timekeeping
+    
+    function updateCurrentBlock(
+        IAttestationClient.BlockHeightExists calldata _proof
+    )
+        external
+    {
+        (uint64 underlyingBlock, uint64 underlyingBlockTimestamp) = 
+            TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
+        bool changed = false;
+        if (underlyingBlock > state.currentUnderlyingBlock) {
+            state.currentUnderlyingBlock = underlyingBlock;
+            changed = true;
+        }
+        if (underlyingBlockTimestamp > state.currentUnderlyingBlockTimestamp) {
+            state.currentUnderlyingBlockTimestamp = underlyingBlockTimestamp;
+            changed = true;
+        }
+        if (changed) {
+            state.currentUnderlyingBlockUpdatedAt = SafeCast.toUint64(block.timestamp);
+        }
+    }
+    
+    function currentUnderlyingBlock()
+        external view
+        returns (uint64 _blockNumber, uint64 _blockTimestamp)
+    {
+        return (state.currentUnderlyingBlock, state.currentUnderlyingBlockTimestamp);
+    }
         
     ////////////////////////////////////////////////////////////////////////////////////
     // Minting
@@ -251,62 +282,14 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * to requested lots NAT market price.
      * @param _selectedAgent agent's vault address
      * @param _lotsToMint the number of lots for which to reserve collateral
-     * @param _underlyingBlock the minter provides the current block number on underlying chain;
-     *   if it is too high (giving minter too much time for the underlying payment), it can be
-     *   challenged by the agent via `challengeCollateralReservationBlock` and in that case the
-     *   minter must provide proof of the block.
      */
     function reserveCollateral(
         address _selectedAgent, 
-        uint64 _lotsToMint, 
-        uint64 _underlyingBlock
+        uint64 _lotsToMint
     ) 
         external payable 
     {
-        CollateralReservations.reserveCollateral(state,
-            msg.sender, _selectedAgent, _lotsToMint, _underlyingBlock);
-    }
-    
-    /**
-     * If the underlying block, provided by the minter in collateral reservation,
-     * is too high (giving minter too much time for the underlying payment), it can be
-     * challenged by the agent by calling this method and in that case the
-     * minter must provide proof of the block.
-     * @param _crtId collateral reservation request ID (from the CollateralReserved event)
-     */
-    function challengeCollateralReservationBlock(
-        uint64 _crtId
-    )
-        external
-    {
-        CollateralReservations.challengeReservationUnderlyingBlock(state, _crtId);
-    }
-    
-    /**
-     * When agent requests underlying block proof, the minter must verify block height via state
-     * connector and provide the proof of a mined block at least this high.
-     */
-    function proveCollateralReservationBlock(
-        IAttestationClient.BlockHeightExists calldata _proof,
-        uint64 _crtId
-    )
-        external
-    {
-        uint64 underlyingBlock = TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
-        CollateralReservations.verifyUnderlyingBlock(state, _crtId, underlyingBlock);
-    }
-    
-    /**
-     * When the time for minter to prove provided block (setting minSecondsForBlockChallengeResponse) has passed,
-     * the agent can declare payment timeout. Then the agent collects collateral reservation fee 
-     * (it goes directly to the vault), and the reserved collateral is unlocked.
-     */
-    function collateralReservationBlockChallengeTimeout(
-        uint64 _crtId
-    )
-        external
-    {
-        CollateralReservations.underlyingBlockChallengeTimeout(state, _crtId);
+        CollateralReservations.reserveCollateral(state, msg.sender, _selectedAgent, _lotsToMint);
     }
     
     /**
@@ -331,14 +314,14 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * the agent can declare payment timeout. Then the agent collects collateral reservation fee 
      * (it goes directly to the vault), and the reseved collateral is unlocked.
      */
-    function mintingPaymentTimeout(
-        IAttestationClient.BlockHeightExists calldata _proof,
+    function mintingPaymentDefault(
+        IAttestationClient.ReferencedPaymentNonexistence calldata _proof,
         uint64 _crtId
     )
         external
     {
-        uint64 underlyingBlock = TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
-        CollateralReservations.collateralReservationTimeout(state, _crtId, underlyingBlock);
+        TransactionAttestation.verifyReferencedPaymentNonexistence(state.settings, _proof);
+        CollateralReservations.collateralReservationTimeout(state, _proof, _crtId);
     }
     
     /**
@@ -371,38 +354,16 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * In such case `RedemptionRequestIncomplete` event will be emitted, indicating the number of remaining lots.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlyng amount
-     * @param _currentUnderlyingBlock current block height on the underlyng chain, used to calculate the block 
-     *   height by which the agent must pay; can be challenged by agent if it is too small
      */
     function redeem(
         uint64 _lots,
-        bytes memory _redeemerUnderlyingAddressString,
-        uint64 _currentUnderlyingBlock
+        bytes memory _redeemerUnderlyingAddressString
     )
         external
     {
-        uint64 redeemedLots = Redemption.redeem(state, msg.sender, _lots, 
-            _redeemerUnderlyingAddressString, _currentUnderlyingBlock);
+        uint64 redeemedLots = Redemption.redeem(state, msg.sender, _lots, _redeemerUnderlyingAddressString);
         uint256 redeemedUBA = Conversion.convertLotsToUBA(state.settings, redeemedLots);
         fAsset.burn(msg.sender, redeemedUBA);
-    }
-    
-    /**
-     * If redeemer provides to small block height in `redeem` request, the agent may provide proof
-     * of existing higher block with this method. For this, the agent's time for redemption payment is
-     * until both the target underlying block height is achieved and some timestamp is reached 
-     * (enough to react to to small provided block height with this challenge).
-     * After this method is called, agent's block when payment must be proved is increased, based
-     * on the block height provided in this proof.
-     */
-    function challengeRedemptionRequestBlock(
-        IAttestationClient.BlockHeightExists calldata _proof,
-        uint64 _redemptionRequestId
-    )
-        external
-    {
-        uint64 underlyingBlock = TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
-        Redemption.challengeRedemptionRequestUnderlyingBlock(state, _redemptionRequestId, underlyingBlock);
     }
     
     /**
@@ -440,14 +401,14 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * If the agent doesn't transfer the redeemed underlying assets in time (until the last allowed block on
      * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
      */    
-    function redemptionPaymentTimeout(
-        IAttestationClient.BlockHeightExists calldata _proof,
+    function redemptionPaymentDefault(
+        IAttestationClient.ReferencedPaymentNonexistence calldata _proof,
         uint64 _redemptionRequestId
     )
         external
     {
-        uint64 underlyingBlock = TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
-        Redemption.redemptionPaymentTimeout(state, _redemptionRequestId, underlyingBlock);
+        TransactionAttestation.verifyReferencedPaymentNonexistence(state.settings, _proof);
+        Redemption.redemptionPaymentTimeout(state, _proof, _redemptionRequestId);
     }
     
     /**
@@ -530,7 +491,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     )
         external
     {
-        uint64 underlyingBlock = TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
+        (uint64 underlyingBlock,) = TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
         UnderlyingFreeBalance.triggerTopupLiquidation(state, _agentVault, underlyingBlock);
     }
 

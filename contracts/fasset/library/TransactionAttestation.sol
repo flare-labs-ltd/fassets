@@ -68,11 +68,22 @@ library TransactionAttestation {
         IAttestationClient.BlockHeightExists calldata _attestationData
     ) 
         internal view
-        returns (uint64 _minBlockHeight)
+        returns (uint64 _blockHeight, uint64 _blockTimestamp)
     {
         require(_settings.attestationClient.verifyBlockHeightExists(_settings.chainId, _attestationData), 
             "block height not proved");
-        return SafeCast.toUint64(_attestationData.blockNumber);
+        _blockHeight = _attestationData.blockNumber;
+        _blockTimestamp = _attestationData.blockTimestamp;
+    }
+    
+    function verifyReferencedPaymentNonexistence(
+        AssetManagerSettings.Settings storage _settings,
+        IAttestationClient.ReferencedPaymentNonexistence calldata _attestationData
+    ) 
+        internal view
+    {
+        require(_settings.attestationClient.verifyReferencedPaymentNonexistence(_settings.chainId, _attestationData), 
+            "non-payment not proved");
     }
     
     function decodePaymentProof(
@@ -113,9 +124,10 @@ library TransactionAttestation {
         IAttestationClient.BalanceDecreasingTransaction calldata _attestationData
     ) 
         internal pure
-        returns (uint256 _minBlockHeight)
+        returns (uint64 _blockHeight, uint64 _blockTimestamp)
     {
-        return _attestationData.blockNumber;
+        _blockHeight = _attestationData.blockNumber;
+        _blockTimestamp = _attestationData.blockTimestamp;
     }
     
     function decodePaymentReport(

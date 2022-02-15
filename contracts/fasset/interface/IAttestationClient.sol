@@ -4,8 +4,8 @@ pragma solidity >=0.7.6 <0.9;
 
 interface IAttestationClient {
     struct PaymentProof {
-        // Buffer number (epoch id) of the state connector request
-        uint256 stateConnectorBuffer;
+        // Round number (epoch id) of the state connector request
+        uint256 stateConnectorRound;
         
         // Merkle proof needed to verify the existence of transaction with the below fields.
         bytes32[] merkleProof;
@@ -30,10 +30,10 @@ interface IAttestationClient {
         bytes32 receivingAddress;
         
         // Chain dependent extra data (e.g. memo field, detination tag, tx data)
-        // - for minting, ir will be based in collateral reservation id, to prevent using the payment by somone else
-        // - for redemption, it will have the value requested by the redeemer
-        // - for topup it must be constant (TOPUP_PAYMENT_REFERENCE)
-        bytes32 paymentReference;
+        // For minting and redemption payment it depends on request id, 
+        // for topup and self-mint it depends on the agent vault address.
+        // See PaymentReference.sol for details of payment reference calculation.
+        uint256 paymentReference;
 
         // The amount that what went out of source address (or all source addresses), in smallest underlying units.
         // It includes both payment value and fee / gas.
@@ -54,8 +54,8 @@ interface IAttestationClient {
     }
     
     struct BalanceDecreasingTransaction {
-        // Buffer number (epoch id) of the state connector request
-        uint256 stateConnectorBuffer;
+        // Round number (epoch id) of the state connector request
+        uint256 stateConnectorRound;
         
         // Merkle proof needed to verify the existence of transaction with the below fields.
         bytes32[] merkleProof;
@@ -79,19 +79,62 @@ interface IAttestationClient {
         int256 spentAmount;
     }
     
+    struct ReferencedPaymentNonexistence {
+        // Round number (epoch id) of the state connector request
+        uint256 stateConnectorRound;
+        
+        // Merkle proof needed to verify the existence of transaction with the below fields.
+        bytes32[] merkleProof;
+
+        // End timestamp specified in attestation request.
+        uint64 endTimestamp;
+        
+        // End block specified in attestation request.
+        uint64 endBlock;
+        
+        // Payment nonexistence is confirmed if there is no payment transaction (attestation of PaymentProof type)
+        // with correct `(destinationAddress, paymentReference, amount) combination
+        // and with transaction status 0 (success) or 2 (failure, receiver's fault). 
+        // Note: if there exist only payment(s) with status 1 (failure, sender's fault) 
+        // then payment nonexistence is still confirmed.
+        bytes32 destinationAddress;
+        uint256 paymentReference;
+        uint128 amount;
+        
+        // The first (confirmed) block that gets checked. It is the block that has timestamp (median time) 
+        // greater or equal to `endTimestamp - CHECK_WINDOW`. 
+        // f-asset: check that `firstCheckBlock <= currentUnderlyingBlock` at the time of redemption request.
+        uint64 firstCheckedBlock;
+        
+        // Timestamp of the firstCheckedBlock.
+        uint64 firstCheckedBlockTimestamp;
+        
+        // The first confirmed block with `timestamp > endTimestamp` and `blockNumber  > endBlock`. 
+        // f-asset: check that `firstOverflowBlock > last payment block` (`= currentUnderlyingBlock + blocksToPay`).
+        uint64 firstOverflowBlock;
+        
+        // Timestamp of the firstOverflowBlock.
+        // f-asset: check that `firstOverflowBlockTimestamp > last payment timestamp` 
+        //     (`= currentUnderlyingBlockTimestamp + time to pay`). 
+        uint64 firstOverflowBlockTimestamp;
+    }
+    
     struct BlockHeightExists {
-        // Buffer number (epoch id) of the state connector request
-        uint256 stateConnectorBuffer;
+        // Round number (epoch id) of the state connector request
+        uint256 stateConnectorRound;
         
         // Merkle proof needed to verify the existence of transaction with the below fields.
         bytes32[] merkleProof;
         
         // Number of the block that was proved to exist.
         uint64 blockNumber;
+        
+        // Timestamp of the block that was proved to exist.
+        uint64 blockTimestamp;
     }
 
     // When verifying state connector proofs, the data verified will be
-    // `keccak256(abi.encode(attestationType, _chainId, all _data fields except merkleProof, stateConnectorBuffer))`
+    // `keccak256(abi.encode(attestationType, _chainId, all _data fields except merkleProof, stateConnectorRound))`
     // where `attestationType` (`uint16`) is a different constant for each of the methods below
     // (possible values are defined in attestation specs).
     
@@ -100,6 +143,10 @@ interface IAttestationClient {
         returns (bool _proved);
     
     function verifyBalanceDecreasingTransaction(uint32 _chainId, BalanceDecreasingTransaction calldata _data) 
+        external view
+        returns (bool _proved);
+
+    function verifyReferencedPaymentNonexistence(uint32 _chainId, ReferencedPaymentNonexistence calldata _data)
         external view
         returns (bool _proved);
     

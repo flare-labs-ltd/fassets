@@ -11,6 +11,7 @@ import "./Agents.sol";
 import "./AssetManagerState.sol";
 import "../interface/IAgentVault.sol";
 import "./AgentCollateral.sol";
+import "./PaymentReference.sol";
 
 
 library CollateralReservations {
@@ -20,13 +21,13 @@ library CollateralReservations {
     
     struct CollateralReservation {
         uint128 underlyingValueUBA;
-        uint64 firstUnderlyingBlock;
-        uint64 underlyingBlockChallengeTimestamp;
         uint128 underlyingFeeUBA;
+        uint64 firstUnderlyingBlock;
+        uint64 lastUnderlyingBlock;
+        uint64 lastUnderlyingTimestamp;
         address agentVault;
         uint64 valueAMG;
         address minter;
-        bool underlyingBlockVerified;
         uint128 reservationFeeNatWei;
     }
     
@@ -34,8 +35,7 @@ library CollateralReservations {
         AssetManagerState.State storage _state, 
         address _minter,
         address _agentVault,
-        uint64 _lots,
-        uint64 _currentUnderlyingBlock
+        uint64 _lots
     )
         external
     {
@@ -45,16 +45,14 @@ library CollateralReservations {
         require(_lots > 0, "cannot mint 0 blocks");
         require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
         require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
-        uint64 lastUnderlyingBlock = 
-            SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
         uint64 valueAMG = SafeMath64.mul64(_lots, _state.settings.lotSizeAMG);
         agent.reservedAMG = SafeMath64.add64(agent.reservedAMG, valueAMG);
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
-        uint256 valueNATWei = Conversion.convertAmgToNATWei(valueAMG, collateralData.amgToNATWeiPrice); 
-        uint256 reservationFee = SafeBips.mulBips(valueNATWei, _state.settings.collateralReservationFeeBIPS);
+        uint256 reservationFee = _reservationFee(_state, collateralData, valueAMG);
         require(msg.value >= reservationFee, "not enough fee paid");
         // TODO: what if paid fee is too big?
+        (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({
             underlyingValueUBA: SafeCast.toUint128(underlyingValueUBA),
@@ -62,77 +60,51 @@ library CollateralReservations {
             agentVault: _agentVault,
             valueAMG: valueAMG,
             minter: _minter,
-            firstUnderlyingBlock: _currentUnderlyingBlock,
-            underlyingBlockChallengeTimestamp: 0,   // not challenged
-            underlyingBlockVerified: false,
+            firstUnderlyingBlock: _state.currentUnderlyingBlock,
+            lastUnderlyingBlock: lastUnderlyingBlock,
+            lastUnderlyingTimestamp: lastUnderlyingTimestamp,
             reservationFeeNatWei: SafeCast.toUint128(reservationFee)
         });
-        emit AMEvents.CollateralReserved(_agentVault, _minter, crtId, _lots, 
-            underlyingValueUBA, underlyingFeeUBA, lastUnderlyingBlock,
-            mintingPaymentReference(crtId));
+        bytes storage paymentAddress = agent.underlyingAddressString;
+        emit AMEvents.CollateralReserved(_agentVault,
+            _minter,
+            crtId,
+            underlyingValueUBA,
+            underlyingFeeUBA, 
+            lastUnderlyingBlock,
+            lastUnderlyingTimestamp,
+            paymentAddress,
+            PaymentReference.minting(crtId));
     }
     
     function collateralReservationTimeout(
         AssetManagerState.State storage _state, 
-        uint64 _crtId,
-        uint64 _currentUnderlyingBlock  // must be proved
+        IAttestationClient.ReferencedPaymentNonexistence calldata _nonPayment,
+        uint64 _crtId
     )
         external
     {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
+        Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
         // check requirements
+        require(_nonPayment.paymentReference == PaymentReference.minting(_crtId) &&
+            _nonPayment.destinationAddress == agent.underlyingAddressHash &&
+            _nonPayment.amount == crt.underlyingValueUBA + crt.underlyingFeeUBA,
+            "minting non-payment mismatch");
+        require(_nonPayment.firstOverflowBlock > crt.lastUnderlyingBlock && 
+            _nonPayment.firstOverflowBlockTimestamp > crt.lastUnderlyingTimestamp, 
+            "minting default too early");
+        require(_nonPayment.firstCheckedBlock <= crt.firstUnderlyingBlock,
+            "minting request too old");
         Agents.requireAgentVaultOwner(crt.agentVault);
-        uint64 lastUnderlyingBlock = 
-            SafeMath64.add64(crt.firstUnderlyingBlock, _state.settings.underlyingBlocksForPayment);
-        require(_currentUnderlyingBlock >= lastUnderlyingBlock, "timeout too early");
         // send event
         emit AMEvents.CollateralReservationTimeout(crt.agentVault, crt.minter, _crtId);
-        // pay the agent crf and delete 
-        _cancelCollateralReservation(_state, crt, _crtId);
+        // transfer crt fee to the agent's vault
+        IAgentVault(crt.agentVault).deposit{value: crt.reservationFeeNatWei}();
+        // release agent's reserved collateral
+        releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this        
     }
     
-    function challengeReservationUnderlyingBlock(
-        AssetManagerState.State storage _state, 
-        uint64 _crtId
-    )
-        external
-    {
-        // TODO: should only agent be allowed to do this?
-        CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
-        require(!crt.underlyingBlockVerified, "underlying block verified");
-        crt.underlyingBlockChallengeTimestamp = SafeCast.toUint64(block.timestamp);
-        emit AMEvents.CollateralReservationBlockNumberChallenged(crt.minter, _crtId);
-    }
-    
-    function verifyUnderlyingBlock(
-        AssetManagerState.State storage _state, 
-        uint64 _crtId,
-        uint256 _provedUnderlyingBlock    // must be proved
-    )
-        external
-    {
-        CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
-        require(_provedUnderlyingBlock >= crt.firstUnderlyingBlock, "proved block too low");
-        crt.underlyingBlockVerified = true;
-    }
-
-    function underlyingBlockChallengeTimeout(
-        AssetManagerState.State storage _state, 
-        uint64 _crtId
-    )
-        external
-    {
-        CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
-        require(!crt.underlyingBlockVerified, "underlying block verified");
-        uint256 lastTimestamp = uint256(crt.underlyingBlockChallengeTimestamp)
-            .add(_state.settings.minSecondsForBlockChallengeResponse);
-        require(block.timestamp > lastTimestamp, "not late for block proof");
-        Agents.requireAgentVaultOwner(crt.agentVault);
-        emit AMEvents.CollateralReservationBlockNumberChallengeTimeout(crt.agentVault, crt.minter, _crtId);
-        // pay the agent crf and delete 
-        _cancelCollateralReservation(_state, crt, _crtId);
-    }
-
     function releaseCollateralReservation(
         AssetManagerState.State storage _state,
         CollateralReservations.CollateralReservation storage crt,
@@ -156,25 +128,28 @@ library CollateralReservations {
         return _state.crts[_crtId];
     }
     
-    function mintingPaymentReference(uint256 _crtId) 
-        internal pure
-        returns (bytes32)
+    function _lastPaymentBlock(AssetManagerState.State storage _state)
+        private view
+        returns (uint64 _lastUnderlyingBlock, uint64 _lastUnderlyingTimestamp)
     {
-        // TODO: should add some larger constant or hash with something?
-        // (to differentiate from other possible reference types)
-        return bytes32(1 + _crtId);
+        // timeshift amortizes for the time that passed from the last underlying block update
+        uint64 timeshift = 
+            SafeCast.toUint64(block.timestamp) - _state.currentUnderlyingBlockUpdatedAt;
+        _lastUnderlyingBlock =
+            _state.currentUnderlyingBlock + _state.settings.underlyingBlocksForPayment;
+        _lastUnderlyingTimestamp = 
+            _state.currentUnderlyingBlockTimestamp + timeshift + _state.settings.underlyingSecondsForPayment;
     }
-    
-    function _cancelCollateralReservation(
+
+    function _reservationFee(
         AssetManagerState.State storage _state,
-        CollateralReservations.CollateralReservation storage crt,
-        uint64 _crtId
+        AgentCollateral.Data memory collateralData,
+        uint64 _valueAMG
     )
-        private
+        private view
+        returns (uint256)
     {
-        // transfer crt fee to the agent's vault
-        IAgentVault(crt.agentVault).deposit{value: crt.reservationFeeNatWei}();
-        // release agent's reserved collateral
-        releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this        
+        uint256 valueNATWei = Conversion.convertAmgToNATWei(_valueAMG, collateralData.amgToNATWeiPrice); 
+        return SafeBips.mulBips(valueNATWei, _state.settings.collateralReservationFeeBIPS);
     }
 }

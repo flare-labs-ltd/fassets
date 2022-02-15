@@ -156,9 +156,6 @@ const config: HardhatUserConfig = {
     tenderly: {
         username: process.env.TENDERLY_USERNAME || "undefined",
         project: "flare"
-    },
-    contractSizer: {
-        only: ['AssetManager'],
     }
 };
 
