@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
-
 /**
  * @dev Compute percentages safely without phantom overflows.
  *
@@ -14,12 +11,8 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
  *
  * Using this library instead of the unchecked operations eliminates an entire
  * class of bugs, so it's recommended to use it always.
- *
- * Can be combined with {SafeMath} and {SignedSafeMath} to extend it to smaller types, by performing
- * all math on `uint256` and `int256` and then downcasting.
  */
 library SafePct {
-    using SafeMath for uint256;
     /**
      * Requirements:
      *
@@ -31,7 +24,7 @@ library SafePct {
         if (x == 0) return 0;
         unchecked {
             uint256 xy = x * y;
-            if (xy / x == y) { // no overflow happened - same as in SafeMath mul
+            if (xy / x == y) { // no overflow happened (works in unchecked)
                 return xy / z;
             }
         }
@@ -44,6 +37,6 @@ library SafePct {
         uint256 c = y / z;
         uint256 d = y % z; // y = c * z + d
 
-        return (a.mul(c).mul(z)).add(a.mul(d)).add(b.mul(c)).add(b.mul(d).div(z));
+        return (a * c * z) + (a * d) + (b * c) + (b * d / z);
     }
 }

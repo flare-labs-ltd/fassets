@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
@@ -15,7 +14,6 @@ import "./PaymentReference.sol";
 
 
 library CollateralReservations {
-    using SafeMath for uint256;
     using SafeBips for uint256;
     using AgentCollateral for AgentCollateral.Data;
     
@@ -45,8 +43,8 @@ library CollateralReservations {
         require(_lots > 0, "cannot mint 0 blocks");
         require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
         require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
-        uint64 valueAMG = SafeMath64.mul64(_lots, _state.settings.lotSizeAMG);
-        agent.reservedAMG = SafeMath64.add64(agent.reservedAMG, valueAMG);
+        uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
+        agent.reservedAMG = agent.reservedAMG + valueAMG;
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
         uint256 reservationFee = _reservationFee(_state, collateralData, valueAMG);

@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../utils/lib/SafeMath64.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
 import "./PaymentVerification.sol";
@@ -14,7 +12,6 @@ import "./PaymentReference.sol";
 
 
 library UnderlyingFreeBalance {
-    using SafeMath for uint256;
     using SignedSafeMath for int256;
     using PaymentVerification for PaymentVerification.State;
 
@@ -29,15 +26,14 @@ library UnderlyingFreeBalance {
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // assert((uaf.freeUnderlyingBalanceUBA >= 0) == (uaf.lastUnderlyingBlockForTopup == 0));
-        int256 newBalance = int256(agent.freeUnderlyingBalanceUBA)
-            .add(SafeCast.toInt256(_balanceAdd))
-            .sub(SafeCast.toInt256(_balanceSub));
+        int256 newBalance = int256(agent.freeUnderlyingBalanceUBA) + 
+            SafeCast.toInt256(_balanceAdd) - SafeCast.toInt256(_balanceSub);
         agent.freeUnderlyingBalanceUBA = SafeCast.toInt128(newBalance);
         if (newBalance < 0) {
             if (agent.lastUnderlyingBlockForTopup == 0) {
                 require(_currentUnderlyingBlock != 0, "cannot set last topup block");
                 agent.lastUnderlyingBlockForTopup = 
-                    SafeMath64.add64(_currentUnderlyingBlock, _state.settings.underlyingBlocksForTopup);
+                    _currentUnderlyingBlock + _state.settings.underlyingBlocksForTopup;
             }
             uint256 topup = SafeCast.toUint256(-newBalance);   // required topup is negative balance
             emit AMEvents.TopupRequired(_agentVault, topup, agent.lastUnderlyingBlockForTopup);

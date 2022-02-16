@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
 import "../interface/IAgentVault.sol";
 import "./AMEvents.sol";
@@ -17,7 +15,6 @@ import "./AgentCollateral.sol";
 
 
 library IllegalPaymentChallenge {
-    using SafeMath for uint256;
     using AgentCollateral for AgentCollateral.Data;
     using PaymentVerification for PaymentVerification.State;
     
@@ -88,7 +85,7 @@ library IllegalPaymentChallenge {
         require(agentVault != address(0), "challenge does not exist");
         // there is a minimum time required before challenge and challenge confirmation
         // TODO: is this still needed - one reason was to allow agent time for report, but now report is mandatory
-        uint256 earliestTime = uint256(challenge.createdAt).add(_state.settings.paymentChallengeWaitMinSeconds);
+        uint256 earliestTime = uint256(challenge.createdAt) + _state.settings.paymentChallengeWaitMinSeconds;
         require(earliestTime <= block.timestamp, "confirmation too early");
         // cannot challenge if there is a matching report
         PaymentReports.ReportMatch reportMatch = PaymentReports.reportMatch(_state.paymentReports, _paymentInfo);
@@ -176,7 +173,7 @@ library IllegalPaymentChallenge {
         Liquidation.startLiquidation(_state, _agentVault, collateralData, true);
         // calculate the reward
         uint256 rewardAMG = SafeBips.mulBips(_backingAMGAtChallenge, _state.settings.paymentChallengeRewardBIPS)
-            .add(_state.settings.paymentChallengeRewardAMG);
+            + _state.settings.paymentChallengeRewardAMG;
         uint256 rewardNATWei = Conversion.convertAmgToNATWei(rewardAMG, collateralData.amgToNATWeiPrice);
         // divide reward by `2 ** agent.successfulPaymentChallenges` so that in case of multiple successful 
         // challenges each next challenge gets only half the reward of the previous, summing to at most twice the

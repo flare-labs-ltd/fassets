@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtso.sol";
@@ -11,7 +10,6 @@ import "./Contracts.sol";
 
 
 library Conversion {
-    using SafeMath for uint256;
     using SafePct for uint256;
     
     uint256 internal constant AMG_NATWEI_PRICE_SCALE = 1e9;
@@ -61,7 +59,7 @@ library Conversion {
         internal view
         returns (uint64) 
     {
-        return SafeCast.toUint64(_valueUBA.div(_settings.assetMintingGranularityUBA));
+        return SafeCast.toUint64(_valueUBA / _settings.assetMintingGranularityUBA);
     }
     
     function convertLotsToUBA(

@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./PaymentVerification.sol";
 
 
 library PaymentReports {
-    using SafeMath for uint256;
-
     enum ReportMatch { DOES_NOT_EXIST, MATCH, MISMATCH }
     
     struct Report {

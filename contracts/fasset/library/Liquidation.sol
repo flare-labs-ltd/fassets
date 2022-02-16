@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
-import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
 import "./Agents.sol";
 import "./AssetManagerSettings.sol";
@@ -17,10 +16,9 @@ import "./AgentCollateral.sol";
 
 
 library Liquidation {
+    using SafeMath for uint256;
     using SafeCast for uint256;
     using SafePct for uint256;
-    using SafeMath for uint256;
-    using SafeMath64 for uint64;
     using SafeBips for uint256;
     using SafeBips for uint64;
     using AgentCollateral for AgentCollateral.Data;
@@ -76,13 +74,13 @@ library Liquidation {
             getCurrentLiquidationPhase(agent, _state.settings, collateralData);
         require(liquidationPhase != Agents.LiquidationPhase.CCB, "in CCB");
 
-        uint64 fAssetAMG = agent.reservedAMG.add64(agent.mintedAMG).add64(agent.redeemingAMG);
+        uint64 fAssetAMG = agent.reservedAMG + agent.mintedAMG + agent.redeemingAMG;
         uint64 amountToLiquidateAMG = Math.min(maxAmountAMG, _amountAMG).toUint64();
         _liquidationAmountAMG = Redemption.liquidate(_state, msg.sender, _agentVault, amountToLiquidateAMG);
 
         uint256 liquidationValueNATWei;
         if (!isEnough) { // 100% collateral premium is not enough - calculate proportion
-            liquidationValueNATWei = (collateralData.fullCollateral.sub(agent.withdrawalAnnouncedNATWei))
+            liquidationValueNATWei = (collateralData.fullCollateral - agent.withdrawalAnnouncedNATWei)
                 .mulDiv(_liquidationAmountAMG, fAssetAMG);
         } else {
             liquidationValueNATWei = 
@@ -96,7 +94,7 @@ library Liquidation {
             // cancel liquidation if possible
             if (agent.status == Agents.AgentStatus.LIQUIDATION && agent.freeUnderlyingBalanceUBA >= 0) {
                 AgentCollateral.Data memory afterLiquidation = AgentCollateral.Data({
-                    fullCollateral: collateralData.fullCollateral.sub(liquidationValueNATWei), 
+                    fullCollateral: collateralData.fullCollateral - liquidationValueNATWei, 
                     amgToNATWeiPrice: collateralData.amgToNATWeiPrice 
                 });
                 if (isAgentHealthy(agent, _state.settings, afterLiquidation)) {
@@ -136,11 +134,11 @@ library Liquidation {
         returns (bool)
     {
         bool inLqdtn = _agent.status != Agents.AgentStatus.NORMAL;
-        uint256 mintingAMG = uint256(_agent.reservedAMG).add(_agent.mintedAMG);
+        uint256 mintingAMG = uint256(_agent.reservedAMG) + _agent.mintedAMG;
         uint256 mintingCollateral = Conversion.convertAmgToNATWei(mintingAMG, _collateralData.amgToNATWeiPrice)
             .mulBips(inLqdtn ? _settings.liquidationMinCollateralRatioBIPS : _settings.initialMinCollateralRatioBIPS);
         uint256 redeemingCollateral = _collateralData.lockedRedeemingCollateralWei(_agent, _settings);
-        return mintingCollateral.add(redeemingCollateral).add(_agent.withdrawalAnnouncedNATWei) 
+        return mintingCollateral + redeemingCollateral + _agent.withdrawalAnnouncedNATWei
             <= _collateralData.fullCollateral;
     }
 
@@ -152,11 +150,11 @@ library Liquidation {
         internal view
         returns (bool)
     {
-        uint256 mintingAMG = uint256(_agent.reservedAMG).add(_agent.mintedAMG);
+        uint256 mintingAMG = uint256(_agent.reservedAMG) + _agent.mintedAMG;
         uint256 mintingCollateral = Conversion.convertAmgToNATWei(mintingAMG, _collateralData.amgToNATWeiPrice)
             .mulBips(_settings.liquidationMinCollateralCallBandBIPS);
         uint256 redeemingCollateral = _collateralData.lockedRedeemingCollateralWei(_agent, _settings);
-        return mintingCollateral.add(redeemingCollateral).add(_agent.withdrawalAnnouncedNATWei) 
+        return mintingCollateral + redeemingCollateral + _agent.withdrawalAnnouncedNATWei
             <= _collateralData.fullCollateral;
     }
 
@@ -187,7 +185,7 @@ library Liquidation {
                 .mulBips(_settings.liquidationMinCollateralRatioBIPS);
         uint256 redeemingCollateral = _collateralData.lockedRedeemingCollateralWei(_agent, _settings);
 
-        uint256 reservedCollateral = mintingCollateral.add(redeemingCollateral).add(_agent.withdrawalAnnouncedNATWei);
+        uint256 reservedCollateral = mintingCollateral + redeemingCollateral + _agent.withdrawalAnnouncedNATWei;
         if (reservedCollateral > _collateralData.fullCollateral) {
             return (false, 0); // not phase 1
         }
@@ -204,8 +202,8 @@ library Liquidation {
 
         uint256 freeUnderlyingBalanceLiquidationAmountAMG = 0;
         if (_agent.freeUnderlyingBalanceUBA < 0) {
-            freeUnderlyingBalanceLiquidationAmountAMG = uint256(-int256(_agent.freeUnderlyingBalanceUBA))
-                .div(_settings.assetMintingGranularityUBA);
+            freeUnderlyingBalanceLiquidationAmountAMG = uint256(-int256(_agent.freeUnderlyingBalanceUBA)) /
+                _settings.assetMintingGranularityUBA;
             if (_agent.freeUnderlyingBalanceUBA % int64(_settings.assetMintingGranularityUBA) != 0) {
                 freeUnderlyingBalanceLiquidationAmountAMG += 1;
             }
@@ -216,16 +214,16 @@ library Liquidation {
 
         // required collateral for the agent's postion to be healthy
         uint256 requiredCollateral = mintedNATWei.mulBips(_settings.liquidationMinCollateralRatioBIPS)
-            .add(reservedCollateral);
+            + reservedCollateral;
 
         uint256 healthyLiquidationAmountAMG = 0;
         if (requiredCollateral > _collateralData.fullCollateral) { // unhealthy position
-            uint256 numerator = (requiredCollateral - _collateralData.fullCollateral)
-                .mul(Conversion.AMG_NATWEI_PRICE_SCALE).mul(SafeBips.MAX_BIPS);
-            uint256 denominator = _collateralData.amgToNATWeiPrice
-                .mul(_settings.liquidationMinCollateralRatioBIPS - _settings.liquidationPricePremiumBIPS);
+            uint256 numerator = (requiredCollateral - _collateralData.fullCollateral) *
+                Conversion.AMG_NATWEI_PRICE_SCALE * SafeBips.MAX_BIPS;
+            uint256 denominator = _collateralData.amgToNATWeiPrice *
+                (_settings.liquidationMinCollateralRatioBIPS - _settings.liquidationPricePremiumBIPS);
 
-            healthyLiquidationAmountAMG = numerator.div(denominator);
+            healthyLiquidationAmountAMG = numerator / denominator;
 
             if (numerator % denominator != 0) {
                 healthyLiquidationAmountAMG += 1;
@@ -246,11 +244,11 @@ library Liquidation {
         internal view
         returns (bool)
     {
-        uint256 mintingAMG = uint256(_agent.reservedAMG).add(_agent.mintedAMG);
+        uint256 mintingAMG = uint256(_agent.reservedAMG) + _agent.mintedAMG;
         uint256 mintingNATWei = Conversion.convertAmgToNATWei(mintingAMG, _collateralData.amgToNATWeiPrice);
         uint256 redeemingCollateral = _collateralData.lockedRedeemingCollateralWei(_agent, _settings);
 
-        uint256 reservedCollateral = redeemingCollateral.add(_agent.withdrawalAnnouncedNATWei);
+        uint256 reservedCollateral = redeemingCollateral + _agent.withdrawalAnnouncedNATWei;
         if (reservedCollateral > _collateralData.fullCollateral) {
             return false;
         }
@@ -325,8 +323,8 @@ library Liquidation {
         returns (Agents.LiquidationPhase _phase, bool _isEnough, uint64 _maxAmountAMG, uint16 _premiumFactorBIPS)
     {
         Agents.LiquidationPhase initialLiquidationPhase = _agent.liquidationState.initialLiquidationPhase;
-        uint256 steps = block.timestamp.sub(_agent.liquidationState.liquidationStartedAt)
-            .div(_settings.newLiquidationStepAfterMinSeconds);
+        uint256 steps = (block.timestamp - _agent.liquidationState.liquidationStartedAt) / 
+            _settings.newLiquidationStepAfterMinSeconds;
 
         if (initialLiquidationPhase == Agents.LiquidationPhase.CCB) {
             if (steps == 0 && isAgentInCCB(_agent, _settings, _collateralData)) {

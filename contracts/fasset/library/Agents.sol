@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IAgentVault.sol";
+import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
@@ -14,7 +14,6 @@ import "./AgentCollateral.sol";
 
 
 library Agents {
-    using SafeMath for uint256;
     using SafeBips for uint256;
     using SafePct for uint256;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
@@ -180,7 +179,7 @@ library Agents {
         internal
     {
         Agent storage agent = getAgent(_state, _agentVault);
-        agent.mintedAMG = SafeMath64.add64(agent.mintedAMG, _valueAMG);
+        agent.mintedAMG = agent.mintedAMG + _valueAMG;
     }
 
     function releaseMintedAssets(
@@ -202,7 +201,7 @@ library Agents {
         internal
     {
         Agent storage agent = getAgent(_state, _agentVault);
-        agent.redeemingAMG = SafeMath64.add64(agent.redeemingAMG, _valueAMG);
+        agent.redeemingAMG = agent.redeemingAMG + _valueAMG;
         agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "not enough minted");
     }
 
@@ -252,7 +251,7 @@ library Agents {
         internal
     {
         Agent storage agent = getAgent(_state, _agentVault);
-        uint64 newDustAMG = SafeMath64.add64(agent.dustAMG, _dustIncreaseAMG);
+        uint64 newDustAMG = agent.dustAMG + _dustIncreaseAMG;
         agent.dustAMG = newDustAMG;
         uint256 dustUBA = Conversion.convertAmgToUBA(_state.settings, newDustAMG);
         emit AMEvents.DustChanged(_agentVault, dustUBA);

@@ -19,54 +19,16 @@ library SafeMath64 {
         return int64(int256(a));
     }
     
-    // 64 bit arithmetic - no need for 256 bit overflow checks
-    
-    function add64(uint64 a, uint64 b) internal pure returns (uint64) {
-        uint256 c = uint256(a) + uint256(b);    // fits into 65 bits
-        require(c <= MAX_UINT64, "SafeMath64: addition overflow");
-        return uint64(c);
-    }
-
+    // 64 bit subtraction with error message on overflow
     function sub64(uint64 a, uint64 b, string memory message) internal pure returns (uint64) {
         require(a >= b, message);
-        uint256 c = uint256(a) - uint256(b);
-        return uint64(c);
-    }
-    
-    function mul64(uint64 a, uint64 b) internal pure returns (uint64) {
-        uint256 c = uint256(a) * uint256(b);    // fits into 128 bits
-        require(c <= MAX_UINT64, "SafeMath64: mul overflow");
-        return uint64(c);
-    }
-
-    function div64(uint64 a, uint64 b) internal pure returns (uint64) {
-        require(b != 0, "SafeMath64: div by zero");
-        return a / b;
+        unchecked {
+            uint256 c = uint256(a) - uint256(b);
+            return uint64(c);
+        }
     }
     
     function min64(uint64 a, uint64 b) internal pure returns (uint64) {
         return a <= b ? a : b;
-    }
-
-    // // functions that add/subtract and cast result from 256 bits to 64 bits
-        
-    // function add64(uint256 a, uint256 b) internal pure returns (uint64) {
-    //     uint256 c = a + b;
-    //     require(a <= MAX_UINT64 && b <= MAX_UINT64 && c <= MAX_UINT64, "SafeMath64: addition overflow");
-    //     return uint64(c);
-    // }
-
-    // function sub64(uint256 a, uint256 b, string memory message) internal pure returns (uint64) {
-    //     require(a >= b, message);
-    //     uint256 c = a - b;
-    //     require(c <= MAX_UINT64, "SafeMath64: sub above 64bit");
-    //     return uint64(c);
-    // }
-
-    // cheaper version of safe mulDiv - no need for handling uint256 overflow
-    
-    function mulDiv(uint64 a, uint64 mul, uint256 div) internal pure returns (uint256) {
-        require(div != 0, "SafeMath64: mulDiv by zero");
-        return (uint256(a) * uint256(mul)) / div; // intermediate values limited to 128 bits
     }
 }

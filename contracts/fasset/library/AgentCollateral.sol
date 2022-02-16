@@ -44,7 +44,7 @@ library AgentCollateral {
     {
         uint256 freeCollateral = freeCollateralWei(_data, _agent, _settings);
         uint256 lotCollateral = mintingLotCollateralWei(_data, _agent, _settings);
-        return freeCollateral.div(lotCollateral);
+        return freeCollateral / lotCollateral;
     }
 
     function freeCollateralWei(
@@ -68,11 +68,11 @@ library AgentCollateral {
         internal view 
         returns (uint256) 
     {
-        uint256 mintingAMG = uint256(_agent.reservedAMG).add(_agent.mintedAMG);
+        uint256 mintingAMG = uint256(_agent.reservedAMG) + _agent.mintedAMG;
         uint256 mintingCollateral = Conversion.convertAmgToNATWei(mintingAMG, _data.amgToNATWeiPrice)
             .mulBips(_agent.agentMinCollateralRatioBIPS);
         uint256 redeemingCollateral = lockedRedeemingCollateralWei(_data, _agent, _settings);
-        return mintingCollateral.add(redeemingCollateral).add(_agent.withdrawalAnnouncedNATWei);
+        return mintingCollateral + redeemingCollateral + _agent.withdrawalAnnouncedNATWei;
     }
 
     function lockedRedeemingCollateralWei(

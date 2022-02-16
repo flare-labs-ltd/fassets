@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IAttestationClient.sol";
 import "../interface/IAssetManager.sol";
@@ -10,7 +9,6 @@ import "../library/PaymentVerification.sol";
 
 
 library TransactionAttestation {
-    using SafeMath for uint256;
     
     // must be strictly smaller than PaymentVerification.VERIFICATION_CLEANUP_DAYS
     uint256 internal constant MAX_VALID_PROOF_AGE_SECONDS = 2 days;
@@ -42,7 +40,7 @@ library TransactionAttestation {
     {
         require(_settings.attestationClient.verifyPaymentProof(_settings.chainId, _attestationData), 
             "legal payment not proved");
-        require(_attestationData.blockTimestamp >= block.timestamp.sub(MAX_VALID_PROOF_AGE_SECONDS),
+        require(_attestationData.blockTimestamp >= block.timestamp - MAX_VALID_PROOF_AGE_SECONDS,
             "verified transaction too old");
         require(!_requireSingleSource || _attestationData.sourceAddress != 0,
             "required single source payment");
@@ -58,7 +56,7 @@ library TransactionAttestation {
     {
         require(_settings.attestationClient.verifyBalanceDecreasingTransaction(_settings.chainId, _attestationData), 
             "transaction not proved");
-        require(_attestationData.blockTimestamp >= block.timestamp.sub(MAX_VALID_PROOF_AGE_SECONDS),
+        require(_attestationData.blockTimestamp >= block.timestamp - MAX_VALID_PROOF_AGE_SECONDS,
             "verified transaction too old");
         return decodeBalanceDecreasingTransaction(_attestationData);
     }

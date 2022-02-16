@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 library PaymentVerification {
     using SafeMath for uint256;
-    
+
     // only used in-memory, so no bit optimization is necessary
     struct UnderlyingPaymentInfo {
         bytes32 sourceAddressHash;

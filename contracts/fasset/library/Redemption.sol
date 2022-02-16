@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafeMath64.sol";
-import "../../utils/lib/SafeMath128.sol";
 import "../../utils/lib/SafeBips.sol";
 import "../interface/IAgentVault.sol";
 import "./AMEvents.sol";
@@ -21,7 +19,6 @@ import "./PaymentReference.sol";
 
 
 library Redemption {
-    using SafeMath for uint256;
     using SafeBips for uint256;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentVerification for PaymentVerification.State;
@@ -70,7 +67,7 @@ library Redemption {
             if (redeemedForTicket == 0) {
                 break;   // queue empty
             }
-            _redeemedLots = SafeMath64.add64(_redeemedLots, redeemedForTicket);
+            _redeemedLots = _redeemedLots + redeemedForTicket;
         }
         require(_redeemedLots != 0, "redeem 0 lots");
         for (uint256 i = 0; i < redemptionList.length; i++) {
@@ -95,9 +92,9 @@ library Redemption {
             return 0;    // empty redemption queue
         }
         RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(ticketId);
-        uint64 maxRedeemLots = SafeMath64.div64(ticket.valueAMG, _state.settings.lotSizeAMG);
+        uint64 maxRedeemLots = ticket.valueAMG / _state.settings.lotSizeAMG;
         _redeemedLots = SafeMath64.min64(_lots, maxRedeemLots);
-        uint64 redeemedAMG = SafeMath64.mul64(_redeemedLots, _state.settings.lotSizeAMG);
+        uint64 redeemedAMG = _redeemedLots * _state.settings.lotSizeAMG;
         address agentVault = ticket.agentVault;
         // find list index for ticket's agent
         uint256 index = 0;
@@ -106,7 +103,7 @@ library Redemption {
         }
         // add to list item or create new item
         if (index < _list.length) {
-            _list.items[index].valueAMG = SafeMath64.add64(_list.items[index].valueAMG, redeemedAMG);
+            _list.items[index].valueAMG = _list.items[index].valueAMG + redeemedAMG;
         } else {
             _list.items[_list.length++] = AgentRedemptionData({ agentVault: agentVault, valueAMG: redeemedAMG });
         }
@@ -126,7 +123,7 @@ library Redemption {
         uint64 requestId = ++_state.newRedemptionRequestId;
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
         uint128 redemptionFeeUBA = SafeCast.toUint128(
-            SafeBips.mulBips128(redeemedValueUBA, _state.settings.redemptionFeeBips));
+            SafeBips.mulBips(redeemedValueUBA, _state.settings.redemptionFeeBips));
         _state.redemptionRequests[requestId] = RedemptionRequest({
             redeemerUnderlyingAddressHash: keccak256(_redeemerUnderlyingAddressString),
             underlyingValueUBA: redeemedValueUBA,
@@ -174,7 +171,7 @@ library Redemption {
         Agents.requireAgentVaultOwner(request.agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
         // check details
-        uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
+        uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
             agent.underlyingAddressHash, request.redeemerUnderlyingAddressHash, paymentValueUBA);
         // report can be submitted several times (e.g. perhaps the gas price has to be raised for tx to be accepted),
@@ -204,7 +201,7 @@ library Redemption {
         // since the redeemer can demand payment in collateral anytime
         Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
         // confirm payment proof
-        uint256 paymentValueUBA = uint256(request.underlyingValueUBA).sub(request.underlyingFeeUBA);
+        uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
             agent.underlyingAddressHash, request.redeemerUnderlyingAddressHash, paymentValueUBA);
         // record payment so that it cannot be used twice in redemption
@@ -214,8 +211,7 @@ library Redemption {
         // release agent collateral
         Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         // update underlying free balance with fee and gas
-        uint64 startBlockForTopup = 
-            SafeMath64.add64(_paymentInfo.underlyingBlock, _state.settings.underlyingBlocksForPayment);
+        uint64 startBlockForTopup = _paymentInfo.underlyingBlock + _state.settings.underlyingBlocksForPayment;
         uint256 usedGas = PaymentVerification.usedGas(_paymentInfo);
         UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault,
             request.underlyingFeeUBA, usedGas, startBlockForTopup);
@@ -365,7 +361,7 @@ library Redemption {
             uint64 ticketValueAMG = SafeMath64.min64(_amountAMG - _valueAMG, ticket.valueAMG);
             // only remove from tickets and add to total, do everything else after the loop
             _removeFromTicket(_state, ticketId, ticketValueAMG);
-            _valueAMG = SafeMath64.add64(_valueAMG, ticketValueAMG);
+            _valueAMG += ticketValueAMG;
         }
         // self-close or liquidation is one step, so we can release minted assets without redeeming step
         Agents.releaseMintedAssets(_state, _agentVault, _valueAMG);
@@ -382,7 +378,7 @@ library Redemption {
         private
     {
         RedemptionQueue.Ticket storage ticket = _state.redemptionQueue.getTicket(_redemptionTicketId);
-        uint64 remainingAMG = SafeMath64.sub64(ticket.valueAMG, _redeemedAMG, "sub64");
+        uint64 remainingAMG = ticket.valueAMG - _redeemedAMG;
         if (remainingAMG == 0) {
             _state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
         } else if (remainingAMG < _state.settings.lotSizeAMG) {   // dust created
