@@ -174,6 +174,8 @@ library Redemption {
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
             agent.underlyingAddressHash, request.redeemerUnderlyingAddressHash, paymentValueUBA);
+        require(_paymentInfo.paymentReference == PaymentReference.redemption(_redemptionRequestId), 
+            "invalid payment reference");
         // report can be submitted several times (e.g. perhaps the gas price has to be raised for tx to be accepted),
         // but once the transaction has been proved, reporting it is pointless
         require(!PaymentVerification.transactionConfirmed(_state.paymentVerifications, _paymentInfo),
@@ -202,6 +204,8 @@ library Redemption {
         Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
         // confirm payment proof
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
+        require(_paymentInfo.paymentReference == PaymentReference.redemption(_redemptionRequestId), 
+            "invalid payment reference");
         PaymentVerification.validatePaymentDetails(_paymentInfo, 
             agent.underlyingAddressHash, request.redeemerUnderlyingAddressHash, paymentValueUBA);
         // record payment so that it cannot be used twice in redemption
