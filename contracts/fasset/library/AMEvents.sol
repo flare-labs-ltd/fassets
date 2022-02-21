@@ -217,13 +217,14 @@ library AMEvents {
      * Its is obtained from minting / redmption fees and self-closed fassets.
      * Some of this amount should be left for paying redemption (and withdrawal) gas fees,
      * and the rest can be withdrawn by the agent.
-     * However, withdrawal has to be first announced and then reported, otherwise it can be challenged
-     * as illegal payment.
+     * However, withdrawal has to be announced, otherwise it can be challenged as illegal payment.
+     * Only one announcement can exists per agent - agent has to present payment proof ofor withdrawal
+     * before starting a new one.
      */
     event AllowedPaymentAnnounced(
         address agentVault,
-        uint256 valueUBA,
-        uint64 announcementId);
+        uint64 announcementId,
+        uint256 paymentReference);
         
     /**
      * After announcing legal undelrying withdrawal and creating transaction,
@@ -232,7 +233,6 @@ library AMEvents {
      */
     event AllowedPaymentReported(
         address agentVault,
-        uint256 valueUBA,
         uint256 spentUBA,
         uint64 underlyingBlock,
         uint64 announcementId);

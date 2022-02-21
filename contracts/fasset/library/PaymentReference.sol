@@ -15,6 +15,9 @@ library PaymentReference {
     // 0x7825d1a0b3e07380 = uint64(keccak256("f-asset self-mint payment"))
     uint256 internal constant SELF_MINT = 0x7825d1a0b3e07380 << 192;
 
+    // 0x238df6e106ee985a = uint64(keccak256("f-asset announced underlying withdrawal"))
+    uint256 internal constant ANNOUNCED_WITHDRAWAL = 0x238df6e106ee985a << 192;
+    
     // 0x7bd3bf51c3e904c3 = uint64(keccak256("f-asset address ownership"))
     uint256 internal constant ADDRESS_OWNERSHIP = 0x7bd3bf51c3e904c3 << 192;
 
@@ -26,6 +29,10 @@ library PaymentReference {
 
     function redemption(uint64 _id) internal pure returns (uint256) {
         return uint256(_id) | REDEMPTION;
+    }
+
+    function announcedWithdrawal(uint64 _id) internal pure returns (uint256) {
+        return uint256(_id) | ANNOUNCED_WITHDRAWAL;
     }
 
     function addressTopup(address _agentVault) internal pure returns (uint256) {

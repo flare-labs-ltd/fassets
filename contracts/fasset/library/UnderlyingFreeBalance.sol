@@ -58,17 +58,4 @@ library UnderlyingFreeBalance {
         _state.paymentVerifications.confirmPayment(_paymentInfo);
         increaseFreeBalance(_state, _agentVault, _paymentInfo.deliveredUBA);
     }
-    
-    function withdrawFreeFunds(
-        AssetManagerState.State storage _state,
-        address _agentVault,
-        uint256 _valueUBA
-    )
-        internal
-    {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        require(agent.freeUnderlyingBalanceUBA >= 0 && uint128(agent.freeUnderlyingBalanceUBA) >= _valueUBA, 
-            "payment larger than allowed");
-        agent.freeUnderlyingBalanceUBA -= int128(int256(_valueUBA));   // guarded by require
-    }
 }

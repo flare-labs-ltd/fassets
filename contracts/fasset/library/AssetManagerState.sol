@@ -44,9 +44,6 @@ library AssetManagerState {
         // verified payment hashes; expire in 5 days
         PaymentVerification.State paymentVerifications;
         
-        // mapping (agentVault, announcementId) => PaymentAnnouncement
-        mapping(bytes32 => AllowedPaymentAnnouncement.PaymentAnnouncement) paymentAnnouncements;
-        
         // Payment challenges state
         IllegalPaymentChallenge.Challenges paymentChallenges;
         

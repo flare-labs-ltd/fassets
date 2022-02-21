@@ -105,6 +105,10 @@ library Agents {
         // The reward for later challenges diminishes - it is divided by 2^successfulPaymentChallenges, so that total 
         // is always less than twice the challenge reward from settings.
         uint32 successfulPaymentChallenges;
+        
+        // There can be only one announced payment per agent active at any time.
+        // This variable holds the id, or 0 if there is no announced payment going on.
+        uint64 ongoingAnnouncedPaymentId;
     }
     
     function createAgent(

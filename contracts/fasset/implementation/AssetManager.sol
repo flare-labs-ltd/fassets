@@ -451,23 +451,22 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     // Allowed payment announcements
     
     function announceAllowedPayment(
-        address _agentVault,
-        uint256 _valueUBA
+        address _agentVault
     )
         external
     {
-        AllowedPaymentAnnouncement.announceAllowedPayment(state, _agentVault, _valueUBA);
+        AllowedPaymentAnnouncement.announceAllowedPayment(state, _agentVault);
     }
     
     function reportAllowedPayment(
-        PaymentReport calldata _paymentReport,
+        IAttestationClient.PaymentProof calldata _payment,
         address _agentVault,
         uint64 _announcementId
     )
         external
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.decodePaymentReport(_paymentReport);
+            TransactionAttestation.verifyPaymentProof(state.settings, _payment, false);
         AllowedPaymentAnnouncement.reportAllowedPayment(state, paymentInfo, _agentVault, _announcementId);
     }
 
