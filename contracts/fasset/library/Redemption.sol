@@ -10,7 +10,6 @@ import "./Conversion.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentVerification.sol";
 import "./Agents.sol";
-import "./PaymentReports.sol";
 import "./IllegalPaymentChallenge.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./AssetManagerState.sol";
@@ -160,33 +159,6 @@ library Redemption {
         require(_request.valueAMG != 0, "invalid request id");
     }
     
-    function reportRedemptionPayment(
-        AssetManagerState.State storage _state,
-        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
-        uint64 _redemptionRequestId
-    )
-        external
-    {
-        RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
-        Agents.requireAgentVaultOwner(request.agentVault);
-        Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
-        // check details
-        uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
-        PaymentVerification.validatePaymentDetails(_paymentInfo, 
-            agent.underlyingAddressHash, request.redeemerUnderlyingAddressHash, paymentValueUBA);
-        require(_paymentInfo.paymentReference == PaymentReference.redemption(_redemptionRequestId), 
-            "invalid payment reference");
-        // report can be submitted several times (e.g. perhaps the gas price has to be raised for tx to be accepted),
-        // but once the transaction has been proved, reporting it is pointless
-        require(!PaymentVerification.transactionConfirmed(_state.paymentVerifications, _paymentInfo),
-            "payment report after confirm");
-        // create the report
-        PaymentReports.createReport(_state.paymentReports, _paymentInfo);
-        emit AMEvents.RedemptionPaymentReported(request.agentVault, request.redeemer,
-            _paymentInfo.deliveredUBA, _paymentInfo.spentUBA, request.underlyingFeeUBA,
-            _paymentInfo.underlyingBlock, _redemptionRequestId);
-    }
-    
     function confirmRedemptionPayment(
         AssetManagerState.State storage _state,
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
@@ -195,8 +167,6 @@ library Redemption {
         external
     {
         RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
-        require(PaymentReports.reportMatch(_state.paymentReports, _paymentInfo) != PaymentReports.ReportMatch.MISMATCH,
-            "mismatching report exists");
         // we require the agent to trigger confirmation
         Agents.requireAgentVaultOwner(request.agentVault);
         // NOTE: we don't check that confirmation is on time - if it isn't, it's the agent's risk anyway,
@@ -223,13 +193,11 @@ library Redemption {
             _paymentInfo.deliveredUBA, usedGas, request.underlyingFeeUBA,
             _paymentInfo.underlyingBlock, _redemptionRequestId);
         // cleanup
-        // delete report - not needed anymore since we store confirmation
-        PaymentReports.deleteReport(_state.paymentReports, _paymentInfo);
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
     }
     
-    function redemptionPaymentTimeout(
+    function redemptionPaymentDefault(
         AssetManagerState.State storage _state,
         IAttestationClient.ReferencedPaymentNonexistence calldata _nonPayment,
         uint64 _redemptionRequestId
@@ -260,7 +228,7 @@ library Redemption {
         uint256 liquidatedUBA = Conversion.convertAmgToUBA(_state.settings, request.valueAMG);
         UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, liquidatedUBA);
         // send events
-        emit AMEvents.RedemptionFailed(request.agentVault, request.redeemer, 
+        emit AMEvents.RedemptionDefault(request.agentVault, request.redeemer, 
             paidAmountWei, liquidatedUBA, _redemptionRequestId);
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
@@ -285,6 +253,7 @@ library Redemption {
 
     function redemptionPaymentBlocked(
         AssetManagerState.State storage _state,
+        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         uint64 _redemptionRequestId
     )
         external
@@ -299,12 +268,36 @@ library Redemption {
         // now we add it to free balance since it couldn't be paid to the redeemer
         Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         uint256 liquidatedUBA = Conversion.convertAmgToUBA(_state.settings, request.valueAMG);
-        UnderlyingFreeBalance.increaseFreeBalance(_state, request.agentVault, liquidatedUBA);
+        UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, liquidatedUBA, _paymentInfo.spentUBA);
         // notify
-        emit AMEvents.RedemptionBlocked(request.agentVault, request.redeemer, liquidatedUBA, _redemptionRequestId);
+        emit AMEvents.RedemptionBlocked(request.agentVault, request.redeemer, liquidatedUBA, _paymentInfo.spentUBA,
+            _redemptionRequestId);
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
     }
+
+    // TODO: how to mark redemption request in this case?
+    // function redemptionPaymentFailed(
+    //     AssetManagerState.State storage _state,
+    //     PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
+    //     uint64 _redemptionRequestId
+    // )
+    //     external
+    // {
+    //     // failure proof checked in AssetManager
+    //     RedemptionRequest storage request = getRedemptionRequest(_state, _redemptionRequestId);
+    //     // TODO: allow challenger after time
+    //     Agents.requireAgentVaultOwner(request.agentVault);
+    //     // redemptionPaymentFailed is only needed for underlying accounting for gas,
+    //     // actual value will/has been accounted for both in underlying and collateral when the
+    //     // reedeemer calls redemptionPaymentDefault
+    //     UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, 0, _paymentInfo.spentUBA);
+    //     // notify
+    //     emit AMEvents.RedemptionFailed(request.agentVault, request.redeemer, _paymentInfo.spentUBA, 
+    //         _redemptionRequestId);
+    //     // delete redemption request at end when we don't need data any more
+    //     delete _state.redemptionRequests[_redemptionRequestId];
+    // }
     
     function selfClose(
         AssetManagerState.State storage _state,

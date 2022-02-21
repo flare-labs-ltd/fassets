@@ -151,7 +151,7 @@ library AMEvents {
      * The corresponding amount of underlying currency, held by the agent, is released
      * and the agent can withdraw it (after allowed payment announcement).
      */ 
-    event RedemptionFailed(
+    event RedemptionDefault(
         address indexed agentVault,
         address indexed redeemer,
         uint256 redeemedCollateralWei,
@@ -159,7 +159,7 @@ library AMEvents {
         uint64 requestId);
 
     /**
-     * Agent provided the proff that redemption payment was attempted, but failed due to
+     * Agent provided the proof that redemption payment was attempted, but failed due to
      * redeemer's address being blocked (or burning more than allowed amount of gas).
      * Redeemer is not paid and all of the agent's collateral is released.
      * The underlying currency is also released to the agent.
@@ -168,6 +168,17 @@ library AMEvents {
         address indexed agentVault,
         address indexed redeemer,
         uint256 freedBalanceUBA,
+        uint256 spentUBA,
+        uint64 requestId);
+
+    /**
+     * Agent provided the proof that redemption payment was attempted, but failed due to
+     * his own error. We only account for gas here, but the redeemer can later triggerd payment default.
+     */ 
+    event RedemptionFailed(
+        address indexed agentVault,
+        address indexed redeemer,
+        uint256 spentUBA,
         uint64 requestId);
 
     /**

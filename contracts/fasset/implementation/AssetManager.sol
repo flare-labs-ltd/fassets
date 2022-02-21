@@ -367,22 +367,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     }
     
     /**
-     * To prevent illegal payment challenge proof from overtaking payment proof,
-     * agent must report payment before proof is available. After reporting, challenge
-     * can only be executed if it can prove that report is lying about some data.
-     */
-    function reportRedemptionPayment(
-        PaymentReport calldata _paymentReport,
-        uint64 _redemptionRequestId
-    )
-        external
-    {
-        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.decodePaymentReport(_paymentReport);
-        Redemption.reportRedemptionPayment(state, paymentInfo, _redemptionRequestId);
-    }
-
-    /**
      * After paying to the redeemer, the agent must call this method to unlock the collateral
      * and to make sure that the redeemer cannot demand payment in collateral on timeout.
      */    
@@ -408,7 +392,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         external
     {
         TransactionAttestation.verifyReferencedPaymentNonexistence(state.settings, _proof);
-        Redemption.redemptionPaymentTimeout(state, _proof, _redemptionRequestId);
+        Redemption.redemptionPaymentDefault(state, _proof, _redemptionRequestId);
     }
     
     /**
@@ -422,10 +406,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     )
         external
     {
-        TransactionAttestation.verifyPaymentProof(state.settings, _payment, true);
+        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
+            TransactionAttestation.verifyPaymentProof(state.settings, _payment, true);
         require(_payment.status == TransactionAttestation.PAYMENT_BLOCKED,
             "redemption payment not blocked");
-        Redemption.redemptionPaymentBlocked(state, _redemptionRequestId);
+        Redemption.redemptionPaymentBlocked(state, paymentInfo, _redemptionRequestId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
