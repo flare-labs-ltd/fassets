@@ -46,14 +46,6 @@ library AssetManagerSettings {
         // Minimum collateral ratio required to get agent out of liquidation.
         uint16 liquidationMinCollateralRatioBIPS;
         
-        // If non-zero, agents must anounce exit from "available for minting" list 
-        // and then wait this many seconds before exiting.
-        uint64 minSecondsToExitAvailableAgentsList;
-
-        // When announcing exit from  "available for minting" list, only some time is allowed for actual exit,
-        // to prevent agents simply announcing exit at the beginning and then exiting whenever they like.
-        uint64 maxSecondsToExitAvailableAgentsList;
-        
         // Number of underlying blocks that the minter or agent is allowed to pay underlying value.
         // If payment not reported in that time, minting/redemption can be challenged and default action triggered.
         // CAREFUL: Count starts from the current proved block height, so the minters and agents should 
@@ -75,11 +67,6 @@ library AssetManagerSettings {
         // to make sure payment happens before payment verification data is expired in a few days.
         uint64 underlyingBlocksForAllowedPayment;
         
-        // Number of underlying blocks that the agent is allowed to perform underlying address topup.
-        // Topup is only needed when underlying gas is bigger that funds on allowed payments account plus
-        // redemption fee, so it should be very rare.
-        uint64 underlyingBlocksForTopup;
-
         // Redemption fee in underlying currency base amount (UBA).
         uint16 redemptionFeeBips;
         
