@@ -27,7 +27,7 @@ library AllowedPaymentAnnouncement {
         emit AMEvents.AllowedPaymentAnnounced(_agentVault, announcementId, paymentReference);
     }
     
-    function reportAllowedPayment(
+    function confirmAllowedPayment(
         AssetManagerState.State storage _state,
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
         address _agentVault,
@@ -49,7 +49,7 @@ library AllowedPaymentAnnouncement {
         // update free underlying balance and trigger liquidation if negative
         UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, 0, _paymentInfo.spentUBA);
         // send event
-        emit AMEvents.AllowedPaymentReported(_agentVault, _paymentInfo.spentUBA, 
+        emit AMEvents.AllowedPaymentConfirmed(_agentVault, _paymentInfo.spentUBA, 
             _paymentInfo.underlyingBlock, _announcementId);
     }
 }

@@ -242,7 +242,7 @@ library AMEvents {
      * the agent must report the transaction details, otherwise it can be challenged as illegal payment.
      * Reported data should be exactly correct, otherwise it can itself be challenged.
      */
-    event AllowedPaymentReported(
+    event AllowedPaymentConfirmed(
         address agentVault,
         uint256 spentUBA,
         uint64 underlyingBlock,
