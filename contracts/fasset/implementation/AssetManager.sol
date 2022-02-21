@@ -485,16 +485,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         UnderlyingFreeBalance.confirmTopupPayment(state, paymentInfo, _agentVault);
     }
     
-    function triggerTopupLiquidation(
-        IAttestationClient.BlockHeightExists calldata _proof,
-        address _agentVault
-    )
-        external
-    {
-        (uint64 underlyingBlock,) = TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
-        UnderlyingFreeBalance.triggerTopupLiquidation(state, _agentVault, underlyingBlock);
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////
     // Illegal payment and wrong payment report challenges
     

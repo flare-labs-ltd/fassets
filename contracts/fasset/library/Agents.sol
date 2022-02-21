@@ -100,10 +100,6 @@ library Agents {
         // May become negative (due to high underlying gas costs), in which case topup is required.
         int128 freeUnderlyingBalanceUBA;
         
-        // When freeUnderlyingBalanceUBA becomes negative, agent has until this block to perform topup,
-        // otherwise liquidation can be triggered by a challenger.
-        uint64 lastUnderlyingBlockForTopup;
-        
         // The number of successful payment challenges - if it is >= 1, agent is already being liquidated.
         // Therefore, for >= 1, new challenges are not accepted but old ones can still be proved.
         // The reward for later challenges diminishes - it is divided by 2^successfulPaymentChallenges, so that total 

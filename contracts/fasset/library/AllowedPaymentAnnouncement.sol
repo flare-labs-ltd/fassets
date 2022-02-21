@@ -62,8 +62,7 @@ library AllowedPaymentAnnouncement {
         // create the report
         PaymentReports.createReport(_state.paymentReports, _paymentInfo);
         // deduct gas from free balance (don't report multiple times or gas will be deducted every time)
-        UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, 0, PaymentVerification.usedGas(_paymentInfo),
-            _paymentInfo.underlyingBlock);
+        UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, 0, PaymentVerification.usedGas(_paymentInfo));
         emit AMEvents.AllowedPaymentReported(_agentVault, _paymentInfo.deliveredUBA, _paymentInfo.spentUBA, 
             _paymentInfo.underlyingBlock, _announcementId);
         delete _state.paymentAnnouncements[key];

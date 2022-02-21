@@ -215,10 +215,8 @@ library Redemption {
         // release agent collateral
         Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         // update underlying free balance with fee and gas
-        uint64 startBlockForTopup = _paymentInfo.underlyingBlock + _state.settings.underlyingBlocksForPayment;
         uint256 usedGas = PaymentVerification.usedGas(_paymentInfo);
-        UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault,
-            request.underlyingFeeUBA, usedGas, startBlockForTopup);
+        UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, request.underlyingFeeUBA, usedGas);
         // delete possible pending challenge
         IllegalPaymentChallenge.deleteChallenge(_state, _paymentInfo);
         emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,

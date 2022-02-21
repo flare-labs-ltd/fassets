@@ -77,6 +77,11 @@ interface IAttestationClient {
         // It includes both payment value and fee (gas).
         // For utxo chains it can be negative, that's why signed int256 is used.
         int256 spentAmount;
+        
+        // If the attestation provider detects that the transaction is actually a valid payment (same conditions
+        // as for PaymentProof), it should set this field to its the paymentReference.
+        // Otherwise, paymentReference must be 0.
+        uint256 paymentReference;
     }
     
     struct ReferencedPaymentNonexistence {
