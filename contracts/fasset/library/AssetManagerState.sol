@@ -11,8 +11,6 @@ import "./AvailableAgents.sol";
 import "./CollateralReservations.sol";
 import "./Redemption.sol";
 import "./AllowedPaymentAnnouncement.sol";
-import "./IllegalPaymentChallenge.sol";
-import "./PaymentReports.sol";
 
 
 library AssetManagerState {
@@ -43,12 +41,6 @@ library AssetManagerState {
         
         // verified payment hashes; expire in 5 days
         PaymentVerification.State paymentVerifications;
-        
-        // Payment challenges state
-        IllegalPaymentChallenge.Challenges paymentChallenges;
-        
-        // Redemption payment reports and announced payment reports
-        PaymentReports.Reports paymentReports;
         
         // New ids (listed together to save storage); all must be incremented before assigning, so 0 means empty
         uint64 newCrtId;

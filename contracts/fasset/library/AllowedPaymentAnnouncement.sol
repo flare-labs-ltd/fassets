@@ -6,7 +6,6 @@ import "./PaymentVerification.sol";
 import "./PaymentReference.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
-import "./IllegalPaymentChallenge.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./AssetManagerState.sol";
 

@@ -10,7 +10,6 @@ import "./Conversion.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentVerification.sol";
 import "./Agents.sol";
-import "./IllegalPaymentChallenge.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
@@ -25,7 +24,7 @@ library Redemption {
     
     struct RedemptionRequest {
         bytes32 redeemerUnderlyingAddressHash;
-        uint128 underlyingValueUBA;
+        uint128 underlyingValueUBA; // TODO: should have fee deducted (for matching)
         uint64 firstUnderlyingBlock;
         uint64 lastUnderlyingBlock;
         uint64 lastUnderlyingTimestamp;
@@ -187,8 +186,7 @@ library Redemption {
         // update underlying free balance with fee and gas
         uint256 usedGas = PaymentVerification.usedGas(_paymentInfo);
         UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, request.underlyingFeeUBA, usedGas);
-        // delete possible pending challenge
-        IllegalPaymentChallenge.deleteChallenge(_state, _paymentInfo);
+        // notify
         emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
             _paymentInfo.deliveredUBA, usedGas, request.underlyingFeeUBA,
             _paymentInfo.underlyingBlock, _redemptionRequestId);

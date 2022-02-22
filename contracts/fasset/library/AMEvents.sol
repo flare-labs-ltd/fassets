@@ -277,6 +277,25 @@ library AMEvents {
     event IllegalPaymentConfirmed(
         address indexed agentVault,
         bytes32 transactionHash);
+
+    /**
+     * Two transaction with same payment reference, both from the agent's underlying address, were proved.
+     * Whole agent's position goes into liquidation.
+     * Original challenger and prover are paid reward from the agent's collateral.
+     */
+    event DuplicatePaymentConfirmed(
+        address indexed agentVault,
+        bytes32 transactionHash1,
+        bytes32 transactionHash2);
+
+    /**
+     * Two transaction with same payment reference, both from the agent's underlying address, were proved.
+     * Whole agent's position goes into liquidation.
+     * Original challenger and prover are paid reward from the agent's collateral.
+     */
+    event UnderlyingFreeBalanceNegative(
+        address indexed agentVault,
+        int256 freeBalance);
         
     /**
      * Payment report (for redemption or allowed withdrawal) contains incorrect fields.

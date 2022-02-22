@@ -19,7 +19,7 @@ import "../library/Agents.sol";
 import "../library/CollateralReservations.sol";
 import "../library/Minting.sol";
 import "../library/Redemption.sol";
-import "../library/IllegalPaymentChallenge.sol";
+import "../library/Challenges.sol";
 import "../library/Liquidation.sol";
 import "../library/AllowedPaymentAnnouncement.sol";
 import "../library/UnderlyingFreeBalance.sol";
@@ -81,7 +81,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
             TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, true);
         UnderlyingAddressOwnership.claimWithProof(state.underlyingAddressOwnership, 
-            paymentInfo, msg.sender, paymentInfo.sourceAddressHash);
+            paymentInfo, state.paymentVerifications, msg.sender, paymentInfo.sourceAddressHash);
     }
     
     /**
@@ -472,38 +472,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     ////////////////////////////////////////////////////////////////////////////////////
     // Illegal payment and wrong payment report challenges
     
-    function createIllegalPaymentChallenge(
-        address _agentVault,
-        bytes32 _transactionHash
-    )
-        external
-    {
-        IllegalPaymentChallenge.createChallenge(state, _agentVault, _transactionHash);
-    }
-    
-    function confirmIllegalPaymentChallenge(
-        IAttestationClient.BalanceDecreasingTransaction calldata _transaction
-    )
-        external
-    {
-        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _transaction);
-        IllegalPaymentChallenge.confirmChallenge(state, paymentInfo);
-    }
-    
-    function challengeWrongPaymentReportWithPayment(
-        IAttestationClient.PaymentProof calldata _payment,
-        address _agentVault
-    )
-        external
-    {
-        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyPaymentProof(state.settings, _payment, false);
-        // TODO: check address ownership
-        IllegalPaymentChallenge.confirmWrongReportChallenge(state, paymentInfo, _agentVault);
-    }
-    
-    function challengeWrongPaymentReportWithTransaction(
+    function illegalPaymentChallenge(
         IAttestationClient.BalanceDecreasingTransaction calldata _transaction,
         address _agentVault
     )
@@ -511,9 +480,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     {
         PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
             TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _transaction);
-        // TODO: check address ownership
-        IllegalPaymentChallenge.confirmWrongReportChallenge(state, paymentInfo, _agentVault);
+        Challenges.illegalPaymentChallenge(state, paymentInfo, _agentVault);
     }
+    
+    // TODO: add other types
+    
     
     ////////////////////////////////////////////////////////////////////////////////////
     // Liquidation

@@ -33,6 +33,7 @@ library UnderlyingAddressOwnership {
     function claimWithProof(
         State storage _state,
         PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo, 
+        PaymentVerification.State storage _paymentVerification,
         address _owner, 
         bytes32 _underlyingAddressHash
     )
@@ -42,6 +43,7 @@ library UnderlyingAddressOwnership {
             && _paymentInfo.paymentReference == PaymentReference.addressOwnership(_owner);
         require(proofValid, "invalid address ownership proof");
         _claim(_state, _owner, _underlyingAddressHash, true);
+        PaymentVerification.confirmPayment(_paymentVerification, _paymentInfo);
     }
     
     function check(
