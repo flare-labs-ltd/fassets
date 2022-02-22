@@ -25,10 +25,10 @@ library Redemption {
     struct RedemptionRequest {
         bytes32 redeemerUnderlyingAddressHash;
         uint128 underlyingValueUBA; // TODO: should have fee deducted (for matching)
+        uint128 underlyingFeeUBA;
         uint64 firstUnderlyingBlock;
         uint64 lastUnderlyingBlock;
         uint64 lastUnderlyingTimestamp;
-        uint128 underlyingFeeUBA;
         uint64 valueAMG;
         address agentVault;
         address redeemer;
@@ -184,8 +184,10 @@ library Redemption {
         // release agent collateral
         Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         // update underlying free balance with fee and gas
-        int256 usedGas = _paymentInfo.spentUBA - SafeCast.toInt256(_paymentInfo.deliveredUBA);
-        int256 freeBalanceChangeUBA = SafeCast.toInt256(request.underlyingFeeUBA) - usedGas;
+        int256 freeBalanceChangeUBA = SafeCast.toInt256(request.underlyingValueUBA);
+        if (_paymentInfo.sourceAddressHash == agent.underlyingAddressHash) {
+            freeBalanceChangeUBA -= _paymentInfo.spentUBA;
+        }
         UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, freeBalanceChangeUBA);
         // notify
         emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
