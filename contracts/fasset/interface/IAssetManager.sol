@@ -9,7 +9,7 @@ interface IAssetManager {
         bytes32 receivingAddress;
         bytes32 transactionHash;
         uint256 paymentReference;
-        uint256 spentAmount;
+        int256 spentAmount;
         uint256 receivedAmount;
         // TODO: also consider oneToOne flag
     }

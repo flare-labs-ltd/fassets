@@ -37,7 +37,7 @@ interface IAttestationClient {
 
         // The amount that what went out of source address (or all source addresses), in smallest underlying units.
         // It includes both payment value and fee / gas.
-        uint256 spentAmount;
+        int256 spentAmount;
         
         // The amount the receiving address received, in smallest underlying units.
         uint256 receivedAmount;

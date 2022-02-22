@@ -113,7 +113,7 @@ library TransactionAttestation {
             transactionHash: _attestationData.transactionHash,
             paymentReference: 0,    // not important
             deliveredUBA: 0,
-            spentUBA: _positive(_attestationData.spentAmount),
+            spentUBA: _attestationData.spentAmount,
             underlyingBlock: _attestationData.blockNumber
         });
     }

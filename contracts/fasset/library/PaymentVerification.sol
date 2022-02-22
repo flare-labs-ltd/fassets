@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 
 library PaymentVerification {
@@ -14,7 +15,7 @@ library PaymentVerification {
         bytes32 transactionHash;
         uint256 paymentReference;      // used in minting to identify sender
         uint256 deliveredUBA;
-        uint256 spentUBA;
+        int256 spentUBA;
         uint64 underlyingBlock;
     }
 
@@ -113,13 +114,6 @@ library PaymentVerification {
         returns (bytes32)
     {
         return keccak256(abi.encode(_paymentInfo.sourceAddressHash, _paymentInfo.transactionHash));
-    }
-    
-    function usedGas(UnderlyingPaymentInfo memory _paymentInfo)
-        internal pure
-        returns (uint256 _gasUBA)
-    {
-        (, _gasUBA) = _paymentInfo.spentUBA.trySub(_paymentInfo.deliveredUBA);
     }
     
     function _recordPaymentVerification(

@@ -35,9 +35,9 @@ library Challenges {
         // check that payment reference is invalid (paymentReference == 0 is always invalid payment)
         if (_paymentInfo.paymentReference != 0) {
             if (PaymentReference.isValid(_paymentInfo.paymentReference, PaymentReference.REDEMPTION)) {
-                uint256 redemptionId = PaymentReference.decodeId(_paymentInfo.paymentReference);
+                uint64 redemptionId = PaymentReference.decodeId(_paymentInfo.paymentReference);
                 Redemption.RedemptionRequest storage request = _state.redemptionRequests[redemptionId];
-                require(request.agentVault == 0, "matching redemption active");
+                require(request.agentVault == address(0), "matching redemption active");
             }
             if (PaymentReference.isValid(_paymentInfo.paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
                 uint256 announcementId = PaymentReference.decodeId(_paymentInfo.paymentReference);
@@ -92,7 +92,7 @@ library Challenges {
                 "mult chlg: payment confirmed");
             if (PaymentReference.isValid(pmi.paymentReference, PaymentReference.REDEMPTION)) {
                 // for redemption, we don't count the value that should be paid to free balance deduction
-                uint256 redemptionId = PaymentReference.decodeId(pmi.paymentReference);
+                uint64 redemptionId = PaymentReference.decodeId(pmi.paymentReference);
                 Redemption.RedemptionRequest storage request = _state.redemptionRequests[redemptionId];
                 total += pmi.spentUBA - SafeCast.toInt256(request.underlyingValueUBA);
             } else {

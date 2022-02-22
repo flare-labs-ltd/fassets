@@ -184,11 +184,12 @@ library Redemption {
         // release agent collateral
         Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         // update underlying free balance with fee and gas
-        uint256 usedGas = PaymentVerification.usedGas(_paymentInfo);
-        UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, request.underlyingFeeUBA, usedGas);
+        int256 usedGas = _paymentInfo.spentUBA - SafeCast.toInt256(_paymentInfo.deliveredUBA);
+        int256 freeBalanceChangeUBA = SafeCast.toInt256(request.underlyingFeeUBA) - usedGas;
+        UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, freeBalanceChangeUBA);
         // notify
         emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
-            _paymentInfo.deliveredUBA, usedGas, request.underlyingFeeUBA,
+            _paymentInfo.deliveredUBA, freeBalanceChangeUBA,
             _paymentInfo.underlyingBlock, _redemptionRequestId);
         // cleanup
         // delete redemption request at end when we don't need data any more
@@ -266,9 +267,10 @@ library Redemption {
         // now we add it to free balance since it couldn't be paid to the redeemer
         Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         uint256 liquidatedUBA = Conversion.convertAmgToUBA(_state.settings, request.valueAMG);
-        UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, liquidatedUBA, _paymentInfo.spentUBA);
+        int256 freedBalanceUBA = SafeCast.toInt256(liquidatedUBA) - _paymentInfo.spentUBA;
+        UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, freedBalanceUBA);
         // notify
-        emit AMEvents.RedemptionBlocked(request.agentVault, request.redeemer, liquidatedUBA, _paymentInfo.spentUBA,
+        emit AMEvents.RedemptionBlocked(request.agentVault, request.redeemer, freedBalanceUBA,
             _redemptionRequestId);
         // delete redemption request at end when we don't need data any more
         delete _state.redemptionRequests[_redemptionRequestId];
@@ -289,7 +291,7 @@ library Redemption {
     //     // redemptionPaymentFailed is only needed for underlying accounting for gas,
     //     // actual value will/has been accounted for both in underlying and collateral when the
     //     // reedeemer calls redemptionPaymentDefault
-    //     UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, 0, _paymentInfo.spentUBA);
+    //     UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, -_paymentInfo.spentUBA);
     //     // notify
     //     emit AMEvents.RedemptionFailed(request.agentVault, request.redeemer, _paymentInfo.spentUBA, 
     //         _redemptionRequestId);

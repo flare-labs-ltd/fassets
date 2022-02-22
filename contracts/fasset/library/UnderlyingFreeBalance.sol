@@ -18,20 +18,17 @@ library UnderlyingFreeBalance {
     function updateFreeBalance(
         AssetManagerState.State storage _state, 
         address _agentVault,
-        uint256 _balanceAdd,
-        uint256 _balanceSub
+        int256 _balanceChange
     ) 
         internal
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        int256 newBalance = int256(agent.freeUnderlyingBalanceUBA)
-            + SafeCast.toInt256(_balanceAdd)
-            - SafeCast.toInt256(_balanceSub);
-        agent.freeUnderlyingBalanceUBA = SafeCast.toInt128(newBalance);
+        int256 newBalance = agent.freeUnderlyingBalanceUBA + _balanceChange;
         if (newBalance < 0) {
             emit AMEvents.UnderlyingFreeBalanceNegative(_agentVault, newBalance);
             Liquidation.startLiquidation(_state, _agentVault, false);
         }
+        agent.freeUnderlyingBalanceUBA = SafeCast.toInt128(newBalance);
     }
 
     function increaseFreeBalance(
@@ -41,7 +38,7 @@ library UnderlyingFreeBalance {
     ) 
         internal
     {
-        updateFreeBalance(_state, _agentVault, _balanceIncrease, 0);
+        updateFreeBalance(_state, _agentVault, SafeCast.toInt256(_balanceIncrease));
     }
 
     function confirmTopupPayment(

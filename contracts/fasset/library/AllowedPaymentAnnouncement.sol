@@ -46,7 +46,7 @@ library AllowedPaymentAnnouncement {
         // clear active payment announcement
         agent.ongoingAnnouncedPaymentId = 0;
         // update free underlying balance and trigger liquidation if negative
-        UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, 0, _paymentInfo.spentUBA);
+        UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, -_paymentInfo.spentUBA);
         // send event
         emit AMEvents.AllowedPaymentConfirmed(_agentVault, _paymentInfo.spentUBA, 
             _paymentInfo.underlyingBlock, _announcementId);
