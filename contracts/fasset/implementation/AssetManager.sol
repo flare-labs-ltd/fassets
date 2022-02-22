@@ -413,6 +413,23 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         Redemption.redemptionPaymentBlocked(state, paymentInfo, _redemptionRequestId);
     }
 
+    /**
+     * If the agent cannot perform the payment due to his own fault, the agent must report for proper accounting 
+     * of underlying funds.
+     */
+    function redemptionPaymentFailed(
+        IAttestationClient.PaymentProof calldata _payment,
+        uint64 _redemptionRequestId
+    )
+        external
+    {
+        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
+            TransactionAttestation.verifyPaymentProof(state.settings, _payment, true);
+        require(_payment.status == TransactionAttestation.PAYMENT_FAILED,
+            "redemption payment not failed");
+        Redemption.redemptionPaymentFailed(state, paymentInfo, _redemptionRequestId);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Self-close
     

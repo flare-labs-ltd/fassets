@@ -106,32 +106,6 @@ library AMEvents {
         uint256 remainingLots);
 
     /**
-     * Agent complained against the current underlying block stated by the redeemer, by providing
-     * proof of a later existing block. As a result, agent obtained more time for the 
-     * completion of the redemption payment.
-     */ 
-    event RedemptionUnderlyingBlockChanged(
-        address indexed agentVault,
-        uint256 requestUnderlyingBlock,
-        uint256 lastUnderlyingBlock,
-        uint256 requestId);
-        
-    /**
-     * Agent reported redemption payment, before obtaining proof from the state connector.
-     * Report should be made immediately after creating transaction on the underlying chain
-     * and is only used for preventing illegal payment challenge.
-     * Reported data should be exactly correct, otherwise it can itself be challenged.
-     */ 
-    event RedemptionPaymentReported(
-        address indexed agentVault,
-        address indexed redeemer,
-        uint256 valueUBA,
-        uint256 spentUBA,
-        uint256 feeUBA,
-        uint64 underlyingBlock,
-        uint64 requestId);
-
-    /**
      * Agent provided proof of redemption payment.
      * Agent's collateral is released.
      */ 
@@ -139,7 +113,6 @@ library AMEvents {
         address indexed agentVault,
         address indexed redeemer,
         uint256 valueUBA,
-        int256 freeBalanceChangeUBA,
         uint64 underlyingBlock,
         uint64 requestId);
 
@@ -154,7 +127,6 @@ library AMEvents {
         address indexed agentVault,
         address indexed redeemer,
         uint256 redeemedCollateralWei,
-        uint256 freedBalanceUBA,
         uint64 requestId);
 
     /**
@@ -163,22 +135,29 @@ library AMEvents {
      * Redeemer is not paid and all of the agent's collateral is released.
      * The underlying currency is also released to the agent.
      */ 
-    event RedemptionBlocked(
+    event RedemptionPaymentBlocked(
         address indexed agentVault,
         address indexed redeemer,
-        int256 freedBalanceUBA,
         uint64 requestId);
 
     /**
      * Agent provided the proof that redemption payment was attempted, but failed due to
-     * his own error. We only account for gas here, but the redeemer can later triggerd payment default.
+     * his own error. We only account for gas here, but the redeemer can later trigger payment default.
      */ 
-    event RedemptionFailed(
+    event RedemptionPaymentFailed(
         address indexed agentVault,
         address indexed redeemer,
-        uint256 spentUBA,
         uint64 requestId);
 
+    /**
+     * Agent finished the redemption (even if it was defaulted already).
+     * Agent's free underlying balance was updated.
+     */ 
+    event RedemptionFinished(
+        address indexed agentVault,
+        int256 freedUnderlyingBalanceUBA,
+        uint64 requestId);
+        
     /**
      * Agent self-closed valueUBA of backing fassets.
      */
