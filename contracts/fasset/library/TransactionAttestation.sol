@@ -128,25 +128,4 @@ library TransactionAttestation {
         _blockTimestamp = _attestationData.blockTimestamp;
     }
     
-    function decodePaymentReport(
-        IAssetManager.PaymentReport calldata _paymentReport
-    )
-        internal pure
-        returns (PaymentVerification.UnderlyingPaymentInfo memory)
-    {
-        return PaymentVerification.UnderlyingPaymentInfo({
-            sourceAddressHash: _paymentReport.sourceAddress,
-            targetAddressHash: _paymentReport.receivingAddress,
-            transactionHash: _paymentReport.transactionHash,
-            paymentReference: _paymentReport.paymentReference,
-            deliveredUBA: _paymentReport.receivedAmount,
-            spentUBA: _paymentReport.spentAmount,
-            underlyingBlock: 0  // TODO: not used in payment reportfor now
-        });
-    }
-    
-    function _positive(int256 _value) private pure returns (uint256) {
-        return _value >= 0 ? uint256(_value) : 0;
-    }
-    
 }
