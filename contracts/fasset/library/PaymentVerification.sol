@@ -77,25 +77,6 @@ library PaymentVerification {
     {
         return _state.verifiedPayments[_transactionKey] != 0;
     }
-    
-    function validatePaymentDetails(
-        UnderlyingPaymentInfo memory _paymentInfo,
-        bytes32 _expectedSourceHash,
-        bytes32 _expectedTargetHash,
-        uint256 _expectedValueUBA
-    )
-        internal pure
-    {
-        // _expectedSourceHash is zero for topups and non-zero otherwise
-        if (_expectedSourceHash != 0) {
-            require(_paymentInfo.sourceAddressHash == _expectedSourceHash, "invalid payment source");
-        }
-        // _expectedTargetHash is zero for allowed payments and non-zero for required payments
-        if (_expectedTargetHash != 0) {
-            require(_paymentInfo.targetAddressHash == _expectedTargetHash, "invalid payment target");
-        }
-        require(_paymentInfo.deliveredUBA == _expectedValueUBA, "invalid payment value");
-    }
 
     // the same transaction hash could perform several underlying payments if it is smart contract
     // for now this is illegal, but might change for some smart contract chains

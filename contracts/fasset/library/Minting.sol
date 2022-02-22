@@ -26,21 +26,23 @@ library Minting {
     {
         CollateralReservations.CollateralReservation storage crt = 
             CollateralReservations.getCollateralReservation(_state, _crtId);
-        require(msg.sender == crt.minter, "only minter");
-        require(_paymentInfo.paymentReference == PaymentReference.minting(_crtId), "invalid payment reference");
-        Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
         _minter = crt.minter;
         _mintValueUBA = crt.underlyingValueUBA;
-        uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA) + crt.underlyingFeeUBA;
-        PaymentVerification.validatePaymentDetails(_paymentInfo, 
-            0 /* not used */, agent.underlyingAddressHash, expectedPaymentUBA);
-        _state.paymentVerifications.confirmPayment(_paymentInfo);
         address agentVault = crt.agentVault;
-        uint64 valueAMG = crt.valueAMG;
-        uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, valueAMG);
+        Agents.Agent storage agent = Agents.getAgent(_state, agentVault);
+        require(msg.sender == crt.minter, "only minter");
+        uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA) + crt.underlyingFeeUBA;
+        require(_paymentInfo.paymentReference == PaymentReference.minting(_crtId),
+            "invalid minting reference");
+        require(_paymentInfo.targetAddressHash == agent.underlyingAddressHash, 
+            "minting not agent's address");
+        require(_paymentInfo.deliveredUBA >= expectedPaymentUBA,
+            "minting payment too small");
+        _state.paymentVerifications.confirmPayment(_paymentInfo);
+        uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, crt.valueAMG);
         emit AMEvents.MintingExecuted(agentVault, _crtId, redemptionTicketId, _mintValueUBA, crt.underlyingFeeUBA);
-        Agents.allocateMintedAssets(_state, agentVault, valueAMG);
-        UnderlyingFreeBalance.increaseFreeBalance(_state, crt.agentVault, crt.underlyingFeeUBA);
+        Agents.allocateMintedAssets(_state, agentVault, crt.valueAMG);
+        UnderlyingFreeBalance.increaseFreeBalance(_state, agentVault, crt.underlyingFeeUBA);
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
         _state.settings.burnAddress.transfer(crt.reservationFeeNatWei);
         // cleanup
@@ -61,12 +63,15 @@ library Minting {
         require(_lots > 0, "cannot mint 0 blocks");
         require(agent.agentType == Agents.AgentType.AGENT_100, "wrong agent type for self-mint");
         require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
-        require(_paymentInfo.paymentReference == PaymentReference.selfMint(_agentVault), "invalid payment reference");
         require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
         _mintValueUBA = uint256(valueAMG) * _state.settings.assetMintingGranularityUBA;
-        PaymentVerification.validatePaymentDetails(_paymentInfo, 
-            0 /* not used */, agent.underlyingAddressHash, _mintValueUBA);
+        require(_paymentInfo.paymentReference == PaymentReference.selfMint(_agentVault), 
+            "invalid self-mint reference");
+        require(_paymentInfo.targetAddressHash == agent.underlyingAddressHash, 
+            "self-mint not agent's address");
+        require(_paymentInfo.deliveredUBA >= _mintValueUBA, 
+            "self-mint payment too small");
         _state.paymentVerifications.confirmPayment(_paymentInfo);
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(_agentVault, valueAMG);
         emit AMEvents.MintingExecuted(_agentVault, 0, redemptionTicketId, _mintValueUBA, 0);

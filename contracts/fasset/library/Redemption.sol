@@ -24,7 +24,7 @@ library Redemption {
     
     struct RedemptionRequest {
         bytes32 redeemerUnderlyingAddressHash;
-        uint128 underlyingValueUBA; // TODO: should have fee deducted (for matching)
+        uint128 underlyingValueUBA;
         uint128 underlyingFeeUBA;
         uint64 firstUnderlyingBlock;
         uint64 lastUnderlyingBlock;
@@ -174,9 +174,11 @@ library Redemption {
         // confirm payment proof
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
         require(_paymentInfo.paymentReference == PaymentReference.redemption(_redemptionRequestId), 
-            "invalid payment reference");
-        PaymentVerification.validatePaymentDetails(_paymentInfo, 
-            agent.underlyingAddressHash, request.redeemerUnderlyingAddressHash, paymentValueUBA);
+            "invalid redemption reference");
+        require(_paymentInfo.targetAddressHash == request.redeemerUnderlyingAddressHash, 
+            "not redeemer's address");
+        require(_paymentInfo.deliveredUBA >= paymentValueUBA, 
+            "redemption payment too small");
         // record payment so that it cannot be used twice in redemption
         _state.paymentVerifications.confirmPayment(_paymentInfo);
         // record source decreasing transaction so that it cannot be challenged
