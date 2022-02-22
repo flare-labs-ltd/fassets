@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../interface/IAttestationClient.sol";
 import "../../utils/lib/SafeBips.sol";
 import "../interface/IAgentVault.sol";
 import "./AMEvents.sol";
@@ -21,26 +22,26 @@ library Challenges {
 
     function illegalPaymentChallenge(
         AssetManagerState.State storage _state,
-        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
+        IAttestationClient.BalanceDecreasingTransaction calldata _payment,
         address _agentVault
     )
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // check the payment originates from agent's address
-        require(_paymentInfo.sourceAddressHash == agent.underlyingAddressHash, "chlg: not agent's address");
+        require(_payment.sourceAddress == agent.underlyingAddressHash, "chlg: not agent's address");
         // check that proof of this tx wasn't used before (and mark it as used) - otherwise we could 
         // trigger liquidation for already proved redemption payments
-        _state.paymentVerifications.confirmSourceDecreasingTransaction(_paymentInfo);
+        _state.paymentVerifications.confirmSourceDecreasingTransaction(_payment);
         // check that payment reference is invalid (paymentReference == 0 is always invalid payment)
-        if (_paymentInfo.paymentReference != 0) {
-            if (PaymentReference.isValid(_paymentInfo.paymentReference, PaymentReference.REDEMPTION)) {
-                uint64 redemptionId = PaymentReference.decodeId(_paymentInfo.paymentReference);
+        if (_payment.paymentReference != 0) {
+            if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.REDEMPTION)) {
+                uint64 redemptionId = PaymentReference.decodeId(_payment.paymentReference);
                 Redemption.RedemptionRequest storage request = _state.redemptionRequests[redemptionId];
                 require(request.agentVault == address(0), "matching redemption active");
             }
-            if (PaymentReference.isValid(_paymentInfo.paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
-                uint256 announcementId = PaymentReference.decodeId(_paymentInfo.paymentReference);
+            if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
+                uint256 announcementId = PaymentReference.decodeId(_payment.paymentReference);
                 // valid announced payment cannot have announcementId == 0 and must match the agent's announced id
                 require(announcementId == 0 || announcementId != agent.ongoingAnnouncedPaymentId, 
                     "matching ongoing announced pmt");
@@ -49,34 +50,34 @@ library Challenges {
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(_state, _agentVault, msg.sender, agent.mintedAMG);
         // emit events
-        emit AMEvents.IllegalPaymentConfirmed(_agentVault, _paymentInfo.transactionHash);
+        emit AMEvents.IllegalPaymentConfirmed(_agentVault, _payment.transactionHash);
     }
     
     function doublePaymentChallenge(
         AssetManagerState.State storage _state,
-        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo1,
-        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo2,
+        IAttestationClient.BalanceDecreasingTransaction calldata _payment1,
+        IAttestationClient.BalanceDecreasingTransaction calldata _payment2,
         address _agentVault
     )
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // check the payments originate from agent's address
-        require(_paymentInfo1.sourceAddressHash == agent.underlyingAddressHash, "chlg 1: not agent's address");
-        require(_paymentInfo2.sourceAddressHash == agent.underlyingAddressHash, "chlg 2: not agent's address");
+        require(_payment1.sourceAddress == agent.underlyingAddressHash, "chlg 1: not agent's address");
+        require(_payment2.sourceAddress == agent.underlyingAddressHash, "chlg 2: not agent's address");
         // payment references must be equal
-        require(_paymentInfo1.paymentReference == _paymentInfo2.paymentReference, "challenge: not duplicate");
+        require(_payment1.paymentReference == _payment2.paymentReference, "challenge: not duplicate");
         // ! no need to check that transaction wasn't confirmed - this is always illegal
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(_state, _agentVault, msg.sender, agent.mintedAMG);
         // emit events
         emit AMEvents.DuplicatePaymentConfirmed(_agentVault,
-            _paymentInfo1.transactionHash, _paymentInfo2.transactionHash);
+            _payment1.transactionHash, _payment2.transactionHash);
     }
     
     function paymentsMakeFreeBalanceNegative(
         AssetManagerState.State storage _state,
-        PaymentVerification.UnderlyingPaymentInfo[] memory _paymentInfos,
+        IAttestationClient.BalanceDecreasingTransaction[] calldata _payments,
         address _agentVault
     )
         external
@@ -84,9 +85,9 @@ library Challenges {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // check the payments originates from agent's address, are not confirmed already and calculate total
         int256 total = 0;
-        for (uint256 i = 0; i < _paymentInfos.length; i++) {
-            PaymentVerification.UnderlyingPaymentInfo memory pmi = _paymentInfos[i];
-            require(pmi.sourceAddressHash == agent.underlyingAddressHash,
+        for (uint256 i = 0; i < _payments.length; i++) {
+            IAttestationClient.BalanceDecreasingTransaction calldata pmi = _payments[i];
+            require(pmi.sourceAddress == agent.underlyingAddressHash,
                 "mult chlg: not agent's address");
             require(!_state.paymentVerifications.transactionConfirmed(pmi),
                 "mult chlg: payment confirmed");
@@ -94,10 +95,10 @@ library Challenges {
                 // for redemption, we don't count the value that should be paid to free balance deduction
                 uint64 redemptionId = PaymentReference.decodeId(pmi.paymentReference);
                 Redemption.RedemptionRequest storage request = _state.redemptionRequests[redemptionId];
-                total += pmi.spentUBA - SafeCast.toInt256(request.underlyingValueUBA);
+                total += pmi.spentAmount - SafeCast.toInt256(request.underlyingValueUBA);
             } else {
                 // for other payment types (annouced withdrawal), everything is paid from free balance
-                total += pmi.spentUBA;
+                total += pmi.spentAmount;
             }
         }
         // check that total spent free balance is more than actual free underlying balance

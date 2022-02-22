@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../interface/IAttestationClient.sol";
 import "./PaymentVerification.sol";
 import "./PaymentReference.sol";
 import "./AMEvents.sol";
@@ -30,7 +31,7 @@ library AllowedPaymentAnnouncement {
     
     function confirmAllowedPayment(
         AssetManagerState.State storage _state,
-        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
+        IAttestationClient.PaymentProof calldata _payment,
         address _agentVault,
         uint64 _announcementId
     )
@@ -40,17 +41,17 @@ library AllowedPaymentAnnouncement {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.ongoingAnnouncedPaymentId != 0, "no active announcement");
         uint256 paymentReference = PaymentReference.announcedWithdrawal(agent.ongoingAnnouncedPaymentId);
-        require(_paymentInfo.paymentReference == paymentReference, "wrong announced pmt reference");
-        require(_paymentInfo.sourceAddressHash == agent.underlyingAddressHash,
+        require(_payment.paymentReference == paymentReference, "wrong announced pmt reference");
+        require(_payment.sourceAddress == agent.underlyingAddressHash,
             "wrong announced pmt source");
         // make sure payment cannot be challenged as invalid
-        _state.paymentVerifications.confirmSourceDecreasingTransaction(_paymentInfo);
+        _state.paymentVerifications.confirmSourceDecreasingTransaction(_payment);
         // clear active payment announcement
         agent.ongoingAnnouncedPaymentId = 0;
         // update free underlying balance and trigger liquidation if negative
-        UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, -_paymentInfo.spentUBA);
+        UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, -_payment.spentAmount);
         // send event
-        emit AMEvents.AllowedPaymentConfirmed(_agentVault, _paymentInfo.spentUBA, 
-            _paymentInfo.underlyingBlock, _announcementId);
+        emit AMEvents.AllowedPaymentConfirmed(_agentVault, _payment.spentAmount, 
+            _payment.blockNumber, _announcementId);
     }
 }

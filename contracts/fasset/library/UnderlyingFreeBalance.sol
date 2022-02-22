@@ -3,6 +3,7 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../interface/IAttestationClient.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
 import "./PaymentVerification.sol";
@@ -43,17 +44,17 @@ library UnderlyingFreeBalance {
 
     function confirmTopupPayment(
         AssetManagerState.State storage _state,
-        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo,
+        IAttestationClient.PaymentProof calldata _payment,
         address _agentVault
     )
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        require(agent.underlyingAddressHash == _paymentInfo.sourceAddressHash, 
+        require(_payment.receivingAddress == agent.underlyingAddressHash, 
             "not underlying address");
-        require(_paymentInfo.paymentReference == PaymentReference.addressTopup(_agentVault),
+        require(_payment.paymentReference == PaymentReference.addressTopup(_agentVault),
             "not a topup payment");
-        _state.paymentVerifications.confirmPayment(_paymentInfo);
-        increaseFreeBalance(_state, _agentVault, _paymentInfo.deliveredUBA);
+        _state.paymentVerifications.confirmIncomingPayment(_payment);
+        increaseFreeBalance(_state, _agentVault, _payment.receivedAmount);
     }
 }

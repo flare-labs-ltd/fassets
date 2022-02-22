@@ -1,24 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../interface/IAttestationClient.sol";
 
 
 library PaymentVerification {
-    using SafeMath for uint256;
-
-    // only used in-memory, so no bit optimization is necessary
-    struct UnderlyingPaymentInfo {
-        bytes32 sourceAddressHash;
-        bytes32 targetAddressHash;
-        bytes32 transactionHash;
-        uint256 paymentReference;      // used in minting to identify sender
-        uint256 deliveredUBA;
-        int256 spentUBA;
-        uint64 underlyingBlock;
-    }
-
     struct State {
         // a store of payment hashes to prevent payment being used / challenged twice
         // structure: map of hash to the next hash in that day
@@ -32,16 +18,16 @@ library PaymentVerification {
     uint256 internal constant VERIFICATION_CLEANUP_DAYS = 5;
     
     /**
-     * For payment transaction, we record `tx hash`, so that the same transaction can only be used once for payment.
-     * (For redemption it can have only one source anyway, but for minting there can be several sources.)
+     * For payment transaction with non-unique payment reference (generated from address, not id), 
+     * we record `tx hash`, so that the same transaction can only be used once for payment.
      */
-    function confirmPayment(
+    function confirmIncomingPayment(
         State storage _state,
-        UnderlyingPaymentInfo memory _paymentInfo
+        IAttestationClient.PaymentProof calldata _payment
     ) 
         internal 
     {
-        _recordPaymentVerification(_state, _paymentInfo.transactionHash);
+        _recordPaymentVerification(_state, _payment.transactionHash);
     }
 
     /**
@@ -50,32 +36,38 @@ library PaymentVerification {
      */
     function confirmSourceDecreasingTransaction(
         State storage _state,
-        UnderlyingPaymentInfo memory _paymentInfo
+        IAttestationClient.PaymentProof calldata _payment
     ) 
         internal 
     {
-        _recordPaymentVerification(_state, transactionKey(_paymentInfo));
+        _recordPaymentVerification(_state, transactionKey(_payment.sourceAddress, _payment.transactionHash));
     }
 
+    /**
+     * For source decreasing transaction, we record `(source address, tx hash)` pair, since illegal
+     * transactions on utxo chains can have multiple input addresses.
+     */
+    function confirmSourceDecreasingTransaction(
+        State storage _state,
+        IAttestationClient.BalanceDecreasingTransaction calldata _transaction
+    ) 
+        internal 
+    {
+        _recordPaymentVerification(_state, transactionKey(_transaction.sourceAddress, _transaction.transactionHash));
+    }
+
+    /**
+     * Check if source decreasing transaction was already confirmed.
+     */
     function transactionConfirmed(
         State storage _state, 
-        UnderlyingPaymentInfo memory _paymentInfo
+        IAttestationClient.BalanceDecreasingTransaction calldata _transaction
     ) 
         internal view 
         returns (bool) 
     {
-        bytes32 txKey = transactionKey(_paymentInfo);
+        bytes32 txKey = transactionKey(_transaction.sourceAddress, _transaction.transactionHash);
         return _state.verifiedPayments[txKey] != 0;
-    }
-
-    function transactionConfirmed(
-        State storage _state, 
-        bytes32 _transactionKey
-    ) 
-        internal view 
-        returns (bool) 
-    {
-        return _state.verifiedPayments[_transactionKey] != 0;
     }
 
     // the same transaction hash could perform several underlying payments if it is smart contract
@@ -87,14 +79,6 @@ library PaymentVerification {
         returns (bytes32) 
     {
         return keccak256(abi.encode(_underlyingSourceAddressHash, _transactionHash));
-    }
-    
-    // shortcut for transactionKey(_paymentInfo.sourceAddressHash, _paymentInfo.transactionHash)
-    function transactionKey(UnderlyingPaymentInfo memory _paymentInfo)
-        internal pure 
-        returns (bytes32)
-    {
-        return keccak256(abi.encode(_paymentInfo.sourceAddressHash, _paymentInfo.transactionHash));
     }
     
     function _recordPaymentVerification(

@@ -78,10 +78,9 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     )
         external
     {
-        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, true);
+        TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, true);
         UnderlyingAddressOwnership.claimWithProof(state.underlyingAddressOwnership, 
-            paymentInfo, state.paymentVerifications, msg.sender, paymentInfo.sourceAddressHash);
+            _payment, state.paymentVerifications, msg.sender, _payment.sourceAddress);
     }
     
     /**
@@ -250,15 +249,14 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     )
         external
     {
-        (uint64 underlyingBlock, uint64 underlyingBlockTimestamp) = 
-            TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
+        TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
         bool changed = false;
-        if (underlyingBlock > state.currentUnderlyingBlock) {
-            state.currentUnderlyingBlock = underlyingBlock;
+        if (_proof.blockNumber > state.currentUnderlyingBlock) {
+            state.currentUnderlyingBlock = _proof.blockNumber;
             changed = true;
         }
-        if (underlyingBlockTimestamp > state.currentUnderlyingBlockTimestamp) {
-            state.currentUnderlyingBlockTimestamp = underlyingBlockTimestamp;
+        if (_proof.blockTimestamp > state.currentUnderlyingBlockTimestamp) {
+            state.currentUnderlyingBlockTimestamp = _proof.blockTimestamp;
             changed = true;
         }
         if (changed) {
@@ -303,9 +301,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         external 
         nonReentrant
     {
-        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
-        (address minter, uint256 mintedUBA) = Minting.mintingExecuted(state, paymentInfo, _crtId);
+        TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
+        (address minter, uint256 mintedUBA) = Minting.mintingExecuted(state, _payment, _crtId);
         fAsset.mint(minter, mintedUBA);
     }
 
@@ -337,9 +334,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         external 
     {
         Agents.requireAgentVaultOwner(_agentVault);
-        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
-        uint256 mintedUBA = Minting.selfMint(state, paymentInfo, _agentVault, _lots);
+        TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
+        uint256 mintedUBA = Minting.selfMint(state, _payment, _agentVault, _lots);
         fAsset.mint(msg.sender, mintedUBA);
     }
 
@@ -376,9 +372,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     )
         external
     {
-        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
-        Redemption.confirmRedemptionPayment(state, paymentInfo, _redemptionRequestId);
+        TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
+        Redemption.confirmRedemptionPayment(state, _payment, _redemptionRequestId);
     }
 
     /**
@@ -406,11 +401,10 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     )
         external
     {
-        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyPaymentProof(state.settings, _payment, true);
+        TransactionAttestation.verifyPaymentProof(state.settings, _payment, true);
         require(_payment.status == TransactionAttestation.PAYMENT_BLOCKED,
             "redemption payment not blocked");
-        Redemption.redemptionPaymentBlocked(state, paymentInfo, _redemptionRequestId);
+        Redemption.redemptionPaymentBlocked(state, _payment, _redemptionRequestId);
     }
 
     /**
@@ -423,11 +417,10 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     )
         external
     {
-        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyPaymentProof(state.settings, _payment, true);
+        TransactionAttestation.verifyPaymentProof(state.settings, _payment, true);
         require(_payment.status == TransactionAttestation.PAYMENT_FAILED,
             "redemption payment not failed");
-        Redemption.redemptionPaymentFailed(state, paymentInfo, _redemptionRequestId);
+        Redemption.redemptionPaymentFailed(state, _payment, _redemptionRequestId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -467,9 +460,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     )
         external
     {
-        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyPaymentProof(state.settings, _payment, false);
-        AllowedPaymentAnnouncement.confirmAllowedPayment(state, paymentInfo, _agentVault, _announcementId);
+        TransactionAttestation.verifyPaymentProof(state.settings, _payment, false);
+        AllowedPaymentAnnouncement.confirmAllowedPayment(state, _payment, _agentVault, _announcementId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -481,9 +473,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     )
         external
     {
-        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
-        UnderlyingFreeBalance.confirmTopupPayment(state, paymentInfo, _agentVault);
+        TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
+        UnderlyingFreeBalance.confirmTopupPayment(state, _payment, _agentVault);
     }
     
     ////////////////////////////////////////////////////////////////////////////////////
@@ -495,9 +486,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     )
         external
     {
-        PaymentVerification.UnderlyingPaymentInfo memory paymentInfo = 
-            TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _transaction);
-        Challenges.illegalPaymentChallenge(state, paymentInfo, _agentVault);
+        TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _transaction);
+        Challenges.illegalPaymentChallenge(state, _transaction, _agentVault);
     }
     
     // TODO: add other types

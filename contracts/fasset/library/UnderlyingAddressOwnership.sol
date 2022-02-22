@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
+import "../interface/IAttestationClient.sol";
 import "./PaymentVerification.sol";
 import "./PaymentReference.sol";
 
@@ -32,18 +33,18 @@ library UnderlyingAddressOwnership {
     
     function claimWithProof(
         State storage _state,
-        PaymentVerification.UnderlyingPaymentInfo memory _paymentInfo, 
+        IAttestationClient.PaymentProof calldata _payment, 
         PaymentVerification.State storage _paymentVerification,
         address _owner, 
         bytes32 _underlyingAddressHash
     )
         internal
     {
-        bool proofValid = _paymentInfo.sourceAddressHash == _underlyingAddressHash
-            && _paymentInfo.paymentReference == PaymentReference.addressOwnership(_owner);
+        bool proofValid = _payment.sourceAddress == _underlyingAddressHash
+            && _payment.paymentReference == PaymentReference.addressOwnership(_owner);
         require(proofValid, "invalid address ownership proof");
         _claim(_state, _owner, _underlyingAddressHash, true);
-        PaymentVerification.confirmPayment(_paymentVerification, _paymentInfo);
+        PaymentVerification.confirmSourceDecreasingTransaction(_paymentVerification, _payment);
     }
     
     function check(
