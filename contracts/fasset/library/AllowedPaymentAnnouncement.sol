@@ -11,6 +11,8 @@ import "./AssetManagerState.sol";
 
 
 library AllowedPaymentAnnouncement {
+    using PaymentVerification for PaymentVerification.State;
+    
     function announceAllowedPayment(
         AssetManagerState.State storage _state,
         address _agentVault
@@ -41,8 +43,8 @@ library AllowedPaymentAnnouncement {
         require(_paymentInfo.paymentReference == paymentReference, "wrong announced pmt reference");
         require(_paymentInfo.sourceAddressHash == agent.underlyingAddressHash,
             "wrong announced pmt source");
-        require(!PaymentVerification.transactionConfirmed(_state.paymentVerifications, _paymentInfo),
-            "announced pmt confirmed");
+        // make sure payment cannot be challenged as invalid
+        _state.paymentVerifications.confirmSourceDecreasingTransaction(_paymentInfo);
         // clear active payment announcement
         agent.ongoingAnnouncedPaymentId = 0;
         // update free underlying balance and trigger liquidation if negative
