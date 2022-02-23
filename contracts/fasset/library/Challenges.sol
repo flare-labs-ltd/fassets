@@ -30,15 +30,20 @@ library Challenges {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // check the payment originates from agent's address
         require(_payment.sourceAddress == agent.underlyingAddressHash, "chlg: not agent's address");
-        // check that proof of this tx wasn't used before (and mark it as used) - otherwise we could 
+        // check that proof of this tx wasn't used before - otherwise we could 
         // trigger liquidation for already proved redemption payments
-        _state.paymentVerifications.confirmSourceDecreasingTransaction(_payment);
+        require(!_state.paymentVerifications.transactionConfirmed(_payment), "chlg: transaction confirmed");
         // check that payment reference is invalid (paymentReference == 0 is always invalid payment)
         if (_payment.paymentReference != 0) {
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.REDEMPTION)) {
                 uint64 redemptionId = PaymentReference.decodeId(_payment.paymentReference);
-                Redemption.RedemptionRequest storage request = _state.redemptionRequests[redemptionId];
-                require(request.agentVault == address(0), "matching redemption active");
+                Redemption.RedemptionRequest storage redemption = _state.redemptionRequests[redemptionId];
+                // redemption must be for the correct agent and 
+                // only statuses ACTIVE and DEFAULTED mean that redemption is still missing a payment proof
+                bool redemptionActive = redemption.agentVault == _agentVault
+                    && (redemption.status == Redemption.RedemptionStatus.ACTIVE || 
+                        redemption.status == Redemption.RedemptionStatus.DEFAULTED);
+                require(!redemptionActive, "matching redemption active");
             }
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
                 uint256 announcementId = PaymentReference.decodeId(_payment.paymentReference);
@@ -63,6 +68,7 @@ library Challenges {
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // check the payments originate from agent's address
+        require(_payment1.transactionHash != _payment2.transactionHash, "chlg dbl: same transaction");
         require(_payment1.sourceAddress == agent.underlyingAddressHash, "chlg 1: not agent's address");
         require(_payment2.sourceAddress == agent.underlyingAddressHash, "chlg 2: not agent's address");
         // payment references must be equal
@@ -87,6 +93,9 @@ library Challenges {
         int256 total = 0;
         for (uint256 i = 0; i < _payments.length; i++) {
             IAttestationClient.BalanceDecreasingTransaction calldata pmi = _payments[i];
+            for (uint256 j = 0; j < i; j++) {
+                require(_payments[j].transactionHash != pmi.transactionHash, "mult chlg: repeated transaction");
+            }
             require(pmi.sourceAddress == agent.underlyingAddressHash,
                 "mult chlg: not agent's address");
             require(!_state.paymentVerifications.transactionConfirmed(pmi),

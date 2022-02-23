@@ -336,6 +336,10 @@ library Agents {
         return agent.liquidationState.liquidationStartedAt > 0;
     }
 
+    function vaultOwner(address _agentVault) internal view returns (address) {
+        return IAgentVault(_agentVault).owner();
+    }
+    
     function requireAgentVaultOwner(address _agentVault) internal view {
         address owner = IAgentVault(_agentVault).owner();
         require(msg.sender == owner, "only agent vault owner");

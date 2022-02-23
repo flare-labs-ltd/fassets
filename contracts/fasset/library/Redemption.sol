@@ -9,6 +9,7 @@ import "../interface/IAgentVault.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./RedemptionQueue.sol";
+import "./TransactionAttestation.sol";
 import "./PaymentVerification.sol";
 import "./Agents.sol";
 import "./UnderlyingFreeBalance.sol";
@@ -168,95 +169,83 @@ library Redemption {
             "invalid redemption status");
         // we require the agent to trigger confirmation
         Agents.requireAgentVaultOwner(request.agentVault);
-        // vlaidate payment proof
+        // payment refernce must match
         require(_payment.paymentReference == PaymentReference.redemption(_redemptionRequestId), 
             "invalid redemption reference");
-        require(_payment.receivingAddress == request.redeemerUnderlyingAddressHash, 
-            "not redeemer's address");
-        // When status is active, agent has paid in time and agent's collateral is released.
+        // Valid payments are to correct destination ands must have value at least the request payment value.
+        // If payment is valid, agent's collateral is released, otherwise request is marked as failed and
+        // awaits the redeemer to call default.
+        (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
+        // When status is active, agent has either paid in time / was blocked and agent's collateral is released
+        // or the payment failed and the collateral is held until default is called.
         // Otherwise, agent has already defaulted on payment and this method is only needed for proper 
         // accounting of underlying balance. It still has to be called in time, otherwise it can be
         // called by challenger and in this case, challenger gets some reward from agent's vault.
         if (request.status == RedemptionStatus.ACTIVE) {
-            // payment must be large enough
-            uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
-            require(_payment.receivedAmount >= paymentValueUBA, "redemption payment too small");
-            // release agent collateral
-            Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
-            // notify
-            emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
-                _payment.receivedAmount, _payment.blockNumber, _redemptionRequestId);
+            if (paymentValid) {
+                // release agent collateral
+                Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
+                // notify
+                if (_payment.status == TransactionAttestation.PAYMENT_SUCCESS) {
+                    emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
+                        _payment.receivedAmount, _payment.blockNumber, _redemptionRequestId);
+                } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
+                    emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer, 
+                        _redemptionRequestId);
+                }
+            } else {
+                emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer, 
+                    _redemptionRequestId, failureReason);
+            }
         }
-        // update underlying free balance with fee and gas
-        _updateFreeBalanceAfterPayment(_state, _payment, _redemptionRequestId);
+        // agent has finished with redemption - account for used underlying balance and free the remainder
+        // (however, collateral might still be held in case of failed payment)
+        int256 freeBalanceChangeUBA = _updateFreeBalanceAfterPayment(_state, _payment, request);
+        emit AMEvents.RedemptionFinished(request.agentVault, freeBalanceChangeUBA, _redemptionRequestId);
         // record source decreasing transaction so that it cannot be challenged
         _state.paymentVerifications.confirmSourceDecreasingTransaction(_payment);
-        // delete redemption request at end when we don't need data any more
-        delete _state.redemptionRequests[_redemptionRequestId];
-    }
-    
-    function redemptionPaymentBlocked(
-        AssetManagerState.State storage _state,
-        IAttestationClient.PaymentProof calldata _payment,
-        uint64 _redemptionRequestId
-    )
-        external
-    {
-        // blocking proof checked in AssetManager
-        RedemptionRequest storage request = _getRedemptionRequest(_state, _redemptionRequestId);
-        require(request.status == RedemptionStatus.ACTIVE || request.status == RedemptionStatus.DEFAULTED, 
-            "invalid redemption status");
-        // vlaidate payment proof
-        require(_payment.paymentReference == PaymentReference.redemption(_redemptionRequestId), 
-            "invalid redemption reference");
-        require(_payment.receivingAddress == request.redeemerUnderlyingAddressHash, 
-            "not redeemer's address");
-        // we allow only agent to trigger blocked payment, since they may want to do it at some particular time
-        // TODO: allow challenger after time
-        Agents.requireAgentVaultOwner(request.agentVault);
-        // the agent (if not already defaulted) may keep all the underlying backing and redeemer gets nothing
-        // underlying backing collateral was removed from mintedAMG accounting at redemption request
-        // now we add it to free balance since it couldn't be paid to the redeemer
-        if (request.status == RedemptionStatus.ACTIVE) {
-            // payment must be large enough
-            uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
-            require(_payment.receivedAmount >= paymentValueUBA, "redemption payment too small");
-            // release agent collateral
-            Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
-            // notify
-            emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer, _redemptionRequestId);
-        }
-        // update underlying free balance with fee and gas
-        _updateFreeBalanceAfterPayment(_state, _payment, _redemptionRequestId);
-        // delete redemption request at end when we don't need data any more
-        delete _state.redemptionRequests[_redemptionRequestId];
-    }
-
-    function redemptionPaymentFailed(
-        AssetManagerState.State storage _state,
-        IAttestationClient.PaymentProof calldata _payment,
-        uint64 _redemptionRequestId
-    )
-        external
-    {
-        // failure proof checked in AssetManager
-        RedemptionRequest storage request = _getRedemptionRequest(_state, _redemptionRequestId);
-        require(request.status == RedemptionStatus.ACTIVE || request.status == RedemptionStatus.DEFAULTED, 
-            "invalid redemption status");
-        // TODO: allow challenger after time
-        Agents.requireAgentVaultOwner(request.agentVault);
-        // notify
-        emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer, _redemptionRequestId);
-        // redemptionPaymentFailed is only needed for underlying accounting for gas,
-        // actual value will/has been accounted for both in underlying and collateral when the
-        // reedeemer calls redemptionPaymentDefault
-        _updateFreeBalanceAfterPayment(_state, _payment, _redemptionRequestId);
-        // delete redemption request at end only if it was already defaulted, otherwise mark as failed
-        if (request.status == RedemptionStatus.DEFAULTED) {
+        // delete redemption request at end if we don't need it any more
+        // otherwise mark it as FAILED and wait for default
+        if (paymentValid || request.status == RedemptionStatus.DEFAULTED) {
             delete _state.redemptionRequests[_redemptionRequestId];
         } else {
             request.status = RedemptionStatus.FAILED;
         }
+    }
+    
+    function _validatePayment(
+        RedemptionRequest storage request,
+        IAttestationClient.PaymentProof calldata _payment
+    )
+        private view
+        returns (bool _paymentValid, string memory _failureReason)
+    {
+        uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
+        if (_payment.status == TransactionAttestation.PAYMENT_FAILED) {
+            return (false, "transaction failed");
+        } else if (_payment.receivingAddress != request.redeemerUnderlyingAddressHash) {
+            return (false, "not redeemer's address");
+        } else if (_payment.receivedAmount < paymentValueUBA) {
+            return (false, "redemption payment too small");
+        }
+        return (true, "");
+    }
+    
+    function _updateFreeBalanceAfterPayment(
+        AssetManagerState.State storage _state,
+        IAttestationClient.PaymentProof calldata _payment,
+        RedemptionRequest storage _request
+    )
+        private
+        returns (int256 _freeBalanceChangeUBA)
+    {
+        address agentVault = _request.agentVault;
+        Agents.Agent storage agent = Agents.getAgent(_state, agentVault);
+        _freeBalanceChangeUBA = SafeCast.toInt256(_request.underlyingValueUBA);
+        if (_payment.sourceAddress == agent.underlyingAddressHash) {
+            _freeBalanceChangeUBA -= _payment.spentAmount;
+        }
+        UnderlyingFreeBalance.updateFreeBalance(_state, agentVault, _freeBalanceChangeUBA);
     }
     
     function redemptionPaymentDefault(
@@ -279,9 +268,12 @@ library Redemption {
             "redemption default too early");
         require(_nonPayment.firstCheckedBlock <= request.firstUnderlyingBlock,
             "redemption request too old");
-        // we allow only redeemers to trigger redemption failures, since they may want
+        // we allow only redeemers or agents to trigger redemption failures, since they may want
         // to do it at some particular time
-        require(msg.sender == request.redeemer, "only redeemer");
+        // (agent might want to call default to unstick redemption after failed payment and unresponsive redeemer)
+        address agentOwner = Agents.vaultOwner(request.agentVault);
+        require(msg.sender == request.redeemer || msg.sender == agentOwner,
+            "only redeemer or agent");
         // pay redeemer in native currency
         uint256 paidAmountWei = _collateralAmountForRedemption(_state, request.agentVault, request.valueAMG);
         IAgentVault(request.agentVault).liquidate(request.redeemer, paidAmountWei);
@@ -296,6 +288,25 @@ library Redemption {
         } else {
             request.status = RedemptionStatus.DEFAULTED;
         }
+    }
+    
+    function finishRedemptionWithoutPayment(
+        AssetManagerState.State storage _state,
+        uint64 _redemptionRequestId
+    )
+        external
+    {
+        RedemptionRequest storage request = _getRedemptionRequest(_state, _redemptionRequestId);
+        require(request.status == RedemptionStatus.DEFAULTED, "invalid redemption status");
+        Agents.requireAgentVaultOwner(request.agentVault);
+        // request is in defaulted state, but underlying balance is not freed, since we are
+        // still waiting for the agent to possibly present late or failed payment
+        // with this method, the agent asserts there was no payment and frees underlying balance
+        int256 freeBalanceChangeUBA = SafeCast.toInt256(request.underlyingValueUBA);
+        UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, freeBalanceChangeUBA);
+        emit AMEvents.RedemptionFinished(request.agentVault, freeBalanceChangeUBA, _redemptionRequestId);
+        // delete redemption request - not needed any more
+        delete _state.redemptionRequests[_redemptionRequestId];
     }
     
     function _collateralAmountForRedemption(
@@ -315,25 +326,6 @@ library Redemption {
         return amountWei <= maxAmountWei ? amountWei : maxAmountWei;
     }
 
-    function _updateFreeBalanceAfterPayment(
-        AssetManagerState.State storage _state,
-        IAttestationClient.PaymentProof calldata _payment,
-        uint64 _redemptionRequestId
-    )
-        private
-        returns (int256 _freeBalanceChangeUBA)
-    {
-        RedemptionRequest storage request = _state.redemptionRequests[_redemptionRequestId];
-        address agentVault = request.agentVault;
-        Agents.Agent storage agent = Agents.getAgent(_state, agentVault);
-        _freeBalanceChangeUBA = SafeCast.toInt256(request.underlyingValueUBA);
-        if (_payment.sourceAddress == agent.underlyingAddressHash) {
-            _freeBalanceChangeUBA -= _payment.spentAmount;
-        }
-        UnderlyingFreeBalance.updateFreeBalance(_state, agentVault, _freeBalanceChangeUBA);
-        emit AMEvents.RedemptionFinished(agentVault, _freeBalanceChangeUBA, _redemptionRequestId);
-    }
-    
     function selfClose(
         AssetManagerState.State storage _state,
         address _agentVault,

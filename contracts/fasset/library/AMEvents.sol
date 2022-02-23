@@ -147,7 +147,8 @@ library AMEvents {
     event RedemptionPaymentFailed(
         address indexed agentVault,
         address indexed redeemer,
-        uint64 requestId);
+        uint64 requestId,
+        string failureReason);
 
     /**
      * Agent finished the redemption (even if it was defaulted already).
