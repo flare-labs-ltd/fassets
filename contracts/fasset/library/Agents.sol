@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
@@ -302,6 +303,19 @@ library Agents {
         agent.withdrawalAnnouncedNATWei -= uint128(_valueNATWei);    // guarded by above require
         // could reset agent.withdrawalAnnouncedAt if agent.withdrawalAnnouncedNATWei == 0, 
         // but it's not needed, since no withdrawal can be made anyway
+    }
+    
+    function payout(
+        address _agentVault,
+        address _receiver,
+        uint256 _amountNATWei
+    )
+        internal
+    {
+        IAgentVault vault = IAgentVault(_agentVault);
+        // don't want the calling method to fail due to too small balance for payout
+        uint256 amount = Math.min(_amountNATWei, vault.fullCollateral());
+        vault.payout(_receiver, amount);
     }
     
     function getAgent(

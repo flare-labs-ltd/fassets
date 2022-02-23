@@ -40,6 +40,7 @@ library Redemption {
         uint64 lastUnderlyingTimestamp;
         uint64 valueAMG;
         address redeemer;
+        uint64 timestamp;
         address agentVault;
         RedemptionStatus status;
     }
@@ -138,6 +139,7 @@ library Redemption {
             firstUnderlyingBlock: _state.currentUnderlyingBlock,
             lastUnderlyingBlock: lastUnderlyingBlock,
             lastUnderlyingTimestamp: lastUnderlyingTimestamp,
+            timestamp: SafeCast.toUint64(block.timestamp),
             underlyingFeeUBA: redemptionFeeUBA,
             redeemer: _redeemer,
             agentVault: _data.agentVault,
@@ -167,8 +169,12 @@ library Redemption {
         RedemptionRequest storage request = _getRedemptionRequest(_state, _redemptionRequestId);
         require(request.status == RedemptionStatus.ACTIVE || request.status == RedemptionStatus.DEFAULTED, 
             "invalid redemption status");
-        // we require the agent to trigger confirmation
-        Agents.requireAgentVaultOwner(request.agentVault);
+        // Usually, we require the agent to trigger confirmation.
+        // But if the agent doesn't respond for long enough, 
+        // we allow anybody and that user gets rewarded from agent's vault.
+        bool isAgent = msg.sender == Agents.vaultOwner(request.agentVault);
+        require(isAgent || block.timestamp > request.timestamp + _state.settings.redemptionByAnybodyAfterSeconds,
+            "only agent vault owner");
         // payment refernce must match
         require(_payment.paymentReference == PaymentReference.redemption(_redemptionRequestId), 
             "invalid redemption reference");
@@ -204,6 +210,10 @@ library Redemption {
         emit AMEvents.RedemptionFinished(request.agentVault, freeBalanceChangeUBA, _redemptionRequestId);
         // record source decreasing transaction so that it cannot be challenged
         _state.paymentVerifications.confirmSourceDecreasingTransaction(_payment);
+        // if the confirmation was done by someone else than agent, pay some reward from agent's vault
+        if (!isAgent) {
+            Agents.payout(request.agentVault, msg.sender, _state.settings.redemptionConfirmRewardNATWei);
+        }
         // delete redemption request at end if we don't need it any more
         // otherwise mark it as FAILED and wait for default
         if (paymentValid || request.status == RedemptionStatus.DEFAULTED) {
@@ -268,15 +278,15 @@ library Redemption {
             "redemption default too early");
         require(_nonPayment.firstCheckedBlock <= request.firstUnderlyingBlock,
             "redemption request too old");
-        // we allow only redeemers or agents to trigger redemption failures, since they may want
-        // to do it at some particular time
-        // (agent might want to call default to unstick redemption after failed payment and unresponsive redeemer)
+        // We allow only redeemers or agents to trigger redemption failures, since they may want
+        // to do it at some particular time. (Agent might want to call default to unstick redemption after 
+        // failed payment and unresponsive redeemer.)
         address agentOwner = Agents.vaultOwner(request.agentVault);
         require(msg.sender == request.redeemer || msg.sender == agentOwner,
             "only redeemer or agent");
         // pay redeemer in native currency
         uint256 paidAmountWei = _collateralAmountForRedemption(_state, request.agentVault, request.valueAMG);
-        IAgentVault(request.agentVault).liquidate(request.redeemer, paidAmountWei);
+        Agents.payout(request.agentVault, request.redeemer, paidAmountWei);
         // release remaining agent collateral
         Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment

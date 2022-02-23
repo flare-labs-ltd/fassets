@@ -31,7 +31,8 @@ interface IAgentVault {
     // Used by asset manager for liquidation and failed redemption.
     // Since _recipient is typically an unknown address, we do not directly send NAT,
     // but transfer WNAT (doesn't trigger any callbacks) which the recipient must withdraw.
-    function liquidate(address _recipient, uint256 _amount) external;
+    // Only asset manager can call this method.
+    function payout(address _recipient, uint256 _amount) external;
 
     function owner() external view returns (address);
 

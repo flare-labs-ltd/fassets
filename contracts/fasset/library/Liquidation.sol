@@ -105,7 +105,7 @@ library Liquidation {
             }
         }
 
-        IAgentVault(_agentVault).liquidate(msg.sender, liquidationValueNATWei);
+        Agents.payout(_agentVault, msg.sender, liquidationValueNATWei);
     }
 
     // Cancel agent's liquidation

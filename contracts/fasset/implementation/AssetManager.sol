@@ -366,6 +366,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * After paying to the redeemer, the agent must call this method to unlock the collateral
      * and to make sure that the redeemer cannot demand payment in collateral on timeout.
      * The same method must be called for any payment status (SUCCESS, FAILED, BLOCKED).
+     * In case of FAILED, it just releases agent's underlying funds and the redeemer gets paid in collateral
+     * after calling redemptionPaymentDefault.
+     * In case of SUCCESS or BLOCKED, remaining underlying funds and collateral are relased to the agent.
+     * If the agent doesn't confirm payment in enough time (several hours, setting redemptionByAnybodyAfterSeconds),
+     * anybody can do it and get rewarded from agent's vault.
      */    
     function confirmRedemptionPayment(
         IAttestationClient.PaymentProof calldata _payment,

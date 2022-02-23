@@ -75,6 +75,14 @@ library AssetManagerSettings {
         // Expressed in BIPS, e.g. 12000 for factor of 1.2.
         uint32 redemptionFailureFactorBIPS;
         
+        // If the agent or redeemer becomes unresponsive, we still need payment or non-payment confirmations
+        // to be presented eventually to properly track agent's underlying balance.
+        // Therefore we allow anybody to confirm payments/non-payments this many seconds after request was made.
+        uint64 redemptionByAnybodyAfterSeconds;
+
+        // The user who makes abandoned redemption confirmations gets rewarded by the following amount.
+        uint64 redemptionConfirmRewardNATWei;
+        
         // To prevent unbounded work, the number of tickets redeemed in a single request is limited.
         uint16 maxRedeemedTickets;
         
