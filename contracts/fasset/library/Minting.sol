@@ -31,12 +31,15 @@ library Minting {
         _mintValueUBA = crt.underlyingValueUBA;
         address agentVault = crt.agentVault;
         Agents.Agent storage agent = Agents.getAgent(_state, agentVault);
-        require(msg.sender == crt.minter, "only minter");
+        // minter or agent can present the proof - agent may do it to unlock the collateral if minter
+        // becomes unresponsive
+        require(msg.sender == crt.minter || msg.sender == Agents.vaultOwner(crt.agentVault), 
+            "only minter or agent");
         uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA) + crt.underlyingFeeUBA;
         require(_payment.paymentReference == PaymentReference.minting(_crtId),
             "invalid minting reference");
         require(_payment.receivingAddress == agent.underlyingAddressHash, 
-            "minting not agent's address");
+            "not minting agent's address");
         require(_payment.receivedAmount >= expectedPaymentUBA,
             "minting payment too small");
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, crt.valueAMG);
@@ -60,6 +63,7 @@ library Minting {
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        Agents.requireAgentVaultOwner(_agentVault);
         require(_lots > 0, "cannot mint 0 blocks");
         require(agent.agentType == Agents.AgentType.AGENT_100, "wrong agent type for self-mint");
         require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
