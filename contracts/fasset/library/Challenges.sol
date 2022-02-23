@@ -77,8 +77,7 @@ library Challenges {
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(_state, _agentVault, msg.sender, agent.mintedAMG);
         // emit events
-        emit AMEvents.DuplicatePaymentConfirmed(_agentVault,
-            _payment1.transactionHash, _payment2.transactionHash);
+        emit AMEvents.DuplicatePaymentConfirmed(_agentVault, _payment1.transactionHash, _payment2.transactionHash);
     }
     
     function paymentsMakeFreeBalanceNegative(

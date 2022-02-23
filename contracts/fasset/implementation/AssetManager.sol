@@ -73,7 +73,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * but is required on smart contract chains to make sure the agent is using EOA address
      * (depends on setting `requireEOAAddressProof`).
      */
-    function claimAgentUnderlyingAddress(
+    function proveUnderlyingAddressEOA(
         IAttestationClient.PaymentProof calldata _payment
     )
         external
@@ -365,6 +365,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     /**
      * After paying to the redeemer, the agent must call this method to unlock the collateral
      * and to make sure that the redeemer cannot demand payment in collateral on timeout.
+     * The same method must be called for any payment status (SUCCESS, FAILED, BLOCKED).
      */    
     function confirmRedemptionPayment(
         IAttestationClient.PaymentProof calldata _payment,
@@ -372,13 +373,15 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     )
         external
     {
-        TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
+        TransactionAttestation.verifyPaymentProof(state.settings, _payment, false);
         Redemption.confirmRedemptionPayment(state, _payment, _redemptionRequestId);
     }
 
     /**
      * If the agent doesn't transfer the redeemed underlying assets in time (until the last allowed block on
      * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
+     * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
+     * remaining collateral.
      */    
     function redemptionPaymentDefault(
         IAttestationClient.ReferencedPaymentNonexistence calldata _proof,
@@ -391,36 +394,15 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     }
     
     /**
-     * If the agent cannot perform the payment due to redeemer's fault (redeemer blocking the target address,
-     * which is for example possible with a contract on EVM chains), the agent doesn't have to pay anymore,
-     * and can keep both the collateral and underlying funds.
+     * If the agent hasn't performed the payment he can close the redemption request after 
+     * the redeemer calls default to free underlying funds.
      */
-    function redemptionPaymentBlocked(
-        IAttestationClient.PaymentProof calldata _payment,
+    function finishRedemptionWithoutPayment(
         uint64 _redemptionRequestId
     )
         external
     {
-        TransactionAttestation.verifyPaymentProof(state.settings, _payment, true);
-        require(_payment.status == TransactionAttestation.PAYMENT_BLOCKED,
-            "redemption payment not blocked");
-        Redemption.redemptionPaymentBlocked(state, _payment, _redemptionRequestId);
-    }
-
-    /**
-     * If the agent cannot perform the payment due to his own fault, the agent must report for proper accounting 
-     * of underlying funds.
-     */
-    function redemptionPaymentFailed(
-        IAttestationClient.PaymentProof calldata _payment,
-        uint64 _redemptionRequestId
-    )
-        external
-    {
-        TransactionAttestation.verifyPaymentProof(state.settings, _payment, true);
-        require(_payment.status == TransactionAttestation.PAYMENT_FAILED,
-            "redemption payment not failed");
-        Redemption.redemptionPaymentFailed(state, _payment, _redemptionRequestId);
+        Redemption.finishRedemptionWithoutPayment(state, _redemptionRequestId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -489,9 +471,30 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _transaction);
         Challenges.illegalPaymentChallenge(state, _transaction, _agentVault);
     }
+
+    function doublePaymentChallenge(
+        IAttestationClient.BalanceDecreasingTransaction calldata _payment1,
+        IAttestationClient.BalanceDecreasingTransaction calldata _payment2,
+        address _agentVault
+    )
+        external
+    {
+        TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _payment1);
+        TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _payment2);
+        Challenges.doublePaymentChallenge(state, _payment1, _payment2, _agentVault);
+    }
     
-    // TODO: add other types
-    
+    function freeBalanceNegativeChallenge(
+        IAttestationClient.BalanceDecreasingTransaction[] calldata _payments,
+        address _agentVault
+    )
+        external
+    {
+        for (uint256 i = 0; i < _payments.length; i++) {
+            TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _payments[i]);
+        }
+        Challenges.paymentsMakeFreeBalanceNegative(state, _payments, _agentVault);
+    }
     
     ////////////////////////////////////////////////////////////////////////////////////
     // Liquidation

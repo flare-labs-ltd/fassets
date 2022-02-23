@@ -78,11 +78,6 @@ library AssetManagerSettings {
         // To prevent unbounded work, the number of tickets redeemed in a single request is limited.
         uint16 maxRedeemedTickets;
         
-        // After illegal payment challenge against an agent is triggered, there is some time to needed to wait 
-        // to allow the agent to respond with legal payment report (e.g. redemption payment; for fee withdrawal
-        // there needs to be prior announcement.)
-        uint64 paymentChallengeWaitMinSeconds;
-        
         // Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).
         // This is the proportional part (in BIPS).
         uint16 paymentChallengeRewardBIPS;
