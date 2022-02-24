@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IAttestationClient.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
-import "./PaymentVerification.sol";
+import "./PaymentConfirmations.sol";
 import "./AssetManagerState.sol";
 import "./Liquidation.sol";
 import "./PaymentReference.sol";
@@ -14,7 +14,7 @@ import "./PaymentReference.sol";
 
 library UnderlyingFreeBalance {
     using SignedSafeMath for int256;
-    using PaymentVerification for PaymentVerification.State;
+    using PaymentConfirmations for PaymentConfirmations.State;
 
     function updateFreeBalance(
         AssetManagerState.State storage _state, 
@@ -54,7 +54,7 @@ library UnderlyingFreeBalance {
             "not underlying address");
         require(_payment.paymentReference == PaymentReference.addressTopup(_agentVault),
             "not a topup payment");
-        _state.paymentVerifications.confirmIncomingPayment(_payment);
+        _state.paymentConfirmations.confirmIncomingPayment(_payment);
         increaseFreeBalance(_state, _agentVault, _payment.receivedAmount);
     }
 }

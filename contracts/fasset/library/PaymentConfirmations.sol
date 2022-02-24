@@ -4,7 +4,7 @@ pragma solidity 0.8.11;
 import "../interface/IAttestationClient.sol";
 
 
-library PaymentVerification {
+library PaymentConfirmations {
     struct State {
         // a store of payment hashes to prevent payment being used / challenged twice
         // structure: map of hash to the next hash in that day

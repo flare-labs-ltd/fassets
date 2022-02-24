@@ -3,7 +3,7 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IAttestationClient.sol";
-import "./PaymentVerification.sol";
+import "./PaymentConfirmations.sol";
 import "./PaymentReference.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
@@ -12,7 +12,7 @@ import "./AssetManagerState.sol";
 
 
 library AllowedPaymentAnnouncement {
-    using PaymentVerification for PaymentVerification.State;
+    using PaymentConfirmations for PaymentConfirmations.State;
     
     function announceAllowedPayment(
         AssetManagerState.State storage _state,
@@ -45,7 +45,7 @@ library AllowedPaymentAnnouncement {
         require(_payment.sourceAddress == agent.underlyingAddressHash,
             "wrong announced pmt source");
         // make sure payment cannot be challenged as invalid
-        _state.paymentVerifications.confirmSourceDecreasingTransaction(_payment);
+        _state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // clear active payment announcement
         agent.ongoingAnnouncedPaymentId = 0;
         // update free underlying balance and trigger liquidation if negative

@@ -14,7 +14,7 @@ import "./PaymentReference.sol";
 
 library Minting {
     using RedemptionQueue for RedemptionQueue.State;
-    using PaymentVerification for PaymentVerification.State;
+    using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for AgentCollateral.Data;
     
     function mintingExecuted(
@@ -76,7 +76,7 @@ library Minting {
             "self-mint not agent's address");
         require(_payment.receivedAmount >= _mintValueUBA, 
             "self-mint payment too small");
-        _state.paymentVerifications.confirmIncomingPayment(_payment);
+        _state.paymentConfirmations.confirmIncomingPayment(_payment);
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(_agentVault, valueAMG);
         emit AMEvents.MintingExecuted(_agentVault, 0, redemptionTicketId, _mintValueUBA, 0);
         Agents.allocateMintedAssets(_state, _agentVault, valueAMG);

@@ -3,7 +3,7 @@ pragma solidity 0.8.11;
 
 import "./AssetManagerSettings.sol";
 import "./RedemptionQueue.sol";
-import "./PaymentVerification.sol";
+import "./PaymentConfirmations.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./Agents.sol";
@@ -40,7 +40,7 @@ library AssetManagerState {
         mapping(uint64 => Redemption.RedemptionRequest) redemptionRequests;
         
         // verified payment hashes; expire in 5 days
-        PaymentVerification.State paymentVerifications;
+        PaymentConfirmations.State paymentConfirmations;
         
         // New ids (listed together to save storage); all must be incremented before assigning, so 0 means empty
         uint64 newCrtId;

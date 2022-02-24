@@ -10,7 +10,7 @@ import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./RedemptionQueue.sol";
 import "./TransactionAttestation.sol";
-import "./PaymentVerification.sol";
+import "./PaymentConfirmations.sol";
 import "./Agents.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./AssetManagerState.sol";
@@ -21,7 +21,7 @@ import "./PaymentReference.sol";
 library Redemption {
     using SafeBips for uint256;
     using RedemptionQueue for RedemptionQueue.State;
-    using PaymentVerification for PaymentVerification.State;
+    using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for AgentCollateral.Data;
     
     enum RedemptionStatus {
@@ -209,7 +209,7 @@ library Redemption {
         int256 freeBalanceChangeUBA = _updateFreeBalanceAfterPayment(_state, _payment, request);
         emit AMEvents.RedemptionFinished(request.agentVault, freeBalanceChangeUBA, _redemptionRequestId);
         // record source decreasing transaction so that it cannot be challenged
-        _state.paymentVerifications.confirmSourceDecreasingTransaction(_payment);
+        _state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
             Agents.payout(request.agentVault, msg.sender, _state.settings.redemptionConfirmRewardNATWei);

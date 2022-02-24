@@ -10,7 +10,7 @@ import "./Conversion.sol";
 import "./Agents.sol";
 import "./Liquidation.sol";
 import "./PaymentReference.sol";
-import "./PaymentVerification.sol";
+import "./PaymentConfirmations.sol";
 import "./Redemption.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
@@ -18,7 +18,7 @@ import "./AgentCollateral.sol";
 
 library Challenges {
     using AgentCollateral for AgentCollateral.Data;
-    using PaymentVerification for PaymentVerification.State;
+    using PaymentConfirmations for PaymentConfirmations.State;
 
     function illegalPaymentChallenge(
         AssetManagerState.State storage _state,
@@ -32,7 +32,7 @@ library Challenges {
         require(_payment.sourceAddress == agent.underlyingAddressHash, "chlg: not agent's address");
         // check that proof of this tx wasn't used before - otherwise we could 
         // trigger liquidation for already proved redemption payments
-        require(!_state.paymentVerifications.transactionConfirmed(_payment), "chlg: transaction confirmed");
+        require(!_state.paymentConfirmations.transactionConfirmed(_payment), "chlg: transaction confirmed");
         // check that payment reference is invalid (paymentReference == 0 is always invalid payment)
         if (_payment.paymentReference != 0) {
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.REDEMPTION)) {
@@ -97,7 +97,7 @@ library Challenges {
             }
             require(pmi.sourceAddress == agent.underlyingAddressHash,
                 "mult chlg: not agent's address");
-            require(!_state.paymentVerifications.transactionConfirmed(pmi),
+            require(!_state.paymentConfirmations.transactionConfirmed(pmi),
                 "mult chlg: payment confirmed");
             if (PaymentReference.isValid(pmi.paymentReference, PaymentReference.REDEMPTION)) {
                 // for redemption, we don't count the value that should be paid to free balance deduction

@@ -2,7 +2,7 @@
 pragma solidity 0.8.11;
 
 import "../interface/IAttestationClient.sol";
-import "./PaymentVerification.sol";
+import "./PaymentConfirmations.sol";
 import "./PaymentReference.sol";
 
 
@@ -34,7 +34,7 @@ library UnderlyingAddressOwnership {
     function claimWithProof(
         State storage _state,
         IAttestationClient.PaymentProof calldata _payment, 
-        PaymentVerification.State storage _paymentVerification,
+        PaymentConfirmations.State storage _paymentVerification,
         address _owner, 
         bytes32 _underlyingAddressHash
     )
@@ -44,7 +44,7 @@ library UnderlyingAddressOwnership {
             && _payment.paymentReference == PaymentReference.addressOwnership(_owner);
         require(proofValid, "invalid address ownership proof");
         _claim(_state, _owner, _underlyingAddressHash, true);
-        PaymentVerification.confirmSourceDecreasingTransaction(_paymentVerification, _payment);
+        PaymentConfirmations.confirmSourceDecreasingTransaction(_paymentVerification, _payment);
     }
     
     function check(

@@ -9,7 +9,7 @@ import "../library/AssetManagerSettings.sol";
 
 library TransactionAttestation {
     
-    // must be strictly smaller than PaymentVerification.VERIFICATION_CLEANUP_DAYS
+    // must be strictly smaller than PaymentConfirmations.VERIFICATION_CLEANUP_DAYS
     uint256 internal constant MAX_VALID_PROOF_AGE_SECONDS = 2 days;
 
     // payment status constants

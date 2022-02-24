@@ -12,7 +12,7 @@ import "../library/AssetManagerSettings.sol";
 import "../library/Conversion.sol";
 import "../library/Contracts.sol";
 import "../library/TransactionAttestation.sol";
-import "../library/PaymentVerification.sol";
+import "../library/PaymentConfirmations.sol";
 // external
 import "../library/AvailableAgents.sol";
 import "../library/Agents.sol";
@@ -80,7 +80,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     {
         TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, true);
         UnderlyingAddressOwnership.claimWithProof(state.underlyingAddressOwnership, 
-            _payment, state.paymentVerifications, msg.sender, _payment.sourceAddress);
+            _payment, state.paymentConfirmations, msg.sender, _payment.sourceAddress);
     }
     
     /**
