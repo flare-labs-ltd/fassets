@@ -99,7 +99,8 @@ contract AttestationClientMock is IAttestationClient {
             _data.blockTimestamp, 
             _data.transactionHash, 
             _data.sourceAddress, 
-            _data.spentAmount
+            _data.spentAmount,
+            _data.paymentReference
         ));
     }
 

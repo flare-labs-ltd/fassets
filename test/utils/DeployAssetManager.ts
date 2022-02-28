@@ -24,10 +24,10 @@ export async function linkAssetManager() {
     const Liquidation = await artifacts.require('Liquidation' as any).new();
     const Minting = await artifacts.require('Minting' as any).new();
     const Redemption = await artifacts.require('Redemption' as any).new();
-    // IllegalPaymentChallenge
-    const IllegalPaymentChallengeLibrary = artifacts.require('IllegalPaymentChallenge' as any);
+    // Challenges
+    const IllegalPaymentChallengeLibrary = artifacts.require('Challenges' as any);
     IllegalPaymentChallengeLibrary.link('Liquidation', Liquidation.address);
-    const IllegalPaymentChallenge = await IllegalPaymentChallengeLibrary.new();
+    const Challenges = await IllegalPaymentChallengeLibrary.new();
     // UnderlyingFreeBalance
     const UnderlyingFreeBalanceLibrary = artifacts.require('UnderlyingFreeBalance' as any);
     UnderlyingFreeBalanceLibrary.link('Liquidation', Liquidation.address);
@@ -41,7 +41,7 @@ export async function linkAssetManager() {
     AssetManager.link('Liquidation', Liquidation.address);
     AssetManager.link('Minting', Minting.address);
     AssetManager.link('Redemption', Redemption.address);
-    AssetManager.link('IllegalPaymentChallenge', IllegalPaymentChallenge.address);
+    AssetManager.link('Challenges', Challenges.address);
     AssetManager.link('UnderlyingFreeBalance', UnderlyingFreeBalance.address);
     return AssetManager;
 }
