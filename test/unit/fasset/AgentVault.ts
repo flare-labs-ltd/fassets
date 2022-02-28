@@ -13,6 +13,6 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; Check point unit tests`, a
     });
     
     it("can create", async () => {
-        const agentVault = await AgentVault.new(constants.ZERO_ADDRESS, wnat.address, accounts[1]);
+        const agentVault = await AgentVault.new(constants.ZERO_ADDRESS, accounts[1]);
     });
 });
