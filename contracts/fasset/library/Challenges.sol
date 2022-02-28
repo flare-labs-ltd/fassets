@@ -132,6 +132,6 @@ library Challenges {
         uint256 rewardAMG = SafeBips.mulBips(_backingAMGAtChallenge, _state.settings.paymentChallengeRewardBIPS)
             + _state.settings.paymentChallengeRewardAMG;
         uint256 rewardNATWei = Conversion.convertAmgToNATWei(rewardAMG, collateralData.amgToNATWeiPrice);
-        Agents.payout(_agentVault, _challenger, rewardNATWei);
+        Agents.payout(_state, _agentVault, _challenger, rewardNATWei);
     }
 }

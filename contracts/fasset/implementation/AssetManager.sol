@@ -10,7 +10,6 @@ import "../implementation/AgentVault.sol";
 import "../library/AssetManagerState.sol";
 import "../library/AssetManagerSettings.sol";
 import "../library/Conversion.sol";
-import "../library/Contracts.sol";
 import "../library/TransactionAttestation.sol";
 import "../library/PaymentConfirmations.sol";
 // external
@@ -95,7 +94,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     ) 
         external
     {
-        IAgentVault agentVault = new AgentVault(this, Contracts.getWNat(state.settings), msg.sender);
+        IAgentVault agentVault = new AgentVault(this, msg.sender);
         Agents.createAgent(state, _agentType, address(agentVault), _underlyingAddressString);
     }
     
@@ -530,5 +529,15 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
         external
     {
         Liquidation.cancelLiquidation(state, _agentVault);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Other
+    
+    function getWNat() 
+        external view 
+        returns (IWNat)
+    {
+        return state.settings.wNat;
     }
 }

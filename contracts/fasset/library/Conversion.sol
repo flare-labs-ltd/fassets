@@ -6,7 +6,6 @@ import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtso.sol";
 import "../../utils/lib/SafePct.sol";
 import "./AssetManagerSettings.sol";
-import "./Contracts.sol";
 
 
 library Conversion {
@@ -22,9 +21,8 @@ library Conversion {
         returns (uint256) 
     {
         // Force cast here to circument architecure in original contracts 
-        IFtsoRegistry ftsoRegistry = Contracts.getFtsoRegistry();
-        (uint256 natPrice, ) = ftsoRegistry.getFtso(_settings.wnatIndex).getCurrentPrice();
-        (uint256 assetPrice, ) = ftsoRegistry.getFtso(_settings.assetIndex).getCurrentPrice();
+        (uint256 natPrice, ) = _settings.natFtso.getCurrentPrice();
+        (uint256 assetPrice, ) = _settings.assetFtso.getCurrentPrice();
         return amgToNATWeiPrice(_settings, natPrice, assetPrice);
     }
 

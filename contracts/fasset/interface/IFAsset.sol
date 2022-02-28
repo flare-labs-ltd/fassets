@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-
+/**
+ * Here we declare only the functionalities related to AssetManager.
+ */
 interface IFAsset {
     /**
      * Mints `_amount` od fAsset.

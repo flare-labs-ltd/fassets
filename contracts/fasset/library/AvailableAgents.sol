@@ -105,14 +105,14 @@ library AvailableAgents {
         _end = Math.min(_end, _totalLength);
         _start = Math.min(_start, _end);
         _agents = new AvailableAgentInfo[](_end - _start);
-        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        AgentCollateral.Data memory collateralData = AgentCollateral.Data({
+            fullCollateral: 0,  // filled later for each agent
+            amgToNATWeiPrice: Conversion.currentAmgToNATWeiPrice(_state.settings)
+        });
         for (uint256 i = _start; i < _end; i++) {
             address agentVault = _state.availableAgents[i].agentVault;
             Agents.Agent storage agent = Agents.getAgentNoCheck(_state, agentVault);
-            AgentCollateral.Data memory collateralData = AgentCollateral.Data({
-                fullCollateral: IAgentVault(agentVault).fullCollateral(), 
-                amgToNATWeiPrice: amgToNATWeiPrice
-            });
+            collateralData.fullCollateral = Agents.fullCollateral(_state, agentVault);
             _agents[i - _start] = AvailableAgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,

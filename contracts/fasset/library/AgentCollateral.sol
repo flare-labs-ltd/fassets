@@ -29,7 +29,7 @@ library AgentCollateral {
         returns (AgentCollateral.Data memory)
     {
         return AgentCollateral.Data({
-            fullCollateral: IAgentVault(_agentVault).fullCollateral(),
+            fullCollateral: _state.settings.wNat.balanceOf(_agentVault),
             amgToNATWeiPrice: Conversion.currentAmgToNATWeiPrice(_state.settings)
         });
     }

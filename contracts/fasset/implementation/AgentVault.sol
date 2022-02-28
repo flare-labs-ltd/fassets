@@ -9,7 +9,6 @@ import "../interface/IAgentVault.sol";
 
 contract AgentVault is IAgentVault {
     IAssetManager public immutable assetManager;
-    IWNat public immutable wNat;
     address public immutable override owner;
 
     modifier onlyOwner {
@@ -22,10 +21,9 @@ contract AgentVault is IAgentVault {
         _;
     }
     
-    constructor(IAssetManager _assetManager, IWNat _wNat, address _owner) {
+    constructor(IAssetManager _assetManager, address _owner) {
         assetManager = _assetManager;
         owner = _owner;
-        wNat = _wNat;
     }
     
     // needed to allow wNat.withdraw() to send back funds
@@ -35,19 +33,19 @@ contract AgentVault is IAgentVault {
 
     // without "onlyOwner" to allow owner to send funds from any source
     function deposit() external payable override {
-        wNat.deposit{value: msg.value}();
+        assetManager.getWNat().deposit{value: msg.value}();
     }
 
     function delegate(address _to, uint256 _bips) external override onlyOwner {
-        wNat.delegate(_to, _bips);
+        assetManager.getWNat().delegate(_to, _bips);
     }
 
     function undelegateAll() external override onlyOwner {
-        wNat.undelegateAll();
+        assetManager.getWNat().undelegateAll();
     }
 
     function revokeDelegationAt(address _who, uint256 _blockNumber) external override onlyOwner {
-        wNat.revokeDelegationAt(_who, _blockNumber);
+        assetManager.getWNat().revokeDelegationAt(_who, _blockNumber);
     }
 
     function claimReward(
@@ -65,7 +63,7 @@ contract AgentVault is IAgentVault {
         // check that enough was announced and reduce announcement
         assetManager.withdrawCollateral(_amount);
         // withdraw from wnat contract and transfer it to _recipient
-        wNat.withdraw(_amount);
+        assetManager.getWNat().withdraw(_amount);
         _recipient.transfer(_amount);
     }
     
@@ -76,6 +74,7 @@ contract AgentVault is IAgentVault {
     // agent should make sure to claim rewards before calling destroy(), or they will be forfeit
     function destroy(address payable _recipient) external override onlyOwner {
         assetManager.destroyAgent(address(this));   // also checks destroy is allowed
+        IWNat wNat = assetManager.getWNat();
         wNat.undelegateAll();
         wNat.withdraw(wNat.balanceOf(address(this)));
         selfdestruct(_recipient);
@@ -84,11 +83,7 @@ contract AgentVault is IAgentVault {
     // Used by asset manager for liquidation and failed redemption.
     // Since _recipient is typically an unknown address, we do not directly send NAT,
     // but transfer WNAT (doesn't trigger any callbacks) which the recipient must withdraw.
-    function payout(address _recipient, uint256 _amount) external override onlyAssetManager {
+    function payout(IWNat wNat, address _recipient, uint256 _amount) external override onlyAssetManager {
         wNat.transfer(_recipient, _amount);
-    }
-
-    function fullCollateral() external view override returns (uint256) {
-        return wNat.balanceOf(address(this));
     }
 }

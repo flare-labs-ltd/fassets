@@ -150,9 +150,9 @@ library Agents {
         require(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0, "agent still active");
         require(agent.availableAgentsPos == 0, "agent still available");
         // check that all collateral has been announced for withdrawal
-        uint256 fullCollateral = IAgentVault(_agentVault).fullCollateral();
-        if (fullCollateral > 0) {
-            withdrawalExecuted(_state, _agentVault, fullCollateral);
+        uint256 agentCollateral = fullCollateral(_state, _agentVault);
+        if (agentCollateral > 0) {
+            withdrawalExecuted(_state, _agentVault, agentCollateral);
         }
         // delete agent data
         delete _state.agents[_agentVault];
@@ -306,6 +306,7 @@ library Agents {
     }
     
     function payout(
+        AssetManagerState.State storage _state, 
         address _agentVault,
         address _receiver,
         uint256 _amountNATWei
@@ -314,8 +315,8 @@ library Agents {
     {
         IAgentVault vault = IAgentVault(_agentVault);
         // don't want the calling method to fail due to too small balance for payout
-        uint256 amount = Math.min(_amountNATWei, vault.fullCollateral());
-        vault.payout(_receiver, amount);
+        uint256 amount = Math.min(_amountNATWei, fullCollateral(_state, _agentVault));
+        vault.payout(_state.settings.wNat, _receiver, amount);
     }
     
     function getAgent(
@@ -337,6 +338,16 @@ library Agents {
         returns (Agent storage _agent) 
     {
         _agent = _state.agents[_agentVault];
+    }
+    
+    function fullCollateral(
+        AssetManagerState.State storage _state, 
+        address _agentVault
+    ) 
+        internal view 
+        returns (uint256 _fullCollateral) 
+    {
+        return _state.settings.wNat.balanceOf(_agentVault);
     }
     
     function isAgentInLiquidation(

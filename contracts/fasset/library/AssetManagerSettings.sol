@@ -1,20 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
+import "flare-smart-contracts/contracts/userInterfaces/IFtso.sol";
 import "../interface/IAttestationClient.sol";
+import "../interface/IWNat.sol";
 
 
 library AssetManagerSettings {
     struct Settings {
         // Required contracts.
-        // Can be changed by AddressUpdater.
+        // TODO: once we have AssetManagerController, connect it to the AddressUpdater.
+        
+        // Attestation client verifies and decodes attestation proofs.
         IAttestationClient attestationClient;
         
-        // Wrapped NAT specific settings
-        uint16 wnatIndex;  // immutable?
+        // WNat contract interface. Agent vaults also read it from here.
+        IWNat wNat;
         
-        // Managed f-asset index in FtsoRegistry
-        uint16 assetIndex;  // immutable?
+        // FTSO contract for NAT currency.
+        IFtso natFtso;
+        
+        // FTSO contract for managed asset.
+        IFtso assetFtso;
         
         // Must match attestation data chainId.
         // immutable

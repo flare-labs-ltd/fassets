@@ -212,7 +212,7 @@ library Redemption {
         _state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payout(request.agentVault, msg.sender, _state.settings.redemptionConfirmRewardNATWei);
+            Agents.payout(_state, request.agentVault, msg.sender, _state.settings.redemptionConfirmRewardNATWei);
         }
         // delete redemption request at end if we don't need it any more
         // otherwise mark it as FAILED and wait for default
@@ -286,7 +286,7 @@ library Redemption {
             "only redeemer or agent");
         // pay redeemer in native currency
         uint256 paidAmountWei = _collateralAmountForRedemption(_state, request.agentVault, request.valueAMG);
-        Agents.payout(request.agentVault, request.redeemer, paidAmountWei);
+        Agents.payout(_state, request.agentVault, request.redeemer, paidAmountWei);
         // release remaining agent collateral
         Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment
