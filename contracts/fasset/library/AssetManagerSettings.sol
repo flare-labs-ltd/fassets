@@ -32,17 +32,25 @@ library AssetManagerSettings {
         uint16 collateralReservationFeeBIPS;
         
         // Collateral reservation fee is burned on successful minting.
+        // immutable
         address payable burnAddress;
 
         // Asset unit value (e.g. 1 BTC or 1 ETH) in UBA = 10 ** assetToken.decimals()
+        // immutable
         uint64 assetUnitUBA;
         
         // the granularity in which lots are measured = the value of AMG (asset minting granularity) in UBA
         // can only be changed via redeploy of AssetManager
+        // immutable
         uint64 assetMintingGranularityUBA;
         
         // Lot size in asset minting granularity. May change, which affects subsequent mintings and redemptions.
         uint64 lotSizeAMG;
+        
+        // for some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address
+        // this must be done by presenting a payment proof from that address
+        // immutable
+        bool requireEOAAddressProof;
         
         // Minimum collateral ratio for new agents.
         uint16 initialMinCollateralRatioBIPS;
@@ -69,11 +77,6 @@ library AssetManagerSettings {
         // the current underlying block timestamp.
         uint64 underlyingSecondsForPayment;
 
-        // Number of underlying blocks that the agent is allowed to perform allowed underlying payment
-        // (e.g. fee withdrawal). It can be much longer than the limit for required payments - it's only here
-        // to make sure payment happens before payment verification data is expired in a few days.
-        uint64 underlyingBlocksForAllowedPayment;
-        
         // Redemption fee in underlying currency base amount (UBA).
         uint16 redemptionFeeBips;
         
@@ -118,10 +121,6 @@ library AssetManagerSettings {
         // If there was no liquidator for the current liquidation offer, 
         // go to the next step of liquidation after a certain period of time.
         uint64 newLiquidationStepAfterMinSeconds;
-        
-        // for some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address
-        // this must be done by presenting a payment proof from that address
-        bool requireEOAAddressProof;
     }
 
 }

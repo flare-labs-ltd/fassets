@@ -2,9 +2,13 @@ import { AssetManagerContract, AssetManagerInstance, FAssetInstance } from "../.
 
 export type AssetManagerSettings = Parameters<AssetManagerContract['new']>[0];
 
-export async function newAssetManager(governanceAddress: string,
+
+export async function newAssetManager(
+    governanceAddress: string,
     assetManagerControllerAddress: string,
-    name: string, symbol: string, decimals: number,
+    name: string, 
+    symbol: string, 
+    decimals: number,
     assetManagerSettings: AssetManagerSettings
 ): Promise<[AssetManagerInstance, FAssetInstance]> {
     const AssetManager = await linkAssetManager();
