@@ -18,6 +18,9 @@
       "node_modules/flare-smart-contracts/test/types",
       "node_modules/flare-smart-contracts/test/utils"
     ],
-    "files": ["./hardhat.config.ts", "./type-extensions.ts"]
+    "files": [
+      "./hardhat.config.ts", 
+      "./type-extensions.ts"
+    ]
   }
   

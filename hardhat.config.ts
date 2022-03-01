@@ -1,8 +1,4 @@
-// import config used for compilation
-import config from "./hardhatSetup.config";
-
 import "@nomiclabs/hardhat-ethers";
-// Use also truffle and web3 for backward compatibility
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
@@ -14,6 +10,9 @@ import "hardhat-gas-reporter";
 import { extendEnvironment, task } from "hardhat/config";
 import 'solidity-coverage';
 import "./type-extensions";
+
+// import config used for compilation
+import config from "./hardhatSetup.config";
 
 
 dotenv.config();

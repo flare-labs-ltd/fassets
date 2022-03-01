@@ -1,5 +1,4 @@
 import "@nomiclabs/hardhat-ethers";
-// Use also truffle and web3 for backward compatibility
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
@@ -8,9 +7,7 @@ import * as dotenv from "dotenv";
 import "hardhat-contract-sizer";
 import 'hardhat-deploy';
 import "hardhat-gas-reporter";
-import {
-    TASK_COMPILE
-} from 'hardhat/builtin-tasks/task-names';
+import { TASK_COMPILE } from 'hardhat/builtin-tasks/task-names';
 import { HardhatUserConfig, task } from "hardhat/config";
 import 'solidity-coverage';
 import "./type-extensions";
