@@ -23,6 +23,10 @@ library AssetManagerSettings {
         // FTSO contract for managed asset.
         IFtso assetFtso;
         
+        // Collateral reservation fee is burned on successful minting.
+        // immutable
+        address payable burnAddress;
+
         // Must match attestation data chainId.
         // immutable
         uint32 chainId;
@@ -31,10 +35,6 @@ library AssetManagerSettings {
         // Payment is in NAT, but is proportional to the value of assets to be minted.
         uint16 collateralReservationFeeBIPS;
         
-        // Collateral reservation fee is burned on successful minting.
-        // immutable
-        address payable burnAddress;
-
         // Asset unit value (e.g. 1 BTC or 1 ETH) in UBA = 10 ** assetToken.decimals()
         // immutable
         uint64 assetUnitUBA;
@@ -91,7 +91,7 @@ library AssetManagerSettings {
         uint64 redemptionByAnybodyAfterSeconds;
 
         // The user who makes abandoned redemption confirmations gets rewarded by the following amount.
-        uint64 redemptionConfirmRewardNATWei;
+        uint128 redemptionConfirmRewardNATWei;
         
         // To prevent unbounded work, the number of tickets redeemed in a single request is limited.
         uint16 maxRedeemedTickets;

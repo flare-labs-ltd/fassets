@@ -32,6 +32,8 @@ library UnderlyingFreeBalance {
         agent.freeUnderlyingBalanceUBA = SafeCast.toInt128(newBalance);
     }
 
+    // Like updateFreeBalance, but it can never make balance negative and trigger liquidation.
+    // Separate implementation to avoid circular dependency in liquidation releasing underlying funds.
     function increaseFreeBalance(
         AssetManagerState.State storage _state, 
         address _agentVault,
@@ -39,7 +41,9 @@ library UnderlyingFreeBalance {
     ) 
         internal
     {
-        updateFreeBalance(_state, _agentVault, SafeCast.toInt256(_balanceIncrease));
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        int256 newBalance = agent.freeUnderlyingBalanceUBA + SafeCast.toInt256(_balanceIncrease);
+        agent.freeUnderlyingBalanceUBA = SafeCast.toInt128(newBalance);
     }
 
     function confirmTopupPayment(
