@@ -1,8 +1,9 @@
-import { constants } from "@openzeppelin/test-helpers";
+import { constants, expectRevert } from "@openzeppelin/test-helpers";
 import { getTestFile } from "flare-smart-contracts/test/utils/constants";
-import { toStringFixedPrecision } from "flare-smart-contracts/test/utils/test-helpers";
+import { toBN, toStringFixedPrecision } from "flare-smart-contracts/test/utils/test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
-import { AssetManagerSettings, newAssetManager } from "../../utils/DeployAssetManager";
+import { AssetManagerSettings, newAssetManager } from "../../utils/fasset/DeployAssetManager";
+import { assertWeb3DeepEqual, web3ResultStruct } from "../../utils/web3assertions";
 
 const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
@@ -14,9 +15,9 @@ function createTestSettings(attestationClient: AttestationClientMockInstance, wN
         wNat: wNat.address,
         natFtso: natFtso.address,
         assetFtso: assetFtso.address,
+        burnAddress: constants.ZERO_ADDRESS,
         chainId: 1,
         collateralReservationFeeBIPS: 100,              // 1%
-        burnAddress: constants.ZERO_ADDRESS,
         assetUnitUBA: toStringFixedPrecision(1, 18),                // 1e18 wei per eth
         assetMintingGranularityUBA: toStringFixedPrecision(1, 9),   // 1e9 = 1 gwei
         lotSizeAMG: toStringFixedPrecision(1_000, 9),       // 1000 eth
@@ -40,7 +41,7 @@ function createTestSettings(attestationClient: AttestationClientMockInstance, wN
     };
 }
 
-contract(`AssetManager.sol; ${getTestFile(__filename)}; Check point unit tests`, async accounts => {
+contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic tests`, async accounts => {
     const governance = accounts[10];
     const assetManagerController = accounts[11];
     let attestationClient: AttestationClientMockInstance;
@@ -49,17 +50,49 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Check point unit tests`,
     let wnat: WNatInstance;
     let natFtso: FtsoMockInstance;
     let assetFtso: FtsoMockInstance;
+    let settings: AssetManagerSettings;
     
     beforeEach(async () => {
         attestationClient = await AttestationClient.new();
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         natFtso = await FtsoMock.new();
         assetFtso = await FtsoMock.new();
-        const settings = createTestSettings(attestationClient, wnat, natFtso, assetFtso);
+        settings = createTestSettings(attestationClient, wnat, natFtso, assetFtso);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
     });
 
-    it("can create", async () => {
-        
+    it("should correctly set asset manager settings", async () => {
+        const resFAsset = await assetManager.fAsset();
+        assert.notEqual(resFAsset, constants.ZERO_ADDRESS);
+        assert.equal(resFAsset, fAsset.address);
+        const resSettings = web3ResultStruct(await assetManager.getSettings());
+        assertWeb3DeepEqual(resSettings, settings);
+    });
+    
+    it("should update settings correctly", async () => {
+        // act
+        const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+        newSettings.collateralReservationFeeBIPS = 150;
+        await assetManager.updateSettings(newSettings, { from: assetManagerController });
+        // assert
+        const res = web3ResultStruct(await assetManager.getSettings());
+        assertWeb3DeepEqual(newSettings, res);
+    });
+
+    it("should fail updating immutable settings", async () => {
+        // act
+        const currentSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+        // assert
+        const settingImmutable = "setting immutable";
+        await expectRevert(assetManager.updateSettings({ ...currentSettings, burnAddress: "0x0000000000000000000000000000000000000001" }, { from: assetManagerController }),
+            settingImmutable);
+        await expectRevert(assetManager.updateSettings({ ...currentSettings, chainId: 2 }, { from: assetManagerController }),
+            settingImmutable);
+        await expectRevert(assetManager.updateSettings({ ...currentSettings, assetUnitUBA: 10000 }, { from: assetManagerController }),
+            settingImmutable);
+        await expectRevert(assetManager.updateSettings({ ...currentSettings, assetMintingGranularityUBA: 10000 }, { from: assetManagerController }),
+            settingImmutable);
+        await expectRevert(assetManager.updateSettings({ ...currentSettings, requireEOAAddressProof: false }, { from: assetManagerController }),
+            settingImmutable);
     });
 });

@@ -5,7 +5,7 @@ import { WNatInstance } from "../../../typechain-truffle";
 const WNat = artifacts.require("WNat");
 const AgentVault = artifacts.require("AgentVault");
 
-contract(`AgentVault.sol; ${getTestFile(__filename)}; Check point unit tests`, async accounts => {
+contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, async accounts => {
     let wnat: WNatInstance;
     
     beforeEach(async() => {

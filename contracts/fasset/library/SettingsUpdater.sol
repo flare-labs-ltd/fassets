@@ -33,12 +33,13 @@ library SettingsUpdater {
     ) 
         private view
     {
+        string memory settingImmutable = "setting immutable";
         // prevent immutable setting changes
-        require(_original.burnAddress == _update.burnAddress, "burnAddress immutable");
-        require(_original.chainId == _update.chainId, "chainId immutable");
-        require(_original.assetUnitUBA == _update.assetUnitUBA, "assetUnitUBA immutable");
-        require(_original.assetMintingGranularityUBA == _update.assetMintingGranularityUBA, "assetMint.. immutable");
-        require(_original.requireEOAAddressProof == _update.requireEOAAddressProof, "requireEOA... immutable");
+        require(_original.burnAddress == _update.burnAddress, settingImmutable);
+        require(_original.chainId == _update.chainId, settingImmutable);
+        require(_original.assetUnitUBA == _update.assetUnitUBA, settingImmutable);
+        require(_original.assetMintingGranularityUBA == _update.assetMintingGranularityUBA, settingImmutable);
+        require(_original.requireEOAAddressProof == _update.requireEOAAddressProof, settingImmutable);
         // TODO: validate other changes (e.g. limit big jumps in some values)
     }
 }
