@@ -1,8 +1,9 @@
 import { constants, expectRevert } from "@openzeppelin/test-helpers";
 import { getTestFile } from "flare-smart-contracts/test/utils/constants";
-import { toBN, toStringFixedPrecision } from "flare-smart-contracts/test/utils/test-helpers";
+import { toStringFixedPrecision } from "flare-smart-contracts/test/utils/test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
-import { AssetManagerSettings, newAssetManager } from "../../utils/fasset/DeployAssetManager";
+import { AssetManagerSettings, PaymentProof } from "../../utils/fasset/AssetManagerTypes";
+import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { assertWeb3DeepEqual, web3ResultStruct } from "../../utils/web3assertions";
 
 const AttestationClient = artifacts.require('AttestationClientMock');
@@ -41,6 +42,25 @@ function createTestSettings(attestationClient: AttestationClientMockInstance, wN
     };
 }
 
+// function mockPaymentProof(): PaymentProof {
+//     return {
+//         stateConnectorRound: 0,
+//         merkleProof: [],
+//         blockNumber: number | BN | string;
+//         blockTimestamp: number | BN | string;
+//         transactionHash: string;
+//         utxo: number | BN | string;
+//         sourceAddress: string;
+//         receivingAddress: string;
+//         paymentReference: number | BN | string;
+//         spentAmount: number | BN | string;
+//         receivedAmount: number | BN | string;
+//         oneToOne: boolean;
+//         status: number | BN | string;
+        
+//     };
+// }
+
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic tests`, async accounts => {
     const governance = accounts[10];
     const assetManagerController = accounts[11];
@@ -61,38 +81,46 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
     });
 
-    it("should correctly set asset manager settings", async () => {
-        const resFAsset = await assetManager.fAsset();
-        assert.notEqual(resFAsset, constants.ZERO_ADDRESS);
-        assert.equal(resFAsset, fAsset.address);
-        const resSettings = web3ResultStruct(await assetManager.getSettings());
-        assertWeb3DeepEqual(resSettings, settings);
-    });
-    
-    it("should update settings correctly", async () => {
-        // act
-        const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-        newSettings.collateralReservationFeeBIPS = 150;
-        await assetManager.updateSettings(newSettings, { from: assetManagerController });
-        // assert
-        const res = web3ResultStruct(await assetManager.getSettings());
-        assertWeb3DeepEqual(newSettings, res);
+    describe("set and update settings", () => {
+        it("should correctly set asset manager settings", async () => {
+            const resFAsset = await assetManager.fAsset();
+            assert.notEqual(resFAsset, constants.ZERO_ADDRESS);
+            assert.equal(resFAsset, fAsset.address);
+            const resSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3DeepEqual(resSettings, settings);
+        });
+
+        it("should update settings correctly", async () => {
+            // act
+            const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            newSettings.collateralReservationFeeBIPS = 150;
+            await assetManager.updateSettings(newSettings, { from: assetManagerController });
+            // assert
+            const res = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3DeepEqual(newSettings, res);
+        });
+
+        it("should fail updating immutable settings", async () => {
+            // act
+            const currentSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            // assert
+            const settingImmutable = "setting immutable";
+            await expectRevert(assetManager.updateSettings({ ...currentSettings, burnAddress: "0x0000000000000000000000000000000000000001" }, { from: assetManagerController }),
+                settingImmutable);
+            await expectRevert(assetManager.updateSettings({ ...currentSettings, chainId: 2 }, { from: assetManagerController }),
+                settingImmutable);
+            await expectRevert(assetManager.updateSettings({ ...currentSettings, assetUnitUBA: 10000 }, { from: assetManagerController }),
+                settingImmutable);
+            await expectRevert(assetManager.updateSettings({ ...currentSettings, assetMintingGranularityUBA: 10000 }, { from: assetManagerController }),
+                settingImmutable);
+            await expectRevert(assetManager.updateSettings({ ...currentSettings, requireEOAAddressProof: false }, { from: assetManagerController }),
+                settingImmutable);
+        });
     });
 
-    it("should fail updating immutable settings", async () => {
-        // act
-        const currentSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-        // assert
-        const settingImmutable = "setting immutable";
-        await expectRevert(assetManager.updateSettings({ ...currentSettings, burnAddress: "0x0000000000000000000000000000000000000001" }, { from: assetManagerController }),
-            settingImmutable);
-        await expectRevert(assetManager.updateSettings({ ...currentSettings, chainId: 2 }, { from: assetManagerController }),
-            settingImmutable);
-        await expectRevert(assetManager.updateSettings({ ...currentSettings, assetUnitUBA: 10000 }, { from: assetManagerController }),
-            settingImmutable);
-        await expectRevert(assetManager.updateSettings({ ...currentSettings, assetMintingGranularityUBA: 10000 }, { from: assetManagerController }),
-            settingImmutable);
-        await expectRevert(assetManager.updateSettings({ ...currentSettings, requireEOAAddressProof: false }, { from: assetManagerController }),
-            settingImmutable);
+    describe("create agent", () => {
+        it("should prove EOA address", async () => {
+            
+        });
     });
 });

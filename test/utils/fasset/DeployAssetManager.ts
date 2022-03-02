@@ -1,6 +1,5 @@
-import { AssetManagerContract, AssetManagerInstance, FAssetInstance } from "../../../typechain-truffle";
-
-export type AssetManagerSettings = Parameters<AssetManagerContract['new']>[0];
+import { AssetManagerInstance, FAssetInstance } from "../../../typechain-truffle";
+import { AssetManagerSettings } from "./AssetManagerTypes";
 
 export async function newAssetManager(
     governanceAddress: string,
