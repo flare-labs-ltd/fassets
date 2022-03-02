@@ -13,6 +13,7 @@ import "../library/Conversion.sol";
 import "../library/TransactionAttestation.sol";
 import "../library/PaymentConfirmations.sol";
 // external
+import "../library/SettingsUpdater.sol";
 import "../library/AvailableAgents.sol";
 import "../library/Agents.sol";
 import "../library/CollateralReservations.sol";
@@ -40,25 +41,30 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     ) {
         fAsset = _fAsset;
         assetManagerController = _assetManagerController;
-        _updateSettings(_settings);
+        SettingsUpdater.validateAndSet(state, _settings, false);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Settings update
     
     function updateSettings(
-        AssetManagerSettings.Settings memory _settings
+        AssetManagerSettings.Settings calldata _settings
     ) 
         external
     {
         require(msg.sender == assetManagerController, "only asset manager controller");
-        // TODO: prevent immutable settings change
-        _updateSettings(_settings);
+        SettingsUpdater.validateAndSet(state, _settings, true);
     }
 
-    function _updateSettings(AssetManagerSettings.Settings memory _settings) private {
-        // TODO: check settings validity
-        state.settings = _settings;
+    /**
+     * In update, all settings must be set (and some must stay unchanged), so the updater must call
+     * getSetings and then updateSettings with modified structure.
+     */
+    function getSettings() 
+        external view
+        returns (AssetManagerSettings.Settings memory)
+    {
+        return state.settings;
     }
     
     ////////////////////////////////////////////////////////////////////////////////////

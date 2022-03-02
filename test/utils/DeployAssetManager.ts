@@ -20,6 +20,7 @@ export async function newAssetManager(
 
 export async function linkAssetManager() {
     // deploy all libraries
+    const SettingsUpdater = await deployLibrary('SettingsUpdater');
     const Agents = await deployLibrary('Agents');
     const AvailableAgents = await deployLibrary('AvailableAgents');
     const CollateralReservations = await deployLibrary('CollateralReservations');
@@ -29,9 +30,11 @@ export async function linkAssetManager() {
     const Redemption = await deployLibrary('Redemption', { Liquidation });
     const AllowedPaymentAnnouncement = await deployLibrary('AllowedPaymentAnnouncement', { Liquidation });
     const Challenges = await deployLibrary('Challenges', { Liquidation });
-    // AssetManagerContract
-    return linkDependencies(artifacts.require('AssetManager'), 
-        { Agents, AvailableAgents, CollateralReservations, Liquidation, Minting, UnderlyingFreeBalance, Redemption, AllowedPaymentAnnouncement, Challenges });       
+    // link AssetManagerContract
+    return linkDependencies(artifacts.require('AssetManager'), { 
+        SettingsUpdater, Agents, AvailableAgents, CollateralReservations, Liquidation, Minting, 
+        UnderlyingFreeBalance, Redemption, AllowedPaymentAnnouncement, Challenges 
+    });
 }
 
 export function deployLibrary(name: string, dependencies: { [key: string]: Truffle.ContractInstance } = {}): Promise<Truffle.ContractInstance> {
