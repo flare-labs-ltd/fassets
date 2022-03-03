@@ -103,6 +103,18 @@ export class MockChain {
     skipTime(timeDelta: number) {
         this.timstampSkew += timeDelta;
     }
+    
+    addTransaction(spent_: { [address: string]: BNish }, received_: { [address: string]: BNish }, reference: string | null, status: number = 0): MockChainTransaction {
+        const transaction = mockTransaction(spent_, received_, reference, status);
+        this.addBlock([transaction]);
+        return transaction;
+    }
+    
+    addSimpleTransaction(from: string, to: string, value: BNish, gas: BNish, reference: string | null, status: number = 0): MockChainTransaction {
+        const transaction = simpleMockTransaction(from, to, value, gas, reference, status);
+        this.addBlock([transaction]);
+        return transaction;
+    }
 }
 
 export class MockAttestationClient {
@@ -114,7 +126,7 @@ export class MockAttestationClient {
     
     CHECK_WINDOW = 86400;
     
-    async provePayment(transactionHash: string, sourceAddress: string, receivingAddress: string): Promise<Payment | null> {
+    payment(transactionHash: string, sourceAddress: string | null, receivingAddress: string | null): Payment | null {
         if (!(transactionHash in this.chain.transactionIndex)) {
             return null;
         }
@@ -122,37 +134,32 @@ export class MockAttestationClient {
         const block = this.chain.blocks[blockNumber];
         const transaction = block.transactions[txInd];
         const sources = Object.keys(transaction.spent);
+        if (sourceAddress == null) sourceAddress = sources[0];
         const recipients = Object.keys(transaction.received);
         if (receivingAddress == null) receivingAddress = recipients[0];
         const utxo = recipients.indexOf(receivingAddress);
         if (utxo < 0) {
             return null;
         }
-        // TODO: fix to `transaction.spent[sourceAddress]` when attestation client is fixed to allow selecting input address!
-        let totalSpent = BN_ZERO;
-        for (const [src, value] of Object.entries(transaction.spent)) {
-            totalSpent = totalSpent.add(value).sub(transaction.received[src] ?? BN_ZERO);
-        }
-        const proof: Payment = {
+        const spent = (transaction.spent[sourceAddress] ?? BN_ZERO).sub(transaction.received[sourceAddress] ?? BN_ZERO);
+        return {
             stateConnectorRound: 0, // not needed in mock
             merkleProof: [],        // not needed in mock
             blockNumber: blockNumber,
             blockTimestamp: block.timestamp,
             transactionHash: transaction.hash,
             utxo: utxo,
-            sourceAddress: sources.length === 1 ? web3.utils.keccak256(sources[0]) : "0",   // TODO: fix for selected source
+            sourceAddress: web3.utils.keccak256(sourceAddress),
             receivingAddress: web3.utils.keccak256(receivingAddress),
             paymentReference: transaction.reference ?? BN_ZERO,
-            spentAmount: totalSpent,
+            spentAmount: spent,
             receivedAmount: transaction.received[receivingAddress],
             oneToOne: false,    // not needed
             status: transaction.status
         };
-        await this.attestationClient.provePayment(this.chainId, web3DeepNormalize(proof));
-        return proof;
     }
     
-    async proveBalanceDecreasingTransaction(transactionHash: string, sourceAddress: string) {
+    balanceDecreasingTransaction(transactionHash: string, sourceAddress: string): BalanceDecreasingTransaction | null {
         if (!(transactionHash in this.chain.transactionIndex)) {
             return null;
         }
@@ -163,7 +170,7 @@ export class MockAttestationClient {
         if (spent.eqn(0)) {
             return null;    // no balance decrease for sourceAddress
         }
-        const proof: BalanceDecreasingTransaction = {
+        return {
             stateConnectorRound: 0, // not needed in mock
             merkleProof: [],        // not needed in mock
             blockNumber: blockNumber,
@@ -173,18 +180,16 @@ export class MockAttestationClient {
             spentAmount: spent,
             paymentReference: transaction.reference ?? BN_ZERO,
         };
-        await this.attestationClient.proveBalanceDecreasingTransaction(this.chainId, web3DeepNormalize(proof));
-        return proof;
     }
-
-    async proveReferencedPaymentNonexistence(destinationAddress: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number) {
+    
+    referencedPaymentNonexistence(destinationAddress: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number): ReferencedPaymentNonexistence | null {
         // if payment is found, return null
         const [found, firstCheckedBlock, overflowBlock] = this.findReferencedPayment(destinationAddress, paymentReference, amount, endBlock, endTimestamp);
         if (found || firstCheckedBlock === -1 || overflowBlock === -1) {
             return null;    // not enough blocks mined
         }
         // fill result
-        const proof: ReferencedPaymentNonexistence = {
+        return {
             stateConnectorRound: 0, // not needed in mock
             merkleProof: [],        // not needed in mock
             endTimestamp: endTimestamp,
@@ -197,8 +202,6 @@ export class MockAttestationClient {
             firstOverflowBlock: overflowBlock,
             firstOverflowBlockTimestamp: this.chain.blocks[overflowBlock].timestamp,
         };
-        await this.attestationClient.proveReferencedPaymentNonexistence(this.chainId, web3DeepNormalize(proof));
-        return proof;
     }
     
     private findReferencedPayment(destinationAddress: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number): [boolean, number, number] {
@@ -217,7 +220,8 @@ export class MockAttestationClient {
             for (const transaction of block.transactions) {
                 const found = transaction.reference === paymentReference
                     && destinationAddress in transaction.received
-                    && transaction.received[destinationAddress].eq(amount);
+                    && transaction.received[destinationAddress].eq(amount)
+                    && transaction.status !== 1;    // status != FAILED
                 if (found) {
                     return [true, firstCheckedBlock, bn];
                 }
@@ -226,18 +230,48 @@ export class MockAttestationClient {
         return [false, firstCheckedBlock, -1];  // not found, but also didn't find overflow block
     }
     
-    async proveBlockHeightExists(blockNumber: number) {
+    blockHeightExists(blockNumber: number): BlockHeightExists | null {
         if (blockNumber >= this.chain.blocks.length) {
             return null;
         }
         const block = this.chain.blocks[blockNumber];
-        const proof: BlockHeightExists = {
+        return {
             stateConnectorRound: 0, // not needed in mock
             merkleProof: [],        // not needed in mock
             blockNumber: blockNumber,
             blockTimestamp: block.timestamp,
         };
-        await this.attestationClient.proveBlockHeightExists(this.chainId, web3DeepNormalize(proof));
+    }
+    
+    async provePayment(transactionHash: string, sourceAddress: string | null, receivingAddress: string | null): Promise<Payment | null> {
+        const proof = this.payment(transactionHash, sourceAddress, receivingAddress);
+        if (proof != null) {
+            await this.attestationClient.provePayment(this.chainId, web3DeepNormalize(proof));
+        }
+        return proof;
+    }
+
+    async proveBalanceDecreasingTransaction(transactionHash: string, sourceAddress: string) {
+        const proof = this.balanceDecreasingTransaction(transactionHash, sourceAddress);
+        if (proof != null) {
+            await this.attestationClient.proveBalanceDecreasingTransaction(this.chainId, web3DeepNormalize(proof));
+        }
+        return proof;
+    }
+
+    async proveReferencedPaymentNonexistence(destinationAddress: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number) {
+        const proof = this.referencedPaymentNonexistence(destinationAddress, paymentReference, amount, endBlock, endTimestamp);
+        if (proof != null) {
+            await this.attestationClient.proveReferencedPaymentNonexistence(this.chainId, web3DeepNormalize(proof));
+        }
+        return proof;
+    }
+
+    async proveBlockHeightExists(blockNumber: number) {
+        const proof = this.blockHeightExists(blockNumber);
+        if (proof != null) {
+            await this.attestationClient.proveBlockHeightExists(this.chainId, web3DeepNormalize(proof));
+        }
         return proof;
     }
 }
