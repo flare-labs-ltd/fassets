@@ -124,7 +124,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const tx = chain.addSimpleTransaction(underlyingAgent1, underlyingAgent1, 1, 1, PaymentReference.addressOwnership(agent1));
             // assert
             const proof = await attestationProvider.provePayment(tx.hash, underlyingAgent1, underlyingAgent1);
-            await assetManager.proveUnderlyingAddressEOA(web3DeepNormalize(proof), { from: agent1 });
+            await assetManager.proveUnderlyingAddressEOA(proof, { from: agent1 });
         });
     });
 });

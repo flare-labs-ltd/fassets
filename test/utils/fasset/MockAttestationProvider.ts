@@ -44,7 +44,7 @@ export class MockAttestationProvider {
             oneToOne: false,    // not needed
             status: transaction.status
         };
-        return web3DeepNormalize(proof) as Payment;
+        return web3DeepNormalize(proof);
     }
 
     balanceDecreasingTransaction(transactionHash: string, sourceAddress: string): BalanceDecreasingTransaction | null {
@@ -58,7 +58,7 @@ export class MockAttestationProvider {
         if (spent.eqn(0)) {
             return null;    // no balance decrease for sourceAddress
         }
-        return {
+        const proof: BalanceDecreasingTransaction = {
             stateConnectorRound: 0, // not needed in mock
             merkleProof: [],        // not needed in mock
             blockNumber: blockNumber,
@@ -68,6 +68,7 @@ export class MockAttestationProvider {
             spentAmount: spent,
             paymentReference: transaction.reference ?? BN_ZERO,
         };
+        return web3DeepNormalize(proof);
     }
 
     referencedPaymentNonexistence(destinationAddress: string, paymentReference: BN, amount: BN, endBlock: number, endTimestamp: number): ReferencedPaymentNonexistence | null {
@@ -77,7 +78,7 @@ export class MockAttestationProvider {
             return null;    // not enough blocks mined
         }
         // fill result
-        return {
+        const proof: ReferencedPaymentNonexistence = {
             stateConnectorRound: 0, // not needed in mock
             merkleProof: [],        // not needed in mock
             endTimestamp: endTimestamp,
@@ -90,6 +91,7 @@ export class MockAttestationProvider {
             firstOverflowBlock: overflowBlock,
             firstOverflowBlockTimestamp: this.chain.blocks[overflowBlock].timestamp,
         };
+        return web3DeepNormalize(proof);
     }
 
     private findReferencedPayment(destinationAddress: string, paymentReference: BN, amount: BN, endBlock: number, endTimestamp: number): [boolean, number, number] {
@@ -123,39 +125,40 @@ export class MockAttestationProvider {
             return null;
         }
         const block = this.chain.blocks[blockNumber];
-        return {
+        const proof: BlockHeightExists = {
             stateConnectorRound: 0, // not needed in mock
             merkleProof: [],        // not needed in mock
             blockNumber: blockNumber,
             blockTimestamp: block.timestamp,
         };
+        return web3DeepNormalize(proof);
     }
 
     async provePayment(transactionHash: string, sourceAddress: string | null, receivingAddress: string | null): Promise<Payment> {
         const proof = this.payment(transactionHash, sourceAddress, receivingAddress);
         assert.isNotNull(proof, "provePayment: transaction not found");
-        await this.attestationClient.provePayment(this.chainId, web3DeepNormalize(proof!));
+        await this.attestationClient.provePayment(this.chainId, proof!);
         return proof!;
     }
 
     async proveBalanceDecreasingTransaction(transactionHash: string, sourceAddress: string): Promise<BalanceDecreasingTransaction> {
         const proof = this.balanceDecreasingTransaction(transactionHash, sourceAddress);
         assert.isNotNull(proof, "proveBalanceDecreasingTransaction: transaction not found");
-        await this.attestationClient.proveBalanceDecreasingTransaction(this.chainId, web3DeepNormalize(proof!));
+        await this.attestationClient.proveBalanceDecreasingTransaction(this.chainId, proof!);
         return proof!;
     }
 
     async proveReferencedPaymentNonexistence(destinationAddress: string, paymentReference: BN, amount: BN, endBlock: number, endTimestamp: number): Promise<ReferencedPaymentNonexistence> {
         const proof = this.referencedPaymentNonexistence(destinationAddress, paymentReference, amount, endBlock, endTimestamp);
         assert.isNotNull(proof, "proveReferencedPaymentNonexistence: cannot prove");
-        await this.attestationClient.proveReferencedPaymentNonexistence(this.chainId, web3DeepNormalize(proof!));
+        await this.attestationClient.proveReferencedPaymentNonexistence(this.chainId, proof!);
         return proof!;
     }
 
     async proveBlockHeightExists(blockNumber: number): Promise<BlockHeightExists> {
         const proof = this.blockHeightExists(blockNumber);
         assert.isNotNull(proof, "proveBlockHeightExists: block not found");
-        await this.attestationClient.proveBlockHeightExists(this.chainId, web3DeepNormalize(proof!));
+        await this.attestationClient.proveBlockHeightExists(this.chainId, proof!);
         return proof!;
     }
 }
