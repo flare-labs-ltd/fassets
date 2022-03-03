@@ -1,3 +1,5 @@
+export type BNish = BN | number | string;
+
 export function systemTimestamp() {
     return Math.round(new Date().getTime() / 1000);
 }

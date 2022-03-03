@@ -2,9 +2,12 @@ import { constants, expectRevert } from "@openzeppelin/test-helpers";
 import { getTestFile } from "flare-smart-contracts/test/utils/constants";
 import { toStringFixedPrecision } from "flare-smart-contracts/test/utils/test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
-import { AssetManagerSettings, Payment } from "../../utils/fasset/AssetManagerTypes";
+import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
-import { assertWeb3DeepEqual, web3ResultStruct } from "../../utils/web3assertions";
+import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvider";
+import { MockChain } from "../../utils/fasset/MockChain";
+import { PaymentReference } from "../../utils/fasset/PaymentReference";
+import { assertWeb3DeepEqual, web3DeepNormalize, web3ResultStruct } from "../../utils/web3assertions";
 
 const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
@@ -42,25 +45,6 @@ function createTestSettings(attestationClient: AttestationClientMockInstance, wN
     };
 }
 
-// function mockPayment(): Payment {
-//     return {
-//         stateConnectorRound: 0,
-//         merkleProof: [],
-//         blockNumber: number | BN | string;
-//         blockTimestamp: number | BN | string;
-//         transactionHash: string;
-//         utxo: number | BN | string;
-//         sourceAddress: string;
-//         receivingAddress: string;
-//         paymentReference: number | BN | string;
-//         spentAmount: number | BN | string;
-//         receivedAmount: number | BN | string;
-//         oneToOne: boolean;
-//         status: number | BN | string;
-        
-//     };
-// }
-
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic tests`, async accounts => {
     const governance = accounts[10];
     const assetManagerController = accounts[11];
@@ -71,6 +55,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let natFtso: FtsoMockInstance;
     let assetFtso: FtsoMockInstance;
     let settings: AssetManagerSettings;
+    const chainId = 1;
+    let chain: MockChain;
+    let attestationProvider: MockAttestationProvider;
+    
+    // addresses
+    const agent1 = accounts[20];
+    const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
+    const minter1 = accounts[30];
+    const underlyingMinter1 = "Minter1";
+    const redeemer1 = accounts[40];
+    const underlyingRedeemer1 = "Redeemer1";
+    const challenger1 = accounts[50];
     
     beforeEach(async () => {
         attestationClient = await AttestationClient.new();
@@ -79,6 +75,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         assetFtso = await FtsoMock.new();
         settings = createTestSettings(attestationClient, wnat, natFtso, assetFtso);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
+        chain = new MockChain();
+        attestationProvider = new MockAttestationProvider(chain, attestationClient, chainId);
     });
 
     describe("set and update settings", () => {
@@ -120,7 +118,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
     describe("create agent", () => {
         it("should prove EOA address", async () => {
-            
+            // init
+            chain.mint(underlyingAgent1, 1000);
+            // act
+            const tx = chain.addSimpleTransaction(underlyingAgent1, underlyingAgent1, 1, 1, PaymentReference.addressOwnership(agent1));
+            // assert
+            const proof = await attestationProvider.provePayment(tx.hash, underlyingAgent1, underlyingAgent1);
+            await assetManager.proveUnderlyingAddressEOA(web3DeepNormalize(proof), { from: agent1 });
         });
     });
 });
