@@ -23,7 +23,7 @@ library PaymentConfirmations {
      */
     function confirmIncomingPayment(
         State storage _state,
-        IAttestationClient.PaymentProof calldata _payment
+        IAttestationClient.Payment calldata _payment
     ) 
         internal 
     {
@@ -36,7 +36,7 @@ library PaymentConfirmations {
      */
     function confirmSourceDecreasingTransaction(
         State storage _state,
-        IAttestationClient.PaymentProof calldata _payment
+        IAttestationClient.Payment calldata _payment
     ) 
         internal 
     {

@@ -3,7 +3,7 @@ import { toBN } from "flare-smart-contracts/test/utils/test-helpers";
 import { AttestationClientMockInstance } from "../../../typechain-truffle";
 import { objectMap, systemTimestamp } from "../helpers";
 import { web3DeepNormalize } from "../web3assertions";
-import { BalanceDecreasingTransaction, BlockHeightExists, PaymentProof, ReferencedPaymentNonexistence } from "./AssetManagerTypes";
+import { BalanceDecreasingTransaction, BlockHeightExists, Payment, ReferencedPaymentNonexistence } from "./AssetManagerTypes";
 
 export type BNish = BN | number | string;
 
@@ -114,7 +114,7 @@ export class MockAttestationClient {
     
     CHECK_WINDOW = 86400;
     
-    async provePayment(transactionHash: string, sourceAddress: string, receivingAddress: string): Promise<PaymentProof | null> {
+    async provePayment(transactionHash: string, sourceAddress: string, receivingAddress: string): Promise<Payment | null> {
         if (!(transactionHash in this.chain.transactionIndex)) {
             return null;
         }
@@ -133,7 +133,7 @@ export class MockAttestationClient {
         for (const [src, value] of Object.entries(transaction.spent)) {
             totalSpent = totalSpent.add(value).sub(transaction.received[src] ?? BN_ZERO);
         }
-        const proof: PaymentProof = {
+        const proof: Payment = {
             stateConnectorRound: 0, // not needed in mock
             merkleProof: [],        // not needed in mock
             blockNumber: blockNumber,
@@ -148,7 +148,7 @@ export class MockAttestationClient {
             oneToOne: false,    // not needed
             status: transaction.status
         };
-        await this.attestationClient.provePaymentProof(this.chainId, web3DeepNormalize(proof));
+        await this.attestationClient.provePayment(this.chainId, web3DeepNormalize(proof));
         return proof;
     }
     

@@ -17,25 +17,25 @@ library TransactionAttestation {
     uint8 internal constant PAYMENT_FAILED = 1;
     uint8 internal constant PAYMENT_BLOCKED = 2;
 
-    function verifyPaymentProofSuccess(
+    function verifyPaymentSuccess(
         AssetManagerSettings.Settings storage _settings,
-        IAttestationClient.PaymentProof calldata _attestationData,
+        IAttestationClient.Payment calldata _attestationData,
         bool _requireSingleSource
     ) 
         internal view
     {
         require(_attestationData.status == PAYMENT_SUCCESS, "payment failed");
-        verifyPaymentProof(_settings, _attestationData, _requireSingleSource);
+        verifyPayment(_settings, _attestationData, _requireSingleSource);
     }
     
-    function verifyPaymentProof(
+    function verifyPayment(
         AssetManagerSettings.Settings storage _settings,
-        IAttestationClient.PaymentProof calldata _attestationData,
+        IAttestationClient.Payment calldata _attestationData,
         bool _requireSingleSource
     ) 
         internal view
     {
-        require(_settings.attestationClient.verifyPaymentProof(_settings.chainId, _attestationData), 
+        require(_settings.attestationClient.verifyPayment(_settings.chainId, _attestationData), 
             "legal payment not proved");
         require(_attestationData.blockTimestamp >= block.timestamp - MAX_VALID_PROOF_AGE_SECONDS,
             "verified transaction too old");

@@ -2,7 +2,7 @@ import { constants, expectRevert } from "@openzeppelin/test-helpers";
 import { getTestFile } from "flare-smart-contracts/test/utils/constants";
 import { toStringFixedPrecision } from "flare-smart-contracts/test/utils/test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
-import { AssetManagerSettings, PaymentProof } from "../../utils/fasset/AssetManagerTypes";
+import { AssetManagerSettings, Payment } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { assertWeb3DeepEqual, web3ResultStruct } from "../../utils/web3assertions";
 
@@ -42,7 +42,7 @@ function createTestSettings(attestationClient: AttestationClientMockInstance, wN
     };
 }
 
-// function mockPaymentProof(): PaymentProof {
+// function mockPayment(): Payment {
 //     return {
 //         stateConnectorRound: 0,
 //         merkleProof: [],

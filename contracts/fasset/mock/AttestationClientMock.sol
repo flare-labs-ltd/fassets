@@ -15,10 +15,10 @@ contract AttestationClientMock is IAttestationClient {
 
     // because this is mock, we do not use state connector merkle root, but just state it is proved
     
-    function provePaymentProof(uint32 _chainId, PaymentProof calldata _data) 
+    function provePayment(uint32 _chainId, Payment calldata _data) 
         external
     {
-        _proofs[_hashPaymentProof(_chainId, _data)] = true;
+        _proofs[_hashPayment(_chainId, _data)] = true;
     }
     
     function proveBalanceDecreasingTransaction(uint32 _chainId, BalanceDecreasingTransaction calldata _data) 
@@ -39,11 +39,11 @@ contract AttestationClientMock is IAttestationClient {
         _proofs[_hashBlockHeightExists(_chainId, _data)] = true;
     }
     
-    function verifyPaymentProof(uint32 _chainId, PaymentProof calldata _data) 
+    function verifyPayment(uint32 _chainId, Payment calldata _data) 
         external view override
         returns (bool _proved)
     {
-        return _proofs[_hashPaymentProof(_chainId, _data)];
+        return _proofs[_hashPayment(_chainId, _data)];
     }
     
     function verifyBalanceDecreasingTransaction(uint32 _chainId, BalanceDecreasingTransaction calldata _data) 
@@ -67,7 +67,7 @@ contract AttestationClientMock is IAttestationClient {
         return _proofs[_hashBlockHeightExists(_chainId, _data)];
     }
 
-    function _hashPaymentProof(uint32 _chainId, PaymentProof calldata _data) 
+    function _hashPayment(uint32 _chainId, Payment calldata _data) 
         private pure
         returns (bytes32)
     {

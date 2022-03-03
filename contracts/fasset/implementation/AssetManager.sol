@@ -79,11 +79,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * (depends on setting `requireEOAAddressProof`).
      */
     function proveUnderlyingAddressEOA(
-        IAttestationClient.PaymentProof calldata _payment
+        IAttestationClient.Payment calldata _payment
     )
         external
     {
-        TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, true);
+        TransactionAttestation.verifyPaymentSuccess(state.settings, _payment, true);
         UnderlyingAddressOwnership.claimWithProof(state.underlyingAddressOwnership, 
             _payment, state.paymentConfirmations, msg.sender, _payment.sourceAddress);
     }
@@ -300,13 +300,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * and collect the minted f-assets.
      */
     function executeMinting(
-        IAttestationClient.PaymentProof calldata _payment,
+        IAttestationClient.Payment calldata _payment,
         uint64 _crtId
     ) 
         external 
         nonReentrant
     {
-        TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
+        TransactionAttestation.verifyPaymentSuccess(state.settings, _payment, false);
         (address minter, uint256 mintedUBA) = Minting.mintingExecuted(state, _payment, _crtId);
         fAsset.mint(minter, mintedUBA);
     }
@@ -332,14 +332,14 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
      */
     function selfMint(
-        IAttestationClient.PaymentProof calldata _payment,
+        IAttestationClient.Payment calldata _payment,
         address _agentVault,
         uint64 _lots
     ) 
         external 
     {
         Agents.requireAgentVaultOwner(_agentVault);
-        TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
+        TransactionAttestation.verifyPaymentSuccess(state.settings, _payment, false);
         uint256 mintedUBA = Minting.selfMint(state, _payment, _agentVault, _lots);
         fAsset.mint(msg.sender, mintedUBA);
     }
@@ -378,12 +378,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      * anybody can do it and get rewarded from agent's vault.
      */    
     function confirmRedemptionPayment(
-        IAttestationClient.PaymentProof calldata _payment,
+        IAttestationClient.Payment calldata _payment,
         uint64 _redemptionRequestId
     )
         external
     {
-        TransactionAttestation.verifyPaymentProof(state.settings, _payment, false);
+        TransactionAttestation.verifyPayment(state.settings, _payment, false);
         Redemption.confirmRedemptionPayment(state, _payment, _redemptionRequestId);
     }
 
@@ -446,13 +446,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     }
     
     function confirmAllowedPayment(
-        IAttestationClient.PaymentProof calldata _payment,
+        IAttestationClient.Payment calldata _payment,
         address _agentVault,
         uint64 _announcementId
     )
         external
     {
-        TransactionAttestation.verifyPaymentProof(state.settings, _payment, false);
+        TransactionAttestation.verifyPayment(state.settings, _payment, false);
         AllowedPaymentAnnouncement.confirmAllowedPayment(state, _payment, _agentVault, _announcementId);
     }
 
@@ -460,12 +460,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
     // Underlying balance topup
 
     function confirmTopupPayment(
-        IAttestationClient.PaymentProof calldata _payment,
+        IAttestationClient.Payment calldata _payment,
         address _agentVault
     )
         external
     {
-        TransactionAttestation.verifyPaymentProofSuccess(state.settings, _payment, false);
+        TransactionAttestation.verifyPaymentSuccess(state.settings, _payment, false);
         UnderlyingFreeBalance.confirmTopupPayment(state, _payment, _agentVault);
     }
     

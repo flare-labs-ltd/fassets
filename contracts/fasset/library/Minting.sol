@@ -19,7 +19,7 @@ library Minting {
     
     function mintingExecuted(
         AssetManagerState.State storage _state,
-        IAttestationClient.PaymentProof calldata _payment,
+        IAttestationClient.Payment calldata _payment,
         uint64 _crtId
     )
         external
@@ -54,7 +54,7 @@ library Minting {
 
     function selfMint(
         AssetManagerState.State storage _state,
-        IAttestationClient.PaymentProof calldata _payment,
+        IAttestationClient.Payment calldata _payment,
         address _agentVault,
         uint64 _lots
     )

@@ -33,7 +33,7 @@ library UnderlyingAddressOwnership {
     
     function claimWithProof(
         State storage _state,
-        IAttestationClient.PaymentProof calldata _payment, 
+        IAttestationClient.Payment calldata _payment, 
         PaymentConfirmations.State storage _paymentVerification,
         address _owner, 
         bytes32 _underlyingAddressHash

@@ -161,7 +161,7 @@ library Redemption {
 
     function confirmRedemptionPayment(
         AssetManagerState.State storage _state,
-        IAttestationClient.PaymentProof calldata _payment,
+        IAttestationClient.Payment calldata _payment,
         uint64 _redemptionRequestId
     )
         external
@@ -225,7 +225,7 @@ library Redemption {
     
     function _validatePayment(
         RedemptionRequest storage request,
-        IAttestationClient.PaymentProof calldata _payment
+        IAttestationClient.Payment calldata _payment
     )
         private view
         returns (bool _paymentValid, string memory _failureReason)
@@ -243,7 +243,7 @@ library Redemption {
     
     function _updateFreeBalanceAfterPayment(
         AssetManagerState.State storage _state,
-        IAttestationClient.PaymentProof calldata _payment,
+        IAttestationClient.Payment calldata _payment,
         RedemptionRequest storage _request
     )
         private
