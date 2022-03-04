@@ -1,4 +1,6 @@
 import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
+import { findEvent, Web3EventDecoder } from "flare-smart-contracts/test/utils/EventDecoder";
+import { setDefaultVPContract } from "flare-smart-contracts/test/utils/token-test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
@@ -57,6 +59,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     const chainId = 1;
     let chain: MockChain;
     let attestationProvider: MockAttestationProvider;
+    let eventDecoder: Web3EventDecoder;
     
     // addresses
     const underlyingBurnAddr = "Burn";
@@ -67,16 +70,28 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     const redeemer1 = accounts[40];
     const underlyingRedeemer1 = "Redeemer1";
     const challenger1 = accounts[50];
-    
+
+    async function createAgent(chain: MockChain, owner: string, underlyingAddress: string) {
+        const tx = chain.addSimpleTransaction(underlyingAddress, underlyingAddress, 1, 1, PaymentReference.addressOwnership(owner));
+        const proof = await attestationProvider.provePayment(tx.hash, underlyingAddress, underlyingAddress);
+        await assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
+        const response = await assetManager.createAgent(underlyingAddress, { from: owner });
+        const event = findEvent(response.logs, 'AgentCreated');
+        assert.isNotNull(event, "Missing event AgentCreated");
+        return event!.args.agentVault;
+    }
+
     beforeEach(async () => {
         attestationClient = await AttestationClient.new();
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
+        await setDefaultVPContract(wnat, governance);
         natFtso = await FtsoMock.new();
         assetFtso = await FtsoMock.new();
         settings = createTestSettings(attestationClient, wnat, natFtso, assetFtso);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
         chain = new MockChain();
         attestationProvider = new MockAttestationProvider(chain, attestationClient, chainId);
+        eventDecoder = new Web3EventDecoder({ assetManager });
     });
 
     describe("set and update settings", () => {
@@ -134,9 +149,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const tx = chain.addSimpleTransaction(underlyingAgent1, underlyingBurnAddr, 1, 1, PaymentReference.addressOwnership(agent1));
             const proof = await attestationProvider.provePayment(tx.hash, underlyingAgent1, underlyingBurnAddr);
             await assetManager.proveUnderlyingAddressEOA(proof, { from: agent1 });
-            const response = await assetManager.createAgent(underlyingAgent1, { from: agent1 });
+            const res = await assetManager.createAgent(underlyingAgent1, { from: agent1 });
             // assert
-            expectEvent(response, "AgentCreated", { owner: agent1, agentType: "1", underlyingAddress: underlyingAgent1 });
+            expectEvent(res, "AgentCreated", { owner: agent1, agentType: "1", underlyingAddress: underlyingAgent1 });
         });
 
         it("should require EOA check to create agent", async () => {
@@ -146,6 +161,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // assert
             await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agent1 }),
                 "EOA proof required");
+        });
+
+        it("should destroy agent", async () => {
+            // init
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            const agentVault = await createAgent(chain, agent1, underlyingAgent1);
+            // act
+            const res = await assetManager.destroyAgent(agentVault, agent1, { from: agent1 });
+            // assert
+            expectEvent(res, "AgentDestroyed", { agentVault: agentVault });
         });
     });
 });

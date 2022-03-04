@@ -72,8 +72,7 @@ contract AgentVault is IAgentVault {
     }
 
     // agent should make sure to claim rewards before calling destroy(), or they will be forfeit
-    function destroy(address payable _recipient) external override onlyOwner {
-        assetManager.destroyAgent(address(this));   // also checks destroy is allowed
+    function destroy(address payable _recipient) external override onlyAssetManager {
         IWNat wNat = assetManager.getWNat();
         wNat.undelegateAll();
         wNat.withdraw(wNat.balanceOf(address(this)));

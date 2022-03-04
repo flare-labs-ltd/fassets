@@ -109,16 +109,19 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Procedure for destroying agent:
      * - exit available agents list
      * - wait until all assets are redeemed or self-close
+     * - claim rewards
      * - announce withdrawal of full collateral (and wait the required time)
-     * - call agentVault.destroy()
+     * - call destroyAgent()
      */
     function destroyAgent(
-        address _agentVault
+        address _agentVault,
+        address payable _recipient
     )
-        external override
+        external
     {
-        require(_agentVault == msg.sender, "call agentVault.destroy()");
+        Agents.requireAgentVaultOwner(_agentVault);
         Agents.destroyAgent(state, _agentVault);
+        IAgentVault(_agentVault).destroy(_recipient);
     }
     
     /**
