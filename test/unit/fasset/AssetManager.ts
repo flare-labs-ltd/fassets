@@ -1,13 +1,12 @@
-import { constants, expectRevert } from "@openzeppelin/test-helpers";
-import { getTestFile } from "flare-smart-contracts/test/utils/constants";
-import { toStringFixedPrecision } from "flare-smart-contracts/test/utils/test-helpers";
+import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvider";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { assertWeb3DeepEqual, web3DeepNormalize, web3ResultStruct } from "../../utils/web3assertions";
+import { getTestFile, toBNExp, toStringExp } from "../../utils/helpers";
+import { assertWeb3DeepEqual, web3ResultStruct } from "../../utils/web3assertions";
 
 const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
@@ -22,9 +21,9 @@ function createTestSettings(attestationClient: AttestationClientMockInstance, wN
         burnAddress: constants.ZERO_ADDRESS,
         chainId: 1,
         collateralReservationFeeBIPS: 100,              // 1%
-        assetUnitUBA: toStringFixedPrecision(1, 18),                // 1e18 wei per eth
-        assetMintingGranularityUBA: toStringFixedPrecision(1, 9),   // 1e9 = 1 gwei
-        lotSizeAMG: toStringFixedPrecision(1_000, 9),       // 1000 eth
+        assetUnitUBA: toStringExp(1, 18),                // 1e18 wei per eth
+        assetMintingGranularityUBA: toStringExp(1, 9),   // 1e9 = 1 gwei
+        lotSizeAMG: toStringExp(1_000, 9),       // 1000 eth
         requireEOAAddressProof: true,
         initialMinCollateralRatioBIPS: 2_1000,          // 2.1
         liquidationMinCollateralCallBandBIPS: 1_9000,   // 1.9
@@ -34,10 +33,10 @@ function createTestSettings(attestationClient: AttestationClientMockInstance, wN
         redemptionFeeBips: 200,                         // 2%
         redemptionFailureFactorBIPS: 1_2000,            // 1.2
         redemptionByAnybodyAfterSeconds: 6 * 3600,      // 6 hours
-        redemptionConfirmRewardNATWei: toStringFixedPrecision(100, 18), // 100 NAT
+        redemptionConfirmRewardNATWei: toStringExp(100, 18), // 100 NAT
         maxRedeemedTickets: 20,                         // TODO: find number that fits comfortably in gas limits
         paymentChallengeRewardBIPS: 0,
-        paymentChallengeRewardAMG: toStringFixedPrecision(2, 9),    // 2 eth
+        paymentChallengeRewardAMG: toStringExp(2, 9),    // 2 eth
         withdrawalWaitMinSeconds: 300,
         liquidationPricePremiumBIPS: 1_2500,            // 1.25
         liquidationCollateralPremiumBIPS: [6000, 8000, 10000],
@@ -60,6 +59,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let attestationProvider: MockAttestationProvider;
     
     // addresses
+    const underlyingBurnAddr = "Burn";
     const agent1 = accounts[20];
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
     const minter1 = accounts[30];
@@ -119,12 +119,33 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     describe("create agent", () => {
         it("should prove EOA address", async () => {
             // init
-            chain.mint(underlyingAgent1, 1000);
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
             // act
-            const tx = chain.addSimpleTransaction(underlyingAgent1, underlyingAgent1, 1, 1, PaymentReference.addressOwnership(agent1));
+            const tx = chain.addSimpleTransaction(underlyingAgent1, underlyingBurnAddr, 1, 1, PaymentReference.addressOwnership(agent1));
             // assert
-            const proof = await attestationProvider.provePayment(tx.hash, underlyingAgent1, underlyingAgent1);
+            const proof = await attestationProvider.provePayment(tx.hash, underlyingAgent1, underlyingBurnAddr);
             await assetManager.proveUnderlyingAddressEOA(proof, { from: agent1 });
+        });
+        
+        it("should create agent", async () => {
+            // init
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            // act
+            const tx = chain.addSimpleTransaction(underlyingAgent1, underlyingBurnAddr, 1, 1, PaymentReference.addressOwnership(agent1));
+            const proof = await attestationProvider.provePayment(tx.hash, underlyingAgent1, underlyingBurnAddr);
+            await assetManager.proveUnderlyingAddressEOA(proof, { from: agent1 });
+            const response = await assetManager.createAgent(underlyingAgent1, { from: agent1 });
+            // assert
+            expectEvent(response, "AgentCreated", { owner: agent1, agentType: "1", underlyingAddress: underlyingAgent1 });
+        });
+
+        it("should require EOA check to create agent", async () => {
+            // init
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            // act
+            // assert
+            await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agent1 }),
+                "EOA proof required");
         });
     });
 });

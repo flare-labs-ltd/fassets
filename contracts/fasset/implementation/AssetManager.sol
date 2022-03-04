@@ -4,6 +4,7 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../interface/IAgentVault.sol";
 import "../interface/IAssetManager.sol";
+import "../interface/IAssetManagerEvents.sol";
 import "../interface/IAttestationClient.sol";
 import "../interface/IFAsset.sol";
 import "../implementation/AgentVault.sol";
@@ -29,7 +30,7 @@ import "../library/UnderlyingFreeBalance.sol";
  * The contract that can mint and burn f-assets while managing collateral and backing funds.
  * There is one instance of AssetManager per f-asset type.
  */
-contract AssetManager is ReentrancyGuard, IAssetManager {
+contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     AssetManagerState.State private state;
     IFAsset public immutable fAsset;
     address public assetManagerController;  // TODO: should be replaceable?

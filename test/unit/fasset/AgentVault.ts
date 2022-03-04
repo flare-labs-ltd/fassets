@@ -1,6 +1,6 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { getTestFile } from "flare-smart-contracts/test/utils/constants";
 import { WNatInstance } from "../../../typechain-truffle";
+import { getTestFile } from "../../utils/helpers";
 
 const WNat = artifacts.require("WNat");
 const AgentVault = artifacts.require("AgentVault");

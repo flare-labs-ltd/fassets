@@ -1,5 +1,4 @@
-import { toBN } from "flare-smart-contracts/test/utils/test-helpers";
-import { BNish } from "../helpers";
+import { BNish, toBN } from "../helpers";
 
 export namespace PaymentReference {
     export const TYPE_SHIFT = 192;

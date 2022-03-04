@@ -1,6 +1,4 @@
-import { BN_ZERO } from "flare-smart-contracts/test/utils/fuzzing-utils";
-import { toBN } from "flare-smart-contracts/test/utils/test-helpers";
-import { BNish, objectMap, systemTimestamp } from "../helpers";
+import { BNish, BN_ZERO, objectMap, systemTimestamp, toBN } from "../helpers";
 
 export interface MockChainTransaction {
     hash: string;

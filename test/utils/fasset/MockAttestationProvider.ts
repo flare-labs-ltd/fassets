@@ -1,5 +1,5 @@
-import { BN_ZERO } from "flare-smart-contracts/test/utils/fuzzing-utils";
 import { AttestationClientMockInstance } from "../../../typechain-truffle";
+import { BN_ZERO } from "../helpers";
 import { web3DeepNormalize } from "../web3assertions";
 import { BalanceDecreasingTransaction, BlockHeightExists, Payment, ReferencedPaymentNonexistence } from "./AssetManagerTypes";
 import { MockChain } from "./MockChain";

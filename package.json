@@ -26,6 +26,7 @@
     "---------COMPILE---SCRIPTS": "",
     "compile": "yarn hardhat compile --config hardhatSetup.config.ts && yarn typechain-prepare && yarn typechain-ethers-v5 && yarn typechain-truffle-v5",
     "c": "yarn compile",
+    "precompile": "env bash scripts/create-events-interface.sh",
     "lint": "yarn solhint \"contracts/**/*.sol\"",
     "typechain-prepare": "env mkdir -p artifacts/flattened && env cp artifacts/cache/flattened/**/*.json artifacts/flattened && env rm artifacts/flattened/I[A-Z]*.json",
     "typechain-ethers-v5": "yarn typechain --target=ethers-v5 --out-dir typechain \"artifacts/!(build-info|cache)/**/+([a-zA-Z0-9_]).json\" 1> nul",
@@ -34,7 +35,7 @@
     "flatten": "yarn hardhat flatten",
     "slither": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json 2> /dev/null || true; node node_modules/flare-smart-contracts/scripts/slither-parse.js ./slither.json",
     "slither-show-stderr": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json || true; node node_modules/flare-smart-contracts/scripts/slither-parse.js ./slither.json",
-    "flatten-dependencies": "bash scripts/flatten-dependencies.sh",
+    "flatten-dependencies": "env bash scripts/flatten-dependencies.sh",
 
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",

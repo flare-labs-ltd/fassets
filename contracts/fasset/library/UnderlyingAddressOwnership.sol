@@ -28,7 +28,7 @@ library UnderlyingAddressOwnership {
         internal 
     {
         Ownership storage ownership = _claim(_state, _owner, _underlyingAddressHash, false);
-        require(!_requireEOA || ownership.provedEOA, "underlying address not EOA");
+        require(!_requireEOA || ownership.provedEOA, "EOA proof required");
     }
     
     function claimWithProof(
