@@ -1,4 +1,4 @@
-import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
+import { constants, ether, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { findEvent, Web3EventDecoder } from "flare-smart-contracts/test/utils/EventDecoder";
 import { setDefaultVPContract } from "flare-smart-contracts/test/utils/token-test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
@@ -10,6 +10,7 @@ import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { getTestFile, toBNExp, toStringExp } from "../../utils/helpers";
 import { assertWeb3DeepEqual, web3ResultStruct } from "../../utils/web3assertions";
 
+const AgentVault = artifacts.require('AgentVault');
 const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
@@ -63,7 +64,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     
     // addresses
     const underlyingBurnAddr = "Burn";
-    const agent1 = accounts[20];
+    const agentOwner1 = accounts[20];
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
     const minter1 = accounts[30];
     const underlyingMinter1 = "Minter1";
@@ -136,22 +137,22 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // init
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             // act
-            const tx = chain.addSimpleTransaction(underlyingAgent1, underlyingBurnAddr, 1, 1, PaymentReference.addressOwnership(agent1));
+            const tx = chain.addSimpleTransaction(underlyingAgent1, underlyingBurnAddr, 1, 1, PaymentReference.addressOwnership(agentOwner1));
             // assert
             const proof = await attestationProvider.provePayment(tx.hash, underlyingAgent1, underlyingBurnAddr);
-            await assetManager.proveUnderlyingAddressEOA(proof, { from: agent1 });
+            await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
         });
         
         it("should create agent", async () => {
             // init
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             // act
-            const tx = chain.addSimpleTransaction(underlyingAgent1, underlyingBurnAddr, 1, 1, PaymentReference.addressOwnership(agent1));
+            const tx = chain.addSimpleTransaction(underlyingAgent1, underlyingBurnAddr, 1, 1, PaymentReference.addressOwnership(agentOwner1));
             const proof = await attestationProvider.provePayment(tx.hash, underlyingAgent1, underlyingBurnAddr);
-            await assetManager.proveUnderlyingAddressEOA(proof, { from: agent1 });
-            const res = await assetManager.createAgent(underlyingAgent1, { from: agent1 });
+            await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
+            const res = await assetManager.createAgent(underlyingAgent1, { from: agentOwner1 });
             // assert
-            expectEvent(res, "AgentCreated", { owner: agent1, agentType: "1", underlyingAddress: underlyingAgent1 });
+            expectEvent(res, "AgentCreated", { owner: agentOwner1, agentType: "1", underlyingAddress: underlyingAgent1 });
         });
 
         it("should require EOA check to create agent", async () => {
@@ -159,18 +160,40 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             // act
             // assert
-            await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agent1 }),
+            await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agentOwner1 }),
                 "EOA proof required");
         });
 
         it("should destroy agent", async () => {
             // init
             chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const agentVault = await createAgent(chain, agent1, underlyingAgent1);
+            const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
             // act
-            const res = await assetManager.destroyAgent(agentVault, agent1, { from: agent1 });
+            const res = await assetManager.destroyAgent(agentVault, agentOwner1, { from: agentOwner1 });
             // assert
             expectEvent(res, "AgentDestroyed", { agentVault: agentVault });
+        });
+
+        it("only owner can destroy agent", async () => {
+            // init
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+            // act
+            // assert
+            await expectRevert(assetManager.destroyAgent(agentVault, agentOwner1),
+                "only agent vault owner");
+        });
+
+        it("cannot destroy agent if it holds collateral, unannounced for withdrawal", async () => {
+            // init
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            const agentVaultAddr = await createAgent(chain, agentOwner1, underlyingAgent1);
+            const agentVault = await AgentVault.at(agentVaultAddr);
+            await agentVault.deposit({ from: agentOwner1, value: ether('1') });
+            // act
+            // assert
+            await expectRevert(assetManager.destroyAgent(agentVaultAddr, agentOwner1, { from: agentOwner1 }),
+                "withdrawal: more than announced");
         });
     });
 });
