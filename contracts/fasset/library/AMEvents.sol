@@ -7,7 +7,7 @@ library AMEvents {
         address indexed owner,
         uint8 agentType,
         address agentVault,
-        bytes underlyingAddress);
+        string underlyingAddress);
 
     event AgentDestroyed(
         address indexed agentVault);
@@ -39,7 +39,7 @@ library AMEvents {
         uint256 underlyingFeeUBA,
         uint256 lastUnderlyingBlock,
         uint256 lastUnderlyingTimestamp,
-        bytes paymentAddress,
+        string paymentAddress,
         uint256 paymentReference);
 
     /**
@@ -90,7 +90,7 @@ library AMEvents {
     event RedemptionRequested(
         address indexed agentVault,
         uint256 requestId,
-        bytes redeemerUnderlyingAddress,
+        string redeemerUnderlyingAddress,
         uint256 valueUBA,
         uint256 lastUnderlyingBlock,
         uint256 lastUnderlyingTimestamp,

@@ -59,7 +59,7 @@ library Redemption {
         AssetManagerState.State storage _state,
         address _redeemer,
         uint64 _lots,
-        bytes memory _redeemerUnderlyingAddress
+        string memory _redeemerUnderlyingAddress
     )
         external
         returns (uint64 _redeemedLots)
@@ -124,7 +124,7 @@ library Redemption {
         AssetManagerState.State storage _state,
         AgentRedemptionData memory _data,
         address _redeemer,
-        bytes memory _redeemerUnderlyingAddressString
+        string memory _redeemerUnderlyingAddressString
     )
         private 
     {
@@ -134,7 +134,7 @@ library Redemption {
         uint128 redemptionFeeUBA = SafeCast.toUint128(
             SafeBips.mulBips(redeemedValueUBA, _state.settings.redemptionFeeBips));
         _state.redemptionRequests[requestId] = RedemptionRequest({
-            redeemerUnderlyingAddressHash: keccak256(_redeemerUnderlyingAddressString),
+            redeemerUnderlyingAddressHash: keccak256(bytes(_redeemerUnderlyingAddressString)),
             underlyingValueUBA: redeemedValueUBA,
             firstUnderlyingBlock: _state.currentUnderlyingBlock,
             lastUnderlyingBlock: lastUnderlyingBlock,

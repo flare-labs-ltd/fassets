@@ -63,7 +63,7 @@ library CollateralReservations {
             lastUnderlyingTimestamp: lastUnderlyingTimestamp,
             reservationFeeNatWei: SafeCast.toUint128(reservationFee)
         });
-        bytes storage paymentAddress = agent.underlyingAddressString;
+        string storage paymentAddress = agent.underlyingAddressString;
         emit AMEvents.CollateralReserved(_agentVault,
             _minter,
             crtId,

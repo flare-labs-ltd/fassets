@@ -48,7 +48,7 @@ library Agents {
     struct Agent {
         // Current address for underlying agent's collateral.
         // Agent can change this address anytime and it affects future mintings.
-        bytes underlyingAddressString;
+        string underlyingAddressString;
         
         // `underlyingAddressString` is only used for sending the minter a correct payment address;
         // for matching payment addresses we always use `underlyingAddressHash = keccak256(underlyingAddressString)`
@@ -116,14 +116,14 @@ library Agents {
         AssetManagerState.State storage _state, 
         AgentType _agentType,
         address _agentVault,
-        bytes memory _underlyingAddressString
+        string memory _underlyingAddressString
     ) 
         external 
     {
         Agent storage agent = _state.agents[_agentVault];
         require(agent.agentType == AgentType.NONE, "agent already exists");
         require(_agentType == AgentType.AGENT_100, "agent type not supported");
-        require(_underlyingAddressString.length != 0, "empty underlying address");
+        require(bytes(_underlyingAddressString).length != 0, "empty underlying address");
         agent.agentType = _agentType;
         agent.status = AgentStatus.NORMAL;
         // initially, agentMinCollateralRatioBIPS is the same as global min collateral ratio
@@ -132,7 +132,7 @@ library Agents {
         agent.agentMinCollateralRatioBIPS = _state.settings.initialMinCollateralRatioBIPS;
         // claim the address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
-        bytes32 underlyingAddressHash = keccak256(_underlyingAddressString);
+        bytes32 underlyingAddressHash = keccak256(bytes(_underlyingAddressString));
         _state.underlyingAddressOwnership.claim(msg.sender, underlyingAddressHash, 
             _state.settings.requireEOAAddressProof);
         agent.underlyingAddressString = _underlyingAddressString;

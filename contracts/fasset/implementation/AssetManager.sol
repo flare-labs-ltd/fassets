@@ -95,13 +95,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      *  but in fasset system, each agent vault acts as an independent agent.)
      */
     function createAgent(
-        Agents.AgentType _agentType,
-        bytes memory _underlyingAddressString
+        string memory _underlyingAddressString
     ) 
         external
     {
         IAgentVault agentVault = new AgentVault(this, msg.sender);
-        Agents.createAgent(state, _agentType, address(agentVault), _underlyingAddressString);
+        Agents.createAgent(state, Agents.AgentType.AGENT_100, address(agentVault), _underlyingAddressString);
     }
     
     /**
@@ -358,7 +357,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager {
      */
     function redeem(
         uint64 _lots,
-        bytes memory _redeemerUnderlyingAddressString
+        string memory _redeemerUnderlyingAddressString
     )
         external
     {
