@@ -71,9 +71,9 @@ contract AgentVault is IAgentVault {
         _recipient.transfer(address(this).balance);
     }
 
-    // agent should make sure to claim rewards before calling destroy(), or they will be forfeit
-    function destroy(address payable _recipient) external override onlyAssetManager {
-        IWNat wNat = assetManager.getWNat();
+    // Used by asset manager when destroying agent.
+    // Completely erases agent vault and deposits all funds to the _recipient.
+    function destroy(IWNat wNat, address payable _recipient) external override onlyAssetManager {
         wNat.undelegateAll();
         wNat.withdraw(wNat.balanceOf(address(this)));
         selfdestruct(_recipient);

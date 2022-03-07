@@ -121,7 +121,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         Agents.requireAgentVaultOwner(_agentVault);
         Agents.destroyAgent(state, _agentVault);
-        IAgentVault(_agentVault).destroy(_recipient);
+        IAgentVault(_agentVault).destroy(state.settings.wNat, _recipient);
     }
     
     /**

@@ -13,7 +13,6 @@ import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
 
-
 library Agents {
     using SafeBips for uint256;
     using SafePct for uint256;
@@ -295,11 +294,10 @@ library Agents {
         public
     {
         Agent storage agent = getAgent(_state, _agentVault);
-        require(_valueNATWei <= agent.withdrawalAnnouncedNATWei,
-            "withdrawal: more than announced");
-        require(agent.withdrawalAnnouncedAt != 0 &&
-            block.timestamp <= agent.withdrawalAnnouncedAt + _state.settings.withdrawalWaitMinSeconds,
-            "withdrawal: not announced");
+        require(agent.withdrawalAnnouncedAt != 0, "withdrawal: not announced");
+        require(_valueNATWei <= agent.withdrawalAnnouncedNATWei, "withdrawal: more than announced");
+        require(block.timestamp > agent.withdrawalAnnouncedAt + _state.settings.withdrawalWaitMinSeconds,
+            "withdrawal: not allowed yet");
         agent.withdrawalAnnouncedNATWei -= uint128(_valueNATWei);    // guarded by above require
         // could reset agent.withdrawalAnnouncedAt if agent.withdrawalAnnouncedNATWei == 0, 
         // but it's not needed, since no withdrawal can be made anyway

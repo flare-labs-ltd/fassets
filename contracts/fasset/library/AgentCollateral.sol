@@ -108,8 +108,9 @@ library AgentCollateral {
         returns (uint256) 
     {
         // safe - all are uint64
+        if (_valueAMG == 0) return 0;
         uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG);
-        require(totalAMG < _valueAMG, "value larger than total");
+        require(totalAMG >= _valueAMG, "value larger than total");
         return _data.fullCollateral.mulDiv(_valueAMG, totalAMG);
     }
 }

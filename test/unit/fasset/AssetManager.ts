@@ -1,4 +1,4 @@
-import { constants, ether, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
+import { balance, constants, ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { findEvent, Web3EventDecoder } from "flare-smart-contracts/test/utils/EventDecoder";
 import { setDefaultVPContract } from "flare-smart-contracts/test/utils/token-test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
@@ -87,7 +87,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
         natFtso = await FtsoMock.new();
+        await natFtso.setCurrentPrice(toBNExp(1.12, 5));
         assetFtso = await FtsoMock.new();
+        await assetFtso.setCurrentPrice(toBNExp(3521, 5));
         settings = createTestSettings(attestationClient, wnat, natFtso, assetFtso);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
         chain = new MockChain();
@@ -193,7 +195,26 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // act
             // assert
             await expectRevert(assetManager.destroyAgent(agentVaultAddr, agentOwner1, { from: agentOwner1 }),
-                "withdrawal: more than announced");
+                "withdrawal: not announced");
+        });
+
+        it("should destroy agent after announced withdrawal time passes", async () => {
+            // init
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            const agentVaultAddr = await createAgent(chain, agentOwner1, underlyingAgent1);
+            const agentVault = await AgentVault.at(agentVaultAddr);
+            const amount = ether('1');
+            await agentVault.deposit({ from: agentOwner1, value: amount });
+            // act
+            await assetManager.announceCollateralWithdrawal(agentVaultAddr, amount, { from: agentOwner1 });
+            await time.increase(300);
+            const recipient = accounts[25];
+            const startBalance = await balance.current(recipient);
+            await assetManager.destroyAgent(agentVaultAddr, recipient, { from: agentOwner1 });
+            // assert
+            const recovered = (await balance.current(recipient)).sub(startBalance);
+            // console.log(`recovered = ${recovered},  rec=${recipient}`);
+            assert.isTrue(recovered.gte(amount), `value reecovered from agent vault is ${recovered}, which is less than deposited ${amount}`);
         });
     });
 });
