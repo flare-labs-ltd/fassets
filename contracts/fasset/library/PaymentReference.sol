@@ -5,14 +5,14 @@ pragma solidity 0.8.11;
 library PaymentReference {
     uint256 private constant TYPE_SHIFT = 192;
     
-    // common prefix 0x664173736574 = hex('fAsset')
+    // common prefix 0x464250526641 = hex('FBPRfA' - Flare Bridge Payment Reference / fAsset)
     
-    uint256 internal constant MINTING = 0x6641737365740001 << TYPE_SHIFT;
-    uint256 internal constant REDEMPTION = 0x6641737365740002 << TYPE_SHIFT;
-    uint256 internal constant ANNOUNCED_WITHDRAWAL = 0x6641737365740003 << TYPE_SHIFT;
-    uint256 internal constant TOPUP = 0x6641737365740011 << TYPE_SHIFT;
-    uint256 internal constant SELF_MINT = 0x6641737365740012 << TYPE_SHIFT;
-    uint256 internal constant ADDRESS_OWNERSHIP = 0x6641737365740013 << TYPE_SHIFT;
+    uint256 internal constant MINTING = 0x4642505266410001 << TYPE_SHIFT;
+    uint256 internal constant REDEMPTION = 0x4642505266410002 << TYPE_SHIFT;
+    uint256 internal constant ANNOUNCED_WITHDRAWAL = 0x4642505266410003 << TYPE_SHIFT;
+    uint256 internal constant TOPUP = 0x4642505266410011 << TYPE_SHIFT;
+    uint256 internal constant SELF_MINT = 0x4642505266410012 << TYPE_SHIFT;
+    uint256 internal constant ADDRESS_OWNERSHIP = 0x4642505266410013 << TYPE_SHIFT;
 
     // create various payment references
             
