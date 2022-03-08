@@ -5,23 +5,14 @@ pragma solidity 0.8.11;
 library PaymentReference {
     uint256 private constant TYPE_SHIFT = 192;
     
-    // 0x7958d5b6aa3dfe33 = uint64(keccak256("f-asset minting payment"))
-    uint256 internal constant MINTING = 0x7958d5b6aa3dfe33 << TYPE_SHIFT;
-        
-    // 0x2e700e07b6642eaa = uint64(keccak256("f-asset redemption payment"))
-    uint256 internal constant REDEMPTION = 0x2e700e07b6642eaa << TYPE_SHIFT;
-
-    //  0xd52a7a170c97df29 = uint64(keccak256("f-asset underlying address topup"))
-    uint256 internal constant TOPUP = 0xd52a7a170c97df29 << TYPE_SHIFT;
-
-    // 0x7825d1a0b3e07380 = uint64(keccak256("f-asset self-mint payment"))
-    uint256 internal constant SELF_MINT = 0x7825d1a0b3e07380 << TYPE_SHIFT;
-
-    // 0x238df6e106ee985a = uint64(keccak256("f-asset announced underlying withdrawal"))
-    uint256 internal constant ANNOUNCED_WITHDRAWAL = 0x238df6e106ee985a << TYPE_SHIFT;
+    // common prefix 0x664173736574 = hex('fAsset')
     
-    // 0x7bd3bf51c3e904c3 = uint64(keccak256("f-asset address ownership"))
-    uint256 internal constant ADDRESS_OWNERSHIP = 0x7bd3bf51c3e904c3 << TYPE_SHIFT;
+    uint256 internal constant MINTING = 0x6641737365740001 << TYPE_SHIFT;
+    uint256 internal constant REDEMPTION = 0x6641737365740002 << TYPE_SHIFT;
+    uint256 internal constant ANNOUNCED_WITHDRAWAL = 0x6641737365740003 << TYPE_SHIFT;
+    uint256 internal constant TOPUP = 0x6641737365740011 << TYPE_SHIFT;
+    uint256 internal constant SELF_MINT = 0x6641737365740012 << TYPE_SHIFT;
+    uint256 internal constant ADDRESS_OWNERSHIP = 0x6641737365740013 << TYPE_SHIFT;
 
     // create various payment references
             
@@ -37,7 +28,7 @@ library PaymentReference {
         return uint256(_id) | ANNOUNCED_WITHDRAWAL;
     }
 
-    function addressTopup(address _agentVault) internal pure returns (uint256) {
+    function topup(address _agentVault) internal pure returns (uint256) {
         return uint256(uint160(_agentVault)) | TOPUP;
     }
 

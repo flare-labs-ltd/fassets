@@ -56,7 +56,7 @@ library UnderlyingFreeBalance {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(_payment.receivingAddress == agent.underlyingAddressHash, 
             "not underlying address");
-        require(_payment.paymentReference == PaymentReference.addressTopup(_agentVault),
+        require(_payment.paymentReference == PaymentReference.topup(_agentVault),
             "not a topup payment");
         _state.paymentConfirmations.confirmIncomingPayment(_payment);
         increaseFreeBalance(_state, _agentVault, _payment.receivedAmount);
