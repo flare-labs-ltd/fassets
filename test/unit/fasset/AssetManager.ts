@@ -7,7 +7,7 @@ import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvider";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { getTestFile, toBNExp, toStringExp } from "../../utils/helpers";
+import { getTestFile, toBN, toBNExp, toStringExp } from "../../utils/helpers";
 import { assertWeb3DeepEqual, web3ResultStruct } from "../../utils/web3assertions";
 
 const AgentVault = artifacts.require('AgentVault');
@@ -45,6 +45,10 @@ function createTestSettings(attestationClient: AttestationClientMockInstance, wN
         liquidationCollateralPremiumBIPS: [6000, 8000, 10000],
         newLiquidationStepAfterMinSeconds: 90,
     };
+}
+
+function randomAddress() {
+    return web3.utils.toChecksumAddress(web3.utils.randomHex(20))
 }
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic tests`, async accounts => {
@@ -154,7 +158,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
             const res = await assetManager.createAgent(underlyingAgent1, { from: agentOwner1 });
             // assert
-            expectEvent(res, "AgentCreated", { owner: agentOwner1, agentType: "1", underlyingAddress: underlyingAgent1 });
+            expectEvent(res, "AgentCreated", { owner: agentOwner1, agentType: toBN("1"), underlyingAddress: underlyingAgent1 });
         });
 
         it("should require EOA check to create agent", async () => {
@@ -208,7 +212,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // act
             await assetManager.announceCollateralWithdrawal(agentVaultAddr, amount, { from: agentOwner1 });
             await time.increase(300);
-            const recipient = accounts[25];
+            const recipient = randomAddress();
             const startBalance = await balance.current(recipient);
             await assetManager.destroyAgent(agentVaultAddr, recipient, { from: agentOwner1 });
             // assert
