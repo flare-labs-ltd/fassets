@@ -137,6 +137,17 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         Agents.setAgentMinCollateralRatioBIPS(state, _agentVault, _agentMinCollateralRatioBIPS);
     }
     
+    /**
+     * return info about an agent, typically needed by a minter.
+     */
+    function getAgentInfo(
+        address _agentVault
+    )
+        external view
+        returns (AvailableAgents.AgentInfo memory)
+    {
+        return AvailableAgents.getAgentInfo(state, _agentVault);
+    }
 
     /**
      * Agent is going to withdraw `_valueNATWei` amount of collateral from agent vault.
@@ -244,7 +255,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         uint256 _end
     ) 
         external view 
-        returns (AvailableAgents.AvailableAgentInfo[] memory _agents, uint256 _totalLength)
+        returns (AvailableAgents.AgentInfo[] memory _agents, uint256 _totalLength)
     {
         return AvailableAgents.getListWithInfo(state, _start, _end);
     }

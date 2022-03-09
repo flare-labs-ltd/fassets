@@ -10,7 +10,6 @@ import "./AssetManagerState.sol";
 import "./Conversion.sol";
 import "./AgentCollateral.sol";
 
-
 library AvailableAgents {
     using AgentCollateral for AgentCollateral.Data;
 
@@ -19,7 +18,7 @@ library AvailableAgents {
     }
 
     // only used in memory - no packing
-    struct AvailableAgentInfo {
+    struct AgentInfo {
         address agentVault;
         uint256 feeBIPS;
         uint256 agentMinCollateralRatioBIPS;
@@ -99,12 +98,12 @@ library AvailableAgents {
         uint256 _end
     ) 
         external view 
-        returns (AvailableAgentInfo[] memory _agents, uint256 _totalLength)
+        returns (AgentInfo[] memory _agents, uint256 _totalLength)
     {
         _totalLength = _state.availableAgents.length;
         _end = Math.min(_end, _totalLength);
         _start = Math.min(_start, _end);
-        _agents = new AvailableAgentInfo[](_end - _start);
+        _agents = new AgentInfo[](_end - _start);
         AgentCollateral.Data memory collateralData = AgentCollateral.Data({
             fullCollateral: 0,  // filled later for each agent
             amgToNATWeiPrice: Conversion.currentAmgToNATWeiPrice(_state.settings)
@@ -113,12 +112,29 @@ library AvailableAgents {
             address agentVault = _state.availableAgents[i].agentVault;
             Agents.Agent storage agent = Agents.getAgentNoCheck(_state, agentVault);
             collateralData.fullCollateral = Agents.fullCollateral(_state, agentVault);
-            _agents[i - _start] = AvailableAgentInfo({
+            _agents[i - _start] = AgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
                 agentMinCollateralRatioBIPS: agent.agentMinCollateralRatioBIPS,
                 freeCollateralLots: collateralData.freeCollateralLots(agent, _state.settings)
             });
         }
+    }
+    
+    function getAgentInfo(
+        AssetManagerState.State storage _state, 
+        address _agentVault
+    )
+        external view
+        returns (AgentInfo memory)
+    {
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        return AgentInfo({
+            agentVault: _agentVault,
+            feeBIPS: agent.feeBIPS,
+            agentMinCollateralRatioBIPS: agent.agentMinCollateralRatioBIPS,
+            freeCollateralLots: collateralData.freeCollateralLots(agent, _state.settings)
+        });
     }
 }

@@ -96,15 +96,9 @@ library Agents {
         LiquidationState liquidationState;
 
         // The amount of underlying funds that may be withdrawn by the agent
-        // (fees, self-close and, amount released by liquidation).
+        // (fees, self-close, and amount released by liquidation).
         // May become negative (due to high underlying gas costs), in which case topup is required.
         int128 freeUnderlyingBalanceUBA;
-        
-        // The number of successful payment challenges - if it is >= 1, agent is already being liquidated.
-        // Therefore, for >= 1, new challenges are not accepted but old ones can still be proved.
-        // The reward for later challenges diminishes - it is divided by 2^successfulPaymentChallenges, so that total 
-        // is always less than twice the challenge reward from settings.
-        uint32 successfulPaymentChallenges;
         
         // There can be only one announced payment per agent active at any time.
         // This variable holds the id, or 0 if there is no announced payment going on.

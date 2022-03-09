@@ -8,7 +8,7 @@ import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvi
 import { MockChain } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { getTestFile, toBN, toBNExp, toStringExp } from "../../utils/helpers";
-import { assertWeb3DeepEqual, web3ResultStruct } from "../../utils/web3assertions";
+import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
 
 const AgentVault = artifacts.require('AgentVault');
 const AttestationClient = artifacts.require('AttestationClientMock');
@@ -77,27 +77,40 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     const challenger1 = accounts[50];
 
     async function createAgent(chain: MockChain, owner: string, underlyingAddress: string) {
-        const tx = chain.addSimpleTransaction(underlyingAddress, underlyingAddress, 1, 1, PaymentReference.addressOwnership(owner));
+        // mint some funds on underlying address (just enough to make EOA proof)
+        chain.mint(underlyingAddress, 101);
+        // create and prove transaction from underlyingAddress
+        const tx = chain.addSimpleTransaction(underlyingAddress, underlyingAddress, 1, 100, PaymentReference.addressOwnership(owner));
         const proof = await attestationProvider.provePayment(tx.hash, underlyingAddress, underlyingAddress);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
+        // create agent
         const response = await assetManager.createAgent(underlyingAddress, { from: owner });
+        // extract agent vault address from AgentCreated event
         const event = findEvent(response.logs, 'AgentCreated');
         assert.isNotNull(event, "Missing event AgentCreated");
-        return event!.args.agentVault;
+        const agentVaultAddress = event!.args.agentVault;
+        // get vault contract at this address
+        return await AgentVault.at(agentVaultAddress);
     }
 
     beforeEach(async () => {
+        // create atetstation client
         attestationClient = await AttestationClient.new();
+        // create mock chain attestation provider
+        chain = new MockChain();
+        attestationProvider = new MockAttestationProvider(chain, attestationClient, chainId);
+        // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
+        // create FTSOs for nat and asset and set some price
         natFtso = await FtsoMock.new();
         await natFtso.setCurrentPrice(toBNExp(1.12, 5));
         assetFtso = await FtsoMock.new();
         await assetFtso.setCurrentPrice(toBNExp(3521, 5));
+        // create asset manager
         settings = createTestSettings(attestationClient, wnat, natFtso, assetFtso);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
-        chain = new MockChain();
-        attestationProvider = new MockAttestationProvider(chain, attestationClient, chainId);
+        // create event decoder
         eventDecoder = new Web3EventDecoder({ assetManager });
     });
 
@@ -163,7 +176,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should require EOA check to create agent", async () => {
             // init
-            chain.mint(underlyingAgent1, toBNExp(100, 18));
             // act
             // assert
             await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agentOwner1 }),
@@ -172,53 +184,59 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should destroy agent", async () => {
             // init
-            chain.mint(underlyingAgent1, toBNExp(100, 18));
             const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
             // act
-            const res = await assetManager.destroyAgent(agentVault, agentOwner1, { from: agentOwner1 });
+            const res = await assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 });
             // assert
-            expectEvent(res, "AgentDestroyed", { agentVault: agentVault });
+            expectEvent(res, "AgentDestroyed", { agentVault: agentVault.address });
         });
 
         it("only owner can destroy agent", async () => {
             // init
-            chain.mint(underlyingAgent1, toBNExp(100, 18));
             const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
             // act
             // assert
-            await expectRevert(assetManager.destroyAgent(agentVault, agentOwner1),
+            await expectRevert(assetManager.destroyAgent(agentVault.address, agentOwner1),
                 "only agent vault owner");
         });
 
         it("cannot destroy agent if it holds collateral, unannounced for withdrawal", async () => {
             // init
-            chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const agentVaultAddr = await createAgent(chain, agentOwner1, underlyingAgent1);
-            const agentVault = await AgentVault.at(agentVaultAddr);
-            await agentVault.deposit({ from: agentOwner1, value: ether('1') });
+            const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
             // act
+            await agentVault.deposit({ from: agentOwner1, value: ether('1') });
             // assert
-            await expectRevert(assetManager.destroyAgent(agentVaultAddr, agentOwner1, { from: agentOwner1 }),
+            await expectRevert(assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 }),
                 "withdrawal: not announced");
         });
 
         it("should destroy agent after announced withdrawal time passes", async () => {
             // init
-            chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const agentVaultAddr = await createAgent(chain, agentOwner1, underlyingAgent1);
-            const agentVault = await AgentVault.at(agentVaultAddr);
+            const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
             const amount = ether('1');
             await agentVault.deposit({ from: agentOwner1, value: amount });
             // act
-            await assetManager.announceCollateralWithdrawal(agentVaultAddr, amount, { from: agentOwner1 });
+            await assetManager.announceCollateralWithdrawal(agentVault.address, amount, { from: agentOwner1 });
             await time.increase(300);
             const recipient = randomAddress();
             const startBalance = await balance.current(recipient);
-            await assetManager.destroyAgent(agentVaultAddr, recipient, { from: agentOwner1 });
+            await assetManager.destroyAgent(agentVault.address, recipient, { from: agentOwner1 });
             // assert
             const recovered = (await balance.current(recipient)).sub(startBalance);
             // console.log(`recovered = ${recovered},  rec=${recipient}`);
             assert.isTrue(recovered.gte(amount), `value reecovered from agent vault is ${recovered}, which is less than deposited ${amount}`);
         });
+        
+        it.only("should change agent's min collateral ratio", async () => {
+            // init
+            const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+            // act
+            const collateralRatioBIPS = 23000;
+            await assetManager.setAgentMinCollateralRatioBIPS(agentVault.address, collateralRatioBIPS, { from: agentOwner1 });
+            // assert
+            const info = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(info.agentMinCollateralRatioBIPS, collateralRatioBIPS);
+        });
+        
     });
 });
