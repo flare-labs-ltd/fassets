@@ -227,7 +227,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(recovered.gte(amount), `value reecovered from agent vault is ${recovered}, which is less than deposited ${amount}`);
         });
         
-        it.only("should change agent's min collateral ratio", async () => {
+        it("should change agent's min collateral ratio", async () => {
             // init
             const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
             // act
