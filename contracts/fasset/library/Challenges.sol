@@ -129,9 +129,9 @@ library Challenges {
         // start full liquidation
         Liquidation.startLiquidation(_state, _agentVault, collateralData, true);
         // calculate the reward
-        uint256 rewardAMG = SafeBips.mulBips(_backingAMGAtChallenge, _state.settings.paymentChallengeRewardBIPS)
-            + _state.settings.paymentChallengeRewardAMG;
-        uint256 rewardNATWei = Conversion.convertAmgToNATWei(rewardAMG, collateralData.amgToNATWeiPrice);
+        uint256 rewardAMG = SafeBips.mulBips(_backingAMGAtChallenge, _state.settings.paymentChallengeRewardBIPS);
+        uint256 rewardNATWei = Conversion.convertAmgToNATWei(rewardAMG, collateralData.amgToNATWeiPrice)
+            + _state.settings.paymentChallengeRewardNATWei;
         Agents.payout(_state, _agentVault, _challenger, rewardNATWei);
     }
 }

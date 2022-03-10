@@ -102,7 +102,7 @@ library AssetManagerSettings {
         
         // Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).
         // This is the fixed part (in underlying AMG, so that we can easily set it as some percent of lot size).
-        uint64 paymentChallengeRewardAMG;
+        uint128 paymentChallengeRewardNATWei;
 
         // Agent has to announce any collateral withdrawal and then wait for at least withdrawalWaitMinSeconds.
         // This prevents challenged agent to remove all collateral before challenge can be proved.
