@@ -52,23 +52,6 @@ library AMEvents {
         uint256 collateralReservationId);
         
     /**
-     * Agent challenged the current underlying block number provided by the minter.
-     * Minter is expected to provide proof of existence of this or later block on the underlying chain.
-     */ 
-    event CollateralReservationBlockNumberChallenged(
-        address indexed minter,
-        uint256 collateralReservationId);
-        
-    /**
-     * Agent challenged the current underlying block number provided by the minter
-     * and the minter failed to provide proof of existence of this or later block in time.
-     */ 
-    event CollateralReservationBlockNumberChallengeTimeout(
-        address indexed agentVault,
-        address indexed minter,
-        uint256 collateralReservationId);
-
-    /**
      * Minter paid underlying funds in time and received the fassets.
      * Agents collateral is locked.
      * This event is also emitted for self-minting. In this case, `collateralReservationId` is 0.
@@ -227,27 +210,6 @@ library AMEvents {
         uint64 announcementId);
         
     /**
-     * Agent's free balance on the underlying address has decreased below zero 
-     * (usually due to underlying gas payment).
-     * Agent has until `lastUnderlyingBlock` to topup the underlying balance, otherwise
-     * the agent's position gets fully liquidated.
-     * Please not that the agent can topup underlying balance any time, even if this event doesn't occur.
-     */
-    event TopupRequired(
-        address indexed agentVault,
-        uint256 valueUBA,
-        uint64 lastUnderlyingBlock);
-
-    /**
-     * An unexpected transaction was detected outgoing from the agent's underlying address.
-     * Agent can still provide a report justifying the transaction as redemption payment 
-     * or previously announced allowed withdrawal (but it is too late to announce).
-     */
-    event IllegalPaymentChallenged(
-        address indexed agentVault,
-        bytes32 transactionHash);
-    
-    /**
      * An unexpected transaction from the agent's underlying address was proved.
      * Whole agent's position goes into liquidation.
      * Original challenger and prover are paid reward from the agent's collateral.
@@ -274,14 +236,4 @@ library AMEvents {
     event UnderlyingFreeBalanceNegative(
         address indexed agentVault,
         int256 freeBalance);
-        
-    /**
-     * Payment report (for redemption or allowed withdrawal) contains incorrect fields.
-     * To show this, the challenger provided proof of the same transaction, but with different data.
-     * Whole agent's position goes into liquidation.
-     * The challenger is paid reward from the agent's collateral.
-     */
-    event WrongPaymentReportConfirmed(
-        address indexed agentVault,
-        bytes32 transactionHash);
 }
