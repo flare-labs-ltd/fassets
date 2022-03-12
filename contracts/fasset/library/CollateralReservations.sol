@@ -44,10 +44,10 @@ library CollateralReservations {
         require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
         require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
-        agent.reservedAMG = agent.reservedAMG + valueAMG;
+        agent.reservedAMG += valueAMG;
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
-        uint256 reservationFee = _reservationFee(_state, collateralData, valueAMG);
+        uint256 reservationFee = _reservationFee(_state, collateralData.amgToNATWeiPrice, valueAMG);
         require(msg.value >= reservationFee, "not enough fee paid");
         // TODO: what if paid fee is too big?
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
@@ -103,6 +103,17 @@ library CollateralReservations {
         releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this        
     }
     
+    function calculateReservationFee(
+        AssetManagerState.State storage _state,
+        uint64 _lots
+    )
+        external view
+        returns (uint256)
+    {
+        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        return _reservationFee(_state, amgToNATWeiPrice, _lots * _state.settings.lotSizeAMG);
+    }
+    
     function releaseCollateralReservation(
         AssetManagerState.State storage _state,
         CollateralReservations.CollateralReservation storage crt,
@@ -141,13 +152,13 @@ library CollateralReservations {
 
     function _reservationFee(
         AssetManagerState.State storage _state,
-        AgentCollateral.Data memory collateralData,
+        uint256 amgToNATWeiPrice,
         uint64 _valueAMG
     )
         private view
         returns (uint256)
     {
-        uint256 valueNATWei = Conversion.convertAmgToNATWei(_valueAMG, collateralData.amgToNATWeiPrice); 
+        uint256 valueNATWei = Conversion.convertAmgToNATWei(_valueAMG, amgToNATWeiPrice); 
         return SafeBips.mulBips(valueNATWei, _state.settings.collateralReservationFeeBIPS);
     }
 }

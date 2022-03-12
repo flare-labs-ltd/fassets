@@ -1,5 +1,5 @@
 import { balance, constants, ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { findEvent, Web3EventDecoder } from "flare-smart-contracts/test/utils/EventDecoder";
+import { Web3EventDecoder } from "flare-smart-contracts/test/utils/EventDecoder";
 import { setDefaultVPContract } from "flare-smart-contracts/test/utils/token-test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
@@ -7,7 +7,7 @@ import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvider";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { getTestFile, toBN, toBNExp, toStringExp } from "../../utils/helpers";
+import { findRequiredEvent, getTestFile, toBN, toBNExp, toStringExp } from "../../utils/helpers";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
 
 const AgentVault = artifacts.require('AgentVault');
@@ -86,9 +86,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         // create agent
         const response = await assetManager.createAgent(underlyingAddress, { from: owner });
         // extract agent vault address from AgentCreated event
-        const event = findEvent(response.logs, 'AgentCreated');
-        assert.isNotNull(event, "Missing event AgentCreated");
-        const agentVaultAddress = event!.args.agentVault;
+        const event = findRequiredEvent(response, 'AgentCreated');
+        const agentVaultAddress = event.args.agentVault;
         // get vault contract at this address
         return await AgentVault.at(agentVaultAddress);
     }

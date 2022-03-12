@@ -308,6 +308,21 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         CollateralReservations.reserveCollateral(state, msg.sender, _selectedAgent, _lotsToMint);
     }
+
+    
+    /**
+     * Return the collateral reservation fee amount that has to be passed to the reserveCollateral method.
+     * @param _lotsToMint the number of lots for which to reserve collateral
+     * @return _reservationFeeNATWei the amount of reservation fee in NAT wei
+     */
+    function collateralReservationFee(
+        uint64 _lotsToMint
+    )
+        external view
+        returns (uint256 _reservationFeeNATWei)
+    {
+        return CollateralReservations.calculateReservationFee(state, _lotsToMint);
+    }
     
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
