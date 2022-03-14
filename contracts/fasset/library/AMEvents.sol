@@ -35,8 +35,8 @@ library AMEvents {
         address indexed agentVault,
         address indexed minter,
         uint256 collateralReservationId,
-        uint256 underlyingValueUBA, 
-        uint256 underlyingFeeUBA,
+        uint256 valueUBA, 
+        uint256 feeUBA,
         uint256 lastUnderlyingBlock,
         uint256 lastUnderlyingTimestamp,
         string paymentAddress,
@@ -73,8 +73,9 @@ library AMEvents {
     event RedemptionRequested(
         address indexed agentVault,
         uint256 requestId,
-        string redeemerUnderlyingAddress,
+        string paymentAddress,
         uint256 valueUBA,
+        uint256 feeUBA,
         uint256 lastUnderlyingBlock,
         uint256 lastUnderlyingTimestamp,
         uint256 paymentReference);

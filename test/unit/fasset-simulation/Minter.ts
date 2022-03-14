@@ -1,19 +1,16 @@
 import { CollateralReserved } from "../../../typechain-truffle/AssetManager";
 import { EventArgs, requiredEventArgs } from "../../utils/helpers";
-import { AssetContext } from "./AssetContext";
+import { AssetContext, AssetContextClient } from "./AssetContext";
 
-export class Minter {
+export class Minter extends AssetContextClient {
     constructor(
-        public context: AssetContext,
+        context: AssetContext,
         public address: string,
         public underlyingAddress: string
     ) {
+        super(context);
     }
     
-    private assetManager = this.context.assetManager;
-    private chain = this.context.chain;
-    private attestationProvider = this.context.attestationProvider;
-
     static async create(ctx: AssetContext, address: string, underlyingAddress: string, underlyingBalance: BN) {
         ctx.chain.mint(underlyingAddress, underlyingBalance);
         return new Minter(ctx, address, underlyingAddress);
@@ -26,7 +23,7 @@ export class Minter {
     }
     
     async performMintingPayment(crt: EventArgs<CollateralReserved>) {
-        const paymentAmount = crt.underlyingValueUBA.add(crt.underlyingFeeUBA);
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         return this.chain.addSimpleTransaction(this.underlyingAddress, crt.paymentAddress, paymentAmount, 0, crt.paymentReference);
     }
     

@@ -125,3 +125,15 @@ export class AssetContext {
         };
     }
 }
+
+export class AssetContextClient {
+    constructor(
+        public context: AssetContext,
+    ) {}
+    
+    protected assetManager = this.context.assetManager;
+    protected chain = this.context.chain;
+    protected attestationProvider = this.context.attestationProvider;
+    protected wnat = this.context.wnat;
+    protected fAsset = this.context.fAsset;
+}

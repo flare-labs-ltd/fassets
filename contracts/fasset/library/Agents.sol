@@ -235,6 +235,7 @@ library Agents {
             }
         }
         agent.withdrawalAnnouncedNATWei = SafeCast.toUint128(_valueNATWei);
+        // TODO: should emit event?
     }
 
     function increaseDust(

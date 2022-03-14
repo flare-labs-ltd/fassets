@@ -153,7 +153,8 @@ library Redemption {
         emit AMEvents.RedemptionRequested(_data.agentVault,
             requestId,
             _redeemerUnderlyingAddressString, 
-            redeemedValueUBA - redemptionFeeUBA,
+            redeemedValueUBA,
+            redemptionFeeUBA,
             lastUnderlyingBlock, 
             lastUnderlyingTimestamp,
             PaymentReference.redemption(requestId));

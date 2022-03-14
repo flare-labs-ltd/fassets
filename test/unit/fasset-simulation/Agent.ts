@@ -1,21 +1,24 @@
 import { AgentVaultInstance } from "../../../typechain-truffle";
+import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { BNish, findRequiredEvent, toBN } from "../../utils/helpers";
-import { AssetContext } from "./AssetContext";
+import { BNish, EventArgs, findRequiredEvent, requiredEventArgs, toBN } from "../../utils/helpers";
+import { AssetContext, AssetContextClient } from "./AssetContext";
 
 const AgentVault = artifacts.require('AgentVault');
 
-export class Agent {
+export class Agent extends AssetContextClient {
     constructor(
-        public context: AssetContext,
-        public address: string,
+        context: AssetContext,
+        public ownerAddress: string,
         public agentVault: AgentVaultInstance,
-        public agentAddress: string,
         public underlyingAddress: string,
     ) {
+        super(context);
     }
     
-    private assetManager = this.context.assetManager;
+    get vaultAddress() {
+        return this.agentVault.address;
+    }
     
     static async create(ctx: AssetContext, ownerAddress: string, underlyingAddress: string) {
         // mint some funds on underlying address (just enough to make EOA proof)
@@ -28,18 +31,45 @@ export class Agent {
         const response = await ctx.assetManager.createAgent(underlyingAddress, { from: ownerAddress });
         // extract agent vault address from AgentCreated event
         const event = findRequiredEvent(response, 'AgentCreated');
-        const agentVaultAddress = event.args.agentVault;
-        // get vault contract at this address
-        const agentVault = await AgentVault.at(agentVaultAddress);
+        // get vault contract at agent's vault address address
+        const agentVault = await AgentVault.at(event.args.agentVault);
         // creater object
-        return new Agent(ctx, ownerAddress, agentVault, agentVaultAddress, underlyingAddress);
+        return new Agent(ctx, ownerAddress, agentVault, underlyingAddress);
     }
     
-    async depositCollateral(amount: BNish) {
-        await this.agentVault.deposit({ from: this.address, value: toBN(amount) });
+    async depositCollateral(amountNATWei: BNish) {
+        await this.agentVault.deposit({ from: this.ownerAddress, value: toBN(amountNATWei) });
     }
     
     async makeAvailable(feeBIPS: BNish, collateralRatioBIPS: BNish) {
-        await this.assetManager.makeAgentAvailable(this.agentAddress, feeBIPS, collateralRatioBIPS, { from: this.address });
+        const res = await this.assetManager.makeAgentAvailable(this.vaultAddress, feeBIPS, collateralRatioBIPS, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'AgentAvailable');
+    }
+
+    async exitAvailable() {
+        const res = await this.assetManager.exitAvailableAgentList(this.vaultAddress, { from: this.ownerAddress });
+        const args = requiredEventArgs(res, 'AvailableAgentExited');
+        assert.equal(args.agentVault, this.vaultAddress);
+    }
+    
+    async announceWithdrawal(amountNATWei: BNish) {
+        const res = await this.assetManager.announceCollateralWithdrawal(this.vaultAddress, amountNATWei, { from: this.ownerAddress });
+    }
+    
+    async destroy() {
+        const res = await this.assetManager.destroyAgent(this.vaultAddress, this.ownerAddress, { from: this.ownerAddress });
+        const args = requiredEventArgs(res, 'AgentDestroyed');
+        assert.equal(args.agentVault, this.vaultAddress);
+    }
+    
+    async performRedemptionPayment(request: EventArgs<RedemptionRequested>) {
+        const paymentAmount = request.valueUBA.sub(request.feeUBA);
+        return this.chain.addSimpleTransaction(this.underlyingAddress, request.paymentAddress, paymentAmount, 0, request.paymentReference);
+    }
+
+    async confirmRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
+        const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
+        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'RedemptionPerformed');
     }
 }
