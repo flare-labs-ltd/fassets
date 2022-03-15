@@ -20,9 +20,12 @@ library Conversion {
         internal view 
         returns (uint256) 
     {
+        IFtsoRegistry ftsoRegistry = _settings.ftsoRegistry;
+        IFtso natFtso = ftsoRegistry.getFtso(_settings.natFtsoIndex);
+        IFtso assetFtso = ftsoRegistry.getFtso(_settings.assetFtsoIndex);
         // Force cast here to circument architecure in original contracts 
-        (uint256 natPrice, ) = _settings.natFtso.getCurrentPrice();
-        (uint256 assetPrice, ) = _settings.assetFtso.getCurrentPrice();
+        (uint256 natPrice, ) = natFtso.getCurrentPrice();
+        (uint256 assetPrice, ) = assetFtso.getCurrentPrice();
         return amgToNATWeiPrice(_settings, natPrice, assetPrice);
     }
 

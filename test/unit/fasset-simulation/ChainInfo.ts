@@ -1,3 +1,9 @@
+export interface NatInfo {
+    name: string;
+    symbol: string;
+    startPrice: number;
+}
+
 export interface ChainInfo {
     chainId: number;
     name: string;
@@ -9,6 +15,12 @@ export interface ChainInfo {
     underlyingBlocksForPayment: number;
     lotSize: number;
     requireEOAProof: boolean;
+}
+
+export const testNatInfo: NatInfo = {
+    name: "NetworkNative",
+    symbol: "NAT",
+    startPrice: 1.12,
 }
 
 export const testChainInfo: { [name: string]: ChainInfo } = {

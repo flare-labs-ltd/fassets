@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import "flare-smart-contracts/contracts/userInterfaces/IFtso.sol";
+import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "../interface/IAttestationClient.sol";
 import "../interface/IWNat.sol";
 
@@ -17,11 +18,14 @@ library AssetManagerSettings {
         // WNat contract interface. Agent vaults also read it from here.
         IWNat wNat;
         
+        // FTSO registry from which the system obtains ftso's for nat and asset.
+        IFtsoRegistry ftsoRegistry;
+        
         // FTSO contract for NAT currency.
-        IFtso natFtso;
+        uint32 natFtsoIndex;
         
         // FTSO contract for managed asset.
-        IFtso assetFtso;
+        uint32 assetFtsoIndex;
         
         // Collateral reservation fee is burned on successful minting.
         // immutable

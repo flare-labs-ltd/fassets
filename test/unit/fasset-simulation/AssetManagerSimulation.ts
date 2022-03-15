@@ -3,7 +3,7 @@ import { getTestFile, toWei } from "../../utils/helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "./Agent";
 import { AssetContext, CommonContext } from "./AssetContext";
-import { testChainInfo } from "./ChainInfo";
+import { testChainInfo, testNatInfo } from "./ChainInfo";
 import { Minter } from "./Minter";
 import { Redeemer } from "./Redeemer";
 
@@ -21,7 +21,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let context: AssetContext;
     
     beforeEach(async () => {
-        commonContext = await CommonContext.create(governance, assetManagerController);
+        commonContext = await CommonContext.create(governance, assetManagerController, testNatInfo);
         context = await AssetContext.create(commonContext, testChainInfo.eth);
     });
     

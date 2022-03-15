@@ -1,38 +1,43 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { setDefaultVPContract } from "flare-smart-contracts/test/utils/token-test-helpers";
-import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvider";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { toBN, toBNExp, toWei } from "../../utils/helpers";
 import { web3DeepNormalize } from "../../utils/web3assertions";
-import { ChainInfo } from "./ChainInfo";
+import { ChainInfo, NatInfo } from "./ChainInfo";
 
 const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
+const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 
 // common context shared between several asset managers
 export class CommonContext {
     constructor(
         public governance: string,
         public assetManagerController: string,
+        public attestationClient: AttestationClientMockInstance,
+        public ftsoRegistry: FtsoRegistryMockInstance,
         public wnat: WNatInstance,
         public natFtso: FtsoMockInstance,
-        public attestationClient: AttestationClientMockInstance,
     ) {}
 
-    static async create(governance: string, assetManagerController: string): Promise<CommonContext> {
+    static async create(governance: string, assetManagerController: string, natInfo: NatInfo): Promise<CommonContext> {
         // create atetstation client
         const attestationClient = await AttestationClient.new();
         // create WNat token
-        const wnat = await WNat.new(governance, "NetworkNative", "NAT");
+        const wnat = await WNat.new(governance, natInfo.name, natInfo.symbol);
         await setDefaultVPContract(wnat, governance);
         // create NAT ftso
-        const natFtso = await FtsoMock.new();
-        await natFtso.setCurrentPrice(toBNExp(1.12, 5));
-        return new CommonContext(governance, assetManagerController, wnat, natFtso, attestationClient);
+        const natFtso = await FtsoMock.new(natInfo.symbol);
+        await natFtso.setCurrentPrice(toBNExp(natInfo.startPrice, 5));
+        // create ftso registry
+        const ftsoRegistry = await FtsoRegistryMock.new();
+        await ftsoRegistry.addFtso(natFtso.address);
+        return new CommonContext(governance, assetManagerController, attestationClient, ftsoRegistry, wnat, natFtso);
     }
 }
 
@@ -42,9 +47,10 @@ export class AssetContext {
         // common context
         public governance: string,
         public assetManagerController: string,
+        public attestationClient: AttestationClientMockInstance,
+        public ftsoRegistry: FtsoRegistryMockInstance,
         public wnat: WNatInstance,
         public natFtso: FtsoMockInstance,
-        public attestationClient: AttestationClientMockInstance,
         // asset context
         public chainInfo: ChainInfo,
         public chain: MockChain,
@@ -81,23 +87,25 @@ export class AssetContext {
         const chain = new MockChain();
         const attestationProvider = new MockAttestationProvider(chain, common.attestationClient, chainInfo.chainId);
         // create asset FTSO and set some price
-        const assetFtso = await FtsoMock.new();
+        const assetFtso = await FtsoMock.new(chainInfo.symbol);
         await assetFtso.setCurrentPrice(toBNExp(chainInfo.startPrice, 5));
+        await common.ftsoRegistry.addFtso(assetFtso.address);
         // create asset manager
-        const settings = AssetContext.createTestSettings(common, chainInfo, assetFtso);
+        const settings = await AssetContext.createTestSettings(common, chainInfo);
         // web3DeepNormalize is required when passing structs, otherwise BN is incorrectly serialized
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
             chainInfo.name, chainInfo.symbol, chainInfo.decimals, web3DeepNormalize(settings));
-        return new AssetContext(common.governance, common.assetManagerController, common.wnat, common.natFtso, common.attestationClient, 
+        return new AssetContext(common.governance, common.assetManagerController, common.attestationClient, common.ftsoRegistry, common.wnat, common.natFtso,
             chainInfo, chain, attestationProvider, settings, assetManager, fAsset, assetFtso);
     }
     
-    static createTestSettings(ctx: CommonContext, ci: ChainInfo, assetFtso: FtsoMockInstance): AssetManagerSettings {
+    static async createTestSettings(ctx: CommonContext, ci: ChainInfo): Promise<AssetManagerSettings> {
         return {
             attestationClient: ctx.attestationClient.address,
             wNat: ctx.wnat.address,
-            natFtso: ctx.natFtso.address,
-            assetFtso: assetFtso.address,
+            ftsoRegistry: ctx.ftsoRegistry.address,
+            natFtsoIndex: await ctx.ftsoRegistry.getFtsoIndex(await ctx.wnat.symbol()),
+            assetFtsoIndex: await ctx.ftsoRegistry.getFtsoIndex(ci.symbol),
             chainId: ci.chainId,
             assetUnitUBA: toBNExp(1, ci.decimals),
             assetMintingGranularityUBA: toBNExp(1, ci.amgDecimals),

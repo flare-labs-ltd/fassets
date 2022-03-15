@@ -1,7 +1,7 @@
 import { balance, constants, ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { Web3EventDecoder } from "flare-smart-contracts/test/utils/EventDecoder";
 import { setDefaultVPContract } from "flare-smart-contracts/test/utils/token-test-helpers";
-import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvider";
@@ -14,13 +14,15 @@ const AgentVault = artifacts.require('AgentVault');
 const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
+const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 
-function createTestSettings(attestationClient: AttestationClientMockInstance, wNat: WNatInstance, natFtso: FtsoMockInstance, assetFtso: FtsoMockInstance): AssetManagerSettings {
+async function createTestSettings(attestationClient: AttestationClientMockInstance, wNat: WNatInstance, ftsoRegistry: FtsoRegistryMockInstance): Promise<AssetManagerSettings> {
     return {
         attestationClient: attestationClient.address,
         wNat: wNat.address,
-        natFtso: natFtso.address,
-        assetFtso: assetFtso.address,
+        ftsoRegistry: ftsoRegistry.address,
+        natFtsoIndex: (await ftsoRegistry.getFtsoIndex("NAT")).toString(),
+        assetFtsoIndex: (await ftsoRegistry.getFtsoIndex("ETH")).toString(),
         burnAddress: constants.ZERO_ADDRESS,
         chainId: 1,
         collateralReservationFeeBIPS: 100,                      // 1%
@@ -102,12 +104,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
         // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new();
+        natFtso = await FtsoMock.new("NAT");
         await natFtso.setCurrentPrice(toBNExp(1.12, 5));
-        assetFtso = await FtsoMock.new();
+        assetFtso = await FtsoMock.new("ETH");
         await assetFtso.setCurrentPrice(toBNExp(3521, 5));
+        // create ftso registry
+        const ftsoRegistry = await FtsoRegistryMock.new();
+        await ftsoRegistry.addFtso(natFtso.address);
+        await ftsoRegistry.addFtso(assetFtso.address);
         // create asset manager
-        settings = createTestSettings(attestationClient, wnat, natFtso, assetFtso);
+        settings = await createTestSettings(attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
         // create event decoder
         eventDecoder = new Web3EventDecoder({ assetManager });
