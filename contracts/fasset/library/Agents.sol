@@ -153,6 +153,7 @@ library Agents {
         external
     {
         Agent storage agent = getAgent(_state, _agentVault);
+        requireAgentVaultOwner(_agentVault);
         require(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0, "agent still active");
         require(agent.availableAgentsPos == 0, "agent still available");
         // check that all collateral has been announced for withdrawal
@@ -172,7 +173,8 @@ library Agents {
     )
         internal
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent storage agent = Agents.getAgent(_state, _agentVault);
+        requireAgentVaultOwner(_agentVault);
         require(_agentMinCollateralRatioBIPS >= _state.settings.initialMinCollateralRatioBIPS,
             "collateral ratio too small");
         agent.agentMinCollateralRatioBIPS = SafeCast.toUint32(_agentMinCollateralRatioBIPS);
@@ -231,6 +233,7 @@ library Agents {
         external
     {
         Agent storage agent = getAgent(_state, _agentVault);
+        requireAgentVaultOwner(_agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
         if (_valueNATWei > agent.withdrawalAnnouncedNATWei) {
             // announcement increased - must check there is enough free collateral and then lock it

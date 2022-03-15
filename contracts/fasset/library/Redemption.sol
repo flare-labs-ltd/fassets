@@ -62,30 +62,32 @@ library Redemption {
         string memory _redeemerUnderlyingAddress
     )
         external
-        returns (uint64 _redeemedLots)
+        returns (uint256)
     {
         uint256 maxRedeemedTickets = _state.settings.maxRedeemedTickets;
         AgentRedemptionList memory redemptionList = AgentRedemptionList({ 
             length: 0, 
             items: new AgentRedemptionData[](maxRedeemedTickets)
         });
-        _redeemedLots = 0;
-        for (uint256 i = 0; i < maxRedeemedTickets && _redeemedLots < _lots; i++) {
+        uint64 redeemedLots = 0;
+        for (uint256 i = 0; i < maxRedeemedTickets && redeemedLots < _lots; i++) {
             // each loop, firstTicketId will change since we delete the first ticket
-            uint64 redeemedForTicket = _redeemFirstTicket(_state, _lots - _redeemedLots, redemptionList);
+            uint64 redeemedForTicket = _redeemFirstTicket(_state, _lots - redeemedLots, redemptionList);
             if (redeemedForTicket == 0) {
                 break;   // queue empty
             }
-            _redeemedLots = _redeemedLots + redeemedForTicket;
+            redeemedLots += redeemedForTicket;
         }
-        require(_redeemedLots != 0, "redeem 0 lots");
+        require(redeemedLots != 0, "redeem 0 lots");
         for (uint256 i = 0; i < redemptionList.length; i++) {
             _createRemptionRequest(_state, redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress);
         }
         // notify redeemer of incomplete requests
-        if (_redeemedLots < _lots) {
-            emit AMEvents.RedemptionRequestIncomplete(_redeemer, _lots - _redeemedLots);
+        if (redeemedLots < _lots) {
+            emit AMEvents.RedemptionRequestIncomplete(_redeemer, _lots - redeemedLots);
         }
+        // return complete redeemed value
+        return Conversion.convertLotsToUBA(_state.settings, redeemedLots);
     }
 
     function _redeemFirstTicket(

@@ -36,6 +36,7 @@ library AvailableAgents {
         external 
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agents.requireAgentVaultOwner(_agentVault);
         require(agent.agentType == Agents.AgentType.AGENT_100, "only agent 100");
         require(agent.status == Agents.AgentStatus.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
@@ -63,6 +64,7 @@ library AvailableAgents {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agents.requireAgentVaultOwner(_agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
         uint256 ind = agent.availableAgentsPos - 1;
         if (ind + 1 < _state.availableAgents.length) {

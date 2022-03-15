@@ -62,10 +62,10 @@ library Liquidation {
     function liquidate(
         AssetManagerState.State storage _state,
         address _agentVault,
-        uint64 _amountAMG
+        uint256 _amountUBA
     )
         external
-        returns (uint64 _liquidationAmountAMG)
+        returns (uint256)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.status != Agents.AgentStatus.NORMAL, "not in liquidation");
@@ -74,17 +74,18 @@ library Liquidation {
             getCurrentLiquidationPhase(agent, _state.settings, collateralData);
         require(liquidationPhase != Agents.LiquidationPhase.CCB, "in CCB");
 
-        uint64 fAssetAMG = agent.reservedAMG + agent.mintedAMG + agent.redeemingAMG;
-        uint64 amountToLiquidateAMG = Math.min(maxAmountAMG, _amountAMG).toUint64();
-        _liquidationAmountAMG = Redemption.liquidate(_state, msg.sender, _agentVault, amountToLiquidateAMG);
+        uint64 amountToLiquidateAMG = 
+            Math.min(maxAmountAMG, Conversion.convertUBAToAmg(_state.settings, _amountUBA)).toUint64();
+        uint64 liquidationAmountAMG = Redemption.liquidate(_state, msg.sender, _agentVault, amountToLiquidateAMG);
 
         uint256 liquidationValueNATWei;
         if (!isEnough) { // 100% collateral premium is not enough - calculate proportion
+            uint64 fAssetAMG = agent.reservedAMG + agent.mintedAMG + agent.redeemingAMG;
             liquidationValueNATWei = (collateralData.fullCollateral - agent.withdrawalAnnouncedNATWei)
-                .mulDiv(_liquidationAmountAMG, fAssetAMG);
+                .mulDiv(liquidationAmountAMG, fAssetAMG);
         } else {
             liquidationValueNATWei = 
-                Conversion.convertAmgToNATWei(_liquidationAmountAMG, collateralData.amgToNATWeiPrice);
+                Conversion.convertAmgToNATWei(liquidationAmountAMG, collateralData.amgToNATWeiPrice);
             if (liquidationPhase == Agents.LiquidationPhase.COLLATERAL_PREMIUM) { // get collateral
                 liquidationValueNATWei = liquidationValueNATWei.mulBips(_state.settings.initialMinCollateralRatioBIPS);
             }
@@ -104,8 +105,8 @@ library Liquidation {
                 }
             }
         }
-
         Agents.payout(_state, _agentVault, msg.sender, liquidationValueNATWei);
+        return Conversion.convertAmgToUBA(_state.settings, liquidationAmountAMG);
     }
 
     // Cancel agent's liquidation

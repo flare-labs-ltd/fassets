@@ -116,7 +116,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.requireAgentVaultOwner(_agentVault);
         Agents.destroyAgent(state, _agentVault);
         IAgentVault(_agentVault).destroy(state.settings.wNat, _recipient);
     }
@@ -130,7 +129,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.requireAgentVaultOwner(_agentVault);
         Agents.setAgentMinCollateralRatioBIPS(state, _agentVault, _agentMinCollateralRatioBIPS);
     }
     
@@ -157,7 +155,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.requireAgentVaultOwner(_agentVault);
         Agents.announceWithdrawal(state, _agentVault, _valueNATWei);
     }
 
@@ -210,7 +207,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.requireAgentVaultOwner(_agentVault);
         AvailableAgents.makeAvailable(state, _agentVault, _feeBIPS, _agentMinCollateralRatioBIPS);
     }
     
@@ -222,7 +218,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.requireAgentVaultOwner(_agentVault);
         AvailableAgents.exit(state, _agentVault);
     }
     
@@ -372,8 +367,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        uint64 redeemedLots = Redemption.redeem(state, msg.sender, _lots, _redeemerUnderlyingAddressString);
-        uint256 redeemedUBA = Conversion.convertLotsToUBA(state.settings, redeemedLots);
+        uint256 redeemedUBA = Redemption.redeem(state, msg.sender, _lots, _redeemerUnderlyingAddressString);
         fAsset.burn(msg.sender, redeemedUBA);
     }
     
@@ -523,9 +517,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        uint64 amountAMG = Conversion.convertUBAToAmg(state.settings, _amountUBA);
-        uint64 liquidatedAMG = Liquidation.liquidate(state, _agentVault, amountAMG);
-        uint256 liquidatedUBA = Conversion.convertAmgToUBA(state.settings, liquidatedAMG);
+        uint256 liquidatedUBA = Liquidation.liquidate(state, _agentVault, _amountUBA);
         fAsset.burn(msg.sender, liquidatedUBA);
     }
     
