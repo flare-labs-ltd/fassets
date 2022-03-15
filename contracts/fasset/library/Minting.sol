@@ -10,6 +10,7 @@ import "./CollateralReservations.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
 import "./PaymentReference.sol";
+import "./TransactionAttestation.sol";
 
 
 library Minting {
@@ -31,6 +32,8 @@ library Minting {
         _mintValueUBA = crt.underlyingValueUBA;
         address agentVault = crt.agentVault;
         Agents.Agent storage agent = Agents.getAgent(_state, agentVault);
+        // verify transaction
+        TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         // minter or agent can present the proof - agent may do it to unlock the collateral if minter
         // becomes unresponsive
         require(msg.sender == crt.minter || msg.sender == Agents.vaultOwner(crt.agentVault), 
@@ -64,6 +67,7 @@ library Minting {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
+        TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         require(_lots > 0, "cannot mint 0 blocks");
         require(agent.agentType == Agents.AgentType.AGENT_100, "wrong agent type for self-mint");
         require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");

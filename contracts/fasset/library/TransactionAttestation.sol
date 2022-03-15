@@ -19,19 +19,17 @@ library TransactionAttestation {
 
     function verifyPaymentSuccess(
         AssetManagerSettings.Settings storage _settings,
-        IAttestationClient.Payment calldata _attestationData,
-        bool _requireSingleSource
+        IAttestationClient.Payment calldata _attestationData
     ) 
         internal view
     {
         require(_attestationData.status == PAYMENT_SUCCESS, "payment failed");
-        verifyPayment(_settings, _attestationData, _requireSingleSource);
+        verifyPayment(_settings, _attestationData);
     }
     
     function verifyPayment(
         AssetManagerSettings.Settings storage _settings,
-        IAttestationClient.Payment calldata _attestationData,
-        bool _requireSingleSource
+        IAttestationClient.Payment calldata _attestationData
     ) 
         internal view
     {
@@ -39,8 +37,6 @@ library TransactionAttestation {
             "legal payment not proved");
         require(_attestationData.blockTimestamp >= block.timestamp - MAX_VALID_PROOF_AGE_SECONDS,
             "verified transaction too old");
-        require(!_requireSingleSource || _attestationData.sourceAddress != 0,
-            "required single source payment");
     }
     
     function verifyBalanceDecreasingTransaction(

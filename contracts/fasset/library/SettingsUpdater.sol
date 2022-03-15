@@ -2,9 +2,31 @@
 pragma solidity 0.8.11;
 
 import "./AssetManagerState.sol";
+import "./TransactionAttestation.sol";
 
 
 library SettingsUpdater {
+    function updateCurrentBlock(
+        AssetManagerState.State storage _state,
+        IAttestationClient.BlockHeightExists calldata _proof
+    )
+        external
+    {
+        TransactionAttestation.verifyBlockHeightExists(_state.settings, _proof);
+        bool changed = false;
+        if (_proof.blockNumber > _state.currentUnderlyingBlock) {
+            _state.currentUnderlyingBlock = _proof.blockNumber;
+            changed = true;
+        }
+        if (_proof.blockTimestamp > _state.currentUnderlyingBlockTimestamp) {
+            _state.currentUnderlyingBlockTimestamp = _proof.blockTimestamp;
+            changed = true;
+        }
+        if (changed) {
+            _state.currentUnderlyingBlockUpdatedAt = SafeCast.toUint64(block.timestamp);
+        }
+    }
+    
     function validateAndSet(
         AssetManagerState.State storage _state,
         AssetManagerSettings.Settings memory _settings,

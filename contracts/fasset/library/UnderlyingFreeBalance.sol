@@ -10,6 +10,7 @@ import "./PaymentConfirmations.sol";
 import "./AssetManagerState.sol";
 import "./Liquidation.sol";
 import "./PaymentReference.sol";
+import "./TransactionAttestation.sol";
 
 
 library UnderlyingFreeBalance {
@@ -54,6 +55,7 @@ library UnderlyingFreeBalance {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         require(_payment.receivingAddress == agent.underlyingAddressHash, 
             "not underlying address");
         require(_payment.paymentReference == PaymentReference.topup(_agentVault),

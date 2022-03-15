@@ -12,6 +12,7 @@ import "./RedemptionQueue.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
+import "./TransactionAttestation.sol";
 
 library Agents {
     using SafeBips for uint256;
@@ -103,6 +104,18 @@ library Agents {
         // There can be only one announced payment per agent active at any time.
         // This variable holds the id, or 0 if there is no announced payment going on.
         uint64 ongoingAnnouncedPaymentId;
+    }
+    
+    function claimAddressWithEOAProof(
+        AssetManagerState.State storage _state,
+        IAttestationClient.Payment calldata _payment
+    )
+        external
+    {
+        TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
+        require(_payment.sourceAddress != 0, "missing source address");
+        UnderlyingAddressOwnership.claimWithProof(_state.underlyingAddressOwnership, 
+            _payment, _state.paymentConfirmations, msg.sender, _payment.sourceAddress);
     }
     
     function createAgent(

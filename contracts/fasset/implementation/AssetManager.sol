@@ -11,7 +11,6 @@ import "../implementation/AgentVault.sol";
 import "../library/AssetManagerState.sol";
 import "../library/AssetManagerSettings.sol";
 import "../library/Conversion.sol";
-import "../library/TransactionAttestation.sol";
 import "../library/PaymentConfirmations.sol";
 // external
 import "../library/SettingsUpdater.sol";
@@ -84,9 +83,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        TransactionAttestation.verifyPaymentSuccess(state.settings, _payment, true);
-        UnderlyingAddressOwnership.claimWithProof(state.underlyingAddressOwnership, 
-            _payment, state.paymentConfirmations, msg.sender, _payment.sourceAddress);
+        Agents.claimAddressWithEOAProof(state, _payment);
     }
     
     /**
@@ -268,19 +265,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        TransactionAttestation.verifyBlockHeightExists(state.settings, _proof);
-        bool changed = false;
-        if (_proof.blockNumber > state.currentUnderlyingBlock) {
-            state.currentUnderlyingBlock = _proof.blockNumber;
-            changed = true;
-        }
-        if (_proof.blockTimestamp > state.currentUnderlyingBlockTimestamp) {
-            state.currentUnderlyingBlockTimestamp = _proof.blockTimestamp;
-            changed = true;
-        }
-        if (changed) {
-            state.currentUnderlyingBlockUpdatedAt = SafeCast.toUint64(block.timestamp);
-        }
+        SettingsUpdater.updateCurrentBlock(state, _proof);
     }
     
     function currentUnderlyingBlock()
@@ -335,7 +320,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external 
         nonReentrant
     {
-        TransactionAttestation.verifyPaymentSuccess(state.settings, _payment, false);
         (address minter, uint256 mintedUBA) = Minting.mintingExecuted(state, _payment, _crtId);
         fAsset.mint(minter, mintedUBA);
     }
@@ -351,7 +335,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        TransactionAttestation.verifyReferencedPaymentNonexistence(state.settings, _proof);
         CollateralReservations.collateralReservationTimeout(state, _proof, _crtId);
     }
     
@@ -367,8 +350,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     ) 
         external 
     {
-        Agents.requireAgentVaultOwner(_agentVault);
-        TransactionAttestation.verifyPaymentSuccess(state.settings, _payment, false);
         uint256 mintedUBA = Minting.selfMint(state, _payment, _agentVault, _lots);
         fAsset.mint(msg.sender, mintedUBA);
     }
@@ -412,7 +393,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        TransactionAttestation.verifyPayment(state.settings, _payment, false);
         Redemption.confirmRedemptionPayment(state, _payment, _redemptionRequestId);
     }
 
@@ -428,7 +408,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        TransactionAttestation.verifyReferencedPaymentNonexistence(state.settings, _proof);
         Redemption.redemptionPaymentDefault(state, _proof, _redemptionRequestId);
     }
     
@@ -481,7 +460,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        TransactionAttestation.verifyPayment(state.settings, _payment, false);
         AllowedPaymentAnnouncement.confirmAllowedPayment(state, _payment, _agentVault, _announcementId);
     }
 
@@ -494,7 +472,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        TransactionAttestation.verifyPaymentSuccess(state.settings, _payment, false);
         UnderlyingFreeBalance.confirmTopupPayment(state, _payment, _agentVault);
     }
     
@@ -507,7 +484,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _transaction);
         Challenges.illegalPaymentChallenge(state, _transaction, _agentVault);
     }
 
@@ -518,8 +494,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _payment1);
-        TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _payment2);
         Challenges.doublePaymentChallenge(state, _payment1, _payment2, _agentVault);
     }
     
@@ -529,9 +503,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        for (uint256 i = 0; i < _payments.length; i++) {
-            TransactionAttestation.verifyBalanceDecreasingTransaction(state.settings, _payments[i]);
-        }
         Challenges.paymentsMakeFreeBalanceNegative(state, _payments, _agentVault);
     }
     

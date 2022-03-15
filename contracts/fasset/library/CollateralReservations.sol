@@ -11,6 +11,7 @@ import "./AssetManagerState.sol";
 import "../interface/IAgentVault.sol";
 import "./AgentCollateral.sol";
 import "./PaymentReference.sol";
+import "./TransactionAttestation.sol";
 
 
 library CollateralReservations {
@@ -85,6 +86,7 @@ library CollateralReservations {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
         Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
         // check requirements
+        TransactionAttestation.verifyReferencedPaymentNonexistence(_state.settings, _nonPayment);
         require(_nonPayment.paymentReference == PaymentReference.minting(_crtId) &&
             _nonPayment.destinationAddress == agent.underlyingAddressHash &&
             _nonPayment.amount == crt.underlyingValueUBA + crt.underlyingFeeUBA,

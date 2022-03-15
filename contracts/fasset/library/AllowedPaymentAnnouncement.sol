@@ -9,6 +9,7 @@ import "./AMEvents.sol";
 import "./Agents.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./AssetManagerState.sol";
+import "./TransactionAttestation.sol";
 
 
 library AllowedPaymentAnnouncement {
@@ -37,6 +38,7 @@ library AllowedPaymentAnnouncement {
     )
         external
     {
+        TransactionAttestation.verifyPayment(_state.settings, _payment);
         Agents.requireAgentVaultOwner(_agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.ongoingAnnouncedPaymentId != 0, "no active announcement");

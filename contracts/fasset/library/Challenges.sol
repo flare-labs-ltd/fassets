@@ -14,6 +14,7 @@ import "./PaymentConfirmations.sol";
 import "./Redemption.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
+import "./TransactionAttestation.sol";
 
 
 library Challenges {
@@ -28,6 +29,8 @@ library Challenges {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        // verify transaction
+        TransactionAttestation.verifyBalanceDecreasingTransaction(_state.settings, _payment);
         // check the payment originates from agent's address
         require(_payment.sourceAddress == agent.underlyingAddressHash, "chlg: not agent's address");
         // check that proof of this tx wasn't used before - otherwise we could 
@@ -67,7 +70,10 @@ library Challenges {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        // check the payments originate from agent's address
+        // verify transactions
+        TransactionAttestation.verifyBalanceDecreasingTransaction(_state.settings, _payment1);
+        TransactionAttestation.verifyBalanceDecreasingTransaction(_state.settings, _payment2);
+        // check the payments are unique and originate from agent's address
         require(_payment1.transactionHash != _payment2.transactionHash, "chlg dbl: same transaction");
         require(_payment1.sourceAddress == agent.underlyingAddressHash, "chlg 1: not agent's address");
         require(_payment2.sourceAddress == agent.underlyingAddressHash, "chlg 2: not agent's address");
@@ -92,6 +98,8 @@ library Challenges {
         int256 total = 0;
         for (uint256 i = 0; i < _payments.length; i++) {
             IAttestationClient.BalanceDecreasingTransaction calldata pmi = _payments[i];
+            TransactionAttestation.verifyBalanceDecreasingTransaction(_state.settings, pmi);
+            // check there are no duplicate transactions
             for (uint256 j = 0; j < i; j++) {
                 require(_payments[j].transactionHash != pmi.transactionHash, "mult chlg: repeated transaction");
             }

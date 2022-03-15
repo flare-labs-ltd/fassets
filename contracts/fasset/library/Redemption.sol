@@ -9,13 +9,13 @@ import "../interface/IAgentVault.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./RedemptionQueue.sol";
-import "./TransactionAttestation.sol";
 import "./PaymentConfirmations.sol";
 import "./Agents.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
 import "./PaymentReference.sol";
+import "./TransactionAttestation.sol";
 
 
 library Redemption {
@@ -176,6 +176,8 @@ library Redemption {
         bool isAgent = msg.sender == Agents.vaultOwner(request.agentVault);
         require(isAgent || block.timestamp > request.timestamp + _state.settings.redemptionByAnybodyAfterSeconds,
             "only agent vault owner");
+        // verify transaction
+        TransactionAttestation.verifyPayment(_state.settings, _payment);
         // payment refernce must match
         require(_payment.paymentReference == PaymentReference.redemption(_redemptionRequestId), 
             "invalid redemption reference");
@@ -269,6 +271,8 @@ library Redemption {
         RedemptionRequest storage request = _getRedemptionRequest(_state, _redemptionRequestId);
         require(request.status == RedemptionStatus.ACTIVE || request.status == RedemptionStatus.FAILED,
             "invalid redemption status");
+        // verify transaction
+        TransactionAttestation.verifyReferencedPaymentNonexistence(_state.settings, _nonPayment);
         // check non-payment proof
         require(_nonPayment.paymentReference == PaymentReference.redemption(_redemptionRequestId) &&
             _nonPayment.destinationAddress == request.redeemerUnderlyingAddressHash &&
