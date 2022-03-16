@@ -176,7 +176,7 @@ library Redemption {
         // But if the agent doesn't respond for long enough, 
         // we allow anybody and that user gets rewarded from agent's vault.
         bool isAgent = msg.sender == Agents.vaultOwner(request.agentVault);
-        require(isAgent || block.timestamp > request.timestamp + _state.settings.redemptionByAnybodyAfterSeconds,
+        require(isAgent || _othersCanConfirmPayment(_state, request, _payment),
             "only agent vault owner");
         // verify transaction
         TransactionAttestation.verifyPayment(_state.settings, _payment);
@@ -226,6 +226,27 @@ library Redemption {
         } else {
             request.status = RedemptionStatus.FAILED;
         }
+    }
+    
+    function _othersCanConfirmPayment(
+        AssetManagerState.State storage _state,
+        RedemptionRequest storage request,
+        IAttestationClient.Payment calldata _payment
+    )
+        private view
+        returns (bool)
+    {
+        // others can confirm payments only after several hours
+        if (block.timestamp <= request.timestamp + _state.settings.redemptionByAnybodyAfterSeconds) return false;
+        // others can confirm only payments arriving from agent's underlying address
+        // - on utxo chains for multi-source payment, 3rd party might lie about payment not coming from agent's
+        //   source, which would delete redemption request but not mark source decresing transaction as used;
+        //   so afterwards there can be an illegal payment challenge for this transaction
+        // - we really only need 3rd party confirmations for payments from agent's underlying address,
+        //   to properly account for underlying free balance (unless payment is failed, the collateral also gets
+        //   unlocked, but that only benefits the agent, so the agent should take care of that)
+        Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
+        return _payment.sourceAddress == agent.underlyingAddressHash;
     }
     
     function _validatePayment(
