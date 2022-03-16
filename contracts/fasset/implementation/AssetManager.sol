@@ -343,7 +343,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         address _agentVault,
         uint64 _lots
     ) 
-        external 
+        external
+        nonReentrant
     {
         uint256 mintedUBA = Minting.selfMint(state, _payment, _agentVault, _lots);
         fAsset.mint(msg.sender, mintedUBA);

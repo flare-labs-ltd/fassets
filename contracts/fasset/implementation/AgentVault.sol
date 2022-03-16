@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "../interface/IWNat.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAgentVault.sol";
 
 
-contract AgentVault is IAgentVault {
+contract AgentVault is ReentrancyGuard, IAgentVault {
     IAssetManager public immutable assetManager;
     address public immutable override owner;
 
@@ -82,7 +83,12 @@ contract AgentVault is IAgentVault {
     // Used by asset manager for liquidation and failed redemption.
     // Since _recipient is typically an unknown address, we do not directly send NAT,
     // but transfer WNAT (doesn't trigger any callbacks) which the recipient must withdraw.
-    function payout(IWNat wNat, address _recipient, uint256 _amount) external override onlyAssetManager {
+    // Is nonReentrant to prevent reentrancy in case anybody ever adds receive hooks on wNat. 
+    function payout(IWNat wNat, address _recipient, uint256 _amount)
+        external override
+        onlyAssetManager
+        nonReentrant
+    {
         wNat.transfer(_recipient, _amount);
     }
 }
