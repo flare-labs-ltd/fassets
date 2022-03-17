@@ -24,7 +24,7 @@ fi
 mkdir -p "$(dirname $OUTFILE)"
 pushd "$SUBPROJECT_DIR" > /dev/null
 PRAGMA_SOLIDITY=$(grep '^pragma solidity' "$FIRSTFILE")
-+yarn hardhat $HHCONFIG flatten ${FILES//$'\n'/ } > "$TMPFILE"
+yarn hardhat $HHCONFIG flatten ${FILES//$'\n'/ } > "$TMPFILE"
 popd > /dev/null
 
 echo "// SPDX-License-Identifier: MIT" > "$OUTFILE"
