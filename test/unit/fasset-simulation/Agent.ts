@@ -1,7 +1,8 @@
 import { AgentVaultInstance } from "../../../typechain-truffle";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { EventArgs, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { BNish, EventArgs, findRequiredEvent, requiredEventArgs, toBN } from "../../utils/helpers";
+import { BNish, toBN } from "../../utils/helpers";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
 const AgentVault = artifacts.require('AgentVault');

@@ -52,6 +52,14 @@ contract FtsoMock is IIFtso {
     
     function getEpochPriceForVoter(uint256 _epochId, address _voter) external view returns (uint256) {}
 
+    function getCurrentPriceDetails() external view returns (
+        uint256 _price,
+        uint256 _priceTimestamp,
+        PriceFinalizationType _priceFinalizationType,
+        uint256 _lastPriceEpochFinalizationTimestamp,
+        PriceFinalizationType _lastPriceEpochFinalizationType
+    ) {}
+    
     function getCurrentRandom() external view returns (uint256) {}
 
     // IFtsoGenesis

@@ -1,13 +1,14 @@
 import { balance, constants, ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { Web3EventDecoder } from "flare-smart-contracts/test/utils/EventDecoder";
-import { setDefaultVPContract } from "flare-smart-contracts/test/utils/token-test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { Web3EventDecoder } from "../../utils/EventDecoder";
+import { findRequiredEvent } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvider";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { findRequiredEvent, getTestFile, toBN, toBNExp, toStringExp } from "../../utils/helpers";
+import { getTestFile, toBN, toBNExp, toStringExp } from "../../utils/helpers";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
 
 const AgentVault = artifacts.require('AgentVault');

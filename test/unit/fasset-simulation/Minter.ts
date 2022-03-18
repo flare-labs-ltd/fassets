@@ -1,5 +1,5 @@
 import { CollateralReserved } from "../../../typechain-truffle/AssetManager";
-import { EventArgs, requiredEventArgs } from "../../utils/helpers";
+import { EventArgs, requiredEventArgs } from "../../utils/events";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
 export class Minter extends AssetContextClient {

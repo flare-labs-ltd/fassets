@@ -1,6 +1,6 @@
-import { filterEvents, findEvent } from "flare-smart-contracts/test/utils/EventDecoder";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
-import { BN_ZERO, EventArgs, requiredEventArgs } from "../../utils/helpers";
+import { EventArgs, filterEvents, findEvent } from "../../utils/events";
+import { BN_ZERO } from "../../utils/helpers";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
 export class Redeemer extends AssetContextClient {

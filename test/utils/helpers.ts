@@ -1,8 +1,9 @@
 import BN from "bn.js";
 import { BigNumber } from "ethers";
-import { findEvent } from "flare-smart-contracts/test/utils/EventDecoder";
 
 export type BNish = BN | number | string;
+
+export type Nullable<T> = T | null | undefined;
 
 export type Dict<T> = { [key: string]: T };
 
@@ -11,8 +12,6 @@ export const BN_ZERO = new BN(0);
 export const BIG_NUMBER_ZERO = BigNumber.from(0);
 
 export const MAX_BIPS = 10_000;
-
-export type EventArgs<E extends Truffle.AnyEvent> = Truffle.TransactionLog<E>['args'];
 
 /**
  * Return system time as timestamp (seconds since 1.1.1970).
@@ -42,6 +41,14 @@ export function objectMap<T, R>(obj: { [key: string]: T }, func: (x: T) => R): {
 }
 
 /**
+ * Check if value is non-null.
+ * Useful in array.filter, to return array of non-nullable types.
+ */
+export function isNotNull<T>(x: T): x is NonNullable<T> {
+    return x != null;
+}
+
+/**
  * Helper wrapper to convert number to BN 
  * @param x number expressed in any reasonable type
  * @returns same number as BN
@@ -61,6 +68,13 @@ export function toBigNumber(x: BN | BigNumber | number | string): BigNumber {
     if (x instanceof BigNumber) return x;
     if (x instanceof BN) return BigNumber.from(`0x${x.toString(16)}`);
     return BigNumber.from(x);
+}
+
+/**
+ * Check whether argument is either BN or BigNumber.
+ */
+export function isBigNumber(x: any): x is BigNumber | BN {
+    return BN.isBN(x) || x instanceof BigNumber;
 }
 
 // return String(Math.round(x * 10^exponent)), but sets places below float precision to zero instead of some random digits
@@ -97,12 +111,33 @@ export function toWei(amount: number | string) {
     return toBNExp(amount, 18);
 }
 
-export function findRequiredEvent<E extends Truffle.AnyEvent, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): Truffle.TransactionLog<Extract<E, { name: N }>> {
-    const event = findEvent(response.logs, name);
-    assert.isNotNull(event, `Missing event ${name}`);
-    return event!;
+/**
+ * Format large number in more readable format, using 'fixed-exponential' format, with 'e+18' suffix for very large numbers.
+ * (This makes them easy to visually detect bigger/smaller numbers.)
+ */
+export function formatBN(x: BigNumber | BN | string | number) {
+    const xs = x.toString();
+    if (xs.length >= 18) {
+        const dec = Math.max(0, 22 - xs.length);
+        const xm = (Number(xs) / 1e18).toFixed(dec);
+        return groupIntegerDigits(xm) + 'e+18';
+    } else {
+        return groupIntegerDigits(xs);
+    }
 }
 
-export function requiredEventArgs<E extends Truffle.AnyEvent, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): EventArgs<Extract<E, { name: N }>> {
-    return findRequiredEvent(response, name).args;
+function groupIntegerDigits(x: string) {
+    let startp = x.indexOf('.');
+    if (startp < 0) startp = x.length;
+    for (let p = startp - 3; p > 0; p -= 3) {
+        x = x.slice(0, p) + '_' + x.slice(p); x
+    }
+    return x;
+}
+
+/**
+ * Asynchronously wait `ms` milliseconds.
+ */
+export async function sleep(ms: number) {
+    await new Promise<void>(resolve => setTimeout(() => resolve(), ms));
 }

@@ -22,10 +22,10 @@ if [[ "$SUBPROJECT_DIR" =~ flare-smart-contracts ]]; then
 fi
 
 mkdir -p "$(dirname $OUTFILE)"
-pushd "$SUBPROJECT_DIR" > /dev/null
+cd "$SUBPROJECT_DIR"
 PRAGMA_SOLIDITY=$(grep '^pragma solidity' "$FIRSTFILE")
 yarn hardhat $HHCONFIG flatten ${FILES//$'\n'/ } > "$TMPFILE"
-popd > /dev/null
+cd - > /dev/null
 
 echo "// SPDX-License-Identifier: MIT" > "$OUTFILE"
 echo "$PRAGMA_SOLIDITY" >> "$OUTFILE"
