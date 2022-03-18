@@ -59,7 +59,7 @@ library RedemptionQueue {
             agent.firstTicketId = ticketId;
         } else {
             assert(agent.lastTicketId != 0);    // non-empty queue - first and last must be non-zero
-            _state.tickets[agent.lastTicketId].next = ticketId;
+            _state.tickets[agent.lastTicketId].nextForAgent = ticketId;
         }
         agent.lastTicketId = ticketId;
         // return the new redemption ticket's id
