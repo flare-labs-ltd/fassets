@@ -4,6 +4,7 @@ import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "./Agent";
 import { AssetContext, CommonContext } from "./AssetContext";
 import { testChainInfo, testNatInfo } from "./ChainInfo";
+import { Challenger } from "./Challenger";
 import { Minter } from "./Minter";
 import { Redeemer } from "./Redeemer";
 
@@ -16,6 +17,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     const minterAddress2 = accounts[31];
     const redeemerAddress1 = accounts[40];
     const redeemerAddress2 = accounts[41];
+    const challengerAddress1 = accounts[50];
+    const challengerAddress2 = accounts[51];
     // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingAgent1 = "Agent1";
     const underlyingAgent2 = "Agent2";
@@ -238,7 +241,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // agent "buys" f-assets
             await context.fAsset.transfer(agent.ownerAddress, minted.mintedAmountUBA, { from: minter.address });
             // perform partial self close
-            const dustAmountUBA = toBN(5).mul(toBN(context.settings.assetMintingGranularityUBA));
+            const dustAmountUBA = context.convertAmgToUBA(5);
             const selfCloseAmountUBA = minted.mintedAmountUBA.sub(dustAmountUBA);
             const [dustChangesUBA1, selfClosedUBA1] = await agent.selfClose(selfCloseAmountUBA);
             assertWeb3Equal(selfClosedUBA1, selfCloseAmountUBA);
@@ -254,6 +257,32 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.announceWithdrawal(fullAgentCollateral);
             await time.increase(300);
             await agent.destroy();
+        });
+
+        it("illegal payment challenge", async () => {
+            const agent = await Agent.create(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.create(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const challenger = await Challenger.create(context, challengerAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const transaction = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, transaction.hash);
+            assertWeb3Equal(minted.mintedAmountUBA, context.lotsSize().muln(lots));
+            // perform illegal payment
+            const tx = await agent.performPayment("IllegalPayment1", 100);
+            // challenge agent for illegal payment
+            const startBalance = await context.wnat.balanceOf(challengerAddress1);
+            await challenger.illegalPaymentChallenge(agent, tx.hash);
+            const endBalance = await context.wnat.balanceOf(challengerAddress1);
+            // test rewarding
+            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(context.convertLotsToAMG(lots)));
         });
     });
 });

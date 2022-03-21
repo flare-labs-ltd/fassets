@@ -65,7 +65,7 @@ export class Agent extends AssetContextClient {
     
     async performRedemptionPayment(request: EventArgs<RedemptionRequested>) {
         const paymentAmount = request.valueUBA.sub(request.feeUBA);
-        return this.chain.addSimpleTransaction(this.underlyingAddress, request.paymentAddress, paymentAmount, 0, request.paymentReference);
+        return await this.performPayment(request.paymentAddress, paymentAmount, 0, request.paymentReference);
     }
 
     async confirmRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
@@ -81,5 +81,9 @@ export class Agent extends AssetContextClient {
         dustChangedEvents.every(dc => assert.equal(dc.agentVault, this.agentVault.address));
         assert.equal(selfClose.agentVault, this.agentVault.address);
         return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA];
+    }
+
+    async performPayment(paymentAddress: string, paymentAmount: BNish, gasUsed: BNish = 0, paymentReference: BN | null = null, status: number = 0) {
+        return this.chain.addSimpleTransaction(this.underlyingAddress, paymentAddress, paymentAmount, gasUsed, paymentReference, status);
     }
 }
