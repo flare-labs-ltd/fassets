@@ -16,44 +16,44 @@ library PaymentReference {
 
     // create various payment references
             
-    function minting(uint64 _id) internal pure returns (uint256) {
-        return uint256(_id) | MINTING;
+    function minting(uint64 _id) internal pure returns (bytes32) {
+        return bytes32(uint256(_id) | MINTING);
     }
 
-    function redemption(uint64 _id) internal pure returns (uint256) {
-        return uint256(_id) | REDEMPTION;
+    function redemption(uint64 _id) internal pure returns (bytes32) {
+        return bytes32(uint256(_id) | REDEMPTION);
     }
 
-    function announcedWithdrawal(uint64 _id) internal pure returns (uint256) {
-        return uint256(_id) | ANNOUNCED_WITHDRAWAL;
+    function announcedWithdrawal(uint64 _id) internal pure returns (bytes32) {
+        return bytes32(uint256(_id) | ANNOUNCED_WITHDRAWAL);
     }
 
-    function topup(address _agentVault) internal pure returns (uint256) {
-        return uint256(uint160(_agentVault)) | TOPUP;
+    function topup(address _agentVault) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(_agentVault)) | TOPUP);
     }
 
-    function selfMint(address _agentVault) internal pure returns (uint256) {
-        return uint256(uint160(_agentVault)) | SELF_MINT;
+    function selfMint(address _agentVault) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(_agentVault)) | SELF_MINT);
     }
     
-    function addressOwnership(address _agentVault) internal pure returns (uint256) {
-        return uint256(uint160(_agentVault)) | ADDRESS_OWNERSHIP;
+    function addressOwnership(address _agentVault) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(_agentVault)) | ADDRESS_OWNERSHIP);
     }
     
     // verify and decode payment references
             
-    function isValid(uint256 _reference, uint256 _type) internal pure returns (bool) {
-        uint256 refType = _reference & _type;
-        uint256 refLowBits = _reference & ((1 << TYPE_SHIFT) - 1);
+    function isValid(bytes32 _reference, uint256 _type) internal pure returns (bool) {
+        uint256 refType = uint256(_reference) & _type;
+        uint256 refLowBits = uint256(_reference) & ((1 << TYPE_SHIFT) - 1);
         // for valid reference, type must match and low bits may never be 0 (are either id or address)
         return refType == _type && refLowBits != 0;
     }
     
-    function requireType(uint256 _type, uint256 _reference) internal pure {
-        require((_reference & _type) == _type, "invalid payment reference");
+    function requireType(uint256 _type, bytes32 _reference) internal pure {
+        require((uint256(_reference) & _type) == _type, "invalid payment reference");
     }
     
-    function decodeId(uint256 _reference) internal pure returns (uint64) {
-        return uint64(_reference & ((1 << 64) - 1));
+    function decodeId(bytes32 _reference) internal pure returns (uint64) {
+        return uint64(uint256(_reference) & ((1 << 64) - 1));
     }
 }

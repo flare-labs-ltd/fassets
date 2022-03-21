@@ -40,7 +40,7 @@ interface IAssetManagerEvents {
         uint256 lastUnderlyingBlock,
         uint256 lastUnderlyingTimestamp,
         string paymentAddress,
-        uint256 paymentReference);
+        bytes32 paymentReference);
 
     /**
      * Minter failed to pay underlying funds in time. Collateral reservation fee was paid to the agent.
@@ -78,7 +78,7 @@ interface IAssetManagerEvents {
         uint256 feeUBA,
         uint256 lastUnderlyingBlock,
         uint256 lastUnderlyingTimestamp,
-        uint256 paymentReference);
+        bytes32 paymentReference);
 
     /**
      * In case there were not enough tickets or more than allowed number would have to be redeemed,
@@ -197,7 +197,7 @@ interface IAssetManagerEvents {
     event AllowedPaymentAnnounced(
         address agentVault,
         uint64 announcementId,
-        uint256 paymentReference);
+        bytes32 paymentReference);
         
     /**
      * After announcing legal undelrying withdrawal and creating transaction,

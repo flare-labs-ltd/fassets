@@ -26,7 +26,7 @@ library AllowedPaymentAnnouncement {
         require(agent.ongoingAnnouncedPaymentId == 0, "announced payment active");
         uint64 announcementId = ++_state.newPaymentAnnouncementId;
         agent.ongoingAnnouncedPaymentId = announcementId;
-        uint256 paymentReference = PaymentReference.announcedWithdrawal(announcementId);
+        bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);
         emit AMEvents.AllowedPaymentAnnounced(_agentVault, announcementId, paymentReference);
     }
     
@@ -42,7 +42,7 @@ library AllowedPaymentAnnouncement {
         Agents.requireAgentVaultOwner(_agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.ongoingAnnouncedPaymentId != 0, "no active announcement");
-        uint256 paymentReference = PaymentReference.announcedWithdrawal(agent.ongoingAnnouncedPaymentId);
+        bytes32 paymentReference = PaymentReference.announcedWithdrawal(agent.ongoingAnnouncedPaymentId);
         require(_payment.paymentReference == paymentReference, "wrong announced pmt reference");
         require(_payment.sourceAddress == agent.underlyingAddressHash,
             "wrong announced pmt source");
