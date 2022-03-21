@@ -4,7 +4,7 @@ export interface MockChainTransaction {
     hash: string;
     spent: { [address: string]: BN };
     received: { [address: string]: BN };
-    reference: BN | null;
+    reference: string | null;
     status: number; // 0 = success, 1 = failure (sender's fault), 2 = failure (receiver's fault)
 }
 
@@ -79,7 +79,7 @@ export class MockChain {
         this.timstampSkew += timeDelta;
     }
     
-    static transaction(spent_: { [address: string]: BNish }, received_: { [address: string]: BNish }, reference: BN | null, status: number = 0): MockChainTransaction {
+    static transaction(spent_: { [address: string]: BNish }, received_: { [address: string]: BNish }, reference: string | null, status: number = 0): MockChainTransaction {
         const spent = objectMap(spent_, toBN);
         const received = objectMap(received_, toBN);
         const totalSpent = Object.values(spent).reduce((x, y) => x.add(y));
@@ -89,13 +89,13 @@ export class MockChain {
         return { hash: '', spent, received, reference, status };
     }
     
-    addTransaction(spent_: { [address: string]: BNish }, received_: { [address: string]: BNish }, reference: BN | null, status: number = 0): MockChainTransaction {
+    addTransaction(spent_: { [address: string]: BNish }, received_: { [address: string]: BNish }, reference: string | null, status: number = 0): MockChainTransaction {
         const transaction = MockChain.transaction(spent_, received_, reference, status);
         this.addBlock([transaction]);
         return transaction;
     }
     
-    static simpleTransaction(from: string, to: string, value: BNish, gas: BNish, reference: BN | null, status: number = 0): MockChainTransaction {
+    static simpleTransaction(from: string, to: string, value: BNish, gas: BNish, reference: string | null, status: number = 0): MockChainTransaction {
         value = toBN(value);
         gas = toBN(gas);
         const spent = status === 0 ? value.add(gas) : gas;
@@ -103,7 +103,7 @@ export class MockChain {
         return MockChain.transaction({ [from]: spent }, { [to]: received }, reference, status);
     }
 
-    addSimpleTransaction(from: string, to: string, value: BNish, gas: BNish, reference: BN | null, status: number = 0): MockChainTransaction {
+    addSimpleTransaction(from: string, to: string, value: BNish, gas: BNish, reference: string | null, status: number = 0): MockChainTransaction {
         const transaction = MockChain.simpleTransaction(from, to, value, gas, reference, status);
         this.addBlock([transaction]);
         return transaction;

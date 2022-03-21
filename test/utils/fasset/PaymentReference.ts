@@ -1,4 +1,4 @@
-import { BNish, toBN } from "../helpers";
+import { BNish, toBN, toHex } from "../helpers";
 
 export namespace PaymentReference {
     export const TYPE_SHIFT = 192;
@@ -13,26 +13,26 @@ export namespace PaymentReference {
     export const ADDRESS_OWNERSHIP = toBN('0x4642505266410013').shln(TYPE_SHIFT);
     
     export function minting(id: BNish) {
-        return toBN(id).or(MINTING);
+        return toHex(toBN(id).or(MINTING), 32);
     }
 
     export function redemption(id: BNish) {
-        return toBN(id).or(REDEMPTION);
+        return toHex(toBN(id).or(REDEMPTION), 32);
     }
     
     export function announcedWithdrawal(id: BNish) {
-        return toBN(id).or(ANNOUNCED_WITHDRAWAL);
+        return toHex(toBN(id).or(ANNOUNCED_WITHDRAWAL), 32);
     }
 
     export function topup(address: string) {
-        return toBN(address).or(TOPUP);
+        return toHex(toBN(address).or(TOPUP), 32);
     }
 
     export function selfMint(address: string) {
-        return toBN(address).or(SELF_MINT);
+        return toHex(toBN(address).or(SELF_MINT), 32);
     }
     
     export function addressOwnership(address: string) {
-        return toBN(address).or(ADDRESS_OWNERSHIP);
+        return toHex(toBN(address).or(ADDRESS_OWNERSHIP), 32);
     }
 }

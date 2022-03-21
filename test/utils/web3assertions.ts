@@ -36,7 +36,7 @@ export function web3Normalize(x: any) {
     throw new Error("Unsupported object type");
 }
 
-export function web3DeepNormalize(value: any): any {
+export function web3DeepNormalize<T = any>(value: T): T {
     function normalizeArray(arr: any[]) {
         const result: any[] = [];
         visited.add(arr);

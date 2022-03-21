@@ -1,5 +1,6 @@
 import BN from "bn.js";
 import { BigNumber } from "ethers";
+import Web3 from "web3";
 
 export type BNish = BN | number | string;
 
@@ -12,6 +13,13 @@ export const BN_ZERO = new BN(0);
 export const BIG_NUMBER_ZERO = BigNumber.from(0);
 
 export const MAX_BIPS = 10_000;
+
+/**
+ * Asynchronously wait `ms` milliseconds.
+ */
+export async function sleep(ms: number) {
+    await new Promise<void>(resolve => setTimeout(() => resolve(), ms));
+}
 
 /**
  * Return system time as timestamp (seconds since 1.1.1970).
@@ -56,7 +64,7 @@ export function isNotNull<T>(x: T): x is NonNullable<T> {
 export function toBN(x: BN | BigNumber | number | string): BN {
     if (x instanceof BN) return x;
     if (x instanceof BigNumber) return new BN(x.toHexString().slice(2), 16)
-    return web3.utils.toBN(x);
+    return Web3.utils.toBN(x);
 }
 
 /**
@@ -136,8 +144,11 @@ function groupIntegerDigits(x: string) {
 }
 
 /**
- * Asynchronously wait `ms` milliseconds.
+ * Convert value to hex with 0x prefix and optional padding.
  */
-export async function sleep(ms: number) {
-    await new Promise<void>(resolve => setTimeout(() => resolve(), ms));
+export function toHex(x: string | number | BN, padToBytes?: number) {
+    if (padToBytes && padToBytes > 0) {
+        return Web3.utils.leftPad(Web3.utils.toHex(x), padToBytes * 2);
+    }
+    return Web3.utils.toHex(x);
 }

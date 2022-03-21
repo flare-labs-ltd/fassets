@@ -1,6 +1,6 @@
 import { AgentVaultInstance } from "../../../typechain-truffle";
-import { DustChanged, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
-import { EventArgs, filterEvents, findEvent, findRequiredEvent, requiredEventArgs } from "../../utils/events";
+import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BNish, toBN } from "../../utils/helpers";
 import { AssetContext, AssetContextClient } from "./AssetContext";

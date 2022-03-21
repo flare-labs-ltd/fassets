@@ -64,7 +64,7 @@ export function getAttestationTypeAndSource(bytes: string) {
       }
       return {
          attestationType: toBN(prefix0x(input.slice(0, 4))).toNumber() as AttestationType,
-         sourceId: toBN(prefix0x(input).slice(4, 12)).toNumber() as SourceId
+         sourceId: toBN(prefix0x(input.slice(4, 12))).toNumber() as SourceId
       }
    } catch(e) {
       throw new AttestationRequestParseError(e)
