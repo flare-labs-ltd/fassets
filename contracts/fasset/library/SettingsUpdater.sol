@@ -8,11 +8,11 @@ import "./TransactionAttestation.sol";
 library SettingsUpdater {
     function updateCurrentBlock(
         AssetManagerState.State storage _state,
-        IAttestationClient.BlockHeightExists calldata _proof
+        IAttestationClient.ConfirmedBlockHeightExists calldata _proof
     )
         external
     {
-        TransactionAttestation.verifyBlockHeightExists(_state.settings, _proof);
+        TransactionAttestation.verifyConfirmedBlockHeightExists(_state.settings, _proof);
         bool changed = false;
         if (_proof.blockNumber > _state.currentUnderlyingBlock) {
             _state.currentUnderlyingBlock = _proof.blockNumber;

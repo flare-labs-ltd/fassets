@@ -2,7 +2,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../interface/IAttestationClient.sol";
+import "../../generated/interface/IAttestationClient.sol";
 import "../interface/IAssetManager.sol";
 import "../library/AssetManagerSettings.sol";
 
@@ -51,13 +51,13 @@ library TransactionAttestation {
             "verified transaction too old");
     }
     
-    function verifyBlockHeightExists(
+    function verifyConfirmedBlockHeightExists(
         AssetManagerSettings.Settings storage _settings,
-        IAttestationClient.BlockHeightExists calldata _attestationData
+        IAttestationClient.ConfirmedBlockHeightExists calldata _attestationData
     ) 
         internal view
     {
-        require(_settings.attestationClient.verifyBlockHeightExists(_settings.chainId, _attestationData), 
+        require(_settings.attestationClient.verifyConfirmedBlockHeightExists(_settings.chainId, _attestationData), 
             "block height not proved");
     }
     

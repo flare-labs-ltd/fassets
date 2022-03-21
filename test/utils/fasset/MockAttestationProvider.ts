@@ -1,7 +1,7 @@
 import { AttestationClientMockInstance } from "../../../typechain-truffle";
 import { BN_ZERO } from "../helpers";
 import { web3DeepNormalize } from "../web3assertions";
-import { BalanceDecreasingTransaction, BlockHeightExists, Payment, ReferencedPaymentNonexistence } from "./AssetManagerTypes";
+import { BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "./AssetManagerTypes";
 import { MockChain } from "./MockChain";
 
 export class MockAttestationProvider {
@@ -120,12 +120,12 @@ export class MockAttestationProvider {
         return [false, firstCheckedBlock, -1];  // not found, but also didn't find overflow block
     }
 
-    blockHeightExists(blockNumber: number): BlockHeightExists | null {
+    blockHeightExists(blockNumber: number): ConfirmedBlockHeightExists | null {
         if (blockNumber >= this.chain.blocks.length) {
             return null;
         }
         const block = this.chain.blocks[blockNumber];
-        const proof: BlockHeightExists = {
+        const proof: ConfirmedBlockHeightExists = {
             stateConnectorRound: 0, // not needed in mock
             merkleProof: [],        // not needed in mock
             blockNumber: blockNumber,
@@ -155,10 +155,10 @@ export class MockAttestationProvider {
         return proof!;
     }
 
-    async proveBlockHeightExists(blockNumber: number): Promise<BlockHeightExists> {
+    async proveConfirmedBlockHeightExists(blockNumber: number): Promise<ConfirmedBlockHeightExists> {
         const proof = this.blockHeightExists(blockNumber);
-        assert.isNotNull(proof, "proveBlockHeightExists: block not found");
-        await this.attestationClient.proveBlockHeightExists(this.chainId, proof!);
+        assert.isNotNull(proof, "proveConfirmedBlockHeightExists: block not found");
+        await this.attestationClient.proveConfirmedBlockHeightExists(this.chainId, proof!);
         return proof!;
     }
 }

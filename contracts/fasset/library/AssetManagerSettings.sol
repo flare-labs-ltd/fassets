@@ -3,7 +3,7 @@ pragma solidity 0.8.11;
 
 import "flare-smart-contracts/contracts/userInterfaces/IFtso.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
-import "../interface/IAttestationClient.sol";
+import "../../generated/interface/IAttestationClient.sol";
 import "../interface/IWNat.sol";
 
 

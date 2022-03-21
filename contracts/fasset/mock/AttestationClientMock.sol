@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "../interface/IAttestationClient.sol";
+import "../../generated/interface/IAttestationClient.sol";
 
 
 contract AttestationClientMock is IAttestationClient {
@@ -33,10 +33,10 @@ contract AttestationClientMock is IAttestationClient {
         _proofs[_hashReferencedPaymentNonexistence(_chainId, _data)] = true;
     }
     
-    function proveBlockHeightExists(uint32 _chainId, BlockHeightExists calldata _data) 
+    function proveConfirmedBlockHeightExists(uint32 _chainId, ConfirmedBlockHeightExists calldata _data) 
         external
     {
-        _proofs[_hashBlockHeightExists(_chainId, _data)] = true;
+        _proofs[_hashConfirmedBlockHeightExists(_chainId, _data)] = true;
     }
     
     function verifyPayment(uint32 _chainId, Payment calldata _data) 
@@ -60,11 +60,11 @@ contract AttestationClientMock is IAttestationClient {
         return _proofs[_hashReferencedPaymentNonexistence(_chainId, _data)];
     }
     
-    function verifyBlockHeightExists(uint32 _chainId, BlockHeightExists calldata _data) 
+    function verifyConfirmedBlockHeightExists(uint32 _chainId, ConfirmedBlockHeightExists calldata _data) 
         external view override
         returns (bool _proved)
     {
-        return _proofs[_hashBlockHeightExists(_chainId, _data)];
+        return _proofs[_hashConfirmedBlockHeightExists(_chainId, _data)];
     }
 
     function _hashPayment(uint32 _chainId, Payment calldata _data) 
@@ -123,7 +123,7 @@ contract AttestationClientMock is IAttestationClient {
         ));
     }
     
-    function _hashBlockHeightExists(uint32 _chainId, BlockHeightExists calldata _data) 
+    function _hashConfirmedBlockHeightExists(uint32 _chainId, ConfirmedBlockHeightExists calldata _data) 
         private pure
         returns (bytes32)
     {

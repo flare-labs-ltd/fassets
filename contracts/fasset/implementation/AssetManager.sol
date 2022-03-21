@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../interface/IAgentVault.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAssetManagerEvents.sol";
-import "../interface/IAttestationClient.sol";
+import "../../generated/interface/IAttestationClient.sol";
 import "../interface/IFAsset.sol";
 import "../implementation/AgentVault.sol";
 import "../library/AssetManagerState.sol";
@@ -256,7 +256,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     // Timekeeping
     
     function updateCurrentBlock(
-        IAttestationClient.BlockHeightExists calldata _proof
+        IAttestationClient.ConfirmedBlockHeightExists calldata _proof
     )
         external
     {

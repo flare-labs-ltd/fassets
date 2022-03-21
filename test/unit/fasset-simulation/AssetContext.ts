@@ -78,7 +78,7 @@ export class AssetContext {
     }
     
     async updateUnderlyingBlock() {
-        const proof = await this.attestationProvider.proveBlockHeightExists(this.chain.blocks.length - 1);
+        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(this.chain.blocks.length - 1);
         await this.assetManager.updateCurrentBlock(proof);
     }
     
