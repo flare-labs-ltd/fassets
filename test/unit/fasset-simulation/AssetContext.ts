@@ -4,7 +4,7 @@ import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvider";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { toBN, toBNExp, toWei } from "../../utils/helpers";
+import { BNish, toBN, toBNExp, toWei } from "../../utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { web3DeepNormalize } from "../../utils/web3assertions";
 import { ChainInfo, NatInfo } from "./ChainInfo";
@@ -13,6 +13,9 @@ const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
+
+const AMG_NATWEI_PRICE_SCALE = toBN(1e9);
+const NAT_WEI = toBN(1e18);
 
 // common context shared between several asset managers
 export class CommonContext {
@@ -81,6 +84,40 @@ export class AssetContext {
         const proof = await this.attestationProvider.proveBlockHeightExists(this.chain.blocks.length - 1);
         await this.assetManager.updateCurrentBlock(proof);
     }
+
+    async currentAmgToNATWeiPrice() {
+        // Force cast here to circument architecure in original contracts 
+        const {0: natPrice, } = await this.natFtso.getCurrentPrice();
+        const {0: assetPrice, } = await this.assetFtso.getCurrentPrice();
+        return this.amgToNATWeiPrice(natPrice, assetPrice);
+    }
+
+    amgToNATWeiPrice(natPriceUSDDec5: BNish, assetPriceUSDDec5: BNish) {
+        // _natPriceUSDDec5 < 2^128 (in ftso) and assetUnitUBA, are both 64 bit, so there can be no overflow
+        return toBN(assetPriceUSDDec5)
+            .mul(toBN(this.settings.assetMintingGranularityUBA).mul(NAT_WEI).mul(AMG_NATWEI_PRICE_SCALE))
+            .div(toBN(natPriceUSDDec5).mul(toBN(this.settings.assetUnitUBA)));
+    }
+    
+    convertAmgToUBA(valueAMG: BNish) {
+        return toBN(valueAMG).mul(toBN(this.settings.assetMintingGranularityUBA));
+    }
+
+    convertUBAToAmg(valueUBA: BNish) {
+        return toBN(valueUBA).div(toBN(this.settings.assetMintingGranularityUBA));
+    }
+    
+    convertLotsToUBA(lots: BNish) {
+        return toBN(lots).mul(this.lotsSize());
+    }
+
+    convertLotsToAMG(lots: BNish) {
+        return toBN(lots).mul(toBN(this.settings.lotSizeAMG));
+    }
+    
+    convertAmgToNATWei(valueAMG: BNish, amgToNATWeiPrice: BNish) {
+        return toBN(valueAMG).mul(toBN(amgToNATWeiPrice)).div(AMG_NATWEI_PRICE_SCALE);
+    }
     
     static async create(common: CommonContext, chainInfo: ChainInfo): Promise<AssetContext> {
         // create mock chain attestation provider
@@ -124,7 +161,7 @@ export class AssetContext {
             redemptionByAnybodyAfterSeconds: 6 * 3600,      // 6 hours
             redemptionConfirmRewardNATWei: toWei(100),      // 100 NAT
             maxRedeemedTickets: 20,                         // TODO: find number that fits comfortably in gas limits
-            paymentChallengeRewardBIPS: 0,
+            paymentChallengeRewardBIPS: 1,
             paymentChallengeRewardNATWei: toWei(300),       // 300 NAT
             withdrawalWaitMinSeconds: 60,
             liquidationPricePremiumBIPS: 1_2500,            // 1.25
