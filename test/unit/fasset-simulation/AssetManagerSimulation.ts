@@ -1,5 +1,5 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { getTestFile, toWei } from "../../utils/helpers";
+import { getTestFile, toBN, toWei } from "../../utils/helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "./Agent";
 import { AssetContext, CommonContext } from "./AssetContext";
@@ -137,18 +137,123 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const [redemptionRequests, remainingLots] = await redeemer.requestRedemption(lots2);
             assertWeb3Equal(remainingLots, 0);
             assert.equal(redemptionRequests.length, 2);
-
             const request1 = redemptionRequests[0];
             assert.equal(request1.agentVault, agent1.vaultAddress);
             const transaction3 = await agent1.performRedemptionPayment(request1);
             await agent1.confirmRedemptionPayment(request1, transaction3.hash);
             await agent1.announceWithdrawal(fullAgentCollateral);
-
             const request2 = redemptionRequests[1];
             assert.equal(request2.agentVault, agent2.vaultAddress);
             const transaction4 = await agent2.performRedemptionPayment(request2);
             await agent2.confirmRedemptionPayment(request2, transaction4.hash);
             await expectRevert(agent2.announceWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+        });
+
+        it("mint and redeem f-assets (one redemption ticket - two redeemers)", async () => {
+            const agent = await Agent.create(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.create(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer1 = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            const redeemer2 = await Redeemer.create(context, redeemerAddress2, underlyingRedeemer2);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 6;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const transaction = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, transaction.hash);
+            assertWeb3Equal(minted.mintedAmountUBA, context.lotsSize().muln(lots));
+            // redeemers "buy" f-assets
+            await context.fAsset.transfer(redeemer1.address, minted.mintedAmountUBA.divn(2), { from: minter.address });
+            await context.fAsset.transfer(redeemer2.address, minted.mintedAmountUBA.divn(2), { from: minter.address });
+            // perform redemptions
+            const [redemptionRequests1, remainingLots1] = await redeemer1.requestRedemption(lots / 2);
+            assertWeb3Equal(remainingLots1, 0);
+            assert.equal(redemptionRequests1.length, 1);
+            const [redemptionRequests2, remainingLots2] = await redeemer2.requestRedemption(lots / 2);
+            assertWeb3Equal(remainingLots2, 0);
+            assert.equal(redemptionRequests2.length, 1);
+            const request1 = redemptionRequests1[0];
+            assert.equal(request1.agentVault, agent.vaultAddress);
+            const transaction3 = await agent.performRedemptionPayment(request1);
+            await agent.confirmRedemptionPayment(request1, transaction3.hash);
+            await expectRevert(agent.announceWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+            const request2 = redemptionRequests2[0];
+            assert.equal(request2.agentVault, agent.vaultAddress);
+            const transaction4 = await agent.performRedemptionPayment(request2);
+            await agent.confirmRedemptionPayment(request2, transaction4.hash);
+            // agent can exit now
+            await agent.exitAvailable();
+            await agent.announceWithdrawal(fullAgentCollateral);
+            await time.increase(300);
+            await agent.destroy();
+        });
+
+        it("mint and redeem f-assets (self-close)", async () => {
+            const agent = await Agent.create(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.create(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const transaction = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, transaction.hash);
+            assertWeb3Equal(minted.mintedAmountUBA, context.lotsSize().muln(lots));
+            // agent "buys" f-assets
+            await context.fAsset.transfer(agent.ownerAddress, minted.mintedAmountUBA, { from: minter.address });
+            // perform self close
+            const [dustChanges, selfClosedUBA] = await agent.selfClose(minted.mintedAmountUBA);
+            assertWeb3Equal(selfClosedUBA, minted.mintedAmountUBA);
+            assert.equal(dustChanges.length, 0);
+            // agent can exit now
+            await agent.exitAvailable();
+            await agent.announceWithdrawal(fullAgentCollateral);
+            await time.increase(300);
+            await agent.destroy();
+        });
+
+        it("mint and redeem f-assets (self-close can create and/or remove dust)", async () => {
+            const agent = await Agent.create(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.create(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const transaction = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, transaction.hash);
+            assertWeb3Equal(minted.mintedAmountUBA, context.lotsSize().muln(lots));
+            // agent "buys" f-assets
+            await context.fAsset.transfer(agent.ownerAddress, minted.mintedAmountUBA, { from: minter.address });
+            // perform partial self close
+            const dustAmountUBA = toBN(5).mul(toBN(context.settings.assetMintingGranularityUBA));
+            const selfCloseAmountUBA = minted.mintedAmountUBA.sub(dustAmountUBA);
+            const [dustChangesUBA1, selfClosedUBA1] = await agent.selfClose(selfCloseAmountUBA);
+            assertWeb3Equal(selfClosedUBA1, selfCloseAmountUBA);
+            assert.equal(dustChangesUBA1.length, 1);
+            assertWeb3Equal(dustChangesUBA1[0], dustAmountUBA);
+            await expectRevert(agent.destroy(), "agent still active");
+            const [dustChangesUBA2, selfClosedUBA2] = await agent.selfClose(dustAmountUBA);
+            assertWeb3Equal(selfClosedUBA2, dustAmountUBA);
+            assert.equal(dustChangesUBA2.length, 1);
+            assertWeb3Equal(dustChangesUBA2[0], 0);
+            // agent can exit now
+            await agent.exitAvailable();
+            await agent.announceWithdrawal(fullAgentCollateral);
+            await time.increase(300);
+            await agent.destroy();
         });
     });
 });

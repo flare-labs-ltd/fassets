@@ -408,7 +408,9 @@ library Redemption {
         // dust first
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         _valueAMG = SafeMath64.min64(_amountAMG, agent.dustAMG);
-        Agents.decreaseDust(_state, _agentVault, _valueAMG);
+        if (_valueAMG > 0) {
+            Agents.decreaseDust(_state, _agentVault, _valueAMG);
+        }
         // redemption tickets
         uint256 maxRedeemedTickets = _state.settings.maxRedeemedTickets;
         for (uint256 i = 0; i < maxRedeemedTickets && _valueAMG < _amountAMG; i++) {

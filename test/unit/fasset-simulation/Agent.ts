@@ -1,6 +1,6 @@
 import { AgentVaultInstance } from "../../../typechain-truffle";
-import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
-import { EventArgs, findRequiredEvent, requiredEventArgs } from "../../utils/events";
+import { DustChanged, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { EventArgs, filterEvents, findEvent, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BNish, toBN } from "../../utils/helpers";
 import { AssetContext, AssetContextClient } from "./AssetContext";
@@ -72,5 +72,14 @@ export class Agent extends AssetContextClient {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
         const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerAddress });
         return requiredEventArgs(res, 'RedemptionPerformed');
+    }
+
+    async selfClose(amountUBA: BN): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN]> {
+        const res = await this.assetManager.selfClose(this.agentVault.address, amountUBA, { from: this.ownerAddress });
+        const dustChangedEvents = filterEvents(res.logs, 'DustChanged').map(e => e.args);
+        const selfClose = requiredEventArgs(res, 'SelfClose');
+        dustChangedEvents.every(dc => assert.equal(dc.agentVault, this.agentVault.address));
+        assert.equal(selfClose.agentVault, this.agentVault.address);
+        return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA];
     }
 }
