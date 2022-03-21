@@ -12,6 +12,8 @@ export const BN_ZERO = new BN(0);
 
 export const BIG_NUMBER_ZERO = BigNumber.from(0);
 
+export const BYTES32_ZERO = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
 export const MAX_BIPS = 10_000;
 
 /**

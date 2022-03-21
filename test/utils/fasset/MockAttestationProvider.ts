@@ -1,5 +1,5 @@
 import { AttestationClientMockInstance } from "../../../typechain-truffle";
-import { BN_ZERO, toBN } from "../helpers";
+import { BN_ZERO, BYTES32_ZERO, toBN } from "../helpers";
 import { DHBalanceDecreasingTransaction, DHConfirmedBlockHeightExists, DHPayment, DHReferencedPaymentNonexistence, DHType } from "../verification/generated/attestation-hash-types";
 import { dataHash } from "../verification/generated/attestation-hash-utils";
 import { ARType } from "../verification/generated/attestation-request-types";
@@ -45,7 +45,7 @@ export class MockAttestationProvider {
             utxo: toBN(utxo),
             sourceAddress: web3.utils.keccak256(sourceAddress),
             receivingAddress: web3.utils.keccak256(receivingAddress),
-            paymentReference: transaction.reference ?? "0",
+            paymentReference: transaction.reference ?? BYTES32_ZERO,
             spentAmount: spent,
             receivedAmount: transaction.received[receivingAddress],
             oneToOne: false,    // not needed
@@ -72,7 +72,7 @@ export class MockAttestationProvider {
             transactionHash: transaction.hash,
             sourceAddress: web3.utils.keccak256(sourceAddress),
             spentAmount: spent,
-            paymentReference: transaction.reference ?? "0",
+            paymentReference: transaction.reference ?? BYTES32_ZERO,
         };
         return web3DeepNormalize(proof);
     }

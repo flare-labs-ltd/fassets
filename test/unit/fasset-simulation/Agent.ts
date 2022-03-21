@@ -83,7 +83,7 @@ export class Agent extends AssetContextClient {
         return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA];
     }
 
-    async performPayment(paymentAddress: string, paymentAmount: BNish, gasUsed: BNish = 0, paymentReference: BN | null = null, status: number = 0) {
+    async performPayment(paymentAddress: string, paymentAmount: BNish, gasUsed: BNish = 0, paymentReference: string | null = null, status: number = 0) {
         return this.chain.addSimpleTransaction(this.underlyingAddress, paymentAddress, paymentAmount, gasUsed, paymentReference, status);
     }
 }
