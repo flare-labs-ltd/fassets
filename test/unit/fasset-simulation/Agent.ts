@@ -1,6 +1,8 @@
 import { AgentVaultInstance } from "../../../typechain-truffle";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
+import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
+import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BNish, toBN } from "../../utils/helpers";
 import { AssetContext, AssetContextClient } from "./AssetContext";
@@ -13,6 +15,7 @@ export class Agent extends AssetContextClient {
         public ownerAddress: string,
         public agentVault: AgentVaultInstance,
         public underlyingAddress: string,
+        public wallet: IChainWallet,
     ) {
         super(context);
     }
@@ -21,13 +24,24 @@ export class Agent extends AssetContextClient {
         return this.agentVault.address;
     }
     
-    static async create(ctx: AssetContext, ownerAddress: string, underlyingAddress: string) {
+    static async createTest(ctx: AssetContext, ownerAddress: string, underlyingAddress: string) {
+        if (!(ctx.chain instanceof MockChain)) assert.fail("only for mock chains");
         // mint some funds on underlying address (just enough to make EOA proof)
-        ctx.chain.mint(underlyingAddress, 1);
-        // create and prove transaction from underlyingAddress
-        const tx = ctx.chain.addSimpleTransaction(underlyingAddress, underlyingAddress, 1, 0, PaymentReference.addressOwnership(ownerAddress));
-        const proof = await ctx.attestationProvider.provePayment(tx.hash, underlyingAddress, underlyingAddress);
-        await ctx.assetManager.proveUnderlyingAddressEOA(proof, { from: ownerAddress });
+        if (ctx.chainInfo.requireEOAProof) {
+            ctx.chain.mint(underlyingAddress, ctx.chain.requiredFee.addn(1));
+        }
+        // create mock wallet
+        const wallet = new MockChainWallet(ctx.chain);
+        return await Agent.create(ctx, ownerAddress, underlyingAddress, wallet);
+    }
+    
+    static async create(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, wallet: IChainWallet) {
+        // create and prove transaction from underlyingAddress if EOA required
+        if (ctx.chainInfo.requireEOAProof) {
+            const txHash = await wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(ownerAddress));
+            const proof = await ctx.attestationProvider.provePayment(txHash, underlyingAddress, underlyingAddress);
+            await ctx.assetManager.proveUnderlyingAddressEOA(proof, { from: ownerAddress });
+        }
         // create agent
         const response = await ctx.assetManager.createAgent(underlyingAddress, { from: ownerAddress });
         // extract agent vault address from AgentCreated event
@@ -35,7 +49,7 @@ export class Agent extends AssetContextClient {
         // get vault contract at agent's vault address address
         const agentVault = await AgentVault.at(event.args.agentVault);
         // creater object
-        return new Agent(ctx, ownerAddress, agentVault, underlyingAddress);
+        return new Agent(ctx, ownerAddress, agentVault, underlyingAddress, wallet);
     }
     
     async depositCollateral(amountNATWei: BNish) {
@@ -65,7 +79,7 @@ export class Agent extends AssetContextClient {
     
     async performRedemptionPayment(request: EventArgs<RedemptionRequested>) {
         const paymentAmount = request.valueUBA.sub(request.feeUBA);
-        return await this.performPayment(request.paymentAddress, paymentAmount, 0, request.paymentReference);
+        return await this.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
     }
 
     async confirmRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
@@ -83,7 +97,7 @@ export class Agent extends AssetContextClient {
         return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA];
     }
 
-    async performPayment(paymentAddress: string, paymentAmount: BNish, gasUsed: BNish = 0, paymentReference: string | null = null, status: number = 0) {
-        return this.chain.addSimpleTransaction(this.underlyingAddress, paymentAddress, paymentAmount, gasUsed, paymentReference, status);
+    async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null) {
+        return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference);
     }
 }

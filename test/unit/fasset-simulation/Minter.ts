@@ -1,19 +1,28 @@
 import { CollateralReserved } from "../../../typechain-truffle/AssetManager";
 import { EventArgs, requiredEventArgs } from "../../utils/events";
+import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
+import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
 export class Minter extends AssetContextClient {
     constructor(
         context: AssetContext,
         public address: string,
-        public underlyingAddress: string
+        public underlyingAddress: string,
+        public wallet: IChainWallet,
     ) {
         super(context);
     }
     
-    static async create(ctx: AssetContext, address: string, underlyingAddress: string, underlyingBalance: BN) {
+    static async createTest(ctx: AssetContext, address: string, underlyingAddress: string, underlyingBalance: BN) {
+        if (!(ctx.chain instanceof MockChain)) assert.fail("only for mock chains");
         ctx.chain.mint(underlyingAddress, underlyingBalance);
-        return new Minter(ctx, address, underlyingAddress);
+        const wallet = new MockChainWallet(ctx.chain);
+        return Minter.create(ctx, address, underlyingAddress, wallet);
+    }
+    
+    static async create(ctx: AssetContext, address: string, underlyingAddress: string, wallet: IChainWallet) {
+        return new Minter(ctx, address, underlyingAddress, wallet);
     }
     
     async reserveCollateral(agent: string, lots: number) {
@@ -24,7 +33,7 @@ export class Minter extends AssetContextClient {
     
     async performMintingPayment(crt: EventArgs<CollateralReserved>) {
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
-        return this.chain.addSimpleTransaction(this.underlyingAddress, crt.paymentAddress, paymentAmount, 0, crt.paymentReference);
+        return this.wallet.addTransaction(this.underlyingAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
     }
     
     async executeMinting(crt: EventArgs<CollateralReserved>, transactionHash: string) {

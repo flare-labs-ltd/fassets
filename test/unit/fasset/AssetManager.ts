@@ -5,7 +5,7 @@ import { findRequiredEvent } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvider";
-import { MockChain } from "../../utils/fasset/MockChain";
+import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { getTestFile, toBN, toBNExp, toStringExp } from "../../utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
@@ -66,6 +66,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let settings: AssetManagerSettings;
     const chainId = 1;
     let chain: MockChain;
+    let wallet: MockChainWallet;
     let attestationProvider: MockAttestationProvider;
     let eventDecoder: Web3EventDecoder;
     
@@ -83,8 +84,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         // mint some funds on underlying address (just enough to make EOA proof)
         chain.mint(underlyingAddress, 101);
         // create and prove transaction from underlyingAddress
-        const tx = chain.addSimpleTransaction(underlyingAddress, underlyingAddress, 1, 100, PaymentReference.addressOwnership(owner));
-        const proof = await attestationProvider.provePayment(tx.hash, underlyingAddress, underlyingAddress);
+        const txHash = await wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(owner), { maxFee: 100 });
+        const proof = await attestationProvider.provePayment(txHash, underlyingAddress, underlyingAddress);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
         // create agent
         const response = await assetManager.createAgent(underlyingAddress, { from: owner });
@@ -100,6 +101,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         attestationClient = await AttestationClient.new();
         // create mock chain attestation provider
         chain = new MockChain();
+        wallet = new MockChainWallet(chain);
         attestationProvider = new MockAttestationProvider(chain, attestationClient, chainId);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
@@ -162,9 +164,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // init
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             // act
-            const tx = chain.addSimpleTransaction(underlyingAgent1, underlyingBurnAddr, 1, 1, PaymentReference.addressOwnership(agentOwner1));
+            const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
             // assert
-            const proof = await attestationProvider.provePayment(tx.hash, underlyingAgent1, underlyingBurnAddr);
+            const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
             await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
         });
         
@@ -172,12 +174,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // init
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             // act
-            const tx = chain.addSimpleTransaction(underlyingAgent1, underlyingBurnAddr, 1, 1, PaymentReference.addressOwnership(agentOwner1));
-            const proof = await attestationProvider.provePayment(tx.hash, underlyingAgent1, underlyingBurnAddr);
+            const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
+            const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
             await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
             const res = await assetManager.createAgent(underlyingAgent1, { from: agentOwner1 });
             // assert
-            expectEvent(res, "AgentCreated", { owner: agentOwner1, agentType: toBN("1"), underlyingAddress: underlyingAgent1 });
+            expectEvent(res, "AgentCreated", { owner: agentOwner1, agentType: toBN(1), underlyingAddress: underlyingAgent1 });
         });
 
         it("should require EOA check to create agent", async () => {

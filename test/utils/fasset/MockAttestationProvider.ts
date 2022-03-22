@@ -7,8 +7,17 @@ import { AttestationType } from "../verification/generated/attestation-types-enu
 import { MerkleTree } from "../MerkleTree";
 import { web3DeepNormalize } from "../web3assertions";
 import { MockChain } from "./MockChain";
+import { TxInputOutput, TX_FAILED } from "./ChainInterfaces";
 
 type ProvedDH<T extends DHType> = T & { merkleProof: string };
+
+function totalValueFor(ios: TxInputOutput[], address: string) {
+    let total = BN_ZERO;
+    for (const [a, v] of ios) {
+        if (a === address) total = total.add(v);
+    }
+    return total;
+}
 
 export class MockAttestationProvider {
     constructor(
@@ -28,15 +37,13 @@ export class MockAttestationProvider {
         const [blockNumber, txInd] = this.chain.transactionIndex[transactionHash];
         const block = this.chain.blocks[blockNumber];
         const transaction = block.transactions[txInd];
-        const sources = Object.keys(transaction.spent);
-        if (sourceAddress == null) sourceAddress = sources[0];
-        const recipients = Object.keys(transaction.received);
-        if (receivingAddress == null) receivingAddress = recipients[0];
-        const utxo = recipients.indexOf(receivingAddress);
+        if (sourceAddress == null) sourceAddress = transaction.inputs[0][0];
+        if (receivingAddress == null) receivingAddress = transaction.outputs[0][0];
+        const utxo = transaction.outputs.findIndex(([a, _]) => a === receivingAddress);
         if (utxo < 0) {
             return null;
         }
-        const spent = (transaction.spent[sourceAddress] ?? BN_ZERO).sub(transaction.received[sourceAddress] ?? BN_ZERO);
+        const spent = totalValueFor(transaction.inputs, sourceAddress).sub(totalValueFor(transaction.outputs, sourceAddress));
         const proof: DHPayment = {
             stateConnectorRound: this.stateConnectorRound,
             blockNumber: toBN(blockNumber),
@@ -47,7 +54,7 @@ export class MockAttestationProvider {
             receivingAddress: web3.utils.keccak256(receivingAddress),
             paymentReference: transaction.reference ?? BYTES32_ZERO,
             spentAmount: spent,
-            receivedAmount: transaction.received[receivingAddress],
+            receivedAmount: totalValueFor(transaction.outputs, receivingAddress),
             oneToOne: false,    // not needed
             status: toBN(transaction.status)
         };
@@ -61,7 +68,7 @@ export class MockAttestationProvider {
         const [blockNumber, txInd] = this.chain.transactionIndex[transactionHash];
         const block = this.chain.blocks[blockNumber];
         const transaction = block.transactions[txInd];
-        const spent = (transaction.spent[sourceAddress] ?? BN_ZERO).sub(transaction.received[sourceAddress] ?? BN_ZERO);
+        const spent = totalValueFor(transaction.inputs, sourceAddress).sub(totalValueFor(transaction.outputs, sourceAddress));
         if (spent.eqn(0)) {
             return null;    // no balance decrease for sourceAddress
         }
@@ -114,9 +121,8 @@ export class MockAttestationProvider {
             }
             for (const transaction of block.transactions) {
                 const found = transaction.reference === paymentReference
-                    && destinationAddress in transaction.received
-                    && transaction.received[destinationAddress].eq(amount)
-                    && transaction.status !== 1;    // status != FAILED
+                    && totalValueFor(transaction.outputs, destinationAddress).eq(amount)
+                    && transaction.status !== TX_FAILED;
                 if (found) {
                     return [true, firstCheckedBlock, bn];
                 }
@@ -125,7 +131,7 @@ export class MockAttestationProvider {
         return [false, firstCheckedBlock, -1];  // not found, but also didn't find overflow block
     }
 
-    blockHeightExists(blockNumber: number): DHConfirmedBlockHeightExists | null {
+    confirmedBlockHeightExists(blockNumber: number): DHConfirmedBlockHeightExists | null {
         if (blockNumber >= this.chain.blocks.length) {
             return null;
         }
@@ -157,7 +163,7 @@ export class MockAttestationProvider {
     }
 
     async proveConfirmedBlockHeightExists(blockNumber: number): Promise<ProvedDH<DHConfirmedBlockHeightExists>> {
-        const proof = this.blockHeightExists(blockNumber);
+        const proof = this.confirmedBlockHeightExists(blockNumber);
         assert.isNotNull(proof, "proveConfirmedBlockHeightExists: block not found");
         return await this.proveGeneric(AttestationType.ConfirmedBlockHeightExists, proof!);
     }

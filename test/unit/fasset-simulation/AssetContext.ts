@@ -1,6 +1,7 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
+import { IBlockChain } from "../../utils/fasset/ChainInterfaces";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvider";
 import { MockChain } from "../../utils/fasset/MockChain";
@@ -28,7 +29,7 @@ export class CommonContext {
         public natFtso: FtsoMockInstance,
     ) {}
 
-    static async create(governance: string, assetManagerController: string, natInfo: NatInfo): Promise<CommonContext> {
+    static async createTest(governance: string, assetManagerController: string, natInfo: NatInfo): Promise<CommonContext> {
         // create atetstation client
         const attestationClient = await AttestationClient.new();
         // create WNat token
@@ -56,7 +57,7 @@ export class AssetContext {
         public natFtso: FtsoMockInstance,
         // asset context
         public chainInfo: ChainInfo,
-        public chain: MockChain,
+        public chain: IBlockChain,
         public attestationProvider: MockAttestationProvider,
         public settings: AssetManagerSettings,
         public assetManager: AssetManagerInstance,
@@ -81,7 +82,8 @@ export class AssetContext {
     }
     
     async updateUnderlyingBlock() {
-        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(this.chain.blocks.length - 1);
+        const height = await this.chain.getBlockHeight();
+        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(height);
         await this.assetManager.updateCurrentBlock(proof);
     }
 
@@ -119,7 +121,7 @@ export class AssetContext {
         return toBN(valueAMG).mul(toBN(amgToNATWeiPrice)).div(AMG_NATWEI_PRICE_SCALE);
     }
     
-    static async create(common: CommonContext, chainInfo: ChainInfo): Promise<AssetContext> {
+    static async createTest(common: CommonContext, chainInfo: ChainInfo): Promise<AssetContext> {
         // create mock chain attestation provider
         const chain = new MockChain();
         const attestationProvider = new MockAttestationProvider(chain, common.attestationClient, chainInfo.chainId);
