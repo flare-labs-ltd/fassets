@@ -1,11 +1,12 @@
 import { AgentVaultInstance } from "../../../typechain-truffle";
-import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { CollateralReserved, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BNish, toBN } from "../../utils/helpers";
 import { AssetContext, AssetContextClient } from "./AssetContext";
+import { Minter } from "./Minter";
 
 const AgentVault = artifacts.require('AgentVault');
 
@@ -88,7 +89,27 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'RedemptionPerformed');
     }
 
-    async selfClose(amountUBA: BN): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN]> {
+    async executeMinting(crt: EventArgs<CollateralReserved>, transactionHash: string, minter?: Minter) {
+        let sourceAddress: string;
+        if (minter) {
+            sourceAddress = minter.underlyingAddress;
+        } else {
+            const tx = await this.chain.getTransaction(transactionHash);
+            sourceAddress = tx?.inputs[0][0]!;
+        }
+        const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, this.underlyingAddress);
+        const res = await this.assetManager.executeMinting(proof, crt.collateralReservationId, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'MintingExecuted');
+    }
+
+    async selfMint(amountUBA: BNish, lots: BNish) {
+        const transactionHash = await this.performPayment(this.underlyingAddress, amountUBA, PaymentReference.selfMint(this.agentVault.address));
+        const proof = await this.attestationProvider.provePayment(transactionHash, null, this.underlyingAddress);
+        const res = await this.assetManager.selfMint(proof, this.agentVault.address, lots, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'MintingExecuted');
+    }
+
+    async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN]> {
         const res = await this.assetManager.selfClose(this.agentVault.address, amountUBA, { from: this.ownerAddress });
         const dustChangedEvents = filterEvents(res.logs, 'DustChanged').map(e => e.args);
         const selfClose = requiredEventArgs(res, 'SelfClose');

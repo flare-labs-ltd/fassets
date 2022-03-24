@@ -43,6 +43,19 @@ export class Challenger extends AssetContextClient {
         return requiredEventArgs(res, 'UnderlyingFreeBalanceNegative');
     }
 
+    async confirmRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent?: Agent) {
+        let sourceAddress: string;
+        if (agent) {
+            sourceAddress = agent.underlyingAddress;
+        } else {
+            const tx = await this.chain.getTransaction(transactionHash);
+            sourceAddress = tx?.inputs[0][0]!;
+        }
+        const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, request.paymentAddress);
+        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.address });
+        return requiredEventArgs(res, 'RedemptionPerformed');
+    }
+
     async getChallengerReward(backingAMGAtChallenge: BNish) {
         return toBN(this.context.settings.paymentChallengeRewardNATWei)
             .add(
