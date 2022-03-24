@@ -196,6 +196,94 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.destroy();
         });
 
+        it("mint and redeem defaults (agent)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            // redeemer "buys" f-assets
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // perform redemption
+            const [redemptionRequests, remainingLots] = await redeemer.requestRedemption(lots);
+            assertWeb3Equal(remainingLots, 0);
+            assert.equal(redemptionRequests.length, 1);
+            const request = redemptionRequests[0];
+            assert.equal(request.agentVault, agent.vaultAddress);
+            // create some blocks to create overflow block
+            for (let i = 0; i < context.chainInfo.underlyingBlocksForPayment; i++) {
+                await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
+            }
+            const startBalanceRedeemer = await context.wnat.balanceOf(redeemerAddress1);
+            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const res = await agent.redemptionPaymentDefault(request);
+            const endBalanceRedeemer = await context.wnat.balanceOf(redeemerAddress1);
+            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            // test rewarding
+            assertWeb3Equal(res.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(context.convertLotsToAMG(lots)));
+            assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), res.redeemedCollateralWei);
+            assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), res.redeemedCollateralWei);
+            // agent can exit now
+            await agent.exitAvailable();
+            await agent.announceWithdrawal(fullAgentCollateral.sub(res.redeemedCollateralWei));
+            await time.increase(300);
+            await agent.destroy();
+        });
+
+        it("mint and redeem defaults (redeemer)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            // redeemer "buys" f-assets
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // perform redemption
+            const [redemptionRequests, remainingLots] = await redeemer.requestRedemption(lots);
+            assertWeb3Equal(remainingLots, 0);
+            assert.equal(redemptionRequests.length, 1);
+            const request = redemptionRequests[0];
+            assert.equal(request.agentVault, agent.vaultAddress);
+            // create some blocks to create overflow block
+            for (let i = 0; i < context.chainInfo.underlyingBlocksForPayment; i++) {
+                await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
+            }
+            const startBalanceRedeemer = await context.wnat.balanceOf(redeemerAddress1);
+            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const res = await redeemer.redemptionPaymentDefault(request);
+            const endBalanceRedeemer = await context.wnat.balanceOf(redeemerAddress1);
+            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            // test rewarding
+            assertWeb3Equal(res.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(context.convertLotsToAMG(lots)));
+            assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), res.redeemedCollateralWei);
+            assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), res.redeemedCollateralWei);
+            // agent can exit now
+            await agent.exitAvailable();
+            await agent.announceWithdrawal(fullAgentCollateral.sub(res.redeemedCollateralWei));
+            await time.increase(300);
+            await agent.destroy();
+        });
+
         it("mint and redeem f-assets (self-mint)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             // make agent available

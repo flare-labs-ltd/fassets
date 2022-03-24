@@ -89,6 +89,27 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'RedemptionPerformed');
     }
 
+    async redemptionPaymentDefault(request: EventArgs<RedemptionRequested>) {
+        const proof = await this.attestationProvider.proveReferencedPaymentNonexistence(
+            request.paymentAddress,
+            request.paymentReference,
+            request.valueUBA.sub(request.feeUBA),
+            request.lastUnderlyingBlock.toNumber(),
+            request.lastUnderlyingTimestamp.toNumber());
+        const res = await this.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'RedemptionDefault');
+    }
+
+    async getRedemptionPaymentDefaultValue(requestValueAMG: BNish) {
+        return this.context.convertAmgToNATWei(
+                toBN(requestValueAMG)
+                .mul(toBN(this.context.settings.redemptionFailureFactorBIPS))
+                .divn(10_000),
+                await this.context.currentAmgToNATWeiPrice()
+            );
+            // TODO collateral share
+    }
+
     async executeMinting(crt: EventArgs<CollateralReserved>, transactionHash: string, minter?: Minter) {
         let sourceAddress: string;
         if (minter) {

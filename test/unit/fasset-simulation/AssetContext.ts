@@ -124,6 +124,7 @@ export class AssetContext {
     static async createTest(common: CommonContext, chainInfo: ChainInfo): Promise<AssetContext> {
         // create mock chain attestation provider
         const chain = new MockChain();
+        chain.secondsPerBlock = chainInfo.blockTime;
         const attestationProvider = new MockAttestationProvider(chain, common.attestationClient, chainInfo.chainId);
         // create asset FTSO and set some price
         const assetFtso = await FtsoMock.new(chainInfo.symbol);
