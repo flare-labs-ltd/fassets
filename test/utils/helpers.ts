@@ -70,6 +70,16 @@ export function toBN(x: BN | BigNumber | number | string): BN {
 }
 
 /**
+ * Helper wrapper to convert BN, BigNumber or plain string to number. May lose precision, so use it for tests only.
+ * @param x number expressed in any reasonable type
+ * @returns same number as Number
+ */
+export function toNumber(x: BN | BigNumber | number | string) {
+    if (typeof x === 'number') return x;
+    return Number(x.toString());
+}
+
+/**
  * Helper wrapper to convert number to Ethers' BigNumber 
  * @param x number expressed in any reasonable type
  * @returns same number as BigNumber

@@ -1,10 +1,12 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
+import { AttestationHelper } from "../../utils/fasset/AttestationHelper";
 import { IBlockChain } from "../../utils/fasset/ChainInterfaces";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
-import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvider";
+import { IStateConnectorClient } from "../../utils/fasset/IStateConnectorClient";
 import { MockChain } from "../../utils/fasset/MockChain";
+import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { BNish, toBN, toBNExp, toWei } from "../../utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { web3DeepNormalize } from "../../utils/web3assertions";
@@ -58,7 +60,8 @@ export class AssetContext {
         // asset context
         public chainInfo: ChainInfo,
         public chain: IBlockChain,
-        public attestationProvider: MockAttestationProvider,
+        public stateConnectorClient: IStateConnectorClient,
+        public attestationProvider: AttestationHelper,
         public settings: AssetManagerSettings,
         public assetManager: AssetManagerInstance,
         public fAsset: FAssetInstance,
@@ -125,7 +128,8 @@ export class AssetContext {
         // create mock chain attestation provider
         const chain = new MockChain();
         chain.secondsPerBlock = chainInfo.blockTime;
-        const attestationProvider = new MockAttestationProvider(chain, common.attestationClient, chainInfo.chainId);
+        const stateConnectorClient = new MockStateConnectorClient(common.attestationClient, { [chainInfo.chainId]: chain }, 'on_wait');
+        const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId, 0);
         // create asset FTSO and set some price
         const assetFtso = await FtsoMock.new(chainInfo.symbol);
         await assetFtso.setCurrentPrice(toBNExp(chainInfo.startPrice, 5));
@@ -136,7 +140,7 @@ export class AssetContext {
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
             chainInfo.name, chainInfo.symbol, chainInfo.decimals, web3DeepNormalize(settings));
         return new AssetContext(common.governance, common.assetManagerController, common.attestationClient, common.ftsoRegistry, common.wnat, common.natFtso,
-            chainInfo, chain, attestationProvider, settings, assetManager, fAsset, assetFtso);
+            chainInfo, chain, stateConnectorClient, attestationProvider, settings, assetManager, fAsset, assetFtso);
     }
     
     static async createTestSettings(ctx: CommonContext, ci: ChainInfo): Promise<AssetManagerSettings> {

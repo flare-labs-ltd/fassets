@@ -3,12 +3,14 @@ import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, Ft
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { findRequiredEvent } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
+import { AttestationHelper } from "../../utils/fasset/AttestationHelper";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
-import { MockAttestationProvider } from "../../utils/fasset/MockAttestationProvider";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
+import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { getTestFile, toBN, toBNExp, toStringExp } from "../../utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
+import { SourceId } from "../../utils/verification/sources/sources";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
 
 const AgentVault = artifacts.require('AgentVault');
@@ -64,10 +66,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let natFtso: FtsoMockInstance;
     let assetFtso: FtsoMockInstance;
     let settings: AssetManagerSettings;
-    const chainId = 1;
+    const chainId: SourceId = 1;
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let attestationProvider: MockAttestationProvider;
+    let stateConnectorClient: MockStateConnectorClient;
+    let attestationProvider: AttestationHelper;
     let eventDecoder: Web3EventDecoder;
     
     // addresses
@@ -102,7 +105,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         // create mock chain attestation provider
         chain = new MockChain();
         wallet = new MockChainWallet(chain);
-        attestationProvider = new MockAttestationProvider(chain, attestationClient, chainId);
+        stateConnectorClient = new MockStateConnectorClient(attestationClient, { [chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);

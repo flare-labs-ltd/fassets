@@ -1,5 +1,5 @@
 import { BNish, BN_ZERO, systemTimestamp, toBN } from "../helpers";
-import { IBlock, IBlockChain, IChainWallet, ITransaction, TransactionOptions, TransactionOptionsWithFee, TxInputOutput, TX_FAILED, TX_SUCCESS } from "./ChainInterfaces";
+import { IBlock, IBlockChain, IBlockId, IChainWallet, ITransaction, TransactionOptions, TransactionOptionsWithFee, TxInputOutput, TX_FAILED, TX_SUCCESS } from "./ChainInterfaces";
 
 export type MockTransactionOptions = TransactionOptions & { status?: number };
 export type MockTransactionOptionsWithFee = TransactionOptionsWithFee & { status?: number };
@@ -45,10 +45,10 @@ export class MockChain implements IBlockChain {
         return this.blocks[block].transactions[ind];
     }
     
-    async getTransactionBlock(txHash: string): Promise<string | null> {
+    async getTransactionBlock(txHash: string): Promise<IBlockId | null> {
         const [block, _] = this.transactionIndex[txHash] ?? [null, null];
         if (block == null) return null;
-        return this.blocks[block].hash;
+        return { number: block, hash: this.blocks[block].hash };
     }
     
     async getBalance(address: string): Promise<BN> {

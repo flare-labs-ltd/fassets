@@ -1,5 +1,4 @@
 import BN from "bn.js";
-import { BigNumber } from "ethers";
 import { readFileSync, writeFileSync } from "fs";
 import { toBN } from "./helpers";
 
@@ -27,11 +26,6 @@ export class Statistics {
         const avg = this.average?.toFixed(decimals) ?? '---';
         return `n: ${this.count}  min: ${min}  avg: ${avg}  max: ${max}`;
     }
-}
-
-export function toNumber(x: BN | BigNumber | number | string) {
-    if (typeof x === 'number') return x;
-    return Number(x.toString());
 }
 
 export function jsonBNserializer(this: any, key: any, serializedValue: any) {
