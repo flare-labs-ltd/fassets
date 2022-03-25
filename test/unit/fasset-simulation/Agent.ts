@@ -1,6 +1,6 @@
 import { AgentVaultInstance } from "../../../typechain-truffle";
-import { CollateralReserved, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
-import { EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
+import { AllowedPaymentAnnounced, CollateralReserved, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { checkEventNotEmited, EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
@@ -77,16 +77,68 @@ export class Agent extends AssetContextClient {
         const args = requiredEventArgs(res, 'AgentDestroyed');
         assert.equal(args.agentVault, this.vaultAddress);
     }
+
+    async performTopupPayment(amount: BNish, mint: boolean = true, underlyingAddress: string = "someAddress") {
+        if (mint) {
+            if (!(this.chain instanceof MockChain)) assert.fail("only for mock chains");
+            this.chain.mint(underlyingAddress, amount);
+        }
+        return await this.wallet.addTransaction(underlyingAddress, this.underlyingAddress, amount, PaymentReference.topup(this.agentVault.address));
+    }
+
+    async confirmTopupPayment(transactionHash: string) {
+        const proof = await this.attestationProvider.provePayment(transactionHash, null, this.underlyingAddress);
+        await this.assetManager.confirmTopupPayment(proof, this.agentVault.address, { from: this.ownerAddress });
+    }
+
+    async announceAllowedPayment() {
+        const res = await this.assetManager.announceAllowedPayment(this.agentVault.address, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'AllowedPaymentAnnounced');
+    }
+
+    async performAllowedPayment(request: EventArgs<AllowedPaymentAnnounced>, amount: BNish, underlyingAddress: string = "someAddress") {
+        return await this.wallet.addTransaction(this.underlyingAddress, underlyingAddress, amount, request.paymentReference);
+    }
+
+    async confirmAllowedPayment(request: EventArgs<AllowedPaymentAnnounced>, transactionHash: string) {
+        const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, null);
+        const res = await this.assetManager.confirmAllowedPayment(proof, this.agentVault.address, request.announcementId, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'AllowedPaymentConfirmed');
+    }
     
     async performRedemptionPayment(request: EventArgs<RedemptionRequested>) {
         const paymentAmount = request.valueUBA.sub(request.feeUBA);
         return await this.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
     }
 
-    async confirmRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
+    async confirmActiveRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
         const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerAddress });
+        findRequiredEvent(res, 'RedemptionFinished');
         return requiredEventArgs(res, 'RedemptionPerformed');
+    }
+    
+    async confirmDefaultedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
+        const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
+        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerAddress });
+        findRequiredEvent(res, 'RedemptionFinished');
+        checkEventNotEmited(res, 'RedemptionPerformed');
+        checkEventNotEmited(res, 'RedemptionPaymentFailed');
+        checkEventNotEmited(res, 'RedemptionPaymentBlocked');
+    }
+
+    async confirmFailedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
+        const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
+        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerAddress });
+        findRequiredEvent(res, 'RedemptionFinished');
+        return requiredEventArgs(res, 'RedemptionPaymentFailed');
+    }
+
+    async confirmBlockedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
+        const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
+        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerAddress });
+        findRequiredEvent(res, 'RedemptionFinished');
+        return requiredEventArgs(res, 'RedemptionPaymentBlocked');
     }
 
     async redemptionPaymentDefault(request: EventArgs<RedemptionRequested>) {
@@ -100,9 +152,14 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'RedemptionDefault');
     }
 
-    async getRedemptionPaymentDefaultValue(requestValueAMG: BNish) {
+    async finishRedemptionWithoutPayment(request: EventArgs<RedemptionRequested>) {
+        const res = await this.assetManager.finishRedemptionWithoutPayment(request.requestId, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'RedemptionFinished');
+    }
+
+    async getRedemptionPaymentDefaultValue(lots: BNish) {
         return this.context.convertAmgToNATWei(
-                toBN(requestValueAMG)
+                toBN(this.context.convertLotsToAMG(lots))
                 .mul(toBN(this.context.settings.redemptionFailureFactorBIPS))
                 .divn(10_000),
                 await this.context.currentAmgToNATWeiPrice()
