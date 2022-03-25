@@ -26,8 +26,9 @@ export class Minter extends AssetContextClient {
     }
     
     async reserveCollateral(agent: string, lots: number) {
+        const agentInfo = await this.assetManager.getAgentInfo(agent);
         const crFee = await this.assetManager.collateralReservationFee(lots);
-        const res = await this.assetManager.reserveCollateral(agent, lots, { from: this.address, value: crFee });
+        const res = await this.assetManager.reserveCollateral(agent, lots, agentInfo.feeBIPS, { from: this.address, value: crFee });
         return requiredEventArgs(res, 'CollateralReserved');
     }
     

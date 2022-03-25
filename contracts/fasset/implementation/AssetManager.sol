@@ -317,19 +317,25 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * to requested lots NAT market price.
      * On success the minter receives instructions for underlying payment (value, fee and payment reference) 
      * in event CollateralReserved. Then the minter has to pay `value + fee` on the underlying chain.
+     * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains
+     * f-assets. Otherwise the agent collects the collateral reservation fee.
      * @param _agentVault agent vault address
      * @param _lots the number of lots for which to reserve collateral
+     * @param _maxMintingFeeBIPS maximum minting fee (BIPS) that can be charged by the agent - best is just to
+     *      copy current agent's published fee; used to prevent agent from front-running reservation request
+     *      and increasing fee (that would mean that the minter would have to pay raised fee or forfeit
+     *      collateral reservation fee)
      */
     function reserveCollateral(
         address _agentVault, 
-        uint64 _lots
+        uint64 _lots,
+        uint64 _maxMintingFeeBIPS
     ) 
         external payable 
     {
-        CollateralReservations.reserveCollateral(state, msg.sender, _agentVault, _lots);
+        CollateralReservations.reserveCollateral(state, msg.sender, _agentVault, _lots, _maxMintingFeeBIPS);
     }
 
-    
     /**
      * Return the collateral reservation fee amount that has to be passed to the reserveCollateral method.
      * @param _lots the number of lots for which to reserve collateral

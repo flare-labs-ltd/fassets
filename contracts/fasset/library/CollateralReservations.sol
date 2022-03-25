@@ -34,7 +34,8 @@ library CollateralReservations {
         AssetManagerState.State storage _state, 
         address _minter,
         address _agentVault,
-        uint64 _lots
+        uint64 _lots,
+        uint64 _maxMintingFeeBIPS
     )
         external
     {
@@ -44,6 +45,7 @@ library CollateralReservations {
         require(_lots > 0, "cannot mint 0 blocks");
         require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
         require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
+        require(_maxMintingFeeBIPS >= agent.feeBIPS, "agent's fee too high");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
         agent.reservedAMG += valueAMG;
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
