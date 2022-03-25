@@ -40,8 +40,8 @@ async function createTestSettings(attestationClient: AttestationClientMockInstan
         underlyingSecondsForPayment: 120,                       // 12s per block assumed
         redemptionFeeBips: 200,                                 // 2%
         redemptionFailureFactorBIPS: 1_2000,                    // 1.2
-        redemptionByAnybodyAfterSeconds: 6 * 3600,              // 6 hours
-        redemptionConfirmRewardNATWei: toStringExp(100, 18),    // 100 NAT
+        confirmationByOthersAfterSeconds: 6 * 3600,              // 6 hours
+        confirmationByOthersRewardNATWei: toStringExp(100, 18),    // 100 NAT
         maxRedeemedTickets: 20,                                 // TODO: find number that fits comfortably in gas limits
         paymentChallengeRewardBIPS: 0,
         paymentChallengeRewardNATWei: toStringExp(300, 18),     // 300 NAT

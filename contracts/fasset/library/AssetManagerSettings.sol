@@ -92,10 +92,10 @@ library AssetManagerSettings {
         // If the agent or redeemer becomes unresponsive, we still need payment or non-payment confirmations
         // to be presented eventually to properly track agent's underlying balance.
         // Therefore we allow anybody to confirm payments/non-payments this many seconds after request was made.
-        uint64 redemptionByAnybodyAfterSeconds;
+        uint64 confirmationByOthersAfterSeconds;
 
         // The user who makes abandoned redemption confirmations gets rewarded by the following amount.
-        uint128 redemptionConfirmRewardNATWei;
+        uint128 confirmationByOthersRewardNATWei;
         
         // To prevent unbounded work, the number of tickets redeemed in a single request is limited.
         uint16 maxRedeemedTickets;

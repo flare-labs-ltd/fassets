@@ -462,15 +462,15 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(challenger.confirmRedemptionPayment(request, tx1Hash, agent), "only agent vault owner");
             await expectRevert(agent.destroy(), "agent still active");
             // others can confirm redemption payment after some time
-            await time.increase(context.settings.redemptionByAnybodyAfterSeconds);
+            await time.increase(context.settings.confirmationByOthersAfterSeconds);
             const startBalance = await context.wnat.balanceOf(challengerAddress1);
             await challenger.confirmRedemptionPayment(request, tx1Hash);
             const endBalance = await context.wnat.balanceOf(challengerAddress1);
             // test rewarding
-            assertWeb3Equal(endBalance.sub(startBalance), context.settings.redemptionConfirmRewardNATWei);
+            assertWeb3Equal(endBalance.sub(startBalance), context.settings.confirmationByOthersRewardNATWei);
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral.sub(toBN(context.settings.redemptionConfirmRewardNATWei)));
+            await agent.announceWithdrawal(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)));
             await time.increase(300);
             await agent.destroy();
         });

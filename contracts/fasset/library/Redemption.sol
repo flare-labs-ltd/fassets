@@ -217,7 +217,7 @@ library Redemption {
         _state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payout(_state, request.agentVault, msg.sender, _state.settings.redemptionConfirmRewardNATWei);
+            Agents.payout(_state, request.agentVault, msg.sender, _state.settings.confirmationByOthersRewardNATWei);
         }
         // delete redemption request at end if we don't need it any more
         // otherwise mark it as FAILED and wait for default
@@ -237,7 +237,7 @@ library Redemption {
         returns (bool)
     {
         // others can confirm payments only after several hours
-        if (block.timestamp <= request.timestamp + _state.settings.redemptionByAnybodyAfterSeconds) return false;
+        if (block.timestamp <= request.timestamp + _state.settings.confirmationByOthersAfterSeconds) return false;
         // others can confirm only payments arriving from agent's underlying address
         // - on utxo chains for multi-source payment, 3rd party might lie about payment not coming from agent's
         //   source, which would delete redemption request but not mark source decresing transaction as used;

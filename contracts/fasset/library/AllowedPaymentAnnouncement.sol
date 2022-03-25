@@ -26,6 +26,7 @@ library AllowedPaymentAnnouncement {
         require(agent.ongoingAnnouncedPaymentId == 0, "announced payment active");
         uint64 announcementId = ++_state.newPaymentAnnouncementId;
         agent.ongoingAnnouncedPaymentId = announcementId;
+        agent.ongoingAnnouncedPaymentTimestamp = SafeCast.toUint64(block.timestamp);
         bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);
         emit AMEvents.AllowedPaymentAnnounced(_agentVault, announcementId, paymentReference);
     }
@@ -39,19 +40,26 @@ library AllowedPaymentAnnouncement {
         external
     {
         TransactionAttestation.verifyPayment(_state.settings, _payment);
-        Agents.requireAgentVaultOwner(_agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        bool isAgent = msg.sender == Agents.vaultOwner(_agentVault);
         require(agent.ongoingAnnouncedPaymentId != 0, "no active announcement");
         bytes32 paymentReference = PaymentReference.announcedWithdrawal(agent.ongoingAnnouncedPaymentId);
         require(_payment.paymentReference == paymentReference, "wrong announced pmt reference");
         require(_payment.sourceAddress == agent.underlyingAddressHash,
             "wrong announced pmt source");
+        require(isAgent || block.timestamp > 
+                agent.ongoingAnnouncedPaymentTimestamp + _state.settings.confirmationByOthersAfterSeconds,
+            "only agent owner");
         // make sure payment cannot be challenged as invalid
         _state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // clear active payment announcement
         agent.ongoingAnnouncedPaymentId = 0;
         // update free underlying balance and trigger liquidation if negative
         UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, -_payment.spentAmount);
+        // if the confirmation was done by someone else than agent, pay some reward from agent's vault
+        if (!isAgent) {
+            Agents.payout(_state, _agentVault, msg.sender, _state.settings.confirmationByOthersRewardNATWei);
+        }
         // send event
         emit AMEvents.AllowedPaymentConfirmed(_agentVault, _payment.spentAmount, 
             _payment.blockNumber, _announcementId);

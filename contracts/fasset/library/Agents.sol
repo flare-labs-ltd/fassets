@@ -104,6 +104,7 @@ library Agents {
         // There can be only one announced payment per agent active at any time.
         // This variable holds the id, or 0 if there is no announced payment going on.
         uint64 ongoingAnnouncedPaymentId;
+        uint64 ongoingAnnouncedPaymentTimestamp;
     }
     
     function claimAddressWithEOAProof(

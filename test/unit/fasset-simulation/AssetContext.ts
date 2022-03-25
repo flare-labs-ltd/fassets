@@ -165,8 +165,8 @@ export class AssetContext {
             liquidationMinCollateralRatioBIPS: 2_5000,      // 2.5
             redemptionFeeBips: 200,                         // 2%
             redemptionFailureFactorBIPS: 1_2000,            // 1.2
-            redemptionByAnybodyAfterSeconds: 6 * 3600,      // 6 hours
-            redemptionConfirmRewardNATWei: toWei(100),      // 100 NAT
+            confirmationByOthersAfterSeconds: 6 * 3600,      // 6 hours
+            confirmationByOthersRewardNATWei: toWei(100),      // 100 NAT
             maxRedeemedTickets: 20,                         // TODO: find number that fits comfortably in gas limits
             paymentChallengeRewardBIPS: 1,
             paymentChallengeRewardNATWei: toWei(300),       // 300 NAT
