@@ -46,7 +46,7 @@ library AMEvents {
      * Minter failed to pay underlying funds in time. Collateral reservation fee was paid to the agent.
      * Reserved collateral was released.
      */ 
-    event CollateralReservationTimeout(
+    event MintingPaymentDefault(
         address indexed agentVault,
         address indexed minter,
         uint256 collateralReservationId);

@@ -76,7 +76,7 @@ library CollateralReservations {
             PaymentReference.minting(crtId));
     }
     
-    function collateralReservationTimeout(
+    function mintingPaymentDefault(
         AssetManagerState.State storage _state, 
         IAttestationClient.ReferencedPaymentNonexistence calldata _nonPayment,
         uint64 _crtId
@@ -98,7 +98,7 @@ library CollateralReservations {
             "minting request too old");
         Agents.requireAgentVaultOwner(crt.agentVault);
         // send event
-        emit AMEvents.CollateralReservationTimeout(crt.agentVault, crt.minter, _crtId);
+        emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId);
         // transfer crt fee to the agent's vault
         IAgentVault(crt.agentVault).deposit{value: crt.reservationFeeNatWei}();
         // release agent's reserved collateral
