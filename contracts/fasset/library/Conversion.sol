@@ -77,4 +77,8 @@ library Conversion {
     function convertAmgToNATWei(uint256 _valueAMG, uint256 _amgToNATWeiPrice) internal pure returns (uint256) {
         return _valueAMG.mulDiv(_amgToNATWeiPrice, AMG_NATWEI_PRICE_SCALE);
     }
+
+    function convertNATWeiToAMG(uint256 _valueNATWei, uint256 _amgToNATWeiPrice) internal pure returns (uint256) {
+        return _valueNATWei.mulDiv(AMG_NATWEI_PRICE_SCALE, _amgToNATWeiPrice);
+    }
 }

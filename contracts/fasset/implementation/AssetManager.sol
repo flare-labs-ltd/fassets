@@ -626,13 +626,15 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Liquidation.startLiquidation(state, _agentVault, false);
+        Liquidation.startLiquidation(state, _agentVault);
     }
     
     /**
      * Burns up to `_amountUBA` f-assets owned by the caller and pays
      * the caller the corresponding amount of native currency with premium
      * (premium depends on the liquidation state).
+     * If the agent isn't in liquidation yet, but satisfies conditions,
+     * automatically puts the agent in liquidation status.
      * @param _agentVault agent vault address
      * @param _amountUBA the amount of f-assets to liquidate
      */

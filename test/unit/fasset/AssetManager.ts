@@ -33,9 +33,9 @@ async function createTestSettings(attestationClient: AttestationClientMockInstan
         assetMintingGranularityUBA: toStringExp(1, 9),          // 1e9 = 1 gwei
         lotSizeAMG: toStringExp(1_000, 9),                      // 1000 eth
         requireEOAAddressProof: true,
-        initialMinCollateralRatioBIPS: 2_1000,                  // 2.1
-        liquidationMinCollateralCallBandBIPS: 1_9000,           // 1.9
-        liquidationMinCollateralRatioBIPS: 2_5000,              // 2.5
+        minCollateralRatioBIPS: 2_1000,                  // 2.1
+        ccbMinCollateralRatioBIPS: 1_9000,           // 1.9
+        safetyMinCollateralRatioBIPS: 2_5000,              // 2.5
         underlyingBlocksForPayment: 10,
         underlyingSecondsForPayment: 120,                       // 12s per block assumed
         redemptionFeeBips: 200,                                 // 2%
@@ -46,9 +46,9 @@ async function createTestSettings(attestationClient: AttestationClientMockInstan
         paymentChallengeRewardBIPS: 0,
         paymentChallengeRewardNATWei: toStringExp(300, 18),     // 300 NAT
         withdrawalWaitMinSeconds: 300,
-        liquidationPricePremiumBIPS: 1_2500,                    // 1.25
         liquidationCollateralPremiumBIPS: [6000, 8000, 10000],
-        newLiquidationStepAfterMinSeconds: 90,
+        ccbTimeSeconds: 180,
+        liquidationStepSeconds: 90,
     };
 }
 

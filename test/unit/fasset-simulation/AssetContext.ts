@@ -160,9 +160,9 @@ export class AssetContext {
             // settings that are more or less chain independent
             burnAddress: constants.ZERO_ADDRESS,            // burn address on local chain - same for all assets
             collateralReservationFeeBIPS: 100,              // 1%
-            initialMinCollateralRatioBIPS: 2_1000,          // 2.1
-            liquidationMinCollateralCallBandBIPS: 1_9000,   // 1.9
-            liquidationMinCollateralRatioBIPS: 2_5000,      // 2.5
+            minCollateralRatioBIPS: 2_1000,          // 2.1
+            ccbMinCollateralRatioBIPS: 1_9000,   // 1.9
+            safetyMinCollateralRatioBIPS: 2_5000,      // 2.5
             redemptionFeeBips: 200,                         // 2%
             redemptionFailureFactorBIPS: 1_2000,            // 1.2
             confirmationByOthersAfterSeconds: 6 * 3600,      // 6 hours
@@ -171,9 +171,9 @@ export class AssetContext {
             paymentChallengeRewardBIPS: 1,
             paymentChallengeRewardNATWei: toWei(300),       // 300 NAT
             withdrawalWaitMinSeconds: 60,
-            liquidationPricePremiumBIPS: 1_2500,            // 1.25
             liquidationCollateralPremiumBIPS: [6000, 8000, 10000],
-            newLiquidationStepAfterMinSeconds: 90,
+            ccbTimeSeconds: 180,
+            liquidationStepSeconds: 90,
         };
     }
 }

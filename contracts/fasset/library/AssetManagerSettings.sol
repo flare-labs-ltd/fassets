@@ -56,14 +56,17 @@ library AssetManagerSettings {
         // immutable
         bool requireEOAAddressProof;
         
-        // Minimum collateral ratio for new agents.
-        uint16 initialMinCollateralRatioBIPS;
+        // Minimum collateral ratio for healthy agents.
+        uint32 minCollateralRatioBIPS;
 
-        // Collateral call band - CCB
-        uint16 liquidationMinCollateralCallBandBIPS;
+        // Minimum collateral ratio for agent in CCB (Collateral call band).
+        // A bit smaller than minCollateralRatioBIPS.
+        uint32 ccbMinCollateralRatioBIPS;
         
         // Minimum collateral ratio required to get agent out of liquidation.
-        uint16 liquidationMinCollateralRatioBIPS;
+        // If the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.
+        // Wiil always be greater than minCollateralRatioBIPS.
+        uint32 safetyMinCollateralRatioBIPS;
         
         // Number of underlying blocks that the minter or agent is allowed to pay underlying value.
         // If payment not reported in that time, minting/redemption can be challenged and default action triggered.
@@ -112,19 +115,18 @@ library AssetManagerSettings {
         // This prevents challenged agent to remove all collateral before challenge can be proved.
         uint64 withdrawalWaitMinSeconds;
 
-        // In first phase of liquidation, liquidator is compensated with
-        // value recalculated in flare/sgb times liquidation price premium factor.
-        // Expressed in BIPS, e.g. 12500 for factor of 1.25.
-        uint16 liquidationPricePremiumBIPS;
-
         // After first phase, instead of price premium, percentage of collateral is offered.
         // Expressed in BIPS, e.g. [6000, 8000, 10000] for 60%, 80% and 100%.
         // CAREFUL: values in array must increase and be <= 10000
-        uint16[] liquidationCollateralPremiumBIPS;
+        uint32[] liquidationCollateralPremiumBIPS;
 
+        // Agent can remain in CCB for this much time, after that liquidation starts automatically.
+        uint64 ccbTimeSeconds;
+        
         // If there was no liquidator for the current liquidation offer, 
         // go to the next step of liquidation after a certain period of time.
-        uint64 newLiquidationStepAfterMinSeconds;
+        uint64 liquidationStepSeconds;
+
     }
 
 }

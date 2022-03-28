@@ -29,22 +29,16 @@ library Agents {
     
     enum AgentStatus {
         NORMAL,
-        LIQUIDATION, // CCB, liquidation due to CR or topup
-        FULL_LIQUIDATION // illegal payment liquidation
+        LIQUIDATION,        // CCB or liquidation due to CR - ends when agent is
+        FULL_LIQUIDATION    // illegal payment liquidation - must liquidate all and close vault
     }
 
     enum LiquidationPhase {
+        NONE,
         CCB,
-        PRICE_PREMIUM,
-        COLLATERAL_PREMIUM
+        LIQUIDATION
     }
     
-    struct LiquidationState {
-        uint64 liquidationStartedAt;
-        LiquidationPhase initialLiquidationPhase; // at the time when liquidation started
-        uint16 initialPremiumFactorBIPS; // at the time when liquidation started
-    }
-
     struct Agent {
         // Current address for underlying agent's collateral.
         // Agent can change this address anytime and it affects future mintings.
@@ -94,8 +88,17 @@ library Agents {
         // Current status of the agent (changes for liquidation).
         AgentType agentType;
         AgentStatus status;
-        LiquidationState liquidationState;
 
+        // Timestamp of the startLiquidation call.
+        // If the agent's CR is above ccbCR, agent is put into CCB state for a while.
+        // However, if the agent's CR falls below ccbCR before ccb time expires, anyone can call startLiquidation
+        // again to put agent in liquidation immediately (in this case, liquidationStartedAt and 
+        // initialLiquidationPhase are reset to new values).
+        uint64 liquidationStartedAt;
+        
+        // Liquidation phase at the time when liquidation started.
+        LiquidationPhase initialLiquidationPhase;
+        
         // The amount of underlying funds that may be withdrawn by the agent
         // (fees, self-close, and amount released by liquidation).
         // May become negative (due to high underlying gas costs), in which case topup is required.
@@ -136,7 +139,7 @@ library Agents {
         // initially, agentMinCollateralRatioBIPS is the same as global min collateral ratio
         // this setting is ok for self-minting, but not for public minting since it quickly leads to liquidation
         // it can be changed with setAgentMinCollateralRatioBIPS or when agent becomes available
-        agent.agentMinCollateralRatioBIPS = _state.settings.initialMinCollateralRatioBIPS;
+        agent.agentMinCollateralRatioBIPS = _state.settings.minCollateralRatioBIPS;
         // claim the address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
         bytes32 underlyingAddressHash = keccak256(bytes(_underlyingAddressString));
@@ -176,7 +179,7 @@ library Agents {
     {
         Agent storage agent = Agents.getAgent(_state, _agentVault);
         requireAgentVaultOwner(_agentVault);
-        require(_agentMinCollateralRatioBIPS >= _state.settings.initialMinCollateralRatioBIPS,
+        require(_agentMinCollateralRatioBIPS >= _state.settings.minCollateralRatioBIPS,
             "collateral ratio too small");
         agent.agentMinCollateralRatioBIPS = SafeCast.toUint32(_agentMinCollateralRatioBIPS);
     }
@@ -360,17 +363,6 @@ library Agents {
         return _state.settings.wNat.balanceOf(_agentVault);
     }
     
-    function isAgentInLiquidation(
-        AssetManagerState.State storage _state, 
-        address _agentVault
-    )
-        internal view
-        returns (bool)
-    {
-        Agents.Agent storage agent = _state.agents[_agentVault];
-        return agent.liquidationState.liquidationStartedAt > 0;
-    }
-
     function vaultOwner(address _agentVault) internal view returns (address) {
         return IAgentVault(_agentVault).owner();
     }

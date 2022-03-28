@@ -43,7 +43,7 @@ library CollateralReservations {
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
-        require(!Agents.isAgentInLiquidation(_state, _agentVault), "agent in liquidation");
+        require(agent.status == Agents.AgentStatus.NORMAL, "agent in liquidation");
         require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
         require(_maxMintingFeeBIPS >= agent.feeBIPS, "agent's fee too high");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;

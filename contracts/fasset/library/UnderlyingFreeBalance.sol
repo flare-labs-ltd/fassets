@@ -28,7 +28,7 @@ library UnderlyingFreeBalance {
         int256 newBalance = agent.freeUnderlyingBalanceUBA + _balanceChange;
         if (newBalance < 0) {
             emit AMEvents.UnderlyingFreeBalanceNegative(_agentVault, newBalance);
-            Liquidation.startLiquidation(_state, _agentVault, false);
+            Liquidation.startFullLiquidation(_state, _agentVault);
         }
         agent.freeUnderlyingBalanceUBA = SafeCast.toInt128(newBalance);
     }

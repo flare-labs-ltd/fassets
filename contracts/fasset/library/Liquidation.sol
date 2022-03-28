@@ -23,42 +23,41 @@ library Liquidation {
     using SafeBips for uint64;
     using AgentCollateral for AgentCollateral.Data;
     
-    // Start agent's liquidation - if already in liquidation, can only update to full liquidation
+    // Start collateral ratio based agent's liquidation (Agents.AgentStatus.LIQUIDATION)
     function startLiquidation(
         AssetManagerState.State storage _state,
-        address _agentVault,
-        bool _fullLiquidation
+        address _agentVault
     )
         external
     {
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
-        startLiquidation(_state, _agentVault, collateralData, _fullLiquidation);
+        uint256 collateralRatio = collateralData.collateralRatio(agent, _state.settings);
+        _upgradeLiquidationPhase(_state, agent, _agentVault, collateralRatio);
     }
 
-    function startLiquidation(
+    // Start full agent liquidation (Agents.AgentStatus.FULL_LIQUIDATION)
+    function startFullLiquidation(
         AssetManagerState.State storage _state,
-        address _agentVault,
-        AgentCollateral.Data memory _collateralData,
-        bool _fullLiquidation
+        address _agentVault
     )
-        public
+        external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        (Agents.LiquidationPhase liquidationPhase, uint16 premiumFactorBIPS) = 
-            getInitialLiquidationPhase(agent, _state.settings, _collateralData, _fullLiquidation);
-
-        if (agent.status == Agents.AgentStatus.NORMAL || 
-                (_fullLiquidation && agent.status == Agents.AgentStatus.LIQUIDATION)) {
-            agent.status = _fullLiquidation ? Agents.AgentStatus.FULL_LIQUIDATION : Agents.AgentStatus.LIQUIDATION;
-            agent.liquidationState.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
-            agent.liquidationState.initialLiquidationPhase = liquidationPhase;
-            agent.liquidationState.initialPremiumFactorBIPS = premiumFactorBIPS;
-            emit AMEvents.LiquidationStarted(_agentVault, 
-                liquidationPhase == Agents.LiquidationPhase.CCB, _fullLiquidation);
+        // if already in full liquidation, do nothing
+        if (agent.status == Agents.AgentStatus.FULL_LIQUIDATION) return;
+        // if current phase is not LIQUIDATION, restart in LIQUIDATION phase
+        Agents.LiquidationPhase currentPhase = _currentLiquidationPhase(_state, agent);
+        if (currentPhase != Agents.LiquidationPhase.LIQUIDATION) {
+            agent.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
+            agent.initialLiquidationPhase = Agents.LiquidationPhase.LIQUIDATION;
         }
+        agent.status = Agents.AgentStatus.FULL_LIQUIDATION;
+        emit AMEvents.LiquidationStarted(_agentVault, false, true);
     }
 
-    // liquidate agent's position
+    // Liquidate agent's position.
+    // Automatically starts / upgrades agent's liquidation status.
     function liquidate(
         AssetManagerState.State storage _state,
         address _agentVault,
@@ -68,48 +67,25 @@ library Liquidation {
         returns (uint256)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        require(agent.status != Agents.AgentStatus.NORMAL, "not in liquidation");
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
-        (Agents.LiquidationPhase liquidationPhase, bool isEnough, uint64 maxAmountAMG, uint16 premiumFactorBIPS) = 
-            getCurrentLiquidationPhase(agent, _state.settings, collateralData);
-        require(liquidationPhase != Agents.LiquidationPhase.CCB, "in CCB");
-
+        uint256 collateralRatio = collateralData.collateralRatio(agent, _state.settings);
+        // allow one-step liquidation (without calling startLiquidation first)
+        Agents.LiquidationPhase currentPhase = _upgradeLiquidationPhase(_state, agent, _agentVault, collateralRatio);
+        require(currentPhase == Agents.LiquidationPhase.LIQUIDATION, "not in liquidation");
+        uint256 premiumBIPS = _currentLiquidationPremiumBIPS(_state, agent, collateralRatio);
+        uint256 maxLiquidatedAMG = _maxLiquidationAmountAMG(_state, agent, collateralRatio, premiumBIPS);
         uint64 amountToLiquidateAMG = 
-            Math.min(maxAmountAMG, Conversion.convertUBAToAmg(_state.settings, _amountUBA)).toUint64();
-        uint64 liquidationAmountAMG = Redemption.liquidate(_state, msg.sender, _agentVault, amountToLiquidateAMG);
-
-        uint256 liquidationValueNATWei;
-        if (!isEnough) { // 100% collateral premium is not enough - calculate proportion
-            uint64 fAssetAMG = agent.reservedAMG + agent.mintedAMG + agent.redeemingAMG;
-            liquidationValueNATWei = (collateralData.fullCollateral - agent.withdrawalAnnouncedNATWei)
-                .mulDiv(liquidationAmountAMG, fAssetAMG);
-        } else {
-            liquidationValueNATWei = 
-                Conversion.convertAmgToNATWei(liquidationAmountAMG, collateralData.amgToNATWeiPrice);
-            if (liquidationPhase == Agents.LiquidationPhase.COLLATERAL_PREMIUM) { // get collateral
-                liquidationValueNATWei = liquidationValueNATWei.mulBips(_state.settings.initialMinCollateralRatioBIPS);
-            }
-            // multiply with price or collateral premium
-            liquidationValueNATWei = liquidationValueNATWei.mulBips(premiumFactorBIPS);
-
-            // cancel liquidation if possible
-            if (agent.status == Agents.AgentStatus.LIQUIDATION && agent.freeUnderlyingBalanceUBA >= 0) {
-                AgentCollateral.Data memory afterLiquidation = AgentCollateral.Data({
-                    fullCollateral: collateralData.fullCollateral - liquidationValueNATWei, 
-                    amgToNATWeiPrice: collateralData.amgToNATWeiPrice 
-                });
-                if (isAgentHealthy(agent, _state.settings, afterLiquidation)) {
-                    agent.status = Agents.AgentStatus.NORMAL;
-                    delete agent.liquidationState;
-                    emit AMEvents.LiquidationCancelled(_agentVault);
-                }
-            }
-        }
-        Agents.payout(_state, _agentVault, msg.sender, liquidationValueNATWei);
-        return Conversion.convertAmgToUBA(_state.settings, liquidationAmountAMG);
+            Math.min(maxLiquidatedAMG, Conversion.convertUBAToAmg(_state.settings, _amountUBA)).toUint64();
+        uint64 liquidatedAmountAMG = Redemption.liquidate(_state, msg.sender, _agentVault, amountToLiquidateAMG);
+        uint256 rewardNATWei = Conversion.convertAmgToNATWei(liquidatedAmountAMG.mulBips(premiumBIPS), 
+            collateralData.amgToNATWeiPrice);
+        Agents.payout(_state, _agentVault, msg.sender, rewardNATWei);
+        uint256 liquidatedAmountUBA = Conversion.convertAmgToUBA(_state.settings, liquidatedAmountAMG);
+        emit AMEvents.LiquidationPerformed(_agentVault, msg.sender, liquidatedAmountUBA);
+        return liquidatedAmountUBA;
     }
-
-    // Cancel agent's liquidation
+    
+    // Cancel liquidation, requires that agent is healthy.
     function cancelLiquidation(
         AssetManagerState.State storage _state,
         address _agentVault
@@ -118,255 +94,153 @@ library Liquidation {
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
-        require(agent.status == Agents.AgentStatus.LIQUIDATION, "not in (normal) liquidation");
-        require(isAgentHealthy(agent, _state.settings, collateralData), "collateral too small");
-        require(agent.freeUnderlyingBalanceUBA >= 0, "free underlying balance < 0");
-        agent.status = Agents.AgentStatus.NORMAL;
-        delete agent.liquidationState;
-        emit AMEvents.LiquidationCancelled(_agentVault);
+        endLiquidationIfHealthy(_state, agent, collateralData, _agentVault);
+        require(agent.status == Agents.AgentStatus.NORMAL, "cannot stop liquidation");
     }
-
-    function isAgentHealthy(
-        Agents.Agent storage _agent,
-        AssetManagerSettings.Settings storage _settings,
-        AgentCollateral.Data memory _collateralData
-    )
-        internal view
-        returns (bool)
-    {
-        bool inLqdtn = _agent.status != Agents.AgentStatus.NORMAL;
-        uint256 mintingAMG = uint256(_agent.reservedAMG) + _agent.mintedAMG;
-        uint256 mintingCollateral = Conversion.convertAmgToNATWei(mintingAMG, _collateralData.amgToNATWeiPrice)
-            .mulBips(inLqdtn ? _settings.liquidationMinCollateralRatioBIPS : _settings.initialMinCollateralRatioBIPS);
-        uint256 redeemingCollateral = _collateralData.lockedRedeemingCollateralWei(_agent, _settings);
-        return mintingCollateral + redeemingCollateral + _agent.withdrawalAnnouncedNATWei
-            <= _collateralData.fullCollateral;
-    }
-
-    function isAgentInCCB(
-        Agents.Agent storage _agent,
-        AssetManagerSettings.Settings storage _settings,
-        AgentCollateral.Data memory _collateralData
-    )
-        internal view
-        returns (bool)
-    {
-        uint256 mintingAMG = uint256(_agent.reservedAMG) + _agent.mintedAMG;
-        uint256 mintingCollateral = Conversion.convertAmgToNATWei(mintingAMG, _collateralData.amgToNATWeiPrice)
-            .mulBips(_settings.liquidationMinCollateralCallBandBIPS);
-        uint256 redeemingCollateral = _collateralData.lockedRedeemingCollateralWei(_agent, _settings);
-        return mintingCollateral + redeemingCollateral + _agent.withdrawalAnnouncedNATWei
-            <= _collateralData.fullCollateral;
-    }
-
-    // liquidate a part of position
-    function isLiquidationPhase1(
-        Agents.Agent storage _agent,
-        AssetManagerSettings.Settings storage _settings,
-        AgentCollateral.Data memory _collateralData
-    )
-        internal view
-        returns (bool _isPhase1)
-    {
-        (_isPhase1, ) = calculateLiquidationAmountForPhase1(_agent, _settings, _collateralData);
-    }
-
     
-    // liquidate a part of position - only `_agent.mintedAMG` amount can be liquidated
-    function calculateLiquidationAmountForPhase1(
+    // Cancel liquidation if the agent is healthy.
+    function endLiquidationIfHealthy(
+        AssetManagerState.State storage _state,
         Agents.Agent storage _agent,
-        AssetManagerSettings.Settings storage _settings,
-        AgentCollateral.Data memory _collateralData
+        AgentCollateral.Data memory _collateralData,
+        address _agentVault
     )
-        internal view
-        returns (bool _isPhase1, uint64 _liquidationAmountAMG)
+        internal
     {
-        uint256 mintingCollateral = 
-            Conversion.convertAmgToNATWei(_agent.reservedAMG, _collateralData.amgToNATWeiPrice)
-                .mulBips(_settings.liquidationMinCollateralRatioBIPS);
-        uint256 redeemingCollateral = _collateralData.lockedRedeemingCollateralWei(_agent, _settings);
-
-        uint256 reservedCollateral = mintingCollateral + redeemingCollateral + _agent.withdrawalAnnouncedNATWei;
-        if (reservedCollateral > _collateralData.fullCollateral) {
-            return (false, 0); // not phase 1
+        // can only stop plain liquidation (full liquidation can only stop when there are no more minted assets)
+        if (_agent.status != Agents.AgentStatus.LIQUIDATION) return;
+        // agent's current collateral ratio
+        uint256 collateralRatioBIPS = _collateralData.collateralRatio(_agent, _state.settings);
+        // target collateral ratio is minCollateralRatio for CCB and safetyMinCollateralRatio for LIQUIDATION
+        Agents.LiquidationPhase currentPhase = _currentLiquidationPhase(_state, _agent);
+        uint256 targetRatioBIPS = currentPhase == Agents.LiquidationPhase.CCB
+            ? _state.settings.minCollateralRatioBIPS : _state.settings.safetyMinCollateralRatioBIPS;
+        // if agent is safe, restore status to NORMAL
+        if (collateralRatioBIPS >= targetRatioBIPS) {
+            _agent.status = Agents.AgentStatus.NORMAL;
+            // TODO: are these two lines needed?
+            _agent.liquidationStartedAt = 0;
+            _agent.initialLiquidationPhase = Agents.LiquidationPhase.NONE;
+            emit AMEvents.LiquidationCancelled(_agentVault);
         }
-        uint256 mintedNATWei = Conversion.convertAmgToNATWei(_agent.mintedAMG, _collateralData.amgToNATWeiPrice);
-
-        // do not use more than it should be reserved
-        // if liquidation due to no underlying chain topup, agent can have a lot of free collateral
-        uint256 remainingCollateral = Math.min(_collateralData.fullCollateral - reservedCollateral, // guarded by if
-            mintedNATWei.mulBips(_settings.initialMinCollateralRatioBIPS));
-
-        if (mintedNATWei.mulBips(_settings.liquidationPricePremiumBIPS) > remainingCollateral) {
-            return (false, 0); // not phase 1
-        }
-
-        uint256 freeUnderlyingBalanceLiquidationAmountAMG = 0;
-        if (_agent.freeUnderlyingBalanceUBA < 0) {
-            freeUnderlyingBalanceLiquidationAmountAMG = uint256(-int256(_agent.freeUnderlyingBalanceUBA)) /
-                _settings.assetMintingGranularityUBA;
-            if (_agent.freeUnderlyingBalanceUBA % int64(_settings.assetMintingGranularityUBA) != 0) {
-                freeUnderlyingBalanceLiquidationAmountAMG += 1;
-            }
-            if (freeUnderlyingBalanceLiquidationAmountAMG > _agent.mintedAMG) {
-                return (false, 0); // not pahse 1
-            }
-        }
-
-        // required collateral for the agent's postion to be healthy
-        uint256 requiredCollateral = mintedNATWei.mulBips(_settings.liquidationMinCollateralRatioBIPS)
-            + reservedCollateral;
-
-        uint256 healthyLiquidationAmountAMG = 0;
-        if (requiredCollateral > _collateralData.fullCollateral) { // unhealthy position
-            uint256 numerator = (requiredCollateral - _collateralData.fullCollateral) *
-                Conversion.AMG_NATWEI_PRICE_SCALE * SafeBips.MAX_BIPS;
-            uint256 denominator = _collateralData.amgToNATWeiPrice *
-                (_settings.liquidationMinCollateralRatioBIPS - _settings.liquidationPricePremiumBIPS);
-
-            healthyLiquidationAmountAMG = numerator / denominator;
-
-            if (numerator % denominator != 0) {
-                healthyLiquidationAmountAMG += 1;
-            }
-            // TODO  check healthyLiquidationAmountAMG <= _agent.mintedAMG;
-        }
-
-        return (true, Math.max(freeUnderlyingBalanceLiquidationAmountAMG, healthyLiquidationAmountAMG).toUint64());
     }
 
-    // liquidate full position
-    function isLiquidationPhase2(
-        Agents.Agent storage _agent,
-        AssetManagerSettings.Settings storage _settings,
-        AgentCollateral.Data memory _collateralData,
-        uint256 _collateralPremiumFactorBIPS
+    // Upgrade (CR-based) liquidation phase (NONE -> CCR -> LIQUIDATION), based on agent's collateral ratio.
+    // When in full liquidation mode, do nothing.
+    function _upgradeLiquidationPhase(
+        AssetManagerState.State storage _state,
+        Agents.Agent storage agent,
+        address _agentVault,
+        uint256 _collateralRatio
     )
-        internal view
-        returns (bool)
+        private
+        returns (Agents.LiquidationPhase)
     {
-        uint256 mintingAMG = uint256(_agent.reservedAMG) + _agent.mintedAMG;
-        uint256 mintingNATWei = Conversion.convertAmgToNATWei(mintingAMG, _collateralData.amgToNATWeiPrice);
-        uint256 redeemingCollateral = _collateralData.lockedRedeemingCollateralWei(_agent, _settings);
-
-        uint256 reservedCollateral = redeemingCollateral + _agent.withdrawalAnnouncedNATWei;
-        if (reservedCollateral > _collateralData.fullCollateral) {
-            return false;
+        Agents.LiquidationPhase currentPhase = _currentLiquidationPhase(_state, agent);
+        // if current phase is already LIQUIDATION, no upgrade is needed
+        if (currentPhase == Agents.LiquidationPhase.LIQUIDATION) {
+            return currentPhase;
         }
-
-        // do not use more than it should be reserved
-        // if liquidation due to illegal payment or no underlying chain topup, agent can have a lot of free collateral
-        uint256 remainingCollateral = Math.min(_collateralData.fullCollateral - reservedCollateral, // guarded by if
-            mintingNATWei.mulBips(_settings.initialMinCollateralRatioBIPS));
-
-        return remainingCollateral.mulBips(_collateralPremiumFactorBIPS) >= mintingNATWei;
+        // restart liquidation (set new phase and start time) if new cr based phase is higher than time based
+        Agents.LiquidationPhase newPhase = _initialLiquidationPhaseForCollateral(_state, _collateralRatio);
+        if (currentPhase < newPhase) {
+            agent.status = Agents.AgentStatus.LIQUIDATION;
+            agent.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
+            agent.initialLiquidationPhase = newPhase;
+            emit AMEvents.LiquidationStarted(_agentVault, newPhase == Agents.LiquidationPhase.CCB, false);
+            return newPhase;
+        }
+        return currentPhase;
     }
-
-    function getInitialLiquidationPhase(
-        Agents.Agent storage _agent,
-        AssetManagerSettings.Settings storage _settings,
-        AgentCollateral.Data memory _collateralData,
-        bool _fullLiquidation
+    
+    // Liquidation phase when starting liquidation (depends only on collateral ratio)
+    function _initialLiquidationPhaseForCollateral(
+        AssetManagerState.State storage _state,
+        uint256 collateralRatio
     )
-        internal view
-        returns (Agents.LiquidationPhase _phase, uint16 _premiumFactorBIPS)
+        private view
+        returns (Agents.LiquidationPhase)
     {
-        if (!_fullLiquidation && _agent.freeUnderlyingBalanceUBA >= 0 &&
-            isAgentInCCB(_agent, _settings, _collateralData)) {
-            return (Agents.LiquidationPhase.CCB, 0);
-        } else if (!_fullLiquidation && isLiquidationPhase1(_agent, _settings, _collateralData)) {
-            return (Agents.LiquidationPhase.PRICE_PREMIUM, _settings.liquidationPricePremiumBIPS);
+        if (collateralRatio >= _state.settings.minCollateralRatioBIPS) {
+            return Agents.LiquidationPhase.NONE;
+        } else if (collateralRatio >= _state.settings.ccbMinCollateralRatioBIPS) {
+            return Agents.LiquidationPhase.CCB;
         } else {
-            (, _premiumFactorBIPS) = 
-                getCollateralPremiumFactor(_agent, _settings, _collateralData, 0, 0);
-            return (Agents.LiquidationPhase.COLLATERAL_PREMIUM, _premiumFactorBIPS);
+            return Agents.LiquidationPhase.LIQUIDATION;
+        }
+    }
+    
+    // Current liquidation phase (assumed that liquidation was started in some previous transaction,
+    // so the result only depends on time, not on current collateral ratio)
+    function _currentLiquidationPhase(
+        AssetManagerState.State storage _state,
+        Agents.Agent storage agent
+    )
+        private view
+        returns (Agents.LiquidationPhase)
+    {
+        if (agent.status == Agents.AgentStatus.NORMAL) {
+            return Agents.LiquidationPhase.NONE;
+        } else if (agent.status == Agents.AgentStatus.FULL_LIQUIDATION) {
+            return Agents.LiquidationPhase.LIQUIDATION;
+        } else {  // agent.status == Agents.AgentStatus.LIQUIDATION
+            bool inCCB = agent.initialLiquidationPhase == Agents.LiquidationPhase.CCB
+                && block.timestamp <= agent.liquidationStartedAt + _state.settings.ccbTimeSeconds;
+            return inCCB ? Agents.LiquidationPhase.CCB : Agents.LiquidationPhase.LIQUIDATION;
         }
     }
 
-    // min collateral premium factor, so that position is healthy again
-    // if this is not possible, return the last one (100%)
-    function getCollateralPremiumFactor(
-        Agents.Agent storage _agent,
-        AssetManagerSettings.Settings storage _settings,
-        AgentCollateral.Data memory _collateralData,
-        uint256 _startPosition,
-        uint16 _minPremiumFactorBIPS
+    // Liquidation premium step (depends on time, but is capped by the current collateral ratio)
+    // assumed: agentStatus == LIQUIDATION/FULL_LIQUIDATION && liquidationPhase == LIQUIDATION
+    function _currentLiquidationPremiumBIPS(
+        AssetManagerState.State storage _state,
+        Agents.Agent storage agent,
+        uint256 _collateralRatioBIPS
     )
-        internal view
-        returns (bool _isEnough, uint16 _premiumFactorBIPS)
+        private view
+        returns (uint256)
     {
-        uint256 len = _settings.liquidationCollateralPremiumBIPS.length;
-        if (_startPosition >= len) {
-            _startPosition = len - 1;
-        }
-        for (uint256 i = _startPosition; i < len; i++) {
-            _premiumFactorBIPS = _settings.liquidationCollateralPremiumBIPS[i];
-            if (_premiumFactorBIPS < _minPremiumFactorBIPS) {
-                continue;
-            }
-            if (isLiquidationPhase2(_agent, _settings, _collateralData, _premiumFactorBIPS)) {
-                return (true, _premiumFactorBIPS);
-            }
-        }
-
-        return (false, _premiumFactorBIPS);
+        // calculate premium step baed on time since lquidation started
+        bool startedInCCB = agent.status == Agents.AgentStatus.LIQUIDATION 
+            && agent.initialLiquidationPhase == Agents.LiquidationPhase.CCB;
+        uint256 ccbTime = startedInCCB ? _state.settings.ccbTimeSeconds : 0;
+        uint256 liquidationStart = agent.liquidationStartedAt + ccbTime;
+        uint256 step = Math.min(_state.settings.liquidationCollateralPremiumBIPS.length - 1,
+            (block.timestamp - liquidationStart) / _state.settings.liquidationStepSeconds);
+        // premiums are expressed as percentage of minCollateralRatio
+        uint256 premiumBIPS = uint256(_state.settings.liquidationCollateralPremiumBIPS[step])
+            .mulBips(_state.settings.minCollateralRatioBIPS);
+        // max premium is equal to agents collateral ratio (so that all liquidators get at least this much)
+        return Math.min(premiumBIPS, _collateralRatioBIPS);
     }
 
-    // get liquidation phase according to initial liquidation phase and time elapsed
-    // returns current liquidation phase, bool if there is enough collateral to pay normally for liquidated amount,
-    // amount that can be liquidated, premium factor - price or collateral premium
-    function getCurrentLiquidationPhase(
-        Agents.Agent storage _agent,
-        AssetManagerSettings.Settings storage _settings,
-        AgentCollateral.Data memory _collateralData
+    // Calculate the amount of liquidation that gets agent to safety.
+    function _maxLiquidationAmountAMG(
+        AssetManagerState.State storage _state,
+        Agents.Agent storage agent,
+        uint256 _collateralRatioBIPS,
+        uint256 premiumBIPS
     )
-        internal view
-        returns (Agents.LiquidationPhase _phase, bool _isEnough, uint64 _maxAmountAMG, uint16 _premiumFactorBIPS)
+        private view
+        returns (uint256)
     {
-        Agents.LiquidationPhase initialLiquidationPhase = _agent.liquidationState.initialLiquidationPhase;
-        uint256 steps = (block.timestamp - _agent.liquidationState.liquidationStartedAt) / 
-            _settings.newLiquidationStepAfterMinSeconds;
-
-        if (initialLiquidationPhase == Agents.LiquidationPhase.CCB) {
-            if (steps == 0 && isAgentInCCB(_agent, _settings, _collateralData)) {
-                return (Agents.LiquidationPhase.CCB, true, 0, 0); // still in initial state
-            } else {
-                // if not in CCB anymore or if below liquidationMinCollateralCallBandBIPS
-                if (steps <= 1) {
-                    (_isEnough, _maxAmountAMG) = 
-                        calculateLiquidationAmountForPhase1(_agent, _settings, _collateralData);
-                    if (_isEnough) {
-                        return (Agents.LiquidationPhase.PRICE_PREMIUM, _isEnough, 
-                            _maxAmountAMG, _settings.liquidationPricePremiumBIPS);
-                    }
-                }
-                
-                // phase 2 - collateral premium
-                (, uint256 startPos) = steps.trySub(2);
-                (_isEnough, _premiumFactorBIPS) =
-                    getCollateralPremiumFactor(_agent, _settings, _collateralData, startPos, 0);
-                return (Agents.LiquidationPhase.COLLATERAL_PREMIUM, _isEnough, _agent.mintedAMG, _premiumFactorBIPS);
-            }
-        } else if (initialLiquidationPhase == Agents.LiquidationPhase.PRICE_PREMIUM) {
-            if (steps == 0) { // still in phase 1
-                (_isEnough, _maxAmountAMG) = 
-                    calculateLiquidationAmountForPhase1(_agent, _settings, _collateralData);
-                if (_isEnough) {
-                    return (Agents.LiquidationPhase.PRICE_PREMIUM, true, 
-                        _maxAmountAMG, _settings.liquidationPricePremiumBIPS);
-                }
-            }
-
-            // phase 2 - collateral premium
-            (, uint256 startPos) = steps.trySub(1);
-            (_isEnough, _premiumFactorBIPS) =
-                getCollateralPremiumFactor(_agent, _settings, _collateralData, startPos, 0);
-            return (Agents.LiquidationPhase.COLLATERAL_PREMIUM, _isEnough, _agent.mintedAMG, _premiumFactorBIPS);
-        } else { // phase 2 - collateral premium
-            (_isEnough, _premiumFactorBIPS) =
-                getCollateralPremiumFactor(_agent, _settings, _collateralData, steps,
-                _agent.liquidationState.initialPremiumFactorBIPS);
-            return (Agents.LiquidationPhase.COLLATERAL_PREMIUM, _isEnough, _agent.mintedAMG, _premiumFactorBIPS);
+        // for full liquidation, all minted amount can be liquidated
+        if (agent.status == Agents.AgentStatus.FULL_LIQUIDATION) {
+            return agent.mintedAMG;
         }
+        // otherwise, liquidate just enough to get agent to safety
+        uint256 targetRatioBIPS = _state.settings.safetyMinCollateralRatioBIPS;
+        if (targetRatioBIPS <= _collateralRatioBIPS) {
+            return 0;               // agent already safe
+        }
+        // actualy, we always have premiumBIPS <= _collateralRatioBIPS (< targetRatioBIPS)
+        // so this is just an extra precaution
+        if (targetRatioBIPS <= premiumBIPS) {
+            return agent.mintedAMG; // cannot achieve target - liquidate all
+        }
+        uint256 maxLiquidatedAMG = uint256(agent.mintedAMG)
+            .mulDiv(targetRatioBIPS - _collateralRatioBIPS, targetRatioBIPS - premiumBIPS) + 1;  // ~ round up
+        // TODO: should we round up maxLiquidationAmount to whole lots (of course cap by mintedAMG after ronding)?
+        return Math.min(maxLiquidatedAMG, agent.mintedAMG);
     }
 }
