@@ -49,7 +49,7 @@ library AllowedPaymentAnnouncement {
             "wrong announced pmt source");
         require(isAgent || block.timestamp > 
                 agent.ongoingAnnouncedPaymentTimestamp + _state.settings.confirmationByOthersAfterSeconds,
-            "only agent owner");
+            "only agent vault owner");
         // make sure payment cannot be challenged as invalid
         _state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // clear active payment announcement

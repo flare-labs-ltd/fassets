@@ -1,7 +1,8 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { getTestFile, toBN, toWei } from "../../utils/helpers";
-import { assertWeb3Equal } from "../../utils/web3assertions";
+import { assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
 import { Agent } from "./Agent";
 import { AssetContext, CommonContext } from "./AssetContext";
 import { testChainInfo, testNatInfo } from "./ChainInfo";
@@ -56,12 +57,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
+            assert.equal(dustChangesUBA.length, 0);
             assert.equal(redemptionRequests.length, 1);
             for (const request of redemptionRequests) {
                 assert.equal(request.agentVault, agent.vaultAddress);
@@ -91,17 +93,18 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt1 = await minter1.reserveCollateral(agent.vaultAddress, lots1);
             const tx1Hash = await minter1.performMintingPayment(crt1);
             const minted1 = await agent.executeMinting(crt1, tx1Hash);
-            assertWeb3Equal(minted1.mintedAmountUBA, context.convertLotsToUBA(lots1));
+            assertWeb3Equal(minted1.mintedAmountUBA, await context.convertLotsToUBA(lots1));
             const lots2 = 6;
             const crt2 = await minter2.reserveCollateral(agent.vaultAddress, lots2);
             const tx2Hash = await minter2.performMintingPayment(crt2);
             const minted2 = await agent.executeMinting(crt2, tx2Hash, minter2);
-            assertWeb3Equal(minted2.mintedAmountUBA, context.convertLotsToUBA(lots2));
+            assertWeb3Equal(minted2.mintedAmountUBA, await context.convertLotsToUBA(lots2));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted2.mintedAmountUBA, { from: minter2.address });
             // perform redemption
-            const [redemptionRequests, remainingLots] = await redeemer.requestRedemption(lots2);
+            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots2);
             assertWeb3Equal(remainingLots, 0);
+            assert.equal(dustChangesUBA.length, 0);
             assert.equal(redemptionRequests.length, 1);
             for (const request of redemptionRequests) {
                 assert.equal(request.agentVault, agent.vaultAddress);
@@ -129,17 +132,18 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt1 = await minter.reserveCollateral(agent1.vaultAddress, lots1);
             const tx1Hash = await minter.performMintingPayment(crt1);
             const minted1 = await minter.executeMinting(crt1, tx1Hash);
-            assertWeb3Equal(minted1.mintedAmountUBA, context.convertLotsToUBA(lots1));
+            assertWeb3Equal(minted1.mintedAmountUBA, await context.convertLotsToUBA(lots1));
             const lots2 = 6;
             const crt2 = await minter.reserveCollateral(agent2.vaultAddress, lots2);
             const tx2Hash = await minter.performMintingPayment(crt2);
             const minted2 = await minter.executeMinting(crt2, tx2Hash);
-            assertWeb3Equal(minted2.mintedAmountUBA, context.convertLotsToUBA(lots2));
+            assertWeb3Equal(minted2.mintedAmountUBA, await context.convertLotsToUBA(lots2));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted2.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots] = await redeemer.requestRedemption(lots2);
+            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots2);
             assertWeb3Equal(remainingLots, 0);
+            assert.equal(dustChangesUBA.length, 0);
             assert.equal(redemptionRequests.length, 2);
             const request1 = redemptionRequests[0];
             assert.equal(request1.agentVault, agent1.vaultAddress);
@@ -169,16 +173,18 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // redeemers "buy" f-assets
             await context.fAsset.transfer(redeemer1.address, minted.mintedAmountUBA.divn(2), { from: minter.address });
             await context.fAsset.transfer(redeemer2.address, minted.mintedAmountUBA.divn(2), { from: minter.address });
             // perform redemptions
-            const [redemptionRequests1, remainingLots1] = await redeemer1.requestRedemption(lots / 2);
+            const [redemptionRequests1, remainingLots1, dustChangesUBA1] = await redeemer1.requestRedemption(lots / 2);
             assertWeb3Equal(remainingLots1, 0);
+            assert.equal(dustChangesUBA1.length, 0);
             assert.equal(redemptionRequests1.length, 1);
-            const [redemptionRequests2, remainingLots2] = await redeemer2.requestRedemption(lots / 2);
+            const [redemptionRequests2, remainingLots2, dustChangesUBA2] = await redeemer2.requestRedemption(lots / 2);
             assertWeb3Equal(remainingLots2, 0);
+            assert.equal(dustChangesUBA2.length, 0);
             assert.equal(redemptionRequests2.length, 1);
             const request1 = redemptionRequests1[0];
             assert.equal(request1.agentVault, agent.vaultAddress);
@@ -192,6 +198,38 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // agent can exit now
             await agent.exitAvailable();
             await agent.announceWithdrawal(fullAgentCollateral);
+            await time.increase(300);
+            await agent.destroy();
+        });
+
+        it("mint defaults - no underlying payment", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform collateral
+            const lots = 3;
+            const crFee = await minter.getCollateralReservationFee(lots);
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            // mine some blocks to create overflow block
+            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
+                await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
+            }
+            // test rewarding for mint default
+            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            await agent.mintingPaymentDefault(crt);
+            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee);
+            // check that executing minting after calling mintingPaymentDefault will revert
+            const txHash = await minter.performMintingPayment(crt);
+            await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
+            // agent can exit now
+            await agent.exitAvailable();
+            await agent.announceWithdrawal(fullAgentCollateral.add(crFee));
             await time.increase(300);
             await agent.destroy();
         });
@@ -211,17 +249,18 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
+            assert.equal(dustChangesUBA.length, 0);
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
             // mine some blocks to create overflow block
-            for (let i = 0; i < context.chainInfo.underlyingBlocksForPayment; i++) {
+            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // test rewarding for redemption payment default
@@ -259,12 +298,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
+            assert.equal(dustChangesUBA.length, 0);
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
@@ -272,7 +312,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const tx1Hash = await agent.performPayment(request.paymentAddress, 100, request.paymentReference);
             await agent.confirmFailedRedemptionPayment(request, tx1Hash);
             // mine some blocks to create overflow block
-            for (let i = 0; i < context.chainInfo.underlyingBlocksForPayment; i++) {
+            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling finishRedemptionWithoutPayment after failed redemption payment will revert
@@ -310,17 +350,18 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
+            assert.equal(dustChangesUBA.length, 0);
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
             // mine some blocks to create overflow block
-            for (let i = 0; i < context.chainInfo.underlyingBlocksForPayment; i++) {
+            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // test rewarding for redemption payment default
@@ -354,8 +395,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.updateUnderlyingBlock();
             // perform self-minting
             const lots = 3;
-            const minted = await agent.selfMint(context.convertLotsToUBA(lots), lots);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            const minted = await agent.selfMint(await context.convertLotsToUBA(lots), lots);
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // perform self close
             const [dustChanges, selfClosedUBA] = await agent.selfClose(minted.mintedAmountUBA);
             assertWeb3Equal(selfClosedUBA, minted.mintedAmountUBA);
@@ -381,7 +422,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // agent "buys" f-assets
             await context.fAsset.transfer(agent.ownerAddress, minted.mintedAmountUBA, { from: minter.address });
             // perform self close
@@ -409,7 +450,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // agent "buys" f-assets
             await context.fAsset.transfer(agent.ownerAddress, minted.mintedAmountUBA, { from: minter.address });
             // perform partial self close
@@ -422,6 +463,52 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(agent.destroy(), "agent still active");
             const [dustChangesUBA2, selfClosedUBA2] = await agent.selfClose(dustAmountUBA);
             assertWeb3Equal(selfClosedUBA2, dustAmountUBA);
+            assert.equal(dustChangesUBA2.length, 1);
+            assertWeb3Equal(dustChangesUBA2[0], 0);
+            // agent can exit now
+            await agent.exitAvailable();
+            await agent.announceWithdrawal(fullAgentCollateral);
+            await time.increase(300);
+            await agent.destroy();
+        });
+
+        it("mint and redeem f-assets (changing lot size can create dust)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            // change lot size
+            const currentSettings: AssetManagerSettings = web3ResultStruct(await context.assetManager.getSettings());
+            await context.assetManager.updateSettings({...currentSettings, lotSizeAMG: toBN(currentSettings.lotSizeAMG).muln(2).toString() }, { from: assetManagerController });
+            // redeemer "buys" f-assets
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // perform redemption
+            const [redemptionRequests, remainingLots, dustChangesUBA1] = await redeemer.requestRedemption(lots);
+            assertWeb3Equal(remainingLots, 2);
+            assert.equal(dustChangesUBA1.length, 1);
+            assert.equal(redemptionRequests.length, 1);
+            const request = redemptionRequests[0];
+            const dustAmountUBA = minted.mintedAmountUBA.sub(request.valueUBA);
+            assertWeb3Equal(dustChangesUBA1[0], dustAmountUBA);
+            assert.equal(request.agentVault, agent.vaultAddress);
+            const tx1Hash = await agent.performRedemptionPayment(request);
+            await agent.confirmActiveRedemptionPayment(request, tx1Hash);
+            // agent "buys" f-assets
+            await context.fAsset.transfer(agent.ownerAddress, dustAmountUBA, { from: redeemer.address });
+            // perform self close
+            const [dustChangesUBA2, selfClosedUBA] = await agent.selfClose(dustAmountUBA);
+            assertWeb3Equal(selfClosedUBA, dustAmountUBA);
             assert.equal(dustChangesUBA2.length, 1);
             assertWeb3Equal(dustChangesUBA2[0], 0);
             // agent can exit now
@@ -447,19 +534,21 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
+            assert.equal(dustChangesUBA.length, 0);
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
             const tx1Hash = await agent.performRedemptionPayment(request);
-            // others cannot confirm redemption payment immediatelly
+            // others cannot confirm redemption payment immediatelly or challenge it as illegal payment
             await expectRevert(challenger.confirmRedemptionPayment(request, tx1Hash, agent), "only agent vault owner");
+            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
             await expectRevert(agent.destroy(), "agent still active");
             // others can confirm redemption payment after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
@@ -518,6 +607,39 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.destroy();
         });
 
+        it("allowed payment (others can confirm allowed payment after some time)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const challenger = await Challenger.create(context, challengerAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // topup payment
+            const txHash = await agent.performTopupPayment(100);
+            await agent.confirmTopupPayment(txHash);
+            // allowed payment
+            const allowedPayment = await agent.announceAllowedPayment();
+            const tx1Hash = await agent.performAllowedPayment(allowedPayment, 100);
+            // others cannot confirm allowed payment immediatelly or challenge it as illegal payment
+            await expectRevert(challenger.confirmAllowedPayment(allowedPayment, tx1Hash, agent), "only agent vault owner");
+            await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching ongoing announced pmt");
+            // others can confirm allowed payment after some time
+            await time.increase(context.settings.confirmationByOthersAfterSeconds);
+            const startBalance = await context.wnat.balanceOf(challengerAddress1);
+            const res = await challenger.confirmAllowedPayment(allowedPayment, tx1Hash);
+            assertWeb3Equal(res.spentUBA, 100);
+            const endBalance = await context.wnat.balanceOf(challengerAddress1);
+            // test rewarding
+            assertWeb3Equal(endBalance.sub(startBalance), context.settings.confirmationByOthersRewardNATWei);
+            // agent can exit now
+            await agent.exitAvailable();
+            await agent.announceWithdrawal(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)));
+            await time.increase(300);
+            await agent.destroy();
+        });
+
         it("illegal payment challenge", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -533,7 +655,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // perform illegal payment
             const tx1Hash = await agent.performPayment("IllegalPayment1", 100);
             // challenge agent for illegal payment
@@ -541,7 +663,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await challenger.illegalPaymentChallenge(agent, tx1Hash);
             const endBalance = await context.wnat.balanceOf(challengerAddress1);
             // test rewarding
-            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(context.convertLotsToAMG(lots)));
+            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(await context.convertLotsToAMG(lots)));
         });
 
         it("double payment challenge", async () => {
@@ -559,7 +681,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // perform double payment
             const tx1Hash = await agent.performPayment(underlyingRedeemer1, 100, PaymentReference.redemption(5));
             const tx2Hash = await agent.performPayment(underlyingRedeemer1, 100, PaymentReference.redemption(5));
@@ -568,7 +690,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash);
             const endBalance = await context.wnat.balanceOf(challengerAddress1);
             // test rewarding
-            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(context.convertLotsToAMG(lots)));
+            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(await context.convertLotsToAMG(lots)));
         });
 
         it("free balance negative challenge", async () => {
@@ -586,15 +708,15 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // perform some payments
-            const tx1Hash = await agent.performPayment(underlyingRedeemer1, context.convertLotsToUBA(lots));
+            const tx1Hash = await agent.performPayment(underlyingRedeemer1, await context.convertLotsToUBA(lots));
             // challenge agent for negative underlying balance
             const startBalance = await context.wnat.balanceOf(challengerAddress1);
             await challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]);
             const endBalance = await context.wnat.balanceOf(challengerAddress1);
             // test rewarding
-            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(context.convertLotsToAMG(lots)));
+            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(await context.convertLotsToAMG(lots)));
         });
     });
 });

@@ -1,5 +1,5 @@
 import { AgentVaultInstance } from "../../../typechain-truffle";
-import { DustChanged, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { AllowedPaymentAnnounced, DustChanged, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { EventArgs, filterEvents, findEvent, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BNish, toBN } from "../../utils/helpers";
@@ -54,6 +54,19 @@ export class Challenger extends AssetContextClient {
         const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, request.paymentAddress);
         const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.address });
         return requiredEventArgs(res, 'RedemptionPerformed');
+    }
+    
+    async confirmAllowedPayment(request: EventArgs<AllowedPaymentAnnounced>, transactionHash: string, agent?: Agent) {
+        let sourceAddress: string;
+        if (agent) {
+            sourceAddress = agent.underlyingAddress;
+        } else {
+            const tx = await this.chain.getTransaction(transactionHash);
+            sourceAddress = tx?.inputs[0][0]!;
+        }
+        const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, null);
+        const res = await this.assetManager.confirmAllowedPayment(proof, request.agentVault, request.announcementId, { from: this.address });
+        return requiredEventArgs(res, 'AllowedPaymentConfirmed');
     }
 
     async getChallengerReward(backingAMGAtChallenge: BNish) {

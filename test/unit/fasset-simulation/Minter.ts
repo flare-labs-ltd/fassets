@@ -2,6 +2,7 @@ import { CollateralReserved } from "../../../typechain-truffle/AssetManager";
 import { EventArgs, requiredEventArgs } from "../../utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
+import { BNish } from "../../utils/helpers";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
 export class Minter extends AssetContextClient {
@@ -25,9 +26,9 @@ export class Minter extends AssetContextClient {
         return new Minter(ctx, address, underlyingAddress, wallet);
     }
     
-    async reserveCollateral(agent: string, lots: number) {
+    async reserveCollateral(agent: string, lots: BNish) {
         const agentInfo = await this.assetManager.getAgentInfo(agent);
-        const crFee = await this.assetManager.collateralReservationFee(lots);
+        const crFee = await this.getCollateralReservationFee(lots);
         const res = await this.assetManager.reserveCollateral(agent, lots, agentInfo.feeBIPS, { from: this.address, value: crFee });
         return requiredEventArgs(res, 'CollateralReserved');
     }
@@ -41,5 +42,9 @@ export class Minter extends AssetContextClient {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, crt.paymentAddress);
         const res = await this.assetManager.executeMinting(proof, crt.collateralReservationId, { from: this.address });
         return requiredEventArgs(res, 'MintingExecuted');
+    }
+
+    async getCollateralReservationFee(lots: BNish) {
+        return await this.assetManager.collateralReservationFee(lots);
     }
 }

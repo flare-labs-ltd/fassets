@@ -159,7 +159,7 @@ export class Agent extends AssetContextClient {
 
     async getRedemptionPaymentDefaultValue(lots: BNish) {
         return this.context.convertAmgToNATWei(
-                toBN(this.context.convertLotsToAMG(lots))
+                toBN(await this.context.convertLotsToAMG(lots))
                 .mul(toBN(this.context.settings.redemptionFailureFactorBIPS))
                 .divn(10_000),
                 await this.context.currentAmgToNATWeiPrice()
@@ -178,6 +178,17 @@ export class Agent extends AssetContextClient {
         const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, this.underlyingAddress);
         const res = await this.assetManager.executeMinting(proof, crt.collateralReservationId, { from: this.ownerAddress });
         return requiredEventArgs(res, 'MintingExecuted');
+    }
+
+    async mintingPaymentDefault(crt: EventArgs<CollateralReserved>) {
+        const proof = await this.attestationProvider.proveReferencedPaymentNonexistence(
+            this.underlyingAddress,
+            crt.paymentReference,
+            crt.valueUBA.add(crt.feeUBA),
+            crt.lastUnderlyingBlock.toNumber(),
+            crt.lastUnderlyingTimestamp.toNumber());
+        const res = await this.assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'MintingPaymentDefault');
     }
 
     async selfMint(amountUBA: BNish, lots: BNish) {
