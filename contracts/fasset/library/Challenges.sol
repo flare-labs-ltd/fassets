@@ -29,6 +29,9 @@ library Challenges {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        // if the agent is already being fully liquidated, no need for more challenges
+        // this also prevents double challenges
+        require(agent.status != Agents.AgentStatus.FULL_LIQUIDATION, "chlg: already liquidating");
         // verify transaction
         TransactionAttestation.verifyBalanceDecreasingTransaction(_state.settings, _payment);
         // check the payment originates from agent's address
@@ -70,6 +73,9 @@ library Challenges {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        // if the agent is already being fully liquidated, no need for more challenges
+        // this also prevents double challenges
+        require(agent.status != Agents.AgentStatus.FULL_LIQUIDATION, "chlg dbl: already liquidating");
         // verify transactions
         TransactionAttestation.verifyBalanceDecreasingTransaction(_state.settings, _payment1);
         TransactionAttestation.verifyBalanceDecreasingTransaction(_state.settings, _payment2);
@@ -94,6 +100,9 @@ library Challenges {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        // if the agent is already being fully liquidated, no need for more challenges
+        // this also prevents double challenges
+        require(agent.status != Agents.AgentStatus.FULL_LIQUIDATION, "mult chlg: already liquidating");
         // check the payments originates from agent's address, are not confirmed already and calculate total
         int256 total = 0;
         for (uint256 i = 0; i < _payments.length; i++) {
