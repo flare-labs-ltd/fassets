@@ -174,6 +174,7 @@ export class AssetContext {
             liquidationCollateralPremiumBIPS: [6000, 8000, 10000],
             ccbTimeSeconds: 180,
             liquidationStepSeconds: 90,
+            paused: false,
         };
     }
 }
