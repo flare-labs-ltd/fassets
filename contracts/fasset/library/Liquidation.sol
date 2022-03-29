@@ -44,8 +44,9 @@ library Liquidation {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        // if already in full liquidation, do nothing
-        if (agent.status == Agents.AgentStatus.FULL_LIQUIDATION) return;
+        // if already in full liquidation or destroying, do nothing
+        if (agent.status == Agents.AgentStatus.FULL_LIQUIDATION
+            || agent.status == Agents.AgentStatus.DESTROYING) return;
         // if current phase is not LIQUIDATION, restart in LIQUIDATION phase
         Agents.LiquidationPhase currentPhase = _currentLiquidationPhase(_state, agent);
         if (currentPhase != Agents.LiquidationPhase.LIQUIDATION) {
@@ -148,7 +149,7 @@ library Liquidation {
     {
         Agents.LiquidationPhase currentPhase = _currentLiquidationPhase(_state, agent);
         // if current phase is already LIQUIDATION, no upgrade is needed
-        if (currentPhase == Agents.LiquidationPhase.LIQUIDATION) {
+        if (currentPhase == Agents.LiquidationPhase.LIQUIDATION || agent.status == Agents.AgentStatus.DESTROYING) {
             return currentPhase;
         }
         // restart liquidation (set new phase and start time) if new cr based phase is higher than time based
@@ -189,14 +190,15 @@ library Liquidation {
         private view
         returns (Agents.LiquidationPhase)
     {
-        if (agent.status == Agents.AgentStatus.NORMAL) {
-            return Agents.LiquidationPhase.NONE;
-        } else if (agent.status == Agents.AgentStatus.FULL_LIQUIDATION) {
-            return Agents.LiquidationPhase.LIQUIDATION;
-        } else {  // agent.status == Agents.AgentStatus.LIQUIDATION
+        Agents.AgentStatus status = agent.status;
+        if (status == Agents.AgentStatus.LIQUIDATION) {
             bool inCCB = agent.initialLiquidationPhase == Agents.LiquidationPhase.CCB
                 && block.timestamp <= agent.liquidationStartedAt + _state.settings.ccbTimeSeconds;
             return inCCB ? Agents.LiquidationPhase.CCB : Agents.LiquidationPhase.LIQUIDATION;
+        } else if (status == Agents.AgentStatus.FULL_LIQUIDATION) {
+            return Agents.LiquidationPhase.LIQUIDATION;
+        } else {    // any other status - NORMAL or DESTROYING
+            return Agents.LiquidationPhase.NONE;
         }
     }
 
@@ -210,7 +212,7 @@ library Liquidation {
         private view
         returns (uint256)
     {
-        // calculate premium step baed on time since lquidation started
+        // calculate premium step based on time since liquidation started
         bool startedInCCB = agent.status == Agents.AgentStatus.LIQUIDATION 
             && agent.initialLiquidationPhase == Agents.LiquidationPhase.CCB;
         uint256 ccbTime = startedInCCB ? _state.settings.ccbTimeSeconds : 0;
@@ -225,6 +227,7 @@ library Liquidation {
     }
 
     // Calculate the amount of liquidation that gets agent to safety.
+    // assumed: agentStatus == LIQUIDATION/FULL_LIQUIDATION && liquidationPhase == LIQUIDATION
     function _maxLiquidationAmountAMG(
         AssetManagerState.State storage _state,
         Agents.Agent storage agent,

@@ -194,15 +194,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 "EOA proof required");
         });
 
-        it("should destroy agent", async () => {
-            // init
-            const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
-            // act
-            const res = await assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 });
-            // assert
-            expectEvent(res, "AgentDestroyed", { agentVault: agentVault.address });
-        });
-
         it("only owner can destroy agent", async () => {
             // init
             const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
@@ -212,14 +203,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 "only agent vault owner");
         });
 
-        it("cannot destroy agent if it holds collateral, unannounced for withdrawal", async () => {
+        it("cannot destroy agent without announcement", async () => {
             // init
             const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
             // act
-            await agentVault.deposit({ from: agentOwner1, value: ether('1') });
             // assert
             await expectRevert(assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 }),
-                "withdrawal: not announced");
+                "destroy not announced");
         });
 
         it("should destroy agent after announced withdrawal time passes", async () => {
@@ -228,7 +218,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const amount = ether('1');
             await agentVault.deposit({ from: agentOwner1, value: amount });
             // act
-            await assetManager.announceCollateralWithdrawal(agentVault.address, amount, { from: agentOwner1 });
+            await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
             await time.increase(300);
             const recipient = randomAddress();
             const startBalance = await balance.current(recipient);

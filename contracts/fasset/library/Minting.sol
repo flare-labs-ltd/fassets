@@ -70,7 +70,7 @@ library Minting {
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         require(_lots > 0, "cannot mint 0 blocks");
         require(agent.agentType == Agents.AgentType.AGENT_100, "wrong agent type for self-mint");
-        require(agent.status == Agents.AgentStatus.NORMAL, "agent in liquidation");
+        require(agent.status == Agents.AgentStatus.NORMAL, "selfmint: invalid agent status");
         require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
         _mintValueUBA = uint256(valueAMG) * _state.settings.assetMintingGranularityUBA;

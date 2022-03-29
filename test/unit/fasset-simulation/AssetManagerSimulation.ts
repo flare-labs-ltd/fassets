@@ -72,7 +72,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             }
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral);
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -197,7 +197,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.confirmActiveRedemptionPayment(request2, tx4Hash);
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral);
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -229,7 +229,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral.add(crFee));
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -278,7 +278,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(agent.confirmDefaultedRedemptionPayment(request, tx1Hash), "invalid request id");
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral.sub(res.redeemedCollateralWei));
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -330,7 +330,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral.sub(res.redeemedCollateralWei));
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -380,7 +380,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral.sub(res.redeemedCollateralWei));
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -403,7 +403,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(dustChanges.length, 0);
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral);
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -431,7 +431,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(dustChanges.length, 0);
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral);
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -460,14 +460,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(selfClosedUBA1, selfCloseAmountUBA);
             assert.equal(dustChangesUBA1.length, 1);
             assertWeb3Equal(dustChangesUBA1[0], dustAmountUBA);
-            await expectRevert(agent.destroy(), "agent still active");
+            await expectRevert(agent.destroy(), "destroy not announced");
             const [dustChangesUBA2, selfClosedUBA2] = await agent.selfClose(dustAmountUBA);
             assertWeb3Equal(selfClosedUBA2, dustAmountUBA);
             assert.equal(dustChangesUBA2.length, 1);
             assertWeb3Equal(dustChangesUBA2[0], 0);
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral);
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -513,7 +513,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(dustChangesUBA2[0], 0);
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral);
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -549,7 +549,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // others cannot confirm redemption payment immediatelly or challenge it as illegal payment
             await expectRevert(challenger.confirmRedemptionPayment(request, tx1Hash, agent), "only agent vault owner");
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
-            await expectRevert(agent.destroy(), "agent still active");
+            await expectRevert(agent.destroy(), "destroy not announced");
             // others can confirm redemption payment after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
             const startBalance = await context.wnat.balanceOf(challengerAddress1);
@@ -559,7 +559,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(endBalance.sub(startBalance), context.settings.confirmationByOthersRewardNATWei);
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)));
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -579,7 +579,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(agent.confirmTopupPayment(txHash), "payment already confirmed");
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral);
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -602,7 +602,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(res.spentUBA, 100);
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral);
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });
@@ -635,7 +635,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(endBalance.sub(startBalance), context.settings.confirmationByOthersRewardNATWei);
             // agent can exit now
             await agent.exitAvailable();
-            await agent.announceWithdrawal(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)));
+            await agent.announceDestroy();
             await time.increase(300);
             await agent.destroy();
         });

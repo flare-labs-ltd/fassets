@@ -71,6 +71,10 @@ export class Agent extends AssetContextClient {
     async announceWithdrawal(amountNATWei: BNish) {
         const res = await this.assetManager.announceCollateralWithdrawal(this.vaultAddress, amountNATWei, { from: this.ownerAddress });
     }
+
+    async announceDestroy() {
+        const res = await this.assetManager.announceDestroyAgent(this.vaultAddress, { from: this.ownerAddress });
+    }
     
     async destroy() {
         const res = await this.assetManager.destroyAgent(this.vaultAddress, this.ownerAddress, { from: this.ownerAddress });

@@ -110,12 +110,23 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
     
     /**
+     * Announce that the agent is going to be destroyed. At this time, agent must not have any mintings
+     * or collateral reservations and must not be on the available agents list.
+     */
+    function announceDestroyAgent(
+        address _agentVault
+    )
+        external
+    {
+        Agents.announceDestroy(state, _agentVault);
+    }
+    
+    /**
      * Delete all agent data. Only used internally by AgentVault.destroy().
      * Procedure for destroying agent:
      * - exit available agents list
      * - wait until all assets are redeemed or self-close
-     * - claim rewards
-     * - announce withdrawal of full collateral (and wait the required time)
+     * - announce destroy (and wait the required time)
      * - call destroyAgent()
      * @param _agentVault address of the agent's vault to destroy
      * @param _recipient the address where the remaining funds from the vault will be transfered (as native currency)

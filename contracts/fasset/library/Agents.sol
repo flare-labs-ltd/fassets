@@ -31,7 +31,8 @@ library Agents {
     enum AgentStatus {
         NORMAL,
         LIQUIDATION,        // CCB or liquidation due to CR - ends when agent is
-        FULL_LIQUIDATION    // illegal payment liquidation - must liquidate all and close vault
+        FULL_LIQUIDATION,   // illegal payment liquidation - must liquidate all and close vault
+        DESTROYING          // agent announced destroy, cannot mint again
     }
 
     enum LiquidationPhase {
@@ -151,6 +152,24 @@ library Agents {
         emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), _agentVault, _underlyingAddressString);
     }
     
+    function announceDestroy(
+        AssetManagerState.State storage _state, 
+        address _agentVault
+    )
+        external
+    {
+        Agent storage agent = getAgent(_state, _agentVault);
+        requireAgentVaultOwner(_agentVault);
+        // all minting must stop and all minted assets must have been cleared
+        require(agent.availableAgentsPos == 0, "agent still available");
+        require(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0, "agent still active");
+        // if not destroying yet, start timing
+        if (agent.status != AgentStatus.DESTROYING) {
+            agent.status = AgentStatus.DESTROYING;
+            agent.withdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
+        }
+    }
+
     function destroyAgent(
         AssetManagerState.State storage _state, 
         address _agentVault
@@ -159,13 +178,12 @@ library Agents {
     {
         Agent storage agent = getAgent(_state, _agentVault);
         requireAgentVaultOwner(_agentVault);
-        require(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0, "agent still active");
-        require(agent.availableAgentsPos == 0, "agent still available");
-        // check that all collateral has been announced for withdrawal
-        uint256 agentCollateral = fullCollateral(_state, _agentVault);
-        if (agentCollateral > 0) {
-            withdrawalExecuted(_state, _agentVault, agentCollateral);
-        }
+        // destroy must have been announced enough time before
+        require(agent.status == AgentStatus.DESTROYING, "destroy not announced");
+        require(block.timestamp > agent.withdrawalAnnouncedAt + _state.settings.withdrawalWaitMinSeconds,
+            "destroy: not allowed yet");
+        // cannot have any minting when in destroying status
+        assert(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0);
         // delete agent data
         delete _state.agents[_agentVault];
         emit AMEvents.AgentDestroyed(_agentVault);
@@ -239,6 +257,7 @@ library Agents {
     {
         Agent storage agent = getAgent(_state, _agentVault);
         requireAgentVaultOwner(_agentVault);
+        require(agent.status == AgentStatus.NORMAL, "withdrawal ann: invalid status");
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
         if (_valueNATWei > agent.withdrawalAnnouncedNATWei) {
             // announcement increased - must check there is enough free collateral and then lock it
@@ -318,9 +337,10 @@ library Agents {
         address _agentVault,
         uint256 _valueNATWei
     )
-        public
+        external
     {
         Agent storage agent = getAgent(_state, _agentVault);
+        require(agent.status == AgentStatus.NORMAL, "withdrawal: invalid status");
         require(agent.withdrawalAnnouncedAt != 0, "withdrawal: not announced");
         require(_valueNATWei <= agent.withdrawalAnnouncedNATWei, "withdrawal: more than announced");
         require(block.timestamp > agent.withdrawalAnnouncedAt + _state.settings.withdrawalWaitMinSeconds,
