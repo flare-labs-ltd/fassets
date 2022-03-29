@@ -34,6 +34,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     IFAsset public immutable fAsset;
     address public assetManagerController;  // TODO: should be replaceable?
 
+    modifier onlyAssetManagerController {
+        require(msg.sender == assetManagerController, "only asset manager controller");
+        _;
+    }
+    
     constructor(
         AssetManagerSettings.Settings memory _settings,
         IFAsset _fAsset,
@@ -56,8 +61,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         AssetManagerSettings.Settings calldata _settings
     ) 
         external
+        onlyAssetManagerController
     {
-        require(msg.sender == assetManagerController, "only asset manager controller");
         SettingsUpdater.validateAndSet(state, _settings, true);
     }
 
@@ -686,6 +691,37 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         Liquidation.cancelLiquidation(state, _agentVault);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Upgrade (second phase)
+
+    /**
+     * When f-asset is stopped, no transfers can be made anymore.
+     * This is an extreme measure to be used only when the asset manager minting has been already paused
+     * for a long time but there still exist unredeemable f-assets. In such case, the f-asset contract is
+     * stopped and then agents can buy back the collateral at market rate (i.e. they burn market value
+     * of backed f-assets in collateral to release the rest of the collateral).
+     */
+    function stopFAsset() 
+        external
+        onlyAssetManagerController
+    {
+        // TODO: check that asset manager has been paused for a week or so?
+        fAsset.stop();
+    }
+    
+    /**
+     * When f-asset is stopped, agent can burn the market price of backed f-assets with his collateral,
+     * to release the remaining collateral.
+     */
+    function buybackAgentCollateral(
+        address _agentVault
+    )
+        external
+    {
+        require(fAsset.stopped(), "f-asset not stopped");
+        Agents.buybackAgentCollateral(state, _agentVault);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

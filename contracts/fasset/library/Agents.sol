@@ -189,6 +189,31 @@ library Agents {
         emit AMEvents.AgentDestroyed(_agentVault);
     }
     
+    function buybackAgentCollateral(
+        AssetManagerState.State storage _state, 
+        address _agentVault
+    )
+        external
+    {
+        // check that fAsset is stopped is in AssetManager
+        Agent storage agent = getAgent(_state, _agentVault);
+        requireAgentVaultOwner(_agentVault);
+        // Types of various collateral types:
+        // - reservedAMG should be 0, since asset manager had to be paused for a week, so all collateral 
+        //   reservation requests must have been minted or defaulted by now.
+        //   However, it may be nonzero due to some forgotten payment proof, so we burn and clear it.
+        // - redeemingAMG corresponds to redemptions where f-assets were already burned, so the redemption can
+        //   finish normally even if f-asset is now stopped
+        //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
+        // - mintedAMG must be burned and cleared
+        uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
+        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        uint256 mintingCollateral = Conversion.convertAmgToNATWei(mintingAMG, amgToNATWeiPrice);
+        _state.settings.burnAddress.transfer(mintingCollateral);
+        agent.mintedAMG = 0;
+        agent.reservedAMG = 0;
+    }
+    
     function setAgentMinCollateralRatioBIPS(
         AssetManagerState.State storage _state, 
         address _agentVault,
