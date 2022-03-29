@@ -16,6 +16,7 @@ import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
 import "./PaymentReference.sol";
 import "./TransactionAttestation.sol";
+import "./Liquidation.sol";
 
 
 library Redemption {
@@ -219,6 +220,8 @@ library Redemption {
         if (!isAgent) {
             Agents.payout(_state, request.agentVault, msg.sender, _state.settings.confirmationByOthersRewardNATWei);
         }
+        // redemption can make agent healthy, so check and pull out of liquidation
+        Liquidation.endLiquidationIfHealthy(_state, request.agentVault);
         // delete redemption request at end if we don't need it any more
         // otherwise mark it as FAILED and wait for default
         if (paymentValid || request.status == RedemptionStatus.DEFAULTED) {
@@ -430,6 +433,8 @@ library Redemption {
         // all the redeemed amount is added to free balance
         _valueUBA = Conversion.convertAmgToUBA(_state.settings, _valueAMG);
         UnderlyingFreeBalance.increaseFreeBalance(_state, _agentVault, _valueUBA);
+        // try to pull agent out of liquidation
+        Liquidation.endLiquidationIfHealthy(_state, agent, _agentVault);
     }
     
     function _removeFromTicket(

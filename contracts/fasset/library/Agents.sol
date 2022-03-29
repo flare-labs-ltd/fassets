@@ -13,6 +13,7 @@ import "./UnderlyingAddressOwnership.sol";
 import "./AssetManagerState.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
+import "./Liquidation.sol";
 
 library Agents {
     using SafeBips for uint256;
@@ -301,6 +302,17 @@ library Agents {
         }
     }
     
+    function depositExecuted(
+        AssetManagerState.State storage _state, 
+        address _agentVault,
+        uint256 /* _valueNATWei */
+    )
+        external
+    {
+        // try to pull agent out of liquidation
+        Liquidation.endLiquidationIfHealthy(_state, _agentVault);
+    }
+    
     function withdrawalExecuted(
         AssetManagerState.State storage _state, 
         address _agentVault,
@@ -317,7 +329,7 @@ library Agents {
         // could reset agent.withdrawalAnnouncedAt if agent.withdrawalAnnouncedNATWei == 0, 
         // but it's not needed, since no withdrawal can be made anyway
     }
-    
+
     function payout(
         AssetManagerState.State storage _state, 
         address _agentVault,

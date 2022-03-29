@@ -190,6 +190,20 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
     
     /**
+     * Called by AgentVault when there was a deposit.
+     * May pull agent out of liquidation.
+     * @param _valueNATWei the deposited amount
+     */
+    function depositCollateral(
+        uint256 _valueNATWei
+    )
+        external override
+    {
+        // Agents.withdrawalExecuted makes sure that only a registered agent vault can call
+        Agents.depositExecuted(state, msg.sender, _valueNATWei);
+    }
+    
+    /**
      * After a lot size change by the governance, it may happen that after a redemption
      * there remains less than one lot on a redemption ticket. This is named "dust" and
      * can be self closed or liquidated, but not redeemed. However, after several such redemptions,

@@ -93,16 +93,25 @@ library Liquidation {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
-        endLiquidationIfHealthy(_state, agent, collateralData, _agentVault);
+        endLiquidationIfHealthy(_state, agent, _agentVault);
         require(agent.status == Agents.AgentStatus.NORMAL, "cannot stop liquidation");
+    }
+
+    // Cancel liquidation if the agent is healthy.
+    function endLiquidationIfHealthy(
+        AssetManagerState.State storage _state,
+        address _agentVault
+    )
+        internal
+    {
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        endLiquidationIfHealthy(_state, agent, _agentVault);
     }
     
     // Cancel liquidation if the agent is healthy.
     function endLiquidationIfHealthy(
         AssetManagerState.State storage _state,
         Agents.Agent storage _agent,
-        AgentCollateral.Data memory _collateralData,
         address _agentVault
     )
         internal
@@ -110,7 +119,8 @@ library Liquidation {
         // can only stop plain liquidation (full liquidation can only stop when there are no more minted assets)
         if (_agent.status != Agents.AgentStatus.LIQUIDATION) return;
         // agent's current collateral ratio
-        uint256 collateralRatioBIPS = _collateralData.collateralRatio(_agent, _state.settings);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        uint256 collateralRatioBIPS = collateralData.collateralRatio(_agent, _state.settings);
         // target collateral ratio is minCollateralRatio for CCB and safetyMinCollateralRatio for LIQUIDATION
         Agents.LiquidationPhase currentPhase = _currentLiquidationPhase(_state, _agent);
         uint256 targetRatioBIPS = currentPhase == Agents.LiquidationPhase.CCB

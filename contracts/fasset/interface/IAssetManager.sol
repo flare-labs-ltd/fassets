@@ -6,5 +6,6 @@ import "./IWNat.sol";
 // Asset Manager methods used in AgentVault
 interface IAssetManager {
     function withdrawCollateral(uint256 _valueNATWei) external;
+    function depositCollateral(uint256 _valueNATWei) external;
     function getWNat() external view returns (IWNat);
 }
