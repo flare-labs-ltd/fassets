@@ -12,13 +12,14 @@ contract FAsset is IFAsset, VPToken {
     address public override assetManager;
     
     /**
+     * Nonzero if f-asset is stopped (in that case it's stop timestamp).
      * When f-asset is stopped, no transfers can be made anymore.
      * This is an extreme measure to be used only when the asset manager minting has been already paused
      * for a long time but there still exist unredeemable f-assets. In such case, the f-asset contract is
      * stopped and then agents can buy back the collateral at market rate (i.e. they burn market value
      * of backed f-assets in collateral to release the rest of the collateral).
      */
-    bool public override stopped = false;
+    uint64 public stoppedAt = 0;
     
     modifier onlyAssetManager {
         require(msg.sender == assetManager, "only asset manager");
@@ -74,13 +75,25 @@ contract FAsset is IFAsset, VPToken {
     /**
      * Stops all transfers by setting `stopped` flag to true.
      * Only the assetManager corresponding to this fAsset may call `stop()`.
+     * Stop is irreversible.
      */    
     function stop()
         external override
         onlyAssetManager
     {
-        stopped = true;
+        stoppedAt = uint64(block.timestamp);    // safe, block timestamp can never exceed 64bit
     }
+
+    /**
+     * True if f-asset is stopped.
+     */    
+    function stopped()
+        external view override
+        returns (bool)
+    {
+        return stoppedAt != 0;
+    }
+    
 
     /**
      * Prevent transfer if f-asset is stopped.
@@ -93,7 +106,7 @@ contract FAsset is IFAsset, VPToken {
         internal
         override (VPToken)
     {
-        require(!stopped, "f-asset stopped");
+        require(stoppedAt == 0, "f-asset stopped");
         VPToken._beforeTokenTransfer(_from, _to, _amount);
     }
 }
