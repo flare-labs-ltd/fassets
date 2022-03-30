@@ -706,8 +706,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
         onlyAssetManagerController
     {
-        if (state.settings.pausedAt == 0) {
-            state.settings.pausedAt = SafeCast.toUint64(block.timestamp);
+        if (state.pausedAt == 0) {
+            state.pausedAt = SafeCast.toUint64(block.timestamp);
         }
     }
     
@@ -722,7 +722,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
         onlyAssetManagerController
     {
-        require(state.settings.pausedAt != 0 && block.timestamp > state.settings.pausedAt + MINIMUM_PAUSE_BEFORE_STOP,
+        require(state.pausedAt != 0 && block.timestamp > state.pausedAt + MINIMUM_PAUSE_BEFORE_STOP,
             "asset manager not paused enough");
         fAsset.stop();
     }

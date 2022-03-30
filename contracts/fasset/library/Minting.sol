@@ -68,7 +68,7 @@ library Minting {
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
-        require(_state.settings.pausedAt == 0, "minting paused");
+        require(_state.pausedAt == 0, "minting paused");
         require(_lots > 0, "cannot mint 0 blocks");
         require(agent.agentType == Agents.AgentType.AGENT_100, "wrong agent type for self-mint");
         require(agent.status == Agents.AgentStatus.NORMAL, "selfmint: invalid agent status");

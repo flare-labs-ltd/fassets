@@ -53,6 +53,11 @@ library AssetManagerState {
         
         // The timestamp (on this network) when the underlying block was last updated
         uint64 currentUnderlyingBlockUpdatedAt;
+
+        // If non-zero, asset manager is paused and has been paused at the time indicated by timestamp pausedAt.
+        // When asset manager is paused, no new mintings can be done.
+        // It is an extreme measure, which can be used in case there is a dangerous hole in the system.
+        uint64 pausedAt;
     }
     
 }
