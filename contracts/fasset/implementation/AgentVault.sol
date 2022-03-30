@@ -35,6 +35,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     // without "onlyOwner" to allow owner to send funds from any source
     function deposit() external payable override {
         assetManager.getWNat().deposit{value: msg.value}();
+        assetManager.depositCollateral(msg.value);
     }
 
     function delegate(address _to, uint256 _bips) external override onlyOwner {
