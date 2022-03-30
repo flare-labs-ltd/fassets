@@ -127,9 +127,10 @@ library AssetManagerSettings {
         // go to the next step of liquidation after a certain period of time.
         uint64 liquidationStepSeconds;
 
+        // If non-zero, asset manager is paused and has been paused at the time indicated by timestamp pausedAt.
         // When asset manager is paused, no new mintings can be done.
         // It is an extreme measure, which can be used in case there is a dangerous hole in the system.
-        bool paused;
+        uint64 pausedAt;
     }
 
 }

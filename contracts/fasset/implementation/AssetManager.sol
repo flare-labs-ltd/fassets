@@ -33,6 +33,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     AssetManagerState.State private state;
     IFAsset public immutable fAsset;
     address public assetManagerController;  // TODO: should be replaceable?
+    
+    uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
 
     modifier onlyAssetManagerController {
         require(msg.sender == assetManagerController, "only asset manager controller");
@@ -697,6 +699,19 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     // Upgrade (second phase)
 
     /**
+     * When asset manager is paused, no new minting can be made.
+     * All other operations continue normally.
+     */
+    function pause()
+        external
+        onlyAssetManagerController
+    {
+        if (state.settings.pausedAt == 0) {
+            state.settings.pausedAt = SafeCast.toUint64(block.timestamp);
+        }
+    }
+    
+    /**
      * When f-asset is stopped, no transfers can be made anymore.
      * This is an extreme measure to be used only when the asset manager minting has been already paused
      * for a long time but there still exist unredeemable f-assets. In such case, the f-asset contract is
@@ -707,13 +722,16 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
         onlyAssetManagerController
     {
-        // TODO: check that asset manager has been paused for a week or so?
+        require(state.settings.pausedAt != 0 && block.timestamp > state.settings.pausedAt + MINIMUM_PAUSE_BEFORE_STOP,
+            "asset manager not paused enough");
         fAsset.stop();
     }
     
     /**
      * When f-asset is stopped, agent can burn the market price of backed f-assets with his collateral,
-     * to release the remaining collateral.
+     * to release the remaining collateral (and, formally, underlying assets).
+     * This method ONLY works when f-asset is stopped, which will only be done when AssetManager is already paused
+     * at least for a month and most f-assets are already burned and the only ones remaining are unrecoverable.
      */
     function buybackAgentCollateral(
         address _agentVault

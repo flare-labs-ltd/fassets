@@ -41,7 +41,7 @@ library CollateralReservations {
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
-        require(!_state.settings.paused, "minting paused");
+        require(_state.settings.pausedAt == 0, "minting paused");
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 blocks");
         require(agent.status == Agents.AgentStatus.NORMAL, "rc: invalid agent status");

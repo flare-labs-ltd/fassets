@@ -199,7 +199,7 @@ library Agents {
         Agent storage agent = getAgent(_state, _agentVault);
         requireAgentVaultOwner(_agentVault);
         // Types of various collateral types:
-        // - reservedAMG should be 0, since asset manager had to be paused for a week, so all collateral 
+        // - reservedAMG should be 0, since asset manager had to be paused for a month, so all collateral 
         //   reservation requests must have been minted or defaulted by now.
         //   However, it may be nonzero due to some forgotten payment proof, so we burn and clear it.
         // - redeemingAMG corresponds to redemptions where f-assets were already burned, so the redemption can
