@@ -50,16 +50,16 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     describe("set and update settings with controller", () => {
         it("should correctly set asset manager settings", async () => {
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            assertWeb3Equal(settings.underlyingBlocksForPayment, 10);
-            await assetManagerController.setUnderlyingBlocksForPayment([assetManager.address], 12, { from: governance });
+            assertWeb3Equal(settings.redemptionFeeBIPS, 200);
+            await assetManagerController.setRedemptionFeeBips([assetManager.address], 250, { from: governance });
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            assertWeb3Equal(newSettings.underlyingBlocksForPayment, 12);
+            assertWeb3Equal(newSettings.redemptionFeeBIPS, 250);
         });
 
         it("should not change settings if manager not passed", async () => {
-            await assetManagerController.setUnderlyingBlocksForPayment([], 12, { from: governance });
+            await assetManagerController.setRedemptionFeeBips([], 250, { from: governance });
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            assertWeb3Equal(newSettings.underlyingBlocksForPayment, 10);
+            assertWeb3Equal(newSettings.redemptionFeeBIPS, 200);
         });
     });
 });

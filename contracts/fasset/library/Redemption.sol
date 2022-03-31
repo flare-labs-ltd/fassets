@@ -135,7 +135,7 @@ library Redemption {
         uint64 requestId = ++_state.newRedemptionRequestId;
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
         uint128 redemptionFeeUBA = SafeCast.toUint128(
-            SafeBips.mulBips(redeemedValueUBA, _state.settings.redemptionFeeBips));
+            SafeBips.mulBips(redeemedValueUBA, _state.settings.redemptionFeeBIPS));
         _state.redemptionRequests[requestId] = RedemptionRequest({
             redeemerUnderlyingAddressHash: keccak256(bytes(_redeemerUnderlyingAddressString)),
             underlyingValueUBA: redeemedValueUBA,

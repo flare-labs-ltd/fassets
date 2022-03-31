@@ -22,7 +22,7 @@ export async function createTestSettings(attestationClient: AttestationClientMoc
         safetyMinCollateralRatioBIPS: 2_5000,              // 2.5
         underlyingBlocksForPayment: 10,
         underlyingSecondsForPayment: 120,                       // 12s per block assumed
-        redemptionFeeBips: 200,                                 // 2%
+        redemptionFeeBIPS: 200,                                 // 2%
         redemptionFailureFactorBIPS: 1_2000,                    // 1.2
         confirmationByOthersAfterSeconds: 6 * 3600,              // 6 hours
         confirmationByOthersRewardNATWei: toStringExp(100, 18),    // 100 NAT

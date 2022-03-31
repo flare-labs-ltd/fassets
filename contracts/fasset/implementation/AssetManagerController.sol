@@ -40,12 +40,130 @@ contract AssetManagerController is Governed, AddressUpdatable {
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Setters
     
-    function setUnderlyingBlocksForPayment(address[] memory _assetManagers, uint256 _underlyingBlocksForPayment)
+    function setLotSizeAmg(address[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance
     {
         _setValueOnManagers(_assetManagers, 
-            SettingsUpdater.SET_UNDERLYING_BLOCKS_FOR_PAYMENT, abi.encode(_underlyingBlocksForPayment));
+            SettingsUpdater.SET_LOT_SIZE_AMG, abi.encode(_value));
+    }
+
+    function setCollateralRatios(
+        address[] memory _assetManagers, 
+        uint256 _minCollateralRatioBIPS,
+        uint256 _ccbMinCollateralRatioBIPS,
+        uint256 _safetyMinCollateralRatioBIPS
+    )
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_LOT_SIZE_AMG, 
+            abi.encode(_minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS));
+    }
+
+    function setTimeForPayment(
+        address[] memory _assetManagers, 
+        uint256 _underlyingBlocks,
+        uint256 _underlyingSeconds
+    )
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_TIME_FOR_PAYMENT, abi.encode(_underlyingBlocks, _underlyingSeconds));
+    }
+
+    function setPaymentChallengeReward(
+        address[] memory _assetManagers, 
+        uint256 _rewardNATWei,
+        uint256 _rewardBIPS
+    )
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_PAYMENT_CHALLENGE_REWARD, abi.encode(_rewardNATWei, _rewardBIPS));
+    }
+
+    function setCollateralReservationFeeBips(address[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_COLLATERAL_RESERVATION_FEE_BIPS, abi.encode(_value));
+    }
+
+    function setRedemptionFeeBips(address[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_REDEMPTION_FEE_BIPS, abi.encode(_value));
+    }
+
+    function setRedemptionFailureFactorBips(address[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_REDEMPTION_FAILURE_FACTOR_BIPS, abi.encode(_value));
+    }
+
+    function setConfirmationByOthersAfterSeconds(address[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS, abi.encode(_value));
+    }
+
+    function setConfirmationByOthersRewardNatWei(address[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_CONFIRMATION_BY_OTHERS_REWARD_NAT_WEI, abi.encode(_value));
+    }
+
+    function setMaxRedeemedTickets(address[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_MAX_REDEEMED_TICKETS, abi.encode(_value));
+    }
+
+    function setLotSizeAmgsetWithdrawalOrDestroyWaitMinSeconds(address[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_WITHDRAWAL_OR_DESTROY_WAIT_MIN_SECONDS, abi.encode(_value));
+    }
+
+    function setCcbTimeSeconds(address[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_CCB_TIME_SECONDS, abi.encode(_value));
+    }
+
+    function setLiquidationStepSeconds(address[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_LIQUIDATION_STEP_SECONDS, abi.encode(_value));
+    }
+    
+    function setLiquidationCollateralPremiumBips(address[] memory _assetManagers, uint256[] memory _values)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_LIQUIDATION_COLLATERAL_PREMIUM_BIPS, abi.encode(_values));
     }
     
     ///////////////////////////////////////////////////////////////////////////////////////////////

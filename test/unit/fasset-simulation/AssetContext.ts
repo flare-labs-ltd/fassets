@@ -163,7 +163,7 @@ export class AssetContext {
             minCollateralRatioBIPS: 2_1000,          // 2.1
             ccbMinCollateralRatioBIPS: 1_9000,   // 1.9
             safetyMinCollateralRatioBIPS: 2_5000,      // 2.5
-            redemptionFeeBips: 200,                         // 2%
+            redemptionFeeBIPS: 200,                         // 2%
             redemptionFailureFactorBIPS: 1_2000,            // 1.2
             confirmationByOthersAfterSeconds: 6 * 3600,      // 6 hours
             confirmationByOthersRewardNATWei: toWei(100),      // 100 NAT

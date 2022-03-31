@@ -85,7 +85,7 @@ library AssetManagerSettings {
         uint64 underlyingSecondsForPayment;
 
         // Redemption fee in underlying currency base amount (UBA).
-        uint16 redemptionFeeBips;
+        uint16 redemptionFeeBIPS;
         
         // On redemption underlying payment failure, redeemer is compensated with
         // redemption value recalculated in flare/sgb times redemption failure factor.
