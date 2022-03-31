@@ -20,6 +20,7 @@ export async function newAssetManager(
 export async function linkAssetManager() {
     // deploy all libraries
     const SettingsUpdater = await deployLibrary('SettingsUpdater');
+    const StateUpdater = await deployLibrary('StateUpdater');
     const Agents = await deployLibrary('Agents');
     const AvailableAgents = await deployLibrary('AvailableAgents');
     const CollateralReservations = await deployLibrary('CollateralReservations');
@@ -31,7 +32,7 @@ export async function linkAssetManager() {
     const Challenges = await deployLibrary('Challenges', { Liquidation });
     // link AssetManagerContract
     return linkDependencies(artifacts.require('AssetManager'), { 
-        SettingsUpdater, Agents, AvailableAgents, CollateralReservations, Liquidation, Minting, 
+        SettingsUpdater, StateUpdater, Agents, AvailableAgents, CollateralReservations, Liquidation, Minting, 
         UnderlyingFreeBalance, Redemption, AllowedPaymentAnnouncement, Challenges 
     });
 }

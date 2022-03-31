@@ -14,6 +14,7 @@ import "../library/Conversion.sol";
 import "../library/PaymentConfirmations.sol";
 // external
 import "../library/SettingsUpdater.sol";
+import "../library/StateUpdater.sol";
 import "../library/AvailableAgents.sol";
 import "../library/Agents.sol";
 import "../library/CollateralReservations.sol";
@@ -48,7 +49,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     ) {
         fAsset = _fAsset;
         assetManagerController = _assetManagerController;
-        SettingsUpdater.validateAndSet(state, _settings, false);
+        SettingsUpdater.validateAndSet(state, _settings);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -57,15 +58,15 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     /**
      * Update all settings with validation.
      * This method cannot be called directly, it has to be called through assetManagerController.
-     * @param _settings the new settings
      */    
     function updateSettings(
-        AssetManagerSettings.Settings calldata _settings
+        bytes32 _method,
+        bytes calldata _params
     ) 
         external
         onlyAssetManagerController
     {
-        SettingsUpdater.validateAndSet(state, _settings, true);
+        SettingsUpdater.callUpdate(state, _method, _params);
     }
 
     /**
@@ -325,7 +326,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        SettingsUpdater.updateCurrentBlock(state, _proof);
+        StateUpdater.updateCurrentBlock(state, _proof);
     }
     
     /**
