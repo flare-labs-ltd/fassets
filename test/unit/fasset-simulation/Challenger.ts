@@ -1,6 +1,6 @@
 import { AgentVaultInstance } from "../../../typechain-truffle";
 import { AllowedPaymentAnnounced, DustChanged, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
-import { EventArgs, filterEvents, findEvent, findRequiredEvent, requiredEventArgs } from "../../utils/events";
+import { eventArgs, EventArgs, filterEvents, findEvent, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BNish, toBN } from "../../utils/helpers";
 import { Agent } from "./Agent";
@@ -24,14 +24,16 @@ export class Challenger extends AssetContextClient {
     async illegalPaymentChallenge(agent: Agent, txHash: string) {
         const proof = await this.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent.underlyingAddress);
         const res = await this.assetManager.illegalPaymentChallenge(proof, agent.agentVault.address, { from: this.address });
-        return requiredEventArgs(res, 'IllegalPaymentConfirmed');
+        findRequiredEvent(res, 'IllegalPaymentConfirmed');
+        return eventArgs(res, 'LiquidationStarted');
     }
 
     async doublePaymentChallenge(agent: Agent, txHash1: string, txHash2: string) {
         const proof1 = await this.attestationProvider.proveBalanceDecreasingTransaction(txHash1, agent.underlyingAddress);
         const proof2 = await this.attestationProvider.proveBalanceDecreasingTransaction(txHash2, agent.underlyingAddress);
         const res = await this.assetManager.doublePaymentChallenge(proof1, proof2, agent.agentVault.address, { from: this.address });
-        return requiredEventArgs(res, 'DuplicatePaymentConfirmed');
+        findRequiredEvent(res, 'DuplicatePaymentConfirmed');
+        return eventArgs(res, 'LiquidationStarted');
     }
 
     async freeBalanceNegativeChallenge(agent: Agent, txHashes: string[]) {
@@ -40,7 +42,8 @@ export class Challenger extends AssetContextClient {
             proofs.push(await this.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent.underlyingAddress));
         }
         const res = await this.assetManager.freeBalanceNegativeChallenge(proofs, agent.agentVault.address, { from: this.address });
-        return requiredEventArgs(res, 'UnderlyingFreeBalanceNegative');
+        findRequiredEvent(res, 'UnderlyingFreeBalanceNegative');
+        return eventArgs(res, 'LiquidationStarted');
     }
 
     async confirmRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent?: Agent) {

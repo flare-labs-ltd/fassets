@@ -108,7 +108,7 @@ library AgentCollateral {
     
     // Agent's collateral ratio - used in liquidation.
     // Reserves CR collateral and redemption collateral at minCollateralRatio,
-    // and returns oynly collateral ratio for minted assets.
+    // and returns only collateral ratio for minted assets.
     // Ignores collateral announced for withdrawal (withdrawals are forbidden during liquidation).
     function collateralRatio(
         AgentCollateral.Data memory _data,

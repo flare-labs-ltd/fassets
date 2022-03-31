@@ -1,3 +1,4 @@
+import { time } from "@openzeppelin/test-helpers";
 import { AgentVaultInstance } from "../../../typechain-truffle";
 import { AllowedPaymentAnnounced, CollateralReserved, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { checkEventNotEmited, EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
@@ -5,6 +6,7 @@ import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BNish, toBN } from "../../utils/helpers";
+import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
 
@@ -67,19 +69,35 @@ export class Agent extends AssetContextClient {
         const args = requiredEventArgs(res, 'AvailableAgentExited');
         assert.equal(args.agentVault, this.vaultAddress);
     }
+
+    async exitAndDestroy(collateral: BNish) {
+        await this.exitAvailable();
+        await this.announceDestroy();
+        await time.increase(300);
+        const startBalance = toBN(await web3.eth.getBalance(this.ownerAddress));
+        const res = await this.destroy();
+        const endBalance = toBN(await web3.eth.getBalance(this.ownerAddress));
+        const tr = await web3.eth.getTransaction(res.tx);
+        assertWeb3Equal(endBalance.sub(startBalance).add(toBN(res.receipt.gasUsed).mul(toBN(tr.gasPrice))), collateral);
+    }
     
-    async announceWithdrawal(amountNATWei: BNish) {
-        const res = await this.assetManager.announceCollateralWithdrawal(this.vaultAddress, amountNATWei, { from: this.ownerAddress });
+    async announceCollateralWithdrawal(amountNATWei: BNish) {
+        await this.assetManager.announceCollateralWithdrawal(this.vaultAddress, amountNATWei, { from: this.ownerAddress });
+    }
+
+    async withdrawCollateral(amountNATWei: BNish, recipient: string = this.ownerAddress) {
+        await this.agentVault.withdraw(recipient, amountNATWei, { from: this.ownerAddress });
     }
 
     async announceDestroy() {
-        const res = await this.assetManager.announceDestroyAgent(this.vaultAddress, { from: this.ownerAddress });
+        await this.assetManager.announceDestroyAgent(this.vaultAddress, { from: this.ownerAddress });
     }
     
     async destroy() {
         const res = await this.assetManager.destroyAgent(this.vaultAddress, this.ownerAddress, { from: this.ownerAddress });
         const args = requiredEventArgs(res, 'AgentDestroyed');
         assert.equal(args.agentVault, this.vaultAddress);
+        return res;
     }
 
     async performTopupPayment(amount: BNish, mint: boolean = true, underlyingAddress: string = "someAddress") {

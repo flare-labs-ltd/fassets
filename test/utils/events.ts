@@ -42,6 +42,10 @@ export function checkEventNotEmited<E extends Truffle.AnyEvent, N extends E['nam
     assert.isUndefined(event, `Event ${name} emited`);
 }
 
+export function eventArgs<E extends Truffle.AnyEvent, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): EventArgs<Extract<E, { name: N }>> {
+    return findEvent(response.logs, name)?.args;
+}
+
 export function requiredEventArgs<E extends Truffle.AnyEvent, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): EventArgs<Extract<E, { name: N }>> {
     return findRequiredEvent(response, name).args;
 }
