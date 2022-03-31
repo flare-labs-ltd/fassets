@@ -112,6 +112,8 @@ library SettingsUpdater {
             for (uint256 i = 0; i < value.length; i++) {
                 _state.settings.liquidationCollateralPremiumBIPS.push(SafeCast.toUint32(value[i]));
             }
+        } else {
+            revert("update: invalid method");
         }
     }
 

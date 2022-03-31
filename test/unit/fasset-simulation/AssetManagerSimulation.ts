@@ -12,7 +12,6 @@ import { Redeemer } from "./Redeemer";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
-    const assetManagerController = accounts[11];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];
     const minterAddress1 = accounts[30];
@@ -33,7 +32,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let context: AssetContext;
     
     beforeEach(async () => {
-        commonContext = await CommonContext.createTest(governance, assetManagerController, testNatInfo);
+        commonContext = await CommonContext.createTest(governance, testNatInfo);
         context = await AssetContext.createTest(commonContext, testChainInfo.eth);
     });
     
@@ -463,7 +462,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             // change lot size
             const currentSettings: AssetManagerSettings = web3ResultStruct(await context.assetManager.getSettings());
-            await context.assetManager.updateSettings({...currentSettings, lotSizeAMG: toBN(currentSettings.lotSizeAMG).muln(2).toString() }, { from: assetManagerController });
+            await context.assetManagerController.setLotSizeAmg([context.assetManager.address], toBN(currentSettings.lotSizeAMG).muln(2), { from: governance });
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption

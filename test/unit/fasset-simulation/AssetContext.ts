@@ -1,5 +1,5 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../utils/fasset/AttestationHelper";
 import { IBlockChain } from "../../utils/fasset/ChainInterfaces";
@@ -13,6 +13,8 @@ import { web3DeepNormalize } from "../../utils/web3assertions";
 import { ChainInfo, NatInfo } from "./ChainInfo";
 
 const AttestationClient = artifacts.require('AttestationClientMock');
+const AssetManagerController = artifacts.require('AssetManagerController');
+const AddressUpdater = artifacts.require('AddressUpdater');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
@@ -24,16 +26,20 @@ const NAT_WEI = toBN(1e18);
 export class CommonContext {
     constructor(
         public governance: string,
-        public assetManagerController: string,
+        public addressUpdater: AddressUpdaterInstance,
+        public assetManagerController: AssetManagerControllerInstance,
         public attestationClient: AttestationClientMockInstance,
         public ftsoRegistry: FtsoRegistryMockInstance,
         public wnat: WNatInstance,
         public natFtso: FtsoMockInstance,
     ) {}
 
-    static async createTest(governance: string, assetManagerController: string, natInfo: NatInfo): Promise<CommonContext> {
-        // create atetstation client
+    static async createTest(governance: string, natInfo: NatInfo): Promise<CommonContext> {
+        // create atestation client
         const attestationClient = await AttestationClient.new();
+        // create asset manager controller
+        const addressUpdater = await AddressUpdater.new(governance);
+        const assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
         // create WNat token
         const wnat = await WNat.new(governance, natInfo.name, natInfo.symbol);
         await setDefaultVPContract(wnat, governance);
@@ -43,7 +49,7 @@ export class CommonContext {
         // create ftso registry
         const ftsoRegistry = await FtsoRegistryMock.new();
         await ftsoRegistry.addFtso(natFtso.address);
-        return new CommonContext(governance, assetManagerController, attestationClient, ftsoRegistry, wnat, natFtso);
+        return new CommonContext(governance, addressUpdater, assetManagerController, attestationClient, ftsoRegistry, wnat, natFtso);
     }
 }
 
@@ -52,7 +58,8 @@ export class AssetContext {
     constructor(
         // common context
         public governance: string,
-        public assetManagerController: string,
+        public addressUpdater: AddressUpdaterInstance,
+        public assetManagerController: AssetManagerControllerInstance,
         public attestationClient: AttestationClientMockInstance,
         public ftsoRegistry: FtsoRegistryMockInstance,
         public wnat: WNatInstance,
@@ -139,7 +146,7 @@ export class AssetContext {
         // web3DeepNormalize is required when passing structs, otherwise BN is incorrectly serialized
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
             chainInfo.name, chainInfo.symbol, chainInfo.decimals, web3DeepNormalize(settings));
-        return new AssetContext(common.governance, common.assetManagerController, common.attestationClient, common.ftsoRegistry, common.wnat, common.natFtso,
+        return new AssetContext(common.governance, common.addressUpdater, common.assetManagerController, common.attestationClient, common.ftsoRegistry, common.wnat, common.natFtso,
             chainInfo, chain, stateConnectorClient, attestationProvider, settings, assetManager, fAsset, assetFtso);
     }
     

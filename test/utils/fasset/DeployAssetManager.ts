@@ -1,9 +1,9 @@
-import { AssetManagerInstance, FAssetInstance } from "../../../typechain-truffle";
+import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "./AssetManagerTypes";
 
 export async function newAssetManager(
     governanceAddress: string,
-    assetManagerControllerAddress: string,
+    assetManagerController: string | AssetManagerControllerInstance,
     name: string, 
     symbol: string, 
     decimals: number,
@@ -12,7 +12,11 @@ export async function newAssetManager(
     const AssetManager = await linkAssetManager();
     const FAsset = artifacts.require('FAsset');
     const fAsset = await FAsset.new(governanceAddress, name, symbol, decimals);
+    const assetManagerControllerAddress = typeof assetManagerController === 'string' ? assetManagerController : assetManagerController.address;
     const assetManager = await AssetManager.new(assetManagerSettings, fAsset.address, assetManagerControllerAddress);
+    if (typeof assetManagerController !== 'string') {
+        await assetManagerController.addAssetManager(assetManager.address, { from: governanceAddress });
+    }
     await fAsset.setAssetManager(assetManager.address, { from: governanceAddress });
     return [assetManager, fAsset];
 }

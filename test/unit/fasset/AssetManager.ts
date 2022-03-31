@@ -107,27 +107,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // act
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             newSettings.collateralReservationFeeBIPS = 150;
-            await assetManager.updateSettings(newSettings, { from: assetManagerController });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setCollateralReservationFeeBips(uint256)")), 
+                web3.eth.abi.encodeParameters(['uint256'], [150]), 
+                { from: assetManagerController });
             // assert
             const res = web3ResultStruct(await assetManager.getSettings());
             assertWeb3DeepEqual(newSettings, res);
-        });
-
-        it("should fail updating immutable settings", async () => {
-            // act
-            const currentSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            // assert
-            const settingImmutable = "setting immutable";
-            await expectRevert(assetManager.updateSettings({ ...currentSettings, burnAddress: "0x0000000000000000000000000000000000000001" }, { from: assetManagerController }),
-                settingImmutable);
-            await expectRevert(assetManager.updateSettings({ ...currentSettings, chainId: 2 }, { from: assetManagerController }),
-                settingImmutable);
-            await expectRevert(assetManager.updateSettings({ ...currentSettings, assetUnitUBA: 10000 }, { from: assetManagerController }),
-                settingImmutable);
-            await expectRevert(assetManager.updateSettings({ ...currentSettings, assetMintingGranularityUBA: 10000 }, { from: assetManagerController }),
-                settingImmutable);
-            await expectRevert(assetManager.updateSettings({ ...currentSettings, requireEOAAddressProof: false }, { from: assetManagerController }),
-                settingImmutable);
         });
     });
 
