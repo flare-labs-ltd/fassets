@@ -217,7 +217,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external override
     {
-        // Agents.withdrawalExecuted makes sure that only a registered agent vault can call
+        // Agents.depositExecuted makes sure that only a registered agent vault can call
         Agents.depositExecuted(state, msg.sender, _valueNATWei);
     }
     

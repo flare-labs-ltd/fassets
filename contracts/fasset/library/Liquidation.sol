@@ -246,14 +246,14 @@ library Liquidation {
         if (targetRatioBIPS <= _collateralRatioBIPS) {
             return 0;               // agent already safe
         }
-        // actualy, we always have premiumBIPS <= _collateralRatioBIPS (< targetRatioBIPS)
+        // actually, we always have premiumBIPS <= _collateralRatioBIPS (< targetRatioBIPS)
         // so this is just an extra precaution
         if (targetRatioBIPS <= premiumBIPS) {
             return agent.mintedAMG; // cannot achieve target - liquidate all
         }
         uint256 maxLiquidatedAMG = uint256(agent.mintedAMG)
             .mulDiv(targetRatioBIPS - _collateralRatioBIPS, targetRatioBIPS - premiumBIPS) + 1;  // ~ round up
-        // TODO: should we round up maxLiquidationAmount to whole lots (of course cap by mintedAMG after ronding)?
+        // TODO: should we round up maxLiquidationAmount to whole lots (of course cap by mintedAMG after rounding)?
         return Math.min(maxLiquidatedAMG, agent.mintedAMG);
     }
 }
