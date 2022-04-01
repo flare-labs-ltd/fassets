@@ -31,8 +31,7 @@ library Liquidation {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
-        uint256 collateralRatio = collateralData.collateralRatio(agent, _state.settings);
+        (uint256 collateralRatio,,) = _getCollateralRatio(_state, agent, _agentVault);
         _upgradeLiquidationPhase(_state, agent, _agentVault, collateralRatio);
     }
 
@@ -68,8 +67,7 @@ library Liquidation {
         returns (uint256)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
-        uint256 collateralRatio = collateralData.collateralRatio(agent, _state.settings);
+        (uint256 collateralRatio, uint256 amgToNATWeiPrice,) = _getCollateralRatio(_state, agent, _agentVault);
         // allow one-step liquidation (without calling startLiquidation first)
         Agents.LiquidationPhase currentPhase = _upgradeLiquidationPhase(_state, agent, _agentVault, collateralRatio);
         require(currentPhase == Agents.LiquidationPhase.LIQUIDATION, "not in liquidation");
@@ -79,7 +77,7 @@ library Liquidation {
             Math.min(maxLiquidatedAMG, Conversion.convertUBAToAmg(_state.settings, _amountUBA)).toUint64();
         uint64 liquidatedAmountAMG = Redemption.liquidate(_state, msg.sender, _agentVault, amountToLiquidateAMG);
         uint256 rewardNATWei = Conversion.convertAmgToNATWei(liquidatedAmountAMG.mulBips(premiumBIPS), 
-            collateralData.amgToNATWeiPrice);
+            amgToNATWeiPrice);
         Agents.payout(_state, _agentVault, msg.sender, rewardNATWei);
         uint256 liquidatedAmountUBA = Conversion.convertAmgToUBA(_state.settings, liquidatedAmountAMG);
         emit AMEvents.LiquidationPerformed(_agentVault, msg.sender, liquidatedAmountUBA);
@@ -120,8 +118,7 @@ library Liquidation {
         // can only stop plain liquidation (full liquidation can only stop when there are no more minted assets)
         if (_agent.status != Agents.AgentStatus.LIQUIDATION) return;
         // agent's current collateral ratio
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
-        uint256 collateralRatioBIPS = collateralData.collateralRatio(_agent, _state.settings);
+        (uint256 collateralRatioBIPS,,) = _getCollateralRatio(_state, _agent, _agentVault);
         // target collateral ratio is minCollateralRatio for CCB and safetyMinCollateralRatio for LIQUIDATION
         Agents.LiquidationPhase currentPhase = _currentLiquidationPhase(_state, _agent);
         uint256 targetRatioBIPS = currentPhase == Agents.LiquidationPhase.CCB
@@ -255,5 +252,26 @@ library Liquidation {
             .mulDiv(targetRatioBIPS - _collateralRatioBIPS, targetRatioBIPS - premiumBIPS) + 1;  // ~ round up
         // TODO: should we round up maxLiquidationAmount to whole lots (of course cap by mintedAMG after rounding)?
         return Math.min(maxLiquidatedAMG, agent.mintedAMG);
+    }
+    
+    // The collateral ratio for deciding whether agent is in liquidation or CCB is the maximum
+    // of the ratio calculated from FTSO price and the ratio calculated from trusted voters' price.
+    // In this way, liquidation due to bad FTSO providers bunching together is less likely.
+    function _getCollateralRatio(
+        AssetManagerState.State storage _state,
+        Agents.Agent storage _agent,
+        address _agentVault
+    )
+        private view
+        returns (uint256 _collateralRatio, uint256 _amgToNATWeiPrice, uint256 _amgToNATWeiPriceTrusted)
+    {
+        uint256 fullCollateral = Agents.fullCollateral(_state, _agentVault);
+        (_amgToNATWeiPrice, _amgToNATWeiPriceTrusted) = 
+            Conversion.currentAmgToNATWeiPriceWithTrusted(_state.settings);
+        uint256 ratio = 
+            AgentCollateral.collateralRatio(_agent, _state.settings, fullCollateral, _amgToNATWeiPrice);
+        uint256 ratioTrusted = 
+            AgentCollateral.collateralRatio(_agent, _state.settings, fullCollateral, _amgToNATWeiPriceTrusted);
+        _collateralRatio = Math.max(ratio, ratioTrusted);
     }
 }

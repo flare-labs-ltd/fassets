@@ -3,7 +3,6 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
-import "flare-smart-contracts/contracts/userInterfaces/IFtso.sol";
 import "../../utils/lib/SafePct.sol";
 import "./AssetManagerSettings.sol";
 
@@ -21,12 +20,31 @@ library Conversion {
         returns (uint256) 
     {
         IFtsoRegistry ftsoRegistry = _settings.ftsoRegistry;
-        IFtso natFtso = ftsoRegistry.getFtso(_settings.natFtsoIndex);
-        IFtso assetFtso = ftsoRegistry.getFtso(_settings.assetFtsoIndex);
-        // Force cast here to circument architecure in original contracts 
+        IIFtso natFtso = ftsoRegistry.getFtso(_settings.natFtsoIndex);
+        IIFtso assetFtso = ftsoRegistry.getFtso(_settings.assetFtsoIndex);
         (uint256 natPrice, ) = natFtso.getCurrentPrice();
         (uint256 assetPrice, ) = assetFtso.getCurrentPrice();
         return amgToNATWeiPrice(_settings, natPrice, assetPrice);
+    }
+
+    function currentAmgToNATWeiPriceWithTrusted(
+        AssetManagerSettings.Settings storage _settings
+    ) 
+        internal view 
+        returns (uint256 _ftsoPrice, uint256 _trustedPrice) 
+    {
+        IFtsoRegistry ftsoRegistry = _settings.ftsoRegistry;
+        IIFtso natFtso = ftsoRegistry.getFtso(_settings.natFtsoIndex);
+        IIFtso assetFtso = ftsoRegistry.getFtso(_settings.assetFtsoIndex);
+        (uint256 natPrice, uint256 natTimestamp) = natFtso.getCurrentPrice();
+        (uint256 assetPrice, uint256 assetTimestamp) = assetFtso.getCurrentPrice();
+        (uint256 natPriceTrusted, uint256 natTimestampTrusted) = natFtso.getCurrentPriceFromTrustedProviders();
+        (uint256 assetPriceTrusted, uint256 assetTimestampTrusted) = assetFtso.getCurrentPriceFromTrustedProviders();
+        _ftsoPrice = amgToNATWeiPrice(_settings, natPrice, assetPrice);
+        _trustedPrice = natTimestampTrusted + _settings.maxTrustedPriceAgeSeconds >= natTimestamp
+                && assetTimestampTrusted + _settings.maxTrustedPriceAgeSeconds >= assetTimestamp
+            ? amgToNATWeiPrice(_settings, natPriceTrusted, assetPriceTrusted)
+            : _ftsoPrice;
     }
 
     function amgToNATWeiPrice(

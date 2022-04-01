@@ -10,20 +10,32 @@ contract FtsoMock is IIFtso {
     
     uint256 private price;
     uint256 private priceTimestamp;
+
+    uint256 private priceFromTrustedProviders;
+    uint256 private priceTimestampFromTrustedProviders;
     
     constructor(string memory _symbol) {
         symbol = _symbol;
     }
     
-    function setCurrentPrice(uint256 _price) external {
+    function setCurrentPrice(uint256 _price, uint256 _ageSeconds) external {
         price = _price;
-        priceTimestamp = block.timestamp;
+        priceTimestamp = block.timestamp - _ageSeconds;
+    }
+
+    function setCurrentPriceFromTrustedProviders(uint256 _price, uint256 _ageSeconds) external {
+        priceFromTrustedProviders = _price;
+        priceTimestampFromTrustedProviders = block.timestamp - _ageSeconds;
     }
     
     // in FAsset system, we only need current price
     
     function getCurrentPrice() external view returns (uint256 _price, uint256 _timestamp) {
         return (price, priceTimestamp);
+    }
+    
+    function getCurrentPriceFromTrustedProviders() external view returns (uint256 _price, uint256 _timestamp) {
+        return (priceFromTrustedProviders, priceTimestampFromTrustedProviders);
     }
 
     // unused

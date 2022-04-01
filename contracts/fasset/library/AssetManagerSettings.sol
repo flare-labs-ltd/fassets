@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "flare-smart-contracts/contracts/userInterfaces/IFtso.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../interface/IWNat.sol";
@@ -50,6 +49,10 @@ library AssetManagerSettings {
         
         // Lot size in asset minting granularity. May change, which affects subsequent mintings and redemptions.
         uint64 lotSizeAMG;
+        
+        // Maximum age that trusted price feed is valid.
+        // Otherwise (if there were no trusted votes for that long) just use generic ftso price feed.
+        uint64 maxTrustedPriceAgeSeconds;
         
         // for some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address
         // this must be done by presenting a payment proof from that address

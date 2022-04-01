@@ -111,9 +111,10 @@ library AgentCollateral {
     // and returns only collateral ratio for minted assets.
     // Ignores collateral announced for withdrawal (withdrawals are forbidden during liquidation).
     function collateralRatio(
-        AgentCollateral.Data memory _data,
         Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings
+        AssetManagerSettings.Settings storage _settings,
+        uint256 _fullCollateral,
+        uint256 _amgToNATWeiPrice
     )
         internal view
         returns (uint256) 
@@ -121,11 +122,11 @@ library AgentCollateral {
         if (_agent.mintedAMG == 0) return type(uint256).max;    // nothing minted - ~infinite collateral ratio
         // reserve CR collateral and redemption collateral at minCollateralRatio
         uint256 reservedAMG = uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG); 
-        uint256 reservedCollateral = Conversion.convertAmgToNATWei(reservedAMG, _data.amgToNATWeiPrice)
+        uint256 reservedCollateral = Conversion.convertAmgToNATWei(reservedAMG, _amgToNATWeiPrice)
             .mulBips(_settings.minCollateralRatioBIPS);
-        (, uint256 availableCollateral) = _data.fullCollateral.trySub(reservedCollateral);
+        (, uint256 availableCollateral) = _fullCollateral.trySub(reservedCollateral);
         // calculate NATWei value of minted assets
-        uint256 backingNATWei = Conversion.convertAmgToNATWei(_agent.mintedAMG, _data.amgToNATWeiPrice);
+        uint256 backingNATWei = Conversion.convertAmgToNATWei(_agent.mintedAMG, _amgToNATWeiPrice);
         return availableCollateral.mulDiv(SafeBips.MAX_BIPS, backingNATWei);
     }
 }

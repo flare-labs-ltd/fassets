@@ -80,9 +80,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         await setDefaultVPContract(wnat, governance);
         // create FTSOs for nat and asset and set some price
         natFtso = await FtsoMock.new("NAT");
-        await natFtso.setCurrentPrice(toBNExp(1.12, 5));
+        await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
         assetFtso = await FtsoMock.new("ETH");
-        await assetFtso.setCurrentPrice(toBNExp(3521, 5));
+        await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
         // create ftso registry
         const ftsoRegistry = await FtsoRegistryMock.new();
         await ftsoRegistry.addFtso(natFtso.address);
