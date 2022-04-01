@@ -179,8 +179,8 @@ contract AssetManagerController is Governed, AddressUpdatable {
             IAttestationClient(_getContractAddress(_contractNameHashes, _contractAddresses, "AttestationClient"));
         IFtsoRegistry ftsoRegistry =
             IFtsoRegistry(_getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry"));
-        (, IIFtso[] memory supportedFtsos) = ftsoRegistry.getSupportedIndicesAndFtsos();
-        IWNat wNat = IWNat(address(supportedFtsos[0].wNat()));
+        IWNat wNat = 
+            IWNat(_getContractAddress(_contractNameHashes, _contractAddresses, "WNat"));
         for (uint256 i = 0; i < assetManagers.length; i++) {
             AssetManager assetManager = assetManagers[i];
             assetManager.updateSettings(

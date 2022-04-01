@@ -1,4 +1,4 @@
-import { AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { getTestFile, toBNExp } from "../../utils/helpers";
@@ -10,12 +10,13 @@ const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
+const AddressUpdater = artifacts.require('AddressUpdater');
 const AssetManagerController = artifacts.require('AssetManagerController');
 
 contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager controller basic tests`, async accounts => {
     const governance = accounts[10];
-    const addressUpdater = accounts[11];
     let attestationClient: AttestationClientMockInstance;
+    let addressUpdater: AddressUpdaterInstance;
     let assetManagerController: AssetManagerControllerInstance;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
@@ -40,7 +41,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         await ftsoRegistry.addFtso(natFtso.address);
         await ftsoRegistry.addFtso(assetFtso.address);
         // create asset manager controller
-        assetManagerController = await AssetManagerController.new(governance, addressUpdater);
+        addressUpdater = await AddressUpdater.new(governance);
+        assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
         // create asset manager
         settings = await createTestSettings(attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController.address, "Ethereum", "ETH", 18, settings);
@@ -60,6 +62,17 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await assetManagerController.setRedemptionFeeBips([], 250, { from: governance });
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(newSettings.redemptionFeeBIPS, 200);
+        });
+
+        it("should change contracts", async () => {
+            await addressUpdater.update(["AddressUpdater", "AttestationClient", "FtsoRegistry", "WNat"], 
+                [addressUpdater.address, accounts[80], accounts[81], accounts[82]],
+                [assetManagerController.address], 
+                { from: governance });
+            const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(settings.attestationClient, accounts[80]);
+            assertWeb3Equal(settings.ftsoRegistry, accounts[81]);
+            assertWeb3Equal(settings.wNat, accounts[82]);
         });
     });
 });
