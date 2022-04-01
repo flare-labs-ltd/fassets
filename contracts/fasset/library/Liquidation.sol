@@ -35,27 +35,6 @@ library Liquidation {
         _upgradeLiquidationPhase(_state, agent, _agentVault, collateralRatio);
     }
 
-    // Start full agent liquidation (Agents.AgentStatus.FULL_LIQUIDATION)
-    function startFullLiquidation(
-        AssetManagerState.State storage _state,
-        address _agentVault
-    )
-        external
-    {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        // if already in full liquidation or destroying, do nothing
-        if (agent.status == Agents.AgentStatus.FULL_LIQUIDATION
-            || agent.status == Agents.AgentStatus.DESTROYING) return;
-        // if current phase is not LIQUIDATION, restart in LIQUIDATION phase
-        Agents.LiquidationPhase currentPhase = _currentLiquidationPhase(_state, agent);
-        if (currentPhase != Agents.LiquidationPhase.LIQUIDATION) {
-            agent.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
-            agent.initialLiquidationPhase = Agents.LiquidationPhase.LIQUIDATION;
-        }
-        agent.status = Agents.AgentStatus.FULL_LIQUIDATION;
-        emit AMEvents.LiquidationStarted(_agentVault, false, true);
-    }
-
     // Liquidate agent's position.
     // Automatically starts / upgrades agent's liquidation status.
     function liquidate(
@@ -94,6 +73,27 @@ library Liquidation {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         endLiquidationIfHealthy(_state, agent, _agentVault);
         require(agent.status == Agents.AgentStatus.NORMAL, "cannot stop liquidation");
+    }
+
+    // Start full agent liquidation (Agents.AgentStatus.FULL_LIQUIDATION)
+    function startFullLiquidation(
+        AssetManagerState.State storage _state,
+        address _agentVault
+    )
+        internal
+    {
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        // if already in full liquidation or destroying, do nothing
+        if (agent.status == Agents.AgentStatus.FULL_LIQUIDATION
+            || agent.status == Agents.AgentStatus.DESTROYING) return;
+        // if current phase is not LIQUIDATION, restart in LIQUIDATION phase
+        Agents.LiquidationPhase currentPhase = _currentLiquidationPhase(_state, agent);
+        if (currentPhase != Agents.LiquidationPhase.LIQUIDATION) {
+            agent.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
+            agent.initialLiquidationPhase = Agents.LiquidationPhase.LIQUIDATION;
+        }
+        agent.status = Agents.AgentStatus.FULL_LIQUIDATION;
+        emit AMEvents.LiquidationStarted(_agentVault, false, true);
     }
 
     // Cancel liquidation if the agent is healthy.

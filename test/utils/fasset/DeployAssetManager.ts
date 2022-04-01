@@ -31,9 +31,9 @@ export async function linkAssetManager() {
     const Liquidation = await deployLibrary('Liquidation');
     const Minting = await deployLibrary('Minting');
     const UnderlyingFreeBalance = await deployLibrary('UnderlyingFreeBalance');
-    const Redemption = await deployLibrary('Redemption', { Liquidation });
-    const AllowedPaymentAnnouncement = await deployLibrary('AllowedPaymentAnnouncement', { Liquidation });
-    const Challenges = await deployLibrary('Challenges', { Liquidation });
+    const Redemption = await deployLibrary('Redemption');
+    const AllowedPaymentAnnouncement = await deployLibrary('AllowedPaymentAnnouncement');
+    const Challenges = await deployLibrary('Challenges');
     // link AssetManagerContract
     return linkDependencies(artifacts.require('AssetManager'), { 
         SettingsUpdater, StateUpdater, Agents, AvailableAgents, CollateralReservations, Liquidation, Minting, 
