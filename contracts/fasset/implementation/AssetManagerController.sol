@@ -134,7 +134,7 @@ contract AssetManagerController is Governed, AddressUpdatable {
             SettingsUpdater.SET_MAX_REDEEMED_TICKETS, abi.encode(_value));
     }
 
-    function setLotSizeAmgsetWithdrawalOrDestroyWaitMinSeconds(address[] memory _assetManagers, uint256 _value)
+    function setWithdrawalOrDestroyWaitMinSeconds(address[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance
     {
@@ -158,12 +158,12 @@ contract AssetManagerController is Governed, AddressUpdatable {
             SettingsUpdater.SET_LIQUIDATION_STEP_SECONDS, abi.encode(_value));
     }
     
-    function setLiquidationCollateralPremiumBips(address[] memory _assetManagers, uint256[] memory _values)
+    function setLiquidationCollateralFactorBips(address[] memory _assetManagers, uint256[] memory _values)
         external
         onlyGovernance
     {
         _setValueOnManagers(_assetManagers, 
-            SettingsUpdater.SET_LIQUIDATION_COLLATERAL_PREMIUM_BIPS, abi.encode(_values));
+            SettingsUpdater.SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS, abi.encode(_values));
     }
     
     ///////////////////////////////////////////////////////////////////////////////////////////////

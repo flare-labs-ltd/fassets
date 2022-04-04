@@ -42,25 +42,24 @@ export class Liquidator extends AssetContextClient {
         assert.equal(requiredEventArgs(res, 'LiquidationCancelled').agentVault, agent.agentVault.address);
     }
 
-    async getLiquidationReward(liquidatedAmountAMG: BNish, premiumBIPS: BNish) {
+    async getLiquidationReward(liquidatedAmountAMG: BNish, factorBIPS: BNish) {
         const amgToNATWeiPrice = await this.context.currentAmgToNATWeiPrice();
-        return this.context.convertAmgToNATWei(toBN(liquidatedAmountAMG).mul(toBN(premiumBIPS)).divn(10_000), amgToNATWeiPrice);
+        return this.context.convertAmgToNATWei(toBN(liquidatedAmountAMG).mul(toBN(factorBIPS)).divn(10_000), amgToNATWeiPrice);
     }
 
-    async getLiquidationPremiumBIPS(collateralRatioBIPS: BNish, liquidationStartedAt: BNish, ccb: boolean = false) {
+    async getLiquidationFactorBIPS(collateralRatioBIPS: BNish, liquidationStartedAt: BNish, ccb: boolean = false) {
         // calculate premium step based on time since liquidation started
         const settings = await this.assetManager.getSettings();
         const ccbTime = ccb ? settings.ccbTimeSeconds : BN_ZERO;
         const liquidationStart = toBN(liquidationStartedAt).add(ccbTime);
         let currentBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber());
         const startTs = toBN(currentBlock.timestamp);
-        const step = Math.min(settings.liquidationCollateralPremiumBIPS.length - 1,
+        const step = Math.min(settings.liquidationCollateralFactorBIPS.length - 1,
             startTs.sub(liquidationStart).div(toBN(settings.liquidationStepSeconds)).toNumber());
         // premiums are expressed as percentage of minCollateralRatio
-        const premiumBIPS = toBN(settings.liquidationCollateralPremiumBIPS[step])
-            .mul(toBN(settings.minCollateralRatioBIPS)).divn(10_000);
+        const factorBIPS = toBN(settings.liquidationCollateralFactorBIPS[step]);
         // max premium is equal to agents collateral ratio (so that all liquidators get at least this much)
-        return premiumBIPS.lt(toBN(collateralRatioBIPS)) ? premiumBIPS : toBN(collateralRatioBIPS);
+        return factorBIPS.lt(toBN(collateralRatioBIPS)) ? factorBIPS : toBN(collateralRatioBIPS);
     }
 
     async getChallengerReward(backingAMGAtChallenge: BNish) {

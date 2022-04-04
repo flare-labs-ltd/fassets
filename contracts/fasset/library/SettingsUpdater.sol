@@ -35,8 +35,8 @@ library SettingsUpdater {
         keccak256("setCcbTimeSeconds(uint256)");
     bytes32 internal constant SET_LIQUIDATION_STEP_SECONDS =
         keccak256("setLiquidationStepSeconds(uint256)");
-    bytes32 internal constant SET_LIQUIDATION_COLLATERAL_PREMIUM_BIPS =
-        keccak256("setLiquidationCollateralPremiumBips(uint256[])");
+    bytes32 internal constant SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS =
+        keccak256("setLiquidationCollateralFactorBips(uint256[])");
         
     function validateAndSet(
         AssetManagerState.State storage _state,
@@ -106,11 +106,13 @@ library SettingsUpdater {
         } else if (_method == SET_LIQUIDATION_STEP_SECONDS) {
             uint256 value = abi.decode(_params, (uint256));
             _state.settings.liquidationStepSeconds = SafeCast.toUint64(value);
-        } else if (_method == SET_LIQUIDATION_COLLATERAL_PREMIUM_BIPS) {
+        } else if (_method == SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS) {
             uint256[] memory value = abi.decode(_params, (uint256[]));
-            delete _state.settings.liquidationCollateralPremiumBIPS;
+            delete _state.settings.liquidationCollateralFactorBIPS;
             for (uint256 i = 0; i < value.length; i++) {
-                _state.settings.liquidationCollateralPremiumBIPS.push(SafeCast.toUint32(value[i]));
+                require(value[i] > SafeBips.MAX_BIPS, "factor below 1");
+                require(i == 0 || value[i] > value[i - 1], "factors not increasing");
+                _state.settings.liquidationCollateralFactorBIPS.push(SafeCast.toUint32(value[i]));
             }
         } else {
             revert("update: invalid method");

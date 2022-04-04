@@ -778,8 +778,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(liquidatedUBA1, minted.mintedAmountUBA.divn(2));
             // test rewarding
             const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward), await context.convertLotsToAMG(lots));
-            const liquidationPremiumBIPS1 = await liquidator.getLiquidationPremiumBIPS(collateralRatioBIPS1, res[0]);
-            const liquidationReward1 = await liquidator.getLiquidationReward(await context.convertUBAToAmg(minted.mintedAmountUBA.divn(2)), liquidationPremiumBIPS1);
+            const liquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS1, res[0]);
+            const liquidationReward1 = await liquidator.getLiquidationReward(await context.convertUBAToAmg(minted.mintedAmountUBA.divn(2)), liquidationFactorBIPS1);
             assertWeb3Equal(endBalanceLiquidator1.sub(startBalanceLiquidator1), liquidationReward1);
             // wait some time to get next premium
             await time.increase(90);
@@ -790,13 +790,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(liquidatedUBA2, minted.mintedAmountUBA.divn(2));
             // test rewarding
             const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1), (await context.convertLotsToAMG(lots)).divn(2));
-            const liquidationPremiumBIPS2 = await liquidator.getLiquidationPremiumBIPS(collateralRatioBIPS2, res[0]);
-            const liquidationReward2 = await liquidator.getLiquidationReward(await context.convertUBAToAmg(minted.mintedAmountUBA.divn(2)), liquidationPremiumBIPS2);
+            const liquidationFactorBIPS2 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS2, res[0]);
+            const liquidationReward2 = await liquidator.getLiquidationReward(await context.convertUBAToAmg(minted.mintedAmountUBA.divn(2)), liquidationFactorBIPS2);
             assertWeb3Equal(endBalanceLiquidator2.sub(startBalanceLiquidator2), liquidationReward2);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2));
             assertWeb3Equal(liquidatedUBA1, liquidatedUBA2);
-            assert(liquidationPremiumBIPS1.lt(liquidationPremiumBIPS2));
+            assert(liquidationFactorBIPS1.lt(liquidationFactorBIPS2));
             assert(liquidationReward1.lt(liquidationReward2));
         });
     });

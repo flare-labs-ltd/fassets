@@ -50,12 +50,12 @@ library Liquidation {
         // allow one-step liquidation (without calling startLiquidation first)
         Agents.LiquidationPhase currentPhase = _upgradeLiquidationPhase(_state, agent, _agentVault, collateralRatio);
         require(currentPhase == Agents.LiquidationPhase.LIQUIDATION, "not in liquidation");
-        uint256 premiumBIPS = _currentLiquidationPremiumBIPS(_state, agent, collateralRatio);
-        uint256 maxLiquidatedAMG = _maxLiquidationAmountAMG(_state, agent, collateralRatio, premiumBIPS);
+        uint256 factorBIPS = _currentLiquidationFactorBIPS(_state, agent, collateralRatio);
+        uint256 maxLiquidatedAMG = _maxLiquidationAmountAMG(_state, agent, collateralRatio, factorBIPS);
         uint64 amountToLiquidateAMG = 
             Math.min(maxLiquidatedAMG, Conversion.convertUBAToAmg(_state.settings, _amountUBA)).toUint64();
         uint64 liquidatedAmountAMG = Redemption.liquidate(_state, msg.sender, _agentVault, amountToLiquidateAMG);
-        uint256 rewardNATWei = Conversion.convertAmgToNATWei(liquidatedAmountAMG.mulBips(premiumBIPS), 
+        uint256 rewardNATWei = Conversion.convertAmgToNATWei(liquidatedAmountAMG.mulBips(factorBIPS), 
             amgToNATWeiPrice);
         Agents.payout(_state, _agentVault, msg.sender, rewardNATWei);
         uint256 liquidatedAmountUBA = Conversion.convertAmgToUBA(_state.settings, liquidatedAmountAMG);
@@ -201,7 +201,7 @@ library Liquidation {
 
     // Liquidation premium step (depends on time, but is capped by the current collateral ratio)
     // assumed: agentStatus == LIQUIDATION/FULL_LIQUIDATION && liquidationPhase == LIQUIDATION
-    function _currentLiquidationPremiumBIPS(
+    function _currentLiquidationFactorBIPS(
         AssetManagerState.State storage _state,
         Agents.Agent storage agent,
         uint256 _collateralRatioBIPS
@@ -214,13 +214,12 @@ library Liquidation {
             && agent.initialLiquidationPhase == Agents.LiquidationPhase.CCB;
         uint256 ccbTime = startedInCCB ? _state.settings.ccbTimeSeconds : 0;
         uint256 liquidationStart = agent.liquidationStartedAt + ccbTime;
-        uint256 step = Math.min(_state.settings.liquidationCollateralPremiumBIPS.length - 1,
+        uint256 step = Math.min(_state.settings.liquidationCollateralFactorBIPS.length - 1,
             (block.timestamp - liquidationStart) / _state.settings.liquidationStepSeconds);
         // premiums are expressed as percentage of minCollateralRatio
-        uint256 premiumBIPS = uint256(_state.settings.liquidationCollateralPremiumBIPS[step])
-            .mulBips(_state.settings.minCollateralRatioBIPS);
+        uint256 factorBIPS = uint256(_state.settings.liquidationCollateralFactorBIPS[step]);
         // max premium is equal to agents collateral ratio (so that all liquidators get at least this much)
-        return Math.min(premiumBIPS, _collateralRatioBIPS);
+        return Math.min(factorBIPS, _collateralRatioBIPS);
     }
 
     // Calculate the amount of liquidation that gets agent to safety.
@@ -229,7 +228,7 @@ library Liquidation {
         AssetManagerState.State storage _state,
         Agents.Agent storage agent,
         uint256 _collateralRatioBIPS,
-        uint256 premiumBIPS
+        uint256 factorBIPS
     )
         private view
         returns (uint256)
@@ -243,13 +242,13 @@ library Liquidation {
         if (targetRatioBIPS <= _collateralRatioBIPS) {
             return 0;               // agent already safe
         }
-        // actually, we always have premiumBIPS <= _collateralRatioBIPS (< targetRatioBIPS)
+        // actually, we always have factorBIPS <= _collateralRatioBIPS (< targetRatioBIPS)
         // so this is just an extra precaution
-        if (targetRatioBIPS <= premiumBIPS) {
+        if (targetRatioBIPS <= factorBIPS) {
             return agent.mintedAMG; // cannot achieve target - liquidate all
         }
         uint256 maxLiquidatedAMG = uint256(agent.mintedAMG)
-            .mulDiv(targetRatioBIPS - _collateralRatioBIPS, targetRatioBIPS - premiumBIPS) + 1;  // ~ round up
+            .mulDiv(targetRatioBIPS - _collateralRatioBIPS, targetRatioBIPS - factorBIPS) + 1;  // ~ round up
         // TODO: should we round up maxLiquidationAmount to whole lots (of course cap by mintedAMG after rounding)?
         return Math.min(maxLiquidatedAMG, agent.mintedAMG);
     }

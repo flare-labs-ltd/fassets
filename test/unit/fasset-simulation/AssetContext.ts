@@ -194,7 +194,7 @@ export class AssetContext {
             paymentChallengeRewardBIPS: 1,
             paymentChallengeRewardNATWei: toWei(300),       // 300 NAT
             withdrawalWaitMinSeconds: 60,
-            liquidationCollateralPremiumBIPS: [6000, 8000, 10000],
+            liquidationCollateralFactorBIPS: [12000, 16000, 20000],
             ccbTimeSeconds: 180,
             liquidationStepSeconds: 90,
             maxTrustedPriceAgeSeconds: 8 * 60,

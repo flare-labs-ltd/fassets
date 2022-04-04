@@ -21,9 +21,11 @@ library AssetManagerSettings {
         IFtsoRegistry ftsoRegistry;
         
         // FTSO contract for NAT currency.
+        // timelocked (immutable?)
         uint32 natFtsoIndex;
         
         // FTSO contract for managed asset.
+        // timelocked (immutable?)
         uint32 assetFtsoIndex;
         
         // Collateral reservation fee is burned on successful minting.
@@ -48,10 +50,12 @@ library AssetManagerSettings {
         uint64 assetMintingGranularityUBA;
         
         // Lot size in asset minting granularity. May change, which affects subsequent mintings and redemptions.
+        // timelocked-short
         uint64 lotSizeAMG;
         
         // Maximum age that trusted price feed is valid.
         // Otherwise (if there were no trusted votes for that long) just use generic ftso price feed.
+        // timelocked-short
         uint64 maxTrustedPriceAgeSeconds;
         
         // for some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address
@@ -60,21 +64,25 @@ library AssetManagerSettings {
         bool requireEOAAddressProof;
         
         // Minimum collateral ratio for healthy agents.
+        // timelocked
         uint32 minCollateralRatioBIPS;
 
         // Minimum collateral ratio for agent in CCB (Collateral call band).
         // A bit smaller than minCollateralRatioBIPS.
+        // timelocked
         uint32 ccbMinCollateralRatioBIPS;
         
         // Minimum collateral ratio required to get agent out of liquidation.
         // If the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.
         // Wiil always be greater than minCollateralRatioBIPS.
+        // timelocked
         uint32 safetyMinCollateralRatioBIPS;
         
         // Number of underlying blocks that the minter or agent is allowed to pay underlying value.
         // If payment not reported in that time, minting/redemption can be challenged and default action triggered.
         // CAREFUL: Count starts from the current proved block height, so the minters and agents should 
         // make sure that current block height is fresh, otherwise they might not have enough time for payment.
+        // timelocked-short
         uint64 underlyingBlocksForPayment;
         
         // Minimum time to allow agent to pay for redemption or minter to pay for minting.
@@ -85,49 +93,65 @@ library AssetManagerSettings {
         // make sure that current block timestamp is fresh, otherwise they might not have enough time for payment.
         // This is partially mitigated by adding local duration since the last block height update to
         // the current underlying block timestamp.
+        // timelocked-short
         uint64 underlyingSecondsForPayment;
 
         // Redemption fee in underlying currency base amount (UBA).
+        // timelocked-short
         uint16 redemptionFeeBIPS;
         
         // On redemption underlying payment failure, redeemer is compensated with
         // redemption value recalculated in flare/sgb times redemption failure factor.
         // Expressed in BIPS, e.g. 12000 for factor of 1.2.
+        // timelocked
         uint32 redemptionFailureFactorBIPS;
         
         // If the agent or redeemer becomes unresponsive, we still need payment or non-payment confirmations
         // to be presented eventually to properly track agent's underlying balance.
         // Therefore we allow anybody to confirm payments/non-payments this many seconds after request was made.
+        // timelocked-short
         uint64 confirmationByOthersAfterSeconds;
 
         // The user who makes abandoned redemption confirmations gets rewarded by the following amount.
+        // timelocked-short
         uint128 confirmationByOthersRewardNATWei;
         
         // To prevent unbounded work, the number of tickets redeemed in a single request is limited.
+        // timelocked-short
+        // >= 1
         uint16 maxRedeemedTickets;
         
         // Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).
         // This is the proportional part (in BIPS).
+        // timelocked-short
         uint16 paymentChallengeRewardBIPS;
         
         // Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).
         // This is the fixed part (in underlying AMG, so that we can easily set it as some percent of lot size).
+        // timelocked-short
         uint128 paymentChallengeRewardNATWei;
 
-        // Agent has to announce any collateral withdrawal and then wait for at least withdrawalWaitMinSeconds.
-        // This prevents challenged agent to remove all collateral before challenge can be proved.
+        // Agent has to announce any collateral withdrawal ar vault destroy and then wait for at least 
+        // withdrawalWaitMinSeconds. This prevents challenged agent to remove all collateral before 
+        // challenge can be proved.
+        // timelocked-short
         uint64 withdrawalWaitMinSeconds;
 
-        // After first phase, instead of price premium, percentage of collateral is offered.
-        // Expressed in BIPS, e.g. [6000, 8000, 10000] for 60%, 80% and 100%.
-        // CAREFUL: values in array must increase and be <= 10000
-        uint32[] liquidationCollateralPremiumBIPS;
+        // Factor with which to multiply the asset price in native currency to obtain the payment
+        // to the liquidator.
+        // Expressed in BIPS, e.g. [12000, 16000, 20000] means that the liquidator will be paid 1.2, 1.6 and 2.0
+        // times the market price of the liquidated assets.
+        // CAREFUL: values in array must increase and be greater than 100%.
+        // timelocked
+        uint32[] liquidationCollateralFactorBIPS;
 
         // Agent can remain in CCB for this much time, after that liquidation starts automatically.
+        // timelocked
         uint64 ccbTimeSeconds;
         
         // If there was no liquidator for the current liquidation offer, 
         // go to the next step of liquidation after a certain period of time.
+        // timelocked
         uint64 liquidationStepSeconds;
     }
 

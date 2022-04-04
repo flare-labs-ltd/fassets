@@ -30,7 +30,7 @@ export async function createTestSettings(attestationClient: AttestationClientMoc
         paymentChallengeRewardBIPS: 0,
         paymentChallengeRewardNATWei: toStringExp(300, 18),     // 300 NAT
         withdrawalWaitMinSeconds: 300,
-        liquidationCollateralPremiumBIPS: [6000, 8000, 10000],
+        liquidationCollateralFactorBIPS: [12000, 16000, 20000],
         ccbTimeSeconds: 180,
         liquidationStepSeconds: 90,
         maxTrustedPriceAgeSeconds: 8 * 60,
