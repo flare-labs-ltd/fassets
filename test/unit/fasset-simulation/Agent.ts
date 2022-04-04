@@ -5,7 +5,7 @@ import { checkEventNotEmited, EventArgs, filterEvents, findRequiredEvent, requir
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { BNish, toBN } from "../../utils/helpers";
+import { BNish, BN_ZERO, toBN } from "../../utils/helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
@@ -231,5 +231,29 @@ export class Agent extends AssetContextClient {
 
     async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null) {
         return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference);
+    }
+
+    async getCollateralRatioBIPS(fullCollateral: BNish, mintedAMG: BNish, reservedAMG: BNish = 0, redeemingAMG: BNish = 0) {
+        const [amgToNATWeiPrice, amgToNATWeiPriceTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
+        const ratio = await this.collateralRatio(fullCollateral, amgToNATWeiPrice, mintedAMG, reservedAMG, redeemingAMG);
+        const ratioTrusted = await this.collateralRatio(fullCollateral, amgToNATWeiPriceTrusted, mintedAMG, reservedAMG, redeemingAMG);
+        return ratio.gt(ratioTrusted) ? ratio : ratioTrusted;
+    }
+
+    private async collateralRatio(fullCollateral: BNish, amgToNATWeiPrice: BNish, mintedAMG: BNish, reservedAMG: BNish = 0, redeemingAMG: BNish = 0) {
+        if (toBN(mintedAMG).eqn(0)) return toBN(2).pow(toBN(256)).subn(1);    // nothing minted - ~infinite collateral ratio
+        // reserve CR collateral and redemption collateral at minCollateralRatio
+        const totalReservedAMG = toBN(reservedAMG).add(toBN(redeemingAMG));
+        const reservedCollateral = this.context.convertAmgToNATWei(totalReservedAMG, amgToNATWeiPrice)
+            .mul(toBN((await this.assetManager.getSettings()).minCollateralRatioBIPS)).divn(10_000);
+        const availableCollateral = toBN(fullCollateral).gt(reservedCollateral) ? toBN(fullCollateral).sub(reservedCollateral) : BN_ZERO;
+        // calculate NATWei value of minted assets
+        const backingNATWei = this.context.convertAmgToNATWei(mintedAMG, amgToNATWeiPrice);
+        return availableCollateral.muln(10_000).div(backingNATWei);
+    }
+
+    async cancelLiquidation() {
+        const res = await this.assetManager.cancelLiquidation(this.vaultAddress, { from: this.ownerAddress });
+        assert.equal(requiredEventArgs(res, 'LiquidationCancelled').agentVault, this.vaultAddress);
     }
 }

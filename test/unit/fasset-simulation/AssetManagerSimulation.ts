@@ -7,6 +7,7 @@ import { Agent } from "./Agent";
 import { AssetContext, CommonContext } from "./AssetContext";
 import { testChainInfo, testNatInfo } from "./ChainInfo";
 import { Challenger } from "./Challenger";
+import { Liquidator } from "./Liquidator";
 import { Minter } from "./Minter";
 import { Redeemer } from "./Redeemer";
 
@@ -20,6 +21,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     const redeemerAddress2 = accounts[41];
     const challengerAddress1 = accounts[50];
     const challengerAddress2 = accounts[51];
+    const liquidatorAddress1 = accounts[60];
+    const liquidatorAddress2 = accounts[61];
     // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingAgent1 = "Agent1";
     const underlyingAgent2 = "Agent2";
@@ -658,9 +661,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test rewarding
             assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(await context.convertLotsToAMG(lots)));
             // test full liquidation started
-            assert.equal(res.agentVault, agent.agentVault.address);
-            assert.isFalse(res.collateralCallBand);
-            assert.isTrue(res.fullLiquidation);
+            assert.equal(res[1].agentVault, agent.agentVault.address);
+            assert.isFalse(res[1].collateralCallBand);
+            assert.isTrue(res[1].fullLiquidation);
         });
 
         it("double payment challenge", async () => {
@@ -696,9 +699,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test rewarding
             assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(await context.convertLotsToAMG(lots)));
             // test full liquidation started
-            assert.equal(res.agentVault, agent.agentVault.address);
-            assert.isFalse(res.collateralCallBand);
-            assert.isTrue(res.fullLiquidation);
+            assert.equal(res[1].agentVault, agent.agentVault.address);
+            assert.isFalse(res[1].collateralCallBand);
+            assert.isTrue(res[1].fullLiquidation);
         });
 
         it("free balance negative challenge", async () => {
@@ -731,9 +734,70 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test rewarding
             assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(await context.convertLotsToAMG(lots)));
             // test full liquidation started
-            assert.equal(res.agentVault, agent.agentVault.address);
-            assert.isFalse(res.collateralCallBand);
-            assert.isTrue(res.fullLiquidation);
+            assert.equal(res[1].agentVault, agent.agentVault.address);
+            assert.isFalse(res[1].collateralCallBand);
+            assert.isTrue(res[1].fullLiquidation);
+        });
+
+        it("full liquidation", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const challenger = await Challenger.create(context, challengerAddress1);
+            const liquidator = await Liquidator.create(context, liquidatorAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            // perform illegal payment
+            const tx1Hash = await agent.performPayment("IllegalPayment1", 100);
+            // challenge agent for illegal payment
+            const startBalance = await context.wnat.balanceOf(challengerAddress1);
+            const res = await challenger.illegalPaymentChallenge(agent, tx1Hash);
+            const endBalance = await context.wnat.balanceOf(challengerAddress1);
+            // test rewarding
+            const challengerReward = await challenger.getChallengerReward(await context.convertLotsToAMG(lots));
+            assertWeb3Equal(endBalance.sub(startBalance), challengerReward);
+            // test full liquidation started
+            assert.equal(res[1].agentVault, agent.agentVault.address);
+            assert.isFalse(res[1].collateralCallBand);
+            assert.isTrue(res[1].fullLiquidation);
+            // liquidator "buys" f-assets
+            await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
+            // liquidate agent (half)
+            const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidatorAddress1);
+            const liquidatedUBA1 = await liquidator.liquidate(agent, minted.mintedAmountUBA.divn(2));
+            const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidatorAddress1);
+            assertWeb3Equal(liquidatedUBA1, minted.mintedAmountUBA.divn(2));
+            // test rewarding
+            const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward), await context.convertLotsToAMG(lots));
+            const liquidationPremiumBIPS1 = await liquidator.getLiquidationPremiumBIPS(collateralRatioBIPS1, res[0]);
+            const liquidationReward1 = await liquidator.getLiquidationReward(await context.convertUBAToAmg(minted.mintedAmountUBA.divn(2)), liquidationPremiumBIPS1);
+            assertWeb3Equal(endBalanceLiquidator1.sub(startBalanceLiquidator1), liquidationReward1);
+            // wait some time to get next premium
+            await time.increase(90);
+            // liquidate agent (second half)
+            const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidatorAddress1);
+            const liquidatedUBA2 = await liquidator.liquidate(agent, minted.mintedAmountUBA.divn(2));
+            const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidatorAddress1);
+            assertWeb3Equal(liquidatedUBA2, minted.mintedAmountUBA.divn(2));
+            // test rewarding
+            const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1), (await context.convertLotsToAMG(lots)).divn(2));
+            const liquidationPremiumBIPS2 = await liquidator.getLiquidationPremiumBIPS(collateralRatioBIPS2, res[0]);
+            const liquidationReward2 = await liquidator.getLiquidationReward(await context.convertUBAToAmg(minted.mintedAmountUBA.divn(2)), liquidationPremiumBIPS2);
+            assertWeb3Equal(endBalanceLiquidator2.sub(startBalanceLiquidator2), liquidationReward2);
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2));
+            assertWeb3Equal(liquidatedUBA1, liquidatedUBA2);
+            assert(liquidationPremiumBIPS1.lt(liquidationPremiumBIPS2));
+            assert(liquidationReward1.lt(liquidationReward2));
         });
     });
 });

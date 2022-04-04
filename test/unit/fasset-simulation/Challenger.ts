@@ -1,5 +1,5 @@
 import { AgentVaultInstance } from "../../../typechain-truffle";
-import { AllowedPaymentAnnounced, DustChanged, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { AllowedPaymentAnnounced, DustChanged, LiquidationStarted, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { eventArgs, EventArgs, filterEvents, findEvent, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BNish, toBN } from "../../utils/helpers";
@@ -21,29 +21,35 @@ export class Challenger extends AssetContextClient {
         return new Challenger(ctx, address);
     }
     
-    async illegalPaymentChallenge(agent: Agent, txHash: string) {
+    async illegalPaymentChallenge(agent: Agent, txHash: string): Promise<[blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted>]> {
         const proof = await this.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent.underlyingAddress);
         const res = await this.assetManager.illegalPaymentChallenge(proof, agent.agentVault.address, { from: this.address });
         findRequiredEvent(res, 'IllegalPaymentConfirmed');
-        return eventArgs(res, 'LiquidationStarted');
+        const tr = await web3.eth.getTransaction(res.tx);
+        const block = await web3.eth.getBlock(tr.blockHash as any);
+        return [block.timestamp, eventArgs(res, 'LiquidationStarted')];
     }
 
-    async doublePaymentChallenge(agent: Agent, txHash1: string, txHash2: string) {
+    async doublePaymentChallenge(agent: Agent, txHash1: string, txHash2: string): Promise<[blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted>]> {
         const proof1 = await this.attestationProvider.proveBalanceDecreasingTransaction(txHash1, agent.underlyingAddress);
         const proof2 = await this.attestationProvider.proveBalanceDecreasingTransaction(txHash2, agent.underlyingAddress);
         const res = await this.assetManager.doublePaymentChallenge(proof1, proof2, agent.agentVault.address, { from: this.address });
         findRequiredEvent(res, 'DuplicatePaymentConfirmed');
-        return eventArgs(res, 'LiquidationStarted');
+        const tr = await web3.eth.getTransaction(res.tx);
+        const block = await web3.eth.getBlock(tr.blockHash as any);
+        return [block.timestamp, eventArgs(res, 'LiquidationStarted')];
     }
 
-    async freeBalanceNegativeChallenge(agent: Agent, txHashes: string[]) {
+    async freeBalanceNegativeChallenge(agent: Agent, txHashes: string[]): Promise<[blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted>]> {
         const proofs: any[] = [];
         for (const txHash of txHashes) {
             proofs.push(await this.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent.underlyingAddress));
         }
         const res = await this.assetManager.freeBalanceNegativeChallenge(proofs, agent.agentVault.address, { from: this.address });
         findRequiredEvent(res, 'UnderlyingFreeBalanceNegative');
-        return eventArgs(res, 'LiquidationStarted');
+        const tr = await web3.eth.getTransaction(res.tx);
+        const block = await web3.eth.getBlock(tr.blockHash as any);
+        return [block.timestamp, eventArgs(res, 'LiquidationStarted')];
     }
 
     async confirmRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent?: Agent) {

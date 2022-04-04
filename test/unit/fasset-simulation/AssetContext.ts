@@ -35,7 +35,7 @@ export class CommonContext {
     ) {}
 
     static async createTest(governance: string, natInfo: NatInfo): Promise<CommonContext> {
-        // create atestation client
+        // create attestation client
         const attestationClient = await AttestationClient.new();
         // create asset manager controller
         const addressUpdater = await AddressUpdater.new(governance);
@@ -104,6 +104,18 @@ export class AssetContext {
         return this.amgToNATWeiPrice(natPrice, assetPrice);
     }
 
+    async currentAmgToNATWeiPriceWithTrusted() {
+        const {0: natPrice, 1: natTimestamp } = await this.natFtso.getCurrentPrice();
+        const {0: assetPrice, 1: assetTimestamp } = await this.assetFtso.getCurrentPrice();
+        const {0: natPriceTrusted, 1: natTimestampTrusted } = await this.natFtso.getCurrentPriceFromTrustedProviders();
+        const {0: assetPriceTrusted, 1: assetTimestampTrusted } = await this.assetFtso.getCurrentPriceFromTrustedProviders();
+        const ftsoPrice = this.amgToNATWeiPrice(natPrice, assetPrice);
+        const trustedPrice = natTimestampTrusted.add(toBN(this.settings.maxTrustedPriceAgeSeconds)).gte(natTimestamp) && 
+            assetTimestampTrusted.add(toBN(this.settings.maxTrustedPriceAgeSeconds)).gte(assetTimestamp) ?
+            this.amgToNATWeiPrice(natPriceTrusted, assetPriceTrusted) : ftsoPrice;
+        return [ftsoPrice, trustedPrice];
+    }
+
     amgToNATWeiPrice(natPriceUSDDec5: BNish, assetPriceUSDDec5: BNish) {
         // _natPriceUSDDec5 < 2^128 (in ftso) and assetUnitUBA, are both 64 bit, so there can be no overflow
         return toBN(assetPriceUSDDec5)
@@ -129,6 +141,10 @@ export class AssetContext {
     
     convertAmgToNATWei(valueAMG: BNish, amgToNATWeiPrice: BNish) {
         return toBN(valueAMG).mul(toBN(amgToNATWeiPrice)).div(AMG_NATWEI_PRICE_SCALE);
+    }
+
+    convertNATWeiToAMG(valueNATWei: BNish, amgToNATWeiPrice: BNish) {
+        return toBN(valueNATWei).mul(AMG_NATWEI_PRICE_SCALE).div(toBN(amgToNATWeiPrice));
     }
     
     static async createTest(common: CommonContext, chainInfo: ChainInfo): Promise<AssetContext> {
