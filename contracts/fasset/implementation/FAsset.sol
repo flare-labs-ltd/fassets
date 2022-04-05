@@ -12,12 +12,15 @@ contract FAsset is IFAsset, VPToken {
     address public override assetManager;
     
     /**
-     * Nonzero if f-asset is stopped (in that case it's stop timestamp).
+     * Nonzero if f-asset is stopped (in that case it's value is stop timestamp).
+     * Stopped f-asset can never be re-enabled.
+     *
      * When f-asset is stopped, no transfers can be made anymore.
-     * This is an extreme measure to be used only when the asset manager minting has been already paused
-     * for a long time but there still exist unredeemable f-assets. In such case, the f-asset contract is
-     * stopped and then agents can buy back the collateral at market rate (i.e. they burn market value
-     * of backed f-assets in collateral to release the rest of the collateral).
+     * This is an extreme measure to be used as an optional last phase of asset manager upgrade,
+     * when the asset manager minting has already been paused for a long time but there still exist 
+     * unredeemable f-assets, which at this point are considered unrecoverable (lost wallet keys etc.). 
+     * In such case, the f-asset contract is stopped and then agents can buy back their collateral at market rate
+     * (i.e. they burn market value of backed f-assets in collateral to release the rest of the collateral).
      */
     uint64 public stoppedAt = 0;
     

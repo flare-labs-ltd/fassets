@@ -36,6 +36,13 @@ contract AssetManagerController is Governed, AddressUpdatable {
     {
         return assetManagers;
     }
+
+    function assetManagerExists(address _assetManager)
+        external view
+        returns (bool)
+    {
+        return assetManagerIndex[_assetManager] != 0;
+    }
     
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Setters
