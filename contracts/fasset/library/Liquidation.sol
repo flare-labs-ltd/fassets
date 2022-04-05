@@ -52,14 +52,20 @@ library Liquidation {
         // allow one-step liquidation (without calling startLiquidation first)
         Agents.LiquidationPhase currentPhase = _upgradeLiquidationPhase(_state, agent, _agentVault, collateralRatio);
         require(currentPhase == Agents.LiquidationPhase.LIQUIDATION, "not in liquidation");
+        // calculate liquidation amount
         uint256 factorBIPS = _currentLiquidationFactorBIPS(_state, agent, collateralRatio);
         uint256 maxLiquidatedAMG = _maxLiquidationAmountAMG(_state, agent, collateralRatio, factorBIPS);
         uint64 amountToLiquidateAMG = 
             Math.min(maxLiquidatedAMG, Conversion.convertUBAToAmg(_state.settings, _amountUBA)).toUint64();
-        uint64 liquidatedAmountAMG = Redemption.liquidate(_state, msg.sender, _agentVault, amountToLiquidateAMG);
+        // liquidate redemption tickets
+        (uint64 liquidatedAmountAMG,) = Redemption.selfCloseOrLiquidate(_state, _agentVault, amountToLiquidateAMG);
+        // pay the liquidator
         uint256 rewardNATWei = Conversion.convertAmgToNATWei(liquidatedAmountAMG.mulBips(factorBIPS), 
             amgToNATWeiPrice);
         Agents.payout(_state, _agentVault, msg.sender, rewardNATWei);
+        // try to pull agent out of liquidation
+        _endLiquidationIfHealthy(_state, agent, _agentVault);
+        // notify about liquidation
         uint256 liquidatedAmountUBA = Conversion.convertAmgToUBA(_state.settings, liquidatedAmountAMG);
         emit AMEvents.LiquidationPerformed(_agentVault, msg.sender, liquidatedAmountUBA);
         return liquidatedAmountUBA;
@@ -73,7 +79,7 @@ library Liquidation {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        endLiquidationIfHealthy(_state, agent, _agentVault);
+        _endLiquidationIfHealthy(_state, agent, _agentVault);
         require(agent.status == Agents.AgentStatus.NORMAL, "cannot stop liquidation");
     }
 
@@ -106,16 +112,16 @@ library Liquidation {
         internal
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        endLiquidationIfHealthy(_state, agent, _agentVault);
+        _endLiquidationIfHealthy(_state, agent, _agentVault);
     }
     
     // Cancel liquidation if the agent is healthy.
-    function endLiquidationIfHealthy(
+    function _endLiquidationIfHealthy(
         AssetManagerState.State storage _state,
         Agents.Agent storage _agent,
         address _agentVault
     )
-        internal
+        private
     {
         // can only stop plain liquidation (full liquidation can only stop when there are no more minted assets)
         if (_agent.status != Agents.AgentStatus.LIQUIDATION) return;

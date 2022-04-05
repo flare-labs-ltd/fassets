@@ -378,34 +378,19 @@ library Redemption {
         Agents.requireAgentVaultOwner(_agentVault);
         require(_amountUBA != 0, "self close of 0");
         uint64 amountAMG = Conversion.convertUBAToAmg(_state.settings, _amountUBA);
-        (, _closedUBA) = _selfCloseOrLiquidate(_state, _agentVault, amountAMG);
+        (, _closedUBA) = selfCloseOrLiquidate(_state, _agentVault, amountAMG);
+        // try to pull agent out of liquidation
+        Liquidation.endLiquidationIfHealthy(_state, _agentVault);
         // send event
         emit AMEvents.SelfClose(_agentVault, _closedUBA);
     }
 
-    // only use by Liquidation.liquidate
-    function liquidate(
-        AssetManagerState.State storage _state,
-        address _liquidator,
-        address _agentVault,
-        uint64 _amountAMG
-    ) 
-        internal 
-        returns (uint64 _liquidatedAMG)
-    {
-        require(_amountAMG != 0, "liquidation of 0");
-        uint256 liquidatedUBA;
-        (_liquidatedAMG, liquidatedUBA) = _selfCloseOrLiquidate(_state, _agentVault, _amountAMG);
-        // send event
-        emit AMEvents.LiquidationPerformed(_agentVault, _liquidator, liquidatedUBA);
-    }
-
-    function _selfCloseOrLiquidate(
+    function selfCloseOrLiquidate(
         AssetManagerState.State storage _state,
         address _agentVault,
         uint64 _amountAMG
     )
-        private
+        internal
         returns (uint64 _valueAMG, uint256 _valueUBA)
     {
         // dust first
@@ -433,8 +418,6 @@ library Redemption {
         // all the redeemed amount is added to free balance
         _valueUBA = Conversion.convertAmgToUBA(_state.settings, _valueAMG);
         UnderlyingFreeBalance.increaseFreeBalance(_state, _agentVault, _valueUBA);
-        // try to pull agent out of liquidation
-        Liquidation.endLiquidationIfHealthy(_state, agent, _agentVault);
     }
     
     function _removeFromTicket(
