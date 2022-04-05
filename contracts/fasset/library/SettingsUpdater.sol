@@ -2,17 +2,28 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "./AMEvents.sol";
 import "./AssetManagerState.sol";
 import "./TransactionAttestation.sol";
 
 
 library SettingsUpdater {
+    struct PendingUpdates {
+        // collateral changes
+        uint64 collateralRatiosValidAt;
+        uint32 minCollateralRatioBIPS;
+        uint32 ccbMinCollateralRatioBIPS;
+        uint32 safetyMinCollateralRatioBIPS;
+    }
+    
     bytes32 internal constant UPDATE_CONTRACTS = 
         keccak256("updateContracts(IAttestationClient,IFtsoRegistry,IWNat)");
     bytes32 internal constant SET_LOT_SIZE_AMG =
         keccak256("setLotSizeAmg(uint256)");
     bytes32 internal constant SET_COLLATERAL_RATIOS =
         keccak256("setCollateralRatios(uint256,uint256,uint256)");
+    bytes32 internal constant EXECUTE_SET_COLLATERAL_RATIOS =
+        keccak256("executeSetCollateralRatios(uint256,uint256,uint256)");
     bytes32 internal constant SET_TIME_FOR_PAYMENT =
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant SET_PAYMENT_CHALLENGE_REWARD =
@@ -50,6 +61,7 @@ library SettingsUpdater {
     
     function callUpdate(
         AssetManagerState.State storage _state,
+        PendingUpdates storage _updates,
         bytes32 _method,
         bytes calldata _params
     )
@@ -66,11 +78,28 @@ library SettingsUpdater {
             _state.settings.lotSizeAMG = SafeCast.toUint64(value);
         } else if (_method == SET_COLLATERAL_RATIOS) {
             (uint256 minCR, uint256 ccbCR, uint256 safetyCR) = abi.decode(_params, (uint256, uint256, uint256));
-            require(ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
-            // TODO: timelock
-            _state.settings.minCollateralRatioBIPS = SafeCast.toUint32(minCR);
-            _state.settings.ccbMinCollateralRatioBIPS = SafeCast.toUint32(ccbCR);
-            _state.settings.safetyMinCollateralRatioBIPS = SafeCast.toUint32(safetyCR);
+            require(1 < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
+            uint256 collateralRatiosValidAt = block.timestamp + _state.settings.timelockSeconds;
+            _updates.collateralRatiosValidAt = SafeCast.toUint64(collateralRatiosValidAt);
+            _updates.minCollateralRatioBIPS = SafeCast.toUint32(minCR);
+            _updates.ccbMinCollateralRatioBIPS = SafeCast.toUint32(ccbCR);
+            _updates.safetyMinCollateralRatioBIPS = SafeCast.toUint32(safetyCR);
+            emit AMEvents.SettingChanged("minCollateralRatioBIPS", minCR, collateralRatiosValidAt);
+            emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", ccbCR, collateralRatiosValidAt);
+            emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", safetyCR, collateralRatiosValidAt);
+        } else if (_method == EXECUTE_SET_COLLATERAL_RATIOS) {
+            require(_updates.collateralRatiosValidAt != 0 && block.timestamp >= _updates.collateralRatiosValidAt,
+                "update not valid yet");
+            _state.settings.minCollateralRatioBIPS = _updates.minCollateralRatioBIPS;
+            _state.settings.ccbMinCollateralRatioBIPS = _updates.ccbMinCollateralRatioBIPS;
+            _state.settings.safetyMinCollateralRatioBIPS = _updates.safetyMinCollateralRatioBIPS;
+            _updates.collateralRatiosValidAt = 0;
+            emit AMEvents.SettingChanged("minCollateralRatioBIPS", _updates.minCollateralRatioBIPS, 
+                block.timestamp);
+            emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", _updates.ccbMinCollateralRatioBIPS, 
+                block.timestamp);
+            emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", _updates.safetyMinCollateralRatioBIPS, 
+                block.timestamp);
         } else if (_method == SET_TIME_FOR_PAYMENT) {
             (uint256 underlyingBlocks, uint256 underlyingSeconds) = abi.decode(_params, (uint256, uint256));
             _state.settings.underlyingBlocksForPayment = SafeCast.toUint64(underlyingBlocks);

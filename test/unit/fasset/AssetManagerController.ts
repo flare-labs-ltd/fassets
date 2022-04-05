@@ -1,7 +1,8 @@
+import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
-import { getTestFile, toBNExp } from "../../utils/helpers";
+import { getTestFile, toBN, toBNExp } from "../../utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
 import { createTestSettings } from "./test-settings";
@@ -74,5 +75,31 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(settings.ftsoRegistry, accounts[81]);
             assertWeb3Equal(settings.wNat, accounts[82]);
         });
+        
+        it("should change collateral settings after timelock", async () => {
+            // act
+            await assetManagerController.setCollateralRatios([assetManager.address], 2_2000, 1_8000, 2_4000, { from: governance });
+            await time.increase(toBN(settings.timelockSeconds).addn(1));
+            await time.advanceBlock();
+            await assetManagerController.executeSetCollateralRatios([assetManager.address]);
+            // assert
+            const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(newSettings.minCollateralRatioBIPS, 2_2000);
+            assertWeb3Equal(newSettings.ccbMinCollateralRatioBIPS, 1_8000);
+            assertWeb3Equal(newSettings.safetyMinCollateralRatioBIPS, 2_4000);
+        });
+
+        it("shouldn't change collateral settings without timelock", async () => {
+            // act
+            await assetManagerController.setCollateralRatios([assetManager.address], 2_2000, 1_8000, 2_4000, { from: governance });
+            await expectRevert(assetManagerController.executeSetCollateralRatios([assetManager.address]),
+                "update not valid yet");
+            // assert no changes
+            const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(newSettings.minCollateralRatioBIPS, settings.minCollateralRatioBIPS);
+            assertWeb3Equal(newSettings.ccbMinCollateralRatioBIPS, settings.ccbMinCollateralRatioBIPS);
+            assertWeb3Equal(newSettings.safetyMinCollateralRatioBIPS, settings.safetyMinCollateralRatioBIPS);
+        });
+        
     });
 });

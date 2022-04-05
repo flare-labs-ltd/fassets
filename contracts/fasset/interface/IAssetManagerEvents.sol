@@ -237,4 +237,12 @@ interface IAssetManagerEvents {
     event UnderlyingFreeBalanceNegative(
         address indexed agentVault,
         int256 freeBalance);
+        
+    /**
+     * A setting has changed (or will change after timelock).
+     */
+    event SettingChanged(
+        string name,
+        uint256 value,
+        uint256 validAt);
 }

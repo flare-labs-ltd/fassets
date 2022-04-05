@@ -153,6 +153,9 @@ library AssetManagerSettings {
         // go to the next step of liquidation after a certain period of time.
         // timelocked
         uint64 liquidationStepSeconds;
+        
+        // The time that critical settings
+        uint64 timelockSeconds;
     }
 
 }

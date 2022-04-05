@@ -198,6 +198,7 @@ export class AssetContext {
             ccbTimeSeconds: 180,
             liquidationStepSeconds: 90,
             maxTrustedPriceAgeSeconds: 8 * 60,
+            timelockSeconds: 7 * 86400, // 1 week
         };
     }
 }

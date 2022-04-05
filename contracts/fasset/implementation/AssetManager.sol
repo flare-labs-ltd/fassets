@@ -32,6 +32,7 @@ import "../library/UnderlyingFreeBalance.sol";
  */
 contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     AssetManagerState.State private state;
+    SettingsUpdater.PendingUpdates private pendingUpdates;
     IFAsset public immutable fAsset;
     address public assetManagerController;  // TODO: should be replaceable?
     
@@ -66,7 +67,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
         onlyAssetManagerController
     {
-        SettingsUpdater.callUpdate(state, _method, _params);
+        SettingsUpdater.callUpdate(state, pendingUpdates, _method, _params);
     }
 
     /**
