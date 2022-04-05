@@ -70,36 +70,15 @@ library SettingsUpdater {
         if (_method == UPDATE_CONTRACTS) {
             (IAttestationClient attestationClient, IFtsoRegistry ftsoRegistry, IWNat wNat) =
                 abi.decode(_params, (IAttestationClient, IFtsoRegistry, IWNat));
-            _state.settings.attestationClient = attestationClient;
-            _state.settings.ftsoRegistry = ftsoRegistry;
-            _state.settings.wNat = wNat;
+            _updateContracts(_state, attestationClient, ftsoRegistry, wNat);
         } else if (_method == SET_LOT_SIZE_AMG) {
             uint256 value = abi.decode(_params, (uint256));
             _state.settings.lotSizeAMG = SafeCast.toUint64(value);
         } else if (_method == SET_COLLATERAL_RATIOS) {
             (uint256 minCR, uint256 ccbCR, uint256 safetyCR) = abi.decode(_params, (uint256, uint256, uint256));
-            require(1 < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
-            uint256 collateralRatiosValidAt = block.timestamp + _state.settings.timelockSeconds;
-            _updates.collateralRatiosValidAt = SafeCast.toUint64(collateralRatiosValidAt);
-            _updates.minCollateralRatioBIPS = SafeCast.toUint32(minCR);
-            _updates.ccbMinCollateralRatioBIPS = SafeCast.toUint32(ccbCR);
-            _updates.safetyMinCollateralRatioBIPS = SafeCast.toUint32(safetyCR);
-            emit AMEvents.SettingChanged("minCollateralRatioBIPS", minCR, collateralRatiosValidAt);
-            emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", ccbCR, collateralRatiosValidAt);
-            emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", safetyCR, collateralRatiosValidAt);
+            _setCollateralRatios(_state, _updates, minCR, ccbCR, safetyCR);
         } else if (_method == EXECUTE_SET_COLLATERAL_RATIOS) {
-            require(_updates.collateralRatiosValidAt != 0 && block.timestamp >= _updates.collateralRatiosValidAt,
-                "update not valid yet");
-            _state.settings.minCollateralRatioBIPS = _updates.minCollateralRatioBIPS;
-            _state.settings.ccbMinCollateralRatioBIPS = _updates.ccbMinCollateralRatioBIPS;
-            _state.settings.safetyMinCollateralRatioBIPS = _updates.safetyMinCollateralRatioBIPS;
-            _updates.collateralRatiosValidAt = 0;
-            emit AMEvents.SettingChanged("minCollateralRatioBIPS", _updates.minCollateralRatioBIPS, 
-                block.timestamp);
-            emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", _updates.ccbMinCollateralRatioBIPS, 
-                block.timestamp);
-            emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", _updates.safetyMinCollateralRatioBIPS, 
-                block.timestamp);
+            _executeSetCollateralRatios(_state, _updates);
         } else if (_method == SET_TIME_FOR_PAYMENT) {
             (uint256 underlyingBlocks, uint256 underlyingSeconds) = abi.decode(_params, (uint256, uint256));
             _state.settings.underlyingBlocksForPayment = SafeCast.toUint64(underlyingBlocks);
@@ -148,6 +127,59 @@ library SettingsUpdater {
         }
     }
 
+    function _updateContracts(
+        AssetManagerState.State storage _state,
+        IAttestationClient attestationClient, 
+        IFtsoRegistry ftsoRegistry, 
+        IWNat wNat
+    ) 
+        private 
+    {
+        _state.settings.attestationClient = attestationClient;
+        _state.settings.ftsoRegistry = ftsoRegistry;
+        _state.settings.wNat = wNat;
+    }
+
+    function _setCollateralRatios(
+        AssetManagerState.State storage _state,
+        PendingUpdates storage _updates,
+        uint256 minCR, 
+        uint256 ccbCR, 
+        uint256 safetyCR
+    ) 
+        private 
+    {
+        require(1 < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
+        uint256 collateralRatiosValidAt = block.timestamp + _state.settings.timelockSeconds;
+        _updates.collateralRatiosValidAt = SafeCast.toUint64(collateralRatiosValidAt);
+        _updates.minCollateralRatioBIPS = SafeCast.toUint32(minCR);
+        _updates.ccbMinCollateralRatioBIPS = SafeCast.toUint32(ccbCR);
+        _updates.safetyMinCollateralRatioBIPS = SafeCast.toUint32(safetyCR);
+        emit AMEvents.SettingChanged("minCollateralRatioBIPS", minCR, collateralRatiosValidAt);
+        emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", ccbCR, collateralRatiosValidAt);
+        emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", safetyCR, collateralRatiosValidAt);
+    }
+
+    function _executeSetCollateralRatios(
+        AssetManagerState.State storage _state,
+        PendingUpdates storage _updates
+    ) 
+        private 
+    {
+        require(_updates.collateralRatiosValidAt != 0 && block.timestamp >= _updates.collateralRatiosValidAt,
+            "update not valid yet");
+        _state.settings.minCollateralRatioBIPS = _updates.minCollateralRatioBIPS;
+        _state.settings.ccbMinCollateralRatioBIPS = _updates.ccbMinCollateralRatioBIPS;
+        _state.settings.safetyMinCollateralRatioBIPS = _updates.safetyMinCollateralRatioBIPS;
+        _updates.collateralRatiosValidAt = 0;
+        emit AMEvents.SettingChanged("minCollateralRatioBIPS", _updates.minCollateralRatioBIPS, 
+            block.timestamp);
+        emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", _updates.ccbMinCollateralRatioBIPS, 
+            block.timestamp);
+        emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", _updates.safetyMinCollateralRatioBIPS, 
+            block.timestamp);
+    }
+    
     function _validateSettings(
         AssetManagerSettings.Settings memory _settings
     ) 
