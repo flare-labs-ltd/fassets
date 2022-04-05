@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/SafeBips.sol";
+import "../../utils/lib/MathUtils.sol";
 import "./Agents.sol";
 import "./AssetManagerSettings.sol";
 import "./AssetManagerState.sol";
@@ -18,6 +19,7 @@ import "./AgentCollateral.sol";
 library Liquidation {
     using SafeMath for uint256;
     using SafeCast for uint256;
+    using MathUtils for uint256;
     using SafePct for uint256;
     using SafeBips for uint256;
     using SafeBips for uint64;
@@ -248,8 +250,9 @@ library Liquidation {
             return agent.mintedAMG; // cannot achieve target - liquidate all
         }
         uint256 maxLiquidatedAMG = uint256(agent.mintedAMG)
-            .mulDiv(targetRatioBIPS - _collateralRatioBIPS, targetRatioBIPS - factorBIPS) + 1;  // ~ round up
-        // TODO: should we round up maxLiquidationAmount to whole lots (of course cap by mintedAMG after rounding)?
+            .mulDivRoundUp(targetRatioBIPS - _collateralRatioBIPS, targetRatioBIPS - factorBIPS);
+        // round up to whole number of lots
+        maxLiquidatedAMG = maxLiquidatedAMG.roundUp(_state.settings.lotSizeAMG);
         return Math.min(maxLiquidatedAMG, agent.mintedAMG);
     }
     
