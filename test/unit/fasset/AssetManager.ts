@@ -100,6 +100,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.notEqual(resFAsset, constants.ZERO_ADDRESS);
             assert.equal(resFAsset, fAsset.address);
             const resSettings = web3ResultStruct(await assetManager.getSettings());
+            settings.assetManagerController = assetManagerController;   // it is added to settings in newAssetManager
             assertWeb3DeepEqual(resSettings, settings);
         });
 

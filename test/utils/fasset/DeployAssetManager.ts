@@ -13,7 +13,8 @@ export async function newAssetManager(
     const FAsset = artifacts.require('FAsset');
     const fAsset = await FAsset.new(governanceAddress, name, symbol, decimals);
     const assetManagerControllerAddress = typeof assetManagerController === 'string' ? assetManagerController : assetManagerController.address;
-    const assetManager = await AssetManager.new(assetManagerSettings, fAsset.address, assetManagerControllerAddress);
+    assetManagerSettings = { ...assetManagerSettings, assetManagerController: assetManagerControllerAddress };
+    const assetManager = await AssetManager.new(assetManagerSettings, fAsset.address);
     if (typeof assetManagerController !== 'string') {
         await assetManagerController.addAssetManager(assetManager.address, { from: governanceAddress });
     }

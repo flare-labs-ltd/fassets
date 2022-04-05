@@ -68,12 +68,9 @@ library SettingsUpdater {
         external
     {
         if (_method == UPDATE_CONTRACTS) {
-            (IAttestationClient attestationClient, IFtsoRegistry ftsoRegistry, IWNat wNat) =
-                abi.decode(_params, (IAttestationClient, IFtsoRegistry, IWNat));
-            _updateContracts(_state, attestationClient, ftsoRegistry, wNat);
-        } else if (_method == SET_LOT_SIZE_AMG) {
-            uint256 value = abi.decode(_params, (uint256));
-            _state.settings.lotSizeAMG = SafeCast.toUint64(value);
+            (address controller, IAttestationClient attestationClient, IFtsoRegistry ftsoRegistry, IWNat wNat) =
+                abi.decode(_params, (address, IAttestationClient, IFtsoRegistry, IWNat));
+            _updateContracts(_state, controller, attestationClient, ftsoRegistry, wNat);
         } else if (_method == SET_COLLATERAL_RATIOS) {
             (uint256 minCR, uint256 ccbCR, uint256 safetyCR) = abi.decode(_params, (uint256, uint256, uint256));
             _setCollateralRatios(_state, _updates, minCR, ccbCR, safetyCR);
@@ -87,6 +84,9 @@ library SettingsUpdater {
             (uint256 rewardNATWei, uint256 rewardBIPS) = abi.decode(_params, (uint256, uint256));
             _state.settings.paymentChallengeRewardNATWei = SafeCast.toUint128(rewardNATWei);
             _state.settings.paymentChallengeRewardBIPS = SafeCast.toUint16(rewardBIPS);
+        } else if (_method == SET_LOT_SIZE_AMG) {
+            uint256 value = abi.decode(_params, (uint256));
+            _state.settings.lotSizeAMG = SafeCast.toUint64(value);
         } else if (_method == SET_COLLATERAL_RESERVATION_FEE_BIPS) {
             uint256 value = abi.decode(_params, (uint256));
             _state.settings.collateralReservationFeeBIPS = SafeCast.toUint16(value);
@@ -129,12 +129,14 @@ library SettingsUpdater {
 
     function _updateContracts(
         AssetManagerState.State storage _state,
+        address assetManagerController,
         IAttestationClient attestationClient, 
         IFtsoRegistry ftsoRegistry, 
         IWNat wNat
     ) 
         private 
     {
+        _state.settings.assetManagerController = assetManagerController;
         _state.settings.attestationClient = attestationClient;
         _state.settings.ftsoRegistry = ftsoRegistry;
         _state.settings.wNat = wNat;

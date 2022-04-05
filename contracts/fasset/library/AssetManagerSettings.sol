@@ -9,7 +9,8 @@ import "../interface/IWNat.sol";
 library AssetManagerSettings {
     struct Settings {
         // Required contracts.
-        // TODO: once we have AssetManagerController, connect it to the AddressUpdater.
+        // Only used to verify that calls come from assetManagerController.
+        address assetManagerController;
         
         // Attestation client verifies and decodes attestation proofs.
         IAttestationClient attestationClient;

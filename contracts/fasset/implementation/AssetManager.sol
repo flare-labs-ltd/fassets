@@ -34,22 +34,19 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     AssetManagerState.State private state;
     SettingsUpdater.PendingUpdates private pendingUpdates;
     IFAsset public immutable fAsset;
-    address public assetManagerController;  // TODO: should be replaceable?
     
     uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
 
     modifier onlyAssetManagerController {
-        require(msg.sender == assetManagerController, "only asset manager controller");
+        require(msg.sender == state.settings.assetManagerController, "only asset manager controller");
         _;
     }
     
     constructor(
         AssetManagerSettings.Settings memory _settings,
-        IFAsset _fAsset,
-        address _assetManagerController
+        IFAsset _fAsset
     ) {
         fAsset = _fAsset;
-        assetManagerController = _assetManagerController;
         SettingsUpdater.validateAndSet(state, _settings);
     }
 
@@ -80,6 +77,16 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         returns (AssetManagerSettings.Settings memory)
     {
         return state.settings;
+    }
+    
+    /**
+     * Get the asset manager controller, the only address that can change settings.
+     */
+    function assetManagerController()
+        external view
+        returns (address)
+    {
+        return state.settings.assetManagerController;
     }
     
     ////////////////////////////////////////////////////////////////////////////////////

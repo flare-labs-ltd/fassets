@@ -5,6 +5,7 @@ import { toStringExp } from "../../utils/helpers";
 
 export async function createTestSettings(attestationClient: AttestationClientMockInstance, wNat: WNatInstance, ftsoRegistry: FtsoRegistryMockInstance): Promise<AssetManagerSettings> {
     return {
+        assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
         attestationClient: attestationClient.address,
         wNat: wNat.address,
         ftsoRegistry: ftsoRegistry.address,

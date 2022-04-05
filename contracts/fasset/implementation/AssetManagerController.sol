@@ -191,6 +191,8 @@ contract AssetManagerController is Governed, AddressUpdatable {
     ) 
         internal override
     {
+        address assetManagerController =
+            _getContractAddress(_contractNameHashes, _contractAddresses, "AssetManagerController");
         IAttestationClient attestationClient = 
             IAttestationClient(_getContractAddress(_contractNameHashes, _contractAddresses, "AttestationClient"));
         IFtsoRegistry ftsoRegistry =
@@ -200,7 +202,8 @@ contract AssetManagerController is Governed, AddressUpdatable {
         for (uint256 i = 0; i < assetManagers.length; i++) {
             AssetManager assetManager = assetManagers[i];
             assetManager.updateSettings(
-                SettingsUpdater.UPDATE_CONTRACTS, abi.encode(attestationClient, ftsoRegistry, wNat));
+                SettingsUpdater.UPDATE_CONTRACTS, 
+                abi.encode(assetManagerController, attestationClient, ftsoRegistry, wNat));
         }
     }
 

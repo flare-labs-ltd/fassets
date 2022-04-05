@@ -66,8 +66,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should change contracts", async () => {
-            await addressUpdater.update(["AddressUpdater", "AttestationClient", "FtsoRegistry", "WNat"], 
-                [addressUpdater.address, accounts[80], accounts[81], accounts[82]],
+            await addressUpdater.update(["AddressUpdater", "AssetManagerController", "AttestationClient", "FtsoRegistry", "WNat"], 
+                [addressUpdater.address, assetManagerController.address, accounts[80], accounts[81], accounts[82]],
                 [assetManagerController.address], 
                 { from: governance });
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());

@@ -172,6 +172,7 @@ export class AssetContext {
     
     static async createTestSettings(ctx: CommonContext, ci: ChainInfo): Promise<AssetManagerSettings> {
         return {
+            assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
             attestationClient: ctx.attestationClient.address,
             wNat: ctx.wnat.address,
             ftsoRegistry: ctx.ftsoRegistry.address,
