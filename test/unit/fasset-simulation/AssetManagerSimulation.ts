@@ -1,7 +1,7 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { getTestFile, toBN, toWei } from "../../utils/helpers";
+import { BN_ZERO, getTestFile, toBN, toBNExp, toWei } from "../../utils/helpers";
 import { assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
 import { Agent } from "./Agent";
 import { AssetContext, CommonContext } from "./AssetContext";
@@ -257,11 +257,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // test rewarding for redemption payment default
-            const startBalanceRedeemer = await context.wnat.balanceOf(redeemerAddress1);
+            const startBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
             const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
             const res = await agent.redemptionPaymentDefault(request);
             await agent.finishRedemptionWithoutPayment(request);
-            const endBalanceRedeemer = await context.wnat.balanceOf(redeemerAddress1);
+            const endBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
             const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
             assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), res.redeemedCollateralWei);
@@ -308,10 +308,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that calling finishRedemptionWithoutPayment after failed redemption payment will revert
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid redemption status");
             // test rewarding for redemption payment default
-            const startBalanceRedeemer = await context.wnat.balanceOf(redeemerAddress1);
+            const startBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
             const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
             const res = await redeemer.redemptionPaymentDefault(request);
-            const endBalanceRedeemer = await context.wnat.balanceOf(redeemerAddress1);
+            const endBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
             const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
             assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), res.redeemedCollateralWei);
@@ -352,10 +352,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // test rewarding for redemption payment default
-            const startBalanceRedeemer = await context.wnat.balanceOf(redeemerAddress1);
+            const startBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
             const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
             const res = await redeemer.redemptionPaymentDefault(request);
-            const endBalanceRedeemer = await context.wnat.balanceOf(redeemerAddress1);
+            const endBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
             const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
             assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), res.redeemedCollateralWei);
@@ -523,10 +523,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(agent.destroy(), "destroy not announced");
             // others can confirm redemption payment after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
-            const startBalance = await context.wnat.balanceOf(challengerAddress1);
+            const startBalance = await context.wnat.balanceOf(challenger.address);
             await challenger.confirmRedemptionPayment(request, tx1Hash);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
-            const endBalance = await context.wnat.balanceOf(challengerAddress1);
+            const endBalance = await context.wnat.balanceOf(challenger.address);
             // test rewarding
             assertWeb3Equal(endBalance.sub(startBalance), context.settings.confirmationByOthersRewardNATWei);
             // agent can exit now
@@ -622,11 +622,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching ongoing announced pmt");
             // others can confirm allowed payment after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
-            const startBalance = await context.wnat.balanceOf(challengerAddress1);
+            const startBalance = await context.wnat.balanceOf(challenger.address);
             const res = await challenger.confirmAllowedPayment(allowedPayment, tx1Hash);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
             assertWeb3Equal(res.spentUBA, 100);
-            const endBalance = await context.wnat.balanceOf(challengerAddress1);
+            const endBalance = await context.wnat.balanceOf(challenger.address);
             // test rewarding
             assertWeb3Equal(endBalance.sub(startBalance), context.settings.confirmationByOthersRewardNATWei);
             // agent can exit now
@@ -652,14 +652,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // perform illegal payment
             const tx1Hash = await agent.performPayment("IllegalPayment1", 100);
             // challenge agent for illegal payment
-            const startBalance = await context.wnat.balanceOf(challengerAddress1);
+            const startBalance = await context.wnat.balanceOf(challenger.address);
             const res = await challenger.illegalPaymentChallenge(agent, tx1Hash);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: already liquidating");
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
-            const endBalance = await context.wnat.balanceOf(challengerAddress1);
+            const endBalance = await context.wnat.balanceOf(challenger.address);
             // test rewarding
-            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(await context.convertLotsToAMG(lots)));
+            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(minted.mintedAmountUBA));
             // test full liquidation started
             assert.equal(res[1].agentVault, agent.agentVault.address);
             assert.isFalse(res[1].collateralCallBand);
@@ -690,14 +690,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: same transaction");
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx3Hash), "challenge: not duplicate");
             // challenge agent for double payment
-            const startBalance = await context.wnat.balanceOf(challengerAddress1);
+            const startBalance = await context.wnat.balanceOf(challenger.address);
             const res = await challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash), "chlg dbl: already liquidating");
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
-            const endBalance = await context.wnat.balanceOf(challengerAddress1);
+            const endBalance = await context.wnat.balanceOf(challenger.address);
             // test rewarding
-            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(await context.convertLotsToAMG(lots)));
+            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(minted.mintedAmountUBA));
             // test full liquidation started
             assert.equal(res[1].agentVault, agent.agentVault.address);
             assert.isFalse(res[1].collateralCallBand);
@@ -725,14 +725,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that we cannot use the same transaction multiple times
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash, tx1Hash]), "mult chlg: repeated transaction");
             // challenge agent for negative underlying balance
-            const startBalance = await context.wnat.balanceOf(challengerAddress1);
+            const startBalance = await context.wnat.balanceOf(challenger.address);
             const res = await challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: already liquidating");
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
-            const endBalance = await context.wnat.balanceOf(challengerAddress1);
+            const endBalance = await context.wnat.balanceOf(challenger.address);
             // test rewarding
-            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(await context.convertLotsToAMG(lots)));
+            assertWeb3Equal(endBalance.sub(startBalance), await challenger.getChallengerReward(minted.mintedAmountUBA));
             // test full liquidation started
             assert.equal(res[1].agentVault, agent.agentVault.address);
             assert.isFalse(res[1].collateralCallBand);
@@ -759,11 +759,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // perform illegal payment
             const tx1Hash = await agent.performPayment("IllegalPayment1", 100);
             // challenge agent for illegal payment
-            const startBalance = await context.wnat.balanceOf(challengerAddress1);
+            const startBalance = await context.wnat.balanceOf(challenger.address);
             const res = await challenger.illegalPaymentChallenge(agent, tx1Hash);
-            const endBalance = await context.wnat.balanceOf(challengerAddress1);
+            const endBalance = await context.wnat.balanceOf(challenger.address);
             // test rewarding
-            const challengerReward = await challenger.getChallengerReward(await context.convertLotsToAMG(lots));
+            const challengerReward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), challengerReward);
             // test full liquidation started
             assert.equal(res[1].agentVault, agent.agentVault.address);
@@ -771,33 +771,259 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.isTrue(res[1].fullLiquidation);
             // liquidator "buys" f-assets
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
-            // liquidate agent (half)
-            const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidatorAddress1);
-            const liquidatedUBA1 = await liquidator.liquidate(agent, minted.mintedAmountUBA.divn(2));
-            const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidatorAddress1);
-            assertWeb3Equal(liquidatedUBA1, minted.mintedAmountUBA.divn(2));
+            // liquidate agent (partially)
+            const liquidateMaxUBA = minted.mintedAmountUBA.divn(lots);
+            const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const [liquidatedUBA1, liquidationTimestamp1] = await liquidator.liquidate(agent, liquidateMaxUBA);
+            const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA);
             // test rewarding
-            const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward), await context.convertLotsToAMG(lots));
-            const liquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS1, res[0]);
-            const liquidationReward1 = await liquidator.getLiquidationReward(await context.convertUBAToAmg(minted.mintedAmountUBA.divn(2)), liquidationFactorBIPS1);
+            const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward), minted.mintedAmountUBA);
+            const liquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS1, res[0], liquidationTimestamp1);
+            const liquidationReward1 = await liquidator.getLiquidationReward(liquidatedUBA1, liquidationFactorBIPS1);
             assertWeb3Equal(endBalanceLiquidator1.sub(startBalanceLiquidator1), liquidationReward1);
             // wait some time to get next premium
             await time.increase(90);
-            // liquidate agent (second half)
-            const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidatorAddress1);
-            const liquidatedUBA2 = await liquidator.liquidate(agent, minted.mintedAmountUBA.divn(2));
-            const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidatorAddress1);
-            assertWeb3Equal(liquidatedUBA2, minted.mintedAmountUBA.divn(2));
+            // liquidate agent (second part)
+            const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            const [liquidatedUBA2, liquidationTimestamp2] = await liquidator.liquidate(agent, liquidateMaxUBA);
+            const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            assertWeb3Equal(liquidatedUBA2, liquidateMaxUBA);
             // test rewarding
-            const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1), (await context.convertLotsToAMG(lots)).divn(2));
-            const liquidationFactorBIPS2 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS2, res[0]);
-            const liquidationReward2 = await liquidator.getLiquidationReward(await context.convertUBAToAmg(minted.mintedAmountUBA.divn(2)), liquidationFactorBIPS2);
+            const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
+            const liquidationFactorBIPS2 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS2, res[0], liquidationTimestamp2);
+            const liquidationReward2 = await liquidator.getLiquidationReward(liquidatedUBA2, liquidationFactorBIPS2);
             assertWeb3Equal(endBalanceLiquidator2.sub(startBalanceLiquidator2), liquidationReward2);
-            // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2));
+            // wait some time to get next premium
+            await time.increase(90);
+            // liquidate agent (last part)
+            const startBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
+            const [liquidatedUBA3, liquidationTimestamp3] = await liquidator.liquidate(agent, liquidateMaxUBA);
+            const endBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
+            assertWeb3Equal(liquidatedUBA3, liquidateMaxUBA);
+            // test rewarding
+            const collateralRatioBIPS3 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2), minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2));
+            const liquidationFactorBIPS3 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS3, res[0], liquidationTimestamp3);
+            const liquidationReward3 = await liquidator.getLiquidationReward(liquidatedUBA3, liquidationFactorBIPS3);
+            assertWeb3Equal(endBalanceLiquidator3.sub(startBalanceLiquidator3), liquidationReward3);
+            // final tests
             assertWeb3Equal(liquidatedUBA1, liquidatedUBA2);
+            assertWeb3Equal(liquidatedUBA1, liquidatedUBA3);
             assert(liquidationFactorBIPS1.lt(liquidationFactorBIPS2));
+            assert(liquidationFactorBIPS2.lt(liquidationFactorBIPS3));
             assert(liquidationReward1.lt(liquidationReward2));
+            assert(liquidationReward2.lt(liquidationReward3));
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2).sub(liquidationReward3));
+        });
+
+        it("ccb due to price change (no liquidation due to collateral deposit)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const liquidator = await Liquidator.create(context, liquidatorAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            // price change
+            await context.natFtso.setCurrentPrice(6, 0);
+            await context.assetFtso.setCurrentPrice(toBNExp(10, 6), 0);
+            // start ccb
+            const ccb = await liquidator.startLiquidation(agent);
+            assert.isTrue(ccb);
+            // deposit collateral
+            const additionalCollateral = toWei(5e7);
+            const res = await agent.depositCollateral(additionalCollateral);
+            // test that ccb cancelled due to collateral deposit
+            assert.equal((res[0] as any).args.agentVault, agent.agentVault.address);
+            const collateralRatioBIPS = await agent.getCollateralRatioBIPS(fullAgentCollateral.add(additionalCollateral), minted.mintedAmountUBA);
+            assert(collateralRatioBIPS.gte(toBN((await context.assetManager.getSettings()).minCollateralRatioBIPS)));
+            assert(collateralRatioBIPS.lt(toBN((await context.assetManager.getSettings()).safetyMinCollateralRatioBIPS)));
+            // agent "buys" f-assets
+            await context.fAsset.transfer(agent.ownerAddress, minted.mintedAmountUBA, { from: minter.address });
+            await agent.selfClose(minted.mintedAmountUBA);
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral.add(additionalCollateral));
+        });
+
+        it("ccb due to price change (no liquidation due to partial self close)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const liquidator = await Liquidator.create(context, liquidatorAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            // price change
+            await context.natFtso.setCurrentPrice(6, 0);
+            await context.assetFtso.setCurrentPrice(toBNExp(10, 6), 0);
+            // start ccb
+            const ccb = await liquidator.startLiquidation(agent);
+            assert.isTrue(ccb);
+            // agent "buys" f-assets
+            await context.fAsset.transfer(agent.ownerAddress, minted.mintedAmountUBA, { from: minter.address });
+            // perform partial self close
+            const selfCloseAmountUBA = context.convertAmgToUBA(1e10);
+            const [, selfClosedValueUBA, liquidationCancelledEvent] = await agent.selfClose(selfCloseAmountUBA);
+            // test that ccb cancelled due to self close
+            assert.equal(liquidationCancelledEvent.agentVault, agent.agentVault.address);
+            const collateralRatioBIPS = await agent.getCollateralRatioBIPS(fullAgentCollateral, minted.mintedAmountUBA.sub(selfClosedValueUBA));
+            assert(collateralRatioBIPS.gte(toBN((await context.assetManager.getSettings()).minCollateralRatioBIPS)));
+            assert(collateralRatioBIPS.lt(toBN((await context.assetManager.getSettings()).safetyMinCollateralRatioBIPS)));
+            // agent "buys" f-assets
+            await agent.selfClose(minted.mintedAmountUBA.sub(selfClosedValueUBA));
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral);
+        });
+
+        it("liquidation due to price change (agent can be safe again)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const liquidator = await Liquidator.create(context, liquidatorAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 6;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            // price change
+            await context.natFtso.setCurrentPrice(11, 0);
+            await context.assetFtso.setCurrentPrice(toBNExp(10, 6), 0);
+            // liquidator "buys" f-assets
+            await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
+            // liquidate agent (partially)
+            const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
+            const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted] = await liquidator.liquidate(agent, liquidateMaxUBA1);
+            const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA1);
+            assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
+            assert.isFalse(liquidationStarted.collateralCallBand);
+            assert.isFalse(liquidationStarted.fullLiquidation);
+            // test rewarding
+            const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral, minted.mintedAmountUBA);
+            const liquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS1, liquidationTimestamp1, liquidationTimestamp1);
+            const liquidationReward1 = await liquidator.getLiquidationReward(liquidatedUBA1, liquidationFactorBIPS1);
+            assertWeb3Equal(endBalanceLiquidator1.sub(startBalanceLiquidator1), liquidationReward1);
+            // wait some time to get next premium
+            await time.increase(90);
+            // liquidate agent (second part)
+            const liquidateMaxUBA2 = minted.mintedAmountUBA.sub(liquidatedUBA1);
+            const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            const [liquidatedUBA2, liquidationTimestamp2, , liquidationCancelled] = await liquidator.liquidate(agent, liquidateMaxUBA2);
+            const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            assert(liquidatedUBA2.lt(liquidateMaxUBA2)); // agent is safe again
+            assertWeb3Equal(await context.convertLotsToUBA(await context.convertUBAToLots(liquidatedUBA2)), liquidatedUBA2);
+            assertWeb3Equal(liquidationCancelled.agentVault, agent.agentVault.address);
+            // test rewarding
+            const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(liquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
+            const liquidationFactorBIPS2 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS2, liquidationTimestamp1, liquidationTimestamp2);
+            const liquidationReward2 = await liquidator.getLiquidationReward(liquidatedUBA2, liquidationFactorBIPS2);
+            assertWeb3Equal(endBalanceLiquidator2.sub(startBalanceLiquidator2), liquidationReward2);
+            // final tests
+            assert(liquidationFactorBIPS1.lt(liquidationFactorBIPS2));
+            const collateralRatioBIPS3 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(liquidationReward1).sub(liquidationReward2),
+                context.convertUBAToAmg(minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2)));
+            assert(collateralRatioBIPS3.gte(toBN((await context.assetManager.getSettings()).safetyMinCollateralRatioBIPS)))
+            // agent "buys" f-assets
+            const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2);
+            await context.fAsset.transfer(agent.ownerAddress, remainingUBA, { from: liquidator.address });
+            assert(remainingUBA.gt(BN_ZERO));
+            await agent.selfClose(remainingUBA);
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral.sub(liquidationReward1).sub(liquidationReward2));
+        });
+        
+        it("liquidation due to price change (agent cannot be safe again)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const liquidator = await Liquidator.create(context, liquidatorAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            // price change
+            await context.natFtso.setCurrentPrice(1, 0);
+            await context.assetFtso.setCurrentPrice(toBNExp(10, 6), 0);
+            // liquidator "buys" f-assets
+            await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
+            // liquidate agent (partially)
+            const liquidateMaxUBA = minted.mintedAmountUBA.divn(lots);
+            const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const [liquidatedUBA1, liquidationTimestamp1, res] = await liquidator.liquidate(agent, liquidateMaxUBA);
+            const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA);
+            assert.equal(res.agentVault, agent.agentVault.address);
+            assert.isFalse(res.collateralCallBand);
+            assert.isFalse(res.fullLiquidation);
+            // test rewarding
+            const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral, minted.mintedAmountUBA);
+            const liquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS1, liquidationTimestamp1, liquidationTimestamp1);
+            const liquidationReward1 = await liquidator.getLiquidationReward(liquidatedUBA1, liquidationFactorBIPS1);
+            assertWeb3Equal(endBalanceLiquidator1.sub(startBalanceLiquidator1), liquidationReward1);
+            // wait some time to get next premium
+            await time.increase(90);
+            // liquidate agent (second part)
+            const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            const [liquidatedUBA2, liquidationTimestamp2] = await liquidator.liquidate(agent, liquidateMaxUBA);
+            const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            assertWeb3Equal(liquidatedUBA2, liquidateMaxUBA);
+            // test rewarding
+            const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(liquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
+            const liquidationFactorBIPS2 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS2, liquidationTimestamp1, liquidationTimestamp2);
+            const liquidationReward2 = await liquidator.getLiquidationReward(liquidatedUBA2, liquidationFactorBIPS2);
+            assertWeb3Equal(endBalanceLiquidator2.sub(startBalanceLiquidator2), liquidationReward2);
+            // wait some time to get next premium
+            await time.increase(90);
+            // liquidate agent (last part)
+            const startBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
+            const [liquidatedUBA3, liquidationTimestamp3] = await liquidator.liquidate(agent, liquidateMaxUBA);
+            const endBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
+            assertWeb3Equal(liquidatedUBA3, liquidateMaxUBA);
+            // test rewarding
+            const collateralRatioBIPS3 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(liquidationReward1).sub(liquidationReward2), minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2));
+            const liquidationFactorBIPS3 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS3, liquidationTimestamp1, liquidationTimestamp3);
+            const liquidationReward3 = await liquidator.getLiquidationReward(liquidatedUBA3, liquidationFactorBIPS3);
+            assertWeb3Equal(endBalanceLiquidator3.sub(startBalanceLiquidator3), liquidationReward3);
+            // final tests
+            assertWeb3Equal(liquidatedUBA1, liquidatedUBA2);
+            assertWeb3Equal(liquidatedUBA2, liquidatedUBA3);
+            assert(liquidationFactorBIPS1.lte(liquidationFactorBIPS2));
+            assert(liquidationFactorBIPS2.lte(liquidationFactorBIPS3));
+            assert(liquidationReward1.lte(liquidationReward2));
+            assert(liquidationReward2.lte(liquidationReward3));
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral.sub(liquidationReward1).sub(liquidationReward2).sub(liquidationReward3));
         });
     });
 });

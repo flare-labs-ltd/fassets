@@ -1,7 +1,7 @@
 import { time } from "@openzeppelin/test-helpers";
 import { AgentVaultInstance } from "../../../typechain-truffle";
-import { AllowedPaymentAnnounced, CollateralReserved, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
-import { checkEventNotEmited, EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
+import { AllowedPaymentAnnounced, CollateralReserved, LiquidationCancelled, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { checkEventNotEmited, eventArgs, EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
@@ -56,7 +56,10 @@ export class Agent extends AssetContextClient {
     }
     
     async depositCollateral(amountNATWei: BNish) {
-        await this.agentVault.deposit({ from: this.ownerAddress, value: toBN(amountNATWei) });
+        const res = await this.agentVault.deposit({ from: this.ownerAddress, value: toBN(amountNATWei) });
+        const tr = await web3.eth.getTransaction(res.tx);
+        const res2 = await this.assetManager.getPastEvents('LiquidationCancelled', { fromBlock: tr.blockNumber!, toBlock: tr.blockNumber!, filter: {transactionHash: res.tx} })
+        return res2;
     }
     
     async makeAvailable(feeBIPS: BNish, collateralRatioBIPS: BNish) {
@@ -220,21 +223,24 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'MintingExecuted');
     }
 
-    async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN]> {
+    async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN, liquidationCancelledEvent: EventArgs<LiquidationCancelled>]> {
         const res = await this.assetManager.selfClose(this.agentVault.address, amountUBA, { from: this.ownerAddress });
         const dustChangedEvents = filterEvents(res.logs, 'DustChanged').map(e => e.args);
         const selfClose = requiredEventArgs(res, 'SelfClose');
         dustChangedEvents.every(dc => assert.equal(dc.agentVault, this.agentVault.address));
         assert.equal(selfClose.agentVault, this.agentVault.address);
-        return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA];
+        return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA, eventArgs(res, "LiquidationCancelled")];
     }
 
     async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null) {
         return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference);
     }
 
-    async getCollateralRatioBIPS(fullCollateral: BNish, mintedAMG: BNish, reservedAMG: BNish = 0, redeemingAMG: BNish = 0) {
+    async getCollateralRatioBIPS(fullCollateral: BNish, mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0) {
         const [amgToNATWeiPrice, amgToNATWeiPriceTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
+        const mintedAMG = this.context.convertUBAToAmg(mintedUBA);
+        const reservedAMG = this.context.convertUBAToAmg(reservedUBA);
+        const redeemingAMG = this.context.convertUBAToAmg(redeemingUBA);
         const ratio = await this.collateralRatio(fullCollateral, amgToNATWeiPrice, mintedAMG, reservedAMG, redeemingAMG);
         const ratioTrusted = await this.collateralRatio(fullCollateral, amgToNATWeiPriceTrusted, mintedAMG, reservedAMG, redeemingAMG);
         return ratio.gt(ratioTrusted) ? ratio : ratioTrusted;

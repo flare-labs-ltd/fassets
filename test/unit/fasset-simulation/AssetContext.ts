@@ -130,6 +130,10 @@ export class AssetContext {
     convertUBAToAmg(valueUBA: BNish) {
         return toBN(valueUBA).div(toBN(this.settings.assetMintingGranularityUBA));
     }
+
+    async convertUBAToLots(valueUBA: BNish) {
+        return toBN(valueUBA).div(await this.lotsSize());
+    }
     
     async convertLotsToUBA(lots: BNish) {
         return toBN(lots).mul(await this.lotsSize());

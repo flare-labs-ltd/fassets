@@ -26,7 +26,7 @@ export class Challenger extends AssetContextClient {
         const res = await this.assetManager.illegalPaymentChallenge(proof, agent.agentVault.address, { from: this.address });
         findRequiredEvent(res, 'IllegalPaymentConfirmed');
         const tr = await web3.eth.getTransaction(res.tx);
-        const block = await web3.eth.getBlock(tr.blockHash as any);
+        const block = await web3.eth.getBlock(tr.blockHash!);
         return [block.timestamp, eventArgs(res, 'LiquidationStarted')];
     }
 
@@ -36,7 +36,7 @@ export class Challenger extends AssetContextClient {
         const res = await this.assetManager.doublePaymentChallenge(proof1, proof2, agent.agentVault.address, { from: this.address });
         findRequiredEvent(res, 'DuplicatePaymentConfirmed');
         const tr = await web3.eth.getTransaction(res.tx);
-        const block = await web3.eth.getBlock(tr.blockHash as any);
+        const block = await web3.eth.getBlock(tr.blockHash!);
         return [block.timestamp, eventArgs(res, 'LiquidationStarted')];
     }
 
@@ -48,7 +48,7 @@ export class Challenger extends AssetContextClient {
         const res = await this.assetManager.freeBalanceNegativeChallenge(proofs, agent.agentVault.address, { from: this.address });
         findRequiredEvent(res, 'UnderlyingFreeBalanceNegative');
         const tr = await web3.eth.getTransaction(res.tx);
-        const block = await web3.eth.getBlock(tr.blockHash as any);
+        const block = await web3.eth.getBlock(tr.blockHash!);
         return [block.timestamp, eventArgs(res, 'LiquidationStarted')];
     }
 
@@ -78,11 +78,12 @@ export class Challenger extends AssetContextClient {
         return requiredEventArgs(res, 'AllowedPaymentConfirmed');
     }
 
-    async getChallengerReward(backingAMGAtChallenge: BNish) {
+    async getChallengerReward(backingAtChallengeUBA: BNish) {
+        const backingAtChallengeAMG = this.context.convertUBAToAmg(backingAtChallengeUBA);
         return toBN(this.context.settings.paymentChallengeRewardNATWei)
             .add(
                 this.context.convertAmgToNATWei(
-                    toBN(backingAMGAtChallenge)
+                    toBN(backingAtChallengeAMG)
                     .mul(toBN(this.context.settings.paymentChallengeRewardBIPS))
                     .divn(10_000),
                     await this.context.currentAmgToNATWeiPrice()
