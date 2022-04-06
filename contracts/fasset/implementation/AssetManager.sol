@@ -344,7 +344,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */
     function currentUnderlyingBlock()
         external view
-        returns (uint64 _blockNumber, uint64 _blockTimestamp)
+        returns (uint256 _blockNumber, uint256 _blockTimestamp)
     {
         return (state.currentUnderlyingBlock, state.currentUnderlyingBlockTimestamp);
     }
@@ -369,12 +369,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */
     function reserveCollateral(
         address _agentVault, 
-        uint64 _lots,
-        uint64 _maxMintingFeeBIPS
+        uint256 _lots,
+        uint256 _maxMintingFeeBIPS
     ) 
         external payable 
     {
-        CollateralReservations.reserveCollateral(state, msg.sender, _agentVault, _lots, _maxMintingFeeBIPS);
+        CollateralReservations.reserveCollateral(state, msg.sender, _agentVault, 
+            SafeCast.toUint64(_lots), SafeCast.toUint64(_maxMintingFeeBIPS));
     }
 
     /**
@@ -383,12 +384,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * @return _reservationFeeNATWei the amount of reservation fee in NAT wei
      */
     function collateralReservationFee(
-        uint64 _lots
+        uint256 _lots
     )
         external view
         returns (uint256 _reservationFeeNATWei)
     {
-        return CollateralReservations.calculateReservationFee(state, _lots);
+        return CollateralReservations.calculateReservationFee(state, SafeCast.toUint64(_lots));
     }
     
     /**
@@ -400,12 +401,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */
     function executeMinting(
         IAttestationClient.Payment calldata _payment,
-        uint64 _collateralReservationId
+        uint256 _collateralReservationId
     ) 
         external 
         nonReentrant
     {
-        (address minter, uint256 mintedUBA) = Minting.mintingExecuted(state, _payment, _collateralReservationId);
+        (address minter, uint256 mintedUBA) = Minting.mintingExecuted(state, _payment, 
+            SafeCast.toUint64(_collateralReservationId));
         fAsset.mint(minter, mintedUBA);
     }
 
@@ -418,11 +420,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */
     function mintingPaymentDefault(
         IAttestationClient.ReferencedPaymentNonexistence calldata _proof,
-        uint64 _collateralReservationId
+        uint256 _collateralReservationId
     )
         external
     {
-        CollateralReservations.mintingPaymentDefault(state, _proof, _collateralReservationId);
+        CollateralReservations.mintingPaymentDefault(state, _proof, SafeCast.toUint64(_collateralReservationId));
     }
     
     /**
@@ -437,12 +439,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     function selfMint(
         IAttestationClient.Payment calldata _payment,
         address _agentVault,
-        uint64 _lots
+        uint256 _lots
     ) 
         external
         nonReentrant
     {
-        uint256 mintedUBA = Minting.selfMint(state, _payment, _agentVault, _lots);
+        uint256 mintedUBA = Minting.selfMint(state, _payment, _agentVault, SafeCast.toUint64(_lots));
         fAsset.mint(msg.sender, mintedUBA);
     }
 
@@ -463,12 +465,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlyng amount
      */
     function redeem(
-        uint64 _lots,
+        uint256 _lots,
         string memory _redeemerUnderlyingAddressString
     )
         external
     {
-        uint256 redeemedUBA = Redemption.redeem(state, msg.sender, _lots, _redeemerUnderlyingAddressString);
+        uint256 redeemedUBA = Redemption.redeem(state, msg.sender, SafeCast.toUint64(_lots), 
+            _redeemerUnderlyingAddressString);
         fAsset.burn(msg.sender, redeemedUBA);
     }
     
@@ -487,11 +490,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */    
     function confirmRedemptionPayment(
         IAttestationClient.Payment calldata _payment,
-        uint64 _redemptionRequestId
+        uint256 _redemptionRequestId
     )
         external
     {
-        Redemption.confirmRedemptionPayment(state, _payment, _redemptionRequestId);
+        Redemption.confirmRedemptionPayment(state, _payment, SafeCast.toUint64(_redemptionRequestId));
     }
 
     /**
@@ -504,11 +507,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */    
     function redemptionPaymentDefault(
         IAttestationClient.ReferencedPaymentNonexistence calldata _proof,
-        uint64 _redemptionRequestId
+        uint256 _redemptionRequestId
     )
         external
     {
-        Redemption.redemptionPaymentDefault(state, _proof, _redemptionRequestId);
+        Redemption.redemptionPaymentDefault(state, _proof, SafeCast.toUint64(_redemptionRequestId));
     }
     
     /**
@@ -517,11 +520,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * @param _redemptionRequestId id of an existing, but already defaulted, redemption request
      */
     function finishRedemptionWithoutPayment(
-        uint64 _redemptionRequestId
+        uint256 _redemptionRequestId
     )
         external
     {
-        Redemption.finishRedemptionWithoutPayment(state, _redemptionRequestId);
+        Redemption.finishRedemptionWithoutPayment(state, SafeCast.toUint64(_redemptionRequestId));
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -574,11 +577,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     function confirmAllowedPayment(
         IAttestationClient.Payment calldata _payment,
         address _agentVault,
-        uint64 _announcementId
+        uint256 _announcementId
     )
         external
     {
-        AllowedPaymentAnnouncement.confirmAllowedPayment(state, _payment, _agentVault, _announcementId);
+        AllowedPaymentAnnouncement.confirmAllowedPayment(state, _payment, _agentVault, 
+            SafeCast.toUint64(_announcementId));
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
