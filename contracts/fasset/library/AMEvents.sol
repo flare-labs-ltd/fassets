@@ -239,10 +239,17 @@ library AMEvents {
         int256 freeBalance);
         
     /**
-     * A setting has changed (or will change after timelock).
+     * A setting will change after timelock at timestamp `validAt`.
      */
-    event SettingChanged(
+    event SettingChangeScheduled(
         string name,
         uint256 value,
         uint256 validAt);
+        
+    /**
+     * A setting has changed.
+     */
+    event SettingChanged(
+        string name,
+        uint256 value);
 }

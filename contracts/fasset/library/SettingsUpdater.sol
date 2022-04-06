@@ -8,24 +8,36 @@ import "./TransactionAttestation.sol";
 
 
 library SettingsUpdater {
-    struct PendingUpdates {
-        // collateral changes
-        uint64 collateralRatiosValidAt;
+    struct CollateralRatioUpdate {
+        uint64 validAt;
         uint32 minCollateralRatioBIPS;
         uint32 ccbMinCollateralRatioBIPS;
         uint32 safetyMinCollateralRatioBIPS;
     }
     
+    struct PaymentTimeUpdate {
+        uint64 validAt;
+        uint64 underlyingBlocksForPayment;
+        uint64 underlyingSecondsForPayment;
+    }
+    
+    struct PendingUpdates {
+        CollateralRatioUpdate collateralRatio;
+        PaymentTimeUpdate paymentTime;
+    }
+    
     bytes32 internal constant UPDATE_CONTRACTS = 
-        keccak256("updateContracts(IAttestationClient,IFtsoRegistry,IWNat)");
+        keccak256("updateContracts(address,IAttestationClient,IFtsoRegistry,IWNat)");
     bytes32 internal constant SET_LOT_SIZE_AMG =
         keccak256("setLotSizeAmg(uint256)");
     bytes32 internal constant SET_COLLATERAL_RATIOS =
         keccak256("setCollateralRatios(uint256,uint256,uint256)");
     bytes32 internal constant EXECUTE_SET_COLLATERAL_RATIOS =
-        keccak256("executeSetCollateralRatios(uint256,uint256,uint256)");
+        keccak256("executeSetCollateralRatios()");
     bytes32 internal constant SET_TIME_FOR_PAYMENT =
         keccak256("setTimeForPayment(uint256,uint256)");
+    bytes32 internal constant EXECUTE_SET_TIME_FOR_PAYMENT =
+        keccak256("executeSetTimeForPayment()");
     bytes32 internal constant SET_PAYMENT_CHALLENGE_REWARD =
         keccak256("setPaymentChallengeReward(uint256,uint256)");
     bytes32 internal constant SET_COLLATERAL_RESERVATION_FEE_BIPS =
@@ -68,18 +80,15 @@ library SettingsUpdater {
         external
     {
         if (_method == UPDATE_CONTRACTS) {
-            (address controller, IAttestationClient attestationClient, IFtsoRegistry ftsoRegistry, IWNat wNat) =
-                abi.decode(_params, (address, IAttestationClient, IFtsoRegistry, IWNat));
-            _updateContracts(_state, controller, attestationClient, ftsoRegistry, wNat);
+            _updateContracts(_state, _params);
         } else if (_method == SET_COLLATERAL_RATIOS) {
-            (uint256 minCR, uint256 ccbCR, uint256 safetyCR) = abi.decode(_params, (uint256, uint256, uint256));
-            _setCollateralRatios(_state, _updates, minCR, ccbCR, safetyCR);
+            _setCollateralRatios(_state, _updates.collateralRatio, _params);
         } else if (_method == EXECUTE_SET_COLLATERAL_RATIOS) {
-            _executeSetCollateralRatios(_state, _updates);
+            _executeSetCollateralRatios(_state, _updates.collateralRatio);
         } else if (_method == SET_TIME_FOR_PAYMENT) {
-            (uint256 underlyingBlocks, uint256 underlyingSeconds) = abi.decode(_params, (uint256, uint256));
-            _state.settings.underlyingBlocksForPayment = SafeCast.toUint64(underlyingBlocks);
-            _state.settings.underlyingSecondsForPayment = SafeCast.toUint64(underlyingSeconds);
+            _setTimeForPayment(_state, _updates.paymentTime, _params);
+        } else if (_method == EXECUTE_SET_TIME_FOR_PAYMENT) {
+            _executeSetTimeForPayment(_state, _updates.paymentTime);
         } else if (_method == SET_PAYMENT_CHALLENGE_REWARD) {
             (uint256 rewardNATWei, uint256 rewardBIPS) = abi.decode(_params, (uint256, uint256));
             _state.settings.paymentChallengeRewardNATWei = SafeCast.toUint128(rewardNATWei);
@@ -129,14 +138,13 @@ library SettingsUpdater {
 
     function _updateContracts(
         AssetManagerState.State storage _state,
-        address assetManagerController,
-        IAttestationClient attestationClient, 
-        IFtsoRegistry ftsoRegistry, 
-        IWNat wNat
+        bytes calldata _params
     ) 
         private 
     {
-        _state.settings.assetManagerController = assetManagerController;
+        (address controller, IAttestationClient attestationClient, IFtsoRegistry ftsoRegistry, IWNat wNat) =
+            abi.decode(_params, (address, IAttestationClient, IFtsoRegistry, IWNat));
+        _state.settings.assetManagerController = controller;
         _state.settings.attestationClient = attestationClient;
         _state.settings.ftsoRegistry = ftsoRegistry;
         _state.settings.wNat = wNat;
@@ -144,42 +152,71 @@ library SettingsUpdater {
 
     function _setCollateralRatios(
         AssetManagerState.State storage _state,
-        PendingUpdates storage _updates,
-        uint256 minCR, 
-        uint256 ccbCR, 
-        uint256 safetyCR
+        CollateralRatioUpdate storage _update,
+        bytes calldata _params
     ) 
         private 
     {
+        (uint256 minCR, uint256 ccbCR, uint256 safetyCR) = 
+            abi.decode(_params, (uint256, uint256, uint256));
         require(1 < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
-        uint256 collateralRatiosValidAt = block.timestamp + _state.settings.timelockSeconds;
-        _updates.collateralRatiosValidAt = SafeCast.toUint64(collateralRatiosValidAt);
-        _updates.minCollateralRatioBIPS = SafeCast.toUint32(minCR);
-        _updates.ccbMinCollateralRatioBIPS = SafeCast.toUint32(ccbCR);
-        _updates.safetyMinCollateralRatioBIPS = SafeCast.toUint32(safetyCR);
-        emit AMEvents.SettingChanged("minCollateralRatioBIPS", minCR, collateralRatiosValidAt);
-        emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", ccbCR, collateralRatiosValidAt);
-        emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", safetyCR, collateralRatiosValidAt);
+        uint256 validAt = block.timestamp + _state.settings.timelockSeconds;
+        _update.validAt = SafeCast.toUint64(validAt);
+        _update.minCollateralRatioBIPS = SafeCast.toUint32(minCR);
+        _update.ccbMinCollateralRatioBIPS = SafeCast.toUint32(ccbCR);
+        _update.safetyMinCollateralRatioBIPS = SafeCast.toUint32(safetyCR);
+        emit AMEvents.SettingChangeScheduled("minCollateralRatioBIPS", minCR, validAt);
+        emit AMEvents.SettingChangeScheduled("ccbMinCollateralRatioBIPS", ccbCR, validAt);
+        emit AMEvents.SettingChangeScheduled("safetyMinCollateralRatioBIPS", safetyCR, validAt);
     }
 
     function _executeSetCollateralRatios(
         AssetManagerState.State storage _state,
-        PendingUpdates storage _updates
+        CollateralRatioUpdate storage _update
     ) 
         private 
     {
-        require(_updates.collateralRatiosValidAt != 0 && block.timestamp >= _updates.collateralRatiosValidAt,
+        require(_update.validAt != 0 && block.timestamp >= _update.validAt,
             "update not valid yet");
-        _state.settings.minCollateralRatioBIPS = _updates.minCollateralRatioBIPS;
-        _state.settings.ccbMinCollateralRatioBIPS = _updates.ccbMinCollateralRatioBIPS;
-        _state.settings.safetyMinCollateralRatioBIPS = _updates.safetyMinCollateralRatioBIPS;
-        _updates.collateralRatiosValidAt = 0;
-        emit AMEvents.SettingChanged("minCollateralRatioBIPS", _updates.minCollateralRatioBIPS, 
-            block.timestamp);
-        emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", _updates.ccbMinCollateralRatioBIPS, 
-            block.timestamp);
-        emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", _updates.safetyMinCollateralRatioBIPS, 
-            block.timestamp);
+        _state.settings.minCollateralRatioBIPS = _update.minCollateralRatioBIPS;
+        _state.settings.ccbMinCollateralRatioBIPS = _update.ccbMinCollateralRatioBIPS;
+        _state.settings.safetyMinCollateralRatioBIPS = _update.safetyMinCollateralRatioBIPS;
+        _update.validAt = 0;
+        emit AMEvents.SettingChanged("minCollateralRatioBIPS", _update.minCollateralRatioBIPS);
+        emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", _update.ccbMinCollateralRatioBIPS);
+        emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", _update.safetyMinCollateralRatioBIPS);
+    }
+    
+    function _setTimeForPayment(
+        AssetManagerState.State storage _state,
+        PaymentTimeUpdate storage _update,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        (uint256 underlyingBlocks, uint256 underlyingSeconds) = 
+            abi.decode(_params, (uint256, uint256));
+        uint256 validAt = block.timestamp + _state.settings.timelockSeconds;
+        _update.validAt = SafeCast.toUint64(validAt);
+        _update.underlyingBlocksForPayment = SafeCast.toUint64(underlyingBlocks);
+        _update.underlyingSecondsForPayment = SafeCast.toUint64(underlyingSeconds);
+        emit AMEvents.SettingChangeScheduled("underlyingBlocksForPayment", underlyingBlocks, validAt);
+        emit AMEvents.SettingChangeScheduled("underlyingSecondsForPayment", underlyingSeconds, validAt);
+    }
+    
+    function _executeSetTimeForPayment(
+        AssetManagerState.State storage _state,
+        PaymentTimeUpdate storage _update
+    ) 
+        private 
+    {
+        require(_update.validAt != 0 && block.timestamp >= _update.validAt,
+            "update not valid yet");
+        _state.settings.underlyingBlocksForPayment = _update.underlyingBlocksForPayment;
+        _state.settings.underlyingSecondsForPayment = _update.underlyingSecondsForPayment;
+        _update.validAt = 0;
+        emit AMEvents.SettingChanged("underlyingBlocksForPayment", _update.underlyingBlocksForPayment);
+        emit AMEvents.SettingChanged("underlyingSecondsForPayment", _update.underlyingSecondsForPayment);
     }
     
     function _validateSettings(
