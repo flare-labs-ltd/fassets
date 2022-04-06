@@ -208,6 +208,8 @@ library SettingsUpdater {
         (uint256 rewardNATWei, uint256 rewardBIPS) = abi.decode(_params, (uint256, uint256));
         _state.settings.paymentChallengeRewardNATWei = SafeCast.toUint128(rewardNATWei);
         _state.settings.paymentChallengeRewardBIPS = SafeCast.toUint16(rewardBIPS);
+        emit AMEvents.SettingChanged("paymentChallengeRewardNATWei", rewardNATWei);
+        emit AMEvents.SettingChanged("paymentChallengeRewardBIPS", rewardBIPS);
     }
 
     function _setLotSizeAmg(
@@ -218,6 +220,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         _state.settings.lotSizeAMG = SafeCast.toUint64(value);
+        emit AMEvents.SettingChanged("lotSizeAMG", value);
     }
 
     function _setCollateralReservationFeeBips(
@@ -228,6 +231,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         _state.settings.collateralReservationFeeBIPS = SafeCast.toUint16(value);
+        emit AMEvents.SettingChanged("collateralReservationFeeBIPS", value);
     }
 
     function _setRedemptionFeeBips(
@@ -238,6 +242,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         _state.settings.redemptionFeeBIPS = SafeCast.toUint16(value);
+        emit AMEvents.SettingChanged("redemptionFeeBIPS", value);
     }
 
     function _setRedemptionFailureFactorBips(
@@ -248,6 +253,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         _state.settings.redemptionFailureFactorBIPS = SafeCast.toUint32(value);
+        emit AMEvents.SettingChanged("redemptionFailureFactorBIPS", value);
     }
 
     function _setConfirmationByOthersAfterSeconds(
@@ -258,6 +264,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         _state.settings.confirmationByOthersAfterSeconds = SafeCast.toUint64(value);
+        emit AMEvents.SettingChanged("confirmationByOthersAfterSeconds", value);
     }
 
     function _setConfirmationByOthersRewardNatWei(
@@ -268,6 +275,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         _state.settings.confirmationByOthersRewardNATWei = SafeCast.toUint128(value);
+        emit AMEvents.SettingChanged("confirmationByOthersRewardNATWei", value);
     }
 
     function _setMaxRedeemedTickets(
@@ -278,6 +286,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         _state.settings.maxRedeemedTickets = SafeCast.toUint16(value);
+        emit AMEvents.SettingChanged("maxRedeemedTickets", value);
     }
 
     function _setWithdrawalOrDestroyWaitMinSeconds(
@@ -288,6 +297,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         _state.settings.withdrawalWaitMinSeconds = SafeCast.toUint64(value);
+        emit AMEvents.SettingChanged("withdrawalWaitMinSeconds", value);
     }
 
     function _setCcbTimeSeconds(
@@ -298,6 +308,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         _state.settings.ccbTimeSeconds = SafeCast.toUint64(value);
+        emit AMEvents.SettingChanged("ccbTimeSeconds", value);
     }
 
     function _setLiquidationStepSeconds(
@@ -308,6 +319,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         _state.settings.liquidationStepSeconds = SafeCast.toUint64(value);
+        emit AMEvents.SettingChanged("liquidationStepSeconds", value);
     }
 
     function _setLiquidationCollateralFactorBips(
@@ -323,6 +335,7 @@ library SettingsUpdater {
             require(i == 0 || value[i] > value[i - 1], "factors not increasing");
             _state.settings.liquidationCollateralFactorBIPS.push(SafeCast.toUint32(value[i]));
         }
+        emit AMEvents.SettingArrayChanged("liquidationCollateralFactorBIPS", value);
     }
     
     function _validateSettings(

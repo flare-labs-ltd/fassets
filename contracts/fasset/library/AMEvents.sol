@@ -252,4 +252,11 @@ library AMEvents {
     event SettingChanged(
         string name,
         uint256 value);
+
+    /**
+     * A setting has changed.
+     */
+    event SettingArrayChanged(
+        string name,
+        uint256[] value);
 }
