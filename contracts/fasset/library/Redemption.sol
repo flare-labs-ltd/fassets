@@ -362,7 +362,7 @@ library Redemption {
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
         // paid amount is  min(flr_amount * (1 + extra), total collateral share for the amount)
         uint256 amountWei = Conversion.convertAmgToNATWei(_requestValueAMG, collateralData.amgToNATWeiPrice)
-            .mulBips(_state.settings.redemptionFailureFactorBIPS);
+            .mulBips(_state.settings.redemptionDefaultFactorBIPS);
         uint256 maxAmountWei = collateralData.maxRedemptionCollateral(agent, _requestValueAMG);
         return amountWei <= maxAmountWei ? amountWei : maxAmountWei;
     }

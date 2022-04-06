@@ -102,6 +102,14 @@ contract AssetManagerController is Governed, AddressUpdatable {
             SettingsUpdater.SET_PAYMENT_CHALLENGE_REWARD, abi.encode(_rewardNATWei, _rewardBIPS));
     }
 
+    function setMaxTrustedPriceAgeSeconds(address[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_MAX_TRUSTED_PRICE_AGE_SECONDS, abi.encode(_value));
+    }
+
     function setCollateralReservationFeeBips(address[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance
@@ -118,12 +126,12 @@ contract AssetManagerController is Governed, AddressUpdatable {
             SettingsUpdater.SET_REDEMPTION_FEE_BIPS, abi.encode(_value));
     }
 
-    function setRedemptionFailureFactorBips(address[] memory _assetManagers, uint256 _value)
+    function setRedemptionDefaultFactorBips(address[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance
     {
         _setValueOnManagers(_assetManagers, 
-            SettingsUpdater.SET_REDEMPTION_FAILURE_FACTOR_BIPS, abi.encode(_value));
+            SettingsUpdater.SET_REDEMPTION_DEFAULT_FACTOR_BIPS, abi.encode(_value));
     }
 
     function setConfirmationByOthersAfterSeconds(address[] memory _assetManagers, uint256 _value)

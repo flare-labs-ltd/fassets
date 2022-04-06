@@ -192,7 +192,7 @@ export class AssetContext {
             ccbMinCollateralRatioBIPS: 1_9000,   // 1.9
             safetyMinCollateralRatioBIPS: 2_5000,      // 2.5
             redemptionFeeBIPS: 200,                         // 2%
-            redemptionFailureFactorBIPS: 1_2000,            // 1.2
+            redemptionDefaultFactorBIPS: 1_2000,            // 1.2
             confirmationByOthersAfterSeconds: 6 * 3600,      // 6 hours
             confirmationByOthersRewardNATWei: toWei(100),      // 100 NAT
             maxRedeemedTickets: 20,                         // TODO: find number that fits comfortably in gas limits

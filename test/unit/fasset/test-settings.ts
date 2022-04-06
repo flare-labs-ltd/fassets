@@ -24,7 +24,7 @@ export async function createTestSettings(attestationClient: AttestationClientMoc
         underlyingBlocksForPayment: 10,
         underlyingSecondsForPayment: 120,                       // 12s per block assumed
         redemptionFeeBIPS: 200,                                 // 2%
-        redemptionFailureFactorBIPS: 1_2000,                    // 1.2
+        redemptionDefaultFactorBIPS: 1_2000,                    // 1.2
         confirmationByOthersAfterSeconds: 6 * 3600,              // 6 hours
         confirmationByOthersRewardNATWei: toStringExp(100, 18),    // 100 NAT
         maxRedeemedTickets: 20,                                 // TODO: find number that fits comfortably in gas limits

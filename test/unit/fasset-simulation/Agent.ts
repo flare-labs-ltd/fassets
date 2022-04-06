@@ -185,7 +185,7 @@ export class Agent extends AssetContextClient {
     async getRedemptionPaymentDefaultValue(lots: BNish) {
         return this.context.convertAmgToNATWei(
                 toBN(await this.context.convertLotsToAMG(lots))
-                .mul(toBN(this.context.settings.redemptionFailureFactorBIPS))
+                .mul(toBN(this.context.settings.redemptionDefaultFactorBIPS))
                 .divn(10_000),
                 await this.context.currentAmgToNATWeiPrice()
             );

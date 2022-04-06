@@ -30,6 +30,8 @@ library SettingsUpdater {
         keccak256("updateContracts(address,IAttestationClient,IFtsoRegistry,IWNat)");
     bytes32 internal constant SET_LOT_SIZE_AMG =
         keccak256("setLotSizeAmg(uint256)");
+    bytes32 internal constant SET_MAX_TRUSTED_PRICE_AGE_SECONDS =
+        keccak256("setMaxTrustedPriceAgeSeconds(uint256)");
     bytes32 internal constant SET_COLLATERAL_RATIOS =
         keccak256("setCollateralRatios(uint256,uint256,uint256)");
     bytes32 internal constant EXECUTE_SET_COLLATERAL_RATIOS =
@@ -44,8 +46,8 @@ library SettingsUpdater {
         keccak256("setCollateralReservationFeeBips(uint256)");
     bytes32 internal constant SET_REDEMPTION_FEE_BIPS =
         keccak256("setRedemptionFeeBips(uint256)");
-    bytes32 internal constant SET_REDEMPTION_FAILURE_FACTOR_BIPS =
-        keccak256("setRedemptionFailureFactorBips(uint256)");
+    bytes32 internal constant SET_REDEMPTION_DEFAULT_FACTOR_BIPS =
+        keccak256("setRedemptionDefaultFactorBips(uint256)");
     bytes32 internal constant SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS =
         keccak256("setConfirmationByOthersAfterSeconds(uint256)");
     bytes32 internal constant SET_CONFIRMATION_BY_OTHERS_REWARD_NAT_WEI =
@@ -97,8 +99,8 @@ library SettingsUpdater {
             _setCollateralReservationFeeBips(_state, _params);
         } else if (_method == SET_REDEMPTION_FEE_BIPS) {
             _setRedemptionFeeBips(_state, _params);
-        } else if (_method == SET_REDEMPTION_FAILURE_FACTOR_BIPS) {
-            _setRedemptionFailureFactorBips(_state, _params);
+        } else if (_method == SET_REDEMPTION_DEFAULT_FACTOR_BIPS) {
+            _setRedemptionDefaultFactorBips(_state, _params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS) {
             _setConfirmationByOthersAfterSeconds(_state, _params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_REWARD_NAT_WEI) {
@@ -222,6 +224,17 @@ library SettingsUpdater {
         _state.settings.lotSizeAMG = SafeCast.toUint64(value);
         emit AMEvents.SettingChanged("lotSizeAMG", value);
     }
+    
+    function _setMaxTrustedPriceAgeSeconds(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        _state.settings.maxTrustedPriceAgeSeconds = SafeCast.toUint64(value);
+        emit AMEvents.SettingChanged("maxTrustedPriceAgeSeconds", value);
+    }
 
     function _setCollateralReservationFeeBips(
         AssetManagerState.State storage _state,
@@ -245,15 +258,15 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("redemptionFeeBIPS", value);
     }
 
-    function _setRedemptionFailureFactorBips(
+    function _setRedemptionDefaultFactorBips(
         AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
         uint256 value = abi.decode(_params, (uint256));
-        _state.settings.redemptionFailureFactorBIPS = SafeCast.toUint32(value);
-        emit AMEvents.SettingChanged("redemptionFailureFactorBIPS", value);
+        _state.settings.redemptionDefaultFactorBIPS = SafeCast.toUint32(value);
+        emit AMEvents.SettingChanged("redemptionDefaultFactorBIPS", value);
     }
 
     function _setConfirmationByOthersAfterSeconds(
