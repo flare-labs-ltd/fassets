@@ -90,47 +90,29 @@ library SettingsUpdater {
         } else if (_method == EXECUTE_SET_TIME_FOR_PAYMENT) {
             _executeSetTimeForPayment(_state, _updates.paymentTime);
         } else if (_method == SET_PAYMENT_CHALLENGE_REWARD) {
-            (uint256 rewardNATWei, uint256 rewardBIPS) = abi.decode(_params, (uint256, uint256));
-            _state.settings.paymentChallengeRewardNATWei = SafeCast.toUint128(rewardNATWei);
-            _state.settings.paymentChallengeRewardBIPS = SafeCast.toUint16(rewardBIPS);
+            _setPaymentChallengeReward(_state, _params);
         } else if (_method == SET_LOT_SIZE_AMG) {
-            uint256 value = abi.decode(_params, (uint256));
-            _state.settings.lotSizeAMG = SafeCast.toUint64(value);
+            _setLotSizeAmg(_state, _params);
         } else if (_method == SET_COLLATERAL_RESERVATION_FEE_BIPS) {
-            uint256 value = abi.decode(_params, (uint256));
-            _state.settings.collateralReservationFeeBIPS = SafeCast.toUint16(value);
+            _setCollateralReservationFeeBips(_state, _params);
         } else if (_method == SET_REDEMPTION_FEE_BIPS) {
-            uint256 value = abi.decode(_params, (uint256));
-            _state.settings.redemptionFeeBIPS = SafeCast.toUint16(value);
+            _setRedemptionFeeBips(_state, _params);
         } else if (_method == SET_REDEMPTION_FAILURE_FACTOR_BIPS) {
-            uint256 value = abi.decode(_params, (uint256));
-            _state.settings.redemptionFailureFactorBIPS = SafeCast.toUint32(value);
+            _setRedemptionFailureFactorBips(_state, _params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS) {
-            uint256 value = abi.decode(_params, (uint256));
-            _state.settings.confirmationByOthersAfterSeconds = SafeCast.toUint64(value);
+            _setConfirmationByOthersAfterSeconds(_state, _params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_REWARD_NAT_WEI) {
-            uint256 value = abi.decode(_params, (uint256));
-            _state.settings.confirmationByOthersRewardNATWei = SafeCast.toUint128(value);
+            _setConfirmationByOthersRewardNatWei(_state, _params);
         } else if (_method == SET_MAX_REDEEMED_TICKETS) {
-            uint256 value = abi.decode(_params, (uint256));
-            _state.settings.maxRedeemedTickets = SafeCast.toUint16(value);
+            _setMaxRedeemedTickets(_state, _params);
         } else if (_method == SET_WITHDRAWAL_OR_DESTROY_WAIT_MIN_SECONDS) {
-            uint256 value = abi.decode(_params, (uint256));
-            _state.settings.withdrawalWaitMinSeconds = SafeCast.toUint64(value);
+            _setWithdrawalOrDestroyWaitMinSeconds(_state, _params);
         } else if (_method == SET_CCB_TIME_SECONDS) {
-            uint256 value = abi.decode(_params, (uint256));
-            _state.settings.ccbTimeSeconds = SafeCast.toUint64(value);
+            _setCcbTimeSeconds(_state, _params);
         } else if (_method == SET_LIQUIDATION_STEP_SECONDS) {
-            uint256 value = abi.decode(_params, (uint256));
-            _state.settings.liquidationStepSeconds = SafeCast.toUint64(value);
+            _setLiquidationStepSeconds(_state, _params);
         } else if (_method == SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS) {
-            uint256[] memory value = abi.decode(_params, (uint256[]));
-            delete _state.settings.liquidationCollateralFactorBIPS;
-            for (uint256 i = 0; i < value.length; i++) {
-                require(value[i] > SafeBips.MAX_BIPS, "factor below 1");
-                require(i == 0 || value[i] > value[i - 1], "factors not increasing");
-                _state.settings.liquidationCollateralFactorBIPS.push(SafeCast.toUint32(value[i]));
-            }
+            _setLiquidationCollateralFactorBips(_state, _params);
         } else {
             revert("update: invalid method");
         }
@@ -176,12 +158,11 @@ library SettingsUpdater {
     ) 
         private 
     {
-        require(_update.validAt != 0 && block.timestamp >= _update.validAt,
-            "update not valid yet");
+        require(_update.validAt != 0 && block.timestamp >= _update.validAt, "update not valid yet");
+        _update.validAt = 0;
         _state.settings.minCollateralRatioBIPS = _update.minCollateralRatioBIPS;
         _state.settings.ccbMinCollateralRatioBIPS = _update.ccbMinCollateralRatioBIPS;
         _state.settings.safetyMinCollateralRatioBIPS = _update.safetyMinCollateralRatioBIPS;
-        _update.validAt = 0;
         emit AMEvents.SettingChanged("minCollateralRatioBIPS", _update.minCollateralRatioBIPS);
         emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", _update.ccbMinCollateralRatioBIPS);
         emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", _update.safetyMinCollateralRatioBIPS);
@@ -210,13 +191,138 @@ library SettingsUpdater {
     ) 
         private 
     {
-        require(_update.validAt != 0 && block.timestamp >= _update.validAt,
-            "update not valid yet");
+        require(_update.validAt != 0 && block.timestamp >= _update.validAt, "update not valid yet");
+        _update.validAt = 0;
         _state.settings.underlyingBlocksForPayment = _update.underlyingBlocksForPayment;
         _state.settings.underlyingSecondsForPayment = _update.underlyingSecondsForPayment;
-        _update.validAt = 0;
         emit AMEvents.SettingChanged("underlyingBlocksForPayment", _update.underlyingBlocksForPayment);
         emit AMEvents.SettingChanged("underlyingSecondsForPayment", _update.underlyingSecondsForPayment);
+    }
+    
+    function _setPaymentChallengeReward(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        (uint256 rewardNATWei, uint256 rewardBIPS) = abi.decode(_params, (uint256, uint256));
+        _state.settings.paymentChallengeRewardNATWei = SafeCast.toUint128(rewardNATWei);
+        _state.settings.paymentChallengeRewardBIPS = SafeCast.toUint16(rewardBIPS);
+    }
+
+    function _setLotSizeAmg(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        _state.settings.lotSizeAMG = SafeCast.toUint64(value);
+    }
+
+    function _setCollateralReservationFeeBips(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        _state.settings.collateralReservationFeeBIPS = SafeCast.toUint16(value);
+    }
+
+    function _setRedemptionFeeBips(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        _state.settings.redemptionFeeBIPS = SafeCast.toUint16(value);
+    }
+
+    function _setRedemptionFailureFactorBips(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        _state.settings.redemptionFailureFactorBIPS = SafeCast.toUint32(value);
+    }
+
+    function _setConfirmationByOthersAfterSeconds(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        _state.settings.confirmationByOthersAfterSeconds = SafeCast.toUint64(value);
+    }
+
+    function _setConfirmationByOthersRewardNatWei(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        _state.settings.confirmationByOthersRewardNATWei = SafeCast.toUint128(value);
+    }
+
+    function _setMaxRedeemedTickets(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        _state.settings.maxRedeemedTickets = SafeCast.toUint16(value);
+    }
+
+    function _setWithdrawalOrDestroyWaitMinSeconds(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        _state.settings.withdrawalWaitMinSeconds = SafeCast.toUint64(value);
+    }
+
+    function _setCcbTimeSeconds(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        _state.settings.ccbTimeSeconds = SafeCast.toUint64(value);
+    }
+
+    function _setLiquidationStepSeconds(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        _state.settings.liquidationStepSeconds = SafeCast.toUint64(value);
+    }
+
+    function _setLiquidationCollateralFactorBips(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256[] memory value = abi.decode(_params, (uint256[]));
+        delete _state.settings.liquidationCollateralFactorBIPS;
+        for (uint256 i = 0; i < value.length; i++) {
+            require(value[i] > SafeBips.MAX_BIPS, "factor not above 1");
+            require(i == 0 || value[i] > value[i - 1], "factors not increasing");
+            _state.settings.liquidationCollateralFactorBIPS.push(SafeCast.toUint32(value[i]));
+        }
     }
     
     function _validateSettings(
