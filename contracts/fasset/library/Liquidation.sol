@@ -250,8 +250,6 @@ library Liquidation {
         if (targetRatioBIPS <= _collateralRatioBIPS) {
             return 0;               // agent already safe
         }
-        // actually, we always have factorBIPS <= _collateralRatioBIPS (< targetRatioBIPS)
-        // so this is just an extra precaution
         if (targetRatioBIPS <= factorBIPS) {
             return agent.mintedAMG; // cannot achieve target - liquidate all
         }

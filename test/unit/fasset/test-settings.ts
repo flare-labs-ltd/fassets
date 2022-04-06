@@ -1,7 +1,7 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { AttestationClientMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
-import { toStringExp } from "../../utils/helpers";
+import { DAYS, HOURS, toStringExp, WEEKS } from "../../utils/helpers";
 
 export async function createTestSettings(attestationClient: AttestationClientMockInstance, wNat: WNatInstance, ftsoRegistry: FtsoRegistryMockInstance): Promise<AssetManagerSettings> {
     return {
@@ -25,7 +25,7 @@ export async function createTestSettings(attestationClient: AttestationClientMoc
         underlyingSecondsForPayment: 120,                       // 12s per block assumed
         redemptionFeeBIPS: 200,                                 // 2%
         redemptionDefaultFactorBIPS: 1_2000,                    // 1.2
-        confirmationByOthersAfterSeconds: 6 * 3600,              // 6 hours
+        confirmationByOthersAfterSeconds: 6 * HOURS,            // 6 hours
         confirmationByOthersRewardNATWei: toStringExp(100, 18),    // 100 NAT
         maxRedeemedTickets: 20,                                 // TODO: find number that fits comfortably in gas limits
         paymentChallengeRewardBIPS: 0,
@@ -35,6 +35,7 @@ export async function createTestSettings(attestationClient: AttestationClientMoc
         ccbTimeSeconds: 180,
         liquidationStepSeconds: 90,
         maxTrustedPriceAgeSeconds: 8 * 60,
-        timelockSeconds: 7 * 86400, // 1 week
+        timelockSeconds: 1 * WEEKS, // 1 week
+        minUpdateRepeatTimeSeconds: 1 * DAYS,
     };
 }

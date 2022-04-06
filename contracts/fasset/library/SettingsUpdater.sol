@@ -8,6 +8,8 @@ import "./TransactionAttestation.sol";
 
 
 library SettingsUpdater {
+    using SafeBips for *;
+    
     struct CollateralRatioUpdate {
         uint64 validAt;
         uint32 minCollateralRatioBIPS;
@@ -24,6 +26,8 @@ library SettingsUpdater {
     struct PendingUpdates {
         CollateralRatioUpdate collateralRatio;
         PaymentTimeUpdate paymentTime;
+        // last update time
+        mapping (bytes32 => uint256) lastUpdate;
     }
     
     bytes32 internal constant UPDATE_CONTRACTS = 
@@ -92,28 +96,40 @@ library SettingsUpdater {
         } else if (_method == EXECUTE_SET_TIME_FOR_PAYMENT) {
             _executeSetTimeForPayment(_state, _updates.paymentTime);
         } else if (_method == SET_PAYMENT_CHALLENGE_REWARD) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setPaymentChallengeReward(_state, _params);
         } else if (_method == SET_LOT_SIZE_AMG) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setLotSizeAmg(_state, _params);
         } else if (_method == SET_COLLATERAL_RESERVATION_FEE_BIPS) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setCollateralReservationFeeBips(_state, _params);
         } else if (_method == SET_REDEMPTION_FEE_BIPS) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setRedemptionFeeBips(_state, _params);
         } else if (_method == SET_REDEMPTION_DEFAULT_FACTOR_BIPS) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setRedemptionDefaultFactorBips(_state, _params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setConfirmationByOthersAfterSeconds(_state, _params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_REWARD_NAT_WEI) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setConfirmationByOthersRewardNatWei(_state, _params);
         } else if (_method == SET_MAX_REDEEMED_TICKETS) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setMaxRedeemedTickets(_state, _params);
         } else if (_method == SET_WITHDRAWAL_OR_DESTROY_WAIT_MIN_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setWithdrawalOrDestroyWaitMinSeconds(_state, _params);
         } else if (_method == SET_CCB_TIME_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setCcbTimeSeconds(_state, _params);
         } else if (_method == SET_LIQUIDATION_STEP_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setLiquidationStepSeconds(_state, _params);
         } else if (_method == SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setLiquidationCollateralFactorBips(_state, _params);
         } else {
             revert("update: invalid method");
@@ -133,6 +149,19 @@ library SettingsUpdater {
         _state.settings.ftsoRegistry = ftsoRegistry;
         _state.settings.wNat = wNat;
     }
+    
+    function _checkEnoughTimeSinceLastUpdate(
+        AssetManagerState.State storage _state,
+        PendingUpdates storage _updates,
+        bytes32 _method
+    )
+        private
+    {
+        uint256 lastUpdate = _updates.lastUpdate[_method];
+        require(lastUpdate == 0 || block.timestamp >= lastUpdate + _state.settings.minUpdateRepeatTimeSeconds,
+            "too close to previous update");
+        _updates.lastUpdate[_method] = block.timestamp;
+    }
 
     function _setCollateralRatios(
         AssetManagerState.State storage _state,
@@ -143,7 +172,11 @@ library SettingsUpdater {
     {
         (uint256 minCR, uint256 ccbCR, uint256 safetyCR) = 
             abi.decode(_params, (uint256, uint256, uint256));
+        // validations
         require(1 < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
+        uint32[] storage liquidationFactors = _state.settings.liquidationCollateralFactorBIPS;
+        require(liquidationFactors[liquidationFactors.length - 1] <= safetyCR, "liquidation factor too high");
+        // create pending update
         uint256 validAt = block.timestamp + _state.settings.timelockSeconds;
         _update.validAt = SafeCast.toUint64(validAt);
         _update.minCollateralRatioBIPS = SafeCast.toUint32(minCR);
@@ -208,6 +241,12 @@ library SettingsUpdater {
         private 
     {
         (uint256 rewardNATWei, uint256 rewardBIPS) = abi.decode(_params, (uint256, uint256));
+        // validate
+        require(rewardNATWei <= _state.settings.paymentChallengeRewardNATWei * 4, "increase too big");
+        require(rewardNATWei >= _state.settings.paymentChallengeRewardNATWei / 4, "decrease too big");
+        require(rewardBIPS <= (_state.settings.paymentChallengeRewardBIPS + 100) * 4, "increase too big");
+        require(rewardBIPS >= _state.settings.paymentChallengeRewardBIPS / 4, "decrease too big");
+        // update
         _state.settings.paymentChallengeRewardNATWei = SafeCast.toUint128(rewardNATWei);
         _state.settings.paymentChallengeRewardBIPS = SafeCast.toUint16(rewardBIPS);
         emit AMEvents.SettingChanged("paymentChallengeRewardNATWei", rewardNATWei);
@@ -221,6 +260,12 @@ library SettingsUpdater {
         private 
     {
         uint256 value = abi.decode(_params, (uint256));
+        // validate
+        // huge lot size increase is very dangerous, because it breaks redemption
+        // (converts all tickets to dust)
+        require(value <= _state.settings.lotSizeAMG * 2, "lot size increase too big");
+        require(value >= _state.settings.lotSizeAMG / 10, "lot size decrease too big");
+        // update
         _state.settings.lotSizeAMG = SafeCast.toUint64(value);
         emit AMEvents.SettingChanged("lotSizeAMG", value);
     }
@@ -232,6 +277,10 @@ library SettingsUpdater {
         private 
     {
         uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= _state.settings.maxTrustedPriceAgeSeconds * 2, "fee increase too big");
+        require(value >= _state.settings.maxTrustedPriceAgeSeconds / 2, "fee decrease too big");
+        // update
         _state.settings.maxTrustedPriceAgeSeconds = SafeCast.toUint64(value);
         emit AMEvents.SettingChanged("maxTrustedPriceAgeSeconds", value);
     }
@@ -243,6 +292,11 @@ library SettingsUpdater {
         private 
     {
         uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= SafeBips.MAX_BIPS, "bips value too high");
+        require(value <= _state.settings.collateralReservationFeeBIPS * 4, "fee increase too big");
+        require(value >= _state.settings.collateralReservationFeeBIPS / 4, "fee decrease too big");
+        // update
         _state.settings.collateralReservationFeeBIPS = SafeCast.toUint16(value);
         emit AMEvents.SettingChanged("collateralReservationFeeBIPS", value);
     }
@@ -254,6 +308,11 @@ library SettingsUpdater {
         private 
     {
         uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= SafeBips.MAX_BIPS, "bips value too high");
+        require(value <= _state.settings.redemptionFeeBIPS * 4, "fee increase too big");
+        require(value >= _state.settings.redemptionFeeBIPS / 4, "fee decrease too big");
+        // update
         _state.settings.redemptionFeeBIPS = SafeCast.toUint16(value);
         emit AMEvents.SettingChanged("redemptionFeeBIPS", value);
     }
@@ -265,6 +324,11 @@ library SettingsUpdater {
         private 
     {
         uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value > SafeBips.MAX_BIPS, "bips value too low");
+        require(value <= _state.settings.redemptionDefaultFactorBIPS.mulBips(12000), "fee increase too big");
+        require(value >= _state.settings.redemptionDefaultFactorBIPS.mulBips(8333), "fee decrease too big");
+        // update
         _state.settings.redemptionDefaultFactorBIPS = SafeCast.toUint32(value);
         emit AMEvents.SettingChanged("redemptionDefaultFactorBIPS", value);
     }
@@ -276,6 +340,9 @@ library SettingsUpdater {
         private 
     {
         uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value >= 2 hours, "must be at least two hours");
+        // update
         _state.settings.confirmationByOthersAfterSeconds = SafeCast.toUint64(value);
         emit AMEvents.SettingChanged("confirmationByOthersAfterSeconds", value);
     }
@@ -287,6 +354,10 @@ library SettingsUpdater {
         private 
     {
         uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= _state.settings.confirmationByOthersRewardNATWei * 4, "fee increase too big");
+        require(value >= _state.settings.confirmationByOthersRewardNATWei / 4, "fee decrease too big");
+        // update
         _state.settings.confirmationByOthersRewardNATWei = SafeCast.toUint128(value);
         emit AMEvents.SettingChanged("confirmationByOthersRewardNATWei", value);
     }
@@ -298,6 +369,11 @@ library SettingsUpdater {
         private 
     {
         uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value >= 1, "cannot be zero");
+        require(value <= _state.settings.maxRedeemedTickets * 2, "increase too big");
+        require(value >= _state.settings.maxRedeemedTickets / 4, "decrease too big");
+        // update
         _state.settings.maxRedeemedTickets = SafeCast.toUint16(value);
         emit AMEvents.SettingChanged("maxRedeemedTickets", value);
     }
@@ -309,6 +385,11 @@ library SettingsUpdater {
         private 
     {
         uint256 value = abi.decode(_params, (uint256));
+        // validate
+        // making this value small doesn't present huge danger, so we don't limit decrease
+        require(value >= 1, "cannot be zero");
+        require(value <= _state.settings.withdrawalWaitMinSeconds + 10 minutes, "increase too big");
+        // update
         _state.settings.withdrawalWaitMinSeconds = SafeCast.toUint64(value);
         emit AMEvents.SettingChanged("withdrawalWaitMinSeconds", value);
     }
@@ -320,6 +401,10 @@ library SettingsUpdater {
         private 
     {
         uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= _state.settings.ccbTimeSeconds * 2, "increase too big");
+        require(value >= _state.settings.ccbTimeSeconds / 2, "decrease too big");
+        // update
         _state.settings.ccbTimeSeconds = SafeCast.toUint64(value);
         emit AMEvents.SettingChanged("ccbTimeSeconds", value);
     }
@@ -331,6 +416,10 @@ library SettingsUpdater {
         private 
     {
         uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= _state.settings.liquidationStepSeconds * 2, "increase too big");
+        require(value >= _state.settings.liquidationStepSeconds / 2, "decrease too big");
+        // update
         _state.settings.liquidationStepSeconds = SafeCast.toUint64(value);
         emit AMEvents.SettingChanged("liquidationStepSeconds", value);
     }
@@ -342,6 +431,14 @@ library SettingsUpdater {
         private 
     {
         uint256[] memory value = abi.decode(_params, (uint256[]));
+        // validate
+        require(value.length >= 1, "at least one factor required");
+        for (uint256 i = 1; i < value.length; i++) {
+            require(value[i] >= value[i - 1], "factors not increasing");
+        }
+        require(value[value.length - 1] <= _state.settings.safetyMinCollateralRatioBIPS, 
+            "liquidation factor too high");
+        // update
         delete _state.settings.liquidationCollateralFactorBIPS;
         for (uint256 i = 0; i < value.length; i++) {
             require(value[i] > SafeBips.MAX_BIPS, "factor not above 1");

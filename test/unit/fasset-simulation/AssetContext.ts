@@ -7,7 +7,7 @@ import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { IStateConnectorClient } from "../../utils/fasset/IStateConnectorClient";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { BNish, toBN, toBNExp, toWei } from "../../utils/helpers";
+import { BNish, DAYS, HOURS, toBN, toBNExp, toWei, WEEKS } from "../../utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { web3DeepNormalize } from "../../utils/web3assertions";
 import { ChainInfo, NatInfo } from "./ChainInfo";
@@ -193,7 +193,7 @@ export class AssetContext {
             safetyMinCollateralRatioBIPS: 2_5000,      // 2.5
             redemptionFeeBIPS: 200,                         // 2%
             redemptionDefaultFactorBIPS: 1_2000,            // 1.2
-            confirmationByOthersAfterSeconds: 6 * 3600,      // 6 hours
+            confirmationByOthersAfterSeconds: 6 * HOURS,      // 6 hours
             confirmationByOthersRewardNATWei: toWei(100),      // 100 NAT
             maxRedeemedTickets: 20,                         // TODO: find number that fits comfortably in gas limits
             paymentChallengeRewardBIPS: 1,
@@ -203,7 +203,8 @@ export class AssetContext {
             ccbTimeSeconds: 180,
             liquidationStepSeconds: 90,
             maxTrustedPriceAgeSeconds: 8 * 60,
-            timelockSeconds: 7 * 86400, // 1 week
+            timelockSeconds: 1 * WEEKS, // 1 week
+            minUpdateRepeatTimeSeconds: 1 * DAYS,
         };
     }
 }

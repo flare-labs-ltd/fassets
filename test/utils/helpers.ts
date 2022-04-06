@@ -16,6 +16,11 @@ export const BYTES32_ZERO = "0x0000000000000000000000000000000000000000000000000
 
 export const MAX_BIPS = 10_000;
 
+export const MINUTES = 60;
+export const HOURS = 60 * MINUTES;
+export const DAYS = 24 * HOURS;
+export const WEEKS = 7 * DAYS;
+
 /**
  * Asynchronously wait `ms` milliseconds.
  */
