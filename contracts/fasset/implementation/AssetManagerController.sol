@@ -15,6 +15,14 @@ contract AssetManagerController is Governed, AddressUpdatable {
     mapping(address => uint256) private assetManagerIndex;
     AssetManager[] private assetManagers;
     
+    address[] private updateExecutors;
+    mapping(address => bool) private isUpdateExecutor;
+
+    modifier onlyUpdateExecutor {
+        require(isUpdateExecutor[msg.sender], "only update executor");
+        _;
+    }    
+    
     constructor(address _governance, address _addressUpdater)
         Governed(_governance)
         AddressUpdatable(_addressUpdater)
@@ -47,6 +55,23 @@ contract AssetManagerController is Governed, AddressUpdatable {
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Setters
     
+    function setUpdateExecutors(address[] memory _executors)
+        external 
+        onlyGovernance
+    {
+        require(_executors.length >= 1, "empty executors list");
+        // clear old
+        for (uint256 i = 0; i < updateExecutors.length; i++) {
+            isUpdateExecutor[updateExecutors[i]] = false;
+        }
+        delete updateExecutors;
+        // set new
+        for (uint256 i = 0; i < _executors.length; i++) {
+            updateExecutors.push(_executors[i]);
+            isUpdateExecutor[_executors[i]] = true;
+        }
+    }
+    
     function setLotSizeAmg(address[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance
@@ -73,6 +98,7 @@ contract AssetManagerController is Governed, AddressUpdatable {
         address[] memory _assetManagers
     )
         external
+        onlyUpdateExecutor
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.EXECUTE_SET_COLLATERAL_RATIOS, abi.encode());
@@ -88,6 +114,16 @@ contract AssetManagerController is Governed, AddressUpdatable {
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_TIME_FOR_PAYMENT, abi.encode(_underlyingBlocks, _underlyingSeconds));
+    }
+
+    function executeSetTimeForPayment(
+        address[] memory _assetManagers
+    )
+        external
+        onlyUpdateExecutor
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.EXECUTE_SET_TIME_FOR_PAYMENT, abi.encode());
     }
 
     function setPaymentChallengeReward(

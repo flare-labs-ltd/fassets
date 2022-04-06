@@ -16,6 +16,7 @@ const AssetManagerController = artifacts.require('AssetManagerController');
 
 contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager controller basic tests`, async accounts => {
     const governance = accounts[10];
+    const updateExecutor = accounts[11];
     let attestationClient: AttestationClientMockInstance;
     let addressUpdater: AddressUpdaterInstance;
     let assetManagerController: AssetManagerControllerInstance;
@@ -77,11 +78,13 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
         
         it("should change collateral settings after timelock", async () => {
-            // act
+            // set executor
+            await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance })
+            // change settings
             await assetManagerController.setCollateralRatios([assetManager.address], 2_2000, 1_8000, 2_4000, { from: governance });
             await time.increase(toBN(settings.timelockSeconds).addn(1));
             await time.advanceBlock();
-            await assetManagerController.executeSetCollateralRatios([assetManager.address]);
+            await assetManagerController.executeSetCollateralRatios([assetManager.address], { from: updateExecutor });
             // assert
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(newSettings.minCollateralRatioBIPS, 2_2000);
@@ -89,10 +92,19 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(newSettings.safetyMinCollateralRatioBIPS, 2_4000);
         });
 
-        it("shouldn't change collateral settings without timelock", async () => {
-            // act
+        it("settings change should be executed by executor", async () => {
+            // change settings
             await assetManagerController.setCollateralRatios([assetManager.address], 2_2000, 1_8000, 2_4000, { from: governance });
             await expectRevert(assetManagerController.executeSetCollateralRatios([assetManager.address]),
+                "only update executor");
+        });
+        
+        it("shouldn't change collateral settings without timelock", async () => {
+            // set executor
+            await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance })
+            // change settings
+            await assetManagerController.setCollateralRatios([assetManager.address], 2_2000, 1_8000, 2_4000, { from: governance });
+            await expectRevert(assetManagerController.executeSetCollateralRatios([assetManager.address], { from: updateExecutor }),
                 "update not valid yet");
             // assert no changes
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
