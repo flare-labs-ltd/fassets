@@ -114,10 +114,11 @@ library AvailableAgents {
             address agentVault = _state.availableAgents[i].agentVault;
             Agents.Agent storage agent = Agents.getAgentNoCheck(_state, agentVault);
             collateralData.fullCollateral = Agents.fullCollateral(_state, agentVault);
+            uint256 agentCR = Math.max(agent.agentMinCollateralRatioBIPS, _state.settings.minCollateralRatioBIPS);
             _agents[i - _start] = AgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
-                agentMinCollateralRatioBIPS: agent.agentMinCollateralRatioBIPS,
+                agentMinCollateralRatioBIPS: agentCR,
                 freeCollateralLots: collateralData.freeCollateralLots(agent, _state.settings)
             });
         }
@@ -132,10 +133,11 @@ library AvailableAgents {
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        uint256 agentCR = Math.max(agent.agentMinCollateralRatioBIPS, _state.settings.minCollateralRatioBIPS);
         return AgentInfo({
             agentVault: _agentVault,
             feeBIPS: agent.feeBIPS,
-            agentMinCollateralRatioBIPS: agent.agentMinCollateralRatioBIPS,
+            agentMinCollateralRatioBIPS: agentCR,
             freeCollateralLots: collateralData.freeCollateralLots(agent, _state.settings)
         });
     }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IAgentVault.sol";
@@ -60,7 +61,7 @@ library AgentCollateral {
         return freeCollateral;
     }
     
-    // Amount of collateral NOT available for new minting.
+    // Amount of collateral NOT available for new minting or withdrawal.
     function lockedCollateralWei(
         AgentCollateral.Data memory _data,
         Agents.Agent storage _agent, 
@@ -69,9 +70,12 @@ library AgentCollateral {
         internal view 
         returns (uint256) 
     {
+        // agentMinCollateralRatioBIPS must be greater than minCollateralRatioBIPS when set, but
+        // minCollateralRatioBIPS can change later so we always use the max of both
+        uint256 minCollateralRatio = Math.max(_agent.agentMinCollateralRatioBIPS, _settings.minCollateralRatioBIPS);
         uint256 mintingAMG = uint256(_agent.reservedAMG) + uint256(_agent.mintedAMG);
         uint256 mintingCollateral = Conversion.convertAmgToNATWei(mintingAMG, _data.amgToNATWeiPrice)
-            .mulBips(_agent.agentMinCollateralRatioBIPS);
+            .mulBips(minCollateralRatio);
         uint256 redeemingCollateral = Conversion.convertAmgToNATWei(_agent.redeemingAMG, _data.amgToNATWeiPrice)
             .mulBips(_settings.minCollateralRatioBIPS);
         return mintingCollateral + redeemingCollateral + _agent.withdrawalAnnouncedNATWei;
@@ -85,8 +89,9 @@ library AgentCollateral {
         internal view 
         returns (uint256) 
     {
+        uint256 minCollateralRatio = Math.max(_agent.agentMinCollateralRatioBIPS, _settings.minCollateralRatioBIPS);
         return Conversion.convertAmgToNATWei(_settings.lotSizeAMG, _data.amgToNATWeiPrice)
-            .mulBips(_agent.agentMinCollateralRatioBIPS);
+            .mulBips(minCollateralRatio);
     }
     
     // Used for redemption default payment - calculate all types of collateral at the same rate, so that
