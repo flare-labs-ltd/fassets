@@ -38,5 +38,6 @@ export async function createTestSettings(attestationClient: AttestationClientMoc
         timelockSeconds: 1 * WEEKS, // 1 week
         minUpdateRepeatTimeSeconds: 1 * DAYS,
         attestationWindowSeconds: 1 * DAYS,
+        buybackCollateralFactorBIPS: 1_1000,                    // 1.1
     };
 }
