@@ -66,6 +66,8 @@ library SettingsUpdater {
         keccak256("setLiquidationStepSeconds(uint256)");
     bytes32 internal constant SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS =
         keccak256("setLiquidationCollateralFactorBips(uint256[])");
+    bytes32 internal constant SET_ATTESTATION_WINDOW_SECONDS =
+        keccak256("setAttestationWindowSeconds(uint256)");
         
     function validateAndSet(
         AssetManagerState.State storage _state,
@@ -131,6 +133,9 @@ library SettingsUpdater {
         } else if (_method == SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setLiquidationCollateralFactorBips(_state, _params);
+        } else if (_method == SET_ATTESTATION_WINDOW_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
+            _setAttestationWindowSeconds(_state, _params);
         } else {
             revert("update: invalid method");
         }
@@ -448,6 +453,20 @@ library SettingsUpdater {
         emit AMEvents.SettingArrayChanged("liquidationCollateralFactorBIPS", value);
     }
     
+    function _setAttestationWindowSeconds(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value >= 1 days, "window too small");
+        // update
+        _state.settings.attestationWindowSeconds = SafeCast.toUint64(value);
+        emit AMEvents.SettingChanged("attestationWindowSeconds", value);
+    }
+
     function _validateSettings(
         AssetManagerSettings.Settings memory _settings
     ) 

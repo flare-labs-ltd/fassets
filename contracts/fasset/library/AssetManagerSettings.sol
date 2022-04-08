@@ -156,6 +156,10 @@ library AssetManagerSettings {
         // rate-limited
         uint64 liquidationStepSeconds;
         
+        // Maximum time for which it is possible to obtain payment or non-payment proofs.
+        // rate-limited
+        uint64 attestationWindowSeconds;
+        
         // The time to wait for critical settings to take effect.
         // immutable
         uint64 timelockSeconds;
@@ -164,13 +168,9 @@ library AssetManagerSettings {
         // immutable
         uint64 minUpdateRepeatTimeSeconds;
         
-        // Maximum time for which it is possible to obtain payment or non-payment proofs.
-        // rate-limited
-        uint64 attestationWindowSeconds;
-        
         // Ratio at which the agents can buy back their collateral when f-asset is stopped.
         // Typically a bit more than 1 to incentivise agents to buy f-assets and self-close instead.
-        // immutable?
+        // immutable
         uint64 buybackCollateralFactorBIPS;
     }
 
