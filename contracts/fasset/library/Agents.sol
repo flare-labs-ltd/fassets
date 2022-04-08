@@ -384,11 +384,12 @@ library Agents {
         uint256 _amountNATWei
     )
         internal
+        returns (uint256 _amountPaid)
     {
         IAgentVault vault = IAgentVault(_agentVault);
         // don't want the calling method to fail due to too small balance for payout
-        uint256 amount = Math.min(_amountNATWei, fullCollateral(_state, _agentVault));
-        vault.payout(_state.settings.wNat, _receiver, amount);
+        _amountPaid = Math.min(_amountNATWei, fullCollateral(_state, _agentVault));
+        vault.payout(_state.settings.wNat, _receiver, _amountPaid);
     }
     
     function burnCollateral(
@@ -398,9 +399,9 @@ library Agents {
     )
         internal
     {
-        // TODO: create method in AgentVault for NAT transfer
-        payout(_state, _agentVault, address(this), _amountNATWei);
-        _state.settings.burnAddress.transfer(_amountNATWei);
+        // TODO: create method in AgentVault for direct NAT transfer
+        uint256 amountPaid = payout(_state, _agentVault, address(this), _amountNATWei);
+        _state.settings.burnAddress.transfer(amountPaid);
     }
     
     function getAgent(
