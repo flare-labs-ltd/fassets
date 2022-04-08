@@ -38,17 +38,20 @@ library Minting {
         // becomes unresponsive
         require(msg.sender == crt.minter || msg.sender == Agents.vaultOwner(crt.agentVault), 
             "only minter or agent");
-        uint256 expectedPaymentUBA = uint256(crt.underlyingValueUBA) + crt.underlyingFeeUBA;
         require(_payment.paymentReference == PaymentReference.minting(_crtId),
             "invalid minting reference");
+        // we don't have consider PAYMENT_BLOCKED, since agent's address must be EOA
+        require(_payment.status == TransactionAttestation.PAYMENT_SUCCESS,
+            "minting payment failed");
         require(_payment.receivingAddress == agent.underlyingAddressHash, 
             "not minting agent's address");
-        require(_payment.receivedAmount >= expectedPaymentUBA,
+        require(_payment.receivedAmount >= uint256(crt.underlyingValueUBA) + crt.underlyingFeeUBA,
             "minting payment too small");
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, crt.valueAMG);
-        emit AMEvents.MintingExecuted(agentVault, _crtId, redemptionTicketId, _mintValueUBA, crt.underlyingFeeUBA);
+        uint256 receivedFeeUBA = _payment.receivedAmount - crt.underlyingValueUBA;
+        emit AMEvents.MintingExecuted(agentVault, _crtId, redemptionTicketId, _mintValueUBA, receivedFeeUBA);
         Agents.allocateMintedAssets(_state, agentVault, crt.valueAMG);
-        UnderlyingFreeBalance.increaseFreeBalance(_state, agentVault, crt.underlyingFeeUBA);
+        UnderlyingFreeBalance.increaseFreeBalance(_state, agentVault, receivedFeeUBA);
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
         _state.settings.burnAddress.transfer(crt.reservationFeeNatWei);
         // cleanup
@@ -77,6 +80,8 @@ library Minting {
         _mintValueUBA = uint256(valueAMG) * _state.settings.assetMintingGranularityUBA;
         require(_payment.paymentReference == PaymentReference.selfMint(_agentVault), 
             "invalid self-mint reference");
+        require(_payment.status == TransactionAttestation.PAYMENT_SUCCESS,
+            "self-mint payment failed");
         require(_payment.receivingAddress == agent.underlyingAddressHash, 
             "self-mint not agent's address");
         require(_payment.receivedAmount >= _mintValueUBA, 

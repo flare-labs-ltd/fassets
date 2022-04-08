@@ -28,6 +28,7 @@ library CollateralReservations {
         uint64 valueAMG;
         address minter;
         uint128 reservationFeeNatWei;
+        uint64 timestamp;
     }
     
     function reserveCollateral(
@@ -65,7 +66,8 @@ library CollateralReservations {
             firstUnderlyingBlock: _state.currentUnderlyingBlock,
             lastUnderlyingBlock: lastUnderlyingBlock,
             lastUnderlyingTimestamp: lastUnderlyingTimestamp,
-            reservationFeeNatWei: SafeCast.toUint128(reservationFee)
+            reservationFeeNatWei: SafeCast.toUint128(reservationFee),
+            timestamp: SafeCast.toUint64(block.timestamp)
         });
         string storage paymentAddress = agent.underlyingAddressString;
         emit AMEvents.CollateralReserved(_agentVault,
@@ -104,6 +106,27 @@ library CollateralReservations {
         emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId);
         // transfer crt fee to the agent's vault
         IAgentVault(crt.agentVault).deposit{value: crt.reservationFeeNatWei}();
+        // release agent's reserved collateral
+        releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this        
+    }
+    
+    function unstickMinting(
+        AssetManagerState.State storage _state, 
+        uint64 _crtId
+    )
+        external
+    {
+        CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
+        Agents.requireAgentVaultOwner(crt.agentVault);
+        // enough time must pass so that proofs are no longer available
+        require(block.timestamp >= crt.timestamp + _state.settings.attestationWindowSeconds,
+            "cannot unstick minting yet");
+        // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
+        _state.settings.burnAddress.transfer(crt.reservationFeeNatWei);
+        // burn reserved collateral at market price
+        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        uint256 reservedCollateral = Conversion.convertAmgToNATWei(crt.valueAMG, amgToNATWeiPrice);
+        Agents.burnCollateral(_state, crt.agentVault, reservedCollateral);
         // release agent's reserved collateral
         releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this        
     }

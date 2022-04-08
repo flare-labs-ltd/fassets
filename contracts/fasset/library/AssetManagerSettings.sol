@@ -161,6 +161,9 @@ library AssetManagerSettings {
         
         // Minimum time after an update of a setting before the same setting can be updated again.
         uint64 minUpdateRepeatTimeSeconds;
+        
+        // Maximum time for which it is possible to obtain payment or non-payment proofs.
+        uint64 attestationWindowSeconds;
     }
 
 }

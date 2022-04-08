@@ -37,5 +37,6 @@ export async function createTestSettings(attestationClient: AttestationClientMoc
         maxTrustedPriceAgeSeconds: 8 * 60,
         timelockSeconds: 1 * WEEKS, // 1 week
         minUpdateRepeatTimeSeconds: 1 * DAYS,
+        attestationWindowSeconds: 1 * DAYS,
     };
 }

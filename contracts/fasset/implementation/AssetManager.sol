@@ -428,6 +428,21 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
     
     /**
+     * If collateral reservation request exists for more than 24 hours, payment or non-payment proof are no longer
+     * available. In this case agent can call this method, which burns reserved collateral at market price
+     * and releases the remaining collateral (CRF is also burned).
+     * @param _collateralReservationId coolateral reservation id
+     */
+    function unstickMinting(
+        uint256 _collateralReservationId
+    ) 
+        external 
+        nonReentrant
+    {
+        CollateralReservations.unstickMinting(state, SafeCast.toUint64(_collateralReservationId));
+    }
+    
+    /**
      * Agent can mint against himself. In that case, this is a one-step process, skipping collateral reservation
      * and no collateral reservation fee payment.
      * Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
