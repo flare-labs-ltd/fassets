@@ -397,7 +397,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * and collect the minted f-assets.
      * @param _payment proof of the underlying payment (must contain exact `value + fee` amount and correct 
      *      payment reference)
-     * @param _collateralReservationId coolateral reservation id
+     * @param _collateralReservationId collateral reservation id
      */
     function executeMinting(
         IAttestationClient.Payment calldata _payment,
@@ -431,7 +431,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * If collateral reservation request exists for more than 24 hours, payment or non-payment proof are no longer
      * available. In this case agent can call this method, which burns reserved collateral at market price
      * and releases the remaining collateral (CRF is also burned).
-     * @param _collateralReservationId coolateral reservation id
+     * @param _collateralReservationId collateral reservation id
      */
     function unstickMinting(
         uint256 _collateralReservationId

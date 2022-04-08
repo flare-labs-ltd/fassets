@@ -107,7 +107,7 @@ library CollateralReservations {
         // transfer crt fee to the agent's vault
         IAgentVault(crt.agentVault).deposit{value: crt.reservationFeeNatWei}();
         // release agent's reserved collateral
-        releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this        
+        releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this
     }
     
     function unstickMinting(
@@ -128,7 +128,7 @@ library CollateralReservations {
         uint256 reservedCollateral = Conversion.convertAmgToNATWei(crt.valueAMG, amgToNATWeiPrice);
         Agents.burnCollateral(_state, crt.agentVault, reservedCollateral);
         // release agent's reserved collateral
-        releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this        
+        releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this
     }
     
     function calculateReservationFee(
