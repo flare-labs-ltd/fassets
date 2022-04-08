@@ -306,7 +306,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // check that calling finishRedemptionWithoutPayment after failed redemption payment will revert
-            await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid redemption status");
+            await expectRevert(agent.finishRedemptionWithoutPayment(request), "should default first");
             // test rewarding for redemption payment default
             const startBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
             const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);

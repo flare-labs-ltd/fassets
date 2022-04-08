@@ -209,6 +209,7 @@ library Agents {
         uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
         uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
         uint256 mintingCollateral = Conversion.convertAmgToNATWei(mintingAMG, amgToNATWeiPrice);
+        burnCollateral(_state, _agentVault, mintingCollateral);
         _state.settings.burnAddress.transfer(mintingCollateral);
         agent.mintedAMG = 0;
         agent.reservedAMG = 0;
@@ -388,6 +389,18 @@ library Agents {
         // don't want the calling method to fail due to too small balance for payout
         uint256 amount = Math.min(_amountNATWei, fullCollateral(_state, _agentVault));
         vault.payout(_state.settings.wNat, _receiver, amount);
+    }
+    
+    function burnCollateral(
+        AssetManagerState.State storage _state, 
+        address _agentVault,
+        uint256 _amountNATWei
+    )
+        internal
+    {
+        // TODO: create method in AgentVault for NAT transfer
+        payout(_state, _agentVault, address(this), _amountNATWei);
+        _state.settings.burnAddress.transfer(_amountNATWei);
     }
     
     function getAgent(
