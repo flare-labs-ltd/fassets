@@ -226,6 +226,14 @@ contract AssetManagerController is Governed, AddressUpdatable {
             SettingsUpdater.SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS, abi.encode(_values));
     }
     
+    function setAttestationWindowSeconds(address[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_ATTESTATION_WINDOW_SECONDS, abi.encode(_value));
+    }
+    
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Update contracts
 

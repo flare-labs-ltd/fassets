@@ -208,9 +208,9 @@ library Agents {
         // - mintedAMG must be burned and cleared
         uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
         uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
-        uint256 mintingCollateral = Conversion.convertAmgToNATWei(mintingAMG, amgToNATWeiPrice);
-        burnCollateral(_state, _agentVault, mintingCollateral);
-        _state.settings.burnAddress.transfer(mintingCollateral);
+        uint256 buybackCollateral = Conversion.convertAmgToNATWei(mintingAMG, amgToNATWeiPrice)
+            .mulBips(_state.settings.buybackCollateralFactorBIPS);
+        burnCollateral(_state, _agentVault, buybackCollateral);
         agent.mintedAMG = 0;
         agent.reservedAMG = 0;
     }
