@@ -35,5 +35,10 @@ interface IAgentVault {
     // Only asset manager can call this method.
     function payout(IWNat wNat, address _recipient, uint256 _amount) external;
 
+    // Used by asset manager (only for burn for now).
+    // Is guarded against reentrancy.
+    // Only asset manager can call this method.
+    function payoutNAT(IWNat wNat, address payable _recipient, uint256 _amount) external;
+
     function owner() external view returns (address);
 }

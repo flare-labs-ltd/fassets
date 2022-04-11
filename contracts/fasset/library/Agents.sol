@@ -399,9 +399,8 @@ library Agents {
     )
         internal
     {
-        // TODO: create method in AgentVault for direct NAT transfer
-        uint256 amountPaid = payout(_state, _agentVault, address(this), _amountNATWei);
-        _state.settings.burnAddress.transfer(amountPaid);
+        IAgentVault vault = IAgentVault(_agentVault);
+        vault.payoutNAT(_state.settings.wNat, _state.settings.burnAddress, _amountNATWei);
     }
     
     function getAgent(
