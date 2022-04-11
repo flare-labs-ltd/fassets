@@ -269,7 +269,7 @@ library SettingsUpdater {
         // huge lot size increase is very dangerous, because it breaks redemption
         // (converts all tickets to dust)
         require(value <= _state.settings.lotSizeAMG * 2, "lot size increase too big");
-        require(value >= _state.settings.lotSizeAMG / 10, "lot size decrease too big");
+        require(value >= _state.settings.lotSizeAMG / 4, "lot size decrease too big");
         // update
         _state.settings.lotSizeAMG = SafeCast.toUint64(value);
         emit AMEvents.SettingChanged("lotSizeAMG", value);
