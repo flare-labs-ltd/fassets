@@ -82,7 +82,7 @@ Block hash of the finalization block for the searched transaction (e.g. at least
          type: "uint64",
          description: 
 `
-Timestamp of the transaction block on the underlying chain.
+Number of the transaction block on the underlying chain.
 `
       },
       {

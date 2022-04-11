@@ -67,20 +67,25 @@ abstract contract AttestationClientBase is IAttestationClient {
         private pure
         returns (bytes32)
     {
-        return keccak256(abi.encode(
-            PAYMENT,
-            _chainId, 
-            _data.blockNumber,
-            _data.blockTimestamp,
-            _data.transactionHash,
-            _data.utxo,
-            _data.sourceAddress,
-            _data.receivingAddress,
-            _data.paymentReference,
-            _data.spentAmount,
-            _data.receivedAmount,
-            _data.oneToOne,
-            _data.status
+        return keccak256(bytes.concat(
+            // split into parts of length 8 to avoid 'stack too deep' errors
+            abi.encode(
+                PAYMENT,
+                _chainId,
+                _data.blockNumber,
+                _data.blockTimestamp,
+                _data.transactionHash,
+                _data.utxo,
+                _data.sourceAddress,
+                _data.receivingAddress
+            ),
+            abi.encode(
+                _data.paymentReference,
+                _data.spentAmount,
+                _data.receivedAmount,
+                _data.oneToOne,
+                _data.status
+            )
         ));
     }
     
@@ -90,7 +95,7 @@ abstract contract AttestationClientBase is IAttestationClient {
     {
         return keccak256(abi.encode(
             BALANCE_DECREASING_TRANSACTION,
-            _chainId, 
+            _chainId,
             _data.blockNumber,
             _data.blockTimestamp,
             _data.transactionHash,
@@ -106,7 +111,7 @@ abstract contract AttestationClientBase is IAttestationClient {
     {
         return keccak256(abi.encode(
             CONFIRMED_BLOCK_HEIGHT_EXISTS,
-            _chainId, 
+            _chainId,
             _data.blockNumber,
             _data.blockTimestamp
         ));
@@ -116,18 +121,23 @@ abstract contract AttestationClientBase is IAttestationClient {
         private pure
         returns (bytes32)
     {
-        return keccak256(abi.encode(
-            REFERENCED_PAYMENT_NONEXISTENCE,
-            _chainId, 
-            _data.endTimestamp,
-            _data.endBlock,
-            _data.destinationAddress,
-            _data.paymentReference,
-            _data.amount,
-            _data.firstCheckedBlock,
-            _data.firstCheckedBlockTimestamp,
-            _data.firstOverflowBlock,
-            _data.firstOverflowBlockTimestamp
+        return keccak256(bytes.concat(
+            // split into parts of length 8 to avoid 'stack too deep' errors
+            abi.encode(
+                REFERENCED_PAYMENT_NONEXISTENCE,
+                _chainId,
+                _data.endTimestamp,
+                _data.endBlock,
+                _data.destinationAddress,
+                _data.paymentReference,
+                _data.amount,
+                _data.firstCheckedBlock
+            ),
+            abi.encode(
+                _data.firstCheckedBlockTimestamp,
+                _data.firstOverflowBlock,
+                _data.firstOverflowBlockTimestamp
+            )
         ));
     }
 

@@ -15,7 +15,7 @@ interface IAttestationClient {
         // Merkle proof needed to verify the existence of transaction with the below fields.
         bytes32[] merkleProof;
 
-        // Timestamp of the transaction block on the underlying chain.
+        // Number of the transaction block on the underlying chain.
         uint64 blockNumber;
 
         // Timestamp of the transaction block on the underlying chain.

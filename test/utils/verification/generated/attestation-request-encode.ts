@@ -23,19 +23,28 @@ export class AttestationRequestEncodeError extends Error {
    }
 }
 
-function toUnprefixedBytes(value: any, type: string, size: number) {
+function toUnprefixedBytes(value: any, type: string, size: number, key: string) {
+   let bytes = "";  
    switch (type) {
       case "AttestationType":
-         return unPrefix0x(toHex(value as number, size));
+         bytes = unPrefix0x(toHex(value as number, size));
+         break;
       case "NumberLike":
-         return unPrefix0x(toHex(value, size));
+         bytes = unPrefix0x(toHex(value, size));
+         break;
       case "SourceId":
-         return unPrefix0x(toHex(value as number, size));
+         bytes = unPrefix0x(toHex(value as number, size));
+         break;
       case "ByteSequenceLike":
-         return unPrefix0x(toHex(value, size));
+         bytes =  unPrefix0x(toHex(value, size));
+         break;
       default:
-         throw new AttestationRequestEncodeError("Wrong type")
+         throw new AttestationRequestEncodeError("Wrong type");
    }
+   if(bytes.length > size * 2) {
+      throw new AttestationRequestEncodeError("Too long byte string for key: " + key);
+   }
+   return bytes; 
 }  
 
 export function encodePayment(request: ARPayment) {
@@ -61,13 +70,13 @@ export function encodePayment(request: ARPayment) {
       throw new AttestationRequestEncodeError("Missing 'dataAvailabilityProof'")
    }
    let bytes = "0x"
-   bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2);
-   bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4);
-   bytes += toUnprefixedBytes(request.blockNumber, "NumberLike", 4);
-   bytes += toUnprefixedBytes(request.utxo, "NumberLike", 1);
-   bytes += toUnprefixedBytes(request.inUtxo, "NumberLike", 1);
-   bytes += toUnprefixedBytes(request.id, "ByteSequenceLike", 32);
-   bytes += toUnprefixedBytes(request.dataAvailabilityProof, "ByteSequenceLike", 32);
+   bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2, "attestationType");
+   bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4, "sourceId");
+   bytes += toUnprefixedBytes(request.blockNumber, "NumberLike", 4, "blockNumber");
+   bytes += toUnprefixedBytes(request.utxo, "NumberLike", 1, "utxo");
+   bytes += toUnprefixedBytes(request.inUtxo, "NumberLike", 1, "inUtxo");
+   bytes += toUnprefixedBytes(request.id, "ByteSequenceLike", 32, "id");
+   bytes += toUnprefixedBytes(request.dataAvailabilityProof, "ByteSequenceLike", 32, "dataAvailabilityProof");
    return bytes;
 }
 
@@ -91,12 +100,12 @@ export function encodeBalanceDecreasingTransaction(request: ARBalanceDecreasingT
       throw new AttestationRequestEncodeError("Missing 'dataAvailabilityProof'")
    }
    let bytes = "0x"
-   bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2);
-   bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4);
-   bytes += toUnprefixedBytes(request.blockNumber, "NumberLike", 4);
-   bytes += toUnprefixedBytes(request.inUtxo, "NumberLike", 1);
-   bytes += toUnprefixedBytes(request.id, "ByteSequenceLike", 32);
-   bytes += toUnprefixedBytes(request.dataAvailabilityProof, "ByteSequenceLike", 32);
+   bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2, "attestationType");
+   bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4, "sourceId");
+   bytes += toUnprefixedBytes(request.blockNumber, "NumberLike", 4, "blockNumber");
+   bytes += toUnprefixedBytes(request.inUtxo, "NumberLike", 1, "inUtxo");
+   bytes += toUnprefixedBytes(request.id, "ByteSequenceLike", 32, "id");
+   bytes += toUnprefixedBytes(request.dataAvailabilityProof, "ByteSequenceLike", 32, "dataAvailabilityProof");
    return bytes;
 }
 
@@ -114,10 +123,10 @@ export function encodeConfirmedBlockHeightExists(request: ARConfirmedBlockHeight
       throw new AttestationRequestEncodeError("Missing 'dataAvailabilityProof'")
    }
    let bytes = "0x"
-   bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2);
-   bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4);
-   bytes += toUnprefixedBytes(request.blockNumber, "NumberLike", 4);
-   bytes += toUnprefixedBytes(request.dataAvailabilityProof, "ByteSequenceLike", 32);
+   bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2, "attestationType");
+   bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4, "sourceId");
+   bytes += toUnprefixedBytes(request.blockNumber, "NumberLike", 4, "blockNumber");
+   bytes += toUnprefixedBytes(request.dataAvailabilityProof, "ByteSequenceLike", 32, "dataAvailabilityProof");
    return bytes;
 }
 
@@ -150,15 +159,15 @@ export function encodeReferencedPaymentNonexistence(request: ARReferencedPayment
       throw new AttestationRequestEncodeError("Missing 'dataAvailabilityProof'")
    }
    let bytes = "0x"
-   bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2);
-   bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4);
-   bytes += toUnprefixedBytes(request.endTimestamp, "NumberLike", 4);
-   bytes += toUnprefixedBytes(request.endBlock, "NumberLike", 4);
-   bytes += toUnprefixedBytes(request.destinationAddress, "ByteSequenceLike", 32);
-   bytes += toUnprefixedBytes(request.amount, "NumberLike", 16);
-   bytes += toUnprefixedBytes(request.paymentReference, "ByteSequenceLike", 32);
-   bytes += toUnprefixedBytes(request.overflowBlock, "NumberLike", 4);
-   bytes += toUnprefixedBytes(request.dataAvailabilityProof, "ByteSequenceLike", 32);
+   bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2, "attestationType");
+   bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4, "sourceId");
+   bytes += toUnprefixedBytes(request.endTimestamp, "NumberLike", 4, "endTimestamp");
+   bytes += toUnprefixedBytes(request.endBlock, "NumberLike", 4, "endBlock");
+   bytes += toUnprefixedBytes(request.destinationAddress, "ByteSequenceLike", 32, "destinationAddress");
+   bytes += toUnprefixedBytes(request.amount, "NumberLike", 16, "amount");
+   bytes += toUnprefixedBytes(request.paymentReference, "ByteSequenceLike", 32, "paymentReference");
+   bytes += toUnprefixedBytes(request.overflowBlock, "NumberLike", 4, "overflowBlock");
+   bytes += toUnprefixedBytes(request.dataAvailabilityProof, "ByteSequenceLike", 32, "dataAvailabilityProof");
    return bytes;
 }
 
