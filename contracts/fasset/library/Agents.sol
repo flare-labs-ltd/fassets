@@ -344,6 +344,8 @@ library Agents {
             uint64 remainingDustAMG = agent.dustAMG % _state.settings.lotSizeAMG;
             _state.redemptionQueue.createRedemptionTicket(_agentVault, agent.dustAMG - remainingDustAMG);
             agent.dustAMG = remainingDustAMG;
+            uint256 dustUBA = Conversion.convertAmgToUBA(_state.settings, remainingDustAMG);
+            emit AMEvents.DustChanged(_agentVault, dustUBA);
         }
     }
     

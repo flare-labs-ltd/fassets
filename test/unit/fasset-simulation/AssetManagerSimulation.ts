@@ -69,9 +69,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
-            assert.equal(dustChangesUBA.length, 0);
+            assert.equal(dustChanges.length, 0);
             assert.equal(redemptionRequests.length, 1);
             for (const request of redemptionRequests) {
                 assert.equal(request.agentVault, agent.vaultAddress);
@@ -107,9 +107,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted2.mintedAmountUBA, { from: minter2.address });
             // perform redemption
-            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots2);
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots2);
             assertWeb3Equal(remainingLots, 0);
-            assert.equal(dustChangesUBA.length, 0);
+            assert.equal(dustChanges.length, 0);
             assert.equal(redemptionRequests.length, 1);
             for (const request of redemptionRequests) {
                 assert.equal(request.agentVault, agent.vaultAddress);
@@ -146,9 +146,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted2.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots2);
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots2);
             assertWeb3Equal(remainingLots, 0);
-            assert.equal(dustChangesUBA.length, 0);
+            assert.equal(dustChanges.length, 0);
             assert.equal(redemptionRequests.length, 2);
             const request1 = redemptionRequests[0];
             assert.equal(request1.agentVault, agent1.vaultAddress);
@@ -336,9 +336,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
-            assert.equal(dustChangesUBA.length, 0);
+            assert.equal(dustChanges.length, 0);
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
@@ -384,9 +384,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
-            assert.equal(dustChangesUBA.length, 0);
+            assert.equal(dustChanges.length, 0);
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
@@ -433,9 +433,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
-            assert.equal(dustChangesUBA.length, 0);
+            assert.equal(dustChanges.length, 0);
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
@@ -483,9 +483,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
-            assert.equal(dustChangesUBA.length, 0);
+            assert.equal(dustChanges.length, 0);
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
@@ -534,9 +534,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
-            assert.equal(dustChangesUBA.length, 0);
+            assert.equal(dustChanges.length, 0);
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
@@ -662,17 +662,73 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots, dustChangesUBA1] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChanges1] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 2);
-            assert.equal(dustChangesUBA1.length, 1);
+            assert.equal(dustChanges1.length, 1);
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             const dustAmountUBA = minted.mintedAmountUBA.sub(request.valueUBA);
-            assertWeb3Equal(dustChangesUBA1[0], dustAmountUBA);
+            assertWeb3Equal(dustChanges1[0].dustUBA, dustAmountUBA);
+            assert.equal(dustChanges1[0].agentVault, agent.agentVault.address);
             assert.equal(request.agentVault, agent.vaultAddress);
             const tx1Hash = await agent.performRedemptionPayment(request);
             await agent.confirmActiveRedemptionPayment(request, tx1Hash);
             // agent "buys" f-assets
+            await context.fAsset.transfer(agent.ownerAddress, dustAmountUBA, { from: redeemer.address });
+            // perform self close
+            const [dustChangesUBA2, selfClosedUBA] = await agent.selfClose(dustAmountUBA);
+            assertWeb3Equal(selfClosedUBA, dustAmountUBA);
+            assert.equal(dustChangesUBA2.length, 1);
+            assertWeb3Equal(dustChangesUBA2[0], 0);
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral);
+        });
+
+        it("mint and redeem f-assets - convert dust to tickets", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            // perform partial self close
+            const selfCloseAmountUBA = minted.mintedAmountUBA.sub(await context.convertLotsToUBA(1)).add(context.convertAmgToUBA(5));
+            // agent "buys" f-assets
+            await context.fAsset.transfer(agent.ownerAddress, selfCloseAmountUBA, { from: minter.address });
+            const [dustChangesUBA, selfClosedUBA1] = await agent.selfClose(selfCloseAmountUBA);
+            assertWeb3Equal(selfClosedUBA1, selfCloseAmountUBA);
+            assert.equal(dustChangesUBA.length, 1);
+            assertWeb3Equal(dustChangesUBA[0], minted.mintedAmountUBA.sub(selfCloseAmountUBA));
+            // change lot size
+            const currentSettings = await context.assetManager.getSettings();
+            await context.assetManagerController.setLotSizeAmg([context.assetManager.address], toBN(currentSettings.lotSizeAMG).divn(4), { from: governance });
+            // redeemer "buys" f-assets
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA.sub(selfCloseAmountUBA), { from: minter.address });
+            // perform redemption - no tickets
+            await expectRevert(redeemer.requestRedemption(3), "redeem 0 lots");
+            // convert dust to redemption tickets
+            const dustChangeUBA2 = await redeemer.convertDustToTickets(agent);
+            assertWeb3Equal(dustChangeUBA2, (await context.convertLotsToUBA(1)).sub(context.convertAmgToUBA(5)));
+            // perform redemption from new tickets
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(3);
+            assertWeb3Equal(remainingLots, 0);
+            assert.equal(dustChanges.length, 0);
+            assert.equal(redemptionRequests.length, 1);
+            const request = redemptionRequests[0];
+            assert.equal(request.agentVault, agent.vaultAddress);
+            const tx1Hash = await agent.performRedemptionPayment(request);
+            await agent.confirmActiveRedemptionPayment(request, tx1Hash);
+            // agent "buys" f-assets
+            const dustAmountUBA = minted.mintedAmountUBA.sub(selfCloseAmountUBA).sub(request.valueUBA);
             await context.fAsset.transfer(agent.ownerAddress, dustAmountUBA, { from: redeemer.address });
             // perform self close
             const [dustChangesUBA2, selfClosedUBA] = await agent.selfClose(dustAmountUBA);
@@ -703,9 +759,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
-            const [redemptionRequests, remainingLots, dustChangesUBA] = await redeemer.requestRedemption(lots);
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
-            assert.equal(dustChangesUBA.length, 0);
+            assert.equal(dustChanges.length, 0);
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
