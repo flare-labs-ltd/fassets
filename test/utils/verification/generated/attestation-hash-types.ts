@@ -10,7 +10,7 @@ export interface DHPayment {
    stateConnectorRound: number;
    merkleProof?: string[];
    
-   // Timestamp of the transaction block on the underlying chain.
+   // Number of the transaction block on the underlying chain.
    blockNumber: BN;
 
    // Timestamp of the transaction block on the underlying chain.

@@ -1,6 +1,6 @@
-import Web3 from "web3";
 import BN from "bn.js";
 import glob from "glob";
+import Web3 from "web3";
 import { AttestationTypeScheme, NumberLike, SupportedSolidityType, WeightedRandomChoice } from "./attestation-types";
 
 const toBN = Web3.utils.toBN;
@@ -90,21 +90,57 @@ export function randomWeightedChoice<T>(choices: WeightedRandomChoice<T>[]): T {
 
 
 export async function getAttTypesDefinitionFiles(): Promise<string[]> {
+
+  const pattern = `t-*.${process.env.NODE_ENV === "development" ? "ts" : "js"}`;
+
   return new Promise((resolve, reject) => {
-     glob(`t-*.ts`, { cwd: ATT_TYPE_DEFINITIONS_ROOT }, (er: any, files: string[] | null) => {
-        if (er) {
-           reject(er);
-        } else {
-           if (files) {
-              files.sort();
-           }
-           resolve(files || []);
+    glob(pattern, { cwd: ATT_TYPE_DEFINITIONS_ROOT }, (er: any, files: string[] | null) => {
+      if (er) {
+        reject(er);
+      } else {
+        if (files) {
+          files.sort();
         }
-     });
+        resolve(files || []);
+      }
+    });
   });
 }
 
 export async function readAttestationTypeSchemes(): Promise<AttestationTypeScheme[]> {
   let names = await getAttTypesDefinitionFiles();
   return names.map(name => require(`../attestation-types/${name}`).TDEF as AttestationTypeScheme)
+}
+
+export function toHex(x: string | number | BN, padToBytes?: number) {
+  if (padToBytes as any > 0) {
+    return Web3.utils.leftPad(Web3.utils.toHex(x), padToBytes! * 2);
+  }
+  return Web3.utils.toHex(x);
+}
+
+export function prefix0x(tx: string) {
+  return tx.startsWith("0x") ? tx : "0x" + tx;
+}
+
+export function hexlifyBN(obj: any): any {
+  const isHexReqex = /^[0-9A-Fa-f]+$/
+  if(obj?.mul) {
+     return prefix0x(toHex(obj));
+  }
+  if(Array.isArray(obj)) {
+     return (obj as any[]).map(item => hexlifyBN(item));
+  }
+  if(typeof obj === "object") {
+     let res = {} as any;
+     for(let key of Object.keys(obj)) {
+        let value = obj[key];
+        res[key] = hexlifyBN(value);
+     }   
+     return res;      
+  }
+  if(typeof obj === "string" && obj.match(isHexReqex)){
+    return prefix0x(obj);
+  }
+  return obj
 }
