@@ -35,7 +35,7 @@ export class Minter extends AssetContextClient {
     
     async performMintingPayment(crt: EventArgs<CollateralReserved>) {
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
-        return this.wallet.addTransaction(this.underlyingAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        return this.performPayment(crt.paymentAddress, paymentAmount, crt.paymentReference);
     }
     
     async executeMinting(crt: EventArgs<CollateralReserved>, transactionHash: string) {
@@ -46,5 +46,9 @@ export class Minter extends AssetContextClient {
 
     async getCollateralReservationFee(lots: BNish) {
         return await this.assetManager.collateralReservationFee(lots);
+    }
+
+    async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null) {
+        return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference);
     }
 }

@@ -1,6 +1,6 @@
 import { time } from "@openzeppelin/test-helpers";
 import { AgentVaultInstance } from "../../../typechain-truffle";
-import { AllowedPaymentAnnounced, CollateralReserved, LiquidationCancelled, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { AllowedPaymentAnnounced, CollateralReserved, LiquidationCancelled, RedemptionDefault, RedemptionFinished, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { checkEventNotEmited, eventArgs, EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
@@ -177,9 +177,9 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'RedemptionDefault');
     }
 
-    async finishRedemptionWithoutPayment(request: EventArgs<RedemptionRequested>) {
+    async finishRedemptionWithoutPayment(request: EventArgs<RedemptionRequested>): Promise<[redemptionFinished: EventArgs<RedemptionFinished>, redemptionDefault: EventArgs<RedemptionDefault>]> {
         const res = await this.assetManager.finishRedemptionWithoutPayment(request.requestId, { from: this.ownerAddress });
-        return requiredEventArgs(res, 'RedemptionFinished');
+        return [eventArgs(res, 'RedemptionFinished'), eventArgs(res, "RedemptionDefault")];
     }
 
     async getRedemptionPaymentDefaultValue(lots: BNish) {
@@ -214,6 +214,10 @@ export class Agent extends AssetContextClient {
             crt.lastUnderlyingTimestamp.toNumber());
         const res = await this.assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: this.ownerAddress });
         return requiredEventArgs(res, 'MintingPaymentDefault');
+    }
+
+    async unstickMinting(crt: EventArgs<CollateralReserved>) {
+        await this.assetManager.unstickMinting(crt.collateralReservationId, { from: this.ownerAddress });
     }
 
     async selfMint(amountUBA: BNish, lots: BNish) {
