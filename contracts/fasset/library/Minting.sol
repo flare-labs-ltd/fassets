@@ -29,7 +29,7 @@ library Minting {
         CollateralReservations.CollateralReservation storage crt = 
             CollateralReservations.getCollateralReservation(_state, _crtId);
         _minter = crt.minter;
-        _mintValueUBA = crt.underlyingValueUBA;
+        _mintValueUBA = Conversion.convertAmgToUBA(_state.settings, crt.valueAMG);
         address agentVault = crt.agentVault;
         Agents.Agent storage agent = Agents.getAgent(_state, agentVault);
         // verify transaction
@@ -45,10 +45,10 @@ library Minting {
             "minting payment failed");
         require(_payment.receivingAddress == agent.underlyingAddressHash, 
             "not minting agent's address");
-        require(_payment.receivedAmount >= uint256(crt.underlyingValueUBA) + crt.underlyingFeeUBA,
+        require(_payment.receivedAmount >= _mintValueUBA + crt.underlyingFeeUBA,
             "minting payment too small");
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, crt.valueAMG);
-        uint256 receivedFeeUBA = _payment.receivedAmount - crt.underlyingValueUBA;
+        uint256 receivedFeeUBA = _payment.receivedAmount - _mintValueUBA;
         emit AMEvents.MintingExecuted(agentVault, _crtId, redemptionTicketId, _mintValueUBA, receivedFeeUBA);
         Agents.allocateMintedAssets(_state, agentVault, crt.valueAMG);
         UnderlyingFreeBalance.increaseFreeBalance(_state, agentVault, receivedFeeUBA);
