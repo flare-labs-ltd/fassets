@@ -770,6 +770,16 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         Agents.buybackAgentCollateral(state, _agentVault);
     }
 
+    /**
+     * True if asset manager is paused.
+     */    
+    function paused()
+        external view
+        returns (bool)
+    {
+        return state.pausedAt != 0;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Other
 

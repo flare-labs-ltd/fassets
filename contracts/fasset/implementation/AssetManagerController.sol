@@ -233,6 +233,38 @@ contract AssetManagerController is Governed, AddressUpdatable {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_ATTESTATION_WINDOW_SECONDS, abi.encode(_value));
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Upgrade (second phase)
+
+    /**
+     * When asset manager is paused, no new minting can be made.
+     * All other operations continue normally.
+     */
+    function pause(AssetManager[] calldata _assetManagers)
+        external
+        onlyGovernance
+    {
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _assetManagers[i].pause();
+        }
+    }
+    
+    /**
+     * When f-asset is stopped, no transfers can be made anymore.
+     * This is an extreme measure to be used only when the asset manager minting has been already paused
+     * for a long time but there still exist unredeemable f-assets. In such case, the f-asset contract is
+     * stopped and then agents can buy back the collateral at market rate (i.e. they burn market value
+     * of backed f-assets in collateral to release the rest of the collateral).
+     */
+    function stopFAsset(AssetManager[] calldata _assetManagers) 
+        external
+        onlyGovernance
+    {
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _assetManagers[i].stopFAsset();
+        }
+    }
     
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Update contracts
