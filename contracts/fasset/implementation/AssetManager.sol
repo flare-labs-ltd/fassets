@@ -24,6 +24,7 @@ import "../library/Challenges.sol";
 import "../library/Liquidation.sol";
 import "../library/AllowedPaymentAnnouncement.sol";
 import "../library/UnderlyingFreeBalance.sol";
+import "../library/FullAgentInfo.sol";
 
 
 /**
@@ -181,9 +182,9 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         address _agentVault
     )
         external view
-        returns (AvailableAgents.AgentInfo memory)
+        returns (FullAgentInfo.AgentInfo memory)
     {
-        return AvailableAgents.getAgentInfo(state, _agentVault);
+        return FullAgentInfo.getAgentInfo(state, _agentVault);
     }
 
     /**
