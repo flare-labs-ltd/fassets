@@ -233,7 +233,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.exitAndDestroy(fullAgentCollateral.add(crFee));
         });
         
-        it("mint unstick  - no underlying payment", async () => {
+        it("mint unstick - no underlying payment", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
@@ -780,6 +780,80 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(endBalance.sub(startBalance), context.settings.confirmationByOthersRewardNATWei);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)));
+        });
+        
+        it("mint and redeem f-assets - pause, stopFAsset, buybackAgentCollateral", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter1 = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const minter2 = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000)
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots1 = 3;
+            const crt1 = await minter1.reserveCollateral(agent.vaultAddress, lots1);
+            const tx1Hash = await minter1.performMintingPayment(crt1);
+            const minted1 = await agent.executeMinting(crt1, tx1Hash);
+            assertWeb3Equal(minted1.mintedAmountUBA, await context.convertLotsToUBA(lots1));
+            const lots2 = 6;
+            const crt2 = await minter2.reserveCollateral(agent.vaultAddress, lots2);
+            const tx2Hash = await minter2.performMintingPayment(crt2);
+            // pause asset manager
+            await context.assetManagerController.pause([context.assetManager.address], {from: governance});
+            assert.isTrue(await context.assetManager.paused());
+            // existing minting can be executed, new minting is not possible
+            const minted2 = await agent.executeMinting(crt2, tx2Hash, minter2);
+            await expectRevert(minter1.reserveCollateral(agent.vaultAddress, lots1), "minting paused");
+            await expectRevert(agent.selfMint(await context.convertLotsToUBA(lots1), lots1), "minting paused");
+            // agent and redeemer "buys" f-assets
+            await context.fAsset.transfer(agent.ownerAddress, minted1.mintedAmountUBA, { from: minter1.address });
+            await context.fAsset.transfer(redeemer.address, minted2.mintedAmountUBA, { from: minter2.address });
+            // perform redemption
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots2 / 2);
+            assertWeb3Equal(remainingLots, 0);
+            assert.equal(dustChanges.length, 0);
+            assert.equal(redemptionRequests.length, 1);
+            for (const request of redemptionRequests) {
+                assert.equal(request.agentVault, agent.vaultAddress);
+                const txHash = await agent.performRedemptionPayment(request);
+                await agent.confirmActiveRedemptionPayment(request, txHash);
+            }
+            // perform self close
+            const [dustChanges1, selfClosedUBA] = await agent.selfClose(minted1.mintedAmountUBA);
+            assertWeb3Equal(selfClosedUBA, minted1.mintedAmountUBA);
+            assert.equal(dustChanges1.length, 0);
+            // stop FAsset
+            await expectRevert(agent.buybackAgentCollateral(), "f-asset not terminated");
+            await expectRevert(context.assetManagerController.terminate([context.assetManager.address], {from: governance}), "asset manager not paused enough");
+            await time.increase(30 * DAYS);
+            const [redemptionRequests2, remainingLots2, dustChanges2] = await redeemer.requestRedemption(1);
+            assertWeb3Equal(remainingLots2, 0);
+            assert.equal(dustChanges2.length, 0);
+            assert.equal(redemptionRequests2.length, 1);
+            await context.assetManagerController.terminate([context.assetManager.address], {from: governance});
+            // check that new redemption is not possible anymore, but started one can finish
+            await expectRevert(redeemer.requestRedemption(lots2 / 3), "f-asset terminated");
+            for (const request of redemptionRequests2) {
+                assert.equal(request.agentVault, agent.vaultAddress);
+                const txHash = await agent.performRedemptionPayment(request);
+                await agent.confirmActiveRedemptionPayment(request, txHash);
+            }
+            // buybackAgentCollateral
+            const burnAddress = (await context.assetManager.getSettings()).burnAddress;
+            const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
+            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            await agent.buybackAgentCollateral();
+            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
+            const buybackAgentCollateralValue = await agent.getBuybackAgentCollateralValue(minted2.mintedAmountUBA.divn(3));
+            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), buybackAgentCollateralValue);
+            assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), buybackAgentCollateralValue);
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral.sub(buybackAgentCollateralValue));
         });
 
         it("collateral withdrawal", async () => {

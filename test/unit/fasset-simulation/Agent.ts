@@ -266,4 +266,19 @@ export class Agent extends AssetContextClient {
         const res = await this.assetManager.cancelLiquidation(this.vaultAddress, { from: this.ownerAddress });
         assert.equal(requiredEventArgs(res, 'LiquidationCancelled').agentVault, this.vaultAddress);
     }
+
+    async buybackAgentCollateral() {
+        await this.assetManager.buybackAgentCollateral(this.agentVault.address, { from: this.ownerAddress });
+    }
+
+    async getBuybackAgentCollateralValue(mintedUBA: BNish, reservedUBA: BNish = 0) {
+        const mintedAMG = this.context.convertUBAToAmg(mintedUBA);
+        const reservedAMG = this.context.convertUBAToAmg(reservedUBA);
+        return this.context.convertAmgToNATWei(
+                toBN(mintedAMG.add(reservedAMG))
+                .mul(toBN(this.context.settings.buybackCollateralFactorBIPS))
+                .divn(10_000),
+                await this.context.currentAmgToNATWeiPrice()
+            );
+    }
 }
