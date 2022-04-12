@@ -23,7 +23,6 @@ library Liquidation {
     using SafePct for uint256;
     using SafeBips for uint256;
     using SafeBips for uint64;
-    using AgentCollateral for AgentCollateral.Data;
     
     // Start collateral ratio based agent's liquidation (Agents.AgentStatus.LIQUIDATION)
     function startLiquidation(
@@ -33,7 +32,7 @@ library Liquidation {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        (uint256 collateralRatio,,) = _getCollateralRatio(_state, agent, _agentVault);
+        (uint256 collateralRatio,,) = getCollateralRatio(_state, agent, _agentVault);
         _upgradeLiquidationPhase(_state, agent, _agentVault, collateralRatio);
     }
 
@@ -48,7 +47,7 @@ library Liquidation {
         returns (uint256)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        (uint256 collateralRatio, uint256 amgToNATWeiPrice,) = _getCollateralRatio(_state, agent, _agentVault);
+        (uint256 collateralRatio, uint256 amgToNATWeiPrice,) = getCollateralRatio(_state, agent, _agentVault);
         // allow one-step liquidation (without calling startLiquidation first)
         Agents.LiquidationPhase currentPhase = _upgradeLiquidationPhase(_state, agent, _agentVault, collateralRatio);
         require(currentPhase == Agents.LiquidationPhase.LIQUIDATION, "not in liquidation");
@@ -95,7 +94,7 @@ library Liquidation {
         if (agent.status == Agents.AgentStatus.FULL_LIQUIDATION
             || agent.status == Agents.AgentStatus.DESTROYING) return;
         // if current phase is not LIQUIDATION, restart in LIQUIDATION phase
-        Agents.LiquidationPhase currentPhase = _currentLiquidationPhase(_state, agent);
+        Agents.LiquidationPhase currentPhase = currentLiquidationPhase(_state, agent);
         if (currentPhase != Agents.LiquidationPhase.LIQUIDATION) {
             agent.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
             agent.initialLiquidationPhase = Agents.LiquidationPhase.LIQUIDATION;
@@ -126,9 +125,9 @@ library Liquidation {
         // can only stop plain liquidation (full liquidation can only stop when there are no more minted assets)
         if (_agent.status != Agents.AgentStatus.LIQUIDATION) return;
         // agent's current collateral ratio
-        (uint256 collateralRatioBIPS,,) = _getCollateralRatio(_state, _agent, _agentVault);
+        (uint256 collateralRatioBIPS,,) = getCollateralRatio(_state, _agent, _agentVault);
         // target collateral ratio is minCollateralRatio for CCB and safetyMinCollateralRatio for LIQUIDATION
-        Agents.LiquidationPhase currentPhase = _currentLiquidationPhase(_state, _agent);
+        Agents.LiquidationPhase currentPhase = currentLiquidationPhase(_state, _agent);
         uint256 targetRatioBIPS = currentPhase == Agents.LiquidationPhase.CCB
             ? _state.settings.minCollateralRatioBIPS : _state.settings.safetyMinCollateralRatioBIPS;
         // if agent is safe, restore status to NORMAL
@@ -152,7 +151,7 @@ library Liquidation {
         private
         returns (Agents.LiquidationPhase)
     {
-        Agents.LiquidationPhase currentPhase = _currentLiquidationPhase(_state, agent);
+        Agents.LiquidationPhase currentPhase = currentLiquidationPhase(_state, agent);
         // if current phase is already LIQUIDATION, no upgrade is needed
         if (currentPhase == Agents.LiquidationPhase.LIQUIDATION || agent.status == Agents.AgentStatus.DESTROYING) {
             return currentPhase;
@@ -188,11 +187,11 @@ library Liquidation {
     
     // Current liquidation phase (assumed that liquidation was started in some previous transaction,
     // so the result only depends on time, not on current collateral ratio)
-    function _currentLiquidationPhase(
+    function currentLiquidationPhase(
         AssetManagerState.State storage _state,
         Agents.Agent storage agent
     )
-        private view
+        internal view
         returns (Agents.LiquidationPhase)
     {
         Agents.AgentStatus status = agent.status;
@@ -263,12 +262,12 @@ library Liquidation {
     // The collateral ratio for deciding whether agent is in liquidation or CCB is the maximum
     // of the ratio calculated from FTSO price and the ratio calculated from trusted voters' price.
     // In this way, liquidation due to bad FTSO providers bunching together is less likely.
-    function _getCollateralRatio(
+    function getCollateralRatio(
         AssetManagerState.State storage _state,
         Agents.Agent storage _agent,
         address _agentVault
     )
-        private view
+        internal view
         returns (uint256 _collateralRatio, uint256 _amgToNATWeiPrice, uint256 _amgToNATWeiPriceTrusted)
     {
         uint256 fullCollateral = Agents.fullCollateral(_state, _agentVault);

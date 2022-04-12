@@ -30,7 +30,7 @@ library Agents {
     
     enum AgentStatus {
         NORMAL,
-        LIQUIDATION,        // CCB or liquidation due to CR - ends when agent is
+        LIQUIDATION,        // CCB or liquidation due to CR - ends when agent is healthy
         FULL_LIQUIDATION,   // illegal payment liquidation - must liquidate all and close vault
         DESTROYING          // agent announced destroy, cannot mint again
     }
