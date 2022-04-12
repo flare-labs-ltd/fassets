@@ -19,16 +19,15 @@ library CollateralReservations {
     using AgentCollateral for AgentCollateral.Data;
     
     struct CollateralReservation {
-        uint128 underlyingValueUBA;
-        uint128 underlyingFeeUBA;
+        uint64 valueAMG;
         uint64 firstUnderlyingBlock;
         uint64 lastUnderlyingBlock;
         uint64 lastUnderlyingTimestamp;
-        address agentVault;
-        uint64 valueAMG;
-        address minter;
+        uint128 underlyingFeeUBA;
         uint128 reservationFeeNatWei;
+        address agentVault;
         uint64 timestamp;
+        address minter;
     }
     
     function reserveCollateral(
@@ -58,15 +57,14 @@ library CollateralReservations {
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({
-            underlyingValueUBA: SafeCast.toUint128(underlyingValueUBA),
-            underlyingFeeUBA: SafeCast.toUint128(underlyingFeeUBA),
-            agentVault: _agentVault,
             valueAMG: valueAMG,
+            underlyingFeeUBA: SafeCast.toUint128(underlyingFeeUBA),
+            reservationFeeNatWei: SafeCast.toUint128(reservationFee),
+            agentVault: _agentVault,
             minter: _minter,
             firstUnderlyingBlock: _state.currentUnderlyingBlock,
             lastUnderlyingBlock: lastUnderlyingBlock,
             lastUnderlyingTimestamp: lastUnderlyingTimestamp,
-            reservationFeeNatWei: SafeCast.toUint128(reservationFee),
             timestamp: SafeCast.toUint64(block.timestamp)
         });
         string storage paymentAddress = agent.underlyingAddressString;
@@ -92,9 +90,10 @@ library CollateralReservations {
         Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
         // check requirements
         TransactionAttestation.verifyReferencedPaymentNonexistence(_state.settings, _nonPayment);
+        uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, crt.valueAMG);
         require(_nonPayment.paymentReference == PaymentReference.minting(_crtId) &&
             _nonPayment.destinationAddress == agent.underlyingAddressHash &&
-            _nonPayment.amount == crt.underlyingValueUBA + crt.underlyingFeeUBA,
+            _nonPayment.amount == underlyingValueUBA + crt.underlyingFeeUBA,
             "minting non-payment mismatch");
         require(_nonPayment.firstOverflowBlock > crt.lastUnderlyingBlock && 
             _nonPayment.firstOverflowBlockTimestamp > crt.lastUnderlyingTimestamp, 
