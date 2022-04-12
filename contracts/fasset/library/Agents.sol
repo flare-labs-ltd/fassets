@@ -195,7 +195,7 @@ library Agents {
     )
         external
     {
-        // check that fAsset is stopped is in AssetManager
+        // check that fAsset is terminated is in AssetManager
         Agent storage agent = getAgent(_state, _agentVault);
         requireAgentVaultOwner(_agentVault);
         // Types of various collateral types:
@@ -203,7 +203,7 @@ library Agents {
         //   reservation requests must have been minted or defaulted by now.
         //   However, it may be nonzero due to some forgotten payment proof, so we burn and clear it.
         // - redeemingAMG corresponds to redemptions where f-assets were already burned, so the redemption can
-        //   finish normally even if f-asset is now stopped
+        //   finish normally even if f-asset is now terminated
         //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
         // - mintedAMG must be burned and cleared
         uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;

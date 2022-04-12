@@ -741,25 +741,25 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
     
     /**
-     * When f-asset is stopped, no transfers can be made anymore.
+     * When f-asset is terminated, no transfers can be made anymore.
      * This is an extreme measure to be used only when the asset manager minting has been already paused
      * for a long time but there still exist unredeemable f-assets. In such case, the f-asset contract is
-     * stopped and then agents can buy back the collateral at market rate (i.e. they burn market value
+     * terminated and then agents can buy back the collateral at market rate (i.e. they burn market value
      * of backed f-assets in collateral to release the rest of the collateral).
      */
-    function stopFAsset() 
+    function terminate()
         external
         onlyAssetManagerController
     {
         require(state.pausedAt != 0 && block.timestamp > state.pausedAt + MINIMUM_PAUSE_BEFORE_STOP,
             "asset manager not paused enough");
-        fAsset.stop();
+        fAsset.terminate();
     }
     
     /**
-     * When f-asset is stopped, agent can burn the market price of backed f-assets with his collateral,
+     * When f-asset is terminated, agent can burn the market price of backed f-assets with his collateral,
      * to release the remaining collateral (and, formally, underlying assets).
-     * This method ONLY works when f-asset is stopped, which will only be done when AssetManager is already paused
+     * This method ONLY works when f-asset is terminated, which will only be done when AssetManager is already paused
      * at least for a month and most f-assets are already burned and the only ones remaining are unrecoverable.
      */
     function buybackAgentCollateral(
@@ -767,7 +767,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        require(fAsset.stopped(), "f-asset not stopped");
+        require(fAsset.terminated(), "f-asset not terminated");
         Agents.buybackAgentCollateral(state, _agentVault);
     }
 

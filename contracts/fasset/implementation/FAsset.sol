@@ -12,17 +12,17 @@ contract FAsset is IFAsset, VPToken {
     address public override assetManager;
     
     /**
-     * Nonzero if f-asset is stopped (in that case it's value is stop timestamp).
+     * Nonzero if f-asset is terminated (in that case it's value is terminate timestamp).
      * Stopped f-asset can never be re-enabled.
      *
-     * When f-asset is stopped, no transfers can be made anymore.
+     * When f-asset is terminated, no transfers can be made anymore.
      * This is an extreme measure to be used as an optional last phase of asset manager upgrade,
      * when the asset manager minting has already been paused for a long time but there still exist 
      * unredeemable f-assets, which at this point are considered unrecoverable (lost wallet keys etc.). 
-     * In such case, the f-asset contract is stopped and then agents can buy back their collateral at market rate
+     * In such case, the f-asset contract is terminated and then agents can buy back their collateral at market rate
      * (i.e. they burn market value of backed f-assets in collateral to release the rest of the collateral).
      */
-    uint64 public stoppedAt = 0;
+    uint64 public terminatedAt = 0;
     
     modifier onlyAssetManager {
         require(msg.sender == assetManager, "only asset manager");
@@ -76,30 +76,30 @@ contract FAsset is IFAsset, VPToken {
     }
     
     /**
-     * Stops all transfers by setting `stopped` flag to true.
-     * Only the assetManager corresponding to this fAsset may call `stop()`.
+     * Stops all transfers by setting `terminated` flag to true.
+     * Only the assetManager corresponding to this fAsset may call `terminate()`.
      * Stop is irreversible.
      */    
-    function stop()
+    function terminate()
         external override
         onlyAssetManager
     {
-        stoppedAt = uint64(block.timestamp);    // safe, block timestamp can never exceed 64bit
+        terminatedAt = uint64(block.timestamp);    // safe, block timestamp can never exceed 64bit
     }
 
     /**
-     * True if f-asset is stopped.
+     * True if f-asset is terminated.
      */    
-    function stopped()
+    function terminated()
         external view override
         returns (bool)
     {
-        return stoppedAt != 0;
+        return terminatedAt != 0;
     }
     
 
     /**
-     * Prevent transfer if f-asset is stopped.
+     * Prevent transfer if f-asset is terminated.
      */
     function _beforeTokenTransfer(
         address _from, 
@@ -109,7 +109,7 @@ contract FAsset is IFAsset, VPToken {
         internal
         override (VPToken)
     {
-        require(stoppedAt == 0, "f-asset stopped");
+        require(terminatedAt == 0, "f-asset terminated");
         VPToken._beforeTokenTransfer(_from, _to, _amount);
     }
 }

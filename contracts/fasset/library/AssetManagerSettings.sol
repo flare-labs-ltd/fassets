@@ -168,7 +168,7 @@ library AssetManagerSettings {
         // immutable
         uint64 minUpdateRepeatTimeSeconds;
         
-        // Ratio at which the agents can buy back their collateral when f-asset is stopped.
+        // Ratio at which the agents can buy back their collateral when f-asset is terminated.
         // Typically a bit more than 1 to incentivise agents to buy f-assets and self-close instead.
         // immutable
         uint64 buybackCollateralFactorBIPS;
