@@ -12,6 +12,12 @@ import "../library/AssetManagerSettings.sol";
 import "../library/SettingsUpdater.sol";
 
 contract AssetManagerController is Governed, AddressUpdatable {
+    // New address in case this controller was replaced.
+    // Note: this code contains no checks that replacedBy==0, because when replaced,
+    // all calls to AssetManager's updateSettings/pause/terminate will fail anyway
+    // since they will arrive from wrong controller address.
+    address public replacedBy;
+    
     mapping(address => uint256) private assetManagerIndex;
     IAssetManager[] private assetManagers;
     
@@ -304,6 +310,10 @@ contract AssetManagerController is Governed, AddressUpdatable {
             assetManager.updateSettings(
                 SettingsUpdater.UPDATE_CONTRACTS, 
                 abi.encode(assetManagerController, attestationClient, ftsoRegistry, wNat));
+        }
+        // if this controller was replaced, set forwarding address
+        if (assetManagerController != address(this)) {
+            replacedBy = assetManagerController;
         }
     }
 
