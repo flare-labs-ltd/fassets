@@ -123,22 +123,4 @@ library AvailableAgents {
             });
         }
     }
-    
-    function getAgentInfo(
-        AssetManagerState.State storage _state, 
-        address _agentVault
-    )
-        external view
-        returns (AgentInfo memory)
-    {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
-        uint256 agentCR = Math.max(agent.agentMinCollateralRatioBIPS, _state.settings.minCollateralRatioBIPS);
-        return AgentInfo({
-            agentVault: _agentVault,
-            feeBIPS: agent.feeBIPS,
-            agentMinCollateralRatioBIPS: agentCR,
-            freeCollateralLots: collateralData.freeCollateralLots(agent, _state.settings)
-        });
-    }
 }
