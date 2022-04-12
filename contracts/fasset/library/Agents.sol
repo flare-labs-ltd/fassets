@@ -50,15 +50,6 @@ library Agents {
         // for matching payment addresses we always use `underlyingAddressHash = keccak256(underlyingAddressString)`
         bytes32 underlyingAddressHash;
         
-        // For agents to withdraw NAT collateral, they must first announce it and then wait 
-        // withdrawalAnnouncementSeconds. 
-        // The announced amount cannt be used as collateral for minting during that time.
-        // This makes sure that agents cannot just remove all collateral if they are challenged.
-        uint128 withdrawalAnnouncedNATWei;
-        
-        // The time when withdrawal was announced.
-        uint64 withdrawalAnnouncedAt;
-        
         // Amount of collateral locked by collateral reservation.
         uint64 reservedAMG;
         
@@ -87,10 +78,6 @@ library Agents {
         // but it must always be greater than minimum collateral ratio.
         uint32 agentMinCollateralRatioBIPS;
         
-        // Current status of the agent (changes for liquidation).
-        AgentType agentType;
-        AgentStatus status;
-
         // Timestamp of the startLiquidation call.
         // If the agent's CR is above ccbCR, agent is put into CCB state for a while.
         // However, if the agent's CR falls below ccbCR before ccb time expires, anyone can call startLiquidation
@@ -98,6 +85,12 @@ library Agents {
         // initialLiquidationPhase are reset to new values).
         uint64 liquidationStartedAt;
         
+        // agent's type; EMPTY if agent doesn't exists
+        AgentType agentType;
+        
+        // Current status of the agent (changes for liquidation).
+        AgentStatus status;
+
         // Liquidation phase at the time when liquidation started.
         LiquidationPhase initialLiquidationPhase;
         
@@ -110,6 +103,15 @@ library Agents {
         // This variable holds the id, or 0 if there is no announced payment going on.
         uint64 ongoingAnnouncedPaymentId;
         uint64 ongoingAnnouncedPaymentTimestamp;
+        
+        // For agents to withdraw NAT collateral, they must first announce it and then wait 
+        // withdrawalAnnouncementSeconds. 
+        // The announced amount cannt be used as collateral for minting during that time.
+        // This makes sure that agents cannot just remove all collateral if they are challenged.
+        uint128 withdrawalAnnouncedNATWei;
+        
+        // The time when withdrawal was announced.
+        uint64 withdrawalAnnouncedAt;
     }
     
     function claimAddressWithEOAProof(
