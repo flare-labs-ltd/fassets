@@ -88,7 +88,11 @@ library Minting {
             "self-mint payment too small");
         _state.paymentConfirmations.confirmIncomingPayment(_payment);
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(_agentVault, valueAMG);
-        emit AMEvents.MintingExecuted(_agentVault, 0, redemptionTicketId, _mintValueUBA, 0);
+        uint256 receivedFeeUBA = _payment.receivedAmount - _mintValueUBA;
+        emit AMEvents.MintingExecuted(_agentVault, 0, redemptionTicketId, _mintValueUBA, receivedFeeUBA);
         Agents.allocateMintedAssets(_state, _agentVault, valueAMG);
+        if (receivedFeeUBA > 0) {
+            UnderlyingFreeBalance.increaseFreeBalance(_state, _agentVault, receivedFeeUBA);
+        }
     }
 }

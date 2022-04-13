@@ -98,7 +98,8 @@ library FullAgentInfo {
         _agentState.underlyingAddressString = agent.underlyingAddressString;
         _agentState.publiclyAvailable = agent.availableAgentsPos != 0;
         _agentState.feeBIPS = agent.feeBIPS;
-        _agentState.agentMinCollateralRatioBIPS = agent.agentMinCollateralRatioBIPS;
+        _agentState.agentMinCollateralRatioBIPS = 
+            Math.max(agent.agentMinCollateralRatioBIPS, _state.settings.minCollateralRatioBIPS);
         _agentState.totalCollateralNATWei = Agents.fullCollateral(_state, _agentVault);
         _agentState.freeCollateralNATWei = collateralData.freeCollateralWei(agent, _state.settings);
         (_agentState.collateralRatioBIPS,,) = Liquidation.getCollateralRatio(_state, agent, _agentVault);
