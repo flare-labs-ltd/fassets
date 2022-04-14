@@ -112,6 +112,11 @@ library Agents {
         
         // The time when withdrawal was announced.
         uint64 withdrawalAnnouncedAt;
+        
+        // Underlying block when the agent was created.
+        // Challenger's should track underlying address activity since this block
+        // and topups are only valid after this block (both inclusive).
+        uint64 underlyingBlockAtCreation;
     }
     
     function claimAddressWithEOAProof(
@@ -122,11 +127,6 @@ library Agents {
     {
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         require(_payment.sourceAddress != 0, "missing source address");
-        // check that address is not used already (claimWithProof allows it if the owner stays the same,
-        // but that allows this method to be abused for illegal payments out of the agent's underlying address)
-        require(_state.underlyingAddressOwnership.ownerOf(_payment.sourceAddress) == address(0), 
-            "address already claimed");
-        // claim the address if payment proves msg.sender's ownership
         _state.underlyingAddressOwnership.claimWithProof(_payment, _state.paymentConfirmations, 
             msg.sender, _payment.sourceAddress);
     }
@@ -156,6 +156,8 @@ library Agents {
             _state.settings.requireEOAAddressProof);
         agent.underlyingAddressString = _underlyingAddressString;
         agent.underlyingAddressHash = underlyingAddressHash;
+        uint64 eoaProofBlock = _state.underlyingAddressOwnership.underlyingBlockOfEOAProof(underlyingAddressHash);
+        agent.underlyingBlockAtCreation = SafeMath64.max64(_state.currentUnderlyingBlock, eoaProofBlock + 1);
         emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), _agentVault, _underlyingAddressString);
     }
     

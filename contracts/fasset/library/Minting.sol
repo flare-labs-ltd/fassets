@@ -86,6 +86,8 @@ library Minting {
             "self-mint not agent's address");
         require(_payment.receivedAmount >= _mintValueUBA, 
             "self-mint payment too small");
+        require(_payment.blockNumber >= agent.underlyingBlockAtCreation,
+            "self-mint payment too old");
         _state.paymentConfirmations.confirmIncomingPayment(_payment);
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(_agentVault, valueAMG);
         uint256 receivedFeeUBA = _payment.receivedAmount - _mintValueUBA;

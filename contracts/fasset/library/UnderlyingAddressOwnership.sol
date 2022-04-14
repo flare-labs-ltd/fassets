@@ -10,7 +10,9 @@ library UnderlyingAddressOwnership {
     struct Ownership {
         address owner;
         
-        // there was a payment proof indicating this is externally owned account
+        // if not 0, there was a payment proof indicating this is externally owned account
+        uint64 underlyingBlockOfEOAProof;
+        
         bool provedEOA;
     }
     
@@ -27,7 +29,14 @@ library UnderlyingAddressOwnership {
     ) 
         internal 
     {
-        Ownership storage ownership = _claim(_state, _owner, _underlyingAddressHash, false);
+        Ownership storage ownership = _state.ownership[_underlyingAddressHash];
+        if (ownership.owner == address(0)) {
+            ownership.owner = _owner;
+            ownership.provedEOA = false;
+            ownership.underlyingBlockOfEOAProof = 0;
+        } else {
+            require(ownership.owner == _owner, "address already claimed");
+        }
         require(!_requireEOA || ownership.provedEOA, "EOA proof required");
     }
     
@@ -40,41 +49,24 @@ library UnderlyingAddressOwnership {
     )
         internal
     {
+        Ownership storage ownership = _state.ownership[_underlyingAddressHash];
+        require(ownership.owner == address(0), "address already claimed");
         bool proofValid = _payment.sourceAddress == _underlyingAddressHash
             && _payment.paymentReference == PaymentReference.addressOwnership(_owner);
         require(proofValid, "invalid address ownership proof");
-        _claim(_state, _owner, _underlyingAddressHash, true);
         PaymentConfirmations.confirmSourceDecreasingTransaction(_paymentVerification, _payment);
+        ownership.owner = _owner;
+        ownership.provedEOA = true;
+        ownership.underlyingBlockOfEOAProof = _payment.blockNumber;
     }
     
-    function ownerOf(
+    function underlyingBlockOfEOAProof(
         State storage _state, 
         bytes32 _underlyingAddressHash
     )
         internal view
-        returns (address)
+        returns (uint64)
     {
-        Ownership storage ownership = _state.ownership[_underlyingAddressHash];
-        return ownership.owner;
+        return _state.ownership[_underlyingAddressHash].underlyingBlockOfEOAProof;
     }
-
-    function _claim(
-        State storage _state, 
-        address _owner, 
-        bytes32 _underlyingAddressHash,
-        bool _provedEOA
-    ) 
-        private
-        returns (Ownership storage)
-    {
-        Ownership storage ownership = _state.ownership[_underlyingAddressHash];
-        if (ownership.owner == address(0)) {
-            ownership.owner = _owner;
-            ownership.provedEOA = _provedEOA;
-        } else {
-            require(ownership.owner == _owner, "address already claimed");
-        }
-        return ownership;
-    }
-    
 }

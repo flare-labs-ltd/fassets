@@ -60,6 +60,8 @@ library UnderlyingFreeBalance {
             "not underlying address");
         require(_payment.paymentReference == PaymentReference.topup(_agentVault),
             "not a topup payment");
+        require(_payment.blockNumber >= agent.underlyingBlockAtCreation,
+            "topup before agent created");
         _state.paymentConfirmations.confirmIncomingPayment(_payment);
         increaseFreeBalance(_state, _agentVault, _payment.receivedAmount);
     }

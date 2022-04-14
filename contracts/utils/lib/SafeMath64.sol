@@ -27,6 +27,10 @@ library SafeMath64 {
             return uint64(c);
         }
     }
+
+    function max64(uint64 a, uint64 b) internal pure returns (uint64) {
+        return a >= b ? a : b;
+    }
     
     function min64(uint64 a, uint64 b) internal pure returns (uint64) {
         return a <= b ? a : b;
