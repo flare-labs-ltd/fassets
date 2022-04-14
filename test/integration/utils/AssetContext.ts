@@ -95,6 +95,7 @@ export class AssetContext {
         const height = await this.chain.getBlockHeight();
         const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(height);
         await this.assetManager.updateCurrentBlock(proof);
+        return height;
     }
 
     async currentAmgToNATWeiPrice() {

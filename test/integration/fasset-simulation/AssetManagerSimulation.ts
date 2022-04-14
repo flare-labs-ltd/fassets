@@ -1,8 +1,7 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BN_ZERO, DAYS, getTestFile, toBN, toBNExp, toWei } from "../../utils/helpers";
-import { assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
+import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext, CommonContext } from "../utils/AssetContext";
 import { testChainInfo, testNatInfo } from "../utils/ChainInfo";
@@ -183,7 +182,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.depositCollateral(fullAgentCollateral);
             await agent.makeAvailable(500, 2_2000);
             // update block
-            await context.updateUnderlyingBlock();
+            const blockNumber = await context.updateUnderlyingBlock();
+            const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
+            assertWeb3Equal(currentUnderlyingBlock[0], blockNumber);
+            assertWeb3Equal(currentUnderlyingBlock[1], (await context.chain.getBlockAt(blockNumber))?.timestamp);
             // perform minting
             const lots = 3;
             const crFee = await minter.getCollateralReservationFee(lots);

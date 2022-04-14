@@ -102,6 +102,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const resSettings = web3ResultStruct(await assetManager.getSettings());
             settings.assetManagerController = assetManagerController;   // it is added to settings in newAssetManager
             assertWeb3DeepEqual(resSettings, settings);
+            assert.equal(await assetManager.assetManagerController(), assetManagerController);
         });
 
         it("should update settings correctly", async () => {
