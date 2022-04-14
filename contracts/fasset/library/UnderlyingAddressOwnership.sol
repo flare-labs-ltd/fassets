@@ -47,16 +47,15 @@ library UnderlyingAddressOwnership {
         PaymentConfirmations.confirmSourceDecreasingTransaction(_paymentVerification, _payment);
     }
     
-    function check(
+    function ownerOf(
         State storage _state, 
-        address _owner, 
         bytes32 _underlyingAddressHash
     )
         internal view
-        returns (bool)
+        returns (address)
     {
         Ownership storage ownership = _state.ownership[_underlyingAddressHash];
-        return ownership.owner == _owner;
+        return ownership.owner;
     }
 
     function _claim(
