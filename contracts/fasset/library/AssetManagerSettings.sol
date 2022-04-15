@@ -4,6 +4,7 @@ pragma solidity 0.8.11;
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../interface/IWNat.sol";
+import "../interface/IWhitelist.sol";
 
 
 library AssetManagerSettings {
@@ -11,6 +12,11 @@ library AssetManagerSettings {
         // Required contracts.
         // Only used to verify that calls come from assetManagerController.
         address assetManagerController;
+        
+        // If set, the whitelist contains a list of accounts that can call public methods
+        // (minting, redeeming, challenging, etc.)
+        // This can be `address(0)`, in which case no whitelist checks are done.
+        IWhitelist whitelist;
         
         // Attestation client verifies and decodes attestation proofs.
         IAttestationClient attestationClient;
@@ -20,7 +26,7 @@ library AssetManagerSettings {
         
         // FTSO registry from which the system obtains ftso's for nat and asset.
         IFtsoRegistry ftsoRegistry;
-        
+
         // FTSO contract for NAT currency.
         // immutable?
         uint32 natFtsoIndex;

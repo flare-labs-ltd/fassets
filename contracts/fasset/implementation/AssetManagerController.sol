@@ -94,6 +94,14 @@ contract AssetManagerController is Governed, AddressUpdatable {
         }
     }
     
+    function setWhitelist(IAssetManager[] memory _assetManagers, address _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_WHITELIST, abi.encode(_value));
+    }
+
     function setLotSizeAmg(IAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance

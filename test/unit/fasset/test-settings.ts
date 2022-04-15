@@ -8,6 +8,7 @@ export async function createTestSettings(attestationClient: AttestationClientMoc
         assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
         attestationClient: attestationClient.address,
         wNat: wNat.address,
+        whitelist: constants.ZERO_ADDRESS,
         ftsoRegistry: ftsoRegistry.address,
         natFtsoIndex: (await ftsoRegistry.getFtsoIndex("NAT")).toString(),
         assetFtsoIndex: (await ftsoRegistry.getFtsoIndex("ETH")).toString(),

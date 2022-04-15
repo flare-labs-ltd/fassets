@@ -57,6 +57,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     /**
      * Update all settings with validation.
      * This method cannot be called directly, it has to be called through assetManagerController.
+     * NOTE: may not be called directly - only through asset manager controller by governance.
      */    
     function updateSettings(
         bytes32 _method,
@@ -100,6 +101,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * NOTE: calling this method before `createAgent()` is optional on most chains,
      * but is required on smart contract chains to make sure the agent is using EOA address
      * (depends on setting `requireEOAAddressProof`).
+     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _payment proof of payment on the underlying chain
      */
     function proveUnderlyingAddressEOA(
@@ -107,6 +109,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
+        requireWhitelistedSender();
         Agents.claimAddressWithEOAProof(state, _payment);
     }
     
@@ -115,6 +118,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Agent will always be identified by `_agentVault` address.
      * (Externally, same account may own several agent vaults, 
      *  but in fasset system, each agent vault acts as an independent agent.)
+     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _underlyingAddressString full address on the underlying chain (not hash)
      */
     function createAgent(
@@ -122,6 +126,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     ) 
         external
     {
+        requireWhitelistedSender();
         IAgentVault agentVault = new AgentVault(this, msg.sender);
         Agents.createAgent(state, Agents.AgentType.AGENT_100, address(agentVault), _underlyingAddressString);
     }
@@ -129,6 +134,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     /**
      * Announce that the agent is going to be destroyed. At this time, agent must not have any mintings
      * or collateral reservations and must not be on the available agents list.
+     * NOTE: may only be called by the agent vault owner.
      */
     function announceDestroyAgent(
         address _agentVault
@@ -139,12 +145,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
     
     /**
-     * Delete all agent data. Only used internally by AgentVault.destroy().
+     * Delete all agent data, selfdestruct agent vault and send remaining collateral to the `_recipient`.
      * Procedure for destroying agent:
      * - exit available agents list
-     * - wait until all assets are redeemed or self-close
+     * - wait until all assets are redeemed or perform self-close
      * - announce destroy (and wait the required time)
      * - call destroyAgent()
+     * NOTE: may only be called by the agent vault owner.
      * @param _agentVault address of the agent's vault to destroy
      * @param _recipient the address where the remaining funds from the vault will be transfered (as native currency)
      */
@@ -160,6 +167,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     
     /**
      * Set the ratio at which free collateral for the minting will be accounted.
+     * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _agentMinCollateralRatioBIPS the new ratio in BIPS
      */
@@ -191,6 +199,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Agent is going to withdraw `_valueNATWei` amount of collateral from agent vault.
      * This has to be announced and agent must then wait `withdrawalWaitMinSeconds` time.
      * After that time, agent can call withdraw(_valueNATWei) on agent vault.
+     * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _valueNATWei the amount to be withdrawn
      */
@@ -205,7 +214,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     /**
      * Called by AgentVault when agent calls `withdraw()`.
-     * Will revert if called directly by any address that is not registered as agent vault.
+     * NOTE: may not be called directly from any EOA address (only through a registered agent vault).
      * @param _valueNATWei the withdrawn amount
      */
     function withdrawCollateral(
@@ -220,6 +229,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     /**
      * Called by AgentVault when there was a deposit.
      * May pull agent out of liquidation.
+     * NOTE: may not be called directly from any EOA address (only through a registered agent vault).
      * @param _valueNATWei the deposited amount
      */
     function depositCollateral(
@@ -255,6 +265,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     /**
      * Add the agent to the list of publicly available agents.
      * Other agents can only self-mint.
+     * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _feeBIPS fee charged to minters (paid in underlying currency along with backing assets)
      * @param _agentMinCollateralRatioBIPS when agent is created, free colateral is accounted at the
@@ -274,6 +285,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     
     /**
      * Exit the publicly available agents list.
+     * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      */
     function exitAvailableAgentList(
@@ -328,6 +340,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * This method should be called by minters before minting and by agent's regularly
      * to prevent current block being too outdated, which gives too short time for
      * minting or redemption payment.
+     * NOTE: anybody can call.
      * @param _proof proof that a block with given number and timestamp exists
      */
     function updateCurrentBlock(
@@ -361,6 +374,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * in event CollateralReserved. Then the minter has to pay `value + fee` on the underlying chain.
      * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains
      * f-assets. Otherwise the agent collects the collateral reservation fee.
+     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _agentVault agent vault address
      * @param _lots the number of lots for which to reserve collateral
      * @param _maxMintingFeeBIPS maximum minting fee (BIPS) that can be charged by the agent - best is just to
@@ -375,6 +389,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     ) 
         external payable 
     {
+        requireWhitelistedSender();
         CollateralReservations.reserveCollateral(state, msg.sender, _agentVault, 
             SafeCast.toUint64(_lots), SafeCast.toUint64(_maxMintingFeeBIPS));
     }
@@ -396,6 +411,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
+     * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request) 
+     *   or the agent owner (= owner of the agent vault in CR).
      * @param _payment proof of the underlying payment (must contain exact `value + fee` amount and correct 
      *      payment reference)
      * @param _collateralReservationId collateral reservation id
@@ -416,6 +433,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * When the time for minter to pay underlying amount is over (i.e. the last underlying block has passed),
      * the agent can declare payment default. Then the agent collects collateral reservation fee 
      * (it goes directly to the vault), and the reseved collateral is unlocked.
+     * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * @param _proof proof that the minter didn't pay with correct payment reference on the underlying chain
      * @param _collateralReservationId id of a collateral reservation created by the minter
      */
@@ -432,6 +450,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * If collateral reservation request exists for more than 24 hours, payment or non-payment proof are no longer
      * available. In this case agent can call this method, which burns reserved collateral at market price
      * and releases the remaining collateral (CRF is also burned).
+     * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * @param _collateralReservationId collateral reservation id
      */
     function unstickMinting(
@@ -447,6 +466,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Agent can mint against himself. In that case, this is a one-step process, skipping collateral reservation
      * and no collateral reservation fee payment.
      * Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
+     * NOTE: may only be called by the agent vault owner.
      * @param _payment proof of the underlying payment; must contain payment reference of the form
      *      `0x4642505266410012000...0<agent_vault_address>`
      * @param _agentVault agent vault address
@@ -477,6 +497,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * In such case `RedemptionRequestIncomplete` event will be emitted, indicating the number of remaining lots.
      * Agent receives redemption request id and instructions for underlying payment in 
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
+     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlyng amount
      */
@@ -486,6 +507,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
+        requireWhitelistedSender();
         uint256 redeemedUBA = Redemption.redeem(state, msg.sender, SafeCast.toUint64(_lots), 
             _redeemerUnderlyingAddressString);
         fAsset.burn(msg.sender, redeemedUBA);
@@ -500,6 +522,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * In case of SUCCESS or BLOCKED, remaining underlying funds and collateral are relased to the agent.
      * If the agent doesn't confirm payment in enough time (several hours, setting confirmationByOthersAfterSeconds),
      * anybody can do it and get rewarded from agent's vault.
+     * NOTE: may only be called by the owner of the agent vault in the redemption request
+     *   except if enough time has passed without confirmation - then it can be called by anybody
      * @param _payment proof of the underlying payment (must contain exact `value - fee` amount and correct 
      *      payment reference)
      * @param _redemptionRequestId id of an existing redemption request
@@ -518,6 +542,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
      * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
      * remaining collateral.
+     * NOTE: may only be called by the redeemer (= creator of the redemption request)
+     *   or the agent owner (= owner of the agent vault in the redemption request)
      * @param _proof proof that the agent didn't pay with correct payment reference on the underlying chain
      * @param _redemptionRequestId id of an existing redemption request
      */    
@@ -531,8 +557,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
     
     /**
-     * If the agent hasn't performed the payment, the agent can close the redemption request after 
-     * the redeemer calls default in order to free underlying funds.
+     * If the agent hasn't performed the payment, the agent can close the redemption request to free underlying funds.
+     * It can be done immediatelly after the redeemer or agent calls redemptionPaymentDefault,
+     * or this method can trigger the default payment without proof, but only after enough time has passed so that 
+     * attestation proof of non-payment is not available any more.
+     * NOTE: may only be called by the owner of the agent vault in the redemption request.
      * @param _redemptionRequestId id of an existing, but already defaulted, redemption request
      */
     function finishRedemptionWithoutPayment(
@@ -550,6 +579,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Agent can "redeem against himself" by calling selfClose, which burns agent's own f-assets
      * and unlocks agent's collateral. The underlying funds backing the f-assets are released
      * as agent's free underlying funds and can be later withdrawn after announcement.
+     * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _amountUBA amount of f-assets to self-close
      */
@@ -572,6 +602,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * In the event AllowedPaymentAnnounced the agent receives payment reference, which must be
      * added to the payment, otherwise it can be challenged as illegal.
      * Until the announced payment is performed and confirmed, no other allowed payment can be announced.
+     * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      */
     function announceAllowedPayment(
@@ -586,6 +617,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Agent must provide confirmation of performed allowed payment, which updates free balance with used gas
      * and releases announcement so that a new one can be made.
      * If the agent doesn't call this method, anyone can call it after a time (confirmationByOthersAfterSeconds).
+     * NOTE: may only be called by the owner of the agent vault
+     *   except if enough time has passed without confirmation - then it can be called by anybody.
      * @param _payment proof of the underlying payment
      * @param _agentVault agent vault address
      * @param _announcementId id of the allowed payment announcement
@@ -607,6 +640,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     /**
      * When the agent tops up his underlying address, it has to be confirmed by calling this method,
      * which updates the underlying free balance value.
+     * NOTE: may only be called by the agent vault owner.
      * @param _payment proof of the underlying payment; must include payment
      *      reference of the form `0x4642505266410011000...0<agents_vault_address>`
      * @param _agentVault agent vault address
@@ -628,6 +662,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * no valid payment reference exists (valid payment references are from redemption and
      * allowed payment announcement calls).
      * On success, immediatelly triggers full agent liquidation and rewards the caller.
+     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _transaction proof of a transaction from the agent's underlying address
      * @param _agentVault agent vault address
      */
@@ -637,6 +672,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
+        requireWhitelistedSender();
         Challenges.illegalPaymentChallenge(state, _transaction, _agentVault);
     }
 
@@ -644,6 +680,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Called with proofs of two payments made from agent's underlying address
      * with the same payment reference (each payment reference is valid for only one payment).
      * On success, immediatelly triggers full agent liquidation and rewards the caller.
+     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _payment1 proof of first payment from the agent's underlying address
      * @param _payment2 proof of second payment from the agent's underlying address
      * @param _agentVault agent vault address
@@ -655,6 +692,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
+        requireWhitelistedSender();
         Challenges.doublePaymentChallenge(state, _payment1, _payment2, _agentVault);
     }
     
@@ -663,6 +701,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * underlying free balance negative (i.e. the underlying address balance is less than
      * the total amount of backed f-assets).
      * On success, immediatelly triggers full agent liquidation and rewards the caller.
+     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _payments proofs of several distinct payments from the agent's underlying address
      * @param _agentVault agent vault address
      */
@@ -672,6 +711,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
+        requireWhitelistedSender();
         Challenges.paymentsMakeFreeBalanceNegative(state, _payments, _agentVault);
     }
     
@@ -680,6 +720,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     /**
      * Checks that the agent's collateral is too low and if true, starts agent's liquidation.
+     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _agentVault agent vault address
      */
     function startLiquidation(
@@ -687,6 +728,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
+        requireWhitelistedSender();
         Liquidation.startLiquidation(state, _agentVault);
     }
     
@@ -696,6 +738,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * (premium depends on the liquidation state).
      * If the agent isn't in liquidation yet, but satisfies conditions,
      * automatically puts the agent in liquidation status.
+     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _agentVault agent vault address
      * @param _amountUBA the amount of f-assets to liquidate
      */
@@ -705,6 +748,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
+        requireWhitelistedSender();
         uint256 liquidatedUBA = Liquidation.liquidate(state, _agentVault, _amountUBA);
         fAsset.burn(msg.sender, liquidatedUBA);
     }
@@ -714,6 +758,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * process can be stopped by calling this method.
      * Full liquidation (i.e. the liquidation triggered by illegal underlying payment)
      * cannot be canceled.
+     * NOTE: anybody can call.
      * @param _agentVault agent vault address
      */
     function cancelLiquidation(
@@ -730,6 +775,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     /**
      * When asset manager is paused, no new minting can be made.
      * All other operations continue normally.
+     * NOTE: may not be called directly - only through asset manager controller by governance.
      */
     function pause()
         external
@@ -746,6 +792,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * for a long time but there still exist unredeemable f-assets. In such case, the f-asset contract is
      * terminated and then agents can buy back the collateral at market rate (i.e. they burn market value
      * of backed f-assets in collateral to release the rest of the collateral).
+     * NOTE: may not be called directly - only through asset manager controller by governance.
      */
     function terminate()
         external
@@ -761,6 +808,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * to release the remaining collateral (and, formally, underlying assets).
      * This method ONLY works when f-asset is terminated, which will only be done when AssetManager is already paused
      * at least for a month and most f-assets are already burned and the only ones remaining are unrecoverable.
+     * NOTE: may only be called by the agent vault owner.
      */
     function buybackAgentCollateral(
         address _agentVault
@@ -793,5 +841,16 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         returns (IWNat)
     {
         return state.settings.wNat;
+    }
+    
+    /**
+     * Optional check that `msg.sender` is whitelisted.
+     */
+    function requireWhitelistedSender()
+        internal view
+    {
+        if (address(state.settings.whitelist) != address(0)) {
+            require(state.settings.whitelist.whitelisted(msg.sender), "not whitelisted");
+        }
     }
 }

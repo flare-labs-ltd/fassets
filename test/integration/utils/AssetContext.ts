@@ -176,6 +176,7 @@ export class AssetContext {
             assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
             attestationClient: ctx.attestationClient.address,
             wNat: ctx.wnat.address,
+            whitelist: constants.ZERO_ADDRESS,
             ftsoRegistry: ctx.ftsoRegistry.address,
             natFtsoIndex: await ctx.ftsoRegistry.getFtsoIndex(await ctx.wnat.symbol()),
             assetFtsoIndex: await ctx.ftsoRegistry.getFtsoIndex(ci.symbol),

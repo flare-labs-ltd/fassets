@@ -54,6 +54,7 @@ library UnderlyingFreeBalance {
     )
         external
     {
+        Agents.requireAgentVaultOwner(_agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         require(_payment.receivingAddress == agent.underlyingAddressHash, 

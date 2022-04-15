@@ -32,10 +32,6 @@ library SettingsUpdater {
     
     bytes32 internal constant UPDATE_CONTRACTS = 
         keccak256("updateContracts(address,IAttestationClient,IFtsoRegistry,IWNat)");
-    bytes32 internal constant SET_LOT_SIZE_AMG =
-        keccak256("setLotSizeAmg(uint256)");
-    bytes32 internal constant SET_MAX_TRUSTED_PRICE_AGE_SECONDS =
-        keccak256("setMaxTrustedPriceAgeSeconds(uint256)");
     bytes32 internal constant SET_COLLATERAL_RATIOS =
         keccak256("setCollateralRatios(uint256,uint256,uint256)");
     bytes32 internal constant EXECUTE_SET_COLLATERAL_RATIOS =
@@ -44,6 +40,12 @@ library SettingsUpdater {
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant EXECUTE_SET_TIME_FOR_PAYMENT =
         keccak256("executeSetTimeForPayment()");
+    bytes32 internal constant SET_WHITELIST =
+        keccak256("setWhitelist(address)");
+    bytes32 internal constant SET_LOT_SIZE_AMG =
+        keccak256("setLotSizeAmg(uint256)");
+    bytes32 internal constant SET_MAX_TRUSTED_PRICE_AGE_SECONDS =
+        keccak256("setMaxTrustedPriceAgeSeconds(uint256)");
     bytes32 internal constant SET_PAYMENT_CHALLENGE_REWARD =
         keccak256("setPaymentChallengeReward(uint256,uint256)");
     bytes32 internal constant SET_COLLATERAL_RESERVATION_FEE_BIPS =
@@ -100,6 +102,8 @@ library SettingsUpdater {
         } else if (_method == SET_PAYMENT_CHALLENGE_REWARD) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setPaymentChallengeReward(_state, _params);
+        } else if (_method == SET_WHITELIST) {
+            _setWhitelist(_state, _params);
         } else if (_method == SET_LOT_SIZE_AMG) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setLotSizeAmg(_state, _params);
@@ -149,10 +153,22 @@ library SettingsUpdater {
     {
         (address controller, IAttestationClient attestationClient, IFtsoRegistry ftsoRegistry, IWNat wNat) =
             abi.decode(_params, (address, IAttestationClient, IFtsoRegistry, IWNat));
-        _state.settings.assetManagerController = controller;
-        _state.settings.attestationClient = attestationClient;
-        _state.settings.ftsoRegistry = ftsoRegistry;
-        _state.settings.wNat = wNat;
+        if (_state.settings.assetManagerController != controller) {
+            _state.settings.assetManagerController = controller;
+            emit AMEvents.ContractChanged("assetManagerController", address(controller));
+        }
+        if (_state.settings.attestationClient != attestationClient) {
+            _state.settings.attestationClient = attestationClient;
+            emit AMEvents.ContractChanged("attestationClient", address(attestationClient));
+        }
+        if (_state.settings.ftsoRegistry != ftsoRegistry) {
+            _state.settings.ftsoRegistry = ftsoRegistry;
+            emit AMEvents.ContractChanged("ftsoRegistry", address(ftsoRegistry));
+        }
+        if (_state.settings.wNat != wNat) {
+            _state.settings.wNat = wNat;
+            emit AMEvents.ContractChanged("wNat", address(wNat));
+        }
     }
     
     function _checkEnoughTimeSinceLastUpdate(
@@ -258,6 +274,19 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("paymentChallengeRewardBIPS", rewardBIPS);
     }
 
+    function _setWhitelist(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        address value = abi.decode(_params, (address));
+        // validate
+        // update
+        _state.settings.whitelist = IWhitelist(value);
+        emit AMEvents.ContractChanged("whitelist", value);
+    }
+    
     function _setLotSizeAmg(
         AssetManagerState.State storage _state,
         bytes calldata _params

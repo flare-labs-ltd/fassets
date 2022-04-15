@@ -259,4 +259,11 @@ library AMEvents {
     event SettingArrayChanged(
         string name,
         uint256[] value);
+
+    /**
+     * A contract in the settings has changed.
+     */
+    event ContractChanged(
+        string name,
+        address value);
 }
