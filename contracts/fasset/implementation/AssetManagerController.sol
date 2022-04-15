@@ -93,10 +93,10 @@ contract AssetManagerController is Governed, AddressUpdatable {
             isUpdateExecutor[_executors[i]] = true;
         }
     }
-    
+
+    // this is a safe operation, so anybody can call it    
     function refreshFtsoIndexes(IAssetManager[] memory _assetManagers)
         external
-        onlyGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.REFRESH_FTSO_INDEXES, abi.encode());
