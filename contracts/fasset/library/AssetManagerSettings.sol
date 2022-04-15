@@ -27,13 +27,21 @@ library AssetManagerSettings {
         // FTSO registry from which the system obtains ftso's for nat and asset.
         IFtsoRegistry ftsoRegistry;
 
-        // FTSO contract for NAT currency.
-        // immutable?
+        // FTSO contract for NAT currency (index).
+        // cannot be set directly - obtained from ftso registry for symbol natFtsoSymbol
         uint32 natFtsoIndex;
         
-        // FTSO contract for managed asset.
-        // immutable?
+        // FTSO contract for managed asset (index).
+        // cannot be set directly - obtained from ftso registry for symbol assetFtsoSymbol
         uint32 assetFtsoIndex;
+        
+        // FTSO contract for NAT currency (symbol).
+        // immutable
+        string natFtsoSymbol;
+        
+        // FTSO contract for managed asset (symbol).
+        // immutable
+        string assetFtsoSymbol;
         
         // Collateral reservation fee is burned on successful minting.
         // immutable

@@ -1,5 +1,5 @@
 import { balance, constants, ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { findRequiredEvent } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
@@ -31,6 +31,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
     let wnat: WNatInstance;
+    let ftsoRegistry: FtsoRegistryMockInstance;
     let natFtso: FtsoMockInstance;
     let assetFtso: FtsoMockInstance;
     let settings: AssetManagerSettings;
@@ -84,11 +85,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         assetFtso = await FtsoMock.new("ETH");
         await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
         // create ftso registry
-        const ftsoRegistry = await FtsoRegistryMock.new();
+        ftsoRegistry = await FtsoRegistryMock.new();
         await ftsoRegistry.addFtso(natFtso.address);
         await ftsoRegistry.addFtso(assetFtso.address);
         // create asset manager
-        settings = await createTestSettings(attestationClient, wnat, ftsoRegistry);
+        settings = createTestSettings(attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
         // create event decoder
         eventDecoder = new Web3EventDecoder({ assetManager });
@@ -100,7 +101,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.notEqual(resFAsset, constants.ZERO_ADDRESS);
             assert.equal(resFAsset, fAsset.address);
             const resSettings = web3ResultStruct(await assetManager.getSettings());
-            settings.assetManagerController = assetManagerController;   // it is added to settings in newAssetManager
+            settings.assetManagerController = assetManagerController;           // added to settings in newAssetManager
+            settings.natFtsoIndex = await ftsoRegistry.getFtsoIndex(settings.natFtsoSymbol);        // set in contract
+            settings.assetFtsoIndex = await ftsoRegistry.getFtsoIndex(settings.assetFtsoSymbol);    // set in contract
             assertWeb3DeepEqual(resSettings, settings);
             assert.equal(await assetManager.assetManagerController(), assetManagerController);
         });

@@ -32,6 +32,8 @@ library SettingsUpdater {
     
     bytes32 internal constant UPDATE_CONTRACTS = 
         keccak256("updateContracts(address,IAttestationClient,IFtsoRegistry,IWNat)");
+    bytes32 internal constant REFRESH_FTSO_INDEXES = 
+        keccak256("refreshFtsoIndexes()");
     bytes32 internal constant SET_COLLATERAL_RATIOS =
         keccak256("setCollateralRatios(uint256,uint256,uint256)");
     bytes32 internal constant EXECUTE_SET_COLLATERAL_RATIOS =
@@ -79,6 +81,7 @@ library SettingsUpdater {
     {
         _validateSettings(_settings);
         _state.settings = _settings;
+        _refreshFtsoIndexes(_state);
     }
     
     function callUpdate(
@@ -91,6 +94,8 @@ library SettingsUpdater {
     {
         if (_method == UPDATE_CONTRACTS) {
             _updateContracts(_state, _params);
+        } else if (_method == REFRESH_FTSO_INDEXES) {
+            _refreshFtsoIndexes(_state);
         } else if (_method == SET_COLLATERAL_RATIOS) {
             _setCollateralRatios(_state, _updates.collateralRatio, _params);
         } else if (_method == EXECUTE_SET_COLLATERAL_RATIOS) {
@@ -170,6 +175,18 @@ library SettingsUpdater {
             emit AMEvents.ContractChanged("wNat", address(wNat));
         }
     }
+    
+    function _refreshFtsoIndexes(
+        AssetManagerState.State storage _state
+    )
+        private
+    {
+        _state.settings.natFtsoIndex = 
+            SafeCast.toUint32(_state.settings.ftsoRegistry.getFtsoIndex(_state.settings.natFtsoSymbol));
+        _state.settings.assetFtsoIndex = 
+            SafeCast.toUint32(_state.settings.ftsoRegistry.getFtsoIndex(_state.settings.assetFtsoSymbol));
+    }
+    
     
     function _checkEnoughTimeSinceLastUpdate(
         AssetManagerState.State storage _state,

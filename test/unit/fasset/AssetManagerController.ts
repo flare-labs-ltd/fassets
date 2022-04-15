@@ -46,7 +46,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         addressUpdater = await AddressUpdater.new(governance);
         assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
         // create asset manager
-        settings = await createTestSettings(attestationClient, wnat, ftsoRegistry);
+        settings = createTestSettings(attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController.address, "Ethereum", "ETH", 18, settings);
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
     });

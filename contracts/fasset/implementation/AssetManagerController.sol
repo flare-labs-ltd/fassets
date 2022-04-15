@@ -94,6 +94,14 @@ contract AssetManagerController is Governed, AddressUpdatable {
         }
     }
     
+    function refreshFtsoIndexes(IAssetManager[] memory _assetManagers)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.REFRESH_FTSO_INDEXES, abi.encode());
+    }
+
     function setWhitelist(IAssetManager[] memory _assetManagers, address _value)
         external
         onlyGovernance

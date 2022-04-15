@@ -178,8 +178,10 @@ export class AssetContext {
             wNat: ctx.wnat.address,
             whitelist: constants.ZERO_ADDRESS,
             ftsoRegistry: ctx.ftsoRegistry.address,
-            natFtsoIndex: await ctx.ftsoRegistry.getFtsoIndex(await ctx.wnat.symbol()),
-            assetFtsoIndex: await ctx.ftsoRegistry.getFtsoIndex(ci.symbol),
+            natFtsoIndex: 0,                                    // set automatically in contract
+            assetFtsoIndex: 0,                                  // set automatically in contract
+            natFtsoSymbol: await ctx.wnat.symbol(),
+            assetFtsoSymbol: ci.symbol,
             chainId: ci.chainId,
             assetUnitUBA: toBNExp(1, ci.decimals),
             assetMintingGranularityUBA: toBNExp(1, ci.amgDecimals),

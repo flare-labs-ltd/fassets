@@ -3,25 +3,27 @@ import { AttestationClientMockInstance, FtsoRegistryMockInstance, WNatInstance }
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { DAYS, HOURS, toStringExp, WEEKS } from "../../utils/helpers";
 
-export async function createTestSettings(attestationClient: AttestationClientMockInstance, wNat: WNatInstance, ftsoRegistry: FtsoRegistryMockInstance): Promise<AssetManagerSettings> {
+export function createTestSettings(attestationClient: AttestationClientMockInstance, wNat: WNatInstance, ftsoRegistry: FtsoRegistryMockInstance): AssetManagerSettings {
     return {
         assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
         attestationClient: attestationClient.address,
         wNat: wNat.address,
         whitelist: constants.ZERO_ADDRESS,
         ftsoRegistry: ftsoRegistry.address,
-        natFtsoIndex: (await ftsoRegistry.getFtsoIndex("NAT")).toString(),
-        assetFtsoIndex: (await ftsoRegistry.getFtsoIndex("ETH")).toString(),
+        natFtsoIndex: 0,                                    // set automatically in contract
+        assetFtsoIndex: 0,                                  // set automatically in contract
+        natFtsoSymbol: "NAT",
+        assetFtsoSymbol: "ETH",
         burnAddress: constants.ZERO_ADDRESS,
         chainId: 1,
-        collateralReservationFeeBIPS: 100,                      // 1%
-        assetUnitUBA: toStringExp(1, 18),                       // 1e18 wei per eth
-        assetMintingGranularityUBA: toStringExp(1, 9),          // 1e9 = 1 gwei
-        lotSizeAMG: toStringExp(1_000, 9),                      // 1000 eth
+        collateralReservationFeeBIPS: 100,                  // 1%
+        assetUnitUBA: toStringExp(1, 18),                   // 1e18 wei per eth
+        assetMintingGranularityUBA: toStringExp(1, 9),      // 1e9 = 1 gwei
+        lotSizeAMG: toStringExp(1_000, 9),                  // 1000 eth
         requireEOAAddressProof: true,
-        minCollateralRatioBIPS: 2_1000,                  // 2.1
-        ccbMinCollateralRatioBIPS: 1_9000,           // 1.9
-        safetyMinCollateralRatioBIPS: 2_5000,              // 2.5
+        minCollateralRatioBIPS: 2_1000,                     // 2.1
+        ccbMinCollateralRatioBIPS: 1_9000,                  // 1.9
+        safetyMinCollateralRatioBIPS: 2_5000,               // 2.5
         underlyingBlocksForPayment: 10,
         underlyingSecondsForPayment: 120,                       // 12s per block assumed
         redemptionFeeBIPS: 200,                                 // 2%
