@@ -71,7 +71,7 @@ library Liquidation {
     }
     
     // Cancel liquidation, requires that agent is healthy.
-    function cancelLiquidation(
+    function endLiquidation(
         AssetManagerState.State storage _state,
         address _agentVault
     )

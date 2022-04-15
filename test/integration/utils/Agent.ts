@@ -276,8 +276,8 @@ export class Agent extends AssetContextClient {
         return mintingCollateral.add(redeemingCollateral).add(toBN(withdrawalAnnouncedNATWei));
    }
 
-    async cancelLiquidation() {
-        const res = await this.assetManager.cancelLiquidation(this.vaultAddress, { from: this.ownerAddress });
+    async endLiquidation() {
+        const res = await this.assetManager.endLiquidation(this.vaultAddress, { from: this.ownerAddress });
         assert.equal(requiredEventArgs(res, 'LiquidationCancelled').agentVault, this.vaultAddress);
     }
 

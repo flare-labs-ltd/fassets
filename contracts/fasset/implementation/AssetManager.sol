@@ -757,16 +757,16 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * When agent's colateral reaches safe level during liquidation, the liquidation
      * process can be stopped by calling this method.
      * Full liquidation (i.e. the liquidation triggered by illegal underlying payment)
-     * cannot be canceled.
+     * cannot be stopped.
      * NOTE: anybody can call.
      * @param _agentVault agent vault address
      */
-    function cancelLiquidation(
+    function endLiquidation(
         address _agentVault
     )
         external
     {
-        Liquidation.cancelLiquidation(state, _agentVault);
+        Liquidation.endLiquidation(state, _agentVault);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

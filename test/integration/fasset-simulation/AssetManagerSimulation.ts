@@ -1237,8 +1237,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA);
             // full liquidation cannot be stopped
-            await expectRevert(agent.cancelLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.cancelLiquidation(agent), "cannot stop liquidation");
+            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
+            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // test rewarding
             const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward), minted.mintedAmountUBA);
             const liquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS1, res[0], liquidationTimestamp1);
@@ -1252,8 +1252,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA2, liquidateMaxUBA);
             // full liquidation cannot be stopped
-            await expectRevert(agent.cancelLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.cancelLiquidation(agent), "cannot stop liquidation");
+            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
+            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // test rewarding
             const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
             const liquidationFactorBIPS2 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS2, res[0], liquidationTimestamp2);
@@ -1267,8 +1267,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const endBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA3, liquidateMaxUBA);
             // full liquidation cannot be stopped
-            await expectRevert(agent.cancelLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.cancelLiquidation(agent), "cannot stop liquidation");
+            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
+            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // test rewarding
             const collateralRatioBIPS3 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2), minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2));
             const liquidationFactorBIPS3 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS3, res[0], liquidationTimestamp3);
@@ -1282,8 +1282,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(liquidationReward1.lt(liquidationReward2));
             assert(liquidationReward2.lt(liquidationReward3));
             // full liquidation cannot be stopped
-            await expectRevert(agent.cancelLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.cancelLiquidation(agent), "cannot stop liquidation");
+            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
+            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2).sub(liquidationReward3));
         });
@@ -1399,8 +1399,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const liquidationReward1 = await liquidator.getLiquidationReward(liquidatedUBA1, liquidationFactorBIPS1);
             assertWeb3Equal(endBalanceLiquidator1.sub(startBalanceLiquidator1), liquidationReward1);
             // liquidation cannot be stopped if agent not safe
-            await expectRevert(agent.cancelLiquidation(), "cannot stop liquidation");
-            await expectRevert(liquidator.cancelLiquidation(agent), "cannot stop liquidation");
+            await expectRevert(agent.endLiquidation(), "cannot stop liquidation");
+            await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // wait some time to get next premium
             await time.increase(90);
             // liquidate agent (second part)
@@ -1539,7 +1539,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.natFtso.setCurrentPrice(100, 0);
             await context.assetFtso.setCurrentPrice(toBNExp(10, 5), 0);
             // agent can cancel liquidation
-            await agent.cancelLiquidation();
+            await agent.endLiquidation();
             // final tests
             const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(liquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
             assert(collateralRatioBIPS2.gte(toBN((await context.assetManager.getSettings()).safetyMinCollateralRatioBIPS)))
@@ -1592,7 +1592,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.natFtso.setCurrentPrice(100, 0);
             await context.assetFtso.setCurrentPrice(toBNExp(10, 5), 0);
             // others can cancel liquidation
-            await liquidator.cancelLiquidation(agent);
+            await liquidator.endLiquidation(agent);
             // final tests
             const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(liquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
             assert(collateralRatioBIPS2.gte(toBN((await context.assetManager.getSettings()).safetyMinCollateralRatioBIPS)))

@@ -38,8 +38,8 @@ export class Liquidator extends AssetContextClient {
         return [liquidationPerformed.valueUBA, block.timestamp, eventArgs(res, 'LiquidationStarted'), eventArgs(res, 'LiquidationCancelled'), dustChangedEvents.map(dc => dc.dustUBA)];
     }
 
-    async cancelLiquidation(agent: Agent) {
-        const res = await this.assetManager.cancelLiquidation(agent.agentVault.address, { from: this.address });
+    async endLiquidation(agent: Agent) {
+        const res = await this.assetManager.endLiquidation(agent.agentVault.address, { from: this.address });
         assert.equal(requiredEventArgs(res, 'LiquidationCancelled').agentVault, agent.agentVault.address);
     }
 
