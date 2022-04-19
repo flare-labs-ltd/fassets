@@ -7,7 +7,6 @@ import "../interface/IAssetManager.sol";
 import "../interface/IAssetManagerEvents.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../interface/IFAsset.sol";
-import "../implementation/AgentVault.sol";
 import "../library/AssetManagerState.sol";
 import "../library/AssetManagerSettings.sol";
 import "../library/Conversion.sol";
@@ -127,8 +126,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         requireWhitelistedSender();
-        IAgentVault agentVault = new AgentVault(this, msg.sender);
-        Agents.createAgent(state, Agents.AgentType.AGENT_100, address(agentVault), _underlyingAddressString);
+        Agents.createAgent(state, Agents.AgentType.AGENT_100, this, _underlyingAddressString);
     }
     
     /**

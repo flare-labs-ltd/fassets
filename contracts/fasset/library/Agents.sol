@@ -4,6 +4,8 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../interface/IAgentVault.sol";
+import "../interface/IAssetManager.sol";
+import "../implementation/AgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
 import "./AMEvents.sol";
@@ -134,12 +136,13 @@ library Agents {
     function createAgent(
         AssetManagerState.State storage _state, 
         AgentType _agentType,
-        address _agentVault,
+        IAssetManager _assetManager,
         string memory _underlyingAddressString
     ) 
         external 
     {
-        Agent storage agent = _state.agents[_agentVault];
+        IAgentVault agentVault = new AgentVault(_assetManager, msg.sender);
+        Agent storage agent = _state.agents[address(agentVault)];
         require(agent.agentType == AgentType.NONE, "agent already exists");
         require(_agentType == AgentType.AGENT_100, "agent type not supported");
         require(bytes(_underlyingAddressString).length != 0, "empty underlying address");
@@ -158,7 +161,7 @@ library Agents {
         agent.underlyingAddressHash = underlyingAddressHash;
         uint64 eoaProofBlock = _state.underlyingAddressOwnership.underlyingBlockOfEOAProof(underlyingAddressHash);
         agent.underlyingBlockAtCreation = SafeMath64.max64(_state.currentUnderlyingBlock, eoaProofBlock + 1);
-        emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), _agentVault, _underlyingAddressString);
+        emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), address(agentVault), _underlyingAddressString);
     }
     
     function announceDestroy(
