@@ -5,13 +5,14 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "../interface/IWNat.sol";
 import "../interface/IAssetManager.sol";
+import "../interface/IAssetManagerEvents.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
 import "../library/AssetManagerSettings.sol";
 import "../library/SettingsUpdater.sol";
 
-contract AssetManagerController is Governed, AddressUpdatable {
+contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEvents {
     // New address in case this controller was replaced.
     // Note: this code contains no checks that replacedBy==0, because when replaced,
     // all calls to AssetManager's updateSettings/pause/terminate will fail anyway
