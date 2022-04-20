@@ -145,12 +145,12 @@ export class MockStateConnectorClient implements IStateConnectorClient {
             }
             case AttestationType.ReferencedPaymentNonexistence: {
                 const request = parsedRequest as ARReferencedPaymentNonexistence;
-                return prover.referencedPaymentNonexistence(request.destinationAddress, request.paymentReference,
-                    toBN(request.amount), toNumber(request.endBlock), toNumber(request.endTimestamp));
+                return prover.referencedPaymentNonexistence(request.destinationAddressHash, request.paymentReference,
+                    toBN(request.amount), toNumber(request.deadlineBlockNumber), toNumber(request.deadlineTimestamp));
             }
             case AttestationType.ConfirmedBlockHeightExists: {
                 const request = parsedRequest as ARConfirmedBlockHeightExists;
-                return prover.confirmedBlockHeightExists(toNumber(request.blockNumber));
+                return prover.confirmedBlockHeightExists(request.upperBoundProof);
             }
         }
     }

@@ -34,9 +34,10 @@ export class MockAttestationProver {
             blockNumber: toBN(blockNumber),
             blockTimestamp: toBN(block.timestamp),
             transactionHash: transaction.hash,
+            inUtxo: toBN(inUtxo),
             utxo: toBN(utxo),
-            sourceAddress: web3.utils.keccak256(sourceAddress),
-            receivingAddress: web3.utils.keccak256(receivingAddress),
+            sourceAddressHash: web3.utils.keccak256(sourceAddress),
+            receivingAddressHash: web3.utils.keccak256(receivingAddress),
             paymentReference: transaction.reference ?? BYTES32_ZERO,
             spentAmount: spent,
             receivedAmount: totalValueFor(transaction.outputs, receivingAddress),
@@ -63,7 +64,8 @@ export class MockAttestationProver {
             blockNumber: toBN(blockNumber),
             blockTimestamp: toBN(block.timestamp),
             transactionHash: transaction.hash,
-            sourceAddress: web3.utils.keccak256(sourceAddress),
+            inUtxo: toBN(inUtxo),
+            sourceAddressHash: web3.utils.keccak256(sourceAddress),
             spentAmount: spent,
             paymentReference: transaction.reference ?? BYTES32_ZERO,
         };
@@ -79,9 +81,9 @@ export class MockAttestationProver {
         // fill result
         const proof: DHReferencedPaymentNonexistence = {
             stateConnectorRound: 0, // filled later
-            endTimestamp: toBN(endTimestamp),
-            endBlock: toBN(endBlock),
-            destinationAddress: destinationAddress,
+            deadlineTimestamp: toBN(endTimestamp),
+            deadlineBlockNumber: toBN(endBlock),
+            destinationAddressHash: destinationAddress,
             paymentReference: paymentReference,
             amount: amount,
             lowerBoundaryBlockNumber: toBN(lowerBoundaryBlockNumber),
@@ -117,8 +119,9 @@ export class MockAttestationProver {
         return [false, lowerBoundaryBlockNumber, -1];  // not found, but also didn't find overflow block
     }
 
-    confirmedBlockHeightExists(blockNumber: number): DHConfirmedBlockHeightExists | null {
-        if (blockNumber >= this.chain.blocks.length) {
+    confirmedBlockHeightExists(finalizationBlockHash: string): DHConfirmedBlockHeightExists | null {
+        const blockNumber = this.chain.blockIndex[finalizationBlockHash];
+        if (blockNumber == null || blockNumber >= this.chain.blocks.length) {
             return null;
         }
         const block = this.chain.blocks[blockNumber];
@@ -126,6 +129,8 @@ export class MockAttestationProver {
             stateConnectorRound: 0, // filled later
             blockNumber: toBN(blockNumber),
             blockTimestamp: toBN(block.timestamp),
+            numberOfConfirmations: toBN(this.chain.finalizationBlocks),
+            averageBlockProductionTimeMs: toBN(Math.round(this.chain.secondsPerBlock * 1000)),
         };
         return web3DeepNormalize(proof);
     }

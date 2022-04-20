@@ -7,7 +7,7 @@ import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { IStateConnectorClient } from "../../utils/fasset/IStateConnectorClient";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { BNish, DAYS, HOURS, toBN, toBNExp, toWei, WEEKS } from "../../utils/helpers";
+import { BNish, DAYS, HOURS, toBN, toBNExp, toNumber, toWei, WEEKS } from "../../utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { web3DeepNormalize } from "../../utils/web3assertions";
 import { ChainInfo, NatInfo } from "./ChainInfo";
@@ -92,10 +92,9 @@ export class AssetContext {
     }
     
     async updateUnderlyingBlock() {
-        const height = await this.chain.getBlockHeight();
-        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(height);
+        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists();
         await this.assetManager.updateCurrentBlock(proof);
-        return height;
+        return toNumber(proof.blockNumber) + toNumber(proof.numberOfConfirmations);
     }
 
     async currentAmgToNATWeiPrice() {

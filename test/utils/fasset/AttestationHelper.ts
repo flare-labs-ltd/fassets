@@ -48,11 +48,10 @@ export class AttestationHelper {
         const request: ARPayment = {
             attestationType: AttestationType.Payment,
             sourceId: this.chainId,
-            blockNumber: block.number,
             inUtxo: findAddressIndex(transaction.inputs, sourceAddress, 0),
             utxo: findAddressIndex(transaction.outputs, receivingAddress, 0),
             id: transactionHash,
-            dataAvailabilityProof: finalizationBlock.hash,
+            upperBoundProof: finalizationBlock.hash,
         };
         const data = encodePayment(request);
         return await this.client.submitRequest(data);
@@ -67,10 +66,9 @@ export class AttestationHelper {
         const request: ARBalanceDecreasingTransaction = {
             attestationType: AttestationType.BalanceDecreasingTransaction,
             sourceId: this.chainId,
-            blockNumber: block.number,
             inUtxo: findAddressIndex(transaction.inputs, sourceAddress, 0),
             id: transactionHash,
-            dataAvailabilityProof: finalizationBlock.hash,
+            upperBoundProof: finalizationBlock.hash,
         };
         const data = encodeBalanceDecreasingTransaction(request);
         return await this.client.submitRequest(data);
@@ -87,26 +85,25 @@ export class AttestationHelper {
         const request: ARReferencedPaymentNonexistence = {
             attestationType: AttestationType.ReferencedPaymentNonexistence,
             sourceId: this.chainId,
-            endTimestamp: endTimestamp,
-            endBlock: endBlock,
-            destinationAddress: web3.utils.keccak256(destinationAddress),
+            deadlineBlockNumber: endBlock,
+            deadlineTimestamp: endTimestamp,
+            destinationAddressHash: web3.utils.keccak256(destinationAddress),
             amount: amount,
             paymentReference: paymentReference,
-            overflowBlock: overflowBlock.number,
-            dataAvailabilityProof: finalizationBlock.hash,
+            upperBoundProof: finalizationBlock.hash,
         };
         const data = encodeReferencedPaymentNonexistence(request);
         return await this.client.submitRequest(data);
     }
 
-    async requestConfirmedBlockHeightExistsProof(blockNumber: number): Promise<AttestationRequest | null> {
-        const finalizationBlock = await this.chain.getBlockAt(blockNumber + this.finalizationBlocks);
+    async requestConfirmedBlockHeightExistsProof(): Promise<AttestationRequest | null> {
+        const blockHeight = await this.chain.getBlockHeight();
+        const finalizationBlock = await this.chain.getBlockAt(blockHeight);
         if (finalizationBlock == null) return null;
         const request: ARConfirmedBlockHeightExists = {
             attestationType: AttestationType.ConfirmedBlockHeightExists,
             sourceId: this.chainId,
-            blockNumber: blockNumber,
-            dataAvailabilityProof: finalizationBlock.hash,
+            upperBoundProof: finalizationBlock.hash,
         };
         const data = encodeConfirmedBlockHeightExists(request);
         return await this.client.submitRequest(data);
@@ -155,8 +152,8 @@ export class AttestationHelper {
         return result as ProvedDH<DHReferencedPaymentNonexistence>;
     }
 
-    async tryProveConfirmedBlockHeightExists(blockNumber: number): Promise<ProvedDH<DHConfirmedBlockHeightExists> | null> {
-        const request = await this.requestConfirmedBlockHeightExistsProof(blockNumber);
+    async tryProveConfirmedBlockHeightExists(): Promise<ProvedDH<DHConfirmedBlockHeightExists> | null> {
+        const request = await this.requestConfirmedBlockHeightExistsProof();
         if (request == null) return null;
         await this.client.waitForRoundFinalization(request.round);
         const { result } = await this.obtainConfirmedBlockHeightExistsProof(request.round, request.data);
@@ -182,8 +179,8 @@ export class AttestationHelper {
         throw new AttestationClientError("proveReferencedPaymentNonexistence: cannot prove");
     }
 
-    async proveConfirmedBlockHeightExists(blockNumber: number): Promise<ProvedDH<DHConfirmedBlockHeightExists>> {
-        const proof = await this.tryProveConfirmedBlockHeightExists(blockNumber);
+    async proveConfirmedBlockHeightExists(): Promise<ProvedDH<DHConfirmedBlockHeightExists>> {
+        const proof = await this.tryProveConfirmedBlockHeightExists();
         if (proof != null) return proof;
         throw new AttestationClientError("proveConfirmedBlockHeightExists: block not found");
     }
