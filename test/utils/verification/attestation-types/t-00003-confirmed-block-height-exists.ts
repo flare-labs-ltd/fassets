@@ -1,9 +1,7 @@
 import { SourceId } from "../sources/sources";
 import {
-   AttestationTypeScheme, ATT_BYTES,
-   BLOCKNUMBER_BYTES,
-   SOURCE_ID_BYTES,
-   DATA_AVAILABILITY_BYTES
+   AttestationTypeScheme, ATT_BYTES, SOURCE_ID_BYTES,
+   UPPER_BOUND_PROOF_BYTES
 } from "./attestation-types";
 
 export const TDEF: AttestationTypeScheme = {
@@ -30,21 +28,12 @@ The ID of the underlying chain, see SourceId enum.
 `
       },
       {
-         key: "blockNumber",
-         size: BLOCKNUMBER_BYTES,
-         type: "NumberLike",
-         description: 
-`
-Number of the block to prove the existence of.
-`
-      },
-      {
-         key: "dataAvailabilityProof",
-         size: DATA_AVAILABILITY_BYTES,
+         key: "upperBoundProof",
+         size: UPPER_BOUND_PROOF_BYTES,
          type: "ByteSequenceLike",
          description: 
 `
-Hash of the block to prove the existence of.
+The hash of the confirmation block for an upper query window boundary block.
 `
       },
    ],
@@ -54,7 +43,7 @@ Hash of the block to prove the existence of.
          type: "uint64",
          description:
 `
-Number of the block that was proved to exist.
+Number of the highest confirmed block that was proved to exist.
 `
       },
       {
@@ -62,8 +51,25 @@ Number of the block that was proved to exist.
          type: "uint64",
          description:
 `
-Timestamp of the block that was proved to exist.
+Timestamp of the confirmed block that was proved to exist.
 `
       },
+      {
+         key: "numberOfConfirmations",
+         type: "uint8",
+         description:
+`
+Number of confirmations for the blockchain.
+`
+      },
+      {
+         key: "averageBlockProductionTimeMs",
+         type: "uint64",
+         description:
+`
+Average block production time based on the data in the query window.
+`
+      },
+
    ]
 }

@@ -4,7 +4,7 @@ import {
    AttestationTypeScheme, ATT_BYTES,
    BLOCKNUMBER_BYTES,
    SOURCE_ID_BYTES,
-   DATA_AVAILABILITY_BYTES,
+   UPPER_BOUND_PROOF_BYTES,
    PAYMENT_REFERENCE_BYTES,
    TIMESTAMP_BYTES,
    TX_ID_BYTES
@@ -21,7 +21,7 @@ export const TDEF: AttestationTypeScheme = {
          type: "AttestationType",
          description: 
 `
-Attestation type id for this request, see AttestationType enum.
+Attestation type id for this request, see 'AttestationType' enum.
 `
       },
       {
@@ -30,11 +30,30 @@ Attestation type id for this request, see AttestationType enum.
          type: "SourceId",
          description: 
 `
-The ID of the underlying chain, see SourceId enum.
+The ID of the underlying chain, see 'SourceId' enum.
 `
       },
       {
-         key: "endTimestamp",
+         key: "upperBoundProof",
+         size: UPPER_BOUND_PROOF_BYTES,
+         type: "ByteSequenceLike",
+         description: 
+`
+The hash of the confirmation block for an upper query window boundary block.
+`
+      },
+      {
+         key: "deadlineBlockNumber",
+         size: BLOCKNUMBER_BYTES,
+         type: "NumberLike",
+         description: 
+`
+Maximum number of the block where the transaction is searched for.
+`
+      },
+
+      {
+         key: "deadlineTimestamp",
          size: TIMESTAMP_BYTES,
          type: "NumberLike",
          description: 
@@ -43,25 +62,12 @@ Maximum median timestamp of the block where the transaction is searched for.
 `
       },
       {
-         key: "endBlock",
-         size: BLOCKNUMBER_BYTES,
-         type: "NumberLike",
-         description: 
-`
-Maximum number of the block where the transaction is searched for.
-`
-      },
-      {
-         key: "destinationAddress",
+         key: "destinationAddressHash",
          size: TX_ID_BYTES,
          type: "ByteSequenceLike",
          description:
 `
-Payment nonexistence is confirmed if there is no payment transaction (attestation of \`Payment\` type)
-with correct \`(destinationAddress, paymentReference, amount)\` combination
-and with transaction status 0 (success) or 2 (failure, receiver's fault). 
-Note: if there exist only payment(s) with status 1 (failure, sender's fault) 
-then payment nonexistence is still confirmed.
+Hash of exact address to which the payment was done to.
 `
       },
       {
@@ -82,53 +88,31 @@ The exact amount to search for.
 The payment reference to search for.
 `
       },
-      {
-         key: "overflowBlock",
-         size: BLOCKNUMBER_BYTES,
-         type: "NumberLike",
-         description: 
-`
-Number of the overflow block - the block which has \`block.timestamp > endTimestamp\` and \`block.blockNumber > endBlock\`.
-Does not need to be the first such block. It has to be confirmed.
-`
-      },
-      {
-         key: "dataAvailabilityProof",
-         size: DATA_AVAILABILITY_BYTES,
-         type: "ByteSequenceLike",
-         description: 
-`
-Block hash of the confirmation data availability block for the overflow block.
-`
-      },
    ],
    dataHashDefinition: [
       {
-         key: "endTimestamp",
+         key: "deadlineBlockNumber",
          type: "uint64",
          description:
 `
-End timestamp specified in attestation request.
+Deadline block number specified in the attestation request.
 `
       },
+
       {
-         key: "endBlock",
+         key: "deadlineTimestamp",
          type: "uint64",
          description:
 `
-End block specified in attestation request.
+Deadline timestamp specified in the attestation request.
 `
       },
       {
-         key: "destinationAddress",
+         key: "destinationAddressHash",
          type: "bytes32",
          description:
 `
-Payment nonexistence is confirmed if there is no payment transaction (attestation of \`Payment\` type)
-with correct \`(destinationAddress, paymentReference, amount)\` combination
-and with transaction status 0 (success) or 2 (failure, receiver's fault). 
-Note: if there exist only payment(s) with status 1 (failure, sender's fault) 
-then payment nonexistence is still confirmed.
+Hash of the destination address searched for.
 `
       },
       {
@@ -148,30 +132,27 @@ The amount searched for.
 `
       },
       {
-         key: "firstCheckedBlock",
+         key: "lowerBoundaryBlockNumber",
          type: "uint64",
          description:
 `
-The first (confirmed) block that gets checked. It is the block that has timestamp (median time) 
-greater or equal to \`endTimestamp - CHECK_WINDOW\`. 
-f-asset: check that \`firstCheckBlock <= currentUnderlyingBlock\` at the time of redemption request.
+The first confirmed block that gets checked. It is the lowest block in the synchronized query window. 
 `
       },
       {
-         key: "firstCheckedBlockTimestamp",
+         key: "lowerBoundaryBlockTimestamp",
          type: "uint64",
          description:
 `
-Timestamp of the firstCheckedBlock.
+Timestamp of the lowerBoundaryBlockNumber.
 `
       },
       {
-         key: "firstOverflowBlock",
+         key: "firstOverflowBlockNumber",
          type: "uint64",
          description:
 `
-The first confirmed block with \`timestamp > endTimestamp\` and \`blockNumber  > endBlock\`. 
-f-asset: check that \`firstOverflowBlock > last payment block\` (\`= currentUnderlyingBlock + blocksToPay\`).
+The first (lowest) confirmed block with 'timestamp > deadlineTimestamp' and 'blockNumber  > deadlineBlockNumber'.
 `
       },
       {
@@ -179,9 +160,7 @@ f-asset: check that \`firstOverflowBlock > last payment block\` (\`= currentUnde
          type: "uint64",
          description:
 `
-Timestamp of the firstOverflowBlock.
-f-asset: check that \`firstOverflowBlockTimestamp > last payment timestamp\` 
-     (\`= currentUnderlyingBlockTimestamp + time to pay\`). 
+Timestamp of the firstOverflowBlock. 
 `
       },
    ]

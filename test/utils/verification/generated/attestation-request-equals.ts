@@ -46,19 +46,16 @@ export function equalsPayment(request1: ARPayment, request2: ARPayment) {
    if(!assertEqualsByScheme(request1.sourceId, request2.sourceId, "SourceId")) {
       return false;
    }
-   if(!assertEqualsByScheme(request1.blockNumber, request2.blockNumber, "NumberLike")) {
-      return false;
-   }
-   if(!assertEqualsByScheme(request1.utxo, request2.utxo, "NumberLike")) {
-      return false;
-   }
-   if(!assertEqualsByScheme(request1.inUtxo, request2.inUtxo, "NumberLike")) {
+   if(!assertEqualsByScheme(request1.upperBoundProof, request2.upperBoundProof, "ByteSequenceLike")) {
       return false;
    }
    if(!assertEqualsByScheme(request1.id, request2.id, "ByteSequenceLike")) {
       return false;
    }
-   if(!assertEqualsByScheme(request1.dataAvailabilityProof, request2.dataAvailabilityProof, "ByteSequenceLike")) {
+   if(!assertEqualsByScheme(request1.inUtxo, request2.inUtxo, "NumberLike")) {
+      return false;
+   }
+   if(!assertEqualsByScheme(request1.utxo, request2.utxo, "NumberLike")) {
       return false;
    }
    return true;
@@ -71,16 +68,13 @@ export function equalsBalanceDecreasingTransaction(request1: ARBalanceDecreasing
    if(!assertEqualsByScheme(request1.sourceId, request2.sourceId, "SourceId")) {
       return false;
    }
-   if(!assertEqualsByScheme(request1.blockNumber, request2.blockNumber, "NumberLike")) {
-      return false;
-   }
-   if(!assertEqualsByScheme(request1.inUtxo, request2.inUtxo, "NumberLike")) {
+   if(!assertEqualsByScheme(request1.upperBoundProof, request2.upperBoundProof, "ByteSequenceLike")) {
       return false;
    }
    if(!assertEqualsByScheme(request1.id, request2.id, "ByteSequenceLike")) {
       return false;
    }
-   if(!assertEqualsByScheme(request1.dataAvailabilityProof, request2.dataAvailabilityProof, "ByteSequenceLike")) {
+   if(!assertEqualsByScheme(request1.inUtxo, request2.inUtxo, "NumberLike")) {
       return false;
    }
    return true;
@@ -93,10 +87,7 @@ export function equalsConfirmedBlockHeightExists(request1: ARConfirmedBlockHeigh
    if(!assertEqualsByScheme(request1.sourceId, request2.sourceId, "SourceId")) {
       return false;
    }
-   if(!assertEqualsByScheme(request1.blockNumber, request2.blockNumber, "NumberLike")) {
-      return false;
-   }
-   if(!assertEqualsByScheme(request1.dataAvailabilityProof, request2.dataAvailabilityProof, "ByteSequenceLike")) {
+   if(!assertEqualsByScheme(request1.upperBoundProof, request2.upperBoundProof, "ByteSequenceLike")) {
       return false;
    }
    return true;
@@ -109,25 +100,22 @@ export function equalsReferencedPaymentNonexistence(request1: ARReferencedPaymen
    if(!assertEqualsByScheme(request1.sourceId, request2.sourceId, "SourceId")) {
       return false;
    }
-   if(!assertEqualsByScheme(request1.endTimestamp, request2.endTimestamp, "NumberLike")) {
+   if(!assertEqualsByScheme(request1.upperBoundProof, request2.upperBoundProof, "ByteSequenceLike")) {
       return false;
    }
-   if(!assertEqualsByScheme(request1.endBlock, request2.endBlock, "NumberLike")) {
+   if(!assertEqualsByScheme(request1.deadlineBlockNumber, request2.deadlineBlockNumber, "NumberLike")) {
       return false;
    }
-   if(!assertEqualsByScheme(request1.destinationAddress, request2.destinationAddress, "ByteSequenceLike")) {
+   if(!assertEqualsByScheme(request1.deadlineTimestamp, request2.deadlineTimestamp, "NumberLike")) {
+      return false;
+   }
+   if(!assertEqualsByScheme(request1.destinationAddressHash, request2.destinationAddressHash, "ByteSequenceLike")) {
       return false;
    }
    if(!assertEqualsByScheme(request1.amount, request2.amount, "NumberLike")) {
       return false;
    }
    if(!assertEqualsByScheme(request1.paymentReference, request2.paymentReference, "ByteSequenceLike")) {
-      return false;
-   }
-   if(!assertEqualsByScheme(request1.overflowBlock, request2.overflowBlock, "NumberLike")) {
-      return false;
-   }
-   if(!assertEqualsByScheme(request1.dataAvailabilityProof, request2.dataAvailabilityProof, "ByteSequenceLike")) {
       return false;
    }
    return true;

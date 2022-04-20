@@ -78,18 +78,17 @@ export function parsePayment(bytes: string): ARPayment {
       throw new AttestationRequestParseError("Empty attestation request")
    }
    let input = unPrefix0x(bytes);  
-   if(input.length != 152) {
+   if(input.length != 144) {
       throw new AttestationRequestParseError("Incorrectly formatted attestation request")
    }
   
    return {
       attestationType: fromUnprefixedBytes(input.slice(0, 4), "AttestationType", 2) as AttestationType,
       sourceId: fromUnprefixedBytes(input.slice(4, 12), "SourceId", 4) as SourceId,
-      blockNumber: fromUnprefixedBytes(input.slice(12, 20), "NumberLike", 4) as BN,
-      utxo: fromUnprefixedBytes(input.slice(20, 22), "NumberLike", 1) as BN,
-      inUtxo: fromUnprefixedBytes(input.slice(22, 24), "NumberLike", 1) as BN,
-      id: fromUnprefixedBytes(input.slice(24, 88), "ByteSequenceLike", 32) as string,
-      dataAvailabilityProof: fromUnprefixedBytes(input.slice(88, 152), "ByteSequenceLike", 32) as string
+      upperBoundProof: fromUnprefixedBytes(input.slice(12, 76), "ByteSequenceLike", 32) as string,
+      id: fromUnprefixedBytes(input.slice(76, 140), "ByteSequenceLike", 32) as string,
+      inUtxo: fromUnprefixedBytes(input.slice(140, 142), "NumberLike", 1) as BN,
+      utxo: fromUnprefixedBytes(input.slice(142, 144), "NumberLike", 1) as BN
    }
 }
 
@@ -98,17 +97,16 @@ export function parseBalanceDecreasingTransaction(bytes: string): ARBalanceDecre
       throw new AttestationRequestParseError("Empty attestation request")
    }
    let input = unPrefix0x(bytes);  
-   if(input.length != 150) {
+   if(input.length != 142) {
       throw new AttestationRequestParseError("Incorrectly formatted attestation request")
    }
   
    return {
       attestationType: fromUnprefixedBytes(input.slice(0, 4), "AttestationType", 2) as AttestationType,
       sourceId: fromUnprefixedBytes(input.slice(4, 12), "SourceId", 4) as SourceId,
-      blockNumber: fromUnprefixedBytes(input.slice(12, 20), "NumberLike", 4) as BN,
-      inUtxo: fromUnprefixedBytes(input.slice(20, 22), "NumberLike", 1) as BN,
-      id: fromUnprefixedBytes(input.slice(22, 86), "ByteSequenceLike", 32) as string,
-      dataAvailabilityProof: fromUnprefixedBytes(input.slice(86, 150), "ByteSequenceLike", 32) as string
+      upperBoundProof: fromUnprefixedBytes(input.slice(12, 76), "ByteSequenceLike", 32) as string,
+      id: fromUnprefixedBytes(input.slice(76, 140), "ByteSequenceLike", 32) as string,
+      inUtxo: fromUnprefixedBytes(input.slice(140, 142), "NumberLike", 1) as BN
    }
 }
 
@@ -117,15 +115,14 @@ export function parseConfirmedBlockHeightExists(bytes: string): ARConfirmedBlock
       throw new AttestationRequestParseError("Empty attestation request")
    }
    let input = unPrefix0x(bytes);  
-   if(input.length != 84) {
+   if(input.length != 76) {
       throw new AttestationRequestParseError("Incorrectly formatted attestation request")
    }
   
    return {
       attestationType: fromUnprefixedBytes(input.slice(0, 4), "AttestationType", 2) as AttestationType,
       sourceId: fromUnprefixedBytes(input.slice(4, 12), "SourceId", 4) as SourceId,
-      blockNumber: fromUnprefixedBytes(input.slice(12, 20), "NumberLike", 4) as BN,
-      dataAvailabilityProof: fromUnprefixedBytes(input.slice(20, 84), "ByteSequenceLike", 32) as string
+      upperBoundProof: fromUnprefixedBytes(input.slice(12, 76), "ByteSequenceLike", 32) as string
    }
 }
 
@@ -134,20 +131,19 @@ export function parseReferencedPaymentNonexistence(bytes: string): ARReferencedP
       throw new AttestationRequestParseError("Empty attestation request")
    }
    let input = unPrefix0x(bytes);  
-   if(input.length != 260) {
+   if(input.length != 252) {
       throw new AttestationRequestParseError("Incorrectly formatted attestation request")
    }
   
    return {
       attestationType: fromUnprefixedBytes(input.slice(0, 4), "AttestationType", 2) as AttestationType,
       sourceId: fromUnprefixedBytes(input.slice(4, 12), "SourceId", 4) as SourceId,
-      endTimestamp: fromUnprefixedBytes(input.slice(12, 20), "NumberLike", 4) as BN,
-      endBlock: fromUnprefixedBytes(input.slice(20, 28), "NumberLike", 4) as BN,
-      destinationAddress: fromUnprefixedBytes(input.slice(28, 92), "ByteSequenceLike", 32) as string,
-      amount: fromUnprefixedBytes(input.slice(92, 124), "NumberLike", 16) as BN,
-      paymentReference: fromUnprefixedBytes(input.slice(124, 188), "ByteSequenceLike", 32) as string,
-      overflowBlock: fromUnprefixedBytes(input.slice(188, 196), "NumberLike", 4) as BN,
-      dataAvailabilityProof: fromUnprefixedBytes(input.slice(196, 260), "ByteSequenceLike", 32) as string
+      upperBoundProof: fromUnprefixedBytes(input.slice(12, 76), "ByteSequenceLike", 32) as string,
+      deadlineBlockNumber: fromUnprefixedBytes(input.slice(76, 84), "NumberLike", 4) as BN,
+      deadlineTimestamp: fromUnprefixedBytes(input.slice(84, 92), "NumberLike", 4) as BN,
+      destinationAddressHash: fromUnprefixedBytes(input.slice(92, 156), "ByteSequenceLike", 32) as string,
+      amount: fromUnprefixedBytes(input.slice(156, 188), "NumberLike", 16) as BN,
+      paymentReference: fromUnprefixedBytes(input.slice(188, 252), "ByteSequenceLike", 32) as string
    }
 }
 

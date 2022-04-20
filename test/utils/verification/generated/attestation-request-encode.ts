@@ -54,29 +54,25 @@ export function encodePayment(request: ARPayment) {
    if(request.sourceId == null) {
       throw new AttestationRequestEncodeError("Missing 'sourceId'")
    }
-   if(request.blockNumber == null) {
-      throw new AttestationRequestEncodeError("Missing 'blockNumber'")
-   }
-   if(request.utxo == null) {
-      throw new AttestationRequestEncodeError("Missing 'utxo'")
-   }
-   if(request.inUtxo == null) {
-      throw new AttestationRequestEncodeError("Missing 'inUtxo'")
+   if(request.upperBoundProof == null) {
+      throw new AttestationRequestEncodeError("Missing 'upperBoundProof'")
    }
    if(request.id == null) {
       throw new AttestationRequestEncodeError("Missing 'id'")
    }
-   if(request.dataAvailabilityProof == null) {
-      throw new AttestationRequestEncodeError("Missing 'dataAvailabilityProof'")
+   if(request.inUtxo == null) {
+      throw new AttestationRequestEncodeError("Missing 'inUtxo'")
+   }
+   if(request.utxo == null) {
+      throw new AttestationRequestEncodeError("Missing 'utxo'")
    }
    let bytes = "0x"
    bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2, "attestationType");
    bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4, "sourceId");
-   bytes += toUnprefixedBytes(request.blockNumber, "NumberLike", 4, "blockNumber");
-   bytes += toUnprefixedBytes(request.utxo, "NumberLike", 1, "utxo");
-   bytes += toUnprefixedBytes(request.inUtxo, "NumberLike", 1, "inUtxo");
+   bytes += toUnprefixedBytes(request.upperBoundProof, "ByteSequenceLike", 32, "upperBoundProof");
    bytes += toUnprefixedBytes(request.id, "ByteSequenceLike", 32, "id");
-   bytes += toUnprefixedBytes(request.dataAvailabilityProof, "ByteSequenceLike", 32, "dataAvailabilityProof");
+   bytes += toUnprefixedBytes(request.inUtxo, "NumberLike", 1, "inUtxo");
+   bytes += toUnprefixedBytes(request.utxo, "NumberLike", 1, "utxo");
    return bytes;
 }
 
@@ -87,25 +83,21 @@ export function encodeBalanceDecreasingTransaction(request: ARBalanceDecreasingT
    if(request.sourceId == null) {
       throw new AttestationRequestEncodeError("Missing 'sourceId'")
    }
-   if(request.blockNumber == null) {
-      throw new AttestationRequestEncodeError("Missing 'blockNumber'")
-   }
-   if(request.inUtxo == null) {
-      throw new AttestationRequestEncodeError("Missing 'inUtxo'")
+   if(request.upperBoundProof == null) {
+      throw new AttestationRequestEncodeError("Missing 'upperBoundProof'")
    }
    if(request.id == null) {
       throw new AttestationRequestEncodeError("Missing 'id'")
    }
-   if(request.dataAvailabilityProof == null) {
-      throw new AttestationRequestEncodeError("Missing 'dataAvailabilityProof'")
+   if(request.inUtxo == null) {
+      throw new AttestationRequestEncodeError("Missing 'inUtxo'")
    }
    let bytes = "0x"
    bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2, "attestationType");
    bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4, "sourceId");
-   bytes += toUnprefixedBytes(request.blockNumber, "NumberLike", 4, "blockNumber");
-   bytes += toUnprefixedBytes(request.inUtxo, "NumberLike", 1, "inUtxo");
+   bytes += toUnprefixedBytes(request.upperBoundProof, "ByteSequenceLike", 32, "upperBoundProof");
    bytes += toUnprefixedBytes(request.id, "ByteSequenceLike", 32, "id");
-   bytes += toUnprefixedBytes(request.dataAvailabilityProof, "ByteSequenceLike", 32, "dataAvailabilityProof");
+   bytes += toUnprefixedBytes(request.inUtxo, "NumberLike", 1, "inUtxo");
    return bytes;
 }
 
@@ -116,17 +108,13 @@ export function encodeConfirmedBlockHeightExists(request: ARConfirmedBlockHeight
    if(request.sourceId == null) {
       throw new AttestationRequestEncodeError("Missing 'sourceId'")
    }
-   if(request.blockNumber == null) {
-      throw new AttestationRequestEncodeError("Missing 'blockNumber'")
-   }
-   if(request.dataAvailabilityProof == null) {
-      throw new AttestationRequestEncodeError("Missing 'dataAvailabilityProof'")
+   if(request.upperBoundProof == null) {
+      throw new AttestationRequestEncodeError("Missing 'upperBoundProof'")
    }
    let bytes = "0x"
    bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2, "attestationType");
    bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4, "sourceId");
-   bytes += toUnprefixedBytes(request.blockNumber, "NumberLike", 4, "blockNumber");
-   bytes += toUnprefixedBytes(request.dataAvailabilityProof, "ByteSequenceLike", 32, "dataAvailabilityProof");
+   bytes += toUnprefixedBytes(request.upperBoundProof, "ByteSequenceLike", 32, "upperBoundProof");
    return bytes;
 }
 
@@ -137,14 +125,17 @@ export function encodeReferencedPaymentNonexistence(request: ARReferencedPayment
    if(request.sourceId == null) {
       throw new AttestationRequestEncodeError("Missing 'sourceId'")
    }
-   if(request.endTimestamp == null) {
-      throw new AttestationRequestEncodeError("Missing 'endTimestamp'")
+   if(request.upperBoundProof == null) {
+      throw new AttestationRequestEncodeError("Missing 'upperBoundProof'")
    }
-   if(request.endBlock == null) {
-      throw new AttestationRequestEncodeError("Missing 'endBlock'")
+   if(request.deadlineBlockNumber == null) {
+      throw new AttestationRequestEncodeError("Missing 'deadlineBlockNumber'")
    }
-   if(request.destinationAddress == null) {
-      throw new AttestationRequestEncodeError("Missing 'destinationAddress'")
+   if(request.deadlineTimestamp == null) {
+      throw new AttestationRequestEncodeError("Missing 'deadlineTimestamp'")
+   }
+   if(request.destinationAddressHash == null) {
+      throw new AttestationRequestEncodeError("Missing 'destinationAddressHash'")
    }
    if(request.amount == null) {
       throw new AttestationRequestEncodeError("Missing 'amount'")
@@ -152,22 +143,15 @@ export function encodeReferencedPaymentNonexistence(request: ARReferencedPayment
    if(request.paymentReference == null) {
       throw new AttestationRequestEncodeError("Missing 'paymentReference'")
    }
-   if(request.overflowBlock == null) {
-      throw new AttestationRequestEncodeError("Missing 'overflowBlock'")
-   }
-   if(request.dataAvailabilityProof == null) {
-      throw new AttestationRequestEncodeError("Missing 'dataAvailabilityProof'")
-   }
    let bytes = "0x"
    bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2, "attestationType");
    bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4, "sourceId");
-   bytes += toUnprefixedBytes(request.endTimestamp, "NumberLike", 4, "endTimestamp");
-   bytes += toUnprefixedBytes(request.endBlock, "NumberLike", 4, "endBlock");
-   bytes += toUnprefixedBytes(request.destinationAddress, "ByteSequenceLike", 32, "destinationAddress");
+   bytes += toUnprefixedBytes(request.upperBoundProof, "ByteSequenceLike", 32, "upperBoundProof");
+   bytes += toUnprefixedBytes(request.deadlineBlockNumber, "NumberLike", 4, "deadlineBlockNumber");
+   bytes += toUnprefixedBytes(request.deadlineTimestamp, "NumberLike", 4, "deadlineTimestamp");
+   bytes += toUnprefixedBytes(request.destinationAddressHash, "ByteSequenceLike", 32, "destinationAddressHash");
    bytes += toUnprefixedBytes(request.amount, "NumberLike", 16, "amount");
    bytes += toUnprefixedBytes(request.paymentReference, "ByteSequenceLike", 32, "paymentReference");
-   bytes += toUnprefixedBytes(request.overflowBlock, "NumberLike", 4, "overflowBlock");
-   bytes += toUnprefixedBytes(request.dataAvailabilityProof, "ByteSequenceLike", 32, "dataAvailabilityProof");
    return bytes;
 }
 

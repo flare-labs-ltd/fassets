@@ -75,14 +75,15 @@ abstract contract AttestationClientBase is IAttestationClient {
                 _data.blockNumber,
                 _data.blockTimestamp,
                 _data.transactionHash,
+                _data.inUtxo,
                 _data.utxo,
-                _data.sourceAddress,
-                _data.receivingAddress
+                _data.sourceAddressHash
             ),
             abi.encode(
-                _data.paymentReference,
+                _data.receivingAddressHash,
                 _data.spentAmount,
                 _data.receivedAmount,
+                _data.paymentReference,
                 _data.oneToOne,
                 _data.status
             )
@@ -99,7 +100,8 @@ abstract contract AttestationClientBase is IAttestationClient {
             _data.blockNumber,
             _data.blockTimestamp,
             _data.transactionHash,
-            _data.sourceAddress,
+            _data.inUtxo,
+            _data.sourceAddressHash,
             _data.spentAmount,
             _data.paymentReference
         ));
@@ -113,7 +115,9 @@ abstract contract AttestationClientBase is IAttestationClient {
             CONFIRMED_BLOCK_HEIGHT_EXISTS,
             _chainId,
             _data.blockNumber,
-            _data.blockTimestamp
+            _data.blockTimestamp,
+            _data.numberOfConfirmations,
+            _data.averageBlockProductionTimeMs
         ));
     }
     
@@ -126,16 +130,16 @@ abstract contract AttestationClientBase is IAttestationClient {
             abi.encode(
                 REFERENCED_PAYMENT_NONEXISTENCE,
                 _chainId,
-                _data.endTimestamp,
-                _data.endBlock,
-                _data.destinationAddress,
+                _data.deadlineBlockNumber,
+                _data.deadlineTimestamp,
+                _data.destinationAddressHash,
                 _data.paymentReference,
                 _data.amount,
-                _data.firstCheckedBlock
+                _data.lowerBoundaryBlockNumber
             ),
             abi.encode(
-                _data.firstCheckedBlockTimestamp,
-                _data.firstOverflowBlock,
+                _data.lowerBoundaryBlockTimestamp,
+                _data.firstOverflowBlockNumber,
                 _data.firstOverflowBlockTimestamp
             )
         ));

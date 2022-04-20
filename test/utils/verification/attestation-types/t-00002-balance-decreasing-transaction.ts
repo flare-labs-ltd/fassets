@@ -1,5 +1,5 @@
 import { SourceId } from "../sources/sources";
-import { AttestationTypeScheme, ATT_BYTES, BLOCKNUMBER_BYTES, SOURCE_ID_BYTES, DATA_AVAILABILITY_BYTES, TX_ID_BYTES, UTXO_BYTES } from "./attestation-types";
+import { AttestationTypeScheme, ATT_BYTES, SOURCE_ID_BYTES, TX_ID_BYTES, UPPER_BOUND_PROOF_BYTES, UTXO_BYTES } from "./attestation-types";
 
 export const TDEF: AttestationTypeScheme = {
    id: 2,
@@ -12,7 +12,7 @@ export const TDEF: AttestationTypeScheme = {
          type: "AttestationType",
          description: 
 `
-Attestation type id for this request, see AttestationType enum.
+Attestation type id for this request, see 'AttestationType' enum.
 `
       },
       {
@@ -21,25 +21,16 @@ Attestation type id for this request, see AttestationType enum.
          type: "SourceId",
          description: 
 `
-The ID of the underlying chain, see SourceId enum.
+The ID of the underlying chain, see 'SourceId' enum.
 `
       },
       {
-         key: "blockNumber",
-         size: BLOCKNUMBER_BYTES,
-         type: "NumberLike",
+         key: "upperBoundProof",
+         size: UPPER_BOUND_PROOF_BYTES,
+         type: "ByteSequenceLike",
          description: 
 `
-Number of the block of the transaction.
-`
-      },  
-      {
-         key: "inUtxo",
-         size: UTXO_BYTES,
-         type: "NumberLike",
-         description: 
-`
-Index of the sourceAddress on utxo chains.
+The hash of the confirmation block for an upper query window boundary block.
 `
       },
       {
@@ -52,12 +43,12 @@ Transaction hash to search for.
 `
       },
       {
-         key: "dataAvailabilityProof",
-         size: DATA_AVAILABILITY_BYTES,
-         type: "ByteSequenceLike",
+         key: "inUtxo",
+         size: UTXO_BYTES,
+         type: "NumberLike",
          description: 
 `
-Block hash of the finalization block for the searched transaction (e.g. at least 6 blocks after the block with transaction).
+Index of the source address on UTXO chains.
 `
       },
    ],
@@ -87,12 +78,19 @@ Hash of the transaction on the underlying chain.
 `
       },
       {
-         key: "sourceAddress",
+         key: "inUtxo",
+         type: "uint8",
+         description:
+`
+Index of the transaction input indicating source address on UTXO chains, 0 on non-UTXO chains.
+`
+      },
+      {
+         key: "sourceAddressHash",
          type: "bytes32",
          description:
 `
-Hash of the source address as a string. For utxo transactions with multiple addresses,
-it is the one for which \`spent\` is calculated and was indicated in the state connector instructions.
+Hash of the source address as a string. For UTXO transactions with multiple input addresses this is the address that is on the input indicated by 'inUtxo' parameter.
 `
       },
       {
@@ -100,9 +98,7 @@ it is the one for which \`spent\` is calculated and was indicated in the state c
          type: "int256",
          description:
 `
-The amount that went out of the \`sourceAddress\`, in smallest underlying units.
-It includes both payment value and fee (gas). For utxo chains it is calculcated as 
-\`outgoing_amount - returned_amount\` and can be negative, that's why signed \`int256\` is used.
+The amount that went out of the source address, in the smallest underlying units. In non-UTXO chains it includes both payment value and fee (gas). Calculation for UTXO chains depends on the existence of standardized payment reference. If it exists, it is calculated as 'outgoing_amount - returned_amount' and can be negative. If the standardized payment reference does not exist, then it is just the spent amount on the input indicated by 'inUtxo'.
 `
       },
       {
@@ -110,9 +106,7 @@ It includes both payment value and fee (gas). For utxo chains it is calculcated 
          type: "bytes32",
          description:
 `
-If the attestation provider detects that the transaction is actually a valid payment (same conditions
-as for Payment), it should set this field to its the paymentReference.
-Otherwise, paymentReference must be 0.
+Standardized payment reference, if it exists, 0 otherwise.
 `
       },
    ]

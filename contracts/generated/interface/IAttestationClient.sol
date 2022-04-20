@@ -24,39 +24,35 @@ interface IAttestationClient {
         // Hash of the transaction on the underlying chain.
         bytes32 transactionHash;
 
-        // Output index for transactions with multiple outputs.
+        // Index of the transaction input indicating source address on UTXO chains, 0 on non-UTXO chains.
+        uint8 inUtxo;
+
+        // Output index for a transaction with multiple outputs on UTXO chains, 0 on non-UTXO chains. The same as in the 'utxo' parameter from the request.
         uint8 utxo;
 
-        // Hash of the source address as a string. For utxo transactions with multiple addresses,
-        // it is the one for which `spent` is calculated and was indicated 
-        // in the state connector instructions by the `inUtxo` parameter.
-        bytes32 sourceAddress;
+        // Hash of the source address viewed as a string (the one indicated by the 'inUtxo' parameter for UTXO blockchains).
+        bytes32 sourceAddressHash;
 
-        // Hash of the receiving address as a string (the one indicated by the `utxo` parameter).
-        bytes32 receivingAddress;
+        // Hash of the receiving address as a string (the one indicated by the 'utxo' parameter for UTXO blockchains).
+        bytes32 receivingAddressHash;
 
-        // Chain dependent extra data (e.g. memo field, detination tag, tx data)
-        // For minting and redemption payment it depends on request id, 
-        // for topup and self-mint it depends on the agent vault address.
-        // See PaymentReference.sol for details of payment reference calculation.
-        bytes32 paymentReference;
-
-        // The amount that went out of the `sourceAddress`, in smallest underlying units.
-        // It includes both payment value and fee (gas). For utxo chains it is calculcated as 
-        // `outgoing_amount - returned_amount` and can be negative, that's why signed `int256` is used.
+        // The amount that went out of the source address, in the smallest underlying units. In non-UTXO chains it includes both payment value and fee (gas). Calculation for UTXO chains depends on the existence of standardized payment reference. If it exists, it is calculated as 'outgoing_amount - returned_amount' and can be negative. If the standardized payment reference does not exist, then it is just the spent amount on the input indicated by 'inUtxo'.
         int256 spentAmount;
 
-        // The amount the receiving address received, in smallest underlying units.
-        uint256 receivedAmount;
+        // The amount received to the receiving address, in smallest underlying units. Can be negative in UTXO chains.
+        int256 receivedAmount;
 
-        // True if the transaction has exactly one source address and 
+        // Standardized payment reference, if it exists, 0 otherwise.
+        bytes32 paymentReference;
+
+        // 'true' if the transaction has exactly one source address and 
         // exactly one receiving address (different from source).
         bool oneToOne;
 
         // Transaction success status, can have 3 values:
-        // 0 - Success
-        // 1 - Failure due to sender fault (this is the default failure)
-        // 2 - Failure due to receiver fault (bad destination address)
+        //   - 0 - Success
+        //   - 1 - Failure due to sender (this is the default failure)
+        //   - 2 - Failure due to receiver (bad destination address)
         uint8 status;
     }
 
@@ -76,18 +72,16 @@ interface IAttestationClient {
         // Hash of the transaction on the underlying chain.
         bytes32 transactionHash;
 
-        // Hash of the source address as a string. For utxo transactions with multiple addresses,
-        // it is the one for which `spent` is calculated and was indicated in the state connector instructions.
-        bytes32 sourceAddress;
+        // Index of the transaction input indicating source address on UTXO chains, 0 on non-UTXO chains.
+        uint8 inUtxo;
 
-        // The amount that went out of the `sourceAddress`, in smallest underlying units.
-        // It includes both payment value and fee (gas). For utxo chains it is calculcated as 
-        // `outgoing_amount - returned_amount` and can be negative, that's why signed `int256` is used.
+        // Hash of the source address as a string. For UTXO transactions with multiple input addresses this is the address that is on the input indicated by 'inUtxo' parameter.
+        bytes32 sourceAddressHash;
+
+        // The amount that went out of the source address, in the smallest underlying units. In non-UTXO chains it includes both payment value and fee (gas). Calculation for UTXO chains depends on the existence of standardized payment reference. If it exists, it is calculated as 'outgoing_amount - returned_amount' and can be negative. If the standardized payment reference does not exist, then it is just the spent amount on the input indicated by 'inUtxo'.
         int256 spentAmount;
 
-        // If the attestation provider detects that the transaction is actually a valid payment (same conditions
-        // as for Payment), it should set this field to its the paymentReference.
-        // Otherwise, paymentReference must be 0.
+        // Standardized payment reference, if it exists, 0 otherwise.
         bytes32 paymentReference;
     }
 
@@ -98,11 +92,17 @@ interface IAttestationClient {
         // Merkle proof needed to verify the existence of transaction with the below fields.
         bytes32[] merkleProof;
 
-        // Number of the block that was proved to exist.
+        // Number of the highest confirmed block that was proved to exist.
         uint64 blockNumber;
 
-        // Timestamp of the block that was proved to exist.
+        // Timestamp of the confirmed block that was proved to exist.
         uint64 blockTimestamp;
+
+        // Number of confirmations for the blockchain.
+        uint8 numberOfConfirmations;
+
+        // Average block production time based on the data in the query window.
+        uint64 averageBlockProductionTimeMs;
     }
 
     struct ReferencedPaymentNonexistence {
@@ -112,18 +112,14 @@ interface IAttestationClient {
         // Merkle proof needed to verify the existence of transaction with the below fields.
         bytes32[] merkleProof;
 
-        // End timestamp specified in attestation request.
-        uint64 endTimestamp;
+        // Deadline block number specified in the attestation request.
+        uint64 deadlineBlockNumber;
 
-        // End block specified in attestation request.
-        uint64 endBlock;
+        // Deadline timestamp specified in the attestation request.
+        uint64 deadlineTimestamp;
 
-        // Payment nonexistence is confirmed if there is no payment transaction (attestation of `Payment` type)
-        // with correct `(destinationAddress, paymentReference, amount)` combination
-        // and with transaction status 0 (success) or 2 (failure, receiver's fault). 
-        // Note: if there exist only payment(s) with status 1 (failure, sender's fault) 
-        // then payment nonexistence is still confirmed.
-        bytes32 destinationAddress;
+        // Hash of the destination address searched for.
+        bytes32 destinationAddressHash;
 
         // The payment reference searched for.
         bytes32 paymentReference;
@@ -131,21 +127,16 @@ interface IAttestationClient {
         // The amount searched for.
         uint128 amount;
 
-        // The first (confirmed) block that gets checked. It is the block that has timestamp (median time) 
-        // greater or equal to `endTimestamp - CHECK_WINDOW`. 
-        // f-asset: check that `firstCheckBlock <= currentUnderlyingBlock` at the time of redemption request.
-        uint64 firstCheckedBlock;
+        // The first confirmed block that gets checked. It is the lowest block in the synchronized query window.
+        uint64 lowerBoundaryBlockNumber;
 
-        // Timestamp of the firstCheckedBlock.
-        uint64 firstCheckedBlockTimestamp;
+        // Timestamp of the lowerBoundaryBlockNumber.
+        uint64 lowerBoundaryBlockTimestamp;
 
-        // The first confirmed block with `timestamp > endTimestamp` and `blockNumber  > endBlock`. 
-        // f-asset: check that `firstOverflowBlock > last payment block` (`= currentUnderlyingBlock + blocksToPay`).
-        uint64 firstOverflowBlock;
+        // The first (lowest) confirmed block with 'timestamp > deadlineTimestamp' and 'blockNumber  > deadlineBlockNumber'.
+        uint64 firstOverflowBlockNumber;
 
         // Timestamp of the firstOverflowBlock.
-        // f-asset: check that `firstOverflowBlockTimestamp > last payment timestamp` 
-        //      (`= currentUnderlyingBlockTimestamp + time to pay`).
         uint64 firstOverflowBlockTimestamp;
     }
 

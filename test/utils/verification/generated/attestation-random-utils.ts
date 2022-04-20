@@ -28,12 +28,13 @@ export function randomResponsePayment() {
       blockNumber: randSol({}, "blockNumber", "uint64") as BN,
       blockTimestamp: randSol({}, "blockTimestamp", "uint64") as BN,
       transactionHash: randSol({}, "transactionHash", "bytes32") as string,
+      inUtxo: randSol({}, "inUtxo", "uint8") as BN,
       utxo: randSol({}, "utxo", "uint8") as BN,
-      sourceAddress: randSol({}, "sourceAddress", "bytes32") as string,
-      receivingAddress: randSol({}, "receivingAddress", "bytes32") as string,
-      paymentReference: randSol({}, "paymentReference", "bytes32") as string,
+      sourceAddressHash: randSol({}, "sourceAddressHash", "bytes32") as string,
+      receivingAddressHash: randSol({}, "receivingAddressHash", "bytes32") as string,
       spentAmount: randSol({}, "spentAmount", "int256") as BN,
-      receivedAmount: randSol({}, "receivedAmount", "uint256") as BN,
+      receivedAmount: randSol({}, "receivedAmount", "int256") as BN,
+      paymentReference: randSol({}, "paymentReference", "bytes32") as string,
       oneToOne: randSol({}, "oneToOne", "bool") as boolean,
       status: randSol({}, "status", "uint8") as BN      
    } as DHPayment;
@@ -45,7 +46,8 @@ export function randomResponseBalanceDecreasingTransaction() {
       blockNumber: randSol({}, "blockNumber", "uint64") as BN,
       blockTimestamp: randSol({}, "blockTimestamp", "uint64") as BN,
       transactionHash: randSol({}, "transactionHash", "bytes32") as string,
-      sourceAddress: randSol({}, "sourceAddress", "bytes32") as string,
+      inUtxo: randSol({}, "inUtxo", "uint8") as BN,
+      sourceAddressHash: randSol({}, "sourceAddressHash", "bytes32") as string,
       spentAmount: randSol({}, "spentAmount", "int256") as BN,
       paymentReference: randSol({}, "paymentReference", "bytes32") as string      
    } as DHBalanceDecreasingTransaction;
@@ -55,21 +57,23 @@ export function randomResponseBalanceDecreasingTransaction() {
 export function randomResponseConfirmedBlockHeightExists() {
    let response = {
       blockNumber: randSol({}, "blockNumber", "uint64") as BN,
-      blockTimestamp: randSol({}, "blockTimestamp", "uint64") as BN      
+      blockTimestamp: randSol({}, "blockTimestamp", "uint64") as BN,
+      numberOfConfirmations: randSol({}, "numberOfConfirmations", "uint8") as BN,
+      averageBlockProductionTimeMs: randSol({}, "averageBlockProductionTimeMs", "uint64") as BN      
    } as DHConfirmedBlockHeightExists;
    return response;
 }
 
 export function randomResponseReferencedPaymentNonexistence() {
    let response = {
-      endTimestamp: randSol({}, "endTimestamp", "uint64") as BN,
-      endBlock: randSol({}, "endBlock", "uint64") as BN,
-      destinationAddress: randSol({}, "destinationAddress", "bytes32") as string,
+      deadlineBlockNumber: randSol({}, "deadlineBlockNumber", "uint64") as BN,
+      deadlineTimestamp: randSol({}, "deadlineTimestamp", "uint64") as BN,
+      destinationAddressHash: randSol({}, "destinationAddressHash", "bytes32") as string,
       paymentReference: randSol({}, "paymentReference", "bytes32") as string,
       amount: randSol({}, "amount", "uint128") as BN,
-      firstCheckedBlock: randSol({}, "firstCheckedBlock", "uint64") as BN,
-      firstCheckedBlockTimestamp: randSol({}, "firstCheckedBlockTimestamp", "uint64") as BN,
-      firstOverflowBlock: randSol({}, "firstOverflowBlock", "uint64") as BN,
+      lowerBoundaryBlockNumber: randSol({}, "lowerBoundaryBlockNumber", "uint64") as BN,
+      lowerBoundaryBlockTimestamp: randSol({}, "lowerBoundaryBlockTimestamp", "uint64") as BN,
+      firstOverflowBlockNumber: randSol({}, "firstOverflowBlockNumber", "uint64") as BN,
       firstOverflowBlockTimestamp: randSol({}, "firstOverflowBlockTimestamp", "uint64") as BN      
    } as DHReferencedPaymentNonexistence;
    return response;
@@ -129,39 +133,35 @@ export function getRandomRequestForAttestationTypeAndSourceId (
          return {
             attestationType,
             sourceId,
-            blockNumber: toBN(Web3.utils.randomHex(4)),
-            utxo: toBN(Web3.utils.randomHex(1)),
-            inUtxo: toBN(Web3.utils.randomHex(1)),
+            upperBoundProof: Web3.utils.randomHex(32),
             id: Web3.utils.randomHex(32),
-            dataAvailabilityProof: Web3.utils.randomHex(32)
+            inUtxo: toBN(Web3.utils.randomHex(1)),
+            utxo: toBN(Web3.utils.randomHex(1))
          } as ARPayment;
       case AttestationType.BalanceDecreasingTransaction:
          return {
             attestationType,
             sourceId,
-            blockNumber: toBN(Web3.utils.randomHex(4)),
-            inUtxo: toBN(Web3.utils.randomHex(1)),
+            upperBoundProof: Web3.utils.randomHex(32),
             id: Web3.utils.randomHex(32),
-            dataAvailabilityProof: Web3.utils.randomHex(32)
+            inUtxo: toBN(Web3.utils.randomHex(1))
          } as ARBalanceDecreasingTransaction;
       case AttestationType.ConfirmedBlockHeightExists:
          return {
             attestationType,
             sourceId,
-            blockNumber: toBN(Web3.utils.randomHex(4)),
-            dataAvailabilityProof: Web3.utils.randomHex(32)
+            upperBoundProof: Web3.utils.randomHex(32)
          } as ARConfirmedBlockHeightExists;
       case AttestationType.ReferencedPaymentNonexistence:
          return {
             attestationType,
             sourceId,
-            endTimestamp: toBN(Web3.utils.randomHex(4)),
-            endBlock: toBN(Web3.utils.randomHex(4)),
-            destinationAddress: Web3.utils.randomHex(32),
+            upperBoundProof: Web3.utils.randomHex(32),
+            deadlineBlockNumber: toBN(Web3.utils.randomHex(4)),
+            deadlineTimestamp: toBN(Web3.utils.randomHex(4)),
+            destinationAddressHash: Web3.utils.randomHex(32),
             amount: toBN(Web3.utils.randomHex(16)),
-            paymentReference: Web3.utils.randomHex(32),
-            overflowBlock: toBN(Web3.utils.randomHex(4)),
-            dataAvailabilityProof: Web3.utils.randomHex(32)
+            paymentReference: Web3.utils.randomHex(32)
          } as ARReferencedPaymentNonexistence;
       default:
          throw new Error("Invalid attestation type");

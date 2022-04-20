@@ -34,6 +34,7 @@ export enum VerificationStatus {
   NON_EXISTENT_INPUT_UTXO_ADDRESS = "NON_EXISTENT_INPUT_UTXO_ADDRESS",
   NON_EXISTENT_OUTPUT_UTXO_ADDRESS = "NON_EXISTENT_OUTPUT_UTXO_ADDRESS",
 
+  PAYMENT_SUMMARY_ERROR = "PAYMENT_SUMMARY_ERROR"
 }
 export interface Verification<R, T> {
   hash?: string;
@@ -58,7 +59,7 @@ export const BLOCKNUMBER_BYTES = 4;
 export const TIMESTAMP_BYTES = 4;
 export const AMOUNT_BYTES = 16;
 export const TX_ID_BYTES = 32;
-export const DATA_AVAILABILITY_BYTES = 32;
+export const UPPER_BOUND_PROOF_BYTES = 32;
 export const SOURCE_ADDRESS_KEY_BYTES = 32;
 export const SOURCE_ADDRESS_CHEKSUM_BYTES = 4;
 export const PAYMENT_REFERENCE_BYTES = 32;
@@ -87,63 +88,3 @@ export interface AttestationTypeScheme {
   request: AttestationRequestScheme[];
   dataHashDefinition: DataHashScheme[];
 }
-
-
-
-////////// DEPRECATED
-
-// export interface AttestationRequest {
-//   timestamp?: BN;
-//   instructions: BN;
-//   id: string;
-//   dataAvailabilityProof: string;
-//   // optional fields to which the result gets parsed
-//   attestationType?: AttestationType;
-//   chainId?: BN | number;
-// }
-// export interface VerificationResult extends AttestationRequest {
-//   verificationStatus: VerificationStatus;
-// }
-
-// export interface AdditionalTransactionDetails {
-  
-// }
-
-// export interface ChainVerification extends AdditionalTransactionDetails , VerificationResult {
-//   isFromOne?: boolean;
-//   utxo?: BN;
-// }
-
-// export interface DataAvailabilityProof {
-//   hash?: string;
-//   blockNumber?: number;
-// }
-
-// export interface TransactionAttestationRequest extends AttestationRequest {
-//   blockNumber: BN | number;
-//   utxo?: BN | number;
-// }
-
-// export interface VerifiedAttestation {
-//   chainType: ChainType;
-//   attestType: AttestationType;
-//   txResponse?: any;
-//   blockResponse?: any;
-//   sender?: string;
-//   utxo?: number;
-//   fee?: BN;
-//   spent?: BN;
-//   delivered?: BN;
-// }
-
-// export interface AttestationTypeEncoding {
-//   sizes: number[];
-//   keys: string[];
-//   hashTypes: string[];
-//   hashKeys: string[];
-// }
-
-// export interface VerificationTestOptions {
-//   testFailProbability?: number;
-//   skipDataAvailabilityProof?: boolean;
-// }

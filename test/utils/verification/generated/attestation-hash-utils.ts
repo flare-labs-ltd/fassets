@@ -33,12 +33,13 @@ export function hashPayment(request: ARPayment, response: DHPayment) {
          "uint64",		// blockNumber
          "uint64",		// blockTimestamp
          "bytes32",		// transactionHash
+         "uint8",		// inUtxo
          "uint8",		// utxo
-         "bytes32",		// sourceAddress
-         "bytes32",		// receivingAddress
-         "bytes32",		// paymentReference
+         "bytes32",		// sourceAddressHash
+         "bytes32",		// receivingAddressHash
          "int256",		// spentAmount
-         "uint256",		// receivedAmount
+         "int256",		// receivedAmount
+         "bytes32",		// paymentReference
          "bool",		// oneToOne
          "uint8",		// status
       ],
@@ -48,12 +49,13 @@ export function hashPayment(request: ARPayment, response: DHPayment) {
          response.blockNumber,
          response.blockTimestamp,
          response.transactionHash,
+         response.inUtxo,
          response.utxo,
-         response.sourceAddress,
-         response.receivingAddress,
-         response.paymentReference,
+         response.sourceAddressHash,
+         response.receivingAddressHash,
          response.spentAmount,
          response.receivedAmount,
+         response.paymentReference,
          response.oneToOne,
          response.status
       ]
@@ -69,7 +71,8 @@ export function hashBalanceDecreasingTransaction(request: ARBalanceDecreasingTra
          "uint64",		// blockNumber
          "uint64",		// blockTimestamp
          "bytes32",		// transactionHash
-         "bytes32",		// sourceAddress
+         "uint8",		// inUtxo
+         "bytes32",		// sourceAddressHash
          "int256",		// spentAmount
          "bytes32",		// paymentReference
       ],
@@ -79,7 +82,8 @@ export function hashBalanceDecreasingTransaction(request: ARBalanceDecreasingTra
          response.blockNumber,
          response.blockTimestamp,
          response.transactionHash,
-         response.sourceAddress,
+         response.inUtxo,
+         response.sourceAddressHash,
          response.spentAmount,
          response.paymentReference
       ]
@@ -94,12 +98,16 @@ export function hashConfirmedBlockHeightExists(request: ARConfirmedBlockHeightEx
          "uint32",		// sourceId
          "uint64",		// blockNumber
          "uint64",		// blockTimestamp
+         "uint8",		// numberOfConfirmations
+         "uint64",		// averageBlockProductionTimeMs
       ],
       [
          request.attestationType,
          request.sourceId,
          response.blockNumber,
-         response.blockTimestamp
+         response.blockTimestamp,
+         response.numberOfConfirmations,
+         response.averageBlockProductionTimeMs
       ]
    );
    return web3.utils.soliditySha3(encoded)!;
@@ -110,27 +118,27 @@ export function hashReferencedPaymentNonexistence(request: ARReferencedPaymentNo
       [
          "uint16",		// attestationType
          "uint32",		// sourceId
-         "uint64",		// endTimestamp
-         "uint64",		// endBlock
-         "bytes32",		// destinationAddress
+         "uint64",		// deadlineBlockNumber
+         "uint64",		// deadlineTimestamp
+         "bytes32",		// destinationAddressHash
          "bytes32",		// paymentReference
          "uint128",		// amount
-         "uint64",		// firstCheckedBlock
-         "uint64",		// firstCheckedBlockTimestamp
-         "uint64",		// firstOverflowBlock
+         "uint64",		// lowerBoundaryBlockNumber
+         "uint64",		// lowerBoundaryBlockTimestamp
+         "uint64",		// firstOverflowBlockNumber
          "uint64",		// firstOverflowBlockTimestamp
       ],
       [
          request.attestationType,
          request.sourceId,
-         response.endTimestamp,
-         response.endBlock,
-         response.destinationAddress,
+         response.deadlineBlockNumber,
+         response.deadlineTimestamp,
+         response.destinationAddressHash,
          response.paymentReference,
          response.amount,
-         response.firstCheckedBlock,
-         response.firstCheckedBlockTimestamp,
-         response.firstOverflowBlock,
+         response.lowerBoundaryBlockNumber,
+         response.lowerBoundaryBlockTimestamp,
+         response.firstOverflowBlockNumber,
          response.firstOverflowBlockTimestamp
       ]
    );
