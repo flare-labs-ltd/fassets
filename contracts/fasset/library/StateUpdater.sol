@@ -15,12 +15,15 @@ library StateUpdater {
     {
         TransactionAttestation.verifyConfirmedBlockHeightExists(_state.settings, _proof);
         bool changed = false;
-        if (_proof.blockNumber > _state.currentUnderlyingBlock) {
-            _state.currentUnderlyingBlock = _proof.blockNumber;
+        uint64 finalizationBlockNumber = _proof.blockNumber + _proof.numberOfConfirmations;
+        if (finalizationBlockNumber > _state.currentUnderlyingBlock) {
+            _state.currentUnderlyingBlock = finalizationBlockNumber;
             changed = true;
         }
-        if (_proof.blockTimestamp > _state.currentUnderlyingBlockTimestamp) {
-            _state.currentUnderlyingBlockTimestamp = _proof.blockTimestamp;
+        uint64 finalizationBlockTimestamp = _proof.blockTimestamp +
+            _proof.numberOfConfirmations * _proof.averageBlockProductionTimeMs / 1000;
+        if (finalizationBlockTimestamp > _state.currentUnderlyingBlockTimestamp) {
+            _state.currentUnderlyingBlockTimestamp = finalizationBlockTimestamp;
             changed = true;
         }
         if (changed) {
