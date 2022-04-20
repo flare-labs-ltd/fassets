@@ -43,12 +43,14 @@ library Minting {
         // we don't have consider PAYMENT_BLOCKED, since agent's address must be EOA
         require(_payment.status == TransactionAttestation.PAYMENT_SUCCESS,
             "minting payment failed");
-        require(_payment.receivingAddress == agent.underlyingAddressHash, 
+        require(_payment.receivingAddressHash == agent.underlyingAddressHash, 
             "not minting agent's address");
-        require(_payment.receivedAmount >= _mintValueUBA + crt.underlyingFeeUBA,
+        require(_payment.receivedAmount >= 0, "minting payment too small");
+        uint256 receivedAmount = uint256(_payment.receivedAmount);  // guarded by above require
+        require(receivedAmount >= _mintValueUBA + crt.underlyingFeeUBA,
             "minting payment too small");
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, crt.valueAMG);
-        uint256 receivedFeeUBA = _payment.receivedAmount - _mintValueUBA;
+        uint256 receivedFeeUBA = receivedAmount - _mintValueUBA;
         emit AMEvents.MintingExecuted(agentVault, _crtId, redemptionTicketId, _mintValueUBA, receivedFeeUBA);
         Agents.allocateMintedAssets(_state, agentVault, crt.valueAMG);
         UnderlyingFreeBalance.increaseFreeBalance(_state, agentVault, receivedFeeUBA);
@@ -82,15 +84,15 @@ library Minting {
             "invalid self-mint reference");
         require(_payment.status == TransactionAttestation.PAYMENT_SUCCESS,
             "self-mint payment failed");
-        require(_payment.receivingAddress == agent.underlyingAddressHash, 
+        require(_payment.receivingAddressHash == agent.underlyingAddressHash, 
             "self-mint not agent's address");
-        require(_payment.receivedAmount >= _mintValueUBA, 
+        require(_payment.receivedAmount >= 0 && uint256(_payment.receivedAmount) >= _mintValueUBA,
             "self-mint payment too small");
         require(_payment.blockNumber >= agent.underlyingBlockAtCreation,
             "self-mint payment too old");
         _state.paymentConfirmations.confirmIncomingPayment(_payment);
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(_agentVault, valueAMG);
-        uint256 receivedFeeUBA = _payment.receivedAmount - _mintValueUBA;
+        uint256 receivedFeeUBA = uint256(_payment.receivedAmount) - _mintValueUBA;  // guarded by require
         emit AMEvents.MintingExecuted(_agentVault, 0, redemptionTicketId, _mintValueUBA, receivedFeeUBA);
         Agents.allocateMintedAssets(_state, _agentVault, valueAMG);
         if (receivedFeeUBA > 0) {

@@ -92,13 +92,13 @@ library CollateralReservations {
         TransactionAttestation.verifyReferencedPaymentNonexistence(_state.settings, _nonPayment);
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, crt.valueAMG);
         require(_nonPayment.paymentReference == PaymentReference.minting(_crtId) &&
-            _nonPayment.destinationAddress == agent.underlyingAddressHash &&
+            _nonPayment.destinationAddressHash == agent.underlyingAddressHash &&
             _nonPayment.amount == underlyingValueUBA + crt.underlyingFeeUBA,
             "minting non-payment mismatch");
-        require(_nonPayment.firstOverflowBlock > crt.lastUnderlyingBlock && 
+        require(_nonPayment.firstOverflowBlockNumber > crt.lastUnderlyingBlock && 
             _nonPayment.firstOverflowBlockTimestamp > crt.lastUnderlyingTimestamp, 
             "minting default too early");
-        require(_nonPayment.firstCheckedBlock <= crt.firstUnderlyingBlock,
+        require(_nonPayment.lowerBoundaryBlockNumber <= crt.firstUnderlyingBlock,
             "minting request too old");
         Agents.requireAgentVaultOwner(crt.agentVault);
         // send event

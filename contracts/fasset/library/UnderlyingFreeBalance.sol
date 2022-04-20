@@ -57,13 +57,13 @@ library UnderlyingFreeBalance {
         Agents.requireAgentVaultOwner(_agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
-        require(_payment.receivingAddress == agent.underlyingAddressHash, 
+        require(_payment.receivingAddressHash == agent.underlyingAddressHash, 
             "not underlying address");
         require(_payment.paymentReference == PaymentReference.topup(_agentVault),
             "not a topup payment");
         require(_payment.blockNumber >= agent.underlyingBlockAtCreation,
             "topup before agent created");
         _state.paymentConfirmations.confirmIncomingPayment(_payment);
-        increaseFreeBalance(_state, _agentVault, _payment.receivedAmount);
+        updateFreeBalance(_state, _agentVault, _payment.receivedAmount);
     }
 }

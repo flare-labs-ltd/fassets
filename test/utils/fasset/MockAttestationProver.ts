@@ -72,8 +72,8 @@ export class MockAttestationProver {
 
     referencedPaymentNonexistence(destinationAddress: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number): DHReferencedPaymentNonexistence | null {
         // if payment is found, return null
-        const [found, firstCheckedBlock, overflowBlock] = this.findReferencedPayment(destinationAddress, paymentReference, amount, endBlock, endTimestamp);
-        if (found || firstCheckedBlock === -1 || overflowBlock === -1) {
+        const [found, lowerBoundaryBlockNumber, overflowBlock] = this.findReferencedPayment(destinationAddress, paymentReference, amount, endBlock, endTimestamp);
+        if (found || lowerBoundaryBlockNumber === -1 || overflowBlock === -1) {
             return null;    // not enough blocks mined
         }
         // fill result
@@ -84,37 +84,37 @@ export class MockAttestationProver {
             destinationAddress: destinationAddress,
             paymentReference: paymentReference,
             amount: amount,
-            firstCheckedBlock: toBN(firstCheckedBlock),
-            firstCheckedBlockTimestamp: toBN(this.chain.blocks[firstCheckedBlock].timestamp),
-            firstOverflowBlock: toBN(overflowBlock),
+            lowerBoundaryBlockNumber: toBN(lowerBoundaryBlockNumber),
+            lowerBoundaryBlockTimestamp: toBN(this.chain.blocks[lowerBoundaryBlockNumber].timestamp),
+            firstOverflowBlockNumber: toBN(overflowBlock),
             firstOverflowBlockTimestamp: toBN(this.chain.blocks[overflowBlock].timestamp),
         };
         return web3DeepNormalize(proof);
     }
 
     private findReferencedPayment(destinationAddress: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number): [boolean, number, number] {
-        let firstCheckedBlock = -1;
+        let lowerBoundaryBlockNumber = -1;
         for (let bn = 0; bn < this.chain.blocks.length; bn++) {
             const block = this.chain.blocks[bn];
             if (block.timestamp < endTimestamp - this.CHECK_WINDOW) {
                 continue;   // skip blocks before `endTimestamp - CHECK_WINDOW`
             }
-            if (firstCheckedBlock === -1) {
-                firstCheckedBlock = bn;
+            if (lowerBoundaryBlockNumber === -1) {
+                lowerBoundaryBlockNumber = bn;
             }
             if (bn > endBlock && block.timestamp > endTimestamp) {
-                return [false, firstCheckedBlock, bn];  // end search when both blockNumber and blockTimestamp are over the limits
+                return [false, lowerBoundaryBlockNumber, bn];  // end search when both blockNumber and blockTimestamp are over the limits
             }
             for (const transaction of block.transactions) {
                 const found = transaction.reference === paymentReference
                     && totalValueFor(transaction.outputs, destinationAddress).eq(amount)
                     && transaction.status !== TX_FAILED;
                 if (found) {
-                    return [true, firstCheckedBlock, bn];
+                    return [true, lowerBoundaryBlockNumber, bn];
                 }
             }
         }
-        return [false, firstCheckedBlock, -1];  // not found, but also didn't find overflow block
+        return [false, lowerBoundaryBlockNumber, -1];  // not found, but also didn't find overflow block
     }
 
     confirmedBlockHeightExists(blockNumber: number): DHConfirmedBlockHeightExists | null {

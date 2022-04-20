@@ -128,9 +128,9 @@ library Agents {
         external
     {
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
-        require(_payment.sourceAddress != 0, "missing source address");
+        require(_payment.sourceAddressHash != 0, "missing source address");
         _state.underlyingAddressOwnership.claimWithProof(_payment, _state.paymentConfirmations, 
-            msg.sender, _payment.sourceAddress);
+            msg.sender, _payment.sourceAddressHash);
     }
     
     function createAgent(

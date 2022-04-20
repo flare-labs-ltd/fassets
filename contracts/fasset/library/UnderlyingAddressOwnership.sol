@@ -51,7 +51,7 @@ library UnderlyingAddressOwnership {
     {
         Ownership storage ownership = _state.ownership[_underlyingAddressHash];
         require(ownership.owner == address(0), "address already claimed");
-        bool proofValid = _payment.sourceAddress == _underlyingAddressHash
+        bool proofValid = _payment.sourceAddressHash == _underlyingAddressHash
             && _payment.paymentReference == PaymentReference.addressOwnership(_owner);
         require(proofValid, "invalid address ownership proof");
         PaymentConfirmations.confirmSourceDecreasingTransaction(_paymentVerification, _payment);

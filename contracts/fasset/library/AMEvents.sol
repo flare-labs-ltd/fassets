@@ -96,7 +96,7 @@ library AMEvents {
     event RedemptionPerformed(
         address indexed agentVault,
         address indexed redeemer,
-        uint256 valueUBA,
+        int256 valueUBA,
         uint64 underlyingBlock,
         uint64 requestId);
 

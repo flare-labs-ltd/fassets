@@ -35,7 +35,7 @@ library Challenges {
         // verify transaction
         TransactionAttestation.verifyBalanceDecreasingTransaction(_state.settings, _payment);
         // check the payment originates from agent's address
-        require(_payment.sourceAddress == agent.underlyingAddressHash, "chlg: not agent's address");
+        require(_payment.sourceAddressHash == agent.underlyingAddressHash, "chlg: not agent's address");
         // check that proof of this tx wasn't used before - otherwise we could 
         // trigger liquidation for already proved redemption payments
         require(!_state.paymentConfirmations.transactionConfirmed(_payment), "chlg: transaction confirmed");
@@ -81,8 +81,8 @@ library Challenges {
         TransactionAttestation.verifyBalanceDecreasingTransaction(_state.settings, _payment2);
         // check the payments are unique and originate from agent's address
         require(_payment1.transactionHash != _payment2.transactionHash, "chlg dbl: same transaction");
-        require(_payment1.sourceAddress == agent.underlyingAddressHash, "chlg 1: not agent's address");
-        require(_payment2.sourceAddress == agent.underlyingAddressHash, "chlg 2: not agent's address");
+        require(_payment1.sourceAddressHash == agent.underlyingAddressHash, "chlg 1: not agent's address");
+        require(_payment2.sourceAddressHash == agent.underlyingAddressHash, "chlg 2: not agent's address");
         // payment references must be equal
         require(_payment1.paymentReference == _payment2.paymentReference, "challenge: not duplicate");
         // ! no need to check that transaction wasn't confirmed - this is always illegal
@@ -112,7 +112,7 @@ library Challenges {
             for (uint256 j = 0; j < i; j++) {
                 require(_payments[j].transactionHash != pmi.transactionHash, "mult chlg: repeated transaction");
             }
-            require(pmi.sourceAddress == agent.underlyingAddressHash,
+            require(pmi.sourceAddressHash == agent.underlyingAddressHash,
                 "mult chlg: not agent's address");
             require(!_state.paymentConfirmations.transactionConfirmed(pmi),
                 "mult chlg: payment confirmed");

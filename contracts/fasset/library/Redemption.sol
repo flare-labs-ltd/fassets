@@ -249,7 +249,7 @@ library Redemption {
         //   to properly account for underlying free balance (unless payment is failed, the collateral also gets
         //   unlocked, but that only benefits the agent, so the agent should take care of that)
         Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
-        return _payment.sourceAddress == agent.underlyingAddressHash;
+        return _payment.sourceAddressHash == agent.underlyingAddressHash;
     }
     
     function _validatePayment(
@@ -262,9 +262,9 @@ library Redemption {
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
         if (_payment.status == TransactionAttestation.PAYMENT_FAILED) {
             return (false, "transaction failed");
-        } else if (_payment.receivingAddress != request.redeemerUnderlyingAddressHash) {
+        } else if (_payment.receivingAddressHash != request.redeemerUnderlyingAddressHash) {
             return (false, "not redeemer's address");
-        } else if (_payment.receivedAmount < paymentValueUBA) {
+        } else if (_payment.receivedAmount < 0 || uint256(_payment.receivedAmount) < paymentValueUBA) {
             // for blocked payments, receivedAmount == 0, but it's still receiver's fault
             if (_payment.status != TransactionAttestation.PAYMENT_BLOCKED) {
                 return (false, "redemption payment too small");
@@ -284,7 +284,7 @@ library Redemption {
         address agentVault = _request.agentVault;
         Agents.Agent storage agent = Agents.getAgent(_state, agentVault);
         _freeBalanceChangeUBA = SafeCast.toInt256(_request.underlyingValueUBA);
-        if (_payment.sourceAddress == agent.underlyingAddressHash) {
+        if (_payment.sourceAddressHash == agent.underlyingAddressHash) {
             _freeBalanceChangeUBA -= _payment.spentAmount;
         }
         UnderlyingFreeBalance.updateFreeBalance(_state, agentVault, _freeBalanceChangeUBA);
@@ -304,13 +304,13 @@ library Redemption {
         TransactionAttestation.verifyReferencedPaymentNonexistence(_state.settings, _nonPayment);
         // check non-payment proof
         require(_nonPayment.paymentReference == PaymentReference.redemption(_redemptionRequestId) &&
-            _nonPayment.destinationAddress == request.redeemerUnderlyingAddressHash &&
+            _nonPayment.destinationAddressHash == request.redeemerUnderlyingAddressHash &&
             _nonPayment.amount == request.underlyingValueUBA - request.underlyingFeeUBA,
             "redemption non-payment mismatch");
-        require(_nonPayment.firstOverflowBlock > request.lastUnderlyingBlock && 
+        require(_nonPayment.firstOverflowBlockNumber > request.lastUnderlyingBlock && 
             _nonPayment.firstOverflowBlockTimestamp > request.lastUnderlyingTimestamp, 
             "redemption default too early");
-        require(_nonPayment.firstCheckedBlock <= request.firstUnderlyingBlock,
+        require(_nonPayment.lowerBoundaryBlockNumber <= request.firstUnderlyingBlock,
             "redemption request too old");
         // We allow only redeemers or agents to trigger redemption failures, since they may want
         // to do it at some particular time. (Agent might want to call default to unstick redemption after 

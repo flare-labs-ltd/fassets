@@ -45,7 +45,7 @@ library AllowedPaymentAnnouncement {
         require(agent.ongoingAnnouncedPaymentId != 0, "no active announcement");
         bytes32 paymentReference = PaymentReference.announcedWithdrawal(agent.ongoingAnnouncedPaymentId);
         require(_payment.paymentReference == paymentReference, "wrong announced pmt reference");
-        require(_payment.sourceAddress == agent.underlyingAddressHash,
+        require(_payment.sourceAddressHash == agent.underlyingAddressHash,
             "wrong announced pmt source");
         require(isAgent || block.timestamp > 
                 agent.ongoingAnnouncedPaymentTimestamp + _state.settings.confirmationByOthersAfterSeconds,
