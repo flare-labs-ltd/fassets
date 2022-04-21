@@ -146,6 +146,7 @@ library SettingsUpdater {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setAttestationWindowSeconds(_state, _params);
         } else if (_method == SET_MAX_TRUSTED_PRICE_AGE_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setMaxTrustedPriceAgeSeconds(_state, _params);
         }
         else {
