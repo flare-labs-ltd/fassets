@@ -145,7 +145,10 @@ library SettingsUpdater {
         } else if (_method == SET_ATTESTATION_WINDOW_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setAttestationWindowSeconds(_state, _params);
-        } else {
+        } else if (_method == SET_MAX_TRUSTED_PRICE_AGE_SECONDS) {
+            _setMaxTrustedPriceAgeSeconds(_state, _params);
+        }
+        else {
             revert("update: invalid method");
         }
     }
