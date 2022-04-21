@@ -19,12 +19,14 @@ export class Liquidator extends AssetContextClient {
         return new Liquidator(ctx, address);
     }
     
-    async startLiquidation(agent: Agent) {
+    async startLiquidation(agent: Agent): Promise<[ccb: boolean, blockTimestamp: BNish]> {
         const res = await this.assetManager.startLiquidation(agent.agentVault.address, { from: this.address });
         const liquidationStarted = requiredEventArgs(res, 'LiquidationStarted');
         assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
         assert.isFalse(liquidationStarted.fullLiquidation);
-        return liquidationStarted.collateralCallBand;
+        const tr = await web3.eth.getTransaction(res.tx);
+        const block = await web3.eth.getBlock(tr.blockHash!);
+        return [liquidationStarted.collateralCallBand, block.timestamp];
     }
 
     async liquidate(agent: Agent, amountUBA: BNish): Promise<[liquidatedValueUBA: BN, blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted>, liquidationCancelled: EventArgs<LiquidationCancelled>, dustChangesUBA: BN[]]> {

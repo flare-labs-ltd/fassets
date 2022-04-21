@@ -59,7 +59,7 @@ export class Agent extends AssetContextClient {
         const res = await this.agentVault.deposit({ from: this.ownerAddress, value: toBN(amountNATWei) });
         const tr = await web3.eth.getTransaction(res.tx);
         const res2 = await this.assetManager.getPastEvents('LiquidationCancelled', { fromBlock: tr.blockNumber!, toBlock: tr.blockNumber!, filter: {transactionHash: res.tx} })
-        return res2;
+        return res2.length > 0 ? (res2[0] as any).args as EventArgs<LiquidationCancelled> : undefined;
     }
     
     async makeAvailable(feeBIPS: BNish, collateralRatioBIPS: BNish) {
@@ -312,7 +312,7 @@ export class Agent extends AssetContextClient {
         const info = await this.context.assetManager.getAgentInfo(this.agentVault.address);
         const lockedAgentCollateral = await this.lockedCollateralWei(mintedUBA, reservedUBA, redeemingUBA, withdrawalAnnouncedNATWei);
         assertWeb3Equal(info.totalCollateralNATWei, fullAgentCollateral);
-        assertWeb3Equal(info.freeCollateralNATWei, toBN(fullAgentCollateral).sub(lockedAgentCollateral));
+        assertWeb3Equal(info.freeCollateralNATWei, lockedAgentCollateral.gt(toBN(fullAgentCollateral)) ? 0 : toBN(fullAgentCollateral).sub(lockedAgentCollateral));
         assertWeb3Equal(info.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
         assertWeb3Equal(info.lockedUnderlyingBalanceUBA, lockedUnderlyingBalanceUBA);
         assertWeb3Equal(info.mintedUBA, mintedUBA);
