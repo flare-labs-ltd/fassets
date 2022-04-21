@@ -152,9 +152,14 @@ library FullAgentInfo {
         private view
         returns (uint256)
     {
-        if (_agent.status != Agents.AgentStatus.LIQUIDATION) return 0;
-        return _agent.initialLiquidationPhase == Agents.LiquidationPhase.CCB 
-            ? _agent.liquidationStartedAt + _state.settings.ccbTimeSeconds 
-            : _agent.liquidationStartedAt;
+        if (_agent.status == Agents.AgentStatus.LIQUIDATION) {
+            return _agent.initialLiquidationPhase == Agents.LiquidationPhase.CCB
+                ? _agent.liquidationStartedAt + _state.settings.ccbTimeSeconds
+                : _agent.liquidationStartedAt;
+        } else if (_agent.status == Agents.AgentStatus.FULL_LIQUIDATION) {
+            return _agent.liquidationStartedAt;
+        } else {
+            return 0;
+        }
     }
 }
