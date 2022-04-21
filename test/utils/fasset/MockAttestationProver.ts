@@ -109,7 +109,7 @@ export class MockAttestationProver {
             }
             for (const transaction of block.transactions) {
                 const found = transaction.reference === paymentReference
-                    && totalValueFor(transaction.outputs, destinationAddress).eq(amount)
+                    && totalValueFor(transaction.outputs, destinationAddress).gte(amount)
                     && transaction.status !== TX_FAILED;
                 if (found) {
                     return [true, lowerBoundaryBlockNumber, bn];
