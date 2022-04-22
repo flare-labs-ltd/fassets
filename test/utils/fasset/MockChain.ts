@@ -31,13 +31,15 @@ export class MockChain implements IBlockChain {
     transactionIndex: { [hash: string]: [block: number, txIndex: number] } = {};
     nonces: { [address: string]: number } = {};
     balances: { [address: string]: BN } = {};
-    timstampSkew: number = 0;   // how much the timestamp is ahead of system time
+    timestampSkew: number = 0;   // how much the timestamp is ahead of system time
+    nextBlockTransactions: MockChainTransaction[] = [];
     
     // some settings that can be tuned for tests
     finalizationBlocks: number = 0;
     secondsPerBlock: number = 1;
     requiredFee: BN = BN_ZERO;   // this much gas/fee will be used at each transaction
     estimatedGasPrice: BN = BN_ZERO;
+    automine: boolean = true;
     
     async getTransaction(txHash: string): Promise<ITransaction | null> {
         const [block, ind] = this.transactionIndex[txHash] ?? [null, null];
@@ -68,7 +70,42 @@ export class MockChain implements IBlockChain {
         return this.blocks.length - 1;
     }
     
-    addBlock(transactions: MockChainTransaction[]) {
+    addTransaction(transaction: MockChainTransaction) {
+        this.nextBlockTransactions.push(transaction);
+        if (this.automine) {
+            this.mine();
+        }
+    }
+    
+    mine() {
+        this.addBlock(this.nextBlockTransactions);
+        this.nextBlockTransactions = [];
+    }
+    
+    createTransactionHash(inputs: TxInputOutput[], outputs: TxInputOutput[], reference: string | null): string {
+        // build data structure to hash
+        const data = {
+            spent: inputs.map(([address, value]) => [address, this.nonces[address] ?? 0, value.toString(10)]),
+            received: outputs.map(([address, value]) => [address, value.toString(10)]),
+            reference: reference
+        };
+        // update source address nonces
+        for (const [src, _] of inputs) {
+            this.nonces[src] = (this.nonces[src] ?? 0) + 1;
+        }
+        // calculate hash
+        return web3.utils.keccak256(JSON.stringify(data));
+    }
+    
+    skipTime(timeDelta: number) {
+        this.timestampSkew += timeDelta;
+    }
+
+    mint(address: string, value: BNish) {
+        this.balances[address] = (this.balances[address] ?? BN_ZERO).add(toBN(value));
+    }
+
+    private addBlock(transactions: MockChainTransaction[]) {
         // check that balances stay positive
         const changedBalances: { [address: string]: BN } = {};
         for (let i = 0; i < transactions.length; i++) {
@@ -96,34 +133,11 @@ export class MockChain implements IBlockChain {
         this.blocks.push({ hash, number, timestamp, transactions });
         this.blockIndex[hash] = this.blocks.length - 1;
     }
-    
-    createTransactionHash(inputs: TxInputOutput[], outputs: TxInputOutput[], reference: string | null): string {
-        // build data structure to hash
-        const data = {
-            spent: inputs.map(([address, value]) => [address, this.nonces[address] ?? 0, value.toString(10)]),
-            received: outputs.map(([address, value]) => [address, value.toString(10)]),
-            reference: reference
-        };
-        // update source address nonces
-        for (const [src, _] of inputs) {
-            this.nonces[src] = (this.nonces[src] ?? 0) + 1;
-        }
-        // calculate hash
-        return web3.utils.keccak256(JSON.stringify(data));
-    }
-    
-    skipTime(timeDelta: number) {
-        this.timstampSkew += timeDelta;
-    }
-    
-    mint(address: string, value: BNish) {
-        this.balances[address] = (this.balances[address] ?? BN_ZERO).add(toBN(value));
-    }
 
     private newBlockTimestamp() {
         const lastBlockTimestamp = this.blocks.length > 0 ? this.blocks[this.blocks.length - 1].timestamp : -this.secondsPerBlock;
-        const timestamp = Math.max(systemTimestamp() + this.timstampSkew, lastBlockTimestamp + this.secondsPerBlock);
-        this.timstampSkew = timestamp - systemTimestamp();  // update skew
+        const timestamp = Math.max(systemTimestamp() + this.timestampSkew, lastBlockTimestamp + this.secondsPerBlock);
+        this.timestampSkew = timestamp - systemTimestamp();  // update skew
         return timestamp;
     }
     
@@ -140,13 +154,13 @@ export class MockChainWallet implements IChainWallet {
     
     async addTransaction(from: string, to: string, value: BNish, reference: string | null, options?: MockTransactionOptionsWithFee): Promise<string> {
         const transaction = this.createTransaction(from, to, value, reference, options);
-        this.chain.addBlock([transaction]);
+        this.chain.addTransaction(transaction);
         return transaction.hash;
     }
 
     async addMultiTransaction(spent: { [address: string]: BNish }, received: { [address: string]: BNish }, reference: string | null, options?: MockTransactionOptions): Promise<string> {
         const transaction = this.createMultiTransaction(spent, received, reference, options);
-        this.chain.addBlock([transaction]);
+        this.chain.addTransaction(transaction);
         return transaction.hash;
     }
 
