@@ -101,10 +101,32 @@ export class MockChain implements IBlockChain {
         this.timestampSkew += timeDelta;
     }
 
+    skipTimeTo(timestamp: number) {
+        this.timestampSkew = timestamp - systemTimestamp();
+    }
+    
     mint(address: string, value: BNish) {
         this.balances[address] = (this.balances[address] ?? BN_ZERO).add(toBN(value));
     }
+    
+    blockHeight() {
+        return this.blocks.length - 1;
+    }
+    
+    lastBlockTimestamp() {
+        return this.blocks.length > 0 
+            ? this.blocks[this.blocks.length - 1].timestamp 
+            : systemTimestamp() + this.timestampSkew - this.secondsPerBlock;    // so that new block will be exactly systemTimestamp + skew
+    }
+    
+    nextBlockTimestamp() {
+        return Math.max(systemTimestamp() + this.timestampSkew, this.lastBlockTimestamp() + this.secondsPerBlock);
+    }
 
+    currentTimestamp() {
+        return Math.max(systemTimestamp() + this.timestampSkew, this.lastBlockTimestamp());
+    }
+    
     private addBlock(transactions: MockChainTransaction[]) {
         // check that balances stay positive
         const changedBalances: { [address: string]: BN } = {};
@@ -135,8 +157,7 @@ export class MockChain implements IBlockChain {
     }
 
     private newBlockTimestamp() {
-        const lastBlockTimestamp = this.blocks.length > 0 ? this.blocks[this.blocks.length - 1].timestamp : -this.secondsPerBlock;
-        const timestamp = Math.max(systemTimestamp() + this.timestampSkew, lastBlockTimestamp + this.secondsPerBlock);
+        const timestamp = this.nextBlockTimestamp();
         this.timestampSkew = timestamp - systemTimestamp();  // update skew
         return timestamp;
     }

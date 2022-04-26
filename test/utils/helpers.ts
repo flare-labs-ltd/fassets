@@ -1,3 +1,4 @@
+import { time } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
 import { BigNumber } from "ethers";
 import Web3 from "web3";
@@ -24,8 +25,8 @@ export const WEEKS = 7 * DAYS;
 /**
  * Asynchronously wait `ms` milliseconds.
  */
-export async function sleep(ms: number) {
-    await new Promise<void>(resolve => setTimeout(() => resolve(), ms));
+export function sleep(ms: number) {
+    return new Promise<void>(resolve => setTimeout(() => resolve(), ms));
 }
 
 /**
@@ -33,6 +34,14 @@ export async function sleep(ms: number) {
  */
 export function systemTimestamp() {
     return Math.round(new Date().getTime() / 1000);
+}
+
+/**
+ * Return latest block timestamp as number (seconds since 1.1.1970).
+ */
+export async function latestBlockTimestamp() {
+    const ts = await time.latest();
+    return ts.toNumber();
 }
 
 /**
@@ -168,4 +177,24 @@ export function toHex(x: string | number | BN, padToBytes?: number) {
         return Web3.utils.leftPad(Web3.utils.toHex(x), padToBytes * 2);
     }
     return Web3.utils.toHex(x);
+}
+
+// Error handling
+
+export function reportError(e: any) {
+    console.error(e.stack || e);
+}
+
+export function messageIncluded(message: unknown, expectedMessages: string[]) {
+    const messageStr = message == null ? '' : '' + message;
+    for (const msg of expectedMessages) {
+        if (messageStr.includes(msg)) return true;
+    }
+    return false;
+}
+
+export function expectErrors(e: any, expectedMessages: string[]) {
+    if (!messageIncluded(e?.message, expectedMessages)) {
+        throw e;    // unexpected error
+    }
 }
