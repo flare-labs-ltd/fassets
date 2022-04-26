@@ -2,7 +2,7 @@ import { expectRevert, time, expectEvent } from "@openzeppelin/test-helpers";
 import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
-import { DAYS, getTestFile, HOURS, MAX_BIPS, MINUTES, toBN, toBNExp, toStringExp } from "../../utils/helpers";
+import { DAYS, getTestFile, HOURS, MAX_BIPS, toBN, toBNExp } from "../../utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
 import { createTestSettings } from "./test-settings";
@@ -80,7 +80,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const managers_add = await assetManagerController.getAssetManagers();
             assert.equal(managers_current.length + 1, managers_add.length);
 
-            await assetManagerController.removeAssetManager(assetManager2.address, { from: governance });
+            await assetManagerController.removeAssetManager(assetManager.address, { from: governance });
             const managers_remove = await assetManagerController.getAssetManagers();
             assert.equal(managers_current.length, managers_remove.length);
         });
@@ -88,6 +88,12 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should revert setting whitelist without governance", async () => {
             let res = assetManagerController.setWhitelist([assetManager.address], randomAddress());
             await expectRevert(res, "only governance")
+        });
+
+
+        it("should refresh ftso indexes", async () => {
+            await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance })
+            await assetManagerController.refreshFtsoIndexes([assetManager.address], {from: updateExecutor });
         });
 
         it("should set whitelist", async () => {
@@ -130,6 +136,19 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 await expectRevert(res4, "decrease too big");
             }
         });
+
+        it("should set payment challenge reward", async () => {
+            const currentSettings = await assetManager.getSettings();
+            // payment challenge reward could be zero 
+            if (!toBN(currentSettings.paymentChallengeRewardNATWei).eqn(0)) {
+                let paymentChallengeRewardNATWei_new = toBN(currentSettings.paymentChallengeRewardNATWei).muln(4);
+                let paymentChallengeRewardBIPS_new = toBN(currentSettings.paymentChallengeRewardBIPS).muln(4);
+
+                let res = await assetManagerController.setPaymentChallengeReward([assetManager.address], paymentChallengeRewardNATWei_new, paymentChallengeRewardBIPS_new, { from: governance });
+                expectEvent(res, "SettingChanged", { name: "paymentChallengeRewardNATWei", value: paymentChallengeRewardNATWei_new })
+                expectEvent(res, "SettingChanged", { name: "paymentChallengeRewardBIPS", value: paymentChallengeRewardBIPS_new })
+            }
+        });       
 
         it("should set time for payment", async () => {
             const currentSettings = await assetManager.getSettings();
@@ -354,9 +373,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(res, "SettingChanged", { name: "redemptionDefaultFactorBIPS", value: toBN(redemptionDefaultFactorBIPS_new) });
         });
 
-
-
-
         it("should correctly set asset manager settings", async () => {
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(settings.redemptionFeeBIPS, 200);
@@ -452,6 +468,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(newSettings.underlyingBlocksForPayment, settings.underlyingBlocksForPayment);
             assertWeb3Equal(newSettings.underlyingSecondsForPayment, settings.underlyingSecondsForPayment);
         });
+
+
 
     });
 });
