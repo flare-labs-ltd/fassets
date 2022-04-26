@@ -6,7 +6,6 @@ import "./AMEvents.sol";
 import "./AssetManagerState.sol";
 import "./TransactionAttestation.sol";
 
-
 library SettingsUpdater {
     using SafeBips for *;
     
@@ -108,6 +107,7 @@ library SettingsUpdater {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setPaymentChallengeReward(_state, _params);
         } else if (_method == SET_WHITELIST) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setWhitelist(_state, _params);
         } else if (_method == SET_LOT_SIZE_AMG) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
@@ -304,8 +304,15 @@ library SettingsUpdater {
         address value = abi.decode(_params, (address));
         // validate
         // update
-        _state.settings.whitelist = IWhitelist(value);
-        emit AMEvents.ContractChanged("whitelist", value);
+        if(value != address(0)) {
+            // add or remove
+            _state.settings.whitelist = IWhitelist(value);
+            emit AMEvents.ContractChanged("whitelist", value);
+        } else {
+            _state.settings.whitelist = IWhitelist(address(0));
+            emit AMEvents.ContractChanged("whitelist", value);
+        }
+
     }
     
     function _setLotSizeAmg(
