@@ -1,6 +1,6 @@
 import { AgentVaultInstance } from "../../../typechain-truffle";
 import { AllowedPaymentAnnounced, DustChanged, LiquidationStarted, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
-import { eventArgs, EventArgs, filterEvents, findEvent, findRequiredEvent, requiredEventArgs } from "../../utils/events";
+import { checkEventNotEmited, eventArgs, EventArgs, filterEvents, findEvent, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BNish, toBN } from "../../utils/helpers";
 import { Agent } from "./Agent";
@@ -52,7 +52,7 @@ export class Challenger extends AssetContextClient {
         return [block.timestamp, eventArgs(res, 'LiquidationStarted')];
     }
 
-    async confirmRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent?: Agent) {
+    async confirmActiveRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent?: Agent) {
         let sourceAddress: string;
         if (agent) {
             sourceAddress = agent.underlyingAddress;
@@ -62,7 +62,52 @@ export class Challenger extends AssetContextClient {
         }
         const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, request.paymentAddress);
         const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.address });
+        findRequiredEvent(res, 'RedemptionFinished');
         return requiredEventArgs(res, 'RedemptionPerformed');
+    }
+    
+    async confirmDefaultedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent?: Agent) {
+        let sourceAddress: string;
+        if (agent) {
+            sourceAddress = agent.underlyingAddress;
+        } else {
+            const tx = await this.chain.getTransaction(transactionHash);
+            sourceAddress = tx?.inputs[0][0]!;
+        }
+        const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, request.paymentAddress);
+        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.address });
+        findRequiredEvent(res, 'RedemptionFinished');
+        checkEventNotEmited(res, 'RedemptionPerformed');
+        checkEventNotEmited(res, 'RedemptionPaymentFailed');
+        checkEventNotEmited(res, 'RedemptionPaymentBlocked');
+    }
+
+    async confirmFailedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent?: Agent) {
+        let sourceAddress: string;
+        if (agent) {
+            sourceAddress = agent.underlyingAddress;
+        } else {
+            const tx = await this.chain.getTransaction(transactionHash);
+            sourceAddress = tx?.inputs[0][0]!;
+        }
+        const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, request.paymentAddress);
+        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.address });
+        findRequiredEvent(res, 'RedemptionFinished');
+        return requiredEventArgs(res, 'RedemptionPaymentFailed');
+    }
+
+    async confirmBlockedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent?: Agent) {
+        let sourceAddress: string;
+        if (agent) {
+            sourceAddress = agent.underlyingAddress;
+        } else {
+            const tx = await this.chain.getTransaction(transactionHash);
+            sourceAddress = tx?.inputs[0][0]!;
+        }
+        const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, request.paymentAddress);
+        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.address });
+        findRequiredEvent(res, 'RedemptionFinished');
+        return requiredEventArgs(res, 'RedemptionPaymentBlocked');
     }
     
     async confirmAllowedPayment(request: EventArgs<AllowedPaymentAnnounced>, transactionHash: string, agent?: Agent) {

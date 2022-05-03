@@ -3,7 +3,7 @@ import { AgentVaultInstance } from "../../../typechain-truffle";
 import { AllowedPaymentAnnounced, CollateralReserved, LiquidationCancelled, RedemptionDefault, RedemptionFinished, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { checkEventNotEmited, eventArgs, EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
-import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
+import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BNish, BN_ZERO, toBN } from "../../utils/helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
@@ -131,9 +131,9 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'AllowedPaymentConfirmed');
     }
     
-    async performRedemptionPayment(request: EventArgs<RedemptionRequested>) {
+    async performRedemptionPayment(request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
         const paymentAmount = request.valueUBA.sub(request.feeUBA);
-        return await this.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
+        return await this.performPayment(request.paymentAddress, paymentAmount, request.paymentReference, options);
     }
 
     async confirmActiveRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
@@ -236,8 +236,8 @@ export class Agent extends AssetContextClient {
         return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA, eventArgs(res, "LiquidationCancelled")];
     }
 
-    async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null) {
-        return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference);
+    async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null, options?: MockTransactionOptionsWithFee) {
+        return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference, options);
     }
 
     async getCollateralRatioBIPS(fullCollateral: BNish, mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0) {
