@@ -102,7 +102,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should set whitelist address", async () => {
             let res = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
-            expectEvent(res, "ContractChanged", { name: "whitelist", value: whitelist.address })
+            expectEvent(res, "SettingChangeScheduled", { name: "whitelist", value: toBN(whitelist.address) })
         });
 
         it("should execute set whitelist", async () => {
@@ -110,7 +110,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance })
             // settings
             const currentSettings = await assetManager.getSettings();
-            console.log(currentSettings.whitelist)
             await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
                         
             await time.increase(toBN(settings.timelockSeconds).addn(1));
@@ -118,7 +117,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await assetManagerController.executeSetWhitelist([assetManager.address], { from: updateExecutor });
             // assert
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            console.log(whitelist.address, newSettings.whitelist)
             assertWeb3Equal(newSettings.whitelist, whitelist.address);
             
         });
