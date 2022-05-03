@@ -5,25 +5,20 @@ import "../../governance/implementation/Governed.sol";
 import "../library/AMEvents.sol";
 import "../interface/IWhitelist.sol";
 
-abstract contract Whitelist is Governed, IWhitelist {
-    mapping(address => bool) private whitelist;
+contract Whitelist is IWhitelist {
+    mapping(address => bool) public whitelist;
 
     modifier onlyWhitelisted() {
-        require(whitelisted(msg.sender), "only whitelisted");
+        require(whitelist[msg.sender], "only whitelisted");
         _;
     }
 
-    function addToWhitelist(address _address) public onlyGovernance {
+    function addToWhitelist(address _address) external {
         whitelist[_address] = true;
         emit AMEvents.ContractChanged("whitelistAdd", _address);
     }
 
-    function removeFromWhiteList(address _address) public onlyGovernance {
-        whitelist[_address] = false;
-        emit AMEvents.ContractChanged("whitelistRemove", _address);
-    }
-
-    function whitelisted(address _address) public view returns (bool) {
+    function whitelisted(address _address) external view returns (bool) {
         return whitelist[_address];
     }
 
