@@ -113,14 +113,13 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     }
 
     function executeSetWhitelist(
-        IAssetManager[] memory _assetManagers,
-        IWhitelist whitelist
+        IAssetManager[] memory _assetManagers
     )
         external
         onlyUpdateExecutor
     {
         _setValueOnManagers(_assetManagers, 
-            SettingsUpdater.EXECUTE_SET_WHITELIST, abi.encode(whitelist));
+            SettingsUpdater.EXECUTE_SET_WHITELIST, abi.encode());
     }
 
     function setLotSizeAmg(IAssetManager[] memory _assetManagers, uint256 _value)

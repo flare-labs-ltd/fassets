@@ -49,7 +49,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         await ftsoRegistry.addFtso(natFtso.address);
         await ftsoRegistry.addFtso(assetFtso.address);
         // create whitelist
-        whitelist = await Whitelist.new();
+        whitelist = await Whitelist.new(governance);
         // create asset manager controller
         addressUpdater = await AddressUpdater.new(governance);
         assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
@@ -100,11 +100,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await assetManagerController.refreshFtsoIndexes([assetManager.address], {from: updateExecutor });
         });
 
-        it("should set whitelist", async () => {
-            let addressToBeWhitelisted = randomAddress();
-            const currentSettings = await assetManager.getSettings();
-            let res = await assetManagerController.setWhitelist([assetManager.address], addressToBeWhitelisted, { from: governance });
-            expectEvent(res, "ContractChanged", { name: "whitelist", value: addressToBeWhitelisted })
+        it("should set whitelist address", async () => {
+            let res = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
+            expectEvent(res, "ContractChanged", { name: "whitelist", value: whitelist.address })
         });
 
         it("should execute set whitelist", async () => {
@@ -112,17 +110,17 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance })
             // settings
             const currentSettings = await assetManager.getSettings();
-            
-            let addressToBeWhitelisted = randomAddress();
-            await assetManagerController.setWhitelist([assetManager.address], addressToBeWhitelisted, { from: governance });
+            console.log(currentSettings.whitelist)
+            await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
                         
             await time.increase(toBN(settings.timelockSeconds).addn(1));
             await time.advanceBlock();
-            await assetManagerController.executeSetWhitelist([assetManager.address], whitelist.address, { from: updateExecutor });
+            await assetManagerController.executeSetWhitelist([assetManager.address], { from: updateExecutor });
             // assert
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            assertWeb3Equal(await whitelist.whitelisted(addressToBeWhitelisted), true);
-            assert.notEqual(currentSettings.whitelist, newSettings.whitelist);
+            console.log(whitelist.address, newSettings.whitelist)
+            assertWeb3Equal(newSettings.whitelist, whitelist.address);
+            
         });
 
         it("should revert setting lot size when increase or decrease is too big", async () => {

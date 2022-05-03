@@ -24,7 +24,7 @@ library SettingsUpdater {
     
     struct WhitelistUpdate {
         uint64 validAt;
-        address toBeWhitelisted;
+        address whitelist;
     }
 
     struct PendingUpdates {
@@ -117,7 +117,7 @@ library SettingsUpdater {
         } else if (_method == SET_WHITELIST) {
             _setWhitelist(_state, _updates.whitelist, _params);
         } else if (_method == EXECUTE_SET_WHITELIST) {
-            _executeSetWhitelist(_state, _updates.whitelist, _params);
+            _executeSetWhitelist(_state, _updates.whitelist);
         } else if (_method == SET_LOT_SIZE_AMG) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setLotSizeAmg(_state, _params);
@@ -311,28 +311,25 @@ library SettingsUpdater {
     ) 
         private 
     {
-        address addressToBeWhitelisted = abi.decode(_params, (address));
+        address value = abi.decode(_params, (address));
         // validate
         // create pending update
         uint256 validAt = block.timestamp + _state.settings.timelockSeconds;
         _update.validAt = SafeCast.toUint64(validAt);
-        _update.toBeWhitelisted = addressToBeWhitelisted;
-        emit AMEvents.ContractChanged("whitelist", addressToBeWhitelisted);
+        _update.whitelist = value;
+        emit AMEvents.ContractChanged("whitelist", value);
     }
 
     function _executeSetWhitelist(
         AssetManagerState.State storage _state,
-        WhitelistUpdate storage _update,
-        bytes calldata _params
+        WhitelistUpdate storage _update
     ) 
         private 
     {    
-        IWhitelist whitelist = abi.decode(_params, (IWhitelist));
         require(_update.validAt != 0 && block.timestamp >= _update.validAt, "update not valid yet");
         _update.validAt = 0;
-        whitelist.addToWhitelist(_update.toBeWhitelisted);
-        _state.settings.whitelist = IWhitelist(whitelist);
-        emit AMEvents.ContractChanged("whitelist", _update.toBeWhitelisted);
+        _state.settings.whitelist = IWhitelist(_update.whitelist);
+        emit AMEvents.ContractChanged("whitelist", _update.whitelist);
     }
     
     function _setLotSizeAmg(
