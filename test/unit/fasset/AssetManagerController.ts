@@ -102,7 +102,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should set whitelist address", async () => {
             let res = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
-            expectEvent(res, "SettingChangeScheduled", { name: "whitelist", value: toBN(whitelist.address) })
+            expectEvent(res, "ContractChangeScheduled", { name: "whitelist", value: whitelist.address })
         });
 
         it("should execute set whitelist", async () => {

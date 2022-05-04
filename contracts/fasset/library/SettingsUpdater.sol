@@ -317,7 +317,7 @@ library SettingsUpdater {
         uint256 validAt = block.timestamp + _state.settings.timelockSeconds;
         _update.validAt = SafeCast.toUint64(validAt);
         _update.whitelist = value;
-        emit AMEvents.SettingChangeScheduled("whitelist", uint(uint160(value)), validAt);
+        emit AMEvents.ContractChangeScheduled("whitelist", value, validAt);
     }
 
     function _executeSetWhitelist(
@@ -329,7 +329,7 @@ library SettingsUpdater {
         require(_update.validAt != 0 && block.timestamp >= _update.validAt, "update not valid yet");
         _update.validAt = 0;
         _state.settings.whitelist = IWhitelist(_update.whitelist);
-        emit AMEvents.SettingChanged("whitelist", uint(uint160(_update.whitelist)));
+        emit AMEvents.ContractChanged("whitelist", _update.whitelist);
 
     }
     

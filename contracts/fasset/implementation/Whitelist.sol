@@ -15,7 +15,7 @@ contract Whitelist is IWhitelist, Governed {
 
     function addAddressToWhitelist(address _address) public onlyGovernance {
         whitelist[_address] = true;
-        emit WhitelistChanged("addAddressToWhitelist", _address);
+        emit Whitelisted(_address);
     }
 
     function addAddressesToWhitelist(address[] memory _addresses) public onlyGovernance {
