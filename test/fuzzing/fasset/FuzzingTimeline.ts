@@ -47,9 +47,9 @@ export class FuzzingTimeline {
         public chain: MockChain,
     ) { }
 
-    async mineNextUnderlyingBlock() {
-        this.chain.mine();
-    }
+    // async mineNextUnderlyingBlock() {
+    //     this.chain.mine();
+    // }
 
     async waitFlareTime(seconds: number) {
         const triggerTime = await latestBlockTimestamp() + seconds;

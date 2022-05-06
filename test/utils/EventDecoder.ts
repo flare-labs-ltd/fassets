@@ -3,7 +3,7 @@ import { Log as EthersRawEvent, TransactionReceipt as EthersTransactionReceipt }
 import BN from "bn.js";
 import { BigNumber, Contract, ContractReceipt, Event as EthersEvent } from "ethers";
 import { BaseEvent, TruffleEvent } from "./events";
-import { formatBN, isNotNull, reportError, toBN, tryCatch } from "./helpers";
+import { formatBN, isNotNull, toBN } from "./helpers";
 
 declare type RawEvent = import("web3-core").Log;
 
@@ -33,24 +33,24 @@ export class EventFormatter {
         return this.contractNames.get(address) ?? address.slice(0, 10) + '...';
     }
 
-    private formatArg(value: unknown) {
+    formatArg(value: unknown): string {
         if (isBigNumber(value)) {
             return formatBN(value);
         } else if (this.isAddress(value)) {
             return this.formatAddress(value);
+        } else if (Array.isArray(value)) {
+            return `[${value.map(v => this.formatArg(v)).join(', ')}]`;
+        } else if (typeof value === 'object' && value?.constructor === Object) {
+            return `{ ${Object.entries(value).map(([k, v]) => `${k}: ${this.formatArg(v)}`).join(', ')} }`;
         } else {
-            return value;
+            return '' + value;
         }
     }
 
     formatArgs(event: BaseEvent) {
         const result: any = {};
         for (const [key, value] of Object.entries(event.args)) {
-            if (Array.isArray(value)) {
-                result[key] = value.map(v => this.formatArg(v));
-            } else {
-                result[key] = this.formatArg(value);
-            }
+            result[key] = this.formatArg(value);
         }
         return result;
     }
@@ -136,68 +136,6 @@ export class Web3EventDecoder extends EventFormatter {
         const rawLogs: RawEvent[] = 'rawLogs' in receipt ? (receipt as any).rawLogs : receipt.logs;
         // decode all events
         return rawLogs.map(raw => this.decodeEvent(raw)).filter(isNotNull);
-    }
-}
-
-export class Web3EventCollector {
-    private events: TruffleEvent[] = [];
-    private eventPromises: Promise<TruffleEvent[]>[] = [];
-
-    constructor(
-        private eventDecoder: Web3EventDecoder,
-    ) { }
-
-    captureEvents(contracts: { [name: string]: Truffle.ContractInstance; }, filter?: string[]) {
-        for (const contract of Object.values(contracts)) {
-            this.instrumentContractForEventCapture(contract);
-        }
-        this.eventDecoder.addContracts(contracts, filter);
-    }
-    
-    captureEventsFrom(contractName: string, contract: Truffle.ContractInstance, filter?: string[]) {
-        this.captureEvents({ [contractName]: contract }, filter);
-    }
-
-    private instrumentContractForEventCapture(contract: Truffle.ContractInstance) {
-        const cc = contract as any;
-        for (const [name, method] of Object.entries(cc)) {
-            if (typeof method !== 'function' || name === 'constructor') continue;
-            const subkeys = tryCatch(() => Object.keys(method as any)) ?? [];
-            const validMethod = (subkeys.includes('call') && subkeys.includes('sendTransaction') && subkeys.includes('estimateGas'))
-                || (name === 'sendTransaction');
-            if (!validMethod) continue;
-            cc[name] = (...args: unknown[]) => {
-                const promise = method(...args);
-                const decodePromise = promise
-                    .then((result: any) => {
-                        // (approximately) detect if the returned result is either TransactionResponse or TransactionReceipt and in this case extract events
-                        const resultIsTransactionResponse = result != null && typeof result.tx === 'string' && result.receipt != null && Array.isArray(result.logs);
-                        const resultIsTransactionReceipt = result != null && typeof result.status === 'boolean' && typeof result.transactionHash === 'string' && Array.isArray(result.logs);
-                        return resultIsTransactionResponse || resultIsTransactionReceipt ? this.eventDecoder.decodeEvents(result) : [];
-                    })
-                    .catch((e: unknown) => {
-                        reportError(e);
-                        return [];
-                    });
-                this.eventPromises.push(decodePromise);
-                return promise;
-            };
-            // copy subkeys from method (call, sendTransaction, estimateGas)
-            for (const key of subkeys) {
-                cc[name][key] = (method as any)[key];
-            }
-        }
-    }
-    
-    async collectEvents() {
-        for (const promise of this.eventPromises) {
-            const events = await promise;
-            this.events.push(...events);
-        }
-        this.eventPromises = [];
-        const events = this.events;
-        this.events = [];
-        return events;
     }
 }
 
