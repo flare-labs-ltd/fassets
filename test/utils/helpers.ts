@@ -179,6 +179,27 @@ export function toHex(x: string | number | BN, padToBytes?: number) {
     return Web3.utils.toHex(x);
 }
 
+/**
+ * Convert object to subclass with type check.
+ */
+export function checkedCast<S, T extends S>(obj: S, cls: new (...args: any[]) => T): T {
+    if (obj instanceof cls) return obj;
+    assert.fail(`object not instance of ${cls.name}`);
+}
+
+/**
+ * Functional style try...catch.
+ */
+export function tryCatch<T>(body: () => T): T | undefined;
+export function tryCatch<T>(body: () => T, errorHandler: (err: unknown) => T): T;
+export function tryCatch<T>(body: () => T, errorHandler?: (err: unknown) => T) {
+    try {
+        return body();
+    } catch (err) {
+        return errorHandler?.(err);
+    }
+}
+
 // Error handling
 
 export function reportError(e: any) {

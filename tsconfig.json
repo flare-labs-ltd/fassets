@@ -1,25 +1,27 @@
 {
     "compilerOptions": {
-      "target": "es2018",
-      "module": "commonjs",
-      "strict": true,
-      "esModuleInterop": true,
-      "outDir": "dist",
-      "typeRoots": [
-        "test/types",
-        "node_modules/flare-smart-contracts/test/types",
-        "node_modules/@types"
-      ]
+        "target": "es2018",
+        "module": "commonjs",
+        "strict": true,
+        "esModuleInterop": true,
+        "outDir": "dist",
+        "typeRoots": [
+            "test/types",
+            "node_modules/flare-smart-contracts/test/types",
+            "node_modules/@types"
+        ],
+        "lib": [
+            "ES2018"
+        ]
     },
     "include": [
-      "./test", 
-      "./typechain", 
-      "./typechain-truffle",
-      "node_modules/flare-smart-contracts/test/types"
+        "./test",
+        "./typechain",
+        "./typechain-truffle",
+        "node_modules/flare-smart-contracts/test/types"
     ],
     "files": [
-      "./hardhat.config.ts", 
-      "./type-extensions.ts"
+        "./hardhat.config.ts",
+        "./type-extensions.ts"
     ]
-  }
-  
+}

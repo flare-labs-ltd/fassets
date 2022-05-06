@@ -92,12 +92,12 @@ contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
             await network.provider.send('evm_setAutomine', [false]);
             await network.provider.send("evm_setIntervalMining", [0]);
         });
-        
+
         afterEach(async () => {
             await network.provider.send('evm_setAutomine', [true]);
         });
-        
-        it.only("try run network by manual mining", async () => {
+
+        it("try run network by manual mining", async () => {
             for (let i = 0; i < 10; i++) {
                 void wNat.deposit({ from: accounts[1], value: toBN(10_000) })
                     .then(() => console.log("Minted 10_000", i));
@@ -123,7 +123,7 @@ contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
     });
 
     describe("ethers hardhat experiments", async () => {
-        
+
         // a fresh contract for each test
         let signers: Signer[];
         let wNat: WNat;
@@ -178,7 +178,7 @@ contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
         it("try run network by manual mining", async () => {
             // await timed(() => waitFinalizeFrom(signers[1], wNat, w => w.deposit({ value: 10_000, gasLimit: 1_000_000 })));
             // await timed(() => waitFinalizeFrom(signers[1], wNat, w => w.deposit({ value: 20_000, gasLimit: 1_000_000 })));
-            await timed(() => waitFinalizeMulti(signers[1], 
+            await timed(() => waitFinalizeMulti(signers[1],
                 () => wNat.connect(signers[1]).deposit({ value: 10_000, gasLimit: 1_000_000 }),
                 () => wNat.connect(signers[1]).deposit({ value: 20_000, gasLimit: 1_000_000 })
             ));
@@ -228,7 +228,7 @@ contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
             const res2 = await wNat.connect(signers[1]).deposit({ value: 10_000 }).then(t => t.wait());
             decoder.decodeEvents(res2).forEach(ev => console.log(decoder.format(ev)));
         });
-        
+
         it.skip("test error", async () => {
             await wNat.withdraw(1000, { gasLimit: 100_000 });
         });
@@ -254,7 +254,7 @@ contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
             startTimestamp = await time.latest();
         });
 
-        it("test time skip", async () => {
+        it.only("test time skip", async () => {
             console.log(`Start time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
             await wNat.deposit({ from: accounts[1], value: toBN(10_000) });
             console.log(`After deposit time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
@@ -268,12 +268,15 @@ contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
             console.log(`After sleep(5s) time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
             await time.advanceBlock();
             console.log(`After sleep(5s) and mine time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
+            await sleep(5000);
+            await time.increase(3);
+            console.log(`After sleep(5s) and skip(2) time=${(await time.latest()).sub(startTimestamp)} block=${await time.latestBlock()}`);
         });
 
         it.skip("test error", async () => {
             await wNat.withdraw(1000);
         });
-        
+
         it("test toStringFixed", async () => {
             const x = 2353.498 / 1000;
             for (const dec of [5, 10, 12, 16, 18, 20, 22, 24]) {
