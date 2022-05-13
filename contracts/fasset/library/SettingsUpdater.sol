@@ -6,7 +6,6 @@ import "./AMEvents.sol";
 import "./AssetManagerState.sol";
 import "./TransactionAttestation.sol";
 
-
 library SettingsUpdater {
     using SafeBips for *;
     
@@ -23,9 +22,15 @@ library SettingsUpdater {
         uint64 underlyingSecondsForPayment;
     }
     
+    struct WhitelistUpdate {
+        uint64 validAt;
+        address whitelist;
+    }
+
     struct PendingUpdates {
         CollateralRatioUpdate collateralRatio;
         PaymentTimeUpdate paymentTime;
+        WhitelistUpdate whitelist;
         // last update time
         mapping (bytes32 => uint256) lastUpdate;
     }
@@ -44,6 +49,8 @@ library SettingsUpdater {
         keccak256("executeSetTimeForPayment()");
     bytes32 internal constant SET_WHITELIST =
         keccak256("setWhitelist(address)");
+    bytes32 internal constant EXECUTE_SET_WHITELIST =
+        keccak256("executeSetWhitelist()");
     bytes32 internal constant SET_LOT_SIZE_AMG =
         keccak256("setLotSizeAmg(uint256)");
     bytes32 internal constant SET_MAX_TRUSTED_PRICE_AGE_SECONDS =
@@ -108,7 +115,9 @@ library SettingsUpdater {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setPaymentChallengeReward(_state, _params);
         } else if (_method == SET_WHITELIST) {
-            _setWhitelist(_state, _params);
+            _setWhitelist(_state, _updates.whitelist, _params);
+        } else if (_method == EXECUTE_SET_WHITELIST) {
+            _executeSetWhitelist(_state, _updates.whitelist);
         } else if (_method == SET_LOT_SIZE_AMG) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setLotSizeAmg(_state, _params);
@@ -297,15 +306,31 @@ library SettingsUpdater {
 
     function _setWhitelist(
         AssetManagerState.State storage _state,
+        WhitelistUpdate storage _update,
         bytes calldata _params
     ) 
         private 
     {
         address value = abi.decode(_params, (address));
         // validate
-        // update
-        _state.settings.whitelist = IWhitelist(value);
-        emit AMEvents.ContractChanged("whitelist", value);
+        // create pending update
+        uint256 validAt = block.timestamp + _state.settings.timelockSeconds;
+        _update.validAt = SafeCast.toUint64(validAt);
+        _update.whitelist = value;
+        emit AMEvents.ContractChangeScheduled("whitelist", value, validAt);
+    }
+
+    function _executeSetWhitelist(
+        AssetManagerState.State storage _state,
+        WhitelistUpdate storage _update
+    ) 
+        private 
+    {    
+        require(_update.validAt != 0 && block.timestamp >= _update.validAt, "update not valid yet");
+        _update.validAt = 0;
+        _state.settings.whitelist = IWhitelist(_update.whitelist);
+        emit AMEvents.ContractChanged("whitelist", _update.whitelist);
+
     }
     
     function _setLotSizeAmg(

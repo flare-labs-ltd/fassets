@@ -1,5 +1,5 @@
 import { expectRevert, time, expectEvent } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WhitelistInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { DAYS, getTestFile, HOURS, MAX_BIPS, toBN, toBNExp } from "../../utils/helpers";
@@ -13,6 +13,7 @@ const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const AssetManagerController = artifacts.require('AssetManagerController');
+const Whitelist = artifacts.require('Whitelist');
 
 function randomAddress() {
     return web3.utils.toChecksumAddress(web3.utils.randomHex(20))
@@ -30,6 +31,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     let natFtso: FtsoMockInstance;
     let assetFtso: FtsoMockInstance;
     let settings: AssetManagerSettings;
+    let whitelist: WhitelistInstance;
 
     beforeEach(async () => {
         // create atetstation client
@@ -46,6 +48,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         const ftsoRegistry = await FtsoRegistryMock.new();
         await ftsoRegistry.addFtso(natFtso.address);
         await ftsoRegistry.addFtso(assetFtso.address);
+        // create whitelist
+        whitelist = await Whitelist.new(governance);
         // create asset manager controller
         addressUpdater = await AddressUpdater.new(governance);
         assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
@@ -96,10 +100,25 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await assetManagerController.refreshFtsoIndexes([assetManager.address], {from: updateExecutor });
         });
 
-        it("should set whitelist", async () => {
-            let address = randomAddress();
-            let res = await assetManagerController.setWhitelist([assetManager.address], address, { from: governance });
-            expectEvent(res, "ContractChanged", { name: "whitelist", value: address })
+        it("should set whitelist address", async () => {
+            let res = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
+            expectEvent(res, "ContractChangeScheduled", { name: "whitelist", value: whitelist.address })
+        });
+
+        it("should execute set whitelist", async () => {
+            // set executor
+            await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance })
+            // settings
+            const currentSettings = await assetManager.getSettings();
+            await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
+                        
+            await time.increase(toBN(settings.timelockSeconds).addn(1));
+            await time.advanceBlock();
+            await assetManagerController.executeSetWhitelist([assetManager.address], { from: updateExecutor });
+            // assert
+            const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(newSettings.whitelist, whitelist.address);
+            
         });
 
         it("should revert setting lot size when increase or decrease is too big", async () => {

@@ -848,7 +848,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         internal view
     {
         if (address(state.settings.whitelist) != address(0)) {
-            require(state.settings.whitelist.whitelisted(msg.sender), "not whitelisted");
+            require(state.settings.whitelist.isWhitelisted(msg.sender), "not whitelisted");
         }
     }
 }
