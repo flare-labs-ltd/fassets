@@ -1,5 +1,5 @@
-import { BNish, BN_ZERO, systemTimestamp, toBN } from "../helpers";
-import { IBlock, IBlockChain, IBlockId, IChainWallet, ITransaction, TransactionOptions, TransactionOptionsWithFee, TxInputOutput, TX_FAILED, TX_SUCCESS } from "./ChainInterfaces";
+import { BNish, BN_ZERO, Dict, systemTimestamp, toBN } from "../helpers";
+import { BlockHandler, IBlock, IBlockChain, IBlockId, IBlockChainEvents, IChainWallet, ITransaction, TransactionHandler, TransactionOptions, TransactionOptionsWithFee, TxInputOutput, TX_FAILED, TX_SUCCESS } from "./ChainInterfaces";
 
 export type MockTransactionOptions = TransactionOptions & { status?: number };
 export type MockTransactionOptionsWithFee = TransactionOptionsWithFee & { status?: number };
@@ -25,7 +25,7 @@ export interface MockChainBlock {
  * Everything is linear here - no support for complex concepts like finalization or forking
  * (these are handled in attestation system and are not really visible in fasset system).
  */
-export class MockChain implements IBlockChain {
+export class MockChain implements IBlockChain, IBlockChainEvents {
     blocks: MockChainBlock[] = [];
     blockIndex: { [hash: string]: number } = {};
     transactionIndex: { [hash: string]: [block: number, txIndex: number] } = {};
@@ -33,6 +33,8 @@ export class MockChain implements IBlockChain {
     balances: { [address: string]: BN } = {};
     timestampSkew: number = 0;   // how much the timestamp is ahead of system time
     nextBlockTransactions: MockChainTransaction[] = [];
+    blockHandlers: { [subscriptionId: string]: BlockHandler } = {};
+    transactionHandlers: { [subscriptionId: string]: [filter: Dict<string> | null, handler: TransactionHandler] } = {};
     
     // some settings that can be tuned for tests
     finalizationBlocks: number = 0;
@@ -69,6 +71,28 @@ export class MockChain implements IBlockChain {
     async getBlockHeight(): Promise<number> {
         return this.blocks.length - 1;
     }
+    
+    static lastSubscriptionId = 0;
+    
+    addBlockHandler(handler: (blockId: IBlockId) => void): string {
+        const subscriptionId = String(++MockChain.lastSubscriptionId);
+        this.blockHandlers[subscriptionId] = handler;
+        return subscriptionId;
+    }
+    
+    addTransactionHandler(filter: Dict<string> | null, handler: (transaction: ITransaction) => void): string {
+        const subscriptionId = String(++MockChain.lastSubscriptionId);
+        this.transactionHandlers[subscriptionId] = [filter, handler];
+        return subscriptionId;
+    }
+    
+    removeHandler(subscriptionId: string): void {
+        delete this.blockHandlers[subscriptionId];
+        delete this.transactionHandlers[subscriptionId];
+    }
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    // Mock methods
     
     addTransaction(transaction: MockChainTransaction) {
         this.nextBlockTransactions.push(transaction);
@@ -154,8 +178,34 @@ export class MockChain implements IBlockChain {
         const hash = web3.utils.keccak256(JSON.stringify({ number, timestamp, transactions: transactions.map(tx => tx.hash) }));
         this.blocks.push({ hash, number, timestamp, transactions });
         this.blockIndex[hash] = this.blocks.length - 1;
+        // execute handlers
+        for (const handler of Object.values(this.blockHandlers)) {
+            handler({ hash, number });
+        }
+        for (const [filter, handler] of Object.values(this.transactionHandlers)) {
+            for (const transaction of transactions) {
+                if (filter == null || this.filterMatches(filter, transaction)) {
+                    handler(transaction);
+                }
+            }
+        }
     }
-
+    
+    private filterMatches(filter: Dict<string>, transaction: MockChainTransaction) {
+        if ('reference' in filter) {
+            if (transaction.reference !== filter.reference) return false;
+        }
+        if ('from' in filter) {
+            const match = transaction.inputs.some(([address, _]) => address === filter.from);
+            if (!match) return false;
+        }
+        if ('to' in filter) {
+            const match = transaction.outputs.some(([address, _]) => address === filter.to);
+            if (!match) return false;
+        }
+        return true;
+    }
+    
     private newBlockTimestamp() {
         const timestamp = this.nextBlockTimestamp();
         this.timestampSkew = timestamp - systemTimestamp();  // update skew

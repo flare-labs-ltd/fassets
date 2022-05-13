@@ -2,7 +2,7 @@ import { constants } from "@openzeppelin/test-helpers";
 import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../utils/fasset/AttestationHelper";
-import { IBlockChain } from "../../utils/fasset/ChainInterfaces";
+import { IBlockChain, IBlockChainEvents } from "../../utils/fasset/ChainInterfaces";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { IStateConnectorClient } from "../../utils/fasset/IStateConnectorClient";
 import { MockChain } from "../../utils/fasset/MockChain";
@@ -67,6 +67,7 @@ export class AssetContext {
         // asset context
         public chainInfo: ChainInfo,
         public chain: IBlockChain,
+        public chainEvents: IBlockChainEvents,
         public stateConnectorClient: IStateConnectorClient,
         public attestationProvider: AttestationHelper,
         public settings: AssetManagerSettings,
@@ -155,6 +156,7 @@ export class AssetContext {
         // create mock chain attestation provider
         const chain = new MockChain();
         chain.secondsPerBlock = chainInfo.blockTime;
+        const chainEvents = chain;
         const stateConnectorClient = new MockStateConnectorClient(common.attestationClient, { [chainInfo.chainId]: chain }, 'on_wait');
         const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId, 0);
         // create asset FTSO and set some price
@@ -167,7 +169,7 @@ export class AssetContext {
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
             chainInfo.name, chainInfo.symbol, chainInfo.decimals, web3DeepNormalize(settings));
         return new AssetContext(common.governance, common.addressUpdater, common.assetManagerController, common.attestationClient, common.ftsoRegistry, common.wnat, common.natFtso,
-            chainInfo, chain, stateConnectorClient, attestationProvider, settings, assetManager, fAsset, assetFtso);
+            chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider, settings, assetManager, fAsset, assetFtso);
     }
     
     static async createTestSettings(ctx: CommonContext, ci: ChainInfo): Promise<AssetManagerSettings> {
