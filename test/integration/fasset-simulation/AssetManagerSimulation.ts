@@ -130,7 +130,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(availableAgents2[0][0].agentVault, agent1.agentVault.address);
             assertWeb3Equal(availableAgents2[0][0].feeBIPS, 500);
             assertWeb3Equal(availableAgents2[0][0].agentMinCollateralRatioBIPS, 2_2000);
-            assertWeb3Equal(availableAgents2[0][0].freeCollateralLots, await agent1.getFreeCollateralLots(fullAgentCollateral));
+            assertWeb3Equal(availableAgents2[0][0].freeCollateralLots, await agent1.calculateFreeCollateralLots(fullAgentCollateral));
             assertWeb3Equal(availableAgents2[1], 1);
             await agent2.depositCollateral(fullAgentCollateral);
             await agent2.makeAvailable(600, 3_2000);
@@ -139,18 +139,18 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(availableAgents3[0][0].agentVault, agent1.agentVault.address);
             assertWeb3Equal(availableAgents3[0][0].feeBIPS, 500);
             assertWeb3Equal(availableAgents3[0][0].agentMinCollateralRatioBIPS, 2_2000);
-            assertWeb3Equal(availableAgents3[0][0].freeCollateralLots, await agent1.getFreeCollateralLots(fullAgentCollateral));
+            assertWeb3Equal(availableAgents3[0][0].freeCollateralLots, await agent1.calculateFreeCollateralLots(fullAgentCollateral));
             assert.equal(availableAgents3[0][1].agentVault, agent2.agentVault.address);
             assertWeb3Equal(availableAgents3[0][1].feeBIPS, 600);
             assertWeb3Equal(availableAgents3[0][1].agentMinCollateralRatioBIPS, 3_2000);
-            assertWeb3Equal(availableAgents3[0][1].freeCollateralLots, await agent2.getFreeCollateralLots(fullAgentCollateral));
+            assertWeb3Equal(availableAgents3[0][1].freeCollateralLots, await agent2.calculateFreeCollateralLots(fullAgentCollateral));
             assertWeb3Equal(availableAgents3[1], 2);
             const availableAgents4 = await context.assetManager.getAvailableAgentsDetailedList(0, 1);
             assert.equal(availableAgents4[0].length, 1);
             assert.equal(availableAgents4[0][0].agentVault, agent1.agentVault.address);
             assertWeb3Equal(availableAgents4[0][0].feeBIPS, 500);
             assertWeb3Equal(availableAgents4[0][0].agentMinCollateralRatioBIPS, 2_2000);
-            assertWeb3Equal(availableAgents4[0][0].freeCollateralLots, await agent1.getFreeCollateralLots(fullAgentCollateral));
+            assertWeb3Equal(availableAgents4[0][0].freeCollateralLots, await agent1.calculateFreeCollateralLots(fullAgentCollateral));
             assertWeb3Equal(availableAgents4[1], 2);
             await agent1.exitAvailable();
             const availableAgents5 = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
@@ -158,7 +158,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(availableAgents5[0][0].agentVault, agent2.agentVault.address);
             assertWeb3Equal(availableAgents5[0][0].feeBIPS, 600);
             assertWeb3Equal(availableAgents5[0][0].agentMinCollateralRatioBIPS, 3_2000);
-            assertWeb3Equal(availableAgents5[0][0].freeCollateralLots, await agent2.getFreeCollateralLots(fullAgentCollateral));
+            assertWeb3Equal(availableAgents5[0][0].freeCollateralLots, await agent2.calculateFreeCollateralLots(fullAgentCollateral));
             assertWeb3Equal(availableAgents5[1], 1);
             await agent1.makeAvailable(800, 2_5000);
             const availableAgents6 = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
@@ -166,11 +166,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(availableAgents6[0][0].agentVault, agent2.agentVault.address);
             assertWeb3Equal(availableAgents6[0][0].feeBIPS, 600);
             assertWeb3Equal(availableAgents6[0][0].agentMinCollateralRatioBIPS, 3_2000);
-            assertWeb3Equal(availableAgents6[0][0].freeCollateralLots, await agent2.getFreeCollateralLots(fullAgentCollateral));
+            assertWeb3Equal(availableAgents6[0][0].freeCollateralLots, await agent2.calculateFreeCollateralLots(fullAgentCollateral));
             assert.equal(availableAgents6[0][1].agentVault, agent1.agentVault.address);
             assertWeb3Equal(availableAgents6[0][1].feeBIPS, 800);
             assertWeb3Equal(availableAgents6[0][1].agentMinCollateralRatioBIPS, 2_5000);
-            assertWeb3Equal(availableAgents6[0][1].freeCollateralLots, await agent1.getFreeCollateralLots(fullAgentCollateral));
+            assertWeb3Equal(availableAgents6[0][1].freeCollateralLots, await agent1.calculateFreeCollateralLots(fullAgentCollateral));
             assertWeb3Equal(availableAgents6[1], 2);
         });
 

@@ -200,6 +200,42 @@ export function tryCatch<T>(body: () => T, errorHandler?: (err: unknown) => T) {
     }
 }
 
+/**
+ * Get value of key `key` for map. If it doesn't exists, create new value, add it to the map and return it.
+ */
+export function getOrCreate<K, V>(map: Map<K, V>, key: K, create: () => V): V {
+    if (map.has(key)) {
+        return map.get(key)!;
+    }
+    const value = create();
+    map.set(key, value);
+    return value;
+}
+
+/**
+ * Add a value to "multimap" - a map where there are several values for each key.
+ */
+export function multimapAdd<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
+    let set = map.get(key);
+    if (set == undefined) {
+        set = new Set();
+        map.set(key, set);
+    }
+    set.add(value);
+}
+
+/**
+ * Remove a value from "multimap" - a map where there are several values for each key.
+ */
+export function multimapDelete<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
+    let set = map.get(key);
+    if (set == undefined) return;
+    set.delete(value);
+    if (set.size === 0) {
+        map.delete(key);
+    }
+}
+
 // Error handling
 
 export function reportError(e: any) {

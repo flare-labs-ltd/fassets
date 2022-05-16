@@ -2,7 +2,7 @@ import { TransactionReceipt } from "web3-core";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { BaseEvent } from "../../utils/events";
 import { currentRealTime, Statistics } from "../../utils/fuzzing-utils";
-import { reportError, tryCatch } from "../../utils/helpers";
+import { getOrCreate, reportError, tryCatch } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
 
 export type EventHandler = (event: BaseEvent) => void;
@@ -186,10 +186,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             const callEndTime = currentRealTime();
             // gas info
             const qualifiedMethod = `${this.contractTypeName.get(contract.address) ?? contract.address}.${method}`;
-            if (!this.gasUsage.has(qualifiedMethod)) {
-                this.gasUsage.set(qualifiedMethod, new Statistics());
-            }
-            this.gasUsage.get(qualifiedMethod)!.add(receipt.gasUsed);
+            getOrCreate(this.gasUsage, qualifiedMethod, () => new Statistics()).add(receipt.gasUsed);
             // read events
             const events = this.eventDecoder.decodeEvents(receipt);
             // print events
