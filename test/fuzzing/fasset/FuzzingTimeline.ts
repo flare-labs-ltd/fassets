@@ -1,40 +1,74 @@
 import { time } from "@openzeppelin/test-helpers";
+import { BaseEvent } from "../../utils/events";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { randomShuffle } from "../../utils/fuzzing-utils";
 import { latestBlockTimestamp, reportError } from "../../utils/helpers";
 
+type TimelineEventType = 'FlareTime' | 'UnderlyingBlock' | 'UnderlyingTime';
+
+interface TimelineEvent extends BaseEvent {
+    address: 'TIMELINE',
+    event: TimelineEventType,
+    args: { 
+        at: number
+    }
+}
+
 interface TimedTrigger {
-    time: number;
-    handler: () => void;
+    subscriptionId: string;
+    at: number;
+    event: TimelineEvent;
+    handler: (event: TimelineEvent) => void;
 }
 
 export class TriggerList {
     list: TimedTrigger[] = [];
     
-    insert(trigger: TimedTrigger) {
+    insertTrigger(trigger: TimedTrigger) {
         let i = this.list.length;
-        while (i > 0 && trigger.time < this.list[i - 1].time) i--;
+        while (i > 0 && trigger.at < this.list[i - 1].at) i--;
         this.list.splice(i, 0, trigger);
     }
     
-    insertAndWait(triggerTime: number) {
-        return new Promise<void>((resolve) => {
-            this.insert({
-                time: triggerTime,
-                handler: () => resolve(),
-            });
-        })
+    static lastSubscriptionId = 0;
+    
+    insertHandler(eventName: TimelineEventType, triggerTime: number, handler: (event: TimelineEvent) => void) {
+        const subscriptionId = String(++TriggerList.lastSubscriptionId);
+        this.insertTrigger({
+            subscriptionId: subscriptionId,
+            at: triggerTime,
+            event: {
+                address: 'TIMELINE',    // synthetic event
+                event: eventName,
+                args: { at: triggerTime }
+            },
+            handler: handler,
+        });
+        return subscriptionId;
+    }
+    
+    removeHandler(subscriptionId: string) {
+        const index = this.list.findIndex(trigger => trigger.subscriptionId === subscriptionId);
+        if (index >= 0) {
+            this.list.splice(index, 1);
+        }
+    }
+    
+    insertAndWait(eventName: TimelineEventType, triggerTime: number) {
+        return new Promise<TimelineEvent>((resolve) => {
+            this.insertHandler(eventName, triggerTime, resolve);
+        });
     }
     
     popUntil(maxTimeInclusive: number) {
         let i = 0;
-        while (i < this.list.length && this.list[i].time <= maxTimeInclusive) i++;
+        while (i < this.list.length && this.list[i].at <= maxTimeInclusive) i++;
         return this.list.splice(0, i);
     }
     
     firstTime() {
         if (this.list.length === 0) return Number.MAX_VALUE;
-        return this.list[0].time;
+        return this.list[0].at;
     }
 }
 
@@ -51,19 +85,19 @@ export class FuzzingTimeline {
     //     this.chain.mine();
     // }
 
-    async waitFlareTime(seconds: number) {
+    async addFlareTimeHandler(seconds: number, handler: (event: TimelineEvent) => void) {
         const triggerTime = await latestBlockTimestamp() + seconds;
-        await this.flareTimeTriggers.insertAndWait(triggerTime);
+        this.flareTimeTriggers.insertHandler('FlareTime', triggerTime, handler);
     }
 
-    async waitUnderlyingBlocks(blocks: number) {
+    async addUnderlyingBlocksHandler(blocks: number, handler: (event: TimelineEvent) => void) {
         const triggerBlock = this.chain.blockHeight() + blocks;
-        await this.underlyingBlockTriggers.insertAndWait(triggerBlock);
+        this.underlyingBlockTriggers.insertHandler('UnderlyingBlock', triggerBlock, handler);
     }
 
-    async waitUnderlyingTime(seconds: number) {
+    async addUnderlyingTimeHandler(seconds: number, handler: (event: TimelineEvent) => void) {
         const triggerTime = this.chain.currentTimestamp() + seconds;
-        await this.underlyingTimeTriggers.insertAndWait(triggerTime);
+        this.underlyingTimeTriggers.insertHandler('UnderlyingTime', triggerTime, handler);
     }
     
     // Skip `seconds` of time unless a triggger is reached before.
@@ -107,7 +141,7 @@ export class FuzzingTimeline {
         ];
         randomShuffle(triggers);
         for (const trigger of triggers) {
-            trigger.handler();
+            trigger.handler(trigger.event);
         }
         return triggers.length > 0; // so the caller can repeat until all triggers are exhausted
     }
