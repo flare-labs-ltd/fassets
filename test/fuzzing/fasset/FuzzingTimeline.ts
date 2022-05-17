@@ -69,17 +69,17 @@ export class FuzzingTimeline {
     //     this.chain.mine();
     // }
 
-    async flareTimeEvent(seconds: number) {
+    async flareTime(seconds: number) {
         const triggerTime = await latestBlockTimestamp() + seconds;
         return this.flareTimeTriggers.event('FlareTime', triggerTime);
     }
 
-    underlyingBlocksEvent(blocks: number) {
+    underlyingBlocks(blocks: number) {
         const triggerBlock = this.chain.blockHeight() + blocks;
         return this.underlyingBlockTriggers.event('UnderlyingBlock', triggerBlock);
     }
 
-    underlyingTimeEvent(seconds: number) {
+    underlyingTime(seconds: number) {
         const triggerTime = this.chain.currentTimestamp() + seconds;
         return this.underlyingTimeTriggers.event('UnderlyingTime', triggerTime);
     }
