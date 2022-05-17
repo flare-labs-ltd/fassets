@@ -1,8 +1,9 @@
 import { time } from "@openzeppelin/test-helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
+import { ITimer } from "../../utils/fasset/Timer";
 import { randomShuffle } from "../../utils/fuzzing-utils";
-import { latestBlockTimestamp } from "../../utils/helpers";
-import { ClearableSubscription, EventEmitter, EventHandler } from "./EventEmitter";
+import { latestBlockTimestamp, runAsync } from "../../utils/helpers";
+import { ClearableSubscription, EventEmitter, EventHandler, EventSubscription } from "./ScopedEvents";
 
 type TimelineEventType = 'FlareTime' | 'UnderlyingBlock' | 'UnderlyingTime';
 
@@ -19,14 +20,18 @@ interface TimedTrigger {
 }
 
 export class TriggerList {
+    constructor(
+        public eventType: TimelineEventType,
+    ) { }
+    
     triggers: TimedTrigger[] = [];
     
     static lastSubscriptionId = 0;
     
-    event(eventType: TimelineEventType, triggerAt: number) {
+    event(triggerAt: number) {
         return new EventEmitter<TimelineEvent>(handler => {
             const id = ++TriggerList.lastSubscriptionId;
-            this.insertTrigger({ id: id, type: eventType, at: triggerAt, handler: handler });
+            this.insertTrigger({ id: id, type: this.eventType, at: triggerAt, handler: handler });
             return ClearableSubscription.of(() => this.removeTrigger(id));
         });
     }
@@ -56,10 +61,53 @@ export class TriggerList {
     }
 }
 
+class FuzzingTimelineTimerId {
+    subscription?: EventSubscription;
+}
+
+export class FuzzingTimelineTimer implements ITimer<FuzzingTimelineTimerId> {
+    constructor(
+        private timeline: TriggerList,
+        private getCurrentTime: () => Promise<number>,
+    ) { }
+    
+    currentTime(): Promise<number> {
+        return this.getCurrentTime();
+    }
+    
+    after(seconds: number, handler: () => void): FuzzingTimelineTimerId {
+        const timerId = new FuzzingTimelineTimerId();
+        runAsync(async () => {
+            const timestamp = await this.getCurrentTime();
+            timerId.subscription = this.timeline.event(timestamp + seconds).subscribe(handler);
+        });
+        return timerId;
+    }
+    
+    every(seconds: number, handler: () => void): FuzzingTimelineTimerId {
+        const timerId = new FuzzingTimelineTimerId();
+        runAsync(async () => {
+            const timestamp = await this.getCurrentTime();
+            let stopTime = timestamp + seconds;
+            const wrappedHandler = () => {
+                stopTime += seconds;
+                timerId.subscription = this.timeline.event(stopTime).subscribe(wrappedHandler);
+                handler();
+            };
+            timerId.subscription = this.timeline.event(stopTime).subscribe(wrappedHandler);
+        });
+        return timerId;
+    }
+    
+    cancel(timerId: FuzzingTimelineTimerId): void {
+        timerId.subscription?.unsubscribe();
+    }
+}
+
 export class FuzzingTimeline {
-    flareTimeTriggers = new TriggerList();
-    underlyingTimeTriggers = new TriggerList();
-    underlyingBlockTriggers = new TriggerList();
+    flareTimeTriggers = new TriggerList('FlareTime');
+    underlyingTimeTriggers = new TriggerList('UnderlyingTime');
+    underlyingBlockTriggers = new TriggerList('UnderlyingBlock');
 
     constructor(
         public chain: MockChain,
@@ -71,17 +119,21 @@ export class FuzzingTimeline {
 
     async flareTime(seconds: number) {
         const triggerTime = await latestBlockTimestamp() + seconds;
-        return this.flareTimeTriggers.event('FlareTime', triggerTime);
+        return this.flareTimeTriggers.event(triggerTime);
     }
 
     underlyingBlocks(blocks: number) {
         const triggerBlock = this.chain.blockHeight() + blocks;
-        return this.underlyingBlockTriggers.event('UnderlyingBlock', triggerBlock);
+        return this.underlyingBlockTriggers.event(triggerBlock);
     }
 
     underlyingTime(seconds: number) {
         const triggerTime = this.chain.currentTimestamp() + seconds;
-        return this.underlyingTimeTriggers.event('UnderlyingTime', triggerTime);
+        return this.underlyingTimeTriggers.event(triggerTime);
+    }
+    
+    flareTimer() {
+        return new FuzzingTimelineTimer(this.flareTimeTriggers, latestBlockTimestamp);
     }
     
     // Skip `seconds` of time unless a triggger is reached before.

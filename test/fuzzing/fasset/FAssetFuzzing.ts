@@ -23,7 +23,6 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let commonContext: CommonContext;
     let context: AssetContext;
     let timeline: FuzzingTimeline;
-    let runner: FuzzingRunner;
     let agents: FuzzingAgent[] = [];
     let customers: FuzzingCustomer[] = [];
     let chain: MockChain;
@@ -32,8 +31,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let eventCollector: EventCollector;
     let truffleEvents: TruffleEvents;
     let chainEvents: UnderlyingChainEvents;
-    
-    let availableAgents: AvailableAgentInfo[];
+    let runner: FuzzingRunner;
 
     before(async () => {
         // create context
@@ -52,11 +50,12 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         interceptor.openLog("test_logs/fasset-fuzzing.log");
         // collect events
         eventCollector = interceptor.collectEvents();
-        // uniform event handlers and runner
+        // uniform event handlers
         truffleEvents = new TruffleEvents(interceptor);
         chainEvents = new UnderlyingChainEvents(context.chainEvents);
         timeline = new FuzzingTimeline(chain);
-        runner = new FuzzingRunner();
+        // runner
+        runner = new FuzzingRunner(context, interceptor, timeline, truffleEvents, chainEvents);
     });
     
     after(() => {
@@ -69,7 +68,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         const firstAgentAddress = 10;
         for (let i = 0; i < N_AGENTS; i++) {
             const underlyingAddress = "underlying_agent_" + i;
-            const fa = await FuzzingAgent.createTest(timeline, runner, context, accounts[firstAgentAddress + i], underlyingAddress);
+            const fa = await FuzzingAgent.createTest(runner, context, accounts[firstAgentAddress + i], underlyingAddress);
             eventDecoder.addAddress(`OWNER_${i}`, fa.agent.ownerAddress);
             interceptor.captureEventsFrom(`AGENT_${i}`, fa.agent.agentVault, 'AgentVault');
             await fa.agent.agentVault.deposit({ from: fa.agent.ownerAddress, value: toWei(10_000_000) });
@@ -99,25 +98,11 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         for (let loop = 0; loop < LOOPS; loop++) {
             const action = weightedRandomChoice(actions);
             await action();
-            await dispatchEvents();
         }
     });
 
-    async function dispatchEvents() {
-        while (true) {
-            await interceptor.allHandled();
-            const events = eventCollector.popCollectedEvents();
-            if (events.length == 0) break;
-            for (const event of events) {
-                //     console.log(eventDecoder.format(event));
-                await FuzzingAgent.dispatchEvent(context, event);
-            }
-        }
-    }
-    
     async function refreshAvailableAgents() {
-        const { 0: _availableAgents } = await context.assetManager.getAvailableAgentsDetailedList(0, 1000);
-        availableAgents = _availableAgents;
+        await runner.refreshAvailableAgents();
     }
 
     async function testMint() {
@@ -125,8 +110,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         runner.startThread(async () => {
             await context.updateUnderlyingBlock();
             // create CR
-            const agent = randomChoice(availableAgents);
-            const lots = randomInt(agent.freeCollateralLots.toNumber());
+            const agent = randomChoice(runner.availableAgents);
+            const lots = randomInt(Number(agent.freeCollateralLots));
             const crt = await customer.minter.reserveCollateral(agent.agentVault, lots);
             // pay
             const txHash = await customer.minter.performMintingPayment(crt);

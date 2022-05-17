@@ -1,7 +1,7 @@
 import { BaseEvent, ContractWithEventsBase, EventArgsForName, EventNamesFor } from "../../utils/events";
 import { IBlockChainEvents, IBlockId, ITransaction } from "../../utils/fasset/ChainInterfaces";
 import { multimapAdd, multimapDelete } from "../../utils/helpers";
-import { ClearableSubscription, EventEmitter } from "./EventEmitter";
+import { ClearableSubscription, EventEmitter } from "./ScopedEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 
 export interface FilteredHandler {

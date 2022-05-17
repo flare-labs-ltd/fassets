@@ -1,39 +1,30 @@
-import { reportError } from "../../utils/helpers";
-import { EventScope } from "./EventEmitter";
+import { AssetContext } from "../../integration/utils/AssetContext";
+import { AvailableAgentInfo } from "../../utils/fasset/AssetManagerTypes";
+import { FuzzingAgent } from "./FuzzingAgent";
+import { FuzzingCustomer } from "./FuzzingCustomer";
+import { FuzzingTimeline } from "./FuzzingTimeline";
+import { ScopedRunner } from "./ScopedEvents";
+import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
+import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
-export class FuzzingRunner {
-    scopes = new Set<EventScope>();
-
-    newScope(parentScope?: EventScope) {
-        const scope = new EventScope(parentScope);
-        this.scopes.add(scope);
-        return scope;
+export class FuzzingRunner extends ScopedRunner {
+    constructor(
+        public context: AssetContext,
+        public interceptor: TruffleTransactionInterceptor,
+        public timeline: FuzzingTimeline,
+        public truffleEvents: TruffleEvents,
+        public chainEvents: UnderlyingChainEvents,
+    ) {
+        super();
     }
 
-    finishScope(scope: EventScope) {
-        scope.finish();
-        this.scopes.delete(scope);
+    agents: FuzzingAgent[] = [];
+    customers: FuzzingCustomer[] = [];
+    availableAgents: AvailableAgentInfo[] = [];
+
+    async refreshAvailableAgents() {
+        const { 0: _availableAgents } = await this.context.assetManager.getAvailableAgentsDetailedList(0, 1000);
+        this.availableAgents = _availableAgents;
     }
 
-    startThread(method: (scope: EventScope) => Promise<void>): void {
-        const scope = this.newScope();
-        void method(scope)
-            .catch(e => reportError(e))
-            .finally(() => this.finishScope(scope));
-    }
-    
-    async startScope(method: (scope: EventScope) => Promise<void>) {
-        return this.startScopeIn(undefined, method);
-    }
-    
-    async startScopeIn(parentScope: EventScope | undefined, method: (scope: EventScope) => Promise<void>) {
-        const scope = this.newScope(parentScope);
-        try {
-            await method(scope);
-        } catch (e) {
-            reportError(e);
-        } finally {
-            this.finishScope(scope);
-        }
-    }
 }

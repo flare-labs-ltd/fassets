@@ -1,38 +1,31 @@
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Agent } from "../../integration/utils/Agent";
 import { AssetContext } from "../../integration/utils/AssetContext";
-import { BaseEvent, EventArgs, eventIs } from "../../utils/events";
+import { EventArgs } from "../../utils/events";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { FuzzingTimeline } from "./FuzzingTimeline";
 
 export class FuzzingAgent {
-    static byVaultAddress: Map<string, FuzzingAgent> = new Map();
-    static byUnderlyingAddress: Map<string, FuzzingAgent> = new Map();
-    
     constructor(
-        public timeline: FuzzingTimeline,
         public runner: FuzzingRunner,
         public agent: Agent,
     ) {
-        FuzzingAgent.byVaultAddress.set(agent.agentVault.address, this);
-        FuzzingAgent.byUnderlyingAddress.set(agent.underlyingAddress, this);
+        this.registerForEvents();
     }
-    
-    static async createTest(timeline: FuzzingTimeline, runner: FuzzingRunner, ctx: AssetContext, ownerAddress: string, underlyingAddress: string) {
+
+    context = this.runner.context;
+
+    static async createTest(runner: FuzzingRunner, ctx: AssetContext, ownerAddress: string, underlyingAddress: string) {
         const agent = await Agent.createTest(ctx, ownerAddress, underlyingAddress);
-        return new FuzzingAgent(timeline, runner, agent);
+        return new FuzzingAgent(runner, agent);
     }
-    
-    static async dispatchEvent(context: AssetContext, event: BaseEvent) {
-        if (eventIs(event, context.assetManager, 'RedemptionRequested')) {
-            const agent = this.byVaultAddress.get(event.args.agentVault);
-            if (agent == null) assert.fail("invalid agent address");
-            await agent.handleRedemptionRequest(event.args);
-        }
+
+    registerForEvents() {
+        this.runner.truffleEvents.event(this.context.assetManager, 'RedemptionRequested', { agentVault: this.agent.vaultAddress })
+            .subscribe((args) => this.handleRedemptionRequest(args));
     }
-    
+
     async handleRedemptionRequest(request: EventArgs<RedemptionRequested>) {
-        this.runner.startThread(async () => {
+        this.runner.startThread(async (scope) => {
             const txHash = await this.agent.performRedemptionPayment(request);
             await this.agent.confirmActiveRedemptionPayment(request, txHash);
         });

@@ -201,6 +201,13 @@ export function tryCatch<T>(body: () => T, errorHandler?: (err: unknown) => T) {
 }
 
 /**
+ * Run `func` in parallel. Allows nicer code in case func is an async lambda.
+ */
+export function runAsync(func: () => Promise<void>) {
+    void func();
+}
+
+/**
  * Get value of key `key` for map. If it doesn't exists, create new value, add it to the map and return it.
  */
 export function getOrCreate<K, V>(map: Map<K, V>, key: K, create: () => V): V {

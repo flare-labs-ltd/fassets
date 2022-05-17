@@ -1,5 +1,5 @@
 import { AttestationClientMockInstance } from "../../../typechain-truffle";
-import { BN_ZERO, BYTES32_ZERO, sleep, toBN, toNumber } from "../helpers";
+import { BYTES32_ZERO, sleep, toBN, toNumber } from "../helpers";
 import { MerkleTree } from "../MerkleTree";
 import { DHType } from "../verification/generated/attestation-hash-types";
 import { dataHash } from "../verification/generated/attestation-hash-utils";
@@ -7,18 +7,10 @@ import { parseRequest } from "../verification/generated/attestation-request-pars
 import { ARBalanceDecreasingTransaction, ARConfirmedBlockHeightExists, ARPayment, ARReferencedPaymentNonexistence, ARType } from "../verification/generated/attestation-request-types";
 import { AttestationType } from "../verification/generated/attestation-types-enum";
 import { SourceId } from "../verification/sources/sources";
-import { TxInputOutput } from "./ChainInterfaces";
 import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "./IStateConnectorClient";
 import { MockAttestationProver } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
-
-function totalValueFor(ios: TxInputOutput[], address: string) {
-    let total = BN_ZERO;
-    for (const [a, v] of ios) {
-        if (a === address) total = total.add(v);
-    }
-    return total;
-}
+import { ITimer } from "./Timer";
 
 interface DHProof {
     attestationType: AttestationType;
@@ -34,18 +26,25 @@ interface FinalizedRound {
 
 // auto - create new round for every pushed request and finalize immediately - useful for unit tests
 // on_wait - during waitForRoundFinalization finalize up to the awaited round - simulates simple (linear) real usage
+// timed - finalize rounds based on time, like in real case
 // manual - user must manually call finalizeRound()
-export type AutoFinalizationType = 'auto' | 'on_wait' | 'manual';
+export type AutoFinalizationType = 'auto' | 'on_wait' | 'timed' | 'manual';
 
 export class MockStateConnectorClient implements IStateConnectorClient {
     constructor(
         public attestationClient: AttestationClientMockInstance,
         public supportedChains: { [chainId: number]: MockChain },
         public finalizationType: AutoFinalizationType,
-    ) {}
+    ) {
+    }
     
     rounds: string[][] = [];
     finalizedRounds: FinalizedRound[] = [];
+    
+    setTimedFinalization(timedRoundSeconds: number, timer: ITimer<any>) {
+        this.finalizationType = 'timed';
+        timer.every(timedRoundSeconds, () => this.finalizeRound());
+    }
     
     addChain(id: SourceId, chain: MockChain) {
         this.supportedChains[id] = chain;
