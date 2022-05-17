@@ -64,16 +64,19 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     it("should delegate", async () => {
         await agentVault.delegate(accounts[2], 50, { from: owner });
-        const { _delegateAddresses, _bips } = await wnat.delegatesOf(owner) as any;
-        console.log(_delegateAddresses, _bips)
+        const { _delegateAddresses } = await wnat.delegatesOf(agentVault.address) as any;
         assertWeb3Equal(_delegateAddresses[0], accounts[2]);
-        assertWeb3Equal(_bips, 50);
     });
 
     it("should undelegate all", async () => {
         await agentVault.delegate(accounts[2], 50, { from: owner });
         await agentVault.delegate(accounts[3], 10, { from: owner });
+        let resDelegate = await wnat.delegatesOf(agentVault.address) as any;
+        assertWeb3Equal(resDelegate._delegateAddresses.length, 2);
+
         await agentVault.undelegateAll({ from: owner });
+        let resUndelegate = await wnat.delegatesOf(agentVault.address) as any;
+        assertWeb3Equal(resUndelegate._delegateAddresses.length, 0);
     });
 
     it("should revoke delegation", async () => {
