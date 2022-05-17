@@ -274,6 +274,5 @@ interface IAssetManagerEvents {
         string name,
         address value,
         uint256 validAt);
-        
-}
 
+}
