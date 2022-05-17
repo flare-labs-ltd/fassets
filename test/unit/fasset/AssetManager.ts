@@ -1,5 +1,5 @@
 import { balance, constants, ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WhitelistInstance, WNatInstance } from "../../../typechain-truffle";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { findRequiredEvent } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
@@ -19,6 +19,8 @@ const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
+const Whitelist = artifacts.require('Whitelist');
+const AssetManagerController = artifacts.require('AssetManagerController');
 
 function randomAddress() {
     return web3.utils.toChecksumAddress(web3.utils.randomHex(20))
@@ -26,7 +28,7 @@ function randomAddress() {
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic tests`, async accounts => {
     const governance = accounts[10];
-    const assetManagerController = accounts[11];
+    let assetManagerController = accounts[11];
     let attestationClient: AttestationClientMockInstance;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
@@ -41,6 +43,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
     let eventDecoder: Web3EventDecoder;
+    let whitelist: WhitelistInstance;
     
     // addresses
     const underlyingBurnAddr = "Burn";
@@ -51,6 +54,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     const redeemer1 = accounts[40];
     const underlyingRedeemer1 = "Redeemer1";
     const challenger1 = accounts[50];
+    const whitelistedAccount = accounts[1];
+
 
     async function createAgent(chain: MockChain, owner: string, underlyingAddress: string) {
         // mint some funds on underlying address (just enough to make EOA proof)
@@ -197,6 +202,22 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const info = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(info.agentMinCollateralRatioBIPS, collateralRatioBIPS);
         });
-        
+
+        it("should require whitelisting, when whitelist exists, to create agent", async () => {
+            whitelist = await Whitelist.new(governance);
+            await whitelist.addAddressToWhitelist(whitelistedAccount, {from: governance});
+                                
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")), 
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]), 
+                { from: assetManagerController });
+            await time.increase(toBN(settings.timelockSeconds).addn(1));
+            await time.advanceBlock();
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("executeSetWhitelist()")), 
+                constants.ZERO_ADDRESS,
+                { from: assetManagerController });
+            // assert
+            await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agentOwner1 }),
+                "not whitelisted");
+        });        
     });
 });
