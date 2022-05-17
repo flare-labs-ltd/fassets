@@ -83,6 +83,8 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await agentVault.delegate(accounts[2], 50, { from: owner });
         const blockNumber = await web3.eth.getBlockNumber();
         await agentVault.revokeDelegationAt(accounts[2], blockNumber, { from: owner });
+        let votePower = await wnat.votePowerOfAt(accounts[2], blockNumber);
+        assertWeb3Equal(votePower.toNumber(), 0);
     });
 
 });
