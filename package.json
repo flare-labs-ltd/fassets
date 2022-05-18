@@ -29,7 +29,7 @@
     "c": "yarn compile",
     "precompile": "env bash scripts/create-events-interface.sh",
     "lint": "yarn solhint \"contracts/**/*.sol\"",
-    "typechain-prepare": "env mkdir -p artifacts/flattened && env cp artifacts/cache/flattened/**/*.json artifacts/flattened && env rm artifacts/flattened/I[A-Z]*.json",
+    "typechain-prepare": "env bash scripts/remove-flattened-duplicates.sh",
     "typechain-ethers-v5": "yarn typechain --target=ethers-v5 --out-dir typechain \"artifacts/!(build-info|cache)/**/+([a-zA-Z0-9_]).json\" 1> nul",
     "typechain-truffle-v5": "yarn typechain --target=truffle-v5 --out-dir typechain-truffle \"artifacts/!(build-info|cache)/**/+([a-zA-Z0-9_]).json\"",
     "size": "yarn run hardhat size-contracts",
