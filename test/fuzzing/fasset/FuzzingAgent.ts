@@ -20,7 +20,7 @@ export class FuzzingAgent {
     }
 
     registerForEvents() {
-        this.runner.truffleEvents.event(this.context.assetManager, 'RedemptionRequested', { agentVault: this.agent.vaultAddress })
+        this.runner.assetManagerEvent('RedemptionRequested', { agentVault: this.agent.vaultAddress })
             .subscribe((args) => this.handleRedemptionRequest(args));
     }
 

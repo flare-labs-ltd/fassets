@@ -1,4 +1,5 @@
-import { AssetContext } from "../../integration/utils/AssetContext";
+import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
+import { ExtractedEventArgs } from "../../utils/events";
 import { AvailableAgentInfo } from "../../utils/fasset/AssetManagerTypes";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
@@ -28,4 +29,7 @@ export class FuzzingRunner extends ScopedRunner {
         this.availableAgents = _availableAgents;
     }
 
+    assetManagerEvent<N extends AssetManagerEvents['name']>(event: N, filter?: Partial<ExtractedEventArgs<AssetManagerEvents, N>>) {
+        return this.truffleEvents.event(this.context.assetManager, event, filter);
+    }
 }

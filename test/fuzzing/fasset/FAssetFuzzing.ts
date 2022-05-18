@@ -156,13 +156,20 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             const holdingUBA = toBN(await context.fAsset.balanceOf(customer.address));
             const holdingLots = Number(holdingUBA.div(lotSize));
             const lots = randomInt(AVOID_ERRORS ? holdingLots : 100);
-            interceptor.comment(`${eventDecoder.formatAddress(customer.address)} lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
+            const customerName = eventDecoder.formatAddress(customer.address);
+            interceptor.comment(`${customerName} lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
             if (AVOID_ERRORS && lots === 0) return;
             const [tickets, remaining] = await customer.redeemer.requestRedemption(lots)
                 .catch(e => silentFailOnError(e, ['Burn too big for owner', 'redeem 0 lots']));
             mintedLots -= lots - Number(remaining);
-            interceptor.comment(`${customer.minter.address}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
+            interceptor.comment(`${customerName}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
             // TODO: wait for possible non-payment
+            for (const ticket of tickets) {
+                runner.assetManagerEvent('RedemptionPerformed', { requestId: ticket.requestId })
+                    .subscribeOnce(args => {
+                        interceptor.comment(`${customerName}: Received redemption ${Number(args.valueUBA) / Number(lotSize)}`);
+                    });
+            }
         });
     }
 });
