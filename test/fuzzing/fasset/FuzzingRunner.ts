@@ -16,6 +16,7 @@ export class FuzzingRunner extends ScopedRunner {
         public chainEvents: UnderlyingChainEvents,
     ) {
         super();
+        this.logError = (e) => this.interceptor.logUnexpectedError(e, "!!! THREAD ERROR");
     }
 
     agents: FuzzingAgent[] = [];

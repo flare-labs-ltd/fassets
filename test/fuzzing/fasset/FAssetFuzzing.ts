@@ -1,10 +1,9 @@
 import { AssetContext, CommonContext } from "../../integration/utils/AssetContext";
 import { testChainInfo, testNatInfo } from "../../integration/utils/ChainInfo";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
-import { AvailableAgentInfo } from "../../utils/fasset/AssetManagerTypes";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { randomChoice, randomInt, weightedRandomChoice } from "../../utils/fuzzing-utils";
-import { expectErrors, getTestFile, reportError, toBN, toWei } from "../../utils/helpers";
+import { expectErrors, getTestFile, reportError, sleep, toBN, toWei } from "../../utils/helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingRunner } from "./FuzzingRunner";
@@ -19,6 +18,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     const N_AGENTS = 10;
     const N_CUSTOMERS = 10;     // minters and redeemers
     const CUSTOMER_BALANCE = toWei(10_000);
+    const AVOID_ERRORS = true;
 
     let commonContext: CommonContext;
     let context: AssetContext;
@@ -48,6 +48,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             wnat: context.wnat,
         });
         interceptor.openLog("test_logs/fasset-fuzzing.log");
+        interceptor.logViewMethods = false;
         // collect events
         eventCollector = interceptor.collectEvents();
         // uniform event handlers
@@ -101,10 +102,16 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             try {
                 await action();
             } catch (e) {
-                reportError(e);
+                interceptor.logUnexpectedError(e, '!!! JS ERROR');
             }
             
         }
+        // wait for all threads to finish
+        interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
+        while (runner.runningThreads > 0) {
+            await sleep(200);
+        }
+        interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
     });
 
     async function refreshAvailableAgents() {
@@ -124,12 +131,15 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             // create CR
             const agent = randomChoice(runner.availableAgents);
             const lots = randomInt(Number(agent.freeCollateralLots));
+            if (AVOID_ERRORS) {
+                if (lots === 0) return;
+            }
             const crt = await customer.minter.reserveCollateral(agent.agentVault, lots);
             // pay
             const txHash = await customer.minter.performMintingPayment(crt);
             // execute
             await customer.minter.executeMinting(crt, txHash)
-                .catch(e => expectErrors(e, []));
+                .catch(e => expectErrors(e, ['cannot mint 0 blocks', 'not enough free collateral']));
             mintedLots += lots;
         });
     }
@@ -137,16 +147,24 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     async function testRedeem() {
         const customer = randomChoice(customers);
         runner.startThread(async () => {
+            const lotSize = await context.lotsSize();
             // request redemption
-            const lots = randomInt(100);
+            let lots = randomInt(100);
             const holdingUBA = toBN(await context.fAsset.balanceOf(customer.address));
-            const holdingLots = holdingUBA.div(await context.lotsSize());
-            console.log(`Lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
-            if (holdingLots.eqn(0)) return;
-            const [tickets, remaining] = await customer.redeemer.requestRedemption(lots);
-            mintedLots -= lots;
+            const holdingLots = Number(holdingUBA.div(lotSize));
+            interceptor.comment(`Lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
+            if (AVOID_ERRORS) {
+                lots = Math.min(lots, holdingLots);
+                if (lots === 0) return;
+            }
+            const [tickets, remaining] = await customer.redeemer.requestRedemption(lots)
+                .catch(e => {
+                    expectErrors(e, ['Burn too big for owner']);
+                    return [[], toBN(lots)] as const;
+                });
+            mintedLots -= lots - Number(remaining);
             interceptor.comment(`${customer.minter.address}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
-            // wait for possible non-payment
+            // TODO: wait for possible non-payment
         });
     }
 });

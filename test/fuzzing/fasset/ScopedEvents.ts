@@ -114,7 +114,10 @@ export class EventEmitter<E> {
 }
 
 export class ScopedRunner {
+    logError: (e: any) => void = reportError;
+    
     scopes = new Set<EventScope>();
+    runningThreads = 0;
 
     newScope(parentScope?: EventScope) {
         const scope = new EventScope(parentScope);
@@ -129,9 +132,15 @@ export class ScopedRunner {
 
     startThread(method: (scope: EventScope) => Promise<void>): void {
         const scope = this.newScope();
+        ++this.runningThreads;
         void method(scope)
-            .catch(e => reportError(e))
-            .finally(() => this.finishScope(scope));
+            .catch(e => {
+                return this.logError(e);
+            })
+            .finally(() => {
+                --this.runningThreads;
+                return this.finishScope(scope);
+            });
     }
 
     async startScope(method: (scope: EventScope) => Promise<void>) {
@@ -143,7 +152,7 @@ export class ScopedRunner {
         try {
             await method(scope);
         } catch (e) {
-            reportError(e);
+            this.logError(e);
         } finally {
             this.finishScope(scope);
         }

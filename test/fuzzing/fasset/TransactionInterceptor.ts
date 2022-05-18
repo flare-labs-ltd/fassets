@@ -1,8 +1,8 @@
 import { TransactionReceipt } from "web3-core";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { BaseEvent } from "../../utils/events";
-import { currentRealTime, Statistics } from "../../utils/fuzzing-utils";
-import { getOrCreate, reportError, tryCatch } from "../../utils/helpers";
+import { currentRealTime, Statistics, stringifyJson, truffleResultAsDict } from "../../utils/fuzzing-utils";
+import { filterStackTrace, getOrCreate, reportError, tryCatch } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
 
 export type EventHandler = (event: BaseEvent) => void;
@@ -32,9 +32,10 @@ export class TransactionInterceptor {
         }
     }
 
-    logUnexpectedError(e: any) {
+    logUnexpectedError(e: any, prefix = '    !!! UNEXPECTED') {
         reportError(e);
-        this.log(`    !!! UNEXPECTED ${('' + e.stack)?.replace(/\n/g, '\n        ') || e}`);
+        const indent = prefix.match(/^\s*/)?.[0] ?? '';
+        this.log(`${prefix} ${filterStackTrace(e).replace(/\n/g, '\n' + indent)}`);
         this.unexpectedErrorCount += 1;
     }
 
@@ -107,6 +108,8 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
     ) { 
         super();
     }
+    
+    public logViewMethods: boolean = true;
 
     captureEvents(contracts: { [name: string]: Truffle.ContractInstance; }, filter?: string[]) {
         for (const [name, contract] of Object.entries(contracts)) {
@@ -136,9 +139,10 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
                 const callStartTime = currentRealTime();
                 // log method call
                 const fmtArgs = args.map(arg => this.eventDecoder.formatArg(arg)).join(', ');
-                txLog.push(`${this.eventDecoder.formatAddress(contract.address)}.${name}(${fmtArgs})   [realtime=${(callStartTime - this.startRealTime).toFixed(3)}]`);
+                txLog.push(`${this.eventDecoder.formatAddress(contract.address)}.${name}(${fmtArgs})   [AT(rt)=${(callStartTime - this.startRealTime).toFixed(3)}]`);
                 // call method
                 const promise = method(...args);
+                let writeToLog = true;
                 // handle success/failure
                 if (promise instanceof Promise) {
                     const decodePromise = promise
@@ -146,6 +150,10 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
                             const receipt = this.getTransactionReceipt(result);
                             if (receipt != null) {
                                 this.handleMethodSuccess(contract, name, txLog, callStartTime, receipt);
+                            } else if (this.logViewMethods) {
+                                this.handleViewMethodSuccess(contract, name, txLog, callStartTime, result);
+                            } else {
+                                writeToLog = false;
                             }
                         })
                         .catch((e: unknown) => {
@@ -153,7 +161,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
                             this.increaseErrorCount(e);
                         })
                         .finally(() => {
-                            if (this.logFile != null) {
+                            if (this.logFile != null && writeToLog) {
                                 this.log(txLog.join('\n'));
                             }
                         });
@@ -205,6 +213,18 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             }
         } catch (e) {
             txLog.push(`???? ERROR decoding/handling method call ${method}: ${e}`);
+        }
+    }
+
+    private handleViewMethodSuccess(contract: Truffle.ContractInstance, method: string, txLog: string[], callStartTime: number, result: any) {
+        try {
+            const callEndTime = currentRealTime();
+            if (this.logFile != null) {
+                txLog.push(`    DURATION(rt): ${(callEndTime - callStartTime).toFixed(3)}`);
+                txLog.push(`    RESULT: ${stringifyJson(truffleResultAsDict(result))}`);
+            }
+        } catch (e) {
+            txLog.push(`???? ERROR decoding/handling view method call ${method}: ${e}`);
         }
     }
     

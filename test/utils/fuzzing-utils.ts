@@ -39,6 +39,11 @@ export function jsonBNDeserializer(bnKeys: string[]) {
     }
 }
 
+// JSON.stringify with correct BN hamdling
+export function stringifyJson(data: any, indent?: string | number) {
+    return JSON.stringify(data, jsonBNserializer, indent);
+}
+
 export function saveJson(file: string, data: any, indent?: string | number) {
     writeFileSync(file, JSON.stringify(data, jsonBNserializer, indent));
 }
@@ -121,4 +126,21 @@ export function randomShuffled<T>(array: T[] | Iterable<T>): T[] {
 // current time in seconds (not an integer)
 export function currentRealTime() {
     return new Date().getTime() / 1000;
+}
+
+// truffle makes results of functions returning struct as an array with extra string keys
+// this method converts it to JS dict
+export function truffleResultAsDict(result: any): any {
+    if (!Array.isArray(result)) {
+        return result;  // not an array
+    }
+    const keys = Object.keys(result);
+    const stringKeys = keys.filter(k => !/^\d+/.test(k));
+    if (stringKeys.length === 0) {  // result is really an array
+        return result.map(v => truffleResultAsDict(v));
+    } else { // result is bot array and dict as 
+        const res: any = {};
+        for (const key of stringKeys) res[key] = truffleResultAsDict((result as any)[key]);
+        return res;
+    }
 }

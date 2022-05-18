@@ -245,8 +245,15 @@ export function multimapDelete<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
 
 // Error handling
 
+export function filterStackTrace(e: any) {
+    const stack = String(e.stack || e);
+    let lines = stack.split('\n');
+    lines = lines.filter(l => !l.startsWith('    at') || /\.(sol|ts):/.test(l));
+    return lines.join('\n');
+}
+
 export function reportError(e: any) {
-    console.error(e.stack || e);
+    console.error(filterStackTrace(e));
 }
 
 export function messageIncluded(message: unknown, expectedMessages: string[]) {
