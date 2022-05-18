@@ -144,3 +144,7 @@ export function truffleResultAsDict(result: any): any {
         return res;
     }
 }
+
+export function truffleResultAsJson(result: any, indent?: string | number): any {
+    return stringifyJson(truffleResultAsDict(result));
+}

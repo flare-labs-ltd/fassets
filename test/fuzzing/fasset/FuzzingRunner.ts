@@ -3,7 +3,7 @@ import { AvailableAgentInfo } from "../../utils/fasset/AssetManagerTypes";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { ScopedRunner } from "./ScopedEvents";
+import { ScopedRunner } from "./ScopedRunner";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
 

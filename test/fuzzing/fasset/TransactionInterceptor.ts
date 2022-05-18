@@ -1,7 +1,7 @@
 import { TransactionReceipt } from "web3-core";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { BaseEvent } from "../../utils/events";
-import { currentRealTime, Statistics, stringifyJson, truffleResultAsDict } from "../../utils/fuzzing-utils";
+import { currentRealTime, Statistics, truffleResultAsJson } from "../../utils/fuzzing-utils";
 import { filterStackTrace, getOrCreate, reportError, tryCatch } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
 
@@ -66,7 +66,10 @@ export class TransactionInterceptor {
     }
 
     increaseErrorCount(error: any) {
-        const errorKey = (error + '').replace(/^.*:\s*revert\s*/, '').trim();
+        let errorKey = String(error);
+        const match = errorKey.match(/^.*:\s*reverted with reason string\s*'(.*)'\s*$/)
+            || errorKey.match(/^.*:\s*revert\s*(.*)$/);
+        if (match) errorKey = match[1].trim();
         this.errorCounts.set(errorKey, (this.errorCounts.get(errorKey) ?? 0) + 1);
     }
 
@@ -221,7 +224,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             const callEndTime = currentRealTime();
             if (this.logFile != null) {
                 txLog.push(`    DURATION(rt): ${(callEndTime - callStartTime).toFixed(3)}`);
-                txLog.push(`    RESULT: ${stringifyJson(truffleResultAsDict(result))}`);
+                txLog.push(`    RESULT: ${truffleResultAsJson(result)}`);
             }
         } catch (e) {
             txLog.push(`???? ERROR decoding/handling view method call ${method}: ${e}`);

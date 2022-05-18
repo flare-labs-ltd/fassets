@@ -1,5 +1,3 @@
-import { reportError } from "../../utils/helpers";
-
 export type EventHandler<E> = (event: E) => void;
 
 export interface EventSubscription {
@@ -109,52 +107,6 @@ export class EventEmitter<E> {
             return new Promise((resolve) => this.subscribeOnceIn(scope, resolve));
         } else {
             return new Promise((resolve) => this.subscribeOnce(resolve));
-        }
-    }
-}
-
-export class ScopedRunner {
-    logError: (e: any) => void = reportError;
-    
-    scopes = new Set<EventScope>();
-    runningThreads = 0;
-
-    newScope(parentScope?: EventScope) {
-        const scope = new EventScope(parentScope);
-        this.scopes.add(scope);
-        return scope;
-    }
-
-    finishScope(scope: EventScope) {
-        scope.finish();
-        this.scopes.delete(scope);
-    }
-
-    startThread(method: (scope: EventScope) => Promise<void>): void {
-        const scope = this.newScope();
-        ++this.runningThreads;
-        void method(scope)
-            .catch(e => {
-                return this.logError(e);
-            })
-            .finally(() => {
-                --this.runningThreads;
-                return this.finishScope(scope);
-            });
-    }
-
-    async startScope(method: (scope: EventScope) => Promise<void>) {
-        return this.startScopeIn(undefined, method);
-    }
-
-    async startScopeIn(parentScope: EventScope | undefined, method: (scope: EventScope) => Promise<void>) {
-        const scope = this.newScope(parentScope);
-        try {
-            await method(scope);
-        } catch (e) {
-            this.logError(e);
-        } finally {
-            this.finishScope(scope);
         }
     }
 }

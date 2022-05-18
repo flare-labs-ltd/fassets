@@ -3,11 +3,12 @@ import { testChainInfo, testNatInfo } from "../../integration/utils/ChainInfo";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { randomChoice, randomInt, weightedRandomChoice } from "../../utils/fuzzing-utils";
-import { expectErrors, getTestFile, reportError, sleep, toBN, toWei } from "../../utils/helpers";
+import { expectErrors, getTestFile, sleep, toBN, toWei } from "../../utils/helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingTimeline } from "./FuzzingTimeline";
+import { silentFailOnError } from "./ScopedRunner";
 import { EventCollector, TruffleTransactionInterceptor } from "./TransactionInterceptor";
 import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
@@ -103,8 +104,12 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
                 await action();
             } catch (e) {
                 interceptor.logUnexpectedError(e, '!!! JS ERROR');
+                expectErrors(e, []);
             }
-            
+            // fail immediately on unexpected errors from threads
+            if (runner.uncaughtError != null) {
+                throw runner.uncaughtError;
+            }
         }
         // wait for all threads to finish
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
@@ -131,15 +136,14 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             // create CR
             const agent = randomChoice(runner.availableAgents);
             const lots = randomInt(Number(agent.freeCollateralLots));
-            if (AVOID_ERRORS) {
-                if (lots === 0) return;
-            }
-            const crt = await customer.minter.reserveCollateral(agent.agentVault, lots);
+            if (AVOID_ERRORS && lots === 0) return;
+            const crt = await customer.minter.reserveCollateral(agent.agentVault, lots)
+                .catch(e => silentFailOnError(e, ['cannot mint 0 lots', 'not enough free collateral']));
             // pay
             const txHash = await customer.minter.performMintingPayment(crt);
             // execute
             await customer.minter.executeMinting(crt, txHash)
-                .catch(e => expectErrors(e, ['cannot mint 0 blocks', 'not enough free collateral']));
+                .catch(e => expectErrors(e, []));
             mintedLots += lots;
         });
     }
@@ -149,19 +153,13 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         runner.startThread(async () => {
             const lotSize = await context.lotsSize();
             // request redemption
-            let lots = randomInt(100);
             const holdingUBA = toBN(await context.fAsset.balanceOf(customer.address));
             const holdingLots = Number(holdingUBA.div(lotSize));
-            interceptor.comment(`Lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
-            if (AVOID_ERRORS) {
-                lots = Math.min(lots, holdingLots);
-                if (lots === 0) return;
-            }
+            const lots = randomInt(AVOID_ERRORS ? holdingLots : 100);
+            interceptor.comment(`${eventDecoder.formatAddress(customer.address)} lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
+            if (AVOID_ERRORS && lots === 0) return;
             const [tickets, remaining] = await customer.redeemer.requestRedemption(lots)
-                .catch(e => {
-                    expectErrors(e, ['Burn too big for owner']);
-                    return [[], toBN(lots)] as const;
-                });
+                .catch(e => silentFailOnError(e, ['Burn too big for owner', 'redeem 0 lots']));
             mintedLots -= lots - Number(remaining);
             interceptor.comment(`${customer.minter.address}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
             // TODO: wait for possible non-payment
