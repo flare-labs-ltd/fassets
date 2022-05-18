@@ -1,5 +1,6 @@
+import { constants } from "@openzeppelin/test-helpers";
 import { AttestationClientMockInstance } from "../../../typechain-truffle";
-import { BYTES32_ZERO, sleep, toBN, toNumber } from "../helpers";
+import { sleep, toBN, toNumber } from "../helpers";
 import { MerkleTree } from "../MerkleTree";
 import { DHType } from "../verification/generated/attestation-hash-types";
 import { dataHash } from "../verification/generated/attestation-hash-utils";
@@ -93,7 +94,19 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         return { finalized: true, result: proof.data }; // proved
     }
     
+    finalizing = false;
+    
     async finalizeRound() {
+        while (this.finalizing) await sleep(100);
+        this.finalizing = true;
+        try {
+            await this._finalizeRound();
+        } finally {
+            this.finalizing = false;
+        }
+    }
+    
+    private async _finalizeRound() {
         const round = this.finalizedRounds.length;
         // all rounds finalized?
         if (round >= this.rounds.length) return;
@@ -112,10 +125,10 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         // build merkle tree
         const hashes = Object.values(proofs).map(proof => proof.hash);
         const tree = new MerkleTree(hashes);
-        await this.attestationClient.setMerkleRootForStateConnectorRound(tree.root ?? BYTES32_ZERO, round);
+        await this.attestationClient.setMerkleRootForStateConnectorRound(tree.root ?? constants.ZERO_BYTES32, round);
         for (const proof of Object.values(proofs)) {
             proof.data.stateConnectorRound = round;
-            proof.data.merkleProof = tree.getProof(hashes.indexOf(proof.hash)) ?? [];
+            proof.data.merkleProof = tree.getProofForValue(proof.hash) ?? [];
         }
         // add new finalized round
         this.finalizedRounds.push({ proofs, tree });

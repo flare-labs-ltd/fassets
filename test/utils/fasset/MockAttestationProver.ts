@@ -1,4 +1,5 @@
-import { BN_ZERO, BYTES32_ZERO, toBN } from "../helpers";
+import { constants } from "@openzeppelin/test-helpers";
+import { BN_ZERO, toBN } from "../helpers";
 import { DHBalanceDecreasingTransaction, DHConfirmedBlockHeightExists, DHPayment, DHReferencedPaymentNonexistence } from "../verification/generated/attestation-hash-types";
 import { web3DeepNormalize } from "../web3assertions";
 import { TxInputOutput, TX_FAILED } from "./ChainInterfaces";
@@ -38,7 +39,7 @@ export class MockAttestationProver {
             utxo: toBN(utxo),
             sourceAddressHash: web3.utils.keccak256(sourceAddress),
             receivingAddressHash: web3.utils.keccak256(receivingAddress),
-            paymentReference: transaction.reference ?? BYTES32_ZERO,
+            paymentReference: transaction.reference ?? constants.ZERO_BYTES32,
             spentAmount: spent,
             receivedAmount: totalValueFor(transaction.outputs, receivingAddress),
             oneToOne: false,    // not needed
@@ -67,7 +68,7 @@ export class MockAttestationProver {
             inUtxo: toBN(inUtxo),
             sourceAddressHash: web3.utils.keccak256(sourceAddress),
             spentAmount: spent,
-            paymentReference: transaction.reference ?? BYTES32_ZERO,
+            paymentReference: transaction.reference ?? constants.ZERO_BYTES32,
         };
         return web3DeepNormalize(proof);
     }
