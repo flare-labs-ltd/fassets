@@ -124,6 +124,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const res = web3ResultStruct(await assetManager.getSettings());
             assertWeb3DeepEqual(newSettings, res);
         });
+
+        it("should revert update settings - invalid method", async () => {
+            let res = assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("invalidMethod")), 
+            constants.ZERO_ADDRESS,
+            { from: assetManagerController });
+            await expectRevert(res,"update: invalid method");
+        });
     });
 
     describe("create agent", () => {
@@ -218,6 +225,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // assert
             await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agentOwner1 }),
                 "not whitelisted");
-        });        
+        });
+   
     });
 });
