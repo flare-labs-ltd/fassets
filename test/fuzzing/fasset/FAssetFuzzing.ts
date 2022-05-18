@@ -4,7 +4,7 @@ import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { AvailableAgentInfo } from "../../utils/fasset/AssetManagerTypes";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { randomChoice, randomInt, weightedRandomChoice } from "../../utils/fuzzing-utils";
-import { expectErrors, getTestFile, toWei } from "../../utils/helpers";
+import { expectErrors, getTestFile, reportError, toBN, toWei } from "../../utils/helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingRunner } from "./FuzzingRunner";
@@ -93,18 +93,30 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [testMint, 10],
             [testRedeem, 10],
             [refreshAvailableAgents, 1],
+            [updateUnderlyingBlock, 10],
         ];
         // perform actions
         for (let loop = 0; loop < LOOPS; loop++) {
             const action = weightedRandomChoice(actions);
-            await action();
+            try {
+                await action();
+            } catch (e) {
+                reportError(e);
+            }
+            
         }
     });
 
     async function refreshAvailableAgents() {
         await runner.refreshAvailableAgents();
     }
+    
+    async function updateUnderlyingBlock() {
+        await context.updateUnderlyingBlock();
+    }
 
+    let mintedLots = 0;
+    
     async function testMint() {
         const customer = randomChoice(customers);
         runner.startThread(async () => {
@@ -118,6 +130,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             // execute
             await customer.minter.executeMinting(crt, txHash)
                 .catch(e => expectErrors(e, []));
+            mintedLots += lots;
         });
     }
     
@@ -126,10 +139,14 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         runner.startThread(async () => {
             // request redemption
             const lots = randomInt(100);
+            const holdingUBA = toBN(await context.fAsset.balanceOf(customer.address));
+            const holdingLots = holdingUBA.div(await context.lotsSize());
+            console.log(`Lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
+            if (holdingLots.eqn(0)) return;
             const [tickets, remaining] = await customer.redeemer.requestRedemption(lots);
+            mintedLots -= lots;
             interceptor.comment(`${customer.minter.address}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
             // wait for possible non-payment
-            
         });
     }
 });

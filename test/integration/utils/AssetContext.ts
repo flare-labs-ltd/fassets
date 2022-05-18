@@ -98,8 +98,13 @@ export class AssetContext {
         return toBNExp(value, this.chainInfo.decimals);
     }
     
+    async refreshSettings() {
+        this.settings = await this.assetManager.getSettings();
+    }
+    
     async lotsSize() {
-        return toBN((await this.assetManager.getSettings()).lotSizeAMG).mul(toBN(this.settings.assetMintingGranularityUBA));
+        const settings = await this.assetManager.getSettings();
+        return toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
     }
     
     async updateUnderlyingBlock() {
@@ -151,7 +156,8 @@ export class AssetContext {
     }
 
     async convertLotsToAMG(lots: BNish) {
-        return toBN(lots).mul(toBN((await this.assetManager.getSettings()).lotSizeAMG));
+        const settings = await this.assetManager.getSettings();
+        return toBN(lots).mul(toBN(settings.lotSizeAMG));
     }
     
     convertAmgToNATWei(valueAMG: BNish, amgToNATWeiPrice: BNish) {

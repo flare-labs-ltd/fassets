@@ -8,8 +8,6 @@ export class FuzzingCustomer extends AssetContextClient {
     minter: Minter;
     redeemer: Redeemer;
     
-    static byAddress: Map<string, FuzzingCustomer> = new Map();
-
     constructor(
         context: AssetContext,
         public address: string,
@@ -19,7 +17,6 @@ export class FuzzingCustomer extends AssetContextClient {
         super(context);
         this.minter = new Minter(context, address, underlyingAddress, wallet);
         this.redeemer = new Redeemer(context, address, underlyingAddress);
-        FuzzingCustomer.byAddress.set(address, this);
     }
     
     static async createTest(ctx: AssetContext, address: string, underlyingAddress: string, underlyingBalance: BN) {
