@@ -2,7 +2,6 @@
 pragma solidity 0.8.11;
 
 import {Conversion} from "../Conversion.sol";
-import "hardhat/console.sol";
 
 /**
  * @title Conversion mock contract
