@@ -148,3 +148,23 @@ export function truffleResultAsDict(result: any): any {
 export function truffleResultAsJson(result: any, indent?: string | number): any {
     return stringifyJson(truffleResultAsDict(result));
 }
+
+/**
+ * Run an async task on every element of an array. Start tasks for all elements immediately (in parallel) and complete when all are completed.
+ * @param array array of arguments
+ * @param func the task to run for every element of the array
+ */
+export async function foreachAsyncParallel<T>(array: T[], func: (x: T, index: number) => Promise<void>) {
+    await Promise.all(array.map(func));
+}
+
+/**
+ * Run an async task on every element of an array. Start tasks for every element when the previous completes (serial). Complete when all are completed.
+ * @param array array of arguments
+ * @param func the task to run for every element of the array
+ */
+export async function foreachAsyncSerial<T>(array: T[], func: (x: T, index: number) => Promise<void>) {
+    for (let i = 0; i < array.length; i++) {
+        await func(array[i], i);
+    }
+}

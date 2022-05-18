@@ -1,15 +1,16 @@
 import { AssetContext, CommonContext } from "../../integration/utils/AssetContext";
-import { testChainInfo, testNatInfo } from "../../integration/utils/ChainInfo";
+import { ChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/ChainInfo";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { randomChoice, randomInt, weightedRandomChoice } from "../../utils/fuzzing-utils";
+import { foreachAsyncParallel, randomChoice, randomInt, weightedRandomChoice } from "../../utils/fuzzing-utils";
 import { expectErrors, getTestFile, sleep, toBN, toWei } from "../../utils/helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingTimeline } from "./FuzzingTimeline";
+import { qualifiedEvent } from "./ScopedEvents";
 import { silentFailOnError } from "./ScopedRunner";
-import { EventCollector, TruffleTransactionInterceptor } from "./TransactionInterceptor";
+import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
@@ -26,10 +27,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let timeline: FuzzingTimeline;
     let agents: FuzzingAgent[] = [];
     let customers: FuzzingCustomer[] = [];
+    let chainInfo: ChainInfo;
     let chain: MockChain;
     let eventDecoder: Web3EventDecoder;
     let interceptor: TruffleTransactionInterceptor;
-    let eventCollector: EventCollector;
     let truffleEvents: TruffleEvents;
     let chainEvents: UnderlyingChainEvents;
     let runner: FuzzingRunner;
@@ -37,7 +38,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     before(async () => {
         // create context
         commonContext = await CommonContext.createTest(governance, testNatInfo);
-        context = await AssetContext.createTest(commonContext, testChainInfo.eth);
+        chainInfo = testChainInfo.eth;
+        context = await AssetContext.createTest(commonContext, chainInfo);
         chain = context.chain as MockChain;
         // create interceptor
         eventDecoder = new Web3EventDecoder({});
@@ -50,8 +52,6 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         });
         interceptor.openLog("test_logs/fasset-fuzzing.log");
         interceptor.logViewMethods = false;
-        // collect events
-        eventCollector = interceptor.collectEvents();
         // uniform event handlers
         truffleEvents = new TruffleEvents(interceptor);
         chainEvents = new UnderlyingChainEvents(context.chainEvents);
@@ -98,7 +98,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [updateUnderlyingBlock, 10],
         ];
         // perform actions
-        for (let loop = 0; loop < LOOPS; loop++) {
+        for (let loop = 1; loop <= LOOPS; loop++) {
             const action = weightedRandomChoice(actions);
             try {
                 await action();
@@ -110,11 +110,18 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             if (runner.uncaughtError != null) {
                 throw runner.uncaughtError;
             }
+            // occassionally skip some time
+            if (loop % 10 === 0) {
+                await timeline.skipTime(100);
+            }
+            await timeline.executeTriggers();
         }
         // wait for all threads to finish
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
         while (runner.runningThreads > 0) {
             await sleep(200);
+            await timeline.skipTime(100);
+            await timeline.executeTriggers();
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
     });
@@ -150,7 +157,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     
     async function testRedeem() {
         const customer = randomChoice(customers);
-        runner.startThread(async () => {
+        runner.startThread(async (scope) => {
             const lotSize = await context.lotsSize();
             // request redemption
             const holdingUBA = toBN(await context.fAsset.balanceOf(customer.address));
@@ -163,13 +170,21 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
                 .catch(e => silentFailOnError(e, ['Burn too big for owner', 'redeem 0 lots']));
             mintedLots -= lots - Number(remaining);
             interceptor.comment(`${customerName}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
-            // TODO: wait for possible non-payment
-            for (const ticket of tickets) {
-                runner.assetManagerEvent('RedemptionPerformed', { requestId: ticket.requestId })
-                    .subscribeOnce(args => {
-                        interceptor.comment(`${customerName}: Received redemption ${Number(args.valueUBA) / Number(lotSize)}`);
-                    });
-            }
+            // wait for all redemption payments or non-payments
+            await foreachAsyncParallel(tickets, async ticket => {
+                const event = await Promise.race([
+                    runner.assetManagerEvent('RedemptionPerformed', { requestId: ticket.requestId }).qualified('performed').wait(scope),
+                    Promise.all([
+                        timeline.underlyingBlocks(Number(context.settings.underlyingBlocksForPayment)).wait(scope),
+                        timeline.underlyingTime(Number(context.settings.underlyingSecondsForPayment)).wait(scope),
+                    ]).then(() => qualifiedEvent('failed', null))
+                ]);
+                if (event.name === 'performed') {
+                    interceptor.comment(`${customerName}, req=${ticket.requestId}: Received redemption ${Number(event.args.valueUBA) / Number(lotSize)}`);
+                } else {
+                    interceptor.comment(`${customerName}, req=${ticket.requestId}: Failed redemption`);
+                }
+            });
         });
     }
 });

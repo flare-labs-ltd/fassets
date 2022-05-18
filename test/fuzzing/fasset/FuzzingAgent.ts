@@ -2,6 +2,7 @@ import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Agent } from "../../integration/utils/Agent";
 import { AssetContext } from "../../integration/utils/AssetContext";
 import { EventArgs } from "../../utils/events";
+import { coinFlip } from "../../utils/fuzzing-utils";
 import { FuzzingRunner } from "./FuzzingRunner";
 
 export class FuzzingAgent {
@@ -25,9 +26,11 @@ export class FuzzingAgent {
     }
 
     async handleRedemptionRequest(request: EventArgs<RedemptionRequested>) {
-        this.runner.startThread(async (scope) => {
-            const txHash = await this.agent.performRedemptionPayment(request);
-            await this.agent.confirmActiveRedemptionPayment(request, txHash);
-        });
+        if (coinFlip(0.8)) {
+            this.runner.startThread(async (scope) => {
+                const txHash = await this.agent.performRedemptionPayment(request);
+                await this.agent.confirmActiveRedemptionPayment(request, txHash);
+            });
+        }
     }
 }

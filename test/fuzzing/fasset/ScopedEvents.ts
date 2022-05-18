@@ -74,6 +74,15 @@ export class EventScope {
     }
 }
 
+export interface QualifiedEvent<N extends string, A> {
+    name: N;
+    args: A;
+}
+
+export function qualifiedEvent<N extends string, A>(name: N, args: A) {
+    return { name, args };
+}
+
 export class EventEmitter<E> {
     constructor(
         private _subscribe: (handler: EventHandler<E>) => EventSubscription,
@@ -108,5 +117,11 @@ export class EventEmitter<E> {
         } else {
             return new Promise((resolve) => this.subscribeOnce(resolve));
         }
+    }
+    
+    qualified<N extends string>(name: N): EventEmitter<QualifiedEvent<N, E>> {
+        return new EventEmitter((handler) => {
+            return this._subscribe((args: E) => handler({ name, args }));
+        });
     }
 }
