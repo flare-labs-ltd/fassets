@@ -9,6 +9,7 @@ import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingTimeline } from "./FuzzingTimeline";
+import { EventExecutionQueue } from "./ScopedEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
@@ -31,6 +32,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let eventDecoder: Web3EventDecoder;
     let interceptor: TruffleTransactionInterceptor;
     let truffleEvents: TruffleEvents;
+    let eventQueue: EventExecutionQueue;
     let chainEvents: UnderlyingChainEvents;
     let runner: FuzzingRunner;
 
@@ -50,9 +52,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             wnat: context.wnat,
         });
         // uniform event handlers
-        truffleEvents = new TruffleEvents(interceptor);
-        chainEvents = new UnderlyingChainEvents(context.chainEvents);
-        timeline = new FuzzingTimeline(chain);
+        eventQueue = new EventExecutionQueue();
+        truffleEvents = new TruffleEvents(interceptor, eventQueue);
+        chainEvents = new UnderlyingChainEvents(context.chainEvents, eventQueue);
+        timeline = new FuzzingTimeline(chain, eventQueue);
         // logging
         interceptor.openLog("test_logs/fasset-fuzzing.log");
         interceptor.logViewMethods = false;
@@ -113,6 +116,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             if (runner.uncaughtError != null) {
                 throw runner.uncaughtError;
             }
+            // run all queued event handlers
+            eventQueue.runAll();
             // occassionally skip some time
             if (loop % 10 === 0) {
                 interceptor.comment(`LOOP ${loop}`);
@@ -128,6 +133,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             await timeline.skipTime(100);
             await timeline.executeTriggers();
             await interceptor.allHandled();
+            eventQueue.runAll();
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
     });

@@ -1,4 +1,5 @@
-import { expectErrors } from "../../utils/helpers";
+import { expectErrors, filterStackTrace } from "../../utils/helpers";
+import { LogFile } from "../../utils/LogFile";
 
 export type EventHandler<E> = (event: E) => void;
 
@@ -102,7 +103,7 @@ export function qualifiedEvent<N extends string, A>(name: N, args: A) {
 
 export class EventEmitter<E> {
     constructor(
-        private _subscribe: (handler: EventHandler<E>) => EventSubscription,
+        protected _subscribe: (handler: EventHandler<E>) => EventSubscription,
     ) { }
 
     public subscribe(handler: EventHandler<E>): EventSubscription {
@@ -111,7 +112,7 @@ export class EventEmitter<E> {
 
     public subscribeOnce(handler: EventHandler<E>): EventSubscription {
         const subscription = new ClearableSubscription();
-        subscription.base = this._subscribe(event => {
+        subscription.base = this.subscribe(event => {
             subscription.unsubscribe();
             handler(event);
         });
@@ -119,7 +120,7 @@ export class EventEmitter<E> {
     }
 
     public subscribeIn(scope: EventScope, handler: EventHandler<E>) {
-        const subscription = this._subscribe(handler);
+        const subscription = this.subscribe(handler);
         return scope.add(subscription);
     }
 
@@ -138,7 +139,49 @@ export class EventEmitter<E> {
     
     qualified<N extends string>(name: N): EventEmitter<QualifiedEvent<N, E>> {
         return new EventEmitter((handler) => {
-            return this._subscribe((args: E) => handler({ name, args }));
+            return this.subscribe((args: E) => handler({ name, args }));
+        });
+    }
+}
+
+export class EventExecutionQueue {
+    public logFile?: LogFile;
+    private queue: Array<() => void> = [];
+    
+    push(item: () => void) {
+        this.queue.push(item);
+    }
+    
+    get length() {
+        return this.queue.length;
+    }
+
+    runAll() {
+        const queue = this.queue;
+        this.queue = [];
+        for (const item of queue) {
+            try {
+                item();
+            } catch (e) {
+                if (this.logFile) {
+                    this.logFile.log(`!!! HANDLER ERROR ${filterStackTrace(e)}`);
+                }
+            }
+        }
+    }
+}
+
+export class QueuedEventEmitter<E> extends EventEmitter<E> {
+    constructor(
+        private executionQueue: EventExecutionQueue,
+        _subscribe: (handler: EventHandler<E>) => EventSubscription,
+    ) {
+        super(_subscribe);
+    }
+    
+    public override subscribe(handler: EventHandler<E>): EventSubscription {
+        return this._subscribe((args: E) => {
+            this.executionQueue.push(() => handler(args));
         });
     }
 }

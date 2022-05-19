@@ -4,7 +4,7 @@ import { ITimer } from "../../utils/fasset/Timer";
 import { randomShuffle } from "../../utils/fuzzing-utils";
 import { latestBlockTimestamp, runAsync } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
-import { ClearableSubscription, EventEmitter, EventHandler, EventSubscription } from "./ScopedEvents";
+import { ClearableSubscription, EventExecutionQueue, EventHandler, EventSubscription, QueuedEventEmitter } from "./ScopedEvents";
 
 type TimelineEventType = 'FlareTime' | 'UnderlyingBlock' | 'UnderlyingTime';
 
@@ -23,6 +23,7 @@ interface TimedTrigger {
 export class TriggerList {
     constructor(
         public eventType: TimelineEventType,
+        public eventQueue: EventExecutionQueue,
     ) { }
     
     triggers: TimedTrigger[] = [];
@@ -30,7 +31,7 @@ export class TriggerList {
     static lastSubscriptionId = 0;
     
     event(triggerAt: number) {
-        return new EventEmitter<TimelineEvent>(handler => {
+        return new QueuedEventEmitter<TimelineEvent>(this.eventQueue, handler => {
             const id = ++TriggerList.lastSubscriptionId;
             this.insertTrigger({ id: id, type: this.eventType, at: triggerAt, handler: handler });
             return ClearableSubscription.of(() => this.removeTrigger(id));
@@ -106,14 +107,15 @@ export class FuzzingTimelineTimer implements ITimer<FuzzingTimelineTimerId> {
 }
 
 export class FuzzingTimeline {
-    flareTimeTriggers = new TriggerList('FlareTime');
-    underlyingTimeTriggers = new TriggerList('UnderlyingTime');
-    underlyingBlockTriggers = new TriggerList('UnderlyingBlock');
-    logFile?: LogFile;
-
     constructor(
         public chain: MockChain,
+        public eventQueue: EventExecutionQueue,
     ) { }
+
+    flareTimeTriggers = new TriggerList('FlareTime', this.eventQueue);
+    underlyingTimeTriggers = new TriggerList('UnderlyingTime', this.eventQueue);
+    underlyingBlockTriggers = new TriggerList('UnderlyingBlock', this.eventQueue);
+    logFile?: LogFile;
 
     // async mineNextUnderlyingBlock() {
     //     this.chain.mine();
