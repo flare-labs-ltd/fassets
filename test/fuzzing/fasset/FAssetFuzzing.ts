@@ -2,14 +2,12 @@ import { AssetContext, CommonContext } from "../../integration/utils/AssetContex
 import { ChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/ChainInfo";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { foreachAsyncParallel, randomChoice, randomInt, weightedRandomChoice } from "../../utils/fuzzing-utils";
-import { expectErrors, getTestFile, sleep, toBN, toWei } from "../../utils/helpers";
+import { randomChoice, weightedRandomChoice } from "../../utils/fuzzing-utils";
+import { expectErrors, getTestFile, sleep, toWei } from "../../utils/helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { qualifiedEvent } from "./ScopedEvents";
-import { silentFailOnError } from "./ScopedRunner";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
@@ -57,7 +55,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         chainEvents = new UnderlyingChainEvents(context.chainEvents);
         timeline = new FuzzingTimeline(chain);
         // runner
-        runner = new FuzzingRunner(context, interceptor, timeline, truffleEvents, chainEvents);
+        runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, AVOID_ERRORS);
     });
     
     after(() => {
@@ -70,7 +68,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         const firstAgentAddress = 10;
         for (let i = 0; i < N_AGENTS; i++) {
             const underlyingAddress = "underlying_agent_" + i;
-            const fa = await FuzzingAgent.createTest(runner, context, accounts[firstAgentAddress + i], underlyingAddress);
+            const fa = await FuzzingAgent.createTest(runner, accounts[firstAgentAddress + i], underlyingAddress);
             eventDecoder.addAddress(`OWNER_${i}`, fa.agent.ownerAddress);
             interceptor.captureEventsFrom(`AGENT_${i}`, fa.agent.agentVault, 'AgentVault');
             await fa.agent.agentVault.deposit({ from: fa.agent.ownerAddress, value: toWei(10_000_000) });
@@ -81,7 +79,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         const firstCustomerAddress = firstAgentAddress + N_CUSTOMERS;
         for (let i = 0; i < N_CUSTOMERS; i++) {
             const underlyingAddress = "underlying_customer_" + i;
-            const customer = await FuzzingCustomer.createTest(context, accounts[firstCustomerAddress + i], underlyingAddress, CUSTOMER_BALANCE);
+            const customer = await FuzzingCustomer.createTest(runner, accounts[firstCustomerAddress + i], underlyingAddress, CUSTOMER_BALANCE);
             chain.mint(underlyingAddress, 1_000_000);
             customers.push(customer);
             eventDecoder.addAddress(`CUSTOMER_${i}`, customer.address);
@@ -115,6 +113,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
                 await timeline.skipTime(100);
             }
             await timeline.executeTriggers();
+            await interceptor.allHandled();
         }
         // wait for all threads to finish
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
@@ -122,6 +121,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             await sleep(200);
             await timeline.skipTime(100);
             await timeline.executeTriggers();
+            await interceptor.allHandled();
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
     });
@@ -134,57 +134,13 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         await context.updateUnderlyingBlock();
     }
 
-    let mintedLots = 0;
-    
     async function testMint() {
         const customer = randomChoice(customers);
-        runner.startThread(async () => {
-            await context.updateUnderlyingBlock();
-            // create CR
-            const agent = randomChoice(runner.availableAgents);
-            const lots = randomInt(Number(agent.freeCollateralLots));
-            if (AVOID_ERRORS && lots === 0) return;
-            const crt = await customer.minter.reserveCollateral(agent.agentVault, lots)
-                .catch(e => silentFailOnError(e, ['cannot mint 0 lots', 'not enough free collateral']));
-            // pay
-            const txHash = await customer.minter.performMintingPayment(crt);
-            // execute
-            await customer.minter.executeMinting(crt, txHash)
-                .catch(e => expectErrors(e, []));
-            mintedLots += lots;
-        });
+        runner.startThread((scope) => customer.minting(scope));
     }
     
     async function testRedeem() {
         const customer = randomChoice(customers);
-        runner.startThread(async (scope) => {
-            const lotSize = await context.lotsSize();
-            // request redemption
-            const holdingUBA = toBN(await context.fAsset.balanceOf(customer.address));
-            const holdingLots = Number(holdingUBA.div(lotSize));
-            const lots = randomInt(AVOID_ERRORS ? holdingLots : 100);
-            const customerName = eventDecoder.formatAddress(customer.address);
-            interceptor.comment(`${customerName} lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
-            if (AVOID_ERRORS && lots === 0) return;
-            const [tickets, remaining] = await customer.redeemer.requestRedemption(lots)
-                .catch(e => silentFailOnError(e, ['Burn too big for owner', 'redeem 0 lots']));
-            mintedLots -= lots - Number(remaining);
-            interceptor.comment(`${customerName}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
-            // wait for all redemption payments or non-payments
-            await foreachAsyncParallel(tickets, async ticket => {
-                const event = await Promise.race([
-                    runner.assetManagerEvent('RedemptionPerformed', { requestId: ticket.requestId }).qualified('performed').wait(scope),
-                    Promise.all([
-                        timeline.underlyingBlocks(Number(context.settings.underlyingBlocksForPayment)).wait(scope),
-                        timeline.underlyingTime(Number(context.settings.underlyingSecondsForPayment)).wait(scope),
-                    ]).then(() => qualifiedEvent('failed', null))
-                ]);
-                if (event.name === 'performed') {
-                    interceptor.comment(`${customerName}, req=${ticket.requestId}: Received redemption ${Number(event.args.valueUBA) / Number(lotSize)}`);
-                } else {
-                    interceptor.comment(`${customerName}, req=${ticket.requestId}: Failed redemption`);
-                }
-            });
-        });
+        runner.startThread((scope) => customer.redemption(scope));
     }
 });

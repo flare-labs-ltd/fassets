@@ -1,4 +1,5 @@
 import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
+import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { ExtractedEventArgs } from "../../utils/events";
 import { AvailableAgentInfo } from "../../utils/fasset/AssetManagerTypes";
 import { FuzzingAgent } from "./FuzzingAgent";
@@ -11,10 +12,12 @@ import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
 export class FuzzingRunner extends ScopedRunner {
     constructor(
         public context: AssetContext,
+        public eventDecoder: Web3EventDecoder,
         public interceptor: TruffleTransactionInterceptor,
         public timeline: FuzzingTimeline,
         public truffleEvents: TruffleEvents,
         public chainEvents: UnderlyingChainEvents,
+        public avoidErrors: boolean,
     ) {
         super();
         this.logError = (e) => this.interceptor.logUnexpectedError(e, "!!! THREAD ERROR");

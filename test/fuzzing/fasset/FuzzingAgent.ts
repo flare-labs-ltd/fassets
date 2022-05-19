@@ -1,22 +1,21 @@
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Agent } from "../../integration/utils/Agent";
-import { AssetContext } from "../../integration/utils/AssetContext";
 import { EventArgs } from "../../utils/events";
 import { coinFlip } from "../../utils/fuzzing-utils";
+import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 
-export class FuzzingAgent {
+export class FuzzingAgent extends FuzzingActor {
     constructor(
         public runner: FuzzingRunner,
         public agent: Agent,
     ) {
+        super(runner);
         this.registerForEvents();
     }
 
-    context = this.runner.context;
-
-    static async createTest(runner: FuzzingRunner, ctx: AssetContext, ownerAddress: string, underlyingAddress: string) {
-        const agent = await Agent.createTest(ctx, ownerAddress, underlyingAddress);
+    static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string) {
+        const agent = await Agent.createTest(runner.context, ownerAddress, underlyingAddress);
         return new FuzzingAgent(runner, agent);
     }
 
