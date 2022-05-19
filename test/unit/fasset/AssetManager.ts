@@ -8,7 +8,7 @@ import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { getTestFile, toBN, toBNExp } from "../../utils/helpers";
+import { DAYS, getTestFile, toBN, toBNExp } from "../../utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { SourceId } from "../../utils/verification/sources/sources";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
@@ -225,7 +225,33 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // assert
             await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agentOwner1 }),
                 "not whitelisted");
+
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(whitelistedAccount));
+            const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
+            await assetManager.proveUnderlyingAddressEOA(proof, { from: whitelistedAccount });
+            expectEvent(await assetManager.createAgent(underlyingAgent1, { from: whitelistedAccount}), "AgentCreated");
         });
-   
+
+        it("should pause and terminate only after 30 days", async () => {
+            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
+            assert.isFalse(await assetManager.paused());
+            await assetManager.pause({ from: assetManagerController });
+            assert.isTrue(await assetManager.paused());
+            await time.increase(MINIMUM_PAUSE_BEFORE_STOP / 2);
+            await assetManager.pause({ from: assetManagerController });
+            assert.isTrue(await assetManager.paused());
+            await expectRevert(assetManager.terminate({ from: assetManagerController }), "asset manager not paused enough");
+            await time.increase(MINIMUM_PAUSE_BEFORE_STOP / 2);
+            assert.isFalse(await fAsset.terminated());
+            await assetManager.terminate({ from: assetManagerController });
+            assert.isTrue(await fAsset.terminated());
+        });
+
+        it("should not pause if not called from asset manager controller", async () => {
+            const promise = assetManager.pause({ from: accounts[0] });
+            await expectRevert(promise, "only asset manager controller");
+            assert.isFalse(await assetManager.paused());
+        });
     });
 });

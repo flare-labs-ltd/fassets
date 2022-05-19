@@ -3,7 +3,7 @@ import { AttestationClientMockInstance, FtsoRegistryMockInstance, WNatInstance }
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { DAYS, HOURS, toStringExp, WEEKS } from "../../utils/helpers";
 
-export function createTestSettings(attestationClient: AttestationClientMockInstance, wNat: WNatInstance, ftsoRegistry: FtsoRegistryMockInstance): AssetManagerSettings {
+export function createTestSettings(attestationClient: AttestationClientMockInstance, wNat: WNatInstance, ftsoRegistry: FtsoRegistryMockInstance, requireEOAAddressProof: boolean = true): AssetManagerSettings {
     return {
         assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
         attestationClient: attestationClient.address,
@@ -20,7 +20,7 @@ export function createTestSettings(attestationClient: AttestationClientMockInsta
         assetUnitUBA: toStringExp(1, 18),                   // 1e18 wei per eth
         assetMintingGranularityUBA: toStringExp(1, 9),      // 1e9 = 1 gwei
         lotSizeAMG: toStringExp(1_000, 9),                  // 1000 eth
-        requireEOAAddressProof: true,
+        requireEOAAddressProof: requireEOAAddressProof,
         minCollateralRatioBIPS: 2_1000,                     // 2.1
         ccbMinCollateralRatioBIPS: 1_9000,                  // 1.9
         safetyMinCollateralRatioBIPS: 2_5000,               // 2.5

@@ -1,4 +1,4 @@
-import { expectRevert, time, expectEvent } from "@openzeppelin/test-helpers";
+import { expectRevert, time, expectEvent, constants } from "@openzeppelin/test-helpers";
 import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WhitelistInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
@@ -90,6 +90,33 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(managers_current.length, managers_remove.length);
         });
 
+        it("should not add asset manager twice", async () => {
+            const managers_current = await assetManagerController.getAssetManagers();
+
+            await assetManagerController.addAssetManager(managers_current[0], { from: governance });
+            const managers_add = await assetManagerController.getAssetManagers();
+            assert.equal(managers_current.length, managers_add.length);
+        });
+
+        it("should do nothing if removing unexisting asset manager", async () => {
+            let assetManager2: AssetManagerInstance;
+            let fAsset2: FAssetInstance;
+            const managers_current = await assetManagerController.getAssetManagers();
+            [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController.address, "Ethereum", "ETH", 18, settings);
+
+            await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
+            const managers_add = await assetManagerController.getAssetManagers();
+            assert.equal(managers_current.length + 1, managers_add.length);
+
+            await assetManagerController.removeAssetManager(assetManager2.address, { from: governance });
+            const managers_remove = await assetManagerController.getAssetManagers();
+            assert.equal(managers_current.length, managers_remove.length);
+
+            await assetManagerController.removeAssetManager(assetManager2.address, { from: governance });
+            const managers_remove2 = await assetManagerController.getAssetManagers();
+            assert.equal(managers_current.length, managers_remove2.length);
+        });
+
         it("should revert setting whitelist without governance", async () => {
             let res = assetManagerController.setWhitelist([assetManager.address], randomAddress());
             await expectRevert(res, "only governance")
@@ -98,6 +125,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should refresh ftso indexes", async () => {
             await assetManagerController.refreshFtsoIndexes([assetManager.address], {from: updateExecutor });
+        });
+
+        it("should revert refreshing ftso indexes if asset manager not managed", async () => {
+            const promise = assetManagerController.refreshFtsoIndexes([assetManager.address, accounts[2]], {from: updateExecutor });
+            await expectRevert(promise, "Asset manager not managed");
         });
 
         it("should set whitelist address", async () => {
@@ -408,9 +440,24 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 [assetManagerController.address],
                 { from: governance });
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(settings.assetManagerController, assetManagerController.address);
             assertWeb3Equal(settings.attestationClient, accounts[80]);
             assertWeb3Equal(settings.ftsoRegistry, accounts[81]);
             assertWeb3Equal(settings.wNat, accounts[82]);
+            assertWeb3Equal(await assetManagerController.replacedBy(), constants.ZERO_ADDRESS);
+        });
+
+        it("should change contracts, including asset manager controller", async () => {
+            await addressUpdater.update(["AddressUpdater", "AssetManagerController", "AttestationClient", "FtsoRegistry", "WNat"],
+                [addressUpdater.address, accounts[79], accounts[80], accounts[81], accounts[82]],
+                [assetManagerController.address],
+                { from: governance });
+            const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(settings.assetManagerController, accounts[79]);
+            assertWeb3Equal(settings.attestationClient, accounts[80]);
+            assertWeb3Equal(settings.ftsoRegistry, accounts[81]);
+            assertWeb3Equal(settings.wNat, accounts[82]);
+            assertWeb3Equal(await assetManagerController.replacedBy(), accounts[79]);
         });
 
         it("should change time for payment settings after timelock", async () => {
@@ -478,7 +525,15 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should re-set update executors", async () => {
             // re-set executor
-            await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance })
+            await assetManagerController.setUpdateExecutors([accounts[1], accounts[2]], { from: governance });
+            assert.isFalse(await assetManagerController.isUpdateExecutor(updateExecutor));
+            assert.isTrue(await assetManagerController.isUpdateExecutor(accounts[1]));
+            assert.isTrue(await assetManagerController.isUpdateExecutor(accounts[2]));
+        });
+
+        it("shouldn't remove all update executors", async () => {
+            const promise = assetManagerController.setUpdateExecutors([], { from: governance });
+            await expectRevert(promise, "empty executors list");
         });
     });
 });
