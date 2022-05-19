@@ -1,7 +1,15 @@
+import { expectErrors } from "../../utils/helpers";
+
 export type EventHandler<E> = (event: E) => void;
 
 export interface EventSubscription {
     unsubscribe(): void;
+}
+
+export class ExitScope extends Error {
+    constructor(public scope?: EventScope) {
+        super("no matching scope");
+    }
 }
 
 export class ClearableSubscription implements EventSubscription {
@@ -71,6 +79,15 @@ export class EventScope {
 
     remove(subscription: EventSubscription) {
         this.subscriptions.delete(subscription);
+    }
+    
+    exit(): never {
+        throw new ExitScope(this);
+    }
+    
+    exitOnExpectedError(e: any, expectedMessages: string[]): never {
+        expectErrors(e, expectedMessages);
+        throw new ExitScope(this);
     }
 }
 

@@ -168,3 +168,24 @@ export async function foreachAsyncSerial<T>(array: T[], func: (x: T, index: numb
         await func(array[i], i);
     }
 }
+
+const envConverters = {
+    'number': (s: string) => Number(s),
+    'string': (s: string) => s,
+    'boolean': (s: string): boolean => {
+        if (s === 'true') return true;
+        if (s === 'false') return false;
+        throw new Error ("Invalid boolean value");
+    },
+    'number[]': (s: string) => s.split(',').map(Number),
+    'string[]': (s: string) => s.split(','),
+    'boolean[]': (s: string) => s.split(',').map(p => envConverters['boolean'](p)),
+} as const;
+type EnvConverterType = keyof(typeof envConverters);
+type EnvConverterResult<T extends EnvConverterType> = ReturnType<typeof envConverters[T]>;
+
+export function getEnv<T extends EnvConverterType, D extends EnvConverterResult<T> | null>(name: string, type: T, defaultValue: D): EnvConverterResult<T> | D {
+    const value = process.env[name];
+    if (value == null) return defaultValue;
+    return envConverters[type](value) as EnvConverterResult<T>;
+}

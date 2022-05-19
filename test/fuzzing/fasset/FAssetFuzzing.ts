@@ -2,7 +2,7 @@ import { AssetContext, CommonContext } from "../../integration/utils/AssetContex
 import { ChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/ChainInfo";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { randomChoice, weightedRandomChoice } from "../../utils/fuzzing-utils";
+import { getEnv, randomChoice, weightedRandomChoice } from "../../utils/fuzzing-utils";
 import { expectErrors, getTestFile, sleep, toWei } from "../../utils/helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
@@ -14,11 +14,11 @@ import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
     const governance = accounts[1];
 
-    const LOOPS = 100;
-    const N_AGENTS = 10;
-    const N_CUSTOMERS = 10;     // minters and redeemers
-    const CUSTOMER_BALANCE = toWei(10_000);
-    const AVOID_ERRORS = true;
+    const LOOPS = getEnv('LOOPS', 'number', 100);
+    const N_AGENTS = getEnv('N_AGENTS', 'number', 10);
+    const N_CUSTOMERS = getEnv('N_CUSTOMERS', 'number', 10);     // minters and redeemers
+    const CUSTOMER_BALANCE = toWei(getEnv('CUSTOMER_BALANCE', 'number', 10_000));  // initial underlying balance
+    const AVOID_ERRORS = getEnv('AVOID_ERRORS', 'boolean', true);
 
     let commonContext: CommonContext;
     let context: AssetContext;

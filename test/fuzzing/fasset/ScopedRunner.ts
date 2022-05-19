@@ -1,12 +1,5 @@
-import { expectErrors, reportError } from "../../utils/helpers";
-import { EventScope } from "./ScopedEvents";
-
-export class SilentError extends Error { }
-
-export function silentFailOnError(e: any, expectedMessages: string[]): never {
-    expectErrors(e, expectedMessages);
-    throw new SilentError();
-}
+import { reportError } from "../../utils/helpers";
+import { EventScope, ExitScope } from "./ScopedEvents";
 
 export class ScopedRunner {
     logError: (e: any) => void = reportError;
@@ -32,7 +25,9 @@ export class ScopedRunner {
         ++this.runningThreads;
         void method(scope)
             .catch(e => {
-                if (e instanceof SilentError) return;
+                if (e instanceof ExitScope) {
+                    if (e.scope == null || e.scope === scope) return;
+                }
                 this.logError(e);
                 this.uncaughtError = e;
             })

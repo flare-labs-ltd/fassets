@@ -1,13 +1,14 @@
+import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Minter } from "../../integration/utils/Minter";
 import { Redeemer } from "../../integration/utils/Redeemer";
+import { EventArgs } from "../../utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { foreachAsyncParallel, randomChoice, randomInt } from "../../utils/fuzzing-utils";
-import { expectErrors, toBN } from "../../utils/helpers";
+import { formatBN, toBN } from "../../utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { EventScope, qualifiedEvent } from "./ScopedEvents";
-import { silentFailOnError } from "./ScopedRunner";
 
 // debug state
 let mintedLots = 0;
@@ -27,6 +28,8 @@ export class FuzzingCustomer extends FuzzingActor {
         this.redeemer = new Redeemer(runner.context, address, underlyingAddress);
     }
     
+    name = this.formatAddress(this.address);
+    
     static async createTest(runner: FuzzingRunner, address: string, underlyingAddress: string, underlyingBalance: BN) {
         const chain = runner.context.chain;
         if (!(chain instanceof MockChain)) assert.fail("only for mock chains");
@@ -42,12 +45,12 @@ export class FuzzingCustomer extends FuzzingActor {
         const lots = randomInt(Number(agent.freeCollateralLots));
         if (this.avoidErrors && lots === 0) return;
         const crt = await this.minter.reserveCollateral(agent.agentVault, lots)
-            .catch(e => silentFailOnError(e, ['cannot mint 0 lots', 'not enough free collateral']));
+            .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral']));
         // pay
         const txHash = await this.minter.performMintingPayment(crt);
         // execute
         await this.minter.executeMinting(crt, txHash)
-            .catch(e => expectErrors(e, []));
+            .catch(e => scope.exitOnExpectedError(e, []));
         mintedLots += lots;
     }
     
@@ -57,13 +60,12 @@ export class FuzzingCustomer extends FuzzingActor {
         const holdingUBA = toBN(await this.context.fAsset.balanceOf(this.address));
         const holdingLots = Number(holdingUBA.div(lotSize));
         const lots = randomInt(this.avoidErrors ? holdingLots : 100);
-        const customerName = this.formatAddress(this.address);
-        this.comment(`${customerName} lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
+        this.comment(`${this.name} lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
         if (this.avoidErrors && lots === 0) return;
         const [tickets, remaining] = await this.redeemer.requestRedemption(lots)
-            .catch(e => silentFailOnError(e, ['Burn too big for owner', 'redeem 0 lots']));
+            .catch(e => scope.exitOnExpectedError(e, ['Burn too big for owner', 'redeem 0 lots']));
         mintedLots -= lots - Number(remaining);
-        this.comment(`${customerName}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
+        this.comment(`${this.name}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
         // wait for all redemption payments or non-payments
         await foreachAsyncParallel(tickets, async ticket => {
             const event = await Promise.race([
@@ -74,10 +76,17 @@ export class FuzzingCustomer extends FuzzingActor {
                 ]).then(() => qualifiedEvent('failed', null))
             ]);
             if (event.name === 'performed') {
-                this.comment(`${customerName}, req=${ticket.requestId}: Received redemption ${Number(event.args.valueUBA) / Number(lotSize)}`);
+                this.comment(`${this.name}, req=${ticket.requestId}: Received redemption ${Number(event.args.valueUBA) / Number(lotSize)}`);
             } else {
-                this.comment(`${customerName}, req=${ticket.requestId}: Failed redemption`);
+                this.comment(`${this.name}, req=${ticket.requestId}: Failed redemption, starting default`);
+                await this.redemptionDefault(scope, ticket);
             }
         });
+    }
+
+    async redemptionDefault(scope: EventScope, ticket: EventArgs<RedemptionRequested>) {
+        const result = await this.redeemer.redemptionPaymentDefault(ticket)
+            .catch(e => scope.exitOnExpectedError(e, []));
+        this.comment(`${this.name}, req=${ticket.requestId}: default received ${formatBN(result.redeemedCollateralWei)}`);
     }
 }

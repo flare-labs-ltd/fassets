@@ -13,6 +13,8 @@ export class FuzzingAgent extends FuzzingActor {
         super(runner);
         this.registerForEvents();
     }
+    
+    name = this.formatAddress(this.agent.ownerAddress);
 
     static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string) {
         const agent = await Agent.createTest(runner.context, ownerAddress, underlyingAddress);
