@@ -3,6 +3,7 @@ import { MockChain } from "../../utils/fasset/MockChain";
 import { ITimer } from "../../utils/fasset/Timer";
 import { randomShuffle } from "../../utils/fuzzing-utils";
 import { latestBlockTimestamp, runAsync } from "../../utils/helpers";
+import { LogFile } from "../../utils/LogFile";
 import { ClearableSubscription, EventEmitter, EventHandler, EventSubscription } from "./ScopedEvents";
 
 type TimelineEventType = 'FlareTime' | 'UnderlyingBlock' | 'UnderlyingTime';
@@ -108,6 +109,7 @@ export class FuzzingTimeline {
     flareTimeTriggers = new TriggerList('FlareTime');
     underlyingTimeTriggers = new TriggerList('UnderlyingTime');
     underlyingBlockTriggers = new TriggerList('UnderlyingBlock');
+    logFile?: LogFile;
 
     constructor(
         public chain: MockChain,
@@ -177,6 +179,9 @@ export class FuzzingTimeline {
         ];
         randomShuffle(triggers);
         for (const trigger of triggers) {
+            if (this.logFile) {
+                this.logFile.log(`TRIGGERED ${trigger.type}(${trigger.id} at=${trigger.at})`);
+            }
             trigger.handler({ type: trigger.type, at: trigger.at });
         }
         return triggers.length > 0; // so the caller can repeat until all triggers are exhausted

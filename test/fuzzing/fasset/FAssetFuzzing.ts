@@ -2,6 +2,7 @@ import { AssetContext, CommonContext } from "../../integration/utils/AssetContex
 import { ChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/ChainInfo";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
+import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { getEnv, randomChoice, weightedRandomChoice } from "../../utils/fuzzing-utils";
 import { expectErrors, getTestFile, sleep, toWei } from "../../utils/helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
@@ -48,12 +49,16 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             fAsset: context.fAsset,
             wnat: context.wnat,
         });
-        interceptor.openLog("test_logs/fasset-fuzzing.log");
-        interceptor.logViewMethods = false;
         // uniform event handlers
         truffleEvents = new TruffleEvents(interceptor);
         chainEvents = new UnderlyingChainEvents(context.chainEvents);
         timeline = new FuzzingTimeline(chain);
+        // logging
+        interceptor.openLog("test_logs/fasset-fuzzing.log");
+        interceptor.logViewMethods = false;
+        chain.logFile = interceptor.logFile;
+        timeline.logFile = interceptor.logFile;
+        (context.stateConnectorClient as MockStateConnectorClient).logFile = interceptor.logFile;
         // runner
         runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, AVOID_ERRORS);
     });
@@ -110,6 +115,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             }
             // occassionally skip some time
             if (loop % 10 === 0) {
+                interceptor.comment(`LOOP ${loop}`);
                 await timeline.skipTime(100);
             }
             await timeline.executeTriggers();

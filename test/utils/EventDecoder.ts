@@ -26,7 +26,7 @@ export class EventFormatter {
     }
 
     isAddress(s: any): s is string {
-        return typeof s === 'string' && /^0x[0-9a-fA-F]{40}/.test(s);
+        return typeof s === 'string' && /^0x[0-9a-fA-F]{40}$/.test(s);
     }
 
     formatAddress(address: string) {

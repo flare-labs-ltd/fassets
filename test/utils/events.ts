@@ -74,7 +74,7 @@ export function syntheticEventIs<E extends BaseEvent>(event: BaseEvent, eventNam
 
 export function findRequiredEvent<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): TruffleExtractEvent<E, N> {
     const event = findEvent(response.logs, name);
-    assert.isNotNull(event, `Missing event ${name}`);
+    assert.isDefined(event, `Missing event ${name}`);
     return event!;
 }
 

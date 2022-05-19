@@ -28,7 +28,9 @@ export class FuzzingCustomer extends FuzzingActor {
         this.redeemer = new Redeemer(runner.context, address, underlyingAddress);
     }
     
-    name = this.formatAddress(this.address);
+    get name() {
+        return this.formatAddress(this.address);
+    }
     
     static async createTest(runner: FuzzingRunner, address: string, underlyingAddress: string, underlyingBalance: BN) {
         const chain = runner.context.chain;
@@ -78,7 +80,7 @@ export class FuzzingCustomer extends FuzzingActor {
             if (event.name === 'performed') {
                 this.comment(`${this.name}, req=${ticket.requestId}: Received redemption ${Number(event.args.valueUBA) / Number(lotSize)}`);
             } else {
-                this.comment(`${this.name}, req=${ticket.requestId}: Failed redemption, starting default`);
+                this.comment(`${this.name}, req=${ticket.requestId}: Failed redemption, starting default, reference=${ticket.paymentReference}`);
                 await this.redemptionDefault(scope, ticket);
             }
         });

@@ -1,4 +1,6 @@
-import { BNish, BN_ZERO, Dict, systemTimestamp, toBN } from "../helpers";
+import { stringifyJson } from "../fuzzing-utils";
+import { BNish, BN_ZERO, Dict, formatBN, systemTimestamp, toBN } from "../helpers";
+import { LogFile } from "../LogFile";
 import { BlockHandler, IBlock, IBlockChain, IBlockId, IBlockChainEvents, IChainWallet, ITransaction, TransactionHandler, TransactionOptions, TransactionOptionsWithFee, TxInputOutput, TX_FAILED, TX_SUCCESS } from "./ChainInterfaces";
 
 export type MockTransactionOptions = TransactionOptions & { status?: number };
@@ -42,6 +44,7 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
     requiredFee: BN = BN_ZERO;   // this much gas/fee will be used at each transaction
     estimatedGasPrice: BN = BN_ZERO;
     automine: boolean = true;
+    logFile?: LogFile;
     
     async getTransaction(txHash: string): Promise<ITransaction | null> {
         const [block, ind] = this.transactionIndex[txHash] ?? [null, null];
@@ -177,7 +180,20 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
         const timestamp = this.newBlockTimestamp();
         const hash = web3.utils.keccak256(JSON.stringify({ number, timestamp, transactions: transactions.map(tx => tx.hash) }));
         this.blocks.push({ hash, number, timestamp, transactions });
-        this.blockIndex[hash] = this.blocks.length - 1;
+        this.blockIndex[hash] = number;
+        // log
+        if (this.logFile) {
+            this.logFile.log(`MINED UNDERLYING BLOCK ${number}  hash=${hash}`);
+            for (const transaction of transactions) {
+                if (transaction.inputs.length === 1 && transaction.outputs.length === 1) {
+                    const [from, sent] = transaction.inputs[0];
+                    const [to, received] = transaction.outputs[0];
+                    this.logFile.log(`    simple transaction from=${from} to=${to} amount=${formatBN(received)} gas=${formatBN(sent.sub(received))} reference=${transaction.reference} status=${transaction.status} hash=${transaction.hash}`);
+                } else {
+                    this.logFile.log(`    transaction ${stringifyJson(transaction)}`);
+                }
+            }
+        }
         // execute handlers
         for (const handler of Object.values(this.blockHandlers)) {
             handler({ hash, number });
