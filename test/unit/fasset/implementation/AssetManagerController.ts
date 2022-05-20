@@ -1,11 +1,11 @@
-import { expectRevert, time, expectEvent } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../typechain-truffle";
-import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
-import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
-import { DAYS, getTestFile, HOURS, MAX_BIPS, toBN, toBNExp } from "../../utils/helpers";
-import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
-import { createTestSettings } from "./test-settings";
+import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { DAYS, getTestFile, HOURS, MAX_BIPS, toBN, toBNExp } from "../../../utils/helpers";
+import { setDefaultVPContract } from "../../../utils/token-test-helpers";
+import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
+import { createTestSettings } from "../test-settings";
 
 const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
@@ -13,6 +13,7 @@ const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const AssetManagerController = artifacts.require('AssetManagerController');
+const Whitelist = artifacts.require('Whitelist');
 
 function randomAddress() {
     return web3.utils.toChecksumAddress(web3.utils.randomHex(20))
@@ -30,6 +31,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     let natFtso: FtsoMockInstance;
     let assetFtso: FtsoMockInstance;
     let settings: AssetManagerSettings;
+    let whitelist: WhitelistInstance;
 
     beforeEach(async () => {
         // create atetstation client
@@ -46,6 +48,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         const ftsoRegistry = await FtsoRegistryMock.new();
         await ftsoRegistry.addFtso(natFtso.address);
         await ftsoRegistry.addFtso(assetFtso.address);
+        // create whitelist
+        whitelist = await Whitelist.new(governance);
         // create asset manager controller
         addressUpdater = await AddressUpdater.new(governance);
         assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
@@ -53,6 +57,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         settings = createTestSettings(attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController.address, "Ethereum", "ETH", 18, settings);
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
+        await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance });
     });
 
     describe("set and update settings with controller", () => {
@@ -85,6 +90,33 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(managers_current.length, managers_remove.length);
         });
 
+        it("should not add asset manager twice", async () => {
+            const managers_current = await assetManagerController.getAssetManagers();
+
+            await assetManagerController.addAssetManager(managers_current[0], { from: governance });
+            const managers_add = await assetManagerController.getAssetManagers();
+            assert.equal(managers_current.length, managers_add.length);
+        });
+
+        it("should do nothing if removing unexisting asset manager", async () => {
+            let assetManager2: AssetManagerInstance;
+            let fAsset2: FAssetInstance;
+            const managers_current = await assetManagerController.getAssetManagers();
+            [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController.address, "Ethereum", "ETH", 18, settings);
+
+            await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
+            const managers_add = await assetManagerController.getAssetManagers();
+            assert.equal(managers_current.length + 1, managers_add.length);
+
+            await assetManagerController.removeAssetManager(assetManager2.address, { from: governance });
+            const managers_remove = await assetManagerController.getAssetManagers();
+            assert.equal(managers_current.length, managers_remove.length);
+
+            await assetManagerController.removeAssetManager(assetManager2.address, { from: governance });
+            const managers_remove2 = await assetManagerController.getAssetManagers();
+            assert.equal(managers_current.length, managers_remove2.length);
+        });
+
         it("should revert setting whitelist without governance", async () => {
             let res = assetManagerController.setWhitelist([assetManager.address], randomAddress());
             await expectRevert(res, "only governance")
@@ -92,14 +124,29 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
 
         it("should refresh ftso indexes", async () => {
-            await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance })
             await assetManagerController.refreshFtsoIndexes([assetManager.address], {from: updateExecutor });
         });
 
-        it("should set whitelist", async () => {
-            let address = randomAddress();
-            let res = await assetManagerController.setWhitelist([assetManager.address], address, { from: governance });
-            expectEvent(res, "ContractChanged", { name: "whitelist", value: address })
+        it("should revert refreshing ftso indexes if asset manager not managed", async () => {
+            const promise = assetManagerController.refreshFtsoIndexes([assetManager.address, accounts[2]], {from: updateExecutor });
+            await expectRevert(promise, "Asset manager not managed");
+        });
+
+        it("should set whitelist address", async () => {
+            let res = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
+            expectEvent(res, "ContractChangeScheduled", { name: "whitelist", value: whitelist.address })
+        });
+
+        it("should execute set whitelist", async () => {
+            await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
+
+            await time.increase(toBN(settings.timelockSeconds).addn(1));
+            await time.advanceBlock();
+            await assetManagerController.executeSetWhitelist([assetManager.address], { from: updateExecutor });
+            // assert
+            const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(newSettings.whitelist, whitelist.address);
+
         });
 
         it("should revert setting lot size when increase or decrease is too big", async () => {
@@ -185,14 +232,14 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(res_big, "fee increase too big");
             await expectRevert(res_small, "fee decrease too big");
         });
-        
+
         it("should set collateral reservation fee bips", async () => {
             const currentSettings = await assetManager.getSettings();
             let collateralReservationFeeBIPS_new = toBN(currentSettings.collateralReservationFeeBIPS).muln(2);
             let res = await assetManagerController.setCollateralReservationFeeBips([assetManager.address], collateralReservationFeeBIPS_new, { from: governance });
             expectEvent(res, "SettingChanged", { name: "collateralReservationFeeBIPS", value: toBN(collateralReservationFeeBIPS_new) });
         });
-        
+
         it("should revert setting redemption fee bips when increase or decrease is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             let redemptionFeeBIPS_big = toBN(currentSettings.redemptionFeeBIPS).muln(5);
@@ -242,7 +289,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let res_big = assetManagerController.setMaxRedeemedTickets([assetManager.address], maxRedeemedTickets_big, { from: governance });
             let res_small = assetManagerController.setMaxRedeemedTickets([assetManager.address], maxRedeemedTickets_small, { from: governance });
             let res_zero = assetManagerController.setMaxRedeemedTickets([assetManager.address], maxRedeemedTickets_zero, { from: governance });
-            
+
             await expectRevert(res_big, "increase too big");
             await expectRevert(res_small, "decrease too big");
             await expectRevert(res_zero, "cannot be zero");
@@ -262,7 +309,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
             let res_big = assetManagerController.setWithdrawalOrDestroyWaitMinSeconds([assetManager.address], withdrawalWaitMinSeconds_big, { from: governance });
             let res_zero = assetManagerController.setWithdrawalOrDestroyWaitMinSeconds([assetManager.address], withdrawalWaitMinSeconds_zero, { from: governance });
-            
+
             await expectRevert(res_big, "increase too big");
             await expectRevert(res_zero, "cannot be zero");
         });
@@ -273,7 +320,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let res = await assetManagerController.setWithdrawalOrDestroyWaitMinSeconds([assetManager.address], withdrawalWaitMinSeconds_new, { from: governance });
             expectEvent(res, "SettingChanged", { name: "withdrawalWaitMinSeconds", value: toBN(withdrawalWaitMinSeconds_new) });
         });
-        
+
         it("should revert setting ccb time when increase or decrease is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             let ccbTimeSeconds_big = toBN(currentSettings.ccbTimeSeconds).muln(3);
@@ -281,7 +328,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
             let res_big = assetManagerController.setCcbTimeSeconds([assetManager.address], ccbTimeSeconds_big, { from: governance });
             let res_small = assetManagerController.setCcbTimeSeconds([assetManager.address], ccbTimeSeconds_small, { from: governance });
-            
+
             await expectRevert(res_big, "increase too big");
             await expectRevert(res_small, "decrease too big");
         });
@@ -300,7 +347,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
             let res_big = assetManagerController.setLiquidationStepSeconds([assetManager.address], liquidationStepSeconds_big, { from: governance });
             let res_small = assetManagerController.setLiquidationStepSeconds([assetManager.address], liquidationStepSeconds_small, { from: governance });
-            
+
             await expectRevert(res_big, "increase too big");
             await expectRevert(res_small, "decrease too big");
         });
@@ -321,7 +368,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let res_empty = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_empty, { from: governance });
             let res_notIncreasing = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_notIncreasing, { from: governance });
             let res_tooHigh = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_tooHigh, { from: governance });
-            
+
             await expectRevert(res_empty, "at least one factor required");
             await expectRevert(res_notIncreasing, "factors not increasing");
             await expectRevert(res_tooHigh, "liquidation factor too high");
@@ -337,7 +384,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should revert setting attestation window when window is less than a day", async () => {
             let attestationWindowSeconds_small = 0.8 * DAYS;
             let res_small = assetManagerController.setAttestationWindowSeconds([assetManager.address], attestationWindowSeconds_small, { from: governance });
-            
+
             await expectRevert(res_small, "window too small");
         });
 
@@ -347,7 +394,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let res = await assetManagerController.setAttestationWindowSeconds([assetManager.address], attestationWindowSeconds_new, { from: governance });
             expectEvent(res, "SettingChanged", { name: "attestationWindowSeconds", value: toBN(attestationWindowSeconds_new) });
         });
-    
+
         it("should revert redemption default factor bips", async () => {
             const currentSettings = await assetManager.getSettings();
             let redemptionDefaultFactorBIPS_big = toBN(currentSettings.redemptionDefaultFactorBIPS).muln(12001).divn(10_000);
@@ -393,20 +440,33 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 [assetManagerController.address],
                 { from: governance });
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(settings.assetManagerController, assetManagerController.address);
             assertWeb3Equal(settings.attestationClient, accounts[80]);
             assertWeb3Equal(settings.ftsoRegistry, accounts[81]);
             assertWeb3Equal(settings.wNat, accounts[82]);
+            assertWeb3Equal(await assetManagerController.replacedBy(), constants.ZERO_ADDRESS);
+        });
+
+        it("should change contracts, including asset manager controller", async () => {
+            await addressUpdater.update(["AddressUpdater", "AssetManagerController", "AttestationClient", "FtsoRegistry", "WNat"],
+                [addressUpdater.address, accounts[79], accounts[80], accounts[81], accounts[82]],
+                [assetManagerController.address],
+                { from: governance });
+            const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(settings.assetManagerController, accounts[79]);
+            assertWeb3Equal(settings.attestationClient, accounts[80]);
+            assertWeb3Equal(settings.ftsoRegistry, accounts[81]);
+            assertWeb3Equal(settings.wNat, accounts[82]);
+            assertWeb3Equal(await assetManagerController.replacedBy(), accounts[79]);
         });
 
         it("should change time for payment settings after timelock", async () => {
-            // set executor
-            await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance })
             // change settings
             const currentSettings = await assetManager.getSettings();
             let underlyingBlocksForPayment_new = toBN(currentSettings.underlyingBlocksForPayment).muln(2);
             let underlyingSecondsForPayment_new = toBN(currentSettings.underlyingSecondsForPayment).muln(2);
             await assetManagerController.setTimeForPayment([assetManager.address], underlyingBlocksForPayment_new, underlyingSecondsForPayment_new, { from: governance });
-            
+
             await time.increase(toBN(settings.timelockSeconds).addn(1));
             await time.advanceBlock();
             await assetManagerController.executeSetTimeForPayment([assetManager.address], { from: updateExecutor });
@@ -417,8 +477,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should change collateral settings after timelock", async () => {
-            // set executor
-            await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance })
             // change settings
             await assetManagerController.setCollateralRatios([assetManager.address], 2_2000, 1_8000, 2_4000, { from: governance });
             await time.increase(toBN(settings.timelockSeconds).addn(1));
@@ -440,8 +498,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("shouldn't change collateral settings without timelock", async () => {
-            // set executor
-            await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance })
             // change settings
             await assetManagerController.setCollateralRatios([assetManager.address], 2_2000, 1_8000, 2_4000, { from: governance });
             await expectRevert(assetManagerController.executeSetCollateralRatios([assetManager.address], { from: updateExecutor }),
@@ -454,8 +510,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("shouldn't change time for payment settings without timelock", async () => {
-            // set executor
-            await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance })
             // change settings
             const currentSettings = await assetManager.getSettings();
             let underlyingBlocksForPayment_new = toBN(currentSettings.underlyingBlocksForPayment).muln(2);
@@ -469,7 +523,17 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(newSettings.underlyingSecondsForPayment, settings.underlyingSecondsForPayment);
         });
 
+        it("should re-set update executors", async () => {
+            // re-set executor
+            await assetManagerController.setUpdateExecutors([accounts[1], accounts[2]], { from: governance });
+            assert.isFalse(await assetManagerController.isUpdateExecutor(updateExecutor));
+            assert.isTrue(await assetManagerController.isUpdateExecutor(accounts[1]));
+            assert.isTrue(await assetManagerController.isUpdateExecutor(accounts[2]));
+        });
 
-
+        it("shouldn't remove all update executors", async () => {
+            const promise = assetManagerController.setUpdateExecutors([], { from: governance });
+            await expectRevert(promise, "empty executors list");
+        });
     });
 });

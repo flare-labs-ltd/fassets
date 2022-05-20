@@ -84,7 +84,9 @@ contract FAsset is IFAsset, VPToken {
         external override
         onlyAssetManager
     {
-        terminatedAt = uint64(block.timestamp);    // safe, block timestamp can never exceed 64bit
+        if (terminatedAt == 0) {
+            terminatedAt = uint64(block.timestamp);    // safe, block timestamp can never exceed 64bit
+        }
     }
 
     /**

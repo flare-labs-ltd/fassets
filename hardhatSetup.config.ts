@@ -17,9 +17,11 @@ const intercept = require('intercept-stdout');
 task(TASK_COMPILE)
     .setAction(async (args, hre, runSuper) => {
         intercept((text: any) => {
-            // if (text.match(/Warning: SPDX license identifier not provided in source file/)) return '';
+            if (/MockContract.sol/.test(text) && text.match(/Warning: SPDX license identifier not provided in source file/)) return '';
             if (/MockContract.sol/.test(text) &&
                 /Warning: This contract has a payable fallback function, but no receive ether function/.test(text)) return '';
+            if (/FlareSmartContracts.sol/.test(text) &&
+                /Warning: Visibility for constructor is ignored./.test(text)) return '';
             if (/VPToken.sol/.test(text) &&
                 /Warning: Visibility for constructor is ignored./.test(text)) return '';
             if (/ReentrancyGuard.sol/.test(text) &&
@@ -126,6 +128,10 @@ const config: HardhatUserConfig = {
             }
         ],
         overrides: {
+            "contracts/utils/Imports.sol": {
+                version: "0.6.12",
+                settings: {}
+            },
             "@gnosis.pm/mock-contract/contracts/MockContract.sol": {
                 version: "0.6.12",
                 settings: {}

@@ -305,7 +305,7 @@ library Agents {
                 "withdrawal: value too high");
             agent.withdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
         } else {
-            // announcement decreased or canceled - might be needed to get agent out of CCB
+            // announcement decreased or cancelled
             // if value is 0, we cancel announcement completely (i.e. set announcement time to 0)
             // otherwise, for decreasing announcement, we can safely leave announcement time unchanged
             if (_valueNATWei == 0) {

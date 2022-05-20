@@ -1,24 +1,25 @@
 import { balance, constants, ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
-import { Web3EventDecoder } from "../../utils/EventDecoder";
-import { findRequiredEvent } from "../../utils/events";
-import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
-import { AttestationHelper } from "../../utils/fasset/AttestationHelper";
-import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
-import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { getTestFile, toBN, toBNExp } from "../../utils/helpers";
-import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { SourceId } from "../../utils/verification/sources/sources";
-import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
-import { createTestSettings } from "./test-settings";
+import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
+import { Web3EventDecoder } from "../../../utils/EventDecoder";
+import { findRequiredEvent } from "../../../utils/events";
+import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
+import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
+import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { PaymentReference } from "../../../utils/fasset/PaymentReference";
+import { DAYS, getTestFile, toBN, toBNExp } from "../../../utils/helpers";
+import { setDefaultVPContract } from "../../../utils/token-test-helpers";
+import { SourceId } from "../../../utils/verification/sources/sources";
+import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
+import { createTestSettings } from "../test-settings";
 
 const AgentVault = artifacts.require('AgentVault');
 const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
+const Whitelist = artifacts.require('Whitelist');
 
 function randomAddress() {
     return web3.utils.toChecksumAddress(web3.utils.randomHex(20))
@@ -26,7 +27,7 @@ function randomAddress() {
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic tests`, async accounts => {
     const governance = accounts[10];
-    const assetManagerController = accounts[11];
+    let assetManagerController = accounts[11];
     let attestationClient: AttestationClientMockInstance;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
@@ -41,6 +42,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
     let eventDecoder: Web3EventDecoder;
+    let whitelist: WhitelistInstance;
     
     // addresses
     const underlyingBurnAddr = "Burn";
@@ -51,6 +53,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     const redeemer1 = accounts[40];
     const underlyingRedeemer1 = "Redeemer1";
     const challenger1 = accounts[50];
+    const whitelistedAccount = accounts[1];
+
 
     async function createAgent(chain: MockChain, owner: string, underlyingAddress: string) {
         // mint some funds on underlying address (just enough to make EOA proof)
@@ -118,6 +122,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // assert
             const res = web3ResultStruct(await assetManager.getSettings());
             assertWeb3DeepEqual(newSettings, res);
+        });
+
+        it("should revert update settings - invalid method", async () => {
+            let res = assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("invalidMethod")), 
+            constants.ZERO_ADDRESS,
+            { from: assetManagerController });
+            await expectRevert(res,"update: invalid method");
         });
     });
 
@@ -197,6 +208,49 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const info = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(info.agentMinCollateralRatioBIPS, collateralRatioBIPS);
         });
-        
+
+        it("should require whitelisting, when whitelist exists, to create agent", async () => {
+            whitelist = await Whitelist.new(governance);
+            await whitelist.addAddressToWhitelist(whitelistedAccount, {from: governance});
+                                
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")), 
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]), 
+                { from: assetManagerController });
+            await time.increase(toBN(settings.timelockSeconds).addn(1));
+            await time.advanceBlock();
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("executeSetWhitelist()")), 
+                constants.ZERO_ADDRESS,
+                { from: assetManagerController });
+            // assert
+            await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agentOwner1 }),
+                "not whitelisted");
+
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(whitelistedAccount));
+            const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
+            await assetManager.proveUnderlyingAddressEOA(proof, { from: whitelistedAccount });
+            expectEvent(await assetManager.createAgent(underlyingAgent1, { from: whitelistedAccount}), "AgentCreated");
+        });
+
+        it("should pause and terminate only after 30 days", async () => {
+            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
+            assert.isFalse(await assetManager.paused());
+            await assetManager.pause({ from: assetManagerController });
+            assert.isTrue(await assetManager.paused());
+            await time.increase(MINIMUM_PAUSE_BEFORE_STOP / 2);
+            await assetManager.pause({ from: assetManagerController });
+            assert.isTrue(await assetManager.paused());
+            await expectRevert(assetManager.terminate({ from: assetManagerController }), "asset manager not paused enough");
+            await time.increase(MINIMUM_PAUSE_BEFORE_STOP / 2);
+            assert.isFalse(await fAsset.terminated());
+            await assetManager.terminate({ from: assetManagerController });
+            assert.isTrue(await fAsset.terminated());
+        });
+
+        it("should not pause if not called from asset manager controller", async () => {
+            const promise = assetManager.pause({ from: accounts[0] });
+            await expectRevert(promise, "only asset manager controller");
+            assert.isFalse(await assetManager.paused());
+        });
     });
 });

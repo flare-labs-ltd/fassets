@@ -3,5 +3,8 @@ pragma solidity >=0.7.6 <0.9;
 
 
 interface IWhitelist {
-    function whitelisted(address _account) external view returns (bool);
+
+    event Whitelisted(address value);
+
+    function isWhitelisted(address _address) external view returns (bool);   
 }

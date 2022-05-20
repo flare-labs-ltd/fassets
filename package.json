@@ -12,8 +12,7 @@
   "directories": {},
   "scripts": {
     "---------HOOKS": "",
-    "postinstall": "echo Running install in flare-smart-contracts... && cd node_modules/flare-smart-contracts && yarn",
-    "prepare": "yarn flatten-dependencies node_modules/flare-smart-contracts scripts/flatten-files.txt cache/flattened/FlareSmartContracts.sol",
+    "prepare": "yarn flatten-dependencies ../flare-smart-contracts scripts/flatten-files.txt cache/flattened/FlareSmartContracts.sol",
     
     "---------TEST---SCRIPTS": "",
     "test": "yarn hardhat test",
@@ -26,11 +25,13 @@
     "fuzzing_fasset": "yarn test test/fuzzing/fasset/FAssetFuzzing.ts",
 
     "---------COMPILE---SCRIPTS": "",
+    "clean": "env rm -rf cache artifacts typechain typechain-truffle",
+    "clean-all": "yarn clean && env rm -rf node_modules",
     "compile": "yarn hardhat compile --config hardhatSetup.config.ts && yarn typechain-prepare && yarn typechain-ethers-v5 && yarn typechain-truffle-v5",
     "c": "yarn compile",
     "precompile": "env bash scripts/create-events-interface.sh",
     "lint": "yarn solhint \"contracts/**/*.sol\"",
-    "typechain-prepare": "env mkdir -p artifacts/flattened && env cp artifacts/cache/flattened/**/*.json artifacts/flattened && env rm artifacts/flattened/I[A-Z]*.json",
+    "typechain-prepare": "env bash scripts/remove-flattened-duplicates.sh",
     "typechain-ethers-v5": "yarn typechain --target=ethers-v5 --out-dir typechain \"artifacts/!(build-info|cache)/**/+([a-zA-Z0-9_]).json\" 1> nul",
     "typechain-truffle-v5": "yarn typechain --target=truffle-v5 --out-dir typechain-truffle \"artifacts/!(build-info|cache)/**/+([a-zA-Z0-9_]).json\"",
     "size": "yarn run hardhat size-contracts",

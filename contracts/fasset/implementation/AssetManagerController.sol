@@ -23,7 +23,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     IAssetManager[] private assetManagers;
     
     address[] private updateExecutors;
-    mapping(address => bool) private isUpdateExecutor;
+    mapping(address => bool) public isUpdateExecutor;
 
     modifier onlyUpdateExecutor {
         require(isUpdateExecutor[msg.sender], "only update executor");
@@ -95,7 +95,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         }
     }
 
-    // this is a safe operation, so anybody can call it    
+    // this is a safe operation, executor can call without prior governance call
     function refreshFtsoIndexes(IAssetManager[] memory _assetManagers)
         external
         onlyUpdateExecutor
@@ -110,6 +110,16 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_WHITELIST, abi.encode(_value));
+    }
+
+    function executeSetWhitelist(
+        IAssetManager[] memory _assetManagers
+    )
+        external
+        onlyUpdateExecutor
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.EXECUTE_SET_WHITELIST, abi.encode());
     }
 
     function setLotSizeAmg(IAssetManager[] memory _assetManagers, uint256 _value)
@@ -350,16 +360,5 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             require(assetManagerIndex[address(assetManager)] != 0, "Asset manager not managed");
             assetManager.updateSettings(_method, _value);
         }
-    }
-
-    function _setValueOnManager(
-        IAssetManager _assetManager,
-        bytes32 _method,
-        bytes memory _value
-    )
-        private
-    {
-        require(assetManagerIndex[address(_assetManager)] != 0, "Asset manager not managed");
-        _assetManager.updateSettings(_method, _value);
     }
 }

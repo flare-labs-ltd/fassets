@@ -49,10 +49,6 @@ library PaymentReference {
         return refType == _type && refLowBits != 0;
     }
     
-    function requireType(uint256 _type, bytes32 _reference) internal pure {
-        require((uint256(_reference) & _type) == _type, "invalid payment reference");
-    }
-    
     function decodeId(bytes32 _reference) internal pure returns (uint64) {
         return uint64(uint256(_reference) & ((1 << 64) - 1));
     }

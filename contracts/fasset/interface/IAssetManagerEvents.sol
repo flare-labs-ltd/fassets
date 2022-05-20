@@ -266,4 +266,13 @@ interface IAssetManagerEvents {
     event ContractChanged(
         string name,
         address value);
+
+    /**
+     * A contract will change after timelock at timestamp `validAt`.
+     */
+    event ContractChangeScheduled(
+        string name,
+        address value,
+        uint256 validAt);
+
 }

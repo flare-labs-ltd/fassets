@@ -372,7 +372,7 @@ library Redemption {
         // release remaining agent collateral
         Agents.endRedeemingAssets(_state, _request.agentVault, _request.valueAMG);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment
-        // - it will be (or was already) updated in call to confirmRedemption, paymentFailed, or paymentCanceled
+        // it will be (or was already) updated in call to finishRedemptionWithoutPayment (or confirmRedemptionPayment)
         emit AMEvents.RedemptionDefault(_request.agentVault, _request.redeemer, paidAmountWei, _redemptionRequestId);
     }
     

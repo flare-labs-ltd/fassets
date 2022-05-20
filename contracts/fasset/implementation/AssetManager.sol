@@ -486,7 +486,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     // Redemption
     
     /**
-     * Redeem (up to) `_lots` lots of f-assets. The corresponding ammount of the f-assets belonging
+     * Redeem (up to) `_lots` lots of f-assets. The corresponding amount of the f-assets belonging
      * to the redeemer will be burned and the redeemer will get paid by the agent in underlying currency
      * (or, in case of agent's payment default, by agent's collateral with a premium).
      * NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or
@@ -848,7 +848,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         internal view
     {
         if (address(state.settings.whitelist) != address(0)) {
-            require(state.settings.whitelist.whitelisted(msg.sender), "not whitelisted");
+            require(state.settings.whitelist.isWhitelisted(msg.sender), "not whitelisted");
         }
     }
 }
