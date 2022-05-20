@@ -1,18 +1,18 @@
 import { balance, constants, ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WhitelistInstance, WNatInstance } from "../../../typechain-truffle";
-import { Web3EventDecoder } from "../../utils/EventDecoder";
-import { findRequiredEvent } from "../../utils/events";
-import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
-import { AttestationHelper } from "../../utils/fasset/AttestationHelper";
-import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
-import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { DAYS, getTestFile, toBN, toBNExp } from "../../utils/helpers";
-import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { SourceId } from "../../utils/verification/sources/sources";
-import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
-import { createTestSettings } from "./test-settings";
+import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
+import { Web3EventDecoder } from "../../../utils/EventDecoder";
+import { findRequiredEvent } from "../../../utils/events";
+import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
+import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
+import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { PaymentReference } from "../../../utils/fasset/PaymentReference";
+import { DAYS, getTestFile, toBN, toBNExp } from "../../../utils/helpers";
+import { setDefaultVPContract } from "../../../utils/token-test-helpers";
+import { SourceId } from "../../../utils/verification/sources/sources";
+import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
+import { createTestSettings } from "../test-settings";
 
 const AgentVault = artifacts.require('AgentVault');
 const AttestationClient = artifacts.require('AttestationClientMock');
@@ -20,7 +20,6 @@ const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const Whitelist = artifacts.require('Whitelist');
-const AssetManagerController = artifacts.require('AssetManagerController');
 
 function randomAddress() {
     return web3.utils.toChecksumAddress(web3.utils.randomHex(20))

@@ -223,7 +223,7 @@ library Liquidation {
         uint256 liquidationStart = agent.liquidationStartedAt + ccbTime;
         uint256 step = Math.min(_state.settings.liquidationCollateralFactorBIPS.length - 1,
             (block.timestamp - liquidationStart) / _state.settings.liquidationStepSeconds);
-        // premiums are expressed as percentage of minCollateralRatio
+        // premiums are expressed as factor BIPS (> 10000)
         uint256 factorBIPS = uint256(_state.settings.liquidationCollateralFactorBIPS[step]);
         // max premium is equal to agents collateral ratio (so that all liquidators get at least this much)
         return Math.min(factorBIPS, _collateralRatioBIPS);

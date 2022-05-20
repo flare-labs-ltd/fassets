@@ -1,11 +1,11 @@
-import { expectRevert, time, expectEvent, constants } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WhitelistInstance, WNatInstance } from "../../../typechain-truffle";
-import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
-import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
-import { DAYS, getTestFile, HOURS, MAX_BIPS, toBN, toBNExp } from "../../utils/helpers";
-import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { assertWeb3Equal, web3ResultStruct } from "../../utils/web3assertions";
-import { createTestSettings } from "./test-settings";
+import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { DAYS, getTestFile, HOURS, MAX_BIPS, toBN, toBNExp } from "../../../utils/helpers";
+import { setDefaultVPContract } from "../../../utils/token-test-helpers";
+import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
+import { createTestSettings } from "../test-settings";
 
 const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
