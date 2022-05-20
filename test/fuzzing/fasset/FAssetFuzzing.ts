@@ -110,6 +110,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         ];
         // switch underlying chain to timed mining
         chain.automine = false;
+        chain.finalizationBlocks = chainInfo.finalizationBlocks;
         // perform actions
         for (let loop = 1; loop <= LOOPS; loop++) {
             const action = weightedRandomChoice(actions);
