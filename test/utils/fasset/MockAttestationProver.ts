@@ -8,7 +8,7 @@ import { MockChain } from "./MockChain";
 function totalValueFor(ios: TxInputOutput[], address: string) {
     let total = BN_ZERO;
     for (const [a, v] of ios) {
-        if (a === address) total = total.add(v);
+        if (web3.utils.keccak256(a) === address) total = total.add(v);
     }
     return total;
 }
@@ -27,9 +27,9 @@ export class MockAttestationProver {
         const [blockNumber, txInd] = this.chain.transactionIndex[transactionHash];
         const block = this.chain.blocks[blockNumber];
         const transaction = block.transactions[txInd];
-        const sourceAddress = transaction.inputs[inUtxo][0];
-        const receivingAddress = transaction.outputs[utxo][0];
-        const spent = totalValueFor(transaction.inputs, sourceAddress).sub(totalValueFor(transaction.outputs, sourceAddress));
+        const sourceAddressHash = web3.utils.keccak256(transaction.inputs[inUtxo][0]);
+        const receivingAddressHash = web3.utils.keccak256(transaction.outputs[utxo][0]);
+        const spent = totalValueFor(transaction.inputs, sourceAddressHash).sub(totalValueFor(transaction.outputs, sourceAddressHash));
         const proof: DHPayment = {
             stateConnectorRound: 0, // filled later
             blockNumber: toBN(blockNumber),
@@ -37,11 +37,11 @@ export class MockAttestationProver {
             transactionHash: transaction.hash,
             inUtxo: toBN(inUtxo),
             utxo: toBN(utxo),
-            sourceAddressHash: web3.utils.keccak256(sourceAddress),
-            receivingAddressHash: web3.utils.keccak256(receivingAddress),
+            sourceAddressHash: sourceAddressHash,
+            receivingAddressHash: receivingAddressHash,
             paymentReference: transaction.reference ?? constants.ZERO_BYTES32,
             spentAmount: spent,
-            receivedAmount: totalValueFor(transaction.outputs, receivingAddress),
+            receivedAmount: totalValueFor(transaction.outputs, receivingAddressHash),
             oneToOne: false,    // not needed
             status: toBN(transaction.status)
         };
@@ -55,8 +55,8 @@ export class MockAttestationProver {
         const [blockNumber, txInd] = this.chain.transactionIndex[transactionHash];
         const block = this.chain.blocks[blockNumber];
         const transaction = block.transactions[txInd];
-        const sourceAddress = transaction.inputs[inUtxo][0];
-        const spent = totalValueFor(transaction.inputs, sourceAddress).sub(totalValueFor(transaction.outputs, sourceAddress));
+        const sourceAddressHash = web3.utils.keccak256(transaction.inputs[inUtxo][0]);
+        const spent = totalValueFor(transaction.inputs, sourceAddressHash).sub(totalValueFor(transaction.outputs, sourceAddressHash));
         if (spent.eqn(0)) {
             return null;    // no balance decrease for sourceAddress
         }
@@ -66,16 +66,16 @@ export class MockAttestationProver {
             blockTimestamp: toBN(block.timestamp),
             transactionHash: transaction.hash,
             inUtxo: toBN(inUtxo),
-            sourceAddressHash: web3.utils.keccak256(sourceAddress),
+            sourceAddressHash: sourceAddressHash,
             spentAmount: spent,
             paymentReference: transaction.reference ?? constants.ZERO_BYTES32,
         };
         return web3DeepNormalize(proof);
     }
 
-    referencedPaymentNonexistence(destinationAddress: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number): DHReferencedPaymentNonexistence | null {
+    referencedPaymentNonexistence(destinationAddressHash: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number): DHReferencedPaymentNonexistence | null {
         // if payment is found, return null
-        const [found, lowerBoundaryBlockNumber, overflowBlock] = this.findReferencedPayment(destinationAddress, paymentReference, amount, endBlock, endTimestamp);
+        const [found, lowerBoundaryBlockNumber, overflowBlock] = this.findReferencedPayment(destinationAddressHash, paymentReference, amount, endBlock, endTimestamp);
         if (found || lowerBoundaryBlockNumber === -1 || overflowBlock === -1) {
             return null;    // not enough blocks mined
         }
@@ -84,7 +84,7 @@ export class MockAttestationProver {
             stateConnectorRound: 0, // filled later
             deadlineTimestamp: toBN(endTimestamp),
             deadlineBlockNumber: toBN(endBlock),
-            destinationAddressHash: destinationAddress,
+            destinationAddressHash: destinationAddressHash,
             paymentReference: paymentReference,
             amount: amount,
             lowerBoundaryBlockNumber: toBN(lowerBoundaryBlockNumber),
@@ -95,7 +95,7 @@ export class MockAttestationProver {
         return web3DeepNormalize(proof);
     }
 
-    private findReferencedPayment(destinationAddress: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number): [boolean, number, number] {
+    private findReferencedPayment(destinationAddressHash: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number): [boolean, number, number] {
         let lowerBoundaryBlockNumber = -1;
         for (let bn = 0; bn < this.chain.blocks.length; bn++) {
             const block = this.chain.blocks[bn];
@@ -110,7 +110,7 @@ export class MockAttestationProver {
             }
             for (const transaction of block.transactions) {
                 const found = transaction.reference === paymentReference
-                    && totalValueFor(transaction.outputs, destinationAddress).gte(amount)
+                    && totalValueFor(transaction.outputs, destinationAddressHash).gte(amount)
                     && transaction.status !== TX_FAILED;
                 if (found) {
                     return [true, lowerBoundaryBlockNumber, bn];

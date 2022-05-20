@@ -71,16 +71,24 @@ export class FuzzingCustomer extends FuzzingActor {
         // wait for all redemption payments or non-payments
         await foreachAsyncParallel(tickets, async ticket => {
             const event = await Promise.race([
-                this.assetManagerEvent('RedemptionPerformed', { requestId: ticket.requestId }).qualified('performed').wait(scope),
+                this.chainEvents.transactionEvent({ reference: ticket.paymentReference }).qualified('paid').wait(scope),
+                // this.assetManagerEvent('RedemptionPerformed', { requestId: ticket.requestId }).qualified('performed').wait(scope),
                 Promise.all([
-                    this.timeline.underlyingBlocks(Number(this.context.settings.underlyingBlocksForPayment)).wait(scope),
-                    this.timeline.underlyingTime(Number(this.context.settings.underlyingSecondsForPayment)).wait(scope),
+                    this.timeline.underlyingBlockAbs(Number(ticket.lastUnderlyingBlock) + 1).wait(scope),
+                    this.timeline.underlyingTimeAbs(Number(ticket.lastUnderlyingTimestamp) + 1).wait(scope),
                 ]).then(() => qualifiedEvent('failed', null))
             ]);
-            if (event.name === 'performed') {
-                this.comment(`${this.name}, req=${ticket.requestId}: Received redemption ${Number(event.args.valueUBA) / Number(lotSize)}`);
+            if (event.name === 'paid') {
+                const [targetAddress, amountPaid] = event.args.outputs[0];
+                const expectedAmount = ticket.valueUBA.sub(ticket.feeUBA);
+                if (amountPaid.gte(expectedAmount) && targetAddress === this.underlyingAddress) {
+                    this.comment(`${this.name}, req=${ticket.requestId}: Received redemption ${Number(amountPaid) / Number(lotSize)}`);
+                } else {
+                    this.comment(`${this.name}, req=${ticket.requestId}: Invalid redemption, paid=${formatBN(amountPaid)} expected=${expectedAmount} target=${targetAddress}`);
+                    await this.redemptionDefault(scope, ticket);
+                }
             } else {
-                this.comment(`${this.name}, req=${ticket.requestId}: Failed redemption, starting default, reference=${ticket.paymentReference}`);
+                this.comment(`${this.name}, req=${ticket.requestId}: Missing redemption, reference=${ticket.paymentReference}`);
                 await this.redemptionDefault(scope, ticket);
             }
         });

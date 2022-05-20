@@ -121,17 +121,29 @@ export class FuzzingTimeline {
     //     this.chain.mine();
     // }
 
-    async flareTime(seconds: number) {
+    flareTimeAbs(timestamp: number) {
+        return this.flareTimeTriggers.event(timestamp);
+    }
+
+    underlyingBlockAbs(blockNumber: number) {
+        return this.underlyingBlockTriggers.event(blockNumber);
+    }
+
+    underlyingTimeAbs(timestamp: number) {
+        return this.underlyingTimeTriggers.event(timestamp);
+    }
+    
+    async flareTimeRel(seconds: number) {
         const triggerTime = await latestBlockTimestamp() + seconds;
         return this.flareTimeTriggers.event(triggerTime);
     }
 
-    underlyingBlocks(blocks: number) {
+    underlyingBlocksRel(blocks: number) {
         const triggerBlock = this.chain.blockHeight() + blocks;
         return this.underlyingBlockTriggers.event(triggerBlock);
     }
 
-    underlyingTime(seconds: number) {
+    underlyingTimeRel(seconds: number) {
         const triggerTime = this.chain.currentTimestamp() + seconds;
         return this.underlyingTimeTriggers.event(triggerTime);
     }
@@ -176,7 +188,7 @@ export class FuzzingTimeline {
         const flareTimestamp = await latestBlockTimestamp();
         const triggers = [
             ...this.flareTimeTriggers.popUntil(flareTimestamp),
-            ...this.underlyingTimeTriggers.popUntil(this.chain.currentTimestamp()),
+            ...this.underlyingTimeTriggers.popUntil(this.chain.lastBlockTimestamp()),
             ...this.underlyingBlockTriggers.popUntil(this.chain.blockHeight()),
         ];
         randomShuffle(triggers);
