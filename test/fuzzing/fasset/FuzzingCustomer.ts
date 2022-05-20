@@ -8,7 +8,7 @@ import { foreachAsyncParallel, randomChoice, randomInt } from "../../utils/fuzzi
 import { formatBN, toBN } from "../../utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { EventScope, qualifiedEvent } from "./ScopedEvents";
+import { EventScope, QualifiedEvent, qualifiedEvent } from "./ScopedEvents";
 
 // debug state
 let mintedLots = 0;
@@ -50,6 +50,8 @@ export class FuzzingCustomer extends FuzzingActor {
             .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral']));
         // pay
         const txHash = await this.minter.performMintingPayment(crt);
+        // wait for finalization
+        await this.waitForUnderlyingTransactionFinalization(scope, txHash);
         // execute
         await this.minter.executeMinting(crt, txHash)
             .catch(e => scope.exitOnExpectedError(e, []));
@@ -72,11 +74,7 @@ export class FuzzingCustomer extends FuzzingActor {
         await foreachAsyncParallel(tickets, async ticket => {
             const event = await Promise.race([
                 this.chainEvents.transactionEvent({ reference: ticket.paymentReference }).qualified('paid').wait(scope),
-                // this.assetManagerEvent('RedemptionPerformed', { requestId: ticket.requestId }).qualified('performed').wait(scope),
-                Promise.all([
-                    this.timeline.underlyingBlockAbs(Number(ticket.lastUnderlyingBlock) + 1).wait(scope),
-                    this.timeline.underlyingTimeAbs(Number(ticket.lastUnderlyingTimestamp) + 1).wait(scope),
-                ]).then(() => qualifiedEvent('failed', null))
+                this.waitForPaymentTimeout(scope, ticket),
             ]);
             if (event.name === 'paid') {
                 const [targetAddress, amountPaid] = event.args.outputs[0];
@@ -85,6 +83,7 @@ export class FuzzingCustomer extends FuzzingActor {
                     this.comment(`${this.name}, req=${ticket.requestId}: Received redemption ${Number(amountPaid) / Number(lotSize)}`);
                 } else {
                     this.comment(`${this.name}, req=${ticket.requestId}: Invalid redemption, paid=${formatBN(amountPaid)} expected=${expectedAmount} target=${targetAddress}`);
+                    await this.waitForPaymentTimeout(scope, ticket);    // still have to wait for timeout to be able to get non payment proof from SC
                     await this.redemptionDefault(scope, ticket);
                 }
             } else {
@@ -92,6 +91,17 @@ export class FuzzingCustomer extends FuzzingActor {
                 await this.redemptionDefault(scope, ticket);
             }
         });
+    }
+
+    private async waitForPaymentTimeout(scope: EventScope, ticket: EventArgs<RedemptionRequested>): Promise<QualifiedEvent<"timeout", null>> {
+        // both block number and timestamp must be large enough
+        await Promise.all([
+            this.timeline.underlyingBlockAbs(Number(ticket.lastUnderlyingBlock) + 1).wait(scope),
+            this.timeline.underlyingTimeAbs(Number(ticket.lastUnderlyingTimestamp) + 1).wait(scope),
+        ]);
+        // after that, we have to wait for finalization
+        await this.timeline.underlyingBlocksRel(this.context.chain.finalizationBlocks).wait(scope);
+        return qualifiedEvent('timeout', null);
     }
 
     async redemptionDefault(scope: EventScope, ticket: EventArgs<RedemptionRequested>) {

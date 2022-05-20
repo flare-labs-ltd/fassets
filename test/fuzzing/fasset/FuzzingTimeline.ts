@@ -117,9 +117,13 @@ export class FuzzingTimeline {
     underlyingBlockTriggers = new TriggerList('UnderlyingBlock', this.eventQueue);
     logFile?: LogFile;
 
-    // async mineNextUnderlyingBlock() {
-    //     this.chain.mine();
-    // }
+    async mineNextUnderlyingBlock() {
+        const skip = this.chain.nextBlockTimestamp() - this.chain.currentTimestamp();
+        this.chain.mine();
+        if (skip > 0) {
+            await time.increase(skip);
+        }
+    }
 
     flareTimeAbs(timestamp: number) {
         return this.flareTimeTriggers.event(timestamp);
@@ -155,32 +159,37 @@ export class FuzzingTimeline {
     // Skip `seconds` of time unless a triggger is reached before.
     // While skipping, mines underlying blocks at the rate of chain.secondsPerBlock.
     async skipTime(seconds: number) {
-        const currentFlareTime = await latestBlockTimestamp();
-        const currentUnderlyingTime = this.chain.currentTimestamp();
-        // calculate limits based on `seconds` and on first trigger
-        const targetFlareTime = Math.min(currentFlareTime + seconds, this.flareTimeTriggers.firstTime());
-        const targetUnderlyingTime = Math.min(currentUnderlyingTime + seconds, this.underlyingTimeTriggers.firstTime());
-        const targetBlockHeight = this.underlyingBlockTriggers.firstTime();
+        const startFlareTime = await latestBlockTimestamp();
+        const startUnderlyingTime = this.chain.currentTimestamp();
+        // calculate first trigger times
+        const firstFlareTimeTrigger = this.flareTimeTriggers.firstTime();
+        const firstUnderlyingTimeTrigger = this.underlyingTimeTriggers.firstTime();
+        const firstUnderlyingBlockTrigger = this.underlyingBlockTriggers.firstTime();
         // mine blocks until one of the limits or triggers is reached
         let skippedTime = 0;
         while (true) {
-            let nextSkippedTime = skippedTime + this.chain.nextBlockTimestamp() - this.chain.currentTimestamp();
-            if (targetBlockHeight <= this.chain.blockHeight()) {
-                break; // block height reached
+            const triggerReached = firstUnderlyingBlockTrigger <= this.chain.blockHeight()
+                || firstUnderlyingTimeTrigger <= this.chain.lastBlockTimestamp()
+                || firstFlareTimeTrigger <= startFlareTime + skippedTime;
+            if (triggerReached) {
+                break;
             }
-            if (targetFlareTime <= currentFlareTime + nextSkippedTime || targetUnderlyingTime <= currentUnderlyingTime + nextSkippedTime) {
-                skippedTime = Math.min(targetUnderlyingTime - currentUnderlyingTime, targetFlareTime - currentFlareTime);
-                break;  // flare or underlying time trigger reached
+            // mine next block unless skip of `seconds` is reached
+            let nextBlockSkip = skippedTime + this.chain.nextBlockTimestamp() - this.chain.currentTimestamp();
+            if (nextBlockSkip <= seconds) {
+                this.chain.mine();
+                skippedTime = this.chain.lastBlockTimestamp() - startUnderlyingTime;
+            } else {
+                skippedTime = seconds;
+                break;
             }
-            this.chain.mine();
-            skippedTime = nextSkippedTime;
         }
         // increase timestamps
         if (skippedTime > 0) {
             await time.increase(skippedTime);
         }
-        if (currentUnderlyingTime + skippedTime > this.chain.currentTimestamp()) {
-            this.chain.skipTimeTo(currentUnderlyingTime + skippedTime);
+        if (startUnderlyingTime + skippedTime > this.chain.currentTimestamp()) {
+            this.chain.skipTimeTo(startUnderlyingTime + skippedTime);
         }
     }
     

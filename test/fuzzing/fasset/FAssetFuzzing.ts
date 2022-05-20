@@ -1,10 +1,11 @@
+import { time } from "@openzeppelin/test-helpers";
 import { AssetContext, CommonContext } from "../../integration/utils/AssetContext";
 import { ChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/ChainInfo";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { getEnv, randomChoice, weightedRandomChoice } from "../../utils/fuzzing-utils";
-import { expectErrors, getTestFile, sleep, toWei } from "../../utils/helpers";
+import { currentRealTime, getEnv, randomChoice, weightedRandomChoice } from "../../utils/fuzzing-utils";
+import { expectErrors, getTestFile, latestBlockTimestamp, sleep, systemTimestamp, toWei } from "../../utils/helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingRunner } from "./FuzzingRunner";
@@ -14,6 +15,7 @@ import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
+    const startTimestamp = systemTimestamp();
     const governance = accounts[1];
 
     const LOOPS = getEnv('LOOPS', 'number', 100);
@@ -37,6 +39,9 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let runner: FuzzingRunner;
 
     before(async () => {
+        // by default, hardhat test network starts with timestamp 2021-01-01, but for fuzzing we prefer to sync with real time
+        await time.increaseTo(systemTimestamp());
+        await time.advanceBlock();
         // create context
         commonContext = await CommonContext.createTest(governance, testNatInfo);
         chainInfo = testChainInfo.eth;
@@ -103,6 +108,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
         ];
+        // switch underlying chain to timed mining
+        chain.automine = false;
         // perform actions
         for (let loop = 1; loop <= LOOPS; loop++) {
             const action = weightedRandomChoice(actions);
@@ -120,7 +127,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             eventQueue.runAll();
             // occassionally skip some time
             if (loop % 10 === 0) {
-                interceptor.comment(`LOOP ${loop}`);
+                interceptor.comment(`-----  LOOP ${loop}  ${await timeInfo()}  -----`);
                 await timeline.skipTime(100);
             }
             await timeline.executeTriggers();
@@ -131,12 +138,20 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         while (runner.runningThreads > 0) {
             await sleep(200);
             await timeline.skipTime(100);
+            interceptor.comment(`-----  WAITING  ${await timeInfo()}  -----`);
             await timeline.executeTriggers();
             await interceptor.allHandled();
             eventQueue.runAll();
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
     });
+    
+    async function timeInfo() {
+        return `block=${await time.latestBlock()} timestamp=${await latestBlockTimestamp() - startTimestamp}  ` +
+               `underlyingBlock=${chain.blockHeight()} underlyingTimestamp=${chain.lastBlockTimestamp() - startTimestamp}  ` +
+               `skew=${await latestBlockTimestamp() - chain.lastBlockTimestamp()}  ` +
+               `realTime=${(currentRealTime() - startTimestamp).toFixed(3)}`;
+    }
 
     async function refreshAvailableAgents() {
         await runner.refreshAvailableAgents();

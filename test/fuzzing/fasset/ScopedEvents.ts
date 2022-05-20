@@ -97,7 +97,7 @@ export interface QualifiedEvent<N extends string, A> {
     args: A;
 }
 
-export function qualifiedEvent<N extends string, A>(name: N, args: A) {
+export function qualifiedEvent<N extends string, A>(name: N, args: A): QualifiedEvent<N, A> {
     return { name, args };
 }
 

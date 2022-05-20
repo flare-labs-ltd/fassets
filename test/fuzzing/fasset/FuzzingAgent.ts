@@ -29,8 +29,19 @@ export class FuzzingAgent extends FuzzingActor {
     async handleRedemptionRequest(request: EventArgs<RedemptionRequested>) {
         if (coinFlip(0.8)) {
             this.runner.startThread(async (scope) => {
+                const cheatOnPayment = coinFlip(0.2);
+                if (cheatOnPayment) {
+                    request = { ...request, feeUBA: request.feeUBA.muln(2) };   // pay less by taking some extra fee
+                }
                 const txHash = await this.agent.performRedemptionPayment(request);
-                await this.agent.confirmActiveRedemptionPayment(request, txHash);
+                await this.waitForUnderlyingTransactionFinalization(scope, txHash);
+                if (!cheatOnPayment) {
+                    await this.agent.confirmActiveRedemptionPayment(request, txHash);
+                } else {
+                    await this.agent.confirmFailedRedemptionPayment(request, txHash)
+                        .catch(e => scope.exitOnExpectedError(e, ['Missing event RedemptionPaymentFailed']));
+                    // Error 'Missing event RedemptionPaymentFailed' happens when redeemer defaults before confirm
+                }
             });
         }
     }
