@@ -1,3 +1,4 @@
+import { expectEvent } from "@openzeppelin/test-helpers";
 import { AgentInCCB, LiquidationEnded, LiquidationStarted } from "../../../typechain-truffle/AssetManager";
 import { EventArgs, eventArgs, filterEvents, findEvent, requiredEventArgs } from "../../utils/events";
 import { BNish, BN_ZERO, toBN } from "../../utils/helpers";
@@ -27,15 +28,16 @@ export class Liquidator extends AssetContextClient {
         return [liquidationStarted.event === 'AgentInCCB', liquidationStarted.args.timestamp];
     }
 
-    async liquidate(agent: Agent, amountUBA: BNish): Promise<[liquidatedValueUBA: BN, blockTimestamp: BNish, agentInCCB: EventArgs<AgentInCCB>, liquidationStarted: EventArgs<LiquidationStarted>, liquidationCancelled: EventArgs<LiquidationEnded>, dustChangesUBA: BN[]]> {
+    async liquidate(agent: Agent, amountUBA: BNish): Promise<[liquidatedValueUBA: BN, blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted>, liquidationCancelled: EventArgs<LiquidationEnded>, dustChangesUBA: BN[]]> {
         const res = await this.assetManager.liquidate(agent.agentVault.address, amountUBA, { from: this.address });
+        expectEvent.notEmitted(res, 'AgentInCCB');
         const liquidationPerformed = requiredEventArgs(res, 'LiquidationPerformed');
         const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
         assert.equal(liquidationPerformed.agentVault, agent.agentVault.address);
         assert.equal(liquidationPerformed.liquidator, this.address);
         const tr = await web3.eth.getTransaction(res.tx);
         const block = await web3.eth.getBlock(tr.blockHash!);
-        return [liquidationPerformed.valueUBA, block.timestamp, eventArgs(res, 'AgentInCCB'), eventArgs(res, 'LiquidationStarted'), eventArgs(res, 'LiquidationEnded'), dustChangedEvents.map(dc => dc.dustUBA)];
+        return [liquidationPerformed.valueUBA, block.timestamp, eventArgs(res, 'LiquidationStarted'), eventArgs(res, 'LiquidationEnded'), dustChangedEvents.map(dc => dc.dustUBA)];
     }
 
     async endLiquidation(agent: Agent) {
