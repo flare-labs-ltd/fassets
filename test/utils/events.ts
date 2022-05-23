@@ -1,6 +1,6 @@
+import { TransactionReceipt as EthersTransactionReceipt } from "@ethersproject/abstract-provider";
 import { BigNumber, Contract, ContractReceipt } from "ethers";
 import { TypedEventFilter } from "../../typechain/common";
-import { Log as EthersRawEvent, TransactionReceipt as EthersTransactionReceipt } from "@ethersproject/abstract-provider";
 import { EthersEventDecoder } from "./EventDecoder";
 
 // same as Trufle.AnyEvent
@@ -38,14 +38,6 @@ export type ExtractedEventArgs<E extends EventSelector, N extends E['name']> = E
 
 export type TruffleExtractEvent<E extends EventSelector, N extends E['name']> = Truffle.TransactionLog<Extract<E, { name: N }>>;
 
-export function findEvent<E extends EventSelector, N extends E['name']>(log: Truffle.TransactionLog<E>[], name: N): TruffleExtractEvent<E, N> | undefined {
-    return log.find(e => e.event === name) as any;
-}
-
-export function filterEvents<E extends EventSelector, N extends E['name']>(log: Truffle.TransactionLog<E>[], name: N): TruffleExtractEvent<E, N>[] {
-    return log.filter(e => e.event === name) as any;
-}
-
 export type ContractWithEventsBase = Truffle.ContractInstance & { '~eventMarker'?: any };
 export type ContractWithEvents<C extends Truffle.ContractInstance, E extends EventSelector> = C & { '~eventMarker'?: E };
 
@@ -74,19 +66,27 @@ export function syntheticEventIs<E extends BaseEvent>(event: BaseEvent, eventNam
     return event.event === eventName;
 }
 
+export function filterEvents<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): TruffleExtractEvent<E, N>[] {
+    return response.logs.filter(e => e.event === name) as any;
+}
+
+export function findEvent<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): TruffleExtractEvent<E, N> | undefined {
+    return response.logs.find(e => e.event === name) as any;
+}
+
 export function findRequiredEvent<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): TruffleExtractEvent<E, N> {
-    const event = findEvent(response.logs, name);
+    const event = findEvent(response, name);
     assert.isDefined(event, `Missing event ${name}`);
     return event!;
 }
 
 export function checkEventNotEmited<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N) {
-    const event = findEvent(response.logs, name);
+    const event = findEvent(response, name);
     assert.isUndefined(event, `Event ${name} emited`);
 }
 
 export function eventArgs<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): ExtractedEventArgs<E, N> {
-    return findEvent(response.logs, name)?.args;
+    return findEvent(response, name)?.args;
 }
 
 export function requiredEventArgs<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): ExtractedEventArgs<E, N> {

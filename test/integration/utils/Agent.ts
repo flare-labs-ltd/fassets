@@ -1,6 +1,6 @@
 import { time } from "@openzeppelin/test-helpers";
 import { AgentVaultInstance } from "../../../typechain-truffle";
-import { AllowedPaymentAnnounced, CollateralReserved, LiquidationCancelled, RedemptionDefault, RedemptionFinished, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { AllowedPaymentAnnounced, CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionFinished, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { checkEventNotEmited, eventArgs, EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
@@ -58,8 +58,8 @@ export class Agent extends AssetContextClient {
     async depositCollateral(amountNATWei: BNish) {
         const res = await this.agentVault.deposit({ from: this.ownerAddress, value: toBN(amountNATWei) });
         const tr = await web3.eth.getTransaction(res.tx);
-        const res2 = await this.assetManager.getPastEvents('LiquidationCancelled', { fromBlock: tr.blockNumber!, toBlock: tr.blockNumber!, filter: {transactionHash: res.tx} })
-        return res2.length > 0 ? (res2[0] as any).args as EventArgs<LiquidationCancelled> : undefined;
+        const res2 = await this.assetManager.getPastEvents('LiquidationEnded', { fromBlock: tr.blockNumber!, toBlock: tr.blockNumber!, filter: {transactionHash: res.tx} })
+        return res2.length > 0 ? (res2[0] as any).args as EventArgs<LiquidationEnded> : undefined;
     }
     
     async makeAvailable(feeBIPS: BNish, collateralRatioBIPS: BNish) {
@@ -227,13 +227,13 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'MintingExecuted');
     }
 
-    async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN, liquidationCancelledEvent: EventArgs<LiquidationCancelled>]> {
+    async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN, liquidationCancelledEvent: EventArgs<LiquidationEnded>]> {
         const res = await this.assetManager.selfClose(this.agentVault.address, amountUBA, { from: this.ownerAddress });
-        const dustChangedEvents = filterEvents(res.logs, 'DustChanged').map(e => e.args);
+        const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
         const selfClose = requiredEventArgs(res, 'SelfClose');
         dustChangedEvents.every(dc => assert.equal(dc.agentVault, this.agentVault.address));
         assert.equal(selfClose.agentVault, this.agentVault.address);
-        return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA, eventArgs(res, "LiquidationCancelled")];
+        return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA, eventArgs(res, "LiquidationEnded")];
     }
 
     async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null, options?: MockTransactionOptionsWithFee) {
@@ -280,7 +280,7 @@ export class Agent extends AssetContextClient {
 
     async endLiquidation() {
         const res = await this.assetManager.endLiquidation(this.vaultAddress, { from: this.ownerAddress });
-        assert.equal(requiredEventArgs(res, 'LiquidationCancelled').agentVault, this.vaultAddress);
+        assert.equal(requiredEventArgs(res, 'LiquidationEnded').agentVault, this.vaultAddress);
     }
 
     async buybackAgentCollateral() {

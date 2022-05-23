@@ -100,7 +100,7 @@ library Liquidation {
             agent.initialLiquidationPhase = Agents.LiquidationPhase.LIQUIDATION;
         }
         agent.status = Agents.AgentStatus.FULL_LIQUIDATION;
-        emit AMEvents.LiquidationStarted(_agentVault, false, true);
+        emit AMEvents.FullLiquidationStarted(_agentVault, block.timestamp);
     }
 
     // Cancel liquidation if the agent is healthy.
@@ -136,7 +136,7 @@ library Liquidation {
             // TODO: are these two lines needed?
             _agent.liquidationStartedAt = 0;
             _agent.initialLiquidationPhase = Agents.LiquidationPhase.NONE;
-            emit AMEvents.LiquidationCancelled(_agentVault);
+            emit AMEvents.LiquidationEnded(_agentVault);
         }
     }
 
@@ -162,7 +162,11 @@ library Liquidation {
             agent.status = Agents.AgentStatus.LIQUIDATION;
             agent.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
             agent.initialLiquidationPhase = newPhase;
-            emit AMEvents.LiquidationStarted(_agentVault, newPhase == Agents.LiquidationPhase.CCB, false);
+            if (newPhase == Agents.LiquidationPhase.CCB) {
+                emit AMEvents.AgentInCCB(_agentVault, block.timestamp);
+            } else {
+                emit AMEvents.LiquidationStarted(_agentVault, block.timestamp);
+            }
             return newPhase;
         }
         return currentPhase;

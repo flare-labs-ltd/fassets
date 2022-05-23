@@ -1,6 +1,7 @@
 import { time } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
 import { BigNumber } from "ethers";
+import { ethers } from "hardhat";
 import Web3 from "web3";
 
 export type BNish = BN | number | string;
@@ -175,6 +176,10 @@ export function toHex(x: string | number | BN, padToBytes?: number) {
         return Web3.utils.leftPad(Web3.utils.toHex(x), padToBytes * 2);
     }
     return Web3.utils.toHex(x);
+}
+
+export function encodeContractNames(names: string[]): string[] {
+    return names.map( name => ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [name])) );
 }
 
 export function randomAddress() {
