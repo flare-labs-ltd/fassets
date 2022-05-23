@@ -26,7 +26,7 @@ export class TruffleEvents {
         if (handlers == null)
             return;
         for (const handler of handlers) {
-            if (handler.filter && this.filterMatches(handler.filter, event.args)) {
+            if (handler.filter == null || this.filterMatches(handler.filter, event.args)) {
                 handler.handler(event.args);
             }
         }

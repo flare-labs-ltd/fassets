@@ -163,9 +163,7 @@ export class EventExecutionQueue {
             try {
                 item();
             } catch (e) {
-                if (this.logFile) {
-                    this.logFile.log(`!!! HANDLER ERROR ${filterStackTrace(e)}`);
-                }
+                this.logFile?.log(`!!! HANDLER ERROR ${filterStackTrace(e)}`);
             }
         }
     }
