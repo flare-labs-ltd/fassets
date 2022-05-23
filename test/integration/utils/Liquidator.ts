@@ -1,4 +1,4 @@
-import { AgentInCCB, LiquidationCancelled, LiquidationStarted } from "../../../typechain-truffle/AssetManager";
+import { AgentInCCB, LiquidationEnded, LiquidationStarted } from "../../../typechain-truffle/AssetManager";
 import { EventArgs, eventArgs, filterEvents, findEvent, requiredEventArgs } from "../../utils/events";
 import { BNish, BN_ZERO, toBN } from "../../utils/helpers";
 import { Agent } from "./Agent";
@@ -27,7 +27,7 @@ export class Liquidator extends AssetContextClient {
         return [liquidationStarted.event === 'AgentInCCB', liquidationStarted.args.timestamp];
     }
 
-    async liquidate(agent: Agent, amountUBA: BNish): Promise<[liquidatedValueUBA: BN, blockTimestamp: BNish, agentInCCB: EventArgs<AgentInCCB>, liquidationStarted: EventArgs<LiquidationStarted>, liquidationCancelled: EventArgs<LiquidationCancelled>, dustChangesUBA: BN[]]> {
+    async liquidate(agent: Agent, amountUBA: BNish): Promise<[liquidatedValueUBA: BN, blockTimestamp: BNish, agentInCCB: EventArgs<AgentInCCB>, liquidationStarted: EventArgs<LiquidationStarted>, liquidationCancelled: EventArgs<LiquidationEnded>, dustChangesUBA: BN[]]> {
         const res = await this.assetManager.liquidate(agent.agentVault.address, amountUBA, { from: this.address });
         const liquidationPerformed = requiredEventArgs(res, 'LiquidationPerformed');
         const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
@@ -35,12 +35,12 @@ export class Liquidator extends AssetContextClient {
         assert.equal(liquidationPerformed.liquidator, this.address);
         const tr = await web3.eth.getTransaction(res.tx);
         const block = await web3.eth.getBlock(tr.blockHash!);
-        return [liquidationPerformed.valueUBA, block.timestamp, eventArgs(res, 'AgentInCCB'), eventArgs(res, 'LiquidationStarted'), eventArgs(res, 'LiquidationCancelled'), dustChangedEvents.map(dc => dc.dustUBA)];
+        return [liquidationPerformed.valueUBA, block.timestamp, eventArgs(res, 'AgentInCCB'), eventArgs(res, 'LiquidationStarted'), eventArgs(res, 'LiquidationEnded'), dustChangedEvents.map(dc => dc.dustUBA)];
     }
 
     async endLiquidation(agent: Agent) {
         const res = await this.assetManager.endLiquidation(agent.agentVault.address, { from: this.address });
-        assert.equal(requiredEventArgs(res, 'LiquidationCancelled').agentVault, agent.agentVault.address);
+        assert.equal(requiredEventArgs(res, 'LiquidationEnded').agentVault, agent.agentVault.address);
     }
 
     async getLiquidationReward(liquidatedAmountUBA: BNish, factorBIPS: BNish) {

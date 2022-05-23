@@ -198,7 +198,7 @@ library AMEvents {
     /**
      * Agent exited liquidation state as agent's position was healthy again and not in full liquidation.
      */
-    event LiquidationCancelled(
+    event LiquidationEnded(
         address indexed agentVault);
 
     /**

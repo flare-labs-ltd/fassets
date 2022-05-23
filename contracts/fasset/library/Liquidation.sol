@@ -136,7 +136,7 @@ library Liquidation {
             // TODO: are these two lines needed?
             _agent.liquidationStartedAt = 0;
             _agent.initialLiquidationPhase = Agents.LiquidationPhase.NONE;
-            emit AMEvents.LiquidationCancelled(_agentVault);
+            emit AMEvents.LiquidationEnded(_agentVault);
         }
     }
 
