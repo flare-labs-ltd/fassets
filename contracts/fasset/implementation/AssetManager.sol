@@ -21,7 +21,7 @@ import "../library/Minting.sol";
 import "../library/Redemption.sol";
 import "../library/Challenges.sol";
 import "../library/Liquidation.sol";
-import "../library/AllowedPaymentAnnouncement.sol";
+import "../library/UnderlyingWithdrawalAnnouncements.sol";
 import "../library/UnderlyingFreeBalance.sol";
 import "../library/FullAgentInfo.sol";
 
@@ -593,43 +593,56 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Allowed payment announcements
+    // Underlying withdrawal announcements
     
     /**
      * Announce withdrawal of underlying currency.
-     * In the event AllowedPaymentAnnounced the agent receives payment reference, which must be
+     * In the event UnderlyingWithdrawalAnnounced the agent receives payment reference, which must be
      * added to the payment, otherwise it can be challenged as illegal.
-     * Until the announced payment is performed and confirmed, no other allowed payment can be announced.
+     * Until the announced withdrawal is performed and confirmed or cancelled, no other withdrawal can be announced.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      */
-    function announceAllowedPayment(
+    function announceUnderlyingWithdrawal(
         address _agentVault
     )
         external
     {
-        AllowedPaymentAnnouncement.announceAllowedPayment(state, _agentVault);
+        UnderlyingWithdrawalAnnouncements.announceUnderlyingWithdrawal(state, _agentVault);
     }
     
     /**
-     * Agent must provide confirmation of performed allowed payment, which updates free balance with used gas
+     * Agent must provide confirmation of performed underlying withdrawal, which updates free balance with used gas
      * and releases announcement so that a new one can be made.
      * If the agent doesn't call this method, anyone can call it after a time (confirmationByOthersAfterSeconds).
      * NOTE: may only be called by the owner of the agent vault
      *   except if enough time has passed without confirmation - then it can be called by anybody.
      * @param _payment proof of the underlying payment
      * @param _agentVault agent vault address
-     * @param _announcementId id of the allowed payment announcement
      */
-    function confirmAllowedPayment(
+    function confirmUnderlyingWithdrawal(
         IAttestationClient.Payment calldata _payment,
-        address _agentVault,
-        uint256 _announcementId
+        address _agentVault
     )
         external
     {
-        AllowedPaymentAnnouncement.confirmAllowedPayment(state, _payment, _agentVault, 
-            SafeCast.toUint64(_announcementId));
+        UnderlyingWithdrawalAnnouncements.confirmUnderlyingWithdrawal(state, _payment, _agentVault);
+    }
+
+    /**
+     * Cancel ongoing withdrawal of underlying currency.
+     * Needed in order to reset announcement timestamp, so that others cannot front-run agent at
+     * confirmUnderlyingWithdrawal call. This could happen if withdrawal would be performed more
+     * than confirmationByOthersAfterSeconds seconds after announcement.
+     * NOTE: may only be called by the agent vault owner.
+     * @param _agentVault agent vault address
+     */
+    function cancelUnderlyingWithdrawal(
+        address _agentVault
+    )
+        external
+    {
+        UnderlyingWithdrawalAnnouncements.cancelUnderlyingWithdrawal(state, _agentVault);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -658,7 +671,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     /**
      * Called with a proof of payment made from agent's underlying address, for which
      * no valid payment reference exists (valid payment references are from redemption and
-     * allowed payment announcement calls).
+     * underlying withdrawal announcement calls).
      * On success, immediatelly triggers full agent liquidation and rewards the caller.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _transaction proof of a transaction from the agent's underlying address

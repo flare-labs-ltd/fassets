@@ -1,4 +1,5 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { CallOverrides, Signer } from "ethers";
 import { VPContract__factory, VPToken } from "../../typechain";
 import { ethersNew } from "./ethers-new";
 
@@ -6,8 +7,8 @@ const VPContractContract = artifacts.require("VPContract");
 
 interface IISetVpContract {
     address: string;
-    setReadVpContract(_vpContract: string, txDetails?: Truffle.TransactionDetails): Promise<any>;
-    setWriteVpContract(_vpContract: string, txDetails?: Truffle.TransactionDetails): Promise<any>;
+    setReadVpContract(_vpContract: string, txDetails?: Truffle.TransactionDetails): Promise<unknown>;
+    setWriteVpContract(_vpContract: string, txDetails?: Truffle.TransactionDetails): Promise<unknown>;
     vpContractInitialized(): Promise<boolean>;
 }
 
@@ -18,7 +19,15 @@ export async function setDefaultVPContract(token: IISetVpContract, governance: s
     await token.setReadVpContract(vpContract.address, { from: governance });
 }
 
-export async function setDefaultVPContract_ethers(token: VPToken, signer: SignerWithAddress, governance: string = signer.address) {
+interface IISetVpContract_ethers {
+    address: string;
+    setReadVpContract(_vpContract: string, overrides?: CallOverrides): Promise<unknown>;
+    setWriteVpContract(_vpContract: string, overrides?: CallOverrides): Promise<unknown>;
+    vpContractInitialized(): Promise<boolean>;
+}
+
+export async function setDefaultVPContract_ethers(token: IISetVpContract_ethers, governance: SignerWithAddress | string) {
+    if (typeof governance !== 'string') governance = governance.address;
     const replacement = await token.vpContractInitialized();
     const vpContract = await ethersNew(VPContract__factory, token.address, replacement);
     await token.setWriteVpContract(vpContract.address, { from: governance });

@@ -1,12 +1,8 @@
-import { AgentVaultInstance } from "../../../typechain-truffle";
-import { AllowedPaymentAnnounced, DustChanged, LiquidationStarted, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
-import { checkEventNotEmited, eventArgs, EventArgs, filterEvents, findEvent, findRequiredEvent, requiredEventArgs } from "../../utils/events";
-import { PaymentReference } from "../../utils/fasset/PaymentReference";
+import { UnderlyingWithdrawalAnnounced, FullLiquidationStarted, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { checkEventNotEmited, eventArgs, EventArgs, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { BNish, toBN } from "../../utils/helpers";
 import { Agent } from "./Agent";
 import { AssetContext, AssetContextClient } from "./AssetContext";
-
-const AgentVault = artifacts.require('AgentVault');
 
 export class Challenger extends AssetContextClient {
     constructor(
@@ -21,35 +17,29 @@ export class Challenger extends AssetContextClient {
         return new Challenger(ctx, address);
     }
     
-    async illegalPaymentChallenge(agent: Agent, txHash: string): Promise<[blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted>]> {
+    async illegalPaymentChallenge(agent: Agent, txHash: string): Promise<EventArgs<FullLiquidationStarted>> {
         const proof = await this.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent.underlyingAddress);
         const res = await this.assetManager.illegalPaymentChallenge(proof, agent.agentVault.address, { from: this.address });
         findRequiredEvent(res, 'IllegalPaymentConfirmed');
-        const tr = await web3.eth.getTransaction(res.tx);
-        const block = await web3.eth.getBlock(tr.blockHash!);
-        return [block.timestamp, eventArgs(res, 'LiquidationStarted')];
+        return eventArgs(res, 'FullLiquidationStarted');
     }
 
-    async doublePaymentChallenge(agent: Agent, txHash1: string, txHash2: string): Promise<[blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted>]> {
+    async doublePaymentChallenge(agent: Agent, txHash1: string, txHash2: string): Promise<EventArgs<FullLiquidationStarted>> {
         const proof1 = await this.attestationProvider.proveBalanceDecreasingTransaction(txHash1, agent.underlyingAddress);
         const proof2 = await this.attestationProvider.proveBalanceDecreasingTransaction(txHash2, agent.underlyingAddress);
         const res = await this.assetManager.doublePaymentChallenge(proof1, proof2, agent.agentVault.address, { from: this.address });
         findRequiredEvent(res, 'DuplicatePaymentConfirmed');
-        const tr = await web3.eth.getTransaction(res.tx);
-        const block = await web3.eth.getBlock(tr.blockHash!);
-        return [block.timestamp, eventArgs(res, 'LiquidationStarted')];
+        return eventArgs(res, 'FullLiquidationStarted');
     }
 
-    async freeBalanceNegativeChallenge(agent: Agent, txHashes: string[]): Promise<[blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted>]> {
+    async freeBalanceNegativeChallenge(agent: Agent, txHashes: string[]): Promise<EventArgs<FullLiquidationStarted>> {
         const proofs: any[] = [];
         for (const txHash of txHashes) {
             proofs.push(await this.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent.underlyingAddress));
         }
         const res = await this.assetManager.freeBalanceNegativeChallenge(proofs, agent.agentVault.address, { from: this.address });
         findRequiredEvent(res, 'UnderlyingFreeBalanceNegative');
-        const tr = await web3.eth.getTransaction(res.tx);
-        const block = await web3.eth.getBlock(tr.blockHash!);
-        return [block.timestamp, eventArgs(res, 'LiquidationStarted')];
+        return eventArgs(res, 'FullLiquidationStarted');
     }
 
     async confirmActiveRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent?: Agent) {
@@ -110,7 +100,7 @@ export class Challenger extends AssetContextClient {
         return requiredEventArgs(res, 'RedemptionPaymentBlocked');
     }
     
-    async confirmAllowedPayment(request: EventArgs<AllowedPaymentAnnounced>, transactionHash: string, agent?: Agent) {
+    async confirmUnderlyingWithdrawal(request: EventArgs<UnderlyingWithdrawalAnnounced>, transactionHash: string, agent?: Agent) {
         let sourceAddress: string;
         if (agent) {
             sourceAddress = agent.underlyingAddress;
@@ -119,8 +109,8 @@ export class Challenger extends AssetContextClient {
             sourceAddress = tx?.inputs[0][0]!;
         }
         const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, null);
-        const res = await this.assetManager.confirmAllowedPayment(proof, request.agentVault, request.announcementId, { from: this.address });
-        return requiredEventArgs(res, 'AllowedPaymentConfirmed');
+        const res = await this.assetManager.confirmUnderlyingWithdrawal(proof, request.agentVault, { from: this.address });
+        return requiredEventArgs(res, 'UnderlyingWithdrawalConfirmed');
     }
 
     async getChallengerReward(backingAtChallengeUBA: BNish) {

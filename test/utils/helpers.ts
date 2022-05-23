@@ -1,5 +1,7 @@
+import { time } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
 import { BigNumber } from "ethers";
+import { ethers } from "hardhat";
 import Web3 from "web3";
 
 export type BNish = BN | number | string;
@@ -12,8 +14,6 @@ export const BN_ZERO = new BN(0);
 
 export const BIG_NUMBER_ZERO = BigNumber.from(0);
 
-export const BYTES32_ZERO = "0x0000000000000000000000000000000000000000000000000000000000000000";
-
 export const MAX_BIPS = 10_000;
 
 export const MINUTES = 60;
@@ -24,8 +24,8 @@ export const WEEKS = 7 * DAYS;
 /**
  * Asynchronously wait `ms` milliseconds.
  */
-export async function sleep(ms: number) {
-    await new Promise<void>(resolve => setTimeout(() => resolve(), ms));
+export function sleep(ms: number) {
+    return new Promise<void>(resolve => setTimeout(() => resolve(), ms));
 }
 
 /**
@@ -33,6 +33,14 @@ export async function sleep(ms: number) {
  */
 export function systemTimestamp() {
     return Math.round(new Date().getTime() / 1000);
+}
+
+/**
+ * Return latest block timestamp as number (seconds since 1.1.1970).
+ */
+export async function latestBlockTimestamp() {
+    const ts = await time.latest();
+    return ts.toNumber();
 }
 
 /**
@@ -168,4 +176,103 @@ export function toHex(x: string | number | BN, padToBytes?: number) {
         return Web3.utils.leftPad(Web3.utils.toHex(x), padToBytes * 2);
     }
     return Web3.utils.toHex(x);
+}
+
+export function encodeContractNames(names: string[]): string[] {
+    return names.map( name => ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [name])) );
+}
+
+export function randomAddress() {
+    return Web3.utils.toChecksumAddress(Web3.utils.randomHex(20))
+}
+
+/**
+ * Convert object to subclass with type check.
+ */
+export function checkedCast<S, T extends S>(obj: S, cls: new (...args: any[]) => T): T {
+    if (obj instanceof cls) return obj;
+    assert.fail(`object not instance of ${cls.name}`);
+}
+
+/**
+ * Functional style try...catch.
+ */
+export function tryCatch<T>(body: () => T): T | undefined;
+export function tryCatch<T>(body: () => T, errorHandler: (err: unknown) => T): T;
+export function tryCatch<T>(body: () => T, errorHandler?: (err: unknown) => T) {
+    try {
+        return body();
+    } catch (err) {
+        return errorHandler?.(err);
+    }
+}
+
+/**
+ * Run `func` in parallel. Allows nicer code in case func is an async lambda.
+ */
+export function runAsync(func: () => Promise<void>) {
+    void func();
+}
+
+/**
+ * Get value of key `key` for map. If it doesn't exists, create new value, add it to the map and return it.
+ */
+export function getOrCreate<K, V>(map: Map<K, V>, key: K, create: () => V): V {
+    if (map.has(key)) {
+        return map.get(key)!;
+    }
+    const value = create();
+    map.set(key, value);
+    return value;
+}
+
+/**
+ * Add a value to "multimap" - a map where there are several values for each key.
+ */
+export function multimapAdd<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
+    let set = map.get(key);
+    if (set == undefined) {
+        set = new Set();
+        map.set(key, set);
+    }
+    set.add(value);
+}
+
+/**
+ * Remove a value from "multimap" - a map where there are several values for each key.
+ */
+export function multimapDelete<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
+    let set = map.get(key);
+    if (set == undefined) return;
+    set.delete(value);
+    if (set.size === 0) {
+        map.delete(key);
+    }
+}
+
+// Error handling
+
+export function filterStackTrace(e: any) {
+    const stack = String(e.stack || e);
+    let lines = stack.split('\n');
+    lines = lines.filter(l => !l.startsWith('    at') || /\.(sol|ts):/.test(l));
+    return lines.join('\n');
+}
+
+export function reportError(e: any) {
+    console.error(filterStackTrace(e));
+}
+
+export function messageIncluded(message: unknown, expectedMessages: string[]) {
+    const messageStr = message == null ? '' : '' + message;
+    for (const msg of expectedMessages) {
+        if (messageStr.includes(msg)) return true;
+    }
+    return false;
+}
+
+export function expectErrors(e: any, expectedMessages: string[]) {
+    if (!messageIncluded(e?.message, expectedMessages)) {
+        throw e;    // unexpected error
+    }
 }

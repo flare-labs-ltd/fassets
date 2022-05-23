@@ -53,8 +53,8 @@ library Challenges {
             }
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
                 uint256 announcementId = PaymentReference.decodeId(_payment.paymentReference);
-                // valid announced payment cannot have announcementId == 0 and must match the agent's announced id
-                require(announcementId == 0 || announcementId != agent.ongoingAnnouncedPaymentId, 
+                // valid announced withdrawal cannot have announcementId == 0 and must match the agent's announced id
+                require(announcementId == 0 || announcementId != agent.announcedUnderlyingWithdrawalId, 
                     "matching ongoing announced pmt");
             }
         }

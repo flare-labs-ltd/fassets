@@ -1,6 +1,6 @@
 import { time } from "@openzeppelin/test-helpers";
 import { AgentVaultInstance } from "../../../typechain-truffle";
-import { AllowedPaymentAnnounced, CollateralReserved, LiquidationCancelled, RedemptionDefault, RedemptionFinished, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { UnderlyingWithdrawalAnnounced, CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionFinished, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { checkEventNotEmited, eventArgs, EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
@@ -58,8 +58,8 @@ export class Agent extends AssetContextClient {
     async depositCollateral(amountNATWei: BNish) {
         const res = await this.agentVault.deposit({ from: this.ownerAddress, value: toBN(amountNATWei) });
         const tr = await web3.eth.getTransaction(res.tx);
-        const res2 = await this.assetManager.getPastEvents('LiquidationCancelled', { fromBlock: tr.blockNumber!, toBlock: tr.blockNumber!, filter: {transactionHash: res.tx} })
-        return res2.length > 0 ? (res2[0] as any).args as EventArgs<LiquidationCancelled> : undefined;
+        const res2 = await this.assetManager.getPastEvents('LiquidationEnded', { fromBlock: tr.blockNumber!, toBlock: tr.blockNumber!, filter: {transactionHash: res.tx} })
+        return res2.length > 0 ? (res2[0] as any).args as EventArgs<LiquidationEnded> : undefined;
     }
     
     async makeAvailable(feeBIPS: BNish, collateralRatioBIPS: BNish) {
@@ -116,19 +116,19 @@ export class Agent extends AssetContextClient {
         await this.assetManager.confirmTopupPayment(proof, this.agentVault.address, { from: this.ownerAddress });
     }
 
-    async announceAllowedPayment() {
-        const res = await this.assetManager.announceAllowedPayment(this.agentVault.address, { from: this.ownerAddress });
-        return requiredEventArgs(res, 'AllowedPaymentAnnounced');
+    async announceUnderlyingWithdrawal() {
+        const res = await this.assetManager.announceUnderlyingWithdrawal(this.agentVault.address, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'UnderlyingWithdrawalAnnounced');
     }
 
-    async performAllowedPayment(request: EventArgs<AllowedPaymentAnnounced>, amount: BNish, underlyingAddress: string = "someAddress") {
+    async performUnderlyingWithdrawal(request: EventArgs<UnderlyingWithdrawalAnnounced>, amount: BNish, underlyingAddress: string = "someAddress") {
         return await this.wallet.addTransaction(this.underlyingAddress, underlyingAddress, amount, request.paymentReference);
     }
 
-    async confirmAllowedPayment(request: EventArgs<AllowedPaymentAnnounced>, transactionHash: string) {
+    async confirmUnderlyingWithdrawal(request: EventArgs<UnderlyingWithdrawalAnnounced>, transactionHash: string) {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, null);
-        const res = await this.assetManager.confirmAllowedPayment(proof, this.agentVault.address, request.announcementId, { from: this.ownerAddress });
-        return requiredEventArgs(res, 'AllowedPaymentConfirmed');
+        const res = await this.assetManager.confirmUnderlyingWithdrawal(proof, this.agentVault.address, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'UnderlyingWithdrawalConfirmed');
     }
     
     async performRedemptionPayment(request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
@@ -227,13 +227,13 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'MintingExecuted');
     }
 
-    async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN, liquidationCancelledEvent: EventArgs<LiquidationCancelled>]> {
+    async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN, liquidationCancelledEvent: EventArgs<LiquidationEnded>]> {
         const res = await this.assetManager.selfClose(this.agentVault.address, amountUBA, { from: this.ownerAddress });
-        const dustChangedEvents = filterEvents(res.logs, 'DustChanged').map(e => e.args);
+        const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
         const selfClose = requiredEventArgs(res, 'SelfClose');
         dustChangedEvents.every(dc => assert.equal(dc.agentVault, this.agentVault.address));
         assert.equal(selfClose.agentVault, this.agentVault.address);
-        return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA, eventArgs(res, "LiquidationCancelled")];
+        return [dustChangedEvents.map(dc => dc.dustUBA), selfClose.valueUBA, eventArgs(res, "LiquidationEnded")];
     }
 
     async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null, options?: MockTransactionOptionsWithFee) {
@@ -263,22 +263,24 @@ export class Agent extends AssetContextClient {
     }
 
     async lockedCollateralWei(mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0, withdrawalAnnouncedNATWei: BNish = 0) {
+        const settings = await this.assetManager.getSettings();
+        const agentInfo = await this.assetManager.getAgentInfo(this.agentVault.address);
         const amgToNATWeiPrice = await this.context.currentAmgToNATWeiPrice();
         const mintedAMG = this.context.convertUBAToAmg(mintedUBA);
         const reservedAMG = this.context.convertUBAToAmg(reservedUBA);
         const redeemingAMG = this.context.convertUBAToAmg(redeemingUBA);
         const mintingAMG = reservedAMG.add(mintedAMG);
-        const minCollateralRatio = (await this.assetManager.getAgentInfo(this.agentVault.address)).agentMinCollateralRatioBIPS;
+        const minCollateralRatio = agentInfo.agentMinCollateralRatioBIPS;
         const mintingCollateral = this.context.convertAmgToNATWei(mintingAMG, amgToNATWeiPrice)
             .mul(toBN(minCollateralRatio)).divn(10_000);
         const redeemingCollateral = this.context.convertAmgToNATWei(redeemingAMG, amgToNATWeiPrice)
-            .mul(toBN((await this.assetManager.getSettings()).minCollateralRatioBIPS)).divn(10_000);
+            .mul(toBN(settings.minCollateralRatioBIPS)).divn(10_000);
         return mintingCollateral.add(redeemingCollateral).add(toBN(withdrawalAnnouncedNATWei));
    }
 
     async endLiquidation() {
         const res = await this.assetManager.endLiquidation(this.vaultAddress, { from: this.ownerAddress });
-        assert.equal(requiredEventArgs(res, 'LiquidationCancelled').agentVault, this.vaultAddress);
+        assert.equal(requiredEventArgs(res, 'LiquidationEnded').agentVault, this.vaultAddress);
     }
 
     async buybackAgentCollateral() {
@@ -296,13 +298,11 @@ export class Agent extends AssetContextClient {
             );
     }
 
-    async getFreeCollateralLots(freeCollateralUBA: BNish) {
-        const minCollateralRatioBIPS = (await this.context.assetManager.getSettings()).minCollateralRatioBIPS;
-        const agentMinCollateralRatioBIPS = (await this.context.assetManager.getAgentInfo(this.agentVault.address)).agentMinCollateralRatioBIPS;
-        const minCollateralRatio = Math.max(toBN(agentMinCollateralRatioBIPS).toNumber(), toBN(minCollateralRatioBIPS).toNumber());
-        const lotCollateral = this.context.convertAmgToNATWei(
-            (await this.context.assetManager.getSettings()).lotSizeAMG, 
-            await this.context.currentAmgToNATWeiPrice())
+    async calculateFreeCollateralLots(freeCollateralUBA: BNish) {
+        const settings = await this.context.assetManager.getSettings();
+        const agentInfo = await this.context.assetManager.getAgentInfo(this.agentVault.address);
+        const minCollateralRatio = Math.max(toBN(agentInfo.agentMinCollateralRatioBIPS).toNumber(), toBN(settings.minCollateralRatioBIPS).toNumber());
+        const lotCollateral = this.context.convertAmgToNATWei(settings.lotSizeAMG, await this.context.currentAmgToNATWeiPrice())
             .muln(minCollateralRatio)
             .divn(10_000);
         return toBN(freeCollateralUBA).div(lotCollateral);

@@ -101,14 +101,16 @@ library Agents {
         // May become negative (due to high underlying gas costs), in which case topup is required.
         int128 freeUnderlyingBalanceUBA;
         
-        // There can be only one announced payment per agent active at any time.
-        // This variable holds the id, or 0 if there is no announced payment going on.
-        uint64 ongoingAnnouncedPaymentId;
-        uint64 ongoingAnnouncedPaymentTimestamp;
+        // There can be only one announced underlying withdrawal per agent active at any time.
+        // This variable holds the id, or 0 if there is no announced underlying withdrawal going on.
+        uint64 announcedUnderlyingWithdrawalId;
+
+        // The time when ongoing underlying withdrawal was announced.
+        uint64 underlyingWithdrawalAnnouncedAt;
         
         // For agents to withdraw NAT collateral, they must first announce it and then wait 
         // withdrawalAnnouncementSeconds. 
-        // The announced amount cannt be used as collateral for minting during that time.
+        // The announced amount cannot be used as collateral for minting during that time.
         // This makes sure that agents cannot just remove all collateral if they are challenged.
         uint128 withdrawalAnnouncedNATWei;
         
@@ -128,9 +130,7 @@ library Agents {
         external
     {
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
-        require(_payment.sourceAddressHash != 0, "missing source address");
-        _state.underlyingAddressOwnership.claimWithProof(_payment, _state.paymentConfirmations, 
-            msg.sender, _payment.sourceAddressHash);
+        _state.underlyingAddressOwnership.claimWithProof(_payment, _state.paymentConfirmations, msg.sender);
     }
     
     function createAgent(
@@ -143,8 +143,8 @@ library Agents {
     {
         IAgentVault agentVault = new AgentVault(_assetManager, msg.sender);
         Agent storage agent = _state.agents[address(agentVault)];
-        require(agent.agentType == AgentType.NONE, "agent already exists");
-        require(_agentType == AgentType.AGENT_100, "agent type not supported");
+        assert(agent.agentType == AgentType.NONE);
+        assert(_agentType == AgentType.AGENT_100); // AGENT_0 not supported yet
         require(bytes(_underlyingAddressString).length != 0, "empty underlying address");
         agent.agentType = _agentType;
         agent.status = AgentStatus.NORMAL;

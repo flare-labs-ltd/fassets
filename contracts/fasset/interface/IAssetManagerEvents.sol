@@ -105,7 +105,7 @@ interface IAssetManagerEvents {
      * Redeemer was paid in the collateral (with extra). 
      * The rest of the agent's collateral is released.
      * The corresponding amount of underlying currency, held by the agent, is released
-     * and the agent can withdraw it (after allowed payment announcement).
+     * and the agent can withdraw it (after underlying withdrawal announcement).
      */ 
     event RedemptionDefault(
         address indexed agentVault,
@@ -160,19 +160,35 @@ interface IAssetManagerEvents {
         uint256 dustUBA);
 
     /**
-     * Due to unhealty agent's position or due to illegal payment (full liquidation),
-     * agent entered liquidation state.
+     * Agent entered CCB (collateral call band) due to being on the border of unhealty.
+     * Agent has limited time to topup the collateral, otherwise liquidation starts.
+     */
+    event AgentInCCB(
+        address indexed agentVault,
+        uint256 timestamp);
+
+    /**
+     * Agent entered liquidation state due to unhealty position.
+     * The liquidation ends when agent is again healthy or agent's position is fully liquidated.
      */
     event LiquidationStarted(
         address indexed agentVault,
-        bool collateralCallBand,
-        bool fullLiquidation);
+        uint256 timestamp);
+
+    /**
+     * Agent entered liquidation state due to illegal payment.
+     * Full liquidation will always liquidate whole agent's position and
+     * the agent can never use the same vault and undelrying address for minting again.
+     */
+    event FullLiquidationStarted(
+        address indexed agentVault,
+        uint256 timestamp);
         
     /**
      * Some of agent's position was liquidated, by burning liquidator's fassets.
      * Liquidator was paid in collateral with extra.
      * The corresponding amount of underlying currency, held by the agent, is released
-     * and the agent can withdraw it (after allowed payment announcement).
+     * and the agent can withdraw it (after underlying withdrawal announcement).
      */
     event LiquidationPerformed(
         address indexed agentVault,
@@ -182,32 +198,41 @@ interface IAssetManagerEvents {
     /**
      * Agent exited liquidation state as agent's position was healthy again and not in full liquidation.
      */
-    event LiquidationCancelled(
+    event LiquidationEnded(
         address indexed agentVault);
 
     /**
      * Part of balance the agent's underlying address is "free balance" that the agent can withdraw.
-     * Its is obtained from minting / redmption fees and self-closed fassets.
+     * Its is obtained from minting / redemption fees and self-closed fassets.
      * Some of this amount should be left for paying redemption (and withdrawal) gas fees,
      * and the rest can be withdrawn by the agent.
      * However, withdrawal has to be announced, otherwise it can be challenged as illegal payment.
-     * Only one announcement can exists per agent - agent has to present payment proof ofor withdrawal
+     * Only one announcement can exists per agent - agent has to present payment proof for withdrawal
      * before starting a new one.
      */
-    event AllowedPaymentAnnounced(
+    event UnderlyingWithdrawalAnnounced(
         address agentVault,
         uint64 announcementId,
         bytes32 paymentReference);
         
     /**
-     * After announcing legal undelrying withdrawal and creating transaction,
+     * After announcing legal underlying withdrawal and creating transaction,
      * the agent must report the transaction details, otherwise it can be challenged as illegal payment.
      * Reported data should be exactly correct, otherwise it can itself be challenged.
      */
-    event AllowedPaymentConfirmed(
+    event UnderlyingWithdrawalConfirmed(
         address agentVault,
         int256 spentUBA,
         uint64 underlyingBlock,
+        uint64 announcementId);
+
+    /**
+     * After announcing legal underlying withdrawal agent can cancel ongoing withdrawal.
+     * The reason for doing that would be in reseting announcement timestamp due to any problems with underlying
+     * withdrawal - in order to prevent others to confirm withdrawal before agent and get some of his collateral.
+     */
+    event UnderlyingWithdrawalCancelled(
+        address agentVault,
         uint64 announcementId);
         
     /**

@@ -1,5 +1,8 @@
+import { constants } from "@openzeppelin/test-helpers";
 import { AttestationClientMockInstance } from "../../../typechain-truffle";
-import { BN_ZERO, BYTES32_ZERO, sleep, toBN, toNumber } from "../helpers";
+import { stringifyJson } from "../fuzzing-utils";
+import { sleep, toBN, toNumber } from "../helpers";
+import { LogFile } from "../LogFile";
 import { MerkleTree } from "../MerkleTree";
 import { DHType } from "../verification/generated/attestation-hash-types";
 import { dataHash } from "../verification/generated/attestation-hash-utils";
@@ -7,18 +10,10 @@ import { parseRequest } from "../verification/generated/attestation-request-pars
 import { ARBalanceDecreasingTransaction, ARConfirmedBlockHeightExists, ARPayment, ARReferencedPaymentNonexistence, ARType } from "../verification/generated/attestation-request-types";
 import { AttestationType } from "../verification/generated/attestation-types-enum";
 import { SourceId } from "../verification/sources/sources";
-import { TxInputOutput } from "./ChainInterfaces";
 import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "./IStateConnectorClient";
 import { MockAttestationProver } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
-
-function totalValueFor(ios: TxInputOutput[], address: string) {
-    let total = BN_ZERO;
-    for (const [a, v] of ios) {
-        if (a === address) total = total.add(v);
-    }
-    return total;
-}
+import { ITimer } from "./Timer";
 
 interface DHProof {
     attestationType: AttestationType;
@@ -34,18 +29,26 @@ interface FinalizedRound {
 
 // auto - create new round for every pushed request and finalize immediately - useful for unit tests
 // on_wait - during waitForRoundFinalization finalize up to the awaited round - simulates simple (linear) real usage
+// timed - finalize rounds based on time, like in real case
 // manual - user must manually call finalizeRound()
-export type AutoFinalizationType = 'auto' | 'on_wait' | 'manual';
+export type AutoFinalizationType = 'auto' | 'on_wait' | 'timed' | 'manual';
 
 export class MockStateConnectorClient implements IStateConnectorClient {
     constructor(
         public attestationClient: AttestationClientMockInstance,
         public supportedChains: { [chainId: number]: MockChain },
         public finalizationType: AutoFinalizationType,
-    ) {}
+    ) {
+    }
     
     rounds: string[][] = [];
     finalizedRounds: FinalizedRound[] = [];
+    logFile?: LogFile;
+    
+    setTimedFinalization(timedRoundSeconds: number, timer: ITimer<any>) {
+        this.finalizationType = 'timed';
+        timer.every(timedRoundSeconds, () => this.finalizeRound());
+    }
     
     addChain(id: SourceId, chain: MockChain) {
         this.supportedChains[id] = chain;
@@ -76,6 +79,9 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         // add request
         const round = this.rounds.length - 1;
         this.rounds[round].push(data);
+        if (this.logFile) {
+            this.logFile.log(`STATE CONNECTOR SUBMIT round=${round} data=${data}`);
+        }
         // auto finalize?
         if (this.finalizationType === 'auto') {
             await this.finalizeRound();
@@ -94,7 +100,19 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         return { finalized: true, result: proof.data }; // proved
     }
     
+    finalizing = false;
+    
     async finalizeRound() {
+        while (this.finalizing) await sleep(100);
+        this.finalizing = true;
+        try {
+            await this._finalizeRound();
+        } finally {
+            this.finalizing = false;
+        }
+    }
+    
+    private async _finalizeRound() {
         const round = this.finalizedRounds.length;
         // all rounds finalized?
         if (round >= this.rounds.length) return;
@@ -113,13 +131,20 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         // build merkle tree
         const hashes = Object.values(proofs).map(proof => proof.hash);
         const tree = new MerkleTree(hashes);
-        await this.attestationClient.setMerkleRootForStateConnectorRound(tree.root ?? BYTES32_ZERO, round);
+        await this.attestationClient.setMerkleRootForStateConnectorRound(tree.root ?? constants.ZERO_BYTES32, round);
         for (const proof of Object.values(proofs)) {
             proof.data.stateConnectorRound = round;
-            proof.data.merkleProof = tree.getProof(hashes.indexOf(proof.hash)) ?? [];
+            proof.data.merkleProof = tree.getProofForValue(proof.hash) ?? [];
         }
         // add new finalized round
         this.finalizedRounds.push({ proofs, tree });
+        // log
+        if (this.logFile) {
+            this.logFile.log(`STATE CONNECTOR ROUND ${round} FINALIZED`);
+            for (const [data, proof] of Object.entries(proofs)) {
+                this.logFile.log(`    ${data}  ${stringifyJson(proof)}`);
+            }
+        }
     }
     
     private proveRequest(requestData: string): DHProof | null {

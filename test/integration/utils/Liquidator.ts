@@ -1,5 +1,6 @@
-import { LiquidationCancelled, LiquidationStarted } from "../../../typechain-truffle/AssetManager";
-import { EventArgs, eventArgs, filterEvents, requiredEventArgs } from "../../utils/events";
+import { expectEvent } from "@openzeppelin/test-helpers";
+import { AgentInCCB, LiquidationEnded, LiquidationStarted } from "../../../typechain-truffle/AssetManager";
+import { EventArgs, eventArgs, filterEvents, findEvent, requiredEventArgs } from "../../utils/events";
 import { BNish, BN_ZERO, toBN } from "../../utils/helpers";
 import { Agent } from "./Agent";
 import { AssetContext, AssetContextClient } from "./AssetContext";
@@ -21,28 +22,27 @@ export class Liquidator extends AssetContextClient {
     
     async startLiquidation(agent: Agent): Promise<[ccb: boolean, blockTimestamp: BNish]> {
         const res = await this.assetManager.startLiquidation(agent.agentVault.address, { from: this.address });
-        const liquidationStarted = requiredEventArgs(res, 'LiquidationStarted');
-        assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
-        assert.isFalse(liquidationStarted.fullLiquidation);
-        const tr = await web3.eth.getTransaction(res.tx);
-        const block = await web3.eth.getBlock(tr.blockHash!);
-        return [liquidationStarted.collateralCallBand, block.timestamp];
+        const liquidationStarted = findEvent(res, 'LiquidationStarted') ?? findEvent(res, 'AgentInCCB');
+        if (!liquidationStarted) assert.fail("Missing liquidation start or CCB event");
+        assert.equal(liquidationStarted.args.agentVault, agent.agentVault.address);
+        return [liquidationStarted.event === 'AgentInCCB', liquidationStarted.args.timestamp];
     }
 
-    async liquidate(agent: Agent, amountUBA: BNish): Promise<[liquidatedValueUBA: BN, blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted>, liquidationCancelled: EventArgs<LiquidationCancelled>, dustChangesUBA: BN[]]> {
+    async liquidate(agent: Agent, amountUBA: BNish): Promise<[liquidatedValueUBA: BN, blockTimestamp: BNish, liquidationStarted: EventArgs<LiquidationStarted>, liquidationCancelled: EventArgs<LiquidationEnded>, dustChangesUBA: BN[]]> {
         const res = await this.assetManager.liquidate(agent.agentVault.address, amountUBA, { from: this.address });
+        expectEvent.notEmitted(res, 'AgentInCCB');
         const liquidationPerformed = requiredEventArgs(res, 'LiquidationPerformed');
-        const dustChangedEvents = filterEvents(res.logs, 'DustChanged').map(e => e.args);
+        const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
         assert.equal(liquidationPerformed.agentVault, agent.agentVault.address);
         assert.equal(liquidationPerformed.liquidator, this.address);
         const tr = await web3.eth.getTransaction(res.tx);
         const block = await web3.eth.getBlock(tr.blockHash!);
-        return [liquidationPerformed.valueUBA, block.timestamp, eventArgs(res, 'LiquidationStarted'), eventArgs(res, 'LiquidationCancelled'), dustChangedEvents.map(dc => dc.dustUBA)];
+        return [liquidationPerformed.valueUBA, block.timestamp, eventArgs(res, 'LiquidationStarted'), eventArgs(res, 'LiquidationEnded'), dustChangedEvents.map(dc => dc.dustUBA)];
     }
 
     async endLiquidation(agent: Agent) {
         const res = await this.assetManager.endLiquidation(agent.agentVault.address, { from: this.address });
-        assert.equal(requiredEventArgs(res, 'LiquidationCancelled').agentVault, agent.agentVault.address);
+        assert.equal(requiredEventArgs(res, 'LiquidationEnded').agentVault, agent.agentVault.address);
     }
 
     async getLiquidationReward(liquidatedAmountUBA: BNish, factorBIPS: BNish) {

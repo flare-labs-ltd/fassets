@@ -1,3 +1,4 @@
+import { expectRevert } from "@openzeppelin/test-helpers";
 import { FtsoMockInstance, FtsoRegistryMockInstance } from "../../../../typechain-truffle";
 import { getTestFile, toBNExp } from "../../../utils/helpers";
 
@@ -29,6 +30,25 @@ contract(`FtsoRegistryMock.sol; ${getTestFile(__filename)}; Ftso registry mock b
 
             assert.equal(natFtso.address, res[0]);
             assert.equal(assetFtso.address, res[1]);
+        });
+        it("should fail getting ftsos by index", async () => {
+            ftsoRegistry = await FtsoRegistryMock.new();
+            await ftsoRegistry.addFtso(natFtso.address);
+            await ftsoRegistry.addFtso(assetFtso.address);
+
+            let res = ftsoRegistry.getFtsos([2]);
+            await expectRevert.unspecified(res);
+            let resOne = ftsoRegistry.getFtso(2);
+            await expectRevert.unspecified(resOne);
+        });
+        it("should fail getting ftsos by symbol", async () => {
+            ftsoRegistry = await FtsoRegistryMock.new();
+            await ftsoRegistry.addFtso(natFtso.address);
+            await ftsoRegistry.addFtso(assetFtso.address);
+            
+            let res = ftsoRegistry.getFtsoIndex("BTC");
+            await expectRevert(res, "unknown ftso symbol");
+    
         });
     });
 });

@@ -39,6 +39,11 @@ export function jsonBNDeserializer(bnKeys: string[]) {
     }
 }
 
+// JSON.stringify with correct BN hamdling
+export function stringifyJson(data: any, indent?: string | number) {
+    return JSON.stringify(data, jsonBNserializer, indent);
+}
+
 export function saveJson(file: string, data: any, indent?: string | number) {
     writeFileSync(file, JSON.stringify(data, jsonBNserializer, indent));
 }
@@ -121,4 +126,66 @@ export function randomShuffled<T>(array: T[] | Iterable<T>): T[] {
 // current time in seconds (not an integer)
 export function currentRealTime() {
     return new Date().getTime() / 1000;
+}
+
+// truffle makes results of functions returning struct as an array with extra string keys
+// this method converts it to JS dict
+export function truffleResultAsDict(result: any): any {
+    if (!Array.isArray(result)) {
+        return result;  // not an array
+    }
+    const keys = Object.keys(result);
+    const stringKeys = keys.filter(k => !/^\d+/.test(k));
+    if (stringKeys.length === 0) {  // result is really an array
+        return result.map(v => truffleResultAsDict(v));
+    } else { // result is bot array and dict as 
+        const res: any = {};
+        for (const key of stringKeys) res[key] = truffleResultAsDict((result as any)[key]);
+        return res;
+    }
+}
+
+export function truffleResultAsJson(result: any, indent?: string | number): any {
+    return stringifyJson(truffleResultAsDict(result));
+}
+
+/**
+ * Run an async task on every element of an array. Start tasks for all elements immediately (in parallel) and complete when all are completed.
+ * @param array array of arguments
+ * @param func the task to run for every element of the array
+ */
+export async function foreachAsyncParallel<T>(array: T[], func: (x: T, index: number) => Promise<void>) {
+    await Promise.all(array.map(func));
+}
+
+/**
+ * Run an async task on every element of an array. Start tasks for every element when the previous completes (serial). Complete when all are completed.
+ * @param array array of arguments
+ * @param func the task to run for every element of the array
+ */
+export async function foreachAsyncSerial<T>(array: T[], func: (x: T, index: number) => Promise<void>) {
+    for (let i = 0; i < array.length; i++) {
+        await func(array[i], i);
+    }
+}
+
+const envConverters = {
+    'number': (s: string) => Number(s),
+    'string': (s: string) => s,
+    'boolean': (s: string): boolean => {
+        if (s === 'true') return true;
+        if (s === 'false') return false;
+        throw new Error ("Invalid boolean value");
+    },
+    'number[]': (s: string) => s.split(',').map(Number),
+    'string[]': (s: string) => s.split(','),
+    'boolean[]': (s: string) => s.split(',').map(p => envConverters['boolean'](p)),
+} as const;
+type EnvConverterType = keyof(typeof envConverters);
+type EnvConverterResult<T extends EnvConverterType> = ReturnType<typeof envConverters[T]>;
+
+export function getEnv<T extends EnvConverterType, D extends EnvConverterResult<T> | null>(name: string, type: T, defaultValue: D): EnvConverterResult<T> | D {
+    const value = process.env[name];
+    if (value == null) return defaultValue;
+    return envConverters[type](value) as EnvConverterResult<T>;
 }

@@ -1,5 +1,7 @@
-import { BNish, BN_ZERO, systemTimestamp, toBN } from "../helpers";
-import { IBlock, IBlockChain, IBlockId, IChainWallet, ITransaction, TransactionOptions, TransactionOptionsWithFee, TxInputOutput, TX_FAILED, TX_SUCCESS } from "./ChainInterfaces";
+import { stringifyJson } from "../fuzzing-utils";
+import { BNish, BN_ZERO, Dict, formatBN, systemTimestamp, toBN } from "../helpers";
+import { LogFile } from "../LogFile";
+import { BlockHandler, IBlock, IBlockChain, IBlockId, IBlockChainEvents, IChainWallet, ITransaction, TransactionHandler, TransactionOptions, TransactionOptionsWithFee, TxInputOutput, TX_FAILED, TX_SUCCESS } from "./ChainInterfaces";
 
 export type MockTransactionOptions = TransactionOptions & { status?: number };
 export type MockTransactionOptionsWithFee = TransactionOptionsWithFee & { status?: number };
@@ -25,7 +27,7 @@ export interface MockChainBlock {
  * Everything is linear here - no support for complex concepts like finalization or forking
  * (these are handled in attestation system and are not really visible in fasset system).
  */
-export class MockChain implements IBlockChain {
+export class MockChain implements IBlockChain, IBlockChainEvents {
     blocks: MockChainBlock[] = [];
     blockIndex: { [hash: string]: number } = {};
     transactionIndex: { [hash: string]: [block: number, txIndex: number] } = {};
@@ -33,6 +35,8 @@ export class MockChain implements IBlockChain {
     balances: { [address: string]: BN } = {};
     timestampSkew: number = 0;   // how much the timestamp is ahead of system time
     nextBlockTransactions: MockChainTransaction[] = [];
+    blockHandlers: { [subscriptionId: string]: BlockHandler } = {};
+    transactionHandlers: { [subscriptionId: string]: [filter: Dict<string> | null, handler: TransactionHandler] } = {};
     
     // some settings that can be tuned for tests
     finalizationBlocks: number = 0;
@@ -40,6 +44,7 @@ export class MockChain implements IBlockChain {
     requiredFee: BN = BN_ZERO;   // this much gas/fee will be used at each transaction
     estimatedGasPrice: BN = BN_ZERO;
     automine: boolean = true;
+    logFile?: LogFile;
     
     async getTransaction(txHash: string): Promise<ITransaction | null> {
         const [block, ind] = this.transactionIndex[txHash] ?? [null, null];
@@ -69,6 +74,28 @@ export class MockChain implements IBlockChain {
     async getBlockHeight(): Promise<number> {
         return this.blocks.length - 1;
     }
+    
+    static lastSubscriptionId = 0;
+    
+    addBlockHandler(handler: (blockId: IBlockId) => void): string {
+        const subscriptionId = String(++MockChain.lastSubscriptionId);
+        this.blockHandlers[subscriptionId] = handler;
+        return subscriptionId;
+    }
+    
+    addTransactionHandler(filter: Dict<string> | null, handler: (transaction: ITransaction) => void): string {
+        const subscriptionId = String(++MockChain.lastSubscriptionId);
+        this.transactionHandlers[subscriptionId] = [filter, handler];
+        return subscriptionId;
+    }
+    
+    removeHandler(subscriptionId: string): void {
+        delete this.blockHandlers[subscriptionId];
+        delete this.transactionHandlers[subscriptionId];
+    }
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    // Mock methods
     
     addTransaction(transaction: MockChainTransaction) {
         this.nextBlockTransactions.push(transaction);
@@ -101,10 +128,32 @@ export class MockChain implements IBlockChain {
         this.timestampSkew += timeDelta;
     }
 
+    skipTimeTo(timestamp: number) {
+        this.timestampSkew = timestamp - systemTimestamp();
+    }
+    
     mint(address: string, value: BNish) {
         this.balances[address] = (this.balances[address] ?? BN_ZERO).add(toBN(value));
     }
+    
+    blockHeight() {
+        return this.blocks.length - 1;
+    }
+    
+    lastBlockTimestamp() {
+        return this.blocks.length > 0 
+            ? this.blocks[this.blocks.length - 1].timestamp 
+            : systemTimestamp() + this.timestampSkew - this.secondsPerBlock;    // so that new block will be exactly systemTimestamp + skew
+    }
+    
+    nextBlockTimestamp() {
+        return Math.max(systemTimestamp() + this.timestampSkew, this.lastBlockTimestamp() + this.secondsPerBlock);
+    }
 
+    currentTimestamp() {
+        return Math.max(systemTimestamp() + this.timestampSkew, this.lastBlockTimestamp());
+    }
+    
     private addBlock(transactions: MockChainTransaction[]) {
         // check that balances stay positive
         const changedBalances: { [address: string]: BN } = {};
@@ -131,12 +180,50 @@ export class MockChain implements IBlockChain {
         const timestamp = this.newBlockTimestamp();
         const hash = web3.utils.keccak256(JSON.stringify({ number, timestamp, transactions: transactions.map(tx => tx.hash) }));
         this.blocks.push({ hash, number, timestamp, transactions });
-        this.blockIndex[hash] = this.blocks.length - 1;
+        this.blockIndex[hash] = number;
+        // log
+        if (this.logFile) {
+            this.logFile.log(`MINED UNDERLYING BLOCK ${number}  hash=${hash}`);
+            for (const transaction of transactions) {
+                if (transaction.inputs.length === 1 && transaction.outputs.length === 1) {
+                    const [from, sent] = transaction.inputs[0];
+                    const [to, received] = transaction.outputs[0];
+                    this.logFile.log(`    simple transaction from=${from} to=${to} amount=${formatBN(received)} gas=${formatBN(sent.sub(received))} reference=${transaction.reference} status=${transaction.status} hash=${transaction.hash}`);
+                } else {
+                    this.logFile.log(`    transaction ${stringifyJson(transaction)}`);
+                }
+            }
+        }
+        // execute handlers
+        for (const handler of Object.values(this.blockHandlers)) {
+            handler({ hash, number });
+        }
+        for (const [filter, handler] of Object.values(this.transactionHandlers)) {
+            for (const transaction of transactions) {
+                if (filter == null || this.filterMatches(filter, transaction)) {
+                    handler(transaction);
+                }
+            }
+        }
     }
-
+    
+    private filterMatches(filter: Dict<string>, transaction: MockChainTransaction) {
+        if ('reference' in filter) {
+            if (transaction.reference !== filter.reference) return false;
+        }
+        if ('from' in filter) {
+            const match = transaction.inputs.some(([address, _]) => address === filter.from);
+            if (!match) return false;
+        }
+        if ('to' in filter) {
+            const match = transaction.outputs.some(([address, _]) => address === filter.to);
+            if (!match) return false;
+        }
+        return true;
+    }
+    
     private newBlockTimestamp() {
-        const lastBlockTimestamp = this.blocks.length > 0 ? this.blocks[this.blocks.length - 1].timestamp : -this.secondsPerBlock;
-        const timestamp = Math.max(systemTimestamp() + this.timestampSkew, lastBlockTimestamp + this.secondsPerBlock);
+        const timestamp = this.nextBlockTimestamp();
         this.timestampSkew = timestamp - systemTimestamp();  // update skew
         return timestamp;
     }

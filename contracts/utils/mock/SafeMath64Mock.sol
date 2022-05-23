@@ -16,4 +16,9 @@ contract SafeMath64Mock {
     function toInt64(uint256 a) public pure returns (int64) {
         return SafeMath64.toInt64(a);
     }
+
+    function sub64(uint64 a, uint64 b, string memory message) public pure returns (uint64) {
+        return SafeMath64.sub64(a, b, message);
+    }
+
 }
