@@ -170,7 +170,7 @@ export class FuzzingTimeline {
         while (true) {
             const triggerReached = firstUnderlyingBlockTrigger <= this.chain.blockHeight()
                 || firstUnderlyingTimeTrigger <= this.chain.lastBlockTimestamp()
-                || firstFlareTimeTrigger <= startFlareTime + skippedTime;
+                || firstFlareTimeTrigger <= Math.min(startFlareTime + skippedTime, this.chain.lastBlockTimestamp());
             if (triggerReached) {
                 break;
             }
@@ -185,11 +185,15 @@ export class FuzzingTimeline {
             }
         }
         // increase timestamps
-        if (skippedTime > 0) {
-            await time.increase(skippedTime);
+        const newFlareTime = Math.min(startFlareTime + skippedTime, this.chain.lastBlockTimestamp());
+        if (newFlareTime > startFlareTime) {
+            await time.increaseTo(newFlareTime);
         }
         if (startUnderlyingTime + skippedTime > this.chain.currentTimestamp()) {
             this.chain.skipTimeTo(startUnderlyingTime + skippedTime);
+        }
+        if (this.logFile) {
+            this.logFile.log(`***** SKIPPED TIME  flare=${newFlareTime - startFlareTime}  chain=${this.chain.currentTimestamp() - startUnderlyingTime}`);
         }
     }
     
