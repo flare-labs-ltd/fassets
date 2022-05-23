@@ -128,9 +128,7 @@ library Agents {
         external
     {
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
-        require(_payment.sourceAddressHash != 0, "missing source address");
-        _state.underlyingAddressOwnership.claimWithProof(_payment, _state.paymentConfirmations, 
-            msg.sender, _payment.sourceAddressHash);
+        _state.underlyingAddressOwnership.claimWithProof(_payment, _state.paymentConfirmations, msg.sender);
     }
     
     function createAgent(
@@ -143,8 +141,8 @@ library Agents {
     {
         IAgentVault agentVault = new AgentVault(_assetManager, msg.sender);
         Agent storage agent = _state.agents[address(agentVault)];
-        require(agent.agentType == AgentType.NONE, "agent already exists");
-        require(_agentType == AgentType.AGENT_100, "agent type not supported");
+        assert(agent.agentType == AgentType.NONE);
+        assert(_agentType == AgentType.AGENT_100); // AGENT_0 not supported yet
         require(bytes(_underlyingAddressString).length != 0, "empty underlying address");
         agent.agentType = _agentType;
         agent.status = AgentStatus.NORMAL;

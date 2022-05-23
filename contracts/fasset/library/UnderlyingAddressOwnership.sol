@@ -44,16 +44,15 @@ library UnderlyingAddressOwnership {
         State storage _state,
         IAttestationClient.Payment calldata _payment, 
         PaymentConfirmations.State storage _paymentVerification,
-        address _owner, 
-        bytes32 _underlyingAddressHash
+        address _owner
     )
         internal
     {
-        Ownership storage ownership = _state.ownership[_underlyingAddressHash];
+        assert(_payment.sourceAddressHash != 0);
+        Ownership storage ownership = _state.ownership[_payment.sourceAddressHash];
         require(ownership.owner == address(0), "address already claimed");
-        bool proofValid = _payment.sourceAddressHash == _underlyingAddressHash
-            && _payment.paymentReference == PaymentReference.addressOwnership(_owner);
-        require(proofValid, "invalid address ownership proof");
+        require(_payment.paymentReference == PaymentReference.addressOwnership(_owner), 
+            "invalid address ownership proof");
         PaymentConfirmations.confirmSourceDecreasingTransaction(_paymentVerification, _payment);
         ownership.owner = _owner;
         ownership.provedEOA = true;

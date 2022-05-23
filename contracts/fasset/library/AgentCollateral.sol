@@ -105,10 +105,9 @@ library AgentCollateral {
         internal view 
         returns (uint256) 
     {
-        if (_valueAMG == 0) return 0;
+        assert(_agent.redeemingAMG > 0 && _valueAMG <= _agent.redeemingAMG);
         uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG);
-        require(totalAMG >= _valueAMG, "value larger than total");
-        return _data.fullCollateral.mulDiv(_valueAMG, totalAMG);
+        return _data.fullCollateral.mulDiv(_valueAMG, totalAMG); // totalAMG > 0 (guarded by assert)
     }
     
     // Agent's collateral ratio - used in liquidation.

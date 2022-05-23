@@ -2,7 +2,7 @@ import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-h
 import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
-import { DAYS, getTestFile, HOURS, MAX_BIPS, toBN, toBNExp } from "../../../utils/helpers";
+import { DAYS, getTestFile, HOURS, MAX_BIPS, randomAddress, toBN, toBNExp } from "../../../utils/helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
 import { createTestSettings } from "../test-settings";
@@ -14,10 +14,6 @@ const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const AssetManagerController = artifacts.require('AssetManagerController');
 const Whitelist = artifacts.require('Whitelist');
-
-function randomAddress() {
-    return web3.utils.toChecksumAddress(web3.utils.randomHex(20))
-}
 
 contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager controller basic tests`, async accounts => {
     const governance = accounts[10];

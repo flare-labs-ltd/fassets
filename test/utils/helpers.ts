@@ -177,6 +177,10 @@ export function toHex(x: string | number | BN, padToBytes?: number) {
     return Web3.utils.toHex(x);
 }
 
+export function randomAddress() {
+    return Web3.utils.toChecksumAddress(Web3.utils.randomHex(20))
+}
+
 /**
  * Convert object to subclass with type check.
  */
