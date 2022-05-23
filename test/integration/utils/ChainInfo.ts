@@ -12,6 +12,7 @@ export interface ChainInfo {
     amgDecimals: number;
     startPrice: number;
     blockTime: number;
+    finalizationBlocks: number;
     underlyingBlocksForPayment: number;
     lotSize: number;
     requireEOAProof: boolean;
@@ -32,6 +33,7 @@ export const testChainInfo: { [name: string]: ChainInfo } = {
         amgDecimals: 9,
         startPrice: 3251.0,
         blockTime: 12,
+        finalizationBlocks: 6,
         underlyingBlocksForPayment: 10,
         lotSize: 30,
         requireEOAProof: true,
@@ -44,6 +46,7 @@ export const testChainInfo: { [name: string]: ChainInfo } = {
         amgDecimals: 0,
         startPrice: 45213.0,
         blockTime: 600,
+        finalizationBlocks: 6,
         underlyingBlocksForPayment: 8,
         lotSize: 2,
         requireEOAProof: false,

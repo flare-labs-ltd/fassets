@@ -263,16 +263,18 @@ export class Agent extends AssetContextClient {
     }
 
     async lockedCollateralWei(mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0, withdrawalAnnouncedNATWei: BNish = 0) {
+        const settings = await this.assetManager.getSettings();
+        const agentInfo = await this.assetManager.getAgentInfo(this.agentVault.address);
         const amgToNATWeiPrice = await this.context.currentAmgToNATWeiPrice();
         const mintedAMG = this.context.convertUBAToAmg(mintedUBA);
         const reservedAMG = this.context.convertUBAToAmg(reservedUBA);
         const redeemingAMG = this.context.convertUBAToAmg(redeemingUBA);
         const mintingAMG = reservedAMG.add(mintedAMG);
-        const minCollateralRatio = (await this.assetManager.getAgentInfo(this.agentVault.address)).agentMinCollateralRatioBIPS;
+        const minCollateralRatio = agentInfo.agentMinCollateralRatioBIPS;
         const mintingCollateral = this.context.convertAmgToNATWei(mintingAMG, amgToNATWeiPrice)
             .mul(toBN(minCollateralRatio)).divn(10_000);
         const redeemingCollateral = this.context.convertAmgToNATWei(redeemingAMG, amgToNATWeiPrice)
-            .mul(toBN((await this.assetManager.getSettings()).minCollateralRatioBIPS)).divn(10_000);
+            .mul(toBN(settings.minCollateralRatioBIPS)).divn(10_000);
         return mintingCollateral.add(redeemingCollateral).add(toBN(withdrawalAnnouncedNATWei));
    }
 
@@ -296,13 +298,11 @@ export class Agent extends AssetContextClient {
             );
     }
 
-    async getFreeCollateralLots(freeCollateralUBA: BNish) {
-        const minCollateralRatioBIPS = (await this.context.assetManager.getSettings()).minCollateralRatioBIPS;
-        const agentMinCollateralRatioBIPS = (await this.context.assetManager.getAgentInfo(this.agentVault.address)).agentMinCollateralRatioBIPS;
-        const minCollateralRatio = Math.max(toBN(agentMinCollateralRatioBIPS).toNumber(), toBN(minCollateralRatioBIPS).toNumber());
-        const lotCollateral = this.context.convertAmgToNATWei(
-            (await this.context.assetManager.getSettings()).lotSizeAMG, 
-            await this.context.currentAmgToNATWeiPrice())
+    async calculateFreeCollateralLots(freeCollateralUBA: BNish) {
+        const settings = await this.context.assetManager.getSettings();
+        const agentInfo = await this.context.assetManager.getAgentInfo(this.agentVault.address);
+        const minCollateralRatio = Math.max(toBN(agentInfo.agentMinCollateralRatioBIPS).toNumber(), toBN(settings.minCollateralRatioBIPS).toNumber());
+        const lotCollateral = this.context.convertAmgToNATWei(settings.lotSizeAMG, await this.context.currentAmgToNATWeiPrice())
             .muln(minCollateralRatio)
             .divn(10_000);
         return toBN(freeCollateralUBA).div(lotCollateral);

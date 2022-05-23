@@ -28,14 +28,14 @@ import { toBN, toHex } from "./helpers";
 const web3 = new Web3();
 
 export function singleHash(val: string | BN) {
-  return web3.utils.soliditySha3(toHex(val, 32));
+  return web3.utils.soliditySha3Raw(toHex(val, 32));
 }
 
 export function sortedHashPair(x: string, y: string) {
   if (x <= y) {
-    return web3.utils.soliditySha3(web3.eth.abi.encodeParameters(["bytes32", "bytes32"], [x, y]));
+    return web3.utils.soliditySha3Raw(web3.eth.abi.encodeParameters(["bytes32", "bytes32"], [x, y]));
   }
-  return web3.utils.soliditySha3(web3.eth.abi.encodeParameters(["bytes32", "bytes32"], [y, x]));
+  return web3.utils.soliditySha3Raw(web3.eth.abi.encodeParameters(["bytes32", "bytes32"], [y, x]));
 }
 
 export class MerkleTree {
@@ -87,9 +87,13 @@ export class MerkleTree {
       hashes = hashes.map((x) => singleHash(x));
     }
     let n = hashes.length;
-    this._tree = [...new Array(n - 1).fill(0), ...hashes];
-    for (let i = n - 2; i >= 0; i--) {
-      this._tree[i] = sortedHashPair(this._tree[2 * i + 1], this._tree[2 * i + 2])!;
+    if (n !== 0) {
+      this._tree = [...new Array(n - 1).fill(0), ...hashes];
+      for (let i = n - 2; i >= 0; i--) {
+        this._tree[i] = sortedHashPair(this._tree[2 * i + 1], this._tree[2 * i + 2])!;
+      }
+    } else {
+      this._tree = [];
     }
   }
 
@@ -114,6 +118,15 @@ export class MerkleTree {
       pos = this.parent(pos);
     }
     return proof;
+  }
+  
+  getProofForValue(value: string) {
+    const valueNorm = toHex(value, 32);
+    const hash = this.initialHash ? singleHash(valueNorm) : valueNorm;
+    const start = this._tree.length - this.hashCount;
+    const index = this._tree.indexOf(hash, start);
+    if (index < 0) return null;
+    return this.getProof(index - start);
   }
 
   verify(leaf: string, proof: string[]) {
