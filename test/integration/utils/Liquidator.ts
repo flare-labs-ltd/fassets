@@ -30,7 +30,7 @@ export class Liquidator extends AssetContextClient {
     async liquidate(agent: Agent, amountUBA: BNish): Promise<[liquidatedValueUBA: BN, blockTimestamp: BNish, agentInCCB: EventArgs<AgentInCCB>, liquidationStarted: EventArgs<LiquidationStarted>, liquidationCancelled: EventArgs<LiquidationCancelled>, dustChangesUBA: BN[]]> {
         const res = await this.assetManager.liquidate(agent.agentVault.address, amountUBA, { from: this.address });
         const liquidationPerformed = requiredEventArgs(res, 'LiquidationPerformed');
-        const dustChangedEvents = filterEvents(res.logs, 'DustChanged').map(e => e.args);
+        const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
         assert.equal(liquidationPerformed.agentVault, agent.agentVault.address);
         assert.equal(liquidationPerformed.liquidator, this.address);
         const tr = await web3.eth.getTransaction(res.tx);
