@@ -131,21 +131,74 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
             "EOA proof required");
     });
 
-    it("only owner can announce destroy agent", async () => {
-        // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
-        // act
-        // assert
-        await expectRevert(assetManager.announceDestroyAgent(agentVault.address),
-            "only agent vault owner");
-    });
-
     it("only owner can make agent available", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         // act
         // assert
         await expectRevert(assetManager.makeAgentAvailable(agentVault.address, 500, 22000),
+            "only agent vault owner");
+    });
+
+    it("cannot add agent to available list if agent's status is not 'NORMAL'", async () => {
+        // init
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const amount = ether('1');
+        await agentVault.deposit({ from: agentOwner1, value: amount });
+        await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
+        // act
+        // assert
+        await expectRevert(assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 }),
+            "invalid agent status");
+    });
+
+    it("cannot add agent to available list twice", async () => {
+        // init
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const amount = toWei(3e8);
+        await agentVault.deposit({ from: agentOwner1, value: amount });
+        await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
+        // act
+        // assert
+        await expectRevert(assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 }),
+            "agent already available");
+    });
+
+    it("cannot add agent to available list if not enough free collateral", async () => {
+        // init
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        // act
+        // assert
+        await expectRevert(assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 }),
+            "not enough free collateral");
+    });
+
+    it("cannot exit if not active", async () => {
+        // init
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const amount = toWei(3e8);
+        await agentVault.deposit({ from: agentOwner1, value: amount });
+        // act
+        // assert
+        await expectRevert(assetManager.exitAvailableAgentList(agentVault.address, { from: agentOwner1 }),
+            "agent not available");
+    });
+
+    it("only owner can exit agent", async () => {
+        // init
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        // act
+        // assert
+        await expectRevert(assetManager.exitAvailableAgentList(agentVault.address),
+            "only agent vault owner");
+    });
+    
+    it("only owner can announce destroy agent", async () => {
+        // init
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        // act
+        // assert
+        await expectRevert(assetManager.announceDestroyAgent(agentVault.address),
             "only agent vault owner");
     });
 
