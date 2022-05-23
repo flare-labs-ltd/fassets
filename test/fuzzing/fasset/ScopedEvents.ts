@@ -182,4 +182,9 @@ export class QueuedEventEmitter<E> extends EventEmitter<E> {
             this.executionQueue.push(() => handler(args));
         });
     }
+    
+    // convert to ordinary (immediate) emitter
+    public immediate() {
+        return new EventEmitter<E>(this._subscribe);
+    }
 }
