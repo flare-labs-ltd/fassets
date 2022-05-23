@@ -9,6 +9,7 @@ contract(`SafeMath64.sol; ${getTestFile(__filename)};  SafeMath64 unit tests`, a
     let safeMath64: SafeMath64MockInstance;
     const MAX_UINT64 = toBN(2).pow(toBN(64));
     const MAX_INT64 = toBN(2).pow(toBN(63));
+    
     before(async() => {
         safeMath64 = await SafeMath64.new();
     });
@@ -28,6 +29,11 @@ contract(`SafeMath64.sol; ${getTestFile(__filename)};  SafeMath64 unit tests`, a
     it("should successfully return", async () => {
         await safeMath64.toUint64(MAX_UINT64.subn(1));
         await safeMath64.toInt64(MAX_INT64.subn(1));
+    });
+
+    it("should revert", async () => {
+        let res =  safeMath64.sub64(1, 2, "invalid input");
+        await expectRevert(res, "invalid input");
     });
 
 });
