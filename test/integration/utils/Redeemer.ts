@@ -1,5 +1,5 @@
 import { DustChanged, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
-import { eventArgs, EventArgs, filterEvents, findEvent, requiredEventArgs } from "../../utils/events";
+import { eventArgs, EventArgs, filterEvents, requiredEventArgs } from "../../utils/events";
 import { BN_ZERO } from "../../utils/helpers";
 import { Agent } from "./Agent";
 import { AssetContext, AssetContextClient } from "./AssetContext";
