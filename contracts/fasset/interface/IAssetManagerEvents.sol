@@ -160,13 +160,29 @@ interface IAssetManagerEvents {
         uint256 dustUBA);
 
     /**
-     * Due to unhealty agent's position or due to illegal payment (full liquidation),
-     * agent entered liquidation state.
+     * Agent entered CCB (collateral call band) due to being on the border of unhealty.
+     * Agent has limited time to topup the collateral, otherwise liquidation starts.
+     */
+    event AgentInCCB(
+        address indexed agentVault,
+        uint256 timestamp);
+
+    /**
+     * Agent entered liquidation state due to unhealty position.
+     * The liquidation ends when agent is again healthy or agent's position is fully liquidated.
      */
     event LiquidationStarted(
         address indexed agentVault,
-        bool collateralCallBand,
-        bool fullLiquidation);
+        uint256 timestamp);
+
+    /**
+     * Agent entered liquidation state due to illegal payment.
+     * Full liquidation will always liquidate whole agent's position and
+     * the agent can never use the same vault and undelrying address for minting again.
+     */
+    event FullLiquidationStarted(
+        address indexed agentVault,
+        uint256 timestamp);
         
     /**
      * Some of agent's position was liquidated, by burning liquidator's fassets.

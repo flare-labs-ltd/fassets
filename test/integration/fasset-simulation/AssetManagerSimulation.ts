@@ -1539,7 +1539,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const tx1Hash = await agent.performPayment("IllegalPayment1", 100);
             // challenge agent for illegal payment
             const startBalance = await context.wnat.balanceOf(challenger.address);
-            const [liquidationStartTimestamp, liquidationStarted] = await challenger.illegalPaymentChallenge(agent, tx1Hash);
+            const liquidationStarted = await challenger.illegalPaymentChallenge(agent, tx1Hash);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: already liquidating");
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
@@ -1550,10 +1550,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test full liquidation started
             const info = await agent.checkAgentInfo(fullAgentCollateral.sub(reward), crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA, 0, 0, 0, 3);
             assertWeb3Equal(info.ccbStartTimestamp, 0);
-            assertWeb3Equal(info.liquidationStartTimestamp, liquidationStartTimestamp);
+            assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
-            assert.isFalse(liquidationStarted.collateralCallBand);
-            assert.isTrue(liquidationStarted.fullLiquidation);
             // check that agent cannot exit
             await expectRevert(agent.exitAndDestroy(fullAgentCollateral.sub(reward)), "agent still active");
         });
@@ -1583,7 +1581,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx3Hash), "challenge: not duplicate");
             // challenge agent for double payment
             const startBalance = await context.wnat.balanceOf(challenger.address);
-            const [liquidationStartTimestamp, liquidationStarted] = await challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash);
+            const liquidationStarted = await challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash), "chlg dbl: already liquidating");
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
@@ -1594,10 +1592,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test full liquidation started
             const info = await agent.checkAgentInfo(fullAgentCollateral.sub(reward), crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA, 0, 0, 0, 3);
             assertWeb3Equal(info.ccbStartTimestamp, 0);
-            assertWeb3Equal(info.liquidationStartTimestamp, liquidationStartTimestamp);
+            assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
-            assert.isFalse(liquidationStarted.collateralCallBand);
-            assert.isTrue(liquidationStarted.fullLiquidation);
             // check that agent cannot exit
             await expectRevert(agent.exitAndDestroy(fullAgentCollateral.sub(reward)), "agent still active");
         });
@@ -1624,7 +1620,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash, tx1Hash]), "mult chlg: repeated transaction");
             // challenge agent for negative underlying balance
             const startBalance = await context.wnat.balanceOf(challenger.address);
-            const [liquidationStartTimestamp, liquidationStarted] = await challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]);
+            const liquidationStarted = await challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: already liquidating");
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
@@ -1635,10 +1631,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test full liquidation started
             const info = await agent.checkAgentInfo(fullAgentCollateral.sub(reward), crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA, 0, 0, 0, 3);
             assertWeb3Equal(info.ccbStartTimestamp, 0);
-            assertWeb3Equal(info.liquidationStartTimestamp, liquidationStartTimestamp);
+            assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
-            assert.isFalse(liquidationStarted.collateralCallBand);
-            assert.isTrue(liquidationStarted.fullLiquidation);
             // check that agent cannot exit
             await expectRevert(agent.exitAndDestroy(fullAgentCollateral.sub(reward)), "agent still active");
         });
@@ -1664,7 +1658,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const tx1Hash = await agent.performPayment("IllegalPayment1", 100);
             // challenge agent for illegal payment
             const startBalance = await context.wnat.balanceOf(challenger.address);
-            const [liquidationStartTimestamp, liquidationStarted] = await challenger.illegalPaymentChallenge(agent, tx1Hash);
+            const liquidationStarted = await challenger.illegalPaymentChallenge(agent, tx1Hash);
             const endBalance = await context.wnat.balanceOf(challenger.address);
             // test rewarding
             const challengerReward = await challenger.getChallengerReward(minted.mintedAmountUBA);
@@ -1672,18 +1666,17 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test full liquidation started
             const info = await agent.checkAgentInfo(fullAgentCollateral.sub(challengerReward), crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA, 0, 0, 0, 3);
             assertWeb3Equal(info.ccbStartTimestamp, 0);
-            assertWeb3Equal(info.liquidationStartTimestamp, liquidationStartTimestamp);
+            assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
-            assert.isFalse(liquidationStarted.collateralCallBand);
-            assert.isTrue(liquidationStarted.fullLiquidation);
             // liquidator "buys" f-assets
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
             const liquidateMaxUBA = minted.mintedAmountUBA.divn(lots);
             const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
-            const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA);
+            const [liquidatedUBA1, liquidationTimestamp1, agentInCCB1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA);
             const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA);
+            assert.isUndefined(agentInCCB1);
             assert.isUndefined(liquidationStarted1);
             assert.isUndefined(liquidationCancelled1);
             // full liquidation cannot be stopped
@@ -1691,19 +1684,20 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // test rewarding
             const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward), minted.mintedAmountUBA);
-            const liquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS1, liquidationStartTimestamp, liquidationTimestamp1);
+            const liquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS1, liquidationStarted.timestamp, liquidationTimestamp1);
             const liquidationReward1 = await liquidator.getLiquidationReward(liquidatedUBA1, liquidationFactorBIPS1);
             assertWeb3Equal(endBalanceLiquidator1.sub(startBalanceLiquidator1), liquidationReward1);
             const info2 = await agent.checkAgentInfo(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1), crt.feeUBA.add(liquidateMaxUBA), crt.valueUBA.sub(liquidateMaxUBA), minted.mintedAmountUBA.sub(liquidateMaxUBA), 0, 0, 0, 3);
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
-            assertWeb3Equal(info2.liquidationStartTimestamp, liquidationStartTimestamp);
+            assertWeb3Equal(info2.liquidationStartTimestamp, liquidationStarted.timestamp);
             // wait some time to get next premium
             await time.increase(90);
             // liquidate agent (second part)
             const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
-            const [liquidatedUBA2, liquidationTimestamp2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA);
+            const [liquidatedUBA2, liquidationTimestamp2, agentInCCB2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA);
             const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA2, liquidateMaxUBA);
+            assert.isUndefined(agentInCCB2);
             assert.isUndefined(liquidationStarted2);
             assert.isUndefined(liquidationCancelled2);
             // full liquidation cannot be stopped
@@ -1711,19 +1705,20 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // test rewarding
             const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
-            const liquidationFactorBIPS2 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS2, liquidationStartTimestamp, liquidationTimestamp2);
+            const liquidationFactorBIPS2 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS2, liquidationStarted.timestamp, liquidationTimestamp2);
             const liquidationReward2 = await liquidator.getLiquidationReward(liquidatedUBA2, liquidationFactorBIPS2);
             assertWeb3Equal(endBalanceLiquidator2.sub(startBalanceLiquidator2), liquidationReward2);
             const info3 = await agent.checkAgentInfo(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2), crt.feeUBA.add(liquidateMaxUBA.muln(2)), crt.valueUBA.sub(liquidateMaxUBA.muln(2)), minted.mintedAmountUBA.sub(liquidateMaxUBA.muln(2)), 0, 0, 0, 3);
             assertWeb3Equal(info3.ccbStartTimestamp, 0);
-            assertWeb3Equal(info3.liquidationStartTimestamp, liquidationStartTimestamp);
+            assertWeb3Equal(info3.liquidationStartTimestamp, liquidationStarted.timestamp);
             // wait some time to get next premium
             await time.increase(90);
             // liquidate agent (last part)
             const startBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
-            const [liquidatedUBA3, liquidationTimestamp3, liquidationStarted3, liquidationCancelled3] = await liquidator.liquidate(agent, liquidateMaxUBA);
+            const [liquidatedUBA3, liquidationTimestamp3, agentInCCB3, liquidationStarted3, liquidationCancelled3] = await liquidator.liquidate(agent, liquidateMaxUBA);
             const endBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA3, liquidateMaxUBA);
+            assert.isUndefined(agentInCCB3);
             assert.isUndefined(liquidationStarted3);
             assert.isUndefined(liquidationCancelled3);
             // full liquidation cannot be stopped
@@ -1731,12 +1726,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(liquidator.endLiquidation(agent), "cannot stop liquidation");
             // test rewarding
             const collateralRatioBIPS3 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2), minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2));
-            const liquidationFactorBIPS3 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS3, liquidationStartTimestamp, liquidationTimestamp3);
+            const liquidationFactorBIPS3 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS3, liquidationStarted.timestamp, liquidationTimestamp3);
             const liquidationReward3 = await liquidator.getLiquidationReward(liquidatedUBA3, liquidationFactorBIPS3);
             assertWeb3Equal(endBalanceLiquidator3.sub(startBalanceLiquidator3), liquidationReward3);
             const info4 = await agent.checkAgentInfo(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2).sub(liquidationReward3), crt.feeUBA.add(liquidateMaxUBA.muln(3)), crt.valueUBA.sub(liquidateMaxUBA.muln(3)), minted.mintedAmountUBA.sub(liquidateMaxUBA.muln(3)), 0, 0, 0, 3);
             assertWeb3Equal(info4.ccbStartTimestamp, 0);
-            assertWeb3Equal(info4.liquidationStartTimestamp, liquidationStartTimestamp);
+            assertWeb3Equal(info4.liquidationStartTimestamp, liquidationStarted.timestamp);
             // final tests
             assertWeb3Equal(liquidatedUBA1, liquidatedUBA2);
             assertWeb3Equal(liquidatedUBA1, liquidatedUBA3);
@@ -1866,12 +1861,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // liquidate agent (partially)
             const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
             const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
-            const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
+            const [liquidatedUBA1, liquidationTimestamp1, agentInCCB1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
             const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA1);
             assert.equal(liquidationStarted1.agentVault, agent.agentVault.address);
-            assert.isFalse(liquidationStarted1.collateralCallBand);
-            assert.isFalse(liquidationStarted1.fullLiquidation);
+            assert.isUndefined(agentInCCB1);
             assert.isUndefined(liquidationCancelled1);
             // test rewarding
             const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral, minted.mintedAmountUBA);
@@ -1889,10 +1883,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // liquidate agent (second part)
             const liquidateMaxUBA2 = minted.mintedAmountUBA.sub(liquidatedUBA1);
             const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
-            const [liquidatedUBA2, liquidationTimestamp2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA2);
+            const [liquidatedUBA2, liquidationTimestamp2, agentInCCB2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA2);
             const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
             assert(liquidatedUBA2.lt(liquidateMaxUBA2)); // agent is safe again
             assertWeb3Equal(await context.convertLotsToUBA(await context.convertUBAToLots(liquidatedUBA2)), liquidatedUBA2);
+            assert.isUndefined(agentInCCB2);
             assert.isUndefined(liquidationStarted2);
             assert.equal(liquidationCancelled2.agentVault, agent.agentVault.address);
             // test rewarding
@@ -1941,12 +1936,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // liquidate agent (partially)
             const liquidateMaxUBA = minted.mintedAmountUBA.divn(lots);
             const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
-            const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA);
+            const [liquidatedUBA1, liquidationTimestamp1, agentInCCB1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA);
             const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA);
             assert.equal(liquidationStarted1.agentVault, agent.agentVault.address);
-            assert.isFalse(liquidationStarted1.collateralCallBand);
-            assert.isFalse(liquidationStarted1.fullLiquidation);
+            assert.isUndefined(agentInCCB1);
             assert.isUndefined(liquidationCancelled1);
             // test rewarding
             const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral, minted.mintedAmountUBA);
@@ -1960,9 +1954,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await time.increase(90);
             // liquidate agent (second part)
             const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
-            const [liquidatedUBA2, liquidationTimestamp2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA);
+            const [liquidatedUBA2, liquidationTimestamp2, agentInCCB2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA);
             const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA2, liquidateMaxUBA);
+            assert.isUndefined(agentInCCB2);
             assert.isUndefined(liquidationStarted2);
             assert.isUndefined(liquidationCancelled2);
             // test rewarding
@@ -1977,9 +1972,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await time.increase(90);
             // liquidate agent (last part)
             const startBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
-            const [liquidatedUBA3, liquidationTimestamp3, liquidationStarted3, liquidationCancelled3] = await liquidator.liquidate(agent, liquidateMaxUBA);
+            const [liquidatedUBA3, liquidationTimestamp3, agentInCCB3, liquidationStarted3, liquidationCancelled3] = await liquidator.liquidate(agent, liquidateMaxUBA);
             const endBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA3, liquidateMaxUBA);
+            assert.isUndefined(agentInCCB3);
             assert.isUndefined(liquidationStarted3);
             assert.equal(liquidationCancelled3.agentVault, agent.agentVault.address);
             // test rewarding
@@ -2026,12 +2022,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // liquidate agent (partially)
             const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
             const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
-            const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
+            const [liquidatedUBA1, liquidationTimestamp1, agentInCCB1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
             const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA1);
             assert.equal(liquidationStarted1.agentVault, agent.agentVault.address);
-            assert.isFalse(liquidationStarted1.collateralCallBand);
-            assert.isFalse(liquidationStarted1.fullLiquidation);
+            assert.isUndefined(agentInCCB1);
             assert.isUndefined(liquidationCancelled1);
             // test rewarding
             const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral, minted.mintedAmountUBA);
@@ -2091,12 +2086,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // liquidate agent (partially)
             const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
             const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
-            const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
+            const [liquidatedUBA1, liquidationTimestamp1, agentInCCB1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
             const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA1);
             assert.equal(liquidationStarted1.agentVault, agent.agentVault.address);
-            assert.isFalse(liquidationStarted1.collateralCallBand);
-            assert.isFalse(liquidationStarted1.fullLiquidation);
+            assert.isUndefined(agentInCCB1);
             assert.isUndefined(liquidationCancelled1);
             // test rewarding
             const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral, minted.mintedAmountUBA);
@@ -2156,12 +2150,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // liquidate agent (partially)
             const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
             const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
-            const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
+            const [liquidatedUBA1, liquidationTimestamp1, agentInCCB1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
             const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA1);
             assert.equal(liquidationStarted1.agentVault, agent.agentVault.address);
-            assert.isFalse(liquidationStarted1.collateralCallBand);
-            assert.isFalse(liquidationStarted1.fullLiquidation);
+            assert.isUndefined(agentInCCB1);
             assert.isUndefined(liquidationCancelled1);
             // test rewarding
             const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral, minted.mintedAmountUBA);
@@ -2184,9 +2177,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // liquidate agent (second part) - cannot liquidate anything as agent is safe again due to price change
             const liquidateMaxUBA2 = minted.mintedAmountUBA.sub(liquidatedUBA1);
             const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
-            const [liquidatedUBA2, liquidationTimestamp2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA2);
+            const [liquidatedUBA2, liquidationTimestamp2, agentInCCB2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA2);
             const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA2, 0);
+            assert.isUndefined(agentInCCB2);
             assert.isUndefined(liquidationStarted2);
             assert.equal(liquidationCancelled2.agentVault, agent.agentVault.address);
             // test rewarding

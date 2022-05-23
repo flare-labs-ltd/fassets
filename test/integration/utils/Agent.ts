@@ -229,7 +229,7 @@ export class Agent extends AssetContextClient {
 
     async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN, liquidationCancelledEvent: EventArgs<LiquidationCancelled>]> {
         const res = await this.assetManager.selfClose(this.agentVault.address, amountUBA, { from: this.ownerAddress });
-        const dustChangedEvents = filterEvents(res.logs, 'DustChanged').map(e => e.args);
+        const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
         const selfClose = requiredEventArgs(res, 'SelfClose');
         dustChangedEvents.every(dc => assert.equal(dc.agentVault, this.agentVault.address));
         assert.equal(selfClose.agentVault, this.agentVault.address);
