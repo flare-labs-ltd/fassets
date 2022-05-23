@@ -33,13 +33,13 @@ export async function linkAssetManager() {
     const Minting = await deployLibrary('Minting');
     const UnderlyingFreeBalance = await deployLibrary('UnderlyingFreeBalance');
     const Redemption = await deployLibrary('Redemption');
-    const AllowedPaymentAnnouncement = await deployLibrary('AllowedPaymentAnnouncement');
+    const UnderlyingWithdrawalAnnouncements = await deployLibrary('UnderlyingWithdrawalAnnouncements');
     const Challenges = await deployLibrary('Challenges');
     const FullAgentInfo = await deployLibrary('FullAgentInfo');
     // link AssetManagerContract
     return linkDependencies(artifacts.require('AssetManager'), { 
         SettingsUpdater, StateUpdater, Agents, AvailableAgents, CollateralReservations, Liquidation, Minting, 
-        UnderlyingFreeBalance, Redemption, AllowedPaymentAnnouncement, Challenges, FullAgentInfo
+        UnderlyingFreeBalance, Redemption, UnderlyingWithdrawalAnnouncements, Challenges, FullAgentInfo
     });
 }
 

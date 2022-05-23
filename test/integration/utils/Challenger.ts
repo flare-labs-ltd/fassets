@@ -1,4 +1,4 @@
-import { AllowedPaymentAnnounced, FullLiquidationStarted, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { UnderlyingWithdrawalAnnounced, FullLiquidationStarted, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { checkEventNotEmited, eventArgs, EventArgs, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { BNish, toBN } from "../../utils/helpers";
 import { Agent } from "./Agent";
@@ -100,7 +100,7 @@ export class Challenger extends AssetContextClient {
         return requiredEventArgs(res, 'RedemptionPaymentBlocked');
     }
     
-    async confirmAllowedPayment(request: EventArgs<AllowedPaymentAnnounced>, transactionHash: string, agent?: Agent) {
+    async confirmUnderlyingWithdrawal(request: EventArgs<UnderlyingWithdrawalAnnounced>, transactionHash: string, agent?: Agent) {
         let sourceAddress: string;
         if (agent) {
             sourceAddress = agent.underlyingAddress;
@@ -109,8 +109,8 @@ export class Challenger extends AssetContextClient {
             sourceAddress = tx?.inputs[0][0]!;
         }
         const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, null);
-        const res = await this.assetManager.confirmAllowedPayment(proof, request.agentVault, request.announcementId, { from: this.address });
-        return requiredEventArgs(res, 'AllowedPaymentConfirmed');
+        const res = await this.assetManager.confirmUnderlyingWithdrawal(proof, request.agentVault, { from: this.address });
+        return requiredEventArgs(res, 'UnderlyingWithdrawalConfirmed');
     }
 
     async getChallengerReward(backingAtChallengeUBA: BNish) {

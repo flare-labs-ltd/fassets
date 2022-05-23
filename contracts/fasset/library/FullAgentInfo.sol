@@ -111,7 +111,7 @@ library FullAgentInfo {
         _agentState.liquidationStartTimestamp = _getLiquidationStartTime(_state, agent);
         _agentState.lockedUnderlyingBalanceUBA = _agentState.mintedUBA; // TODO: record all incoming/outgoing?
         _agentState.freeUnderlyingBalanceUBA = agent.freeUnderlyingBalanceUBA;
-        _agentState.announcedUnderlyingWithdrawalId = agent.ongoingAnnouncedPaymentId;
+        _agentState.announcedUnderlyingWithdrawalId = agent.announcedUnderlyingWithdrawalId;
     }
     
     function _getAgentStatusInfo(

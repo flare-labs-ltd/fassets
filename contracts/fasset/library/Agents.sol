@@ -101,14 +101,16 @@ library Agents {
         // May become negative (due to high underlying gas costs), in which case topup is required.
         int128 freeUnderlyingBalanceUBA;
         
-        // There can be only one announced payment per agent active at any time.
-        // This variable holds the id, or 0 if there is no announced payment going on.
-        uint64 ongoingAnnouncedPaymentId;
-        uint64 ongoingAnnouncedPaymentTimestamp;
+        // There can be only one announced underlying withdrawal per agent active at any time.
+        // This variable holds the id, or 0 if there is no announced underlying withdrawal going on.
+        uint64 announcedUnderlyingWithdrawalId;
+
+        // The time when ongoing underlying withdrawal was announced.
+        uint64 underlyingWithdrawalAnnouncedAt;
         
         // For agents to withdraw NAT collateral, they must first announce it and then wait 
         // withdrawalAnnouncementSeconds. 
-        // The announced amount cannt be used as collateral for minting during that time.
+        // The announced amount cannot be used as collateral for minting during that time.
         // This makes sure that agents cannot just remove all collateral if they are challenged.
         uint128 withdrawalAnnouncedNATWei;
         

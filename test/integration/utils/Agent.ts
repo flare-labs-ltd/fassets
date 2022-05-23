@@ -1,6 +1,6 @@
 import { time } from "@openzeppelin/test-helpers";
 import { AgentVaultInstance } from "../../../typechain-truffle";
-import { AllowedPaymentAnnounced, CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionFinished, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { UnderlyingWithdrawalAnnounced, CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionFinished, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { checkEventNotEmited, eventArgs, EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
@@ -116,19 +116,19 @@ export class Agent extends AssetContextClient {
         await this.assetManager.confirmTopupPayment(proof, this.agentVault.address, { from: this.ownerAddress });
     }
 
-    async announceAllowedPayment() {
-        const res = await this.assetManager.announceAllowedPayment(this.agentVault.address, { from: this.ownerAddress });
-        return requiredEventArgs(res, 'AllowedPaymentAnnounced');
+    async announceUnderlyingWithdrawal() {
+        const res = await this.assetManager.announceUnderlyingWithdrawal(this.agentVault.address, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'UnderlyingWithdrawalAnnounced');
     }
 
-    async performAllowedPayment(request: EventArgs<AllowedPaymentAnnounced>, amount: BNish, underlyingAddress: string = "someAddress") {
+    async performUnderlyingWithdrawal(request: EventArgs<UnderlyingWithdrawalAnnounced>, amount: BNish, underlyingAddress: string = "someAddress") {
         return await this.wallet.addTransaction(this.underlyingAddress, underlyingAddress, amount, request.paymentReference);
     }
 
-    async confirmAllowedPayment(request: EventArgs<AllowedPaymentAnnounced>, transactionHash: string) {
+    async confirmUnderlyingWithdrawal(request: EventArgs<UnderlyingWithdrawalAnnounced>, transactionHash: string) {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, null);
-        const res = await this.assetManager.confirmAllowedPayment(proof, this.agentVault.address, request.announcementId, { from: this.ownerAddress });
-        return requiredEventArgs(res, 'AllowedPaymentConfirmed');
+        const res = await this.assetManager.confirmUnderlyingWithdrawal(proof, this.agentVault.address, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'UnderlyingWithdrawalConfirmed');
     }
     
     async performRedemptionPayment(request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {

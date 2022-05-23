@@ -1444,7 +1444,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.exitAndDestroy(fullAgentCollateral);
         });
 
-        it("allowed payment", async () => {
+        it("underlying withdrawal", async () => {
             const agent1 = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
             // make agent available
@@ -1463,19 +1463,19 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const tx2Hash = await agent2.performTopupPayment(amount);
             await agent2.confirmTopupPayment(tx2Hash);
             await agent2.checkAgentInfo(fullAgentCollateral, amount, 0, 0);
-            // allowed payment
-            const allowedPayment1 = await agent1.announceAllowedPayment();
+            // underlying withdrawal
+            const underlyingWithdrawal1 = await agent1.announceUnderlyingWithdrawal();
             const info1 = await agent1.checkAgentInfo(fullAgentCollateral, amount, 0, 0);
             assertWeb3Equal(info1.announcedUnderlyingWithdrawalId, 1);
-            const allowedPayment2 = await agent2.announceAllowedPayment();
+            const underlyingWithdrawal2 = await agent2.announceUnderlyingWithdrawal();
             const info2 = await agent2.checkAgentInfo(fullAgentCollateral, amount, 0, 0);
             assertWeb3Equal(info2.announcedUnderlyingWithdrawalId, 2);
-            const tx3Hash = await agent1.performAllowedPayment(allowedPayment1, amount);
-            const res1 = await agent1.confirmAllowedPayment(allowedPayment1, tx3Hash);
+            const tx3Hash = await agent1.performUnderlyingWithdrawal(underlyingWithdrawal1, amount);
+            const res1 = await agent1.confirmUnderlyingWithdrawal(underlyingWithdrawal1, tx3Hash);
             await agent1.checkAgentInfo(fullAgentCollateral, 0, 0, 0);
             assertWeb3Equal(res1.spentUBA, amount);
-            const tx4Hash = await agent2.performAllowedPayment(allowedPayment2, amount);
-            const res2 = await agent2.confirmAllowedPayment(allowedPayment2, tx4Hash);
+            const tx4Hash = await agent2.performUnderlyingWithdrawal(underlyingWithdrawal2, amount);
+            const res2 = await agent2.confirmUnderlyingWithdrawal(underlyingWithdrawal2, tx4Hash);
             await agent2.checkAgentInfo(fullAgentCollateral, 0, 0, 0);
             assertWeb3Equal(res2.spentUBA, amount);
             // agent can exit now
@@ -1483,7 +1483,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent2.exitAndDestroy(fullAgentCollateral);
         });
 
-        it("allowed payment (others can confirm allowed payment after some time)", async () => {
+        it("underlying withdrawal (others can confirm underlying withdrawal after some time)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const challenger = await Challenger.create(context, challengerAddress1);
             // make agent available
@@ -1497,18 +1497,18 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const txHash = await agent.performTopupPayment(amount);
             await agent.confirmTopupPayment(txHash);
             await agent.checkAgentInfo(fullAgentCollateral, amount, 0, 0);
-            // allowed payment
-            const allowedPayment = await agent.announceAllowedPayment();
-            const tx1Hash = await agent.performAllowedPayment(allowedPayment, amount);
+            // underlying withdrawal
+            const underlyingWithdrawal = await agent.announceUnderlyingWithdrawal();
+            const tx1Hash = await agent.performUnderlyingWithdrawal(underlyingWithdrawal, amount);
             const info = await agent.checkAgentInfo(fullAgentCollateral, amount, 0, 0);
             assertWeb3Equal(info.announcedUnderlyingWithdrawalId, 1);
-            // others cannot confirm allowed payment immediatelly or challenge it as illegal payment
-            await expectRevert(challenger.confirmAllowedPayment(allowedPayment, tx1Hash, agent), "only agent vault owner");
+            // others cannot confirm underlying withdrawal immediatelly or challenge it as illegal payment
+            await expectRevert(challenger.confirmUnderlyingWithdrawal(underlyingWithdrawal, tx1Hash, agent), "only agent vault owner");
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching ongoing announced pmt");
-            // others can confirm allowed payment after some time
+            // others can confirm underlying withdrawal after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
             const startBalance = await context.wnat.balanceOf(challenger.address);
-            const res = await challenger.confirmAllowedPayment(allowedPayment, tx1Hash);
+            const res = await challenger.confirmUnderlyingWithdrawal(underlyingWithdrawal, tx1Hash);
             await agent.checkAgentInfo(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)), 0, 0, 0);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
             assertWeb3Equal(res.spentUBA, amount);

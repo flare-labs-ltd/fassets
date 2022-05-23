@@ -1,4 +1,4 @@
-import { balance, ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { findRequiredEvent } from "../../../utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
@@ -7,7 +7,7 @@ import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../../utils/fasset/PaymentReference";
-import { getTestFile, randomAddress, toBN, toBNExp, toWei } from "../../../utils/helpers";
+import { getTestFile, toBN, toBNExp } from "../../../utils/helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../utils/verification/sources/sources";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
@@ -19,7 +19,7 @@ const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 
-contract(`AllowedPaymentAnnouncement.sol; ${getTestFile(__filename)}; AllowedPaymentAnnouncement basic tests`, async accounts => {
+contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; UnderlyingWithdrawalAnnouncements basic tests`, async accounts => {
     const governance = accounts[10];
     let assetManagerController = accounts[11];
     let attestationClient: AttestationClientMockInstance;
@@ -83,58 +83,58 @@ contract(`AllowedPaymentAnnouncement.sol; ${getTestFile(__filename)}; AllowedPay
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
     });
 
-    it("should announce allowed payment", async () => {
+    it("should announce underlying withdrawal", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         // act
-        const res = await assetManager.announceAllowedPayment(agentVault.address, { from: agentOwner1 });
+        const res = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         // assert
-        expectEvent(res, "AllowedPaymentAnnounced", {agentVault: agentVault.address, announcementId: toBN(1), paymentReference: PaymentReference.announcedWithdrawal(1)});
+        expectEvent(res, "UnderlyingWithdrawalAnnounced", {agentVault: agentVault.address, announcementId: toBN(1), paymentReference: PaymentReference.announcedWithdrawal(1)});
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.announcedUnderlyingWithdrawalId, 1);
     });
 
-    it("should not change announced allowed payment", async () => {
+    it("should not change announced underlying withdrawal", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
-        await assetManager.announceAllowedPayment(agentVault.address, { from: agentOwner1 });
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         // act
-        const promise = assetManager.announceAllowedPayment(agentVault.address, { from: agentOwner1 });
+        const promise = assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         // assert
-        await expectRevert(promise, "announced payment active");
+        await expectRevert(promise, "announced underlying withdrawal active");
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.announcedUnderlyingWithdrawalId, 1);
     });
 
-    it("only owner can announce allowed payment", async () => {
+    it("only owner can announce underlying withdrawal", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.announceAllowedPayment(agentVault.address),
+        await expectRevert(assetManager.announceUnderlyingWithdrawal(agentVault.address),
             "only agent vault owner");
     });
 
-    it("should confirm allowed payment", async () => {
+    it("should confirm underlying withdrawal", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
-        await assetManager.announceAllowedPayment(agentVault.address, { from: agentOwner1 });
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
         // act
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
         const blockId = (await chain.getTransactionBlock(txHash))!.number;
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
-        const res = await assetManager.confirmAllowedPayment(proof, agentVault.address, announcementId, { from: agentOwner1 });
+        const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
         // assert
-        expectEvent(res, "AllowedPaymentConfirmed", {agentVault: agentVault.address, announcementId: toBN(1), spentUBA: toBN(500), underlyingBlock: toBN(blockId)});
+        expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, announcementId: toBN(1), spentUBA: toBN(500), underlyingBlock: toBN(blockId)});
     });
 
-    it("others can confirm allowed payment after some time", async () => {
+    it("others can confirm underlying withdrawal after some time", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
-        await assetManager.announceAllowedPayment(agentVault.address, { from: agentOwner1 });
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
         // act
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
@@ -142,22 +142,22 @@ contract(`AllowedPaymentAnnouncement.sol; ${getTestFile(__filename)}; AllowedPay
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
         const settings = await assetManager.getSettings();
         await time.increase(settings.confirmationByOthersAfterSeconds);
-        const res = await assetManager.confirmAllowedPayment(proof, agentVault.address, announcementId, { from: agentOwner1 });
+        const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
         // assert
-        expectEvent(res, "AllowedPaymentConfirmed", {agentVault: agentVault.address, announcementId: toBN(1), spentUBA: toBN(500), underlyingBlock: toBN(blockId)});
+        expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, announcementId: toBN(1), spentUBA: toBN(500), underlyingBlock: toBN(blockId)});
     });
 
-    it("only owner can confirm allowed payment immediatelly", async () => {
+    it("only owner can confirm underlying withdrawal immediatelly", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
-        await assetManager.announceAllowedPayment(agentVault.address, { from: agentOwner1 });
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
         // act
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
         // assert
-        await expectRevert(assetManager.confirmAllowedPayment(proof, agentVault.address, announcementId),
+        await expectRevert(assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address),
             "only agent vault owner");
     });
 
@@ -170,36 +170,71 @@ contract(`AllowedPaymentAnnouncement.sol; ${getTestFile(__filename)}; AllowedPay
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
         // assert
-        await expectRevert(assetManager.confirmAllowedPayment(proof, agentVault.address, announcementId, { from: agentOwner1 }),
+        await expectRevert(assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 }),
             "no active announcement");
     });
 
-    it("should revert confirming allowed payment if reference is wrong", async () => {
+    it("should revert confirming underlying withdrawal if reference is wrong", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
-        await assetManager.announceAllowedPayment(agentVault.address, { from: agentOwner1 });
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
         // act
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(toBN(announcementId).addn(1)));
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
         // assert
-        await expectRevert(assetManager.confirmAllowedPayment(proof, agentVault.address, announcementId),
+        await expectRevert(assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address),
             "wrong announced pmt reference");
     });
 
-    it("should revert confirming allowed payment if source is wrong", async () => {
+    it("should revert confirming underlying withdrawal if source is wrong", async () => {
         // init
         const underlyingAgent2 = "Agent2"
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent2, 500);
-        await assetManager.announceAllowedPayment(agentVault.address, { from: agentOwner1 });
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
         // act
         const txHash = await wallet.addTransaction(underlyingAgent2, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent2, null);
         // assert
-        await expectRevert(assetManager.confirmAllowedPayment(proof, agentVault.address, announcementId),
+        await expectRevert(assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address),
             "wrong announced pmt source");
+    });
+
+    it("should cancel underlying withdrawal", async () => {
+        // init
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+        // act
+        const res = await assetManager.cancelUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+        // assert
+        expectEvent(res, "UnderlyingWithdrawalCancelled", {agentVault: agentVault.address, announcementId: toBN(1)})
+        const info = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info.announcedUnderlyingWithdrawalId, 0);
+    });
+
+    it("only owner can cancel underlying withdrawal", async () => {
+        // init
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+        // act
+        const promise = assetManager.cancelUnderlyingWithdrawal(agentVault.address);
+        // assert
+        await expectRevert(promise, "only agent vault owner");
+        const info = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info.announcedUnderlyingWithdrawalId, 1);
+    });
+
+    it("should cancel underlying withdrawal only if active", async () => {
+        // init
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        // act
+        const promise = assetManager.cancelUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+        // assert
+        await expectRevert(promise, "no active announcement");
+        const info = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info.announcedUnderlyingWithdrawalId, 0);
     });
 });
