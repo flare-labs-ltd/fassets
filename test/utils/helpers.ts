@@ -250,6 +250,13 @@ export function multimapDelete<K, V>(map: Map<K, Set<V>>, key: K, value: V) {
     }
 }
 
+/**
+ * Returns last element of array or `undefined` if array is empty.
+ */
+export function last<T>(array: T[]): T | undefined {
+    return array.length > 0 ? array[array.length - 1] : undefined;
+}
+
 // Error handling
 
 export function filterStackTrace(e: any) {

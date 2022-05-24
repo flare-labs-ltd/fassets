@@ -43,15 +43,6 @@ library AMEvents {
         bytes32 paymentReference);
 
     /**
-     * Minter failed to pay underlying funds in time. Collateral reservation fee was paid to the agent.
-     * Reserved collateral was released.
-     */ 
-    event MintingPaymentDefault(
-        address indexed agentVault,
-        address indexed minter,
-        uint256 collateralReservationId);
-        
-    /**
      * Minter paid underlying funds in time and received the fassets.
      * Agents collateral is locked.
      * This event is also emitted for self-minting. In this case, `collateralReservationId` is 0.
@@ -63,6 +54,24 @@ library AMEvents {
         uint256 mintedAmountUBA,
         uint256 receivedFeeUBA);
 
+    /**
+     * Minter failed to pay underlying funds in time. Collateral reservation fee was paid to the agent.
+     * Reserved collateral was released.
+     */ 
+    event MintingPaymentDefault(
+        address indexed agentVault,
+        address indexed minter,
+        uint256 collateralReservationId);
+
+    /**
+     * Both minter and agent failed to present any proof within attestation time window, so
+     * the agent called `unstickMinting` to release reserved colateral.
+     */ 
+    event CollateralReservationDeleted(
+        address indexed agentVault,
+        address indexed minter,
+        uint256 collateralReservationId);
+        
     /**
      * Redeemer started redemption process and provided fassets.
      * The amount of fassets corresponding to valueUBA was burned.
