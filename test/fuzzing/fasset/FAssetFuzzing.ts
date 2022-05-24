@@ -9,6 +9,7 @@ import { expectErrors, getTestFile, latestBlockTimestamp, sleep, systemTimestamp
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingRunner } from "./FuzzingRunner";
+import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
 import { EventExecutionQueue } from "./ScopedEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
@@ -37,6 +38,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let eventQueue: EventExecutionQueue;
     let chainEvents: UnderlyingChainEvents;
     let runner: FuzzingRunner;
+    let fuzzingState: FuzzingState;
 
     before(async () => {
         // by default, hardhat test network starts with timestamp 2021-01-01, but for fuzzing we prefer to sync with real time
@@ -61,14 +63,17 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         truffleEvents = new TruffleEvents(interceptor, eventQueue);
         chainEvents = new UnderlyingChainEvents(context.chainEvents, eventQueue);
         timeline = new FuzzingTimeline(chain, eventQueue);
+        // runner
+        runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, AVOID_ERRORS);
+        // state checker
+        fuzzingState = new FuzzingState(context, timeline, truffleEvents, chainEvents);
         // logging
         interceptor.openLog("test_logs/fasset-fuzzing.log");
         interceptor.logViewMethods = false;
         chain.logFile = interceptor.logFile;
         timeline.logFile = interceptor.logFile;
         (context.stateConnectorClient as MockStateConnectorClient).logFile = interceptor.logFile;
-        // runner
-        runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, AVOID_ERRORS);
+        fuzzingState.logFile = interceptor.logFile;
     });
     
     after(() => {
@@ -128,6 +133,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             eventQueue.runAll();
             // occassionally skip some time
             if (loop % 10 === 0) {
+                await fuzzingState.checkAll(false);     // state change may happen during check, so we don't wany failure here
                 interceptor.comment(`-----  LOOP ${loop}  ${await timeInfo()}  -----`);
                 await timeline.skipTime(100);
             }
@@ -145,6 +151,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             eventQueue.runAll();
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
+        await fuzzingState.checkAll(true);  // all events are flushed, state must match
     });
     
     async function timeInfo() {

@@ -192,9 +192,7 @@ export class FuzzingTimeline {
         if (startUnderlyingTime + skippedTime > this.chain.currentTimestamp()) {
             this.chain.skipTimeTo(startUnderlyingTime + skippedTime);
         }
-        if (this.logFile) {
-            this.logFile.log(`***** SKIPPED TIME  flare=${newFlareTime - startFlareTime}  chain=${this.chain.currentTimestamp() - startUnderlyingTime}`);
-        }
+        this.logFile?.log(`***** SKIPPED TIME  flare=${newFlareTime - startFlareTime}  chain=${this.chain.currentTimestamp() - startUnderlyingTime}`);
     }
     
     async executeTriggers() {
@@ -206,9 +204,7 @@ export class FuzzingTimeline {
         ];
         randomShuffle(triggers);
         for (const trigger of triggers) {
-            if (this.logFile) {
-                this.logFile.log(`TRIGGERED ${trigger.type}(${trigger.id} at=${trigger.at})`);
-            }
+            this.logFile?.log(`TRIGGERED ${trigger.type}(${trigger.id} at=${trigger.at})`);
             trigger.handler({ type: trigger.type, at: trigger.at });
         }
         return triggers.length > 0; // so the caller can repeat until all triggers are exhausted

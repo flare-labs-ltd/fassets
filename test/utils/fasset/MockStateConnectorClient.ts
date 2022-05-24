@@ -79,9 +79,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         // add request
         const round = this.rounds.length - 1;
         this.rounds[round].push(data);
-        if (this.logFile) {
-            this.logFile.log(`STATE CONNECTOR SUBMIT round=${round} data=${data}`);
-        }
+        this.logFile?.log(`STATE CONNECTOR SUBMIT round=${round} data=${data}`);
         // auto finalize?
         if (this.finalizationType === 'auto') {
             await this.finalizeRound();

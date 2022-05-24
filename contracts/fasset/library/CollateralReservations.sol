@@ -126,6 +126,8 @@ library CollateralReservations {
         uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
         uint256 reservedCollateral = Conversion.convertAmgToNATWei(crt.valueAMG, amgToNATWeiPrice);
         Agents.burnCollateral(_state, crt.agentVault, reservedCollateral);
+        // send event
+        emit AMEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId);
         // release agent's reserved collateral
         releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this
     }

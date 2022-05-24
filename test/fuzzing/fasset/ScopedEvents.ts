@@ -163,9 +163,7 @@ export class EventExecutionQueue {
             try {
                 item();
             } catch (e) {
-                if (this.logFile) {
-                    this.logFile.log(`!!! HANDLER ERROR ${filterStackTrace(e)}`);
-                }
+                this.logFile?.log(`!!! HANDLER ERROR ${filterStackTrace(e)}`);
             }
         }
     }
@@ -183,5 +181,10 @@ export class QueuedEventEmitter<E> extends EventEmitter<E> {
         return this._subscribe((args: E) => {
             this.executionQueue.push(() => handler(args));
         });
+    }
+    
+    // convert to ordinary (immediate) emitter
+    public immediate() {
+        return new EventEmitter<E>(this._subscribe);
     }
 }
