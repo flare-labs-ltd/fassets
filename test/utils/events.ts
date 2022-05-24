@@ -28,11 +28,13 @@ export interface TruffleEvent extends Truffle.TransactionLog<any> {
     signature: string;
 }
 
-export type EventArgs<E extends EventSelector> = SelectedEvent<E>['args'];
+export type NamedFields<T> = Omit<T, number>;
+
+export type EventArgs<E extends EventSelector> = NamedFields<SelectedEvent<E>['args']>;
 
 export type ExtractEvent<E extends EventSelector, N extends E['name']> = SelectedEvent<Extract<E, { name: N }>>;
 
-export type ExtractedEventArgs<E extends EventSelector, N extends E['name']> = ExtractEvent<E, N>['args'];
+export type ExtractedEventArgs<E extends EventSelector, N extends E['name']> = NamedFields<ExtractEvent<E, N>['args']>;
 
 // truffle typed event filtering
 
@@ -86,7 +88,8 @@ export function checkEventNotEmited<E extends EventSelector, N extends E['name']
 }
 
 export function eventArgs<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): ExtractedEventArgs<E, N> {
-    return findEvent(response, name)?.args;
+    // TODO: the '!' shouldn't be here, but somehow worked before silently passing undefined and now too much code relies on this
+    return findEvent(response, name)?.args!;
 }
 
 export function requiredEventArgs<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): ExtractedEventArgs<E, N> {
