@@ -142,9 +142,14 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             // assert
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(newSettings.whitelist, whitelist.address);
-
         });
 
+        it("should not execute set whitelist", async () => {
+            await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
+            let res = assetManagerController.executeSetWhitelist([assetManager.address], { from: updateExecutor });
+            await expectRevert(res, "update not valid yet");
+        });
+        
         it("should revert setting lot size when increase or decrease is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             let lotSizeAMG_big = toBN(currentSettings.lotSizeAMG).muln(3);
@@ -223,10 +228,13 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const currentSettings = await assetManager.getSettings();
             let collateralReservationFeeBIPS_big = toBN(currentSettings.collateralReservationFeeBIPS).muln(5);
             let collateralReservationFeeBIPS_small = toBN(currentSettings.collateralReservationFeeBIPS).divn(5);
+            let collateralReservationFeeBIPS_too_high = toBN(MAX_BIPS).addn(1);
             let res_big = assetManagerController.setCollateralReservationFeeBips([assetManager.address], collateralReservationFeeBIPS_big, { from: governance });
             let res_small = assetManagerController.setCollateralReservationFeeBips([assetManager.address], collateralReservationFeeBIPS_small, { from: governance });
+            let res_too_high = assetManagerController.setCollateralReservationFeeBips([assetManager.address], collateralReservationFeeBIPS_too_high, { from: governance });
             await expectRevert(res_big, "fee increase too big");
             await expectRevert(res_small, "fee decrease too big");
+            await expectRevert(res_too_high, "bips value too high");
         });
 
         it("should set collateral reservation fee bips", async () => {
@@ -240,10 +248,13 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const currentSettings = await assetManager.getSettings();
             let redemptionFeeBIPS_big = toBN(currentSettings.redemptionFeeBIPS).muln(5);
             let redemptionFeeBIPS_small = toBN(currentSettings.redemptionFeeBIPS).divn(5);
+            let redemptionFeeBIPS_too_high = toBN(MAX_BIPS).addn(1);
             let res_big = assetManagerController.setRedemptionFeeBips([assetManager.address], redemptionFeeBIPS_big, { from: governance });
             let res_small = assetManagerController.setRedemptionFeeBips([assetManager.address], redemptionFeeBIPS_small, { from: governance });
+            let res_too_high = assetManagerController.setRedemptionFeeBips([assetManager.address], redemptionFeeBIPS_too_high, { from: governance });
             await expectRevert(res_big, "fee increase too big");
             await expectRevert(res_small, "fee decrease too big");
+            await expectRevert(res_too_high, "bips value too high");
         });
 
         it("should revert setting confirmation by others after seconds when value too low", async () => {
@@ -360,21 +371,24 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let liquidationCollateralFactorBIPS_empty: (string | number | import("bn.js"))[] = [];
             let liquidationCollateralFactorBIPS_notIncreasing = [12000, 1200];
             let liquidationCollateralFactorBIPS_tooHigh = [toBN(currentSettings.safetyMinCollateralRatioBIPS).addn(1)];
+            let liquidationCollateralFactorBIPS_maxBips = [1200, MAX_BIPS+1];
 
             let res_empty = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_empty, { from: governance });
             let res_notIncreasing = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_notIncreasing, { from: governance });
             let res_tooHigh = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_tooHigh, { from: governance });
-
+            let res_tooMaxBips = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_maxBips, { from: governance }); 
+            
             await expectRevert(res_empty, "at least one factor required");
             await expectRevert(res_notIncreasing, "factors not increasing");
             await expectRevert(res_tooHigh, "liquidation factor too high");
+            await expectRevert(res_tooMaxBips, "factor not above 1");
         });
 
         it("should set liquidation collateral factor bips", async () => {
             const currentSettings = await assetManager.getSettings();
-            let liquidationCollateralFactorBIPS_new = [currentSettings.safetyMinCollateralRatioBIPS];
+            let liquidationCollateralFactorBIPS_new = [2_0000, 2_5000];
             let res = await assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_new, { from: governance });
-            expectEvent(res, "SettingArrayChanged", { name: "liquidationCollateralFactorBIPS", value: [toBN(currentSettings.safetyMinCollateralRatioBIPS)] });
+            expectEvent(res, "SettingArrayChanged", { name: "liquidationCollateralFactorBIPS", value: [toBN(2_0000), toBN(2_5000)] });
         });
 
         it("should revert setting attestation window when window is less than a day", async () => {
