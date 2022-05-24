@@ -11,7 +11,6 @@ import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../utils/verification/sources/sources";
 import { assertWeb3DeepEqual, web3ResultStruct } from "../../../utils/web3assertions";
 import { createTestSettings } from "../test-settings";
-import { Challenger } from "../../../integration/utils/Challenger";
 
 const AttestationClient = artifacts.require('AttestationClientMock');
 const WNat = artifacts.require('WNat');
@@ -149,18 +148,4 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isFalse(await assetManager.paused());
         });
     });
-
-    describe("challenge agent", () => {
-
-        it.only("should challenge payments making free balance negative", async() => {
-            const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
-            const txHash = await wallet.addTransaction(
-                underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
-            let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
-            const res = await assetManager.freeBalanceNegativeChallenge(
-                [proof], agentVault.address, { from: whitelistedAccount });
-            expectEvent(res, 'UnderlyingFreeBalanceNegative', {agentVault: agentVault.address});
-        });
-    });
-
 });
