@@ -103,6 +103,17 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "invalid address ownership proof");
     });
     
+    it("should not prove EOA address - address already claimed", async () => {
+        // init
+        await createAgent(chain, agentOwner1, underlyingAgent1);
+        chain.mint(underlyingAgent1, toBNExp(100, 18));
+        // act
+        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
+        // assert
+        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
+        await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "address already claimed");
+    });
+
     it("should create agent", async () => {
         // init
         chain.mint(underlyingAgent1, toBNExp(100, 18));
@@ -121,6 +132,15 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // assert
         await expectRevert(assetManager.createAgent("", { from: agentOwner1 }),
             "empty underlying address");
+    });
+
+    it("should not create agent - address already claimed", async () => {
+        // init
+        await createAgent(chain, agentOwner1, underlyingAgent1);
+        // act
+        // assert
+        await expectRevert(assetManager.createAgent(underlyingAgent1),
+            "address already claimed");
     });
 
     it("should require EOA check to create agent", async () => {
