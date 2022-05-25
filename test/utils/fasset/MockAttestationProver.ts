@@ -41,7 +41,7 @@ export class MockAttestationProver {
             receivingAddressHash: receivingAddressHash,
             paymentReference: transaction.reference ?? constants.ZERO_BYTES32,
             spentAmount: spent,
-            receivedAmount: totalValueFor(transaction.outputs, receivingAddressHash),
+            receivedAmount: totalValueFor(transaction.outputs, receivingAddressHash).sub(totalValueFor(transaction.inputs, receivingAddressHash)),
             oneToOne: false,    // not needed
             status: toBN(transaction.status)
         };

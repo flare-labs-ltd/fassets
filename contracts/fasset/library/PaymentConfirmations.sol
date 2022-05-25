@@ -44,19 +44,6 @@ library PaymentConfirmations {
     }
 
     /**
-     * For source decreasing transaction, we record `(source address, tx hash)` pair, since illegal
-     * transactions on utxo chains can have multiple input addresses.
-     */
-    function confirmSourceDecreasingTransaction(
-        State storage _state,
-        IAttestationClient.BalanceDecreasingTransaction calldata _transaction
-    ) 
-        internal 
-    {
-        _recordPaymentVerification(_state, transactionKey(_transaction.sourceAddressHash, _transaction.transactionHash));
-    }
-
-    /**
      * Check if source decreasing transaction was already confirmed.
      */
     function transactionConfirmed(

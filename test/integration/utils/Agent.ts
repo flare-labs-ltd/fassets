@@ -5,7 +5,7 @@ import { checkEventNotEmited, eventArgs, EventArgs, filterEvents, findRequiredEv
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { BNish, BN_ZERO, toBN } from "../../utils/helpers";
+import { BNish, BN_ZERO, randomAddress, toBN } from "../../utils/helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
@@ -221,7 +221,10 @@ export class Agent extends AssetContextClient {
     }
 
     async selfMint(amountUBA: BNish, lots: BNish) {
-        const transactionHash = await this.performPayment(this.underlyingAddress, amountUBA, PaymentReference.selfMint(this.agentVault.address));
+        if (!(this.context.chain instanceof MockChain)) assert.fail("only for mock chains");
+        const randomAddr = randomAddress();
+        this.context.chain.mint(randomAddr, amountUBA);
+        const transactionHash = await this.wallet.addTransaction(randomAddr, this.underlyingAddress, amountUBA, PaymentReference.selfMint(this.agentVault.address));
         const proof = await this.attestationProvider.provePayment(transactionHash, null, this.underlyingAddress);
         const res = await this.assetManager.selfMint(proof, this.agentVault.address, lots, { from: this.ownerAddress });
         return requiredEventArgs(res, 'MintingExecuted');

@@ -64,6 +64,6 @@ library UnderlyingFreeBalance {
         require(_payment.blockNumber >= agent.underlyingBlockAtCreation,
             "topup before agent created");
         _state.paymentConfirmations.confirmIncomingPayment(_payment);
-        updateFreeBalance(_state, _agentVault, _payment.receivedAmount);
+        increaseFreeBalance(_state, _agentVault, SafeCast.toUint256(_payment.receivedAmount));
     }
 }

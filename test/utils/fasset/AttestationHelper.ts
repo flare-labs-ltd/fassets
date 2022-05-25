@@ -20,7 +20,7 @@ function findAddressIndex(ios: TxInputOutput[], address: string | null, defaultV
     for (let i = 0; i < ios.length; i++) {
         if (ios[i][0] === address) return i;
     }
-    return defaultValue;
+    throw new AttestationClientError("unknown address");
 }
 
 export class AttestationHelper {
