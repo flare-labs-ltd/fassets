@@ -66,7 +66,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         // runner
         runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, AVOID_ERRORS);
         // state checker
-        fuzzingState = new FuzzingState(context, timeline, truffleEvents, chainEvents);
+        fuzzingState = new FuzzingState(context, timeline, truffleEvents, chainEvents, eventDecoder);
         // logging
         interceptor.openLog("test_logs/fasset-fuzzing.log");
         interceptor.logViewMethods = false;
@@ -148,7 +148,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             interceptor.comment(`-----  WAITING  ${await timeInfo()}  -----`);
             await timeline.executeTriggers();
             await interceptor.allHandled();
-            eventQueue.runAll();
+            while (eventQueue.length > 0) {
+                eventQueue.runAll();
+                await interceptor.allHandled();
+            }
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
         await fuzzingState.checkInvariants(true);  // all events are flushed, state must match

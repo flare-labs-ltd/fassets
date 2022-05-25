@@ -162,7 +162,8 @@ export function formatBN(x: BigNumber | BN | string | number) {
 function groupIntegerDigits(x: string) {
     let startp = x.indexOf('.');
     if (startp < 0) startp = x.length;
-    for (let p = startp - 3; p > 0; p -= 3) {
+    const endp = x[0] === '-' ? 1 : 0;
+    for (let p = startp - 3; p > endp; p -= 3) {
         x = x.slice(0, p) + '_' + x.slice(p); x
     }
     return x;

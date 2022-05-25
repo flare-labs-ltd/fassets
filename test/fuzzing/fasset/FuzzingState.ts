@@ -1,6 +1,7 @@
 import { constants } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
 import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
+import { EventFormatter, Web3EventDecoder } from "../../utils/EventDecoder";
 import { ExtractedEventArgs } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { stringifyJson } from "../../utils/fuzzing-utils";
@@ -9,6 +10,7 @@ import { LogFile } from "../../utils/LogFile";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { web3DeepNormalize, web3Normalize } from "../../utils/web3assertions";
 import { FuzzingStateAgent } from "./FuzzingStateAgent";
+import { FuzzingStateComparator } from "./FuzzingStateComparator";
 import { FuzzingTimeline } from "./FuzzingTimeline";
 import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
@@ -32,6 +34,7 @@ export class FuzzingState {
         public timeline: FuzzingTimeline,
         public truffleEvents: TruffleEvents,
         public chainEvents: UnderlyingChainEvents,
+        public eventFormatter: EventFormatter,
     ) {
         this.settings = { ...context.settings };
         this.registerHandlers();
@@ -111,62 +114,28 @@ export class FuzzingState {
         return this.agents.get(address) ?? assert.fail(`Invalid agent address ${address}`);
     }
 
-    async checkInvariants(failOnDifferences: boolean) {
-        const log: string[] = [];
-        let differences = 0;
+    async checkInvariants(failOnProblems: boolean) {
+        const checker = new FuzzingStateComparator();
         // total supply
         const fAssetSupply = await this.context.fAsset.totalSupply();
-        differences += this.checkEquality(log, 'fAsset supply', fAssetSupply, this.fAssetSupply, true);
+        checker.checkEquality('fAsset supply', fAssetSupply, this.fAssetSupply, true);
         // settings
         const actualSettings = await this.context.assetManager.getSettings();
         for (const [key, value] of Object.entries(actualSettings)) {
             if (/^\d+$/.test(key)) continue;   // all properties are both named and with index
             if (['assetManagerController', 'natFtsoIndex', 'assetFtsoIndex'].includes(key)) continue;   // special properties, not changed in normal way
-            this.checkEquality(log, `settings.${key}`, value, (this.settings as any)[key]);
+            checker.checkEquality(`settings.${key}`, value, (this.settings as any)[key]);
         }
         // check agents' state
         for (const agent of this.agents.values()) {
-            differences += await agent.checkInvariants(log);
+            await agent.checkInvariants(checker);
         }
         // write logs (after all async calls, to keep them in one piece)
-        this.writeLog(log, differences);
+        checker.writeLog(this.logFile);
         // optionally fail on differences
-        if (failOnDifferences && differences > 0) {
+        if (failOnProblems && checker.problems > 0) {
             assert.fail("Tracked and actual state different");
         }
-    }
-
-    private writeLog(log: string[], differences: number) {
-        if (this.logFile) {
-            this.logFile.log(`CHECKING STATE DIFFERENCES`);
-            for (const line of log) {
-                this.logFile.log(line);
-            }
-            this.logFile.log(`    ${differences} DIFFERENCES`);
-        }
-    }
-
-    isNumeric(value: unknown): value is BNish {
-        return typeof value === 'number' || BN.isBN(value) || (typeof value === 'string' && /^\d+$/.test(value));
-    }
-    
-    checkEquality(log: string[], description: string, actualValue: unknown, trackedValue: unknown, alwaysLog: boolean = false) {
-        let different: boolean;
-        if (this.isNumeric(actualValue) && this.isNumeric(trackedValue)) {
-            const diff = toBN(actualValue).sub(toBN(trackedValue));
-            different = !diff.eq(BN_ZERO);
-            if (different || alwaysLog) {
-                log.push(`    ${different ? 'different' : 'equal'}  ${description}  actual=${formatBN(actualValue)}  tracked=${formatBN(trackedValue)}  difference=${formatBN(diff)}`);
-            }
-        } else {
-            const actualValueS = stringifyJson(actualValue);
-            const trackedValueS = stringifyJson(trackedValue);
-            different = actualValueS !== trackedValueS;
-            if (different || alwaysLog) {
-                log.push(`    ${different ? 'different' : 'equal'}  ${description}  actual=${actualValueS}  tracked=${trackedValueS}`);
-            }
-        }
-        return different ? 1 : 0;
     }
 
     assetManagerEvent<N extends AssetManagerEvents['name']>(event: N, filter?: Partial<ExtractedEventArgs<AssetManagerEvents, N>>) {

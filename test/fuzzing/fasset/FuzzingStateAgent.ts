@@ -1,8 +1,12 @@
 import BN from "bn.js";
-import { AgentAvailable, AllEvents, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, MintingExecuted, MintingPaymentDefault, RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose } from "../../../typechain-truffle/AssetManager";
-import { EventArgs, ExtractedEventArgs } from "../../utils/events";
-import { BN_ZERO, formatBN, sumBN, toBN } from "../../utils/helpers";
+import {
+    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, MintingExecuted, MintingPaymentDefault,
+    RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose
+} from "../../../typechain-truffle/AssetManager";
+import { EventArgs } from "../../utils/events";
+import { BN_ZERO, sumBN, toBN } from "../../utils/helpers";
 import { FuzzingState } from "./FuzzingState";
+import { FuzzingStateComparator } from "./FuzzingStateComparator";
 
 // status as returned from getAgentInfo
 export enum AgentStatus {
@@ -53,12 +57,12 @@ export interface FreeUnderlyingBalanceChange {
 export class FuzzingStateAgent {
     constructor(
         public parent: FuzzingState,
-        public owner: string,
         public address: string,
+        public owner: string,
         public underlyingAddressString: string,
     ) {
     }
-    
+
     status: AgentStatus = AgentStatus.NORMAL;
     publiclyAvailable: boolean = false;
     feeBIPS: BN = BN_ZERO;
@@ -68,7 +72,7 @@ export class FuzzingStateAgent {
     ccbStartTimestamp: BN = BN_ZERO;                // 0 - not in ccb/liquidation
     liquidationStartTimestamp: BN = BN_ZERO;        // 0 - not in liquidation
     announcedUnderlyingWithdrawalId: BN = BN_ZERO;  // 0 - not announced
-    
+
     // collections
     collateralReservations: Map<number, CollateralReservation> = new Map();
     redemptionTickets: Map<number, RedemptionTicket> = new Map();
@@ -76,24 +80,24 @@ export class FuzzingStateAgent {
     freeUnderlyingBalanceChanges: FreeUnderlyingBalanceChange[] = [];
 
     // handlers: agent availability
-    
+
     handleAgentAvailable(args: EventArgs<AgentAvailable>) {
         this.publiclyAvailable = true;
         this.agentMinCollateralRatioBIPS = toBN(args.agentMinCollateralRatioBIPS);
         this.feeBIPS = toBN(args.feeBIPS);
     }
-    
+
     handleAvailableAgentExited(args: EventArgs<AvailableAgentExited>) {
         this.publiclyAvailable = false;
     }
-    
+
     // handlers: minting
-    
+
     handleCollateralReserved(args: EventArgs<CollateralReserved>) {
         const cr = this.newCollateralReservation(args);
         this.collateralReservations.set(cr.id, cr);
     }
-    
+
     handleMintingExecuted(args: EventArgs<MintingExecuted>) {
         // update underlying free balance
         this.freeUnderlyingBalanceChanges.push({ type: 'minting', amountUBA: toBN(args.receivedFeeUBA) });
@@ -106,22 +110,22 @@ export class FuzzingStateAgent {
             this.deleteCollateralReservation(collateralReservationId);
         }
     }
-    
+
     handleMintingPaymentDefault(args: EventArgs<MintingPaymentDefault>) {
         this.deleteCollateralReservation(Number(args.collateralReservationId));
     }
-    
+
     handleCollateralReservationDeleted(args: EventArgs<CollateralReservationDeleted>) {
         this.deleteCollateralReservation(Number(args.collateralReservationId));
     }
-    
+
     // handlers: redemption and self-close
 
     handleRedemptionRequested(args: EventArgs<RedemptionRequested>): void {
         const request = this.newRedemptionRequest(args);
         this.redemptionRequests.set(request.id, request);
     }
-    
+
     handleRedemptionPerformed(args: EventArgs<RedemptionPerformed>): void {
         const request = this.getRedemptionRequest(Number(args.requestId));
         request.collateralReleased = true;
@@ -150,13 +154,13 @@ export class FuzzingStateAgent {
         this.freeUnderlyingBalanceChanges.push({ type: 'redemption', amountUBA: toBN(args.freedUnderlyingBalanceUBA) });
         this.releaseClosedRedemptionRequests(request);
     }
-    
+
     handleSelfClose(args: EventArgs<SelfClose>): void {
         this.freeUnderlyingBalanceChanges.push({ type: 'self-close', amountUBA: toBN(args.valueUBA) });
     }
-    
+
     // agent state changing
-    
+
     depositCollateral(value: BN) {
         this.totalCollateralNATWei = this.totalCollateralNATWei.add(value);
     }
@@ -164,7 +168,7 @@ export class FuzzingStateAgent {
     withdrawCollateral(value: BN) {
         this.totalCollateralNATWei = this.totalCollateralNATWei.sub(value);
     }
-    
+
     newCollateralReservation(args: EventArgs<CollateralReserved>): CollateralReservation {
         return {
             id: Number(args.collateralReservationId),
@@ -191,7 +195,7 @@ export class FuzzingStateAgent {
             amountUBA: mintedAmountUBA
         };
     }
-    
+
     newRedemptionRequest(args: EventArgs<RedemptionRequested>): RedemptionRequest {
         return {
             id: Number(args.requestId),
@@ -210,51 +214,45 @@ export class FuzzingStateAgent {
     getRedemptionRequest(requestId: number) {
         return this.redemptionRequests.get(requestId) ?? assert.fail(`Invalid redemption request id ${requestId}`);
     }
-    
+
     releaseClosedRedemptionRequests(request: RedemptionRequest) {
         if (request.collateralReleased && request.underlyingReleased) {
             this.redemptionRequests.delete(request.id);
         }
     }
-    
+
     // totals
-    
+
     reservedUBA() {
         return sumBN(this.collateralReservations.values(), ticket => ticket.valueUBA);
     }
-    
+
     mintedUBA() {
         return sumBN(this.redemptionTickets.values(), ticket => ticket.amountUBA);
     }
-    
+
     freeUnderlyingBalanceUBA() {
         return sumBN(this.freeUnderlyingBalanceChanges, change => change.amountUBA);
     }
-    
+
     // checking
-    
-    async checkInvariants(log: string[]): Promise<number> {
-        let differences = 0;
+
+    async checkInvariants(checker: FuzzingStateComparator) {
+        const agentName = this.parent.eventFormatter.formatAddress(this.address);
         // get actual agent state
         const agentInfo = await this.parent.context.assetManager.getAgentInfo(this.address);
         // reserved
         const reservedUBA = this.reservedUBA();
-        differences += this.parent.checkEquality(log, `${this.address}.reservedUBA`, agentInfo.reservedUBA, reservedUBA);
+        checker.checkEquality(`${agentName}.reservedUBA`, agentInfo.reservedUBA, reservedUBA);
         // minted
         const mintedUBA = this.mintedUBA();
-        differences += this.parent.checkEquality(log, `${this.address}.mintedUBA`, agentInfo.mintedUBA, mintedUBA);
+        checker.checkEquality(`${agentName}.mintedUBA`, agentInfo.mintedUBA, mintedUBA);
         // free balance
         const freeUnderlyingBalanceUBA = this.freeUnderlyingBalanceUBA();
-        differences += this.parent.checkEquality(log, `${this.address}.underlyingFreeBalanceUBA`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
+        checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
         // minimum underlying backing (TODO: check that all illegel payments have been challenged already)
         const underlyingBalanceUBA = await this.parent.context.chain.getBalance(this.underlyingAddressString);
-        const expectedMinUnderlyingBalanceUBA = mintedUBA.add(freeUnderlyingBalanceUBA);
-        if (underlyingBalanceUBA.lt(expectedMinUnderlyingBalanceUBA)) {
-            log.push(`${this.address}.underlying balance too small: expected at least ${formatBN(expectedMinUnderlyingBalanceUBA)}, actual ${formatBN(underlyingBalanceUBA)}, diff=${formatBN(underlyingBalanceUBA.sub(expectedMinUnderlyingBalanceUBA))}`);
-            ++differences;
-        }
-        //
-        return differences;
+        checker.checkNumericDifference(`${agentName}.underlyingBalanceUBA`, underlyingBalanceUBA, 'gte', mintedUBA.add(freeUnderlyingBalanceUBA));
     }
-    
+
 }
