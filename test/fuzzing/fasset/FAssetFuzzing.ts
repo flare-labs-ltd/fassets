@@ -133,7 +133,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             eventQueue.runAll();
             // occassionally skip some time
             if (loop % 10 === 0) {
-                await fuzzingState.checkAll(false);     // state change may happen during check, so we don't wany failure here
+                await fuzzingState.checkInvariants(false);     // state change may happen during check, so we don't wany failure here
                 interceptor.comment(`-----  LOOP ${loop}  ${await timeInfo()}  -----`);
                 await timeline.skipTime(100);
             }
@@ -151,7 +151,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             eventQueue.runAll();
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
-        await fuzzingState.checkAll(true);  // all events are flushed, state must match
+        await fuzzingState.checkInvariants(true);  // all events are flushed, state must match
     });
     
     async function timeInfo() {

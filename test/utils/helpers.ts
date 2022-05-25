@@ -257,6 +257,31 @@ export function last<T>(array: T[]): T | undefined {
     return array.length > 0 ? array[array.length - 1] : undefined;
 }
 
+/**
+ * Like Array.reduce, but for any Iterable.
+ */
+export function reduce<T, R>(list: Iterable<T>, initialValue: R, operation: (a: R, x: T) => R) {
+    let result = initialValue;
+    for (const x of list) {
+        result = operation(result, x);
+    }
+    return result;
+}
+
+/**
+ * Sum all values in an Array or Iterable of numbers.
+ */
+export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number) {
+    return reduce(list, 0, (a, x) => a + elementValue(x));
+}
+
+/**
+ * Sum all values in an Array or Iterable of BNs.
+ */
+export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN) {
+    return reduce(list, BN_ZERO, (a, x) => a.add(elementValue(x)));
+}
+
 // Error handling
 
 export function filterStackTrace(e: any) {

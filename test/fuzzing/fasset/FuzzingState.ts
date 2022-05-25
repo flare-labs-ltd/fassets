@@ -1,66 +1,16 @@
-import BN from "bn.js";
 import { constants } from "@openzeppelin/test-helpers";
+import BN from "bn.js";
 import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
-import { EventArgs, ExtractedEventArgs } from "../../utils/events";
+import { ExtractedEventArgs } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
+import { stringifyJson } from "../../utils/fuzzing-utils";
 import { BNish, BN_ZERO, formatBN, toBN } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { web3DeepNormalize, web3Normalize } from "../../utils/web3assertions";
+import { FuzzingStateAgent } from "./FuzzingStateAgent";
 import { FuzzingTimeline } from "./FuzzingTimeline";
 import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
-import { stringifyJson } from "../../utils/fuzzing-utils";
-import { CollateralReserved } from "../../../typechain-truffle/AssetManager";
-
-// status as returned from getAgentInfo
-enum AgentStatus {
-    NORMAL = 0,             // agent is operating normally
-    CCB = 1,                // agent in collateral call band
-    LIQUIDATION = 2,        // liquidation due to collateral ratio - ends when agent is healthy
-    FULL_LIQUIDATION = 3,   // illegal payment liquidation - always liquidates all and then agent must close vault
-    DESTROYING = 4,         // agent announced destroy, cannot mint again; all existing mintings have been redeemed before
-}
-
-interface CollateralReservation {
-    id: number;
-    agentVault: string;
-    minter: string;
-    valueUBA: BN;
-    feeUBA: BN;
-    lastUnderlyingBlock: BN;
-    lastUnderlyingTimestamp: BN;
-    paymentAddress: string;
-    paymentReference: string;
-}
-
-interface RedemptionTicket {
-    id: number;
-    agent: AgentState;
-    amountUBA: BN;    
-}
-
-interface AgentState {
-    status: AgentStatus,
-    owner: string;
-    address: string;
-    underlyingAddressString: string;
-    publiclyAvailable: boolean;
-    feeBIPS: BN;
-    agentMinCollateralRatioBIPS: BN;
-    totalCollateralNATWei: BN;
-    collateralRatioBIPS: BN;
-    // mintedUBA: BN;
-    // reservedUBA: BN;
-    // redeemingUBA: BN;
-    dustUBA: BN;
-    ccbStartTimestamp: BN;           // 0 - not in ccb/liquidation
-    liquidationStartTimestamp: BN;   // 0 - not in liquidation
-    freeUnderlyingBalanceUBA: BN;    // based on events
-    announcedUnderlyingWithdrawalId: BN;
-    // collections
-    collateralReservations: Map<number, CollateralReservation>;
-    redemptionTickets: Map<number, RedemptionTicket>;
-}
 
 export class FuzzingState {
     // state
@@ -71,11 +21,9 @@ export class FuzzingState {
     settings: AssetManagerSettings;
     
     // agent state
-    agents: Map<string, AgentState> = new Map();                // map agent_address => agent state
-    agentsByUnderlying: Map<string, AgentState> = new Map();    // map underlying_address => agent state
+    agents: Map<string, FuzzingStateAgent> = new Map();                // map agent_address => agent state
+    agentsByUnderlying: Map<string, FuzzingStateAgent> = new Map();    // map underlying_address => agent state
     
-    redemptionQueue: RedemptionTicket[] = [];
-
     // settings
     logFile?: LogFile;
     
@@ -127,7 +75,7 @@ export class FuzzingState {
     private registerAgentHandlers() {
         // agent create / destroy
         this.assetManagerEvent('AgentCreated').subscribe(args => {
-            const agent = this.newAgent(args.agentVault, args.owner, args.underlyingAddress);
+            const agent = new FuzzingStateAgent(this, args.agentVault, args.owner, args.underlyingAddress);
             this.agents.set(args.agentVault, agent);
             this.agentsByUnderlying.set(args.underlyingAddress, agent);
         });
@@ -138,104 +86,32 @@ export class FuzzingState {
         });
         // collateral deposit / whithdrawal
         this.truffleEvents.event(this.context.wnat, 'Transfer').immediate().subscribe(args => {
-            const agentFrom = this.agents.get(args.from);
-            if (agentFrom) {
-                agentFrom.totalCollateralNATWei = agentFrom.totalCollateralNATWei.sub(toBN(args.value));
-            }
-            const agentTo = this.agents.get(args.from);
-            if (agentTo) {
-                agentTo.totalCollateralNATWei = agentTo.totalCollateralNATWei.add(toBN(args.value));
-            }
+            this.agents.get(args.from)?.withdrawCollateral(toBN(args.value));
+            this.agents.get(args.to)?.depositCollateral(toBN(args.value));
         });
         // enter/exit available agents list
-        this.assetManagerEvent('AgentAvailable').subscribe(args => {
-            const agent = this.getAgent(args.agentVault);
-            agent.publiclyAvailable = true;
-            agent.agentMinCollateralRatioBIPS = toBN(args.agentMinCollateralRatioBIPS);
-            agent.feeBIPS = toBN(args.feeBIPS);
-        });
-        this.assetManagerEvent('AvailableAgentExited').subscribe(args => {
-            const agent = this.getAgent(args.agentVault);
-            agent.publiclyAvailable = false;
-        });
+        this.assetManagerEvent('AgentAvailable').subscribe(args => this.getAgent(args.agentVault).handleAgentAvailable(args));
+        this.assetManagerEvent('AvailableAgentExited').subscribe(args => this.getAgent(args.agentVault).handleAvailableAgentExited(args));
         // minting
-        this.assetManagerEvent('CollateralReserved').subscribe(args => {
-            const agent = this.getAgent(args.agentVault);
-            const cr = this.newCollateralReservation(args);
-            agent.collateralReservations.set(cr.id, cr);
-        });
-        this.assetManagerEvent('MintingExecuted').subscribe(args => {
-            const agent = this.getAgent(args.agentVault);
-            this.deleteCollateralReservation(agent, Number(args.collateralReservationId));
-            agent.freeUnderlyingBalanceUBA = agent.freeUnderlyingBalanceUBA.add(toBN(args.receivedFeeUBA));
-            const ticket = this.newRedemptionTicket(agent, args.redemptionTicketId, toBN(args.mintedAmountUBA));
-            this.redemptionQueue.push(ticket);
-            agent.redemptionTickets.set(ticket.id, ticket);
-        });
-        this.assetManagerEvent('MintingPaymentDefault').subscribe(args => {
-            const agent = this.getAgent(args.agentVault);
-            this.deleteCollateralReservation(agent, Number(args.collateralReservationId));
-        });
-        this.assetManagerEvent('CollateralReservationDeleted').subscribe(args => {
-            const agent = this.getAgent(args.agentVault);
-            this.deleteCollateralReservation(agent, Number(args.collateralReservationId));
-        });
-        // redemption
+        this.assetManagerEvent('CollateralReserved').subscribe(args => this.getAgent(args.agentVault).handleCollateralReserved(args));
+        this.assetManagerEvent('MintingExecuted').subscribe(args => this.getAgent(args.agentVault).handleMintingExecuted(args));
+        this.assetManagerEvent('MintingPaymentDefault').subscribe(args => this.getAgent(args.agentVault).handleMintingPaymentDefault(args));
+        this.assetManagerEvent('CollateralReservationDeleted').subscribe(args => this.getAgent(args.agentVault).handleCollateralReservationDeleted(args));
+        // redemption and self-close
+        this.assetManagerEvent('RedemptionRequested').subscribe(args => this.getAgent(args.agentVault).handleRedemptionRequested(args));
+        this.assetManagerEvent('RedemptionPerformed').subscribe(args => this.getAgent(args.agentVault).handleRedemptionPerformed(args));
+        this.assetManagerEvent('RedemptionDefault').subscribe(args => this.getAgent(args.agentVault).handleRedemptionDefault(args));
+        this.assetManagerEvent('RedemptionPaymentBlocked').subscribe(args => this.getAgent(args.agentVault).handleRedemptionPaymentBlocked(args));
+        this.assetManagerEvent('RedemptionPaymentFailed').subscribe(args => this.getAgent(args.agentVault).handleRedemptionPaymentFailed(args));
+        this.assetManagerEvent('RedemptionFinished').subscribe(args => this.getAgent(args.agentVault).handleRedemptionFinished(args));
+        this.assetManagerEvent('SelfClose').subscribe(args => this.getAgent(args.agentVault).handleSelfClose(args));
     }
 
     getAgent(address: string) {
         return this.agents.get(address) ?? assert.fail(`Invalid agent address ${address}`);
     }
-    
-    newAgent(agentVault: string, owner: string, underlyingAddress: string): AgentState {
-        return {
-            status: AgentStatus.NORMAL,
-            owner: owner,
-            address: agentVault,
-            underlyingAddressString: underlyingAddress,
-            publiclyAvailable: false,
-            feeBIPS: BN_ZERO,
-            agentMinCollateralRatioBIPS: BN_ZERO,
-            totalCollateralNATWei: BN_ZERO,
-            collateralRatioBIPS: BN_ZERO,
-            dustUBA: BN_ZERO,
-            ccbStartTimestamp: BN_ZERO,
-            liquidationStartTimestamp: BN_ZERO,
-            freeUnderlyingBalanceUBA: BN_ZERO,
-            announcedUnderlyingWithdrawalId: BN_ZERO,
-            collateralReservations: new Map(),
-            redemptionTickets: new Map(),
-        };
-    }
 
-    newCollateralReservation(args: EventArgs<CollateralReserved>): CollateralReservation {
-        return {
-            id: Number(args.collateralReservationId),
-            agentVault: args.agentVault,
-            minter: args.minter,
-            valueUBA: toBN(args.valueUBA),
-            feeUBA: toBN(args.feeUBA),
-            lastUnderlyingBlock: toBN(args.lastUnderlyingBlock),
-            lastUnderlyingTimestamp: toBN(args.lastUnderlyingTimestamp),
-            paymentAddress: args.paymentAddress,
-            paymentReference: args.paymentReference,
-        };
-    }
-
-    deleteCollateralReservation(agent: AgentState, crId: number) {
-        const deleted = agent.collateralReservations.delete(crId);
-        assert.isTrue(deleted, `Invalid collateral reservation id ${crId}`);
-    }
-
-    newRedemptionTicket(agent: AgentState, ticketId: BN, mintedAmountUBA: BN): RedemptionTicket {
-        return {
-            id: Number(ticketId),
-            agent: agent,
-            amountUBA: mintedAmountUBA
-        };
-    }
-
-    async checkAll(failOnDifferences: boolean) {
+    async checkInvariants(failOnDifferences: boolean) {
         const log: string[] = [];
         let differences = 0;
         // total supply
@@ -247,6 +123,10 @@ export class FuzzingState {
             if (/^\d+$/.test(key)) continue;   // all properties are both named and with index
             if (['assetManagerController', 'natFtsoIndex', 'assetFtsoIndex'].includes(key)) continue;   // special properties, not changed in normal way
             this.checkEquality(log, `settings.${key}`, value, (this.settings as any)[key]);
+        }
+        // check agents' state
+        for (const agent of this.agents.values()) {
+            differences += await agent.checkInvariants(log);
         }
         // write logs (after all async calls, to keep them in one piece)
         this.writeLog(log, differences);
