@@ -116,7 +116,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     describe("illegal payment challenge", () => {
 
-        it.only("should succeed challenging illegal payment", async() => {
+        it("should succeed challenging illegal payment", async() => {
             let txHash = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(0));
             let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
@@ -128,7 +128,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     describe("double payment challenge", () => {
 
-        it.only("should revert on transactions with same references", async() => {
+        it("should revert on transactions with same references", async() => {
             let txHash = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(2));
             let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
@@ -137,7 +137,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
             await expectRevert(promise, "challenge: not duplicate");
         });
 
-        it.only("should revert on wrong agent's address", async() => {
+        it("should revert on wrong agent's address", async() => {
             let txHash = await wallet.addTransaction(
                 underlyingAgent2, underlyingRedeemer, 1, PaymentReference.redemption(2));
             let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent2);
@@ -146,13 +146,13 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
             await expectRevert(promise, "chlg 2: not agent's address");
         });
 
-        it.only("should revert on same references", async() => {
+        it("should revert on same references", async() => {
             let promise = assetManager.doublePaymentChallenge(
                 agentTxProof, agentTxProof, agentVault.address, { from: whitelistedAccount });
             await expectRevert(promise, "chlg dbl: same transaction");
         });
 
-        it.only("should successfully challange double payments", async() => {
+        it("should successfully challange double payments", async() => {
             let txHash = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(1));
             let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
