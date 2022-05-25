@@ -148,4 +148,29 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isFalse(await assetManager.paused());
         });
     });
+
+    describe("should update contracts", () => {
+        it("should update contract addresses", async () => {
+            let attestationClientNewAddress = accounts[21];
+            let ftsoRegistryNewAddress = accounts[22];
+            let wnatNewAddress = accounts[23];
+            const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAttestationClient,IFtsoRegistry,IWNat)")), 
+            web3.eth.abi.encodeParameters(['address', 'address', 'address', 'address'], [assetManagerController, attestationClientNewAddress, ftsoRegistryNewAddress, wnatNewAddress]), 
+                { from: assetManagerController });
+            const res = web3ResultStruct(await assetManager.getSettings());
+            assert.notEqual(newSettings.attestationClient, res.attestationClient)
+            assert.notEqual(newSettings.ftsoRegistry, res.ftsoRegistry)
+            assert.notEqual(newSettings.wNat, res.wNat)
+        });
+
+        it("should not update contract addresses", async () => {
+            const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAttestationClient,IFtsoRegistry,IWNat)")), 
+            web3.eth.abi.encodeParameters(['address', 'address', 'address', 'address'], [assetManagerController, attestationClient.address, ftsoRegistry.address, wnat.address]), 
+                { from: assetManagerController });
+            const res = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3DeepEqual(res, newSettings)
+        });
+    });
 });
