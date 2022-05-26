@@ -36,17 +36,13 @@ library Minting {
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         // minter or agent can present the proof - agent may do it to unlock the collateral if minter
         // becomes unresponsive
-        require(msg.sender == crt.minter || msg.sender == Agents.vaultOwner(crt.agentVault), 
+        require(msg.sender == crt.minter || msg.sender == Agents.vaultOwner(agentVault), 
             "only minter or agent");
         require(_payment.paymentReference == PaymentReference.minting(_crtId),
             "invalid minting reference");
-        // we don't have consider PAYMENT_BLOCKED, since agent's address must be EOA
-        require(_payment.status == TransactionAttestation.PAYMENT_SUCCESS,
-            "minting payment failed");
         require(_payment.receivingAddressHash == agent.underlyingAddressHash, 
             "not minting agent's address");
-        require(_payment.receivedAmount >= 0, "minting payment too small");
-        uint256 receivedAmount = uint256(_payment.receivedAmount);  // guarded by above require
+        uint256 receivedAmount = SafeCast.toUint256(_payment.receivedAmount);
         require(receivedAmount >= _mintValueUBA + crt.underlyingFeeUBA,
             "minting payment too small");
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, crt.valueAMG);
@@ -72,18 +68,16 @@ library Minting {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
+        assert(agent.agentType == Agents.AgentType.AGENT_100); // AGENT_0 not supported yet
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         require(_state.pausedAt == 0, "minting paused");
         require(_lots > 0, "cannot mint 0 lots");
-        require(agent.agentType == Agents.AgentType.AGENT_100, "wrong agent type for self-mint");
-        require(agent.status == Agents.AgentStatus.NORMAL, "selfmint: invalid agent status");
+        require(agent.status == Agents.AgentStatus.NORMAL, "self-mint invalid agent status");
         require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
-        _mintValueUBA = uint256(valueAMG) * _state.settings.assetMintingGranularityUBA;
+        _mintValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         require(_payment.paymentReference == PaymentReference.selfMint(_agentVault), 
             "invalid self-mint reference");
-        require(_payment.status == TransactionAttestation.PAYMENT_SUCCESS,
-            "self-mint payment failed");
         require(_payment.receivingAddressHash == agent.underlyingAddressHash, 
             "self-mint not agent's address");
         require(_payment.receivedAmount >= 0 && uint256(_payment.receivedAmount) >= _mintValueUBA,
