@@ -7,7 +7,7 @@ import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingTimeline } from "./FuzzingTimeline";
 import { ScopedRunner } from "./ScopedRunner";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
-import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
+import { EvmEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
 export class FuzzingRunner extends ScopedRunner {
     constructor(
@@ -15,7 +15,7 @@ export class FuzzingRunner extends ScopedRunner {
         public eventDecoder: Web3EventDecoder,
         public interceptor: TruffleTransactionInterceptor,
         public timeline: FuzzingTimeline,
-        public truffleEvents: TruffleEvents,
+        public truffleEvents: EvmEvents,
         public chainEvents: UnderlyingChainEvents,
         public avoidErrors: boolean,
     ) {

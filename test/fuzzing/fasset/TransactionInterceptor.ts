@@ -1,11 +1,11 @@
 import { TransactionReceipt } from "web3-core";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
-import { BaseEvent } from "../../utils/events";
+import { EvmEvent } from "../../utils/events";
 import { currentRealTime, Statistics, truffleResultAsJson } from "../../utils/fuzzing-utils";
 import { filterStackTrace, getOrCreate, reportError, tryCatch } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
 
-export type EventHandler = (event: BaseEvent) => void;
+export type EventHandler = (event: EvmEvent) => void;
 
 export class TransactionInterceptor {
     logFile?: LogFile;
@@ -73,7 +73,7 @@ export class TransactionInterceptor {
         this.errorCounts.set(errorKey, (this.errorCounts.get(errorKey) ?? 0) + 1);
     }
 
-    increaseEventCount(event: BaseEvent) {
+    increaseEventCount(event: EvmEvent) {
         this.eventCounts.set(event.event, (this.eventCounts.get(event.event) ?? 0) + 1);
     }
     
@@ -83,7 +83,7 @@ export class TransactionInterceptor {
 }
 
 export class EventCollector {
-    public events: BaseEvent[] = [];
+    public events: EvmEvent[] = [];
     
     constructor(
         interceptor: TransactionInterceptor,

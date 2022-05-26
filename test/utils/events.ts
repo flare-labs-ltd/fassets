@@ -15,6 +15,19 @@ export interface BaseEvent {
     args: any;
 }
 
+export interface EvmEvent {
+    address: string;
+    event: string;
+    args: any;
+    blockHash: string;
+    blockNumber: number;
+    logIndex: number;
+    transactionHash: string;
+    transactionIndex: number;
+    type: string;
+    signature: string;
+}
+
 export interface TypedEvent<A> extends BaseEvent {
     args: A;
 }
@@ -22,10 +35,6 @@ export interface TypedEvent<A> extends BaseEvent {
 export interface SelectedEvent<E extends EventSelector> extends BaseEvent {
     event: E['name'];
     args: E['args'];
-}
-
-export interface TruffleEvent extends Truffle.TransactionLog<any> {
-    signature: string;
 }
 
 export type NamedFields<T> = Omit<T, number>;

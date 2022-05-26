@@ -1,7 +1,26 @@
 import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, renameSync, unlinkSync } from "fs";
 import { dirname } from "path";
 
-export class LogFile {
+export interface ILogger {
+    log(text: string): void;
+}
+
+export class MemoryLog implements ILogger {
+    public readonly logs: string[] = [];
+    
+    log(text: string): void {
+        this.logs.push(text);
+    }
+    
+    writeTo(logger: ILogger | undefined) {
+        if (!logger) return;
+        for (const line of this.logs) {
+            logger.log(line);
+        }
+    }
+}
+
+export class LogFile implements ILogger {
     public readonly fd;
 
     constructor(

@@ -373,16 +373,19 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let liquidationCollateralFactorBIPS_notIncreasing = [12000, 1200];
             let liquidationCollateralFactorBIPS_tooHigh = [toBN(currentSettings.safetyMinCollateralRatioBIPS).addn(1)];
             let liquidationCollateralFactorBIPS_maxBips = [1200, MAX_BIPS+1];
+            let liquidationCollateralFactorBIPS_notIncreasing2 = [12000, 12000];
 
             let res_empty = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_empty, { from: governance });
             let res_notIncreasing = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_notIncreasing, { from: governance });
             let res_tooHigh = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_tooHigh, { from: governance });
             let res_tooMaxBips = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_maxBips, { from: governance }); 
+            let res_notIncreasing2 = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_notIncreasing2, { from: governance }); 
             
             await expectRevert(res_empty, "at least one factor required");
             await expectRevert(res_notIncreasing, "factors not increasing");
             await expectRevert(res_tooHigh, "liquidation factor too high");
             await expectRevert(res_tooMaxBips, "factor not above 1");
+            await expectRevert(res_notIncreasing2, "factors not increasing");;
         });
 
         it("should set liquidation collateral factor bips", async () => {
