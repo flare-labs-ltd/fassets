@@ -2,16 +2,16 @@
 
 set -e
 
-cd ../mcc
+cd ../multi-chain-client
 yarn
 yarn build
 cd - > /dev/null
 
-cd ../attester-client
+cd ../attestation-client
 yarn
 yarn codegen
 cd - > /dev/null
 
 mkdir -p test/utils/verification
-cp -R ../attester-client/contracts/generated contracts
-cp -R ../attester-client/lib/verification/{generated,sources,attestation-types} test/utils/verification
+cp -R ../attestation-client/contracts/generated contracts
+cp -R ../attestation-client/lib/verification/{generated,sources,attestation-types} test/utils/verification
