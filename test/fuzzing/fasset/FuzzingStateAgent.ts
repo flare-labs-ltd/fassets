@@ -1,7 +1,6 @@
 import BN from "bn.js";
-import { Logger } from "ethers/lib/utils";
 import {
-    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, MintingExecuted, MintingPaymentDefault,
+    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose
 } from "../../../typechain-truffle/AssetManager";
 import { EvmEvent } from "../../utils/events";
@@ -110,7 +109,7 @@ export class FuzzingStateAgent {
     handleCollateralReserved(args: EvmEventArgs<CollateralReserved>) {
         const cr = this.newCollateralReservation(args);
         this.collateralReservations.set(cr.id, cr);
-        this.addObjectActionLog("new CollateralReservation", args.$event, cr);
+        this.logAction(`new CollateralReservation(${cr.id}): amount=${formatBN(cr.valueUBA)} fee=${formatBN(cr.feeUBA)}`, args.$event);
     }
 
     handleMintingExecuted(args: EvmEventArgs<MintingExecuted>) {
@@ -119,7 +118,7 @@ export class FuzzingStateAgent {
         // create redemption ticket
         const ticket = this.newRedemptionTicket(args);
         this.redemptionTickets.set(ticket.id, ticket);
-        this.addObjectActionLog("new RedemptionTicket", args.$event, ticket);
+        this.logAction(`new RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, args.$event);
         // delete collateral reservation
         const collateralReservationId = Number(args.collateralReservationId);
         if (collateralReservationId > 0) {  // collateralReservationId == 0 for self-minting
@@ -141,7 +140,7 @@ export class FuzzingStateAgent {
         const request = this.newRedemptionRequest(args);
         this.redemptionRequests.set(request.id, request);
         this.closeRedemptionTickets(args.$event, toBN(args.valueUBA));
-        this.addObjectActionLog("new RedemptionRequest", args.$event, request);
+        this.logAction(`new RedemptionRequest(${request.id}): amount=${formatBN(request.valueUBA)} fee=${formatBN(request.feeUBA)}`, args.$event);
     }
 
     handleRedemptionPerformed(args: EvmEventArgs<RedemptionPerformed>): void {
@@ -177,6 +176,12 @@ export class FuzzingStateAgent {
         this.addFreeUnderlyingBalanceChange(args.$event, 'self-close', toBN(args.valueUBA));
     }
 
+    handleDustChanged(args: EvmEventArgs<DustChanged>): void {
+        const change = args.dustUBA.sub(this.reportedDustUBA);
+        this.reportedDustUBA = args.dustUBA;
+        this.logAction(`dust changed by ${change}, new dust=${this.reportedDustUBA}`, args.$event);
+    }
+    
     // agent state changing
 
     depositCollateral(value: BN) {
@@ -202,9 +207,10 @@ export class FuzzingStateAgent {
     }
 
     deleteCollateralReservation(event: EvmEvent, crId: number) {
-        this.addObjectActionLog("delete CollateralReservation", event, this.collateralReservations.get(crId));
-        const deleted = this.collateralReservations.delete(crId);
-        assert.isTrue(deleted, `Invalid collateral reservation id ${crId}`);
+        const cr = this.collateralReservations.get(crId);
+        if (!cr) assert.fail(`Invalid collateral reservation id ${crId}`);
+        this.logAction(`delete CollateralReservation(${cr.id}): amount=${formatBN(cr.valueUBA)}`, event);
+        this.collateralReservations.delete(crId);
     }
 
     newRedemptionTicket(args: EvmEventArgs<MintingExecuted>): RedemptionTicket {
@@ -231,17 +237,17 @@ export class FuzzingStateAgent {
             const newTicketAmountUBA = ticket.amountUBA.sub(redeemUBA);
             if (newTicketAmountUBA.lt(lotSize)) {
                 this.calculatedDustUBA = this.calculatedDustUBA.add(newTicketAmountUBA);
-                this.addActionLog(`delete RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)} created_dust=${formatBN(newTicketAmountUBA)}`, event);
+                this.logAction(`delete RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)} created_dust=${formatBN(newTicketAmountUBA)}`, event);
                 this.redemptionTickets.delete(ticket.id);
             } else {
                 ticket.amountUBA = newTicketAmountUBA;
-                this.addActionLog(`partial redeemption RedemptionTicket(${ticket.id}): old_amount=${formatBN(ticket.amountUBA)} new_amount=${formatBN(newTicketAmountUBA)}`, event);
+                this.logAction(`partial redeemption RedemptionTicket(${ticket.id}): old_amount=${formatBN(ticket.amountUBA)} new_amount=${formatBN(newTicketAmountUBA)}`, event);
             }
             ++count;
         }
         const redeemedLots = amountLots.sub(remainingLots);
         const remainingUBA = amountUBA.sub(redeemedLots.mul(lotSize));
-        this.addActionLog(`redeemed ${count} tickets, ${redeemedLots} lots, remainingUBA=${formatBN(remainingUBA)}, lotSize=${formatBN(lotSize)}`, event);
+        this.logAction(`redeemed ${count} tickets, ${redeemedLots} lots, remainingUBA=${formatBN(remainingUBA)}, lotSize=${formatBN(lotSize)}`, event);
     }
 
     newRedemptionRequest(args: EvmEventArgs<RedemptionRequested>): RedemptionRequest {
@@ -266,24 +272,17 @@ export class FuzzingStateAgent {
     releaseClosedRedemptionRequests(event: EvmEvent, request: RedemptionRequest) {
         if (request.collateralReleased && request.underlyingReleased) {
             this.redemptionRequests.delete(request.id);
-            this.addObjectActionLog("delete RedemptionRequest", event, request);
+            this.logAction(`delete RedemptionRequest(${request.id}): amount=${formatBN(request.valueUBA)}`, event);
         }
     }
 
     addFreeUnderlyingBalanceChange(event: EvmEvent, type: FreeUnderlyingBalanceChangeType, amountUBA: BN) {
         const change: FreeUnderlyingBalanceChange = { type, amountUBA };
         this.freeUnderlyingBalanceChanges.push(change);
-        this.addObjectActionLog("new FreeUnderlyingBalanceChange", event, change);
+        this.logAction(`new FreeUnderlyingBalanceChange({type}): amount=${amountUBA}`, event);
     }
 
-    addObjectActionLog(title: string, event: EvmEvent, object: any) {
-        const amount = object.valueUBA ?? object.amountUBA ?? BN_ZERO;
-        const fee = object.feeUBA ?? BN_ZERO;
-        const text = `${title}: id=${object.id ?? "/"} amount=${formatBN(amount)} fee=${formatBN(fee)}`;
-        this.addActionLog(text, event);
-    }
-    
-    addActionLog(text: string, event: EvmEvent) {
+    logAction(text: string, event: EvmEvent) {
         this.actionLog.push({ text, event });
     }
 
@@ -332,7 +331,7 @@ export class FuzzingStateAgent {
         const agentName = this.parent.eventFormatter.formatAddress(this.address);
         logger.log(`    action log for ${agentName}`);
         for (const log of this.actionLog) {
-            const eventInfo = `event=${log.event.event} at ${log.event.blockNumber}/${log.event.logIndex}`;
+            const eventInfo = `event=${log.event.event} at ${log.event.blockNumber}.${log.event.logIndex}`;
             logger.log(`        ${log.text}  ${eventInfo}`);
         }
     }
