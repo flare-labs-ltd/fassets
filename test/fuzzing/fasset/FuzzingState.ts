@@ -1,18 +1,17 @@
 import { constants } from "@openzeppelin/test-helpers";
-import BN from "bn.js";
 import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
-import { EventFormatter, Web3EventDecoder } from "../../utils/EventDecoder";
+import { EventFormatter } from "../../utils/EventDecoder";
 import { ExtractedEventArgs } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { stringifyJson } from "../../utils/fuzzing-utils";
-import { BNish, BN_ZERO, formatBN, toBN } from "../../utils/helpers";
+import { BN_ZERO, toBN } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { web3DeepNormalize, web3Normalize } from "../../utils/web3assertions";
 import { FuzzingStateAgent } from "./FuzzingStateAgent";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
+import { EvmEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
 export class FuzzingState {
     // state
@@ -32,7 +31,7 @@ export class FuzzingState {
     constructor(
         public context: AssetContext,
         public timeline: FuzzingTimeline,
-        public truffleEvents: TruffleEvents,
+        public truffleEvents: EvmEvents,
         public chainEvents: UnderlyingChainEvents,
         public eventFormatter: EventFormatter,
     ) {
@@ -140,5 +139,11 @@ export class FuzzingState {
 
     assetManagerEvent<N extends AssetManagerEvents['name']>(event: N, filter?: Partial<ExtractedEventArgs<AssetManagerEvents, N>>) {
         return this.truffleEvents.event(this.context.assetManager, event, filter).immediate();
+    }
+    
+    // getters
+    
+    lotSize() {
+        return toBN(this.settings.lotSizeAMG).mul(toBN(this.settings.assetMintingGranularityUBA));
     }
 }

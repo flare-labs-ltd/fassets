@@ -2,7 +2,7 @@ import { EventFragment, ParamType } from "@ethersproject/abi";
 import { Log as EthersRawEvent, TransactionReceipt as EthersTransactionReceipt } from "@ethersproject/abstract-provider";
 import BN from "bn.js";
 import { BigNumber, Contract, ContractReceipt, Event as EthersEvent } from "ethers";
-import { BaseEvent, TruffleEvent } from "./events";
+import { BaseEvent, EvmEvent } from "./events";
 import { formatBN, isNotNull, toBN } from "./helpers";
 
 declare type RawEvent = import("web3-core").Log;
@@ -100,7 +100,7 @@ export class Web3EventDecoder extends EventFormatter {
         }
     }
 
-    decodeEvent(event: RawEvent): TruffleEvent | null {
+    decodeEvent(event: RawEvent): EvmEvent | null {
         const signature = event.topics[0];
         const evtType = this.eventTypes.get(signature);
         if (evtType == null) return null;
@@ -119,7 +119,7 @@ export class Web3EventDecoder extends EventFormatter {
             address: event.address,
             type: evtType.type,
             signature: signature,
-            event: evtType.name,
+            event: evtType.name ?? '<unknown>',
             args: decodedArgs,
             blockHash: event.blockHash,
             blockNumber: event.blockNumber,
@@ -129,7 +129,7 @@ export class Web3EventDecoder extends EventFormatter {
         }
     }
 
-    decodeEvents(tx: Truffle.TransactionResponse<any> | TransactionReceipt): TruffleEvent[] {
+    decodeEvents(tx: Truffle.TransactionResponse<any> | TransactionReceipt): EvmEvent[] {
         // for truffle, must decode tx.receipt.rawLogs to also obtain logs from indirectly called contracts
         // for plain web3, just decode receipt.logs
         const receipt: TransactionReceipt = 'receipt' in tx ? tx.receipt : tx;
@@ -158,7 +158,7 @@ export class EthersEventDecoder extends EventFormatter {
         return value;
     }
 
-    decodeEvent(event: EthersRawEvent | EthersEvent): TruffleEvent | null {
+    decodeEvent(event: EthersRawEvent | EthersEvent): EvmEvent | null {
         const contract = this.contracts.get(event.address);
         if (contract == null) return null;
         let eventName: string;
@@ -192,7 +192,7 @@ export class EthersEventDecoder extends EventFormatter {
         }
     }
 
-    decodeEvents(tx: EthersTransactionReceipt | ContractReceipt): TruffleEvent[] {
+    decodeEvents(tx: EthersTransactionReceipt | ContractReceipt): EvmEvent[] {
         const events = (tx as ContractReceipt).events ?? tx.logs;
         return events.map(raw => this.decodeEvent(raw)).filter(isNotNull);
     }

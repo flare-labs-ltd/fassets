@@ -13,7 +13,7 @@ import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
 import { EventExecutionQueue } from "./ScopedEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
-import { TruffleEvents, UnderlyingChainEvents } from "./WrappedEvents";
+import { EvmEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
     const startTimestamp = systemTimestamp();
@@ -34,7 +34,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let chain: MockChain;
     let eventDecoder: Web3EventDecoder;
     let interceptor: TruffleTransactionInterceptor;
-    let truffleEvents: TruffleEvents;
+    let truffleEvents: EvmEvents;
     let eventQueue: EventExecutionQueue;
     let chainEvents: UnderlyingChainEvents;
     let runner: FuzzingRunner;
@@ -60,7 +60,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         });
         // uniform event handlers
         eventQueue = new EventExecutionQueue();
-        truffleEvents = new TruffleEvents(interceptor, eventQueue);
+        truffleEvents = new EvmEvents(interceptor, eventQueue);
         chainEvents = new UnderlyingChainEvents(context.chainEvents, eventQueue);
         timeline = new FuzzingTimeline(chain, eventQueue);
         // runner
@@ -155,7 +155,16 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
         await fuzzingState.checkInvariants(true);  // all events are flushed, state must match
+        logStateAgentActions();
     });
+    
+    function logStateAgentActions() {
+        if (!interceptor.logFile) return;
+        interceptor.logFile.log("AGENT ACTIONS");
+        for (const agent of fuzzingState.agents.values()) {
+            agent.writeActionLog(interceptor.logFile);
+        }
+    }
     
     async function timeInfo() {
         return `block=${await time.latestBlock()} timestamp=${await latestBlockTimestamp() - startTimestamp}  ` +

@@ -1,10 +1,10 @@
 import BN from "bn.js";
 import { BNish, BN_ZERO, formatBN, toBN } from "../../utils/helpers";
-import { LogFile } from "../../utils/LogFile";
+import { ILogger, MemoryLog } from "../../utils/LogFile";
 import { web3DeepNormalize } from "../../utils/web3assertions";
 
 export class FuzzingStateComparator {
-    log: string[] = [];
+    logger = new MemoryLog();
     problems: number = 0;
 
     isNumeric(value: unknown): value is BNish {
@@ -25,10 +25,10 @@ export class FuzzingStateComparator {
         const different = actualValueS !== trackedValueS;
         if (different || alwaysLog) {
             const actualCmp = different ? '!=' : '==';
-            this.log.push(`    ${different ? 'different' : 'equal'}  ${description}:  actual=${actualValueS} ${actualCmp} tracked=${trackedValueS}`);
+            this.logger.log(`    ${different ? 'different' : 'equal'}  ${description}:  actual=${actualValueS} ${actualCmp} tracked=${trackedValueS}`);
         }
         this.problems += different ? 1 : 0;
-        return different;
+        return different ? 1 : 0;
     }
 
     checkNumericDifference(description: string, actualValue: BNish, comparison: 'eq' | 'lte' | 'gte', trackedValue: BNish, alwaysLog: boolean = false) {
@@ -38,18 +38,16 @@ export class FuzzingStateComparator {
             const actualCmp = diff.eq(BN_ZERO) ? "==" : (diff.lt(BN_ZERO) ? "<" : ">");
             const okMsg = comparison === 'eq' ? 'equal' : (comparison === 'lte' ? 'ok (<=)' : 'ok (>=)');
             const problemMsg = comparison === 'eq' ? 'different' : (comparison === 'lte' ? 'problem (too large)' : 'problem (too small)');
-            this.log.push(`    ${problem ? problemMsg : okMsg}  ${description}:  actual=${formatBN(actualValue)} ${actualCmp} tracked=${formatBN(trackedValue)},  difference=${formatBN(diff)}`);
+            this.logger.log(`    ${problem ? problemMsg : okMsg}  ${description}:  actual=${formatBN(actualValue)} ${actualCmp} tracked=${formatBN(trackedValue)},  difference=${formatBN(diff)}`);
         }
         this.problems += problem ? 1 : 0;
-        return problem;
+        return problem ? 1 : 0;
     }
-
-    writeLog(logFile: LogFile | undefined) {
-        if (!logFile) return;
-        logFile.log(`CHECKING STATE DIFFERENCES`);
-        for (const line of this.log) {
-            logFile.log(line);
-        }
-        logFile.log(`    ${this.problems} PROBLEMS`);
+    
+    writeLog(logger: ILogger | undefined) {
+        if (!logger) return;
+        logger.log(`CHECKING STATE DIFFERENCES`);
+        this.logger.writeTo(logger);
+        logger.log(`    ${this.problems} PROBLEMS`);
     }
 }
