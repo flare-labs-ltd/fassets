@@ -3,7 +3,7 @@ import { BN_ZERO, toBN } from "../helpers";
 import { DHBalanceDecreasingTransaction, DHConfirmedBlockHeightExists, DHPayment, DHReferencedPaymentNonexistence } from "../verification/generated/attestation-hash-types";
 import { web3DeepNormalize } from "../web3assertions";
 import { TxInputOutput, TX_FAILED } from "./ChainInterfaces";
-import { MockChain } from "./MockChain";
+import { MockChain, MockChainTransaction } from "./MockChain";
 
 function totalValueFor(ios: TxInputOutput[], address: string) {
     let total = BN_ZERO;
@@ -11,6 +11,14 @@ function totalValueFor(ios: TxInputOutput[], address: string) {
         if (web3.utils.keccak256(a) === address) total = total.add(v);
     }
     return total;
+}
+
+function totalSpentValue(transaction: MockChainTransaction, sourceAddressHash: string) {
+    return totalValueFor(transaction.inputs, sourceAddressHash).sub(totalValueFor(transaction.outputs, sourceAddressHash));
+}
+
+function totalReceivedValue(transaction: MockChainTransaction, receivingAddressHash: string) {
+    return totalValueFor(transaction.outputs, receivingAddressHash).sub(totalValueFor(transaction.inputs, receivingAddressHash));
 }
 
 export class MockAttestationProver {
@@ -29,7 +37,7 @@ export class MockAttestationProver {
         const transaction = block.transactions[txInd];
         const sourceAddressHash = web3.utils.keccak256(transaction.inputs[inUtxo][0]);
         const receivingAddressHash = web3.utils.keccak256(transaction.outputs[utxo][0]);
-        const spent = totalValueFor(transaction.inputs, sourceAddressHash).sub(totalValueFor(transaction.outputs, sourceAddressHash));
+        const spent = totalSpentValue(transaction, sourceAddressHash);
         const proof: DHPayment = {
             stateConnectorRound: 0, // filled later
             blockNumber: toBN(blockNumber),
@@ -41,7 +49,7 @@ export class MockAttestationProver {
             receivingAddressHash: receivingAddressHash,
             paymentReference: transaction.reference ?? constants.ZERO_BYTES32,
             spentAmount: spent,
-            receivedAmount: totalValueFor(transaction.outputs, receivingAddressHash).sub(totalValueFor(transaction.inputs, receivingAddressHash)),
+            receivedAmount: totalReceivedValue(transaction, receivingAddressHash),
             oneToOne: false,    // not needed
             status: toBN(transaction.status)
         };
@@ -56,10 +64,7 @@ export class MockAttestationProver {
         const block = this.chain.blocks[blockNumber];
         const transaction = block.transactions[txInd];
         const sourceAddressHash = web3.utils.keccak256(transaction.inputs[inUtxo][0]);
-        const spent = totalValueFor(transaction.inputs, sourceAddressHash).sub(totalValueFor(transaction.outputs, sourceAddressHash));
-        if (spent.eqn(0)) {
-            return null;    // no balance decrease for sourceAddress
-        }
+        const spent = totalSpentValue(transaction, sourceAddressHash);
         const proof: DHBalanceDecreasingTransaction = {
             stateConnectorRound: 0, // filled later
             blockNumber: toBN(blockNumber),
@@ -110,7 +115,7 @@ export class MockAttestationProver {
             }
             for (const transaction of block.transactions) {
                 const found = transaction.reference === paymentReference
-                    && totalValueFor(transaction.outputs, destinationAddressHash).gte(amount)
+                    && totalReceivedValue(transaction, destinationAddressHash).gte(amount)
                     && transaction.status !== TX_FAILED;
                 if (found) {
                     return [true, lowerBoundaryBlockNumber, bn];
