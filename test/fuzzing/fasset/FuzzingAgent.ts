@@ -87,4 +87,9 @@ export class FuzzingAgent extends FuzzingActor {
         await this.agent.selfClose(amountUBA)
             .catch(e => scope.exitOnExpectedError(e, ['redeem 0 lots']));
     }
+
+    async convertDustToTickets(scope: EventScope): Promise<void> {
+        await this.context.assetManager.convertDustToTickets(this.agentVault.address)
+            .catch(e => scope.exitOnExpectedError(e, []));
+    }
 }

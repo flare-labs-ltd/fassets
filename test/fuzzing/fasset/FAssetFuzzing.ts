@@ -112,6 +112,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [testRedeem, 10],
             [testSelfMint, 10],
             [testSelfClose, 10],
+            [testSelfClose, 10],
+            [testConvertDustToTickets, 10],
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
         ];
@@ -201,5 +203,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     async function testSelfClose() {
         const agent = randomChoice(agents);
         runner.startThread((scope) => agent.selfClose(scope));
+    }
+
+    async function testConvertDustToTickets() {
+        const agent = randomChoice(agents);
+        runner.startThread((scope) => agent.convertDustToTickets(scope));
     }
 });

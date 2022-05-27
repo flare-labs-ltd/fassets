@@ -1,14 +1,14 @@
 import BN from "bn.js";
 import {
-    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, MintingExecuted, MintingPaymentDefault,
+    AgentAvailable, AllEvents, AssetManagerInstance, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose
 } from "../../../typechain-truffle/AssetManager";
-import { EvmEvent } from "../../utils/events";
+import { ContractWithEvents, EvmEvent } from "../../utils/events";
 import { BN_ZERO, formatBN, sumBN, toBN } from "../../utils/helpers";
 import { ILogger } from "../../utils/LogFile";
 import { FuzzingState } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
-import { EvmEventArgs } from "./WrappedEvents";
+import { EvmEventArgs, EvmEventArgsForName } from "./WrappedEvents";
 
 // status as returned from getAgentInfo
 export enum AgentStatus {
@@ -116,7 +116,7 @@ export class FuzzingStateAgent {
         // update underlying free balance
         this.addFreeUnderlyingBalanceChange(args.$event, 'minting', toBN(args.receivedFeeUBA));
         // create redemption ticket
-        const ticket = this.newRedemptionTicket(args);
+        const ticket = this.newRedemptionTicket(Number(args.redemptionTicketId), toBN(args.mintedAmountUBA));
         this.redemptionTickets.set(ticket.id, ticket);
         this.logAction(`new RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, args.$event);
         // delete collateral reservation
@@ -177,6 +177,17 @@ export class FuzzingStateAgent {
         this.addFreeUnderlyingBalanceChange(args.$event, 'self-close', toBN(args.valueUBA));
     }
 
+    // handlers: dust
+    
+    handleDustConvertedToTicket(args: EvmEventArgs<DustConvertedToTicket>): void {
+        // create redemption ticket
+        const ticket = this.newRedemptionTicket(Number(args.redemptionTicketId), toBN(args.valueUBA));
+        this.redemptionTickets.set(ticket.id, ticket);
+        // recalculate dust
+        this.calculatedDustUBA = this.calculatedDustUBA.sub(toBN(args.valueUBA));
+        this.logAction(`new RedemptionTicket(${ticket.id}) [from dust]: amount=${formatBN(ticket.amountUBA)} remaining_dust=${formatBN(this.calculatedDustUBA)}`, args.$event);
+    }
+    
     handleDustChanged(args: EvmEventArgs<DustChanged>): void {
         const change = args.dustUBA.sub(this.reportedDustUBA);
         this.reportedDustUBA = args.dustUBA;
@@ -214,11 +225,11 @@ export class FuzzingStateAgent {
         this.collateralReservations.delete(crId);
     }
 
-    newRedemptionTicket(args: EvmEventArgs<MintingExecuted>): RedemptionTicket {
+    newRedemptionTicket(ticketId: number, amountUBA: BN): RedemptionTicket {
         return {
-            id: Number(args.redemptionTicketId),
+            id: ticketId,
             agentVault: this.address,
-            amountUBA: toBN(args.mintedAmountUBA)
+            amountUBA: amountUBA
         };
     }
     

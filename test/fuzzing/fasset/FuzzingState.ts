@@ -110,6 +110,8 @@ export class FuzzingState {
         this.assetManagerEvent('RedemptionPaymentFailed').subscribe(args => this.getAgent(args.agentVault).handleRedemptionPaymentFailed(args));
         this.assetManagerEvent('RedemptionFinished').subscribe(args => this.getAgent(args.agentVault).handleRedemptionFinished(args));
         this.assetManagerEvent('SelfClose').subscribe(args => this.getAgent(args.agentVault).handleSelfClose(args));
+        // track dust
+        this.assetManagerEvent('DustConvertedToTicket').subscribe(args => this.getAgent(args.agentVault).handleDustConvertedToTicket(args));
         this.assetManagerEvent('DustChanged').subscribe(args => this.getAgent(args.agentVault).handleDustChanged(args));
     }
 

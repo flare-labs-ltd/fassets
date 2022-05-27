@@ -354,8 +354,11 @@ library Agents {
         // if dust is more than 1 lot, create a new redemption ticket
         if (agent.dustAMG >= _state.settings.lotSizeAMG) {
             uint64 remainingDustAMG = agent.dustAMG % _state.settings.lotSizeAMG;
-            _state.redemptionQueue.createRedemptionTicket(_agentVault, agent.dustAMG - remainingDustAMG);
+            uint64 ticketValueAMG = agent.dustAMG - remainingDustAMG;
+            uint64 ticketId = _state.redemptionQueue.createRedemptionTicket(_agentVault, ticketValueAMG);
             agent.dustAMG = remainingDustAMG;
+            uint256 ticketValueUBA = Conversion.convertAmgToUBA(_state.settings, ticketValueAMG);
+            emit AMEvents.DustConvertedToTicket(_agentVault, ticketId, ticketValueUBA);
             uint256 dustUBA = Conversion.convertAmgToUBA(_state.settings, remainingDustAMG);
             emit AMEvents.DustChanged(_agentVault, dustUBA);
         }

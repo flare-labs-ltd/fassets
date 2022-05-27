@@ -162,12 +162,22 @@ interface IAssetManagerEvents {
     /**
      * Due to lot size change, some dust was created for this agent during
      * redemption. Value `dustUBA` is the new amount of dust. Dust cannot be directly redeemed,
-     * but if it accumulates to more than 1 lot, it can be converted to redemption tickets.
+     * but it can be self-closed or liquidated and if it accumulates to more than 1 lot, 
+     * it can be converted to a new redemption ticket.
      */
     event DustChanged(
         address indexed agentVault,
         uint256 dustUBA);
 
+    /**
+     * The amount of dust was more than one lot, and the whole lot part of it
+     * it was converted to a redemption ticket.
+     */
+    event DustConvertedToTicket(
+        address indexed agentVault,
+        uint256 redemptionTicketId,
+        uint256 valueUBA);
+    
     /**
      * Agent entered CCB (collateral call band) due to being on the border of unhealty.
      * Agent has limited time to topup the collateral, otherwise liquidation starts.
