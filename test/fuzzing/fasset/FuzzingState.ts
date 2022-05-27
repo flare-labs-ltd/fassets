@@ -4,7 +4,7 @@ import { EventFormatter } from "../../utils/EventDecoder";
 import { ExtractedEventArgs } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { stringifyJson } from "../../utils/fuzzing-utils";
-import { BN_ZERO, toBN } from "../../utils/helpers";
+import { BN_ZERO, sumBN, toBN } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { web3DeepNormalize, web3Normalize } from "../../utils/web3assertions";
@@ -45,6 +45,9 @@ export class FuzzingState {
             this.fAssetSupply = this.fAssetSupply.add(toBN(args.mintedAmountUBA));
         });
         this.assetManagerEvent('RedemptionRequested').subscribe(args => {
+            this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
+        });
+        this.assetManagerEvent('SelfClose').subscribe(args => {
             this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
         });
         this.assetManagerEvent('LiquidationPerformed').subscribe(args => {
@@ -119,6 +122,9 @@ export class FuzzingState {
         // total supply
         const fAssetSupply = await this.context.fAsset.totalSupply();
         checker.checkEquality('fAsset supply', fAssetSupply, this.fAssetSupply, true);
+        // total minted value by all agents
+        const totalMintedUBA = sumBN(this.agents.values(), agent => agent.mintedUBA());
+        checker.checkEquality('fAsset supply / total minted by agents', fAssetSupply, totalMintedUBA, true);
         // settings
         const actualSettings = await this.context.assetManager.getSettings();
         for (const [key, value] of Object.entries(actualSettings)) {

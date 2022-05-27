@@ -139,7 +139,7 @@ export class FuzzingStateAgent {
     handleRedemptionRequested(args: EvmEventArgs<RedemptionRequested>): void {
         const request = this.newRedemptionRequest(args);
         this.redemptionRequests.set(request.id, request);
-        this.closeRedemptionTickets(args.$event, toBN(args.valueUBA));
+        this.closeRedemptionTicketsWholeLots(args.$event, toBN(args.valueUBA));
         this.logAction(`new RedemptionRequest(${request.id}): amount=${formatBN(request.valueUBA)} fee=${formatBN(request.feeUBA)}`, args.$event);
     }
 
@@ -173,13 +173,14 @@ export class FuzzingStateAgent {
     }
 
     handleSelfClose(args: EvmEventArgs<SelfClose>): void {
+        this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.valueUBA));
         this.addFreeUnderlyingBalanceChange(args.$event, 'self-close', toBN(args.valueUBA));
     }
 
     handleDustChanged(args: EvmEventArgs<DustChanged>): void {
         const change = args.dustUBA.sub(this.reportedDustUBA);
         this.reportedDustUBA = args.dustUBA;
-        this.logAction(`dust changed by ${change}, new dust=${this.reportedDustUBA}`, args.$event);
+        this.logAction(`dust changed by ${change}, new dust=${formatBN(this.reportedDustUBA)}`, args.$event);
     }
     
     // agent state changing
@@ -221,7 +222,7 @@ export class FuzzingStateAgent {
         };
     }
     
-    closeRedemptionTickets(event: EvmEvent, amountUBA: BN) {
+    closeRedemptionTicketsWholeLots(event: EvmEvent, amountUBA: BN) {
         const lotSize = this.parent.lotSize();
         const tickets = Array.from(this.redemptionTickets.values());
         tickets.sort((a, b) => a.id - b.id);    // sort by ticketId, so that we close them in correct order
@@ -250,6 +251,36 @@ export class FuzzingStateAgent {
         this.logAction(`redeemed ${count} tickets, ${redeemedLots} lots, remainingUBA=${formatBN(remainingUBA)}, lotSize=${formatBN(lotSize)}`, event);
     }
 
+    closeRedemptionTicketsAnyAmount(event: EvmEvent, amountUBA: BN) {
+        const lotSize = this.parent.lotSize();
+        const tickets = Array.from(this.redemptionTickets.values());
+        tickets.sort((a, b) => a.id - b.id);    // sort by ticketId, so that we close them in correct order
+        let remainingUBA = amountUBA;
+        // redeem dust
+        const redeemedDust = BN.min(remainingUBA, this.calculatedDustUBA);
+        this.calculatedDustUBA = this.calculatedDustUBA.sub(redeemedDust);
+        remainingUBA = remainingUBA.sub(redeemedDust);
+        // redeem tickets
+        let count = 0;
+        for (const ticket of tickets) {
+            if (remainingUBA.isZero()) break;
+            const redeemUBA = BN.min(remainingUBA, ticket.amountUBA);
+            remainingUBA = remainingUBA.sub(redeemUBA);
+            const newTicketAmountUBA = ticket.amountUBA.sub(redeemUBA);
+            if (newTicketAmountUBA.lt(lotSize)) {
+                this.calculatedDustUBA = this.calculatedDustUBA.add(newTicketAmountUBA);
+                this.logAction(`delete RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)} created_dust=${formatBN(newTicketAmountUBA)}`, event);
+                this.redemptionTickets.delete(ticket.id);
+            } else {
+                ticket.amountUBA = newTicketAmountUBA;
+                this.logAction(`partial redeemption RedemptionTicket(${ticket.id}): old_amount=${formatBN(ticket.amountUBA)} new_amount=${formatBN(newTicketAmountUBA)}`, event);
+            }
+            ++count;
+        }
+        const redeemedUBA = amountUBA.sub(remainingUBA);
+        this.logAction(`redeemed (any amount) ${count} tickets, redeemed=${formatBN(redeemedUBA)}, remainingUBA=${formatBN(remainingUBA)}, lotSize=${formatBN(lotSize)}`, event);
+    }
+    
     newRedemptionRequest(args: EvmEventArgs<RedemptionRequested>): RedemptionRequest {
         return {
             id: Number(args.requestId),
@@ -279,7 +310,7 @@ export class FuzzingStateAgent {
     addFreeUnderlyingBalanceChange(event: EvmEvent, type: FreeUnderlyingBalanceChangeType, amountUBA: BN) {
         const change: FreeUnderlyingBalanceChange = { type, amountUBA };
         this.freeUnderlyingBalanceChanges.push(change);
-        this.logAction(`new FreeUnderlyingBalanceChange({type}): amount=${amountUBA}`, event);
+        this.logAction(`new FreeUnderlyingBalanceChange({type}): amount=${formatBN(amountUBA)}`, event);
     }
 
     logAction(text: string, event: EvmEvent) {

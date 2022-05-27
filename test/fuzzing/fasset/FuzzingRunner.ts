@@ -4,6 +4,7 @@ import { ExtractedEventArgs } from "../../utils/events";
 import { AvailableAgentInfo } from "../../utils/fasset/AssetManagerTypes";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
+import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
 import { ScopedRunner } from "./ScopedRunner";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
@@ -17,6 +18,7 @@ export class FuzzingRunner extends ScopedRunner {
         public timeline: FuzzingTimeline,
         public truffleEvents: EvmEvents,
         public chainEvents: UnderlyingChainEvents,
+        public state: FuzzingState,
         public avoidErrors: boolean,
     ) {
         super();

@@ -1,6 +1,6 @@
 import BN from "bn.js";
 import { readFileSync, writeFileSync } from "fs";
-import { toBN } from "./helpers";
+import { BN_ZERO, toBN, toBNExp } from "./helpers";
 
 export class Statistics {
     min?: number;
@@ -67,6 +67,27 @@ export function randomNum(start: number, end: number): number;
 export function randomNum(startOrEnd: number, endOpt?: number): number {
     const [start, end] = endOpt !== undefined ? [startOrEnd, endOpt] : [0, startOrEnd];
     return start + Math.random() * (end - start);
+}
+
+// start is inclusive, end is exclusive
+export function randomBN(end: BN): BN;
+export function randomBN(start: BN, end: BN): BN;
+export function randomBN(startOrEnd: BN, endOpt?: BN): BN {
+    const [start, end] = endOpt !== undefined ? [startOrEnd, endOpt] : [BN_ZERO, startOrEnd];
+    const rand = Math.random() * Number(end.sub(start));
+    // toBN doesn't work directly with numbers above double range, but we don't care about loss of precision here, so we use toBN(x.toFixed(0))
+    const result = start.add(toBNLarge(Math.floor(rand)));
+    // prevent overflows due to rounding - force result to interval [start, end)
+    return BN.max(start, result.lt(end) ? result : end.subn(1));
+}
+
+// convert numbers above MAX_SAFE_INTEGER to approximate BN
+export function toBNLarge(x: number) {
+    if (Math.abs(x) < Number.MAX_SAFE_INTEGER) {
+        return toBN(x)
+    }
+    const exp = Math.ceil(Math.log(Math.abs(x) / Number.MAX_SAFE_INTEGER));
+    return toBNExp(x / (10 ** exp), exp);
 }
 
 // random must return random number on interval [0, 1)

@@ -36,51 +36,70 @@ library FullAgentInfo {
     struct AgentInfo {
         // Current agent's status.
         AgentStatusInfo status;
+        
         // Underlying address as string - to be used for minting payments.
         // For most other purpuses, you use underlyingAddressHash, which is `keccak256(underlyingAddressString)`.
         string underlyingAddressString;
+        
         // If true, anybody can mint against this agent.
         // If false, the agent can only self-mint.
         // Once minted, all redemption tickets go to the same (public) queue, regardless of this flag.
         bool publiclyAvailable;
+        
         // Current fee the agent charges for minting (paid in underlying currency).
         uint256 feeBIPS;
+        
         // Amount, set by agent, at which locked and free collateral are calculated for new mintings.
         uint256 agentMinCollateralRatioBIPS;
+        
         // Total amount in agent's vault.
         uint256 totalCollateralNATWei;
+        
         // Free collateral, available for new mintings.
         // Note: this value doesn't tell you anything about agent being near liquidation, since it is 
         // calculated at agentMinCollateralRatio, not minCollateralRatio.
         // Use collateralRatioBIPS to see whether the agent is near liquidation.
         uint256 freeCollateralNATWei;
+        
+        // Same as freeCollateralNATWei, but expressed in lots (rounded down) instead of NATWei.
+        uint256 freeCollateralLots;
+        
         // The actual agent's collateral ratio, as it is used in liquidation.
         // For calculation, the system checks both FTSO prices and trusted provider's prices and uses
         // the ones that give higher ratio.
         uint256 collateralRatioBIPS;
+        
         // Total amount of minted f-assets.
         uint256 mintedUBA;
+        
         // Total amount reserved for ongoing mintings.
         uint256 reservedUBA;
+        
         // Total amount of ongoing redemptions.
         uint256 redeemingUBA;
+        
         // Total amount of dust (unredeemable minted f-assets).
         // Note: dustUBA is part of mintedUBA, so the amount of redeemable f-assets is calculated as
         // `mintedUBA - dustUBA`
         uint256 dustUBA;
+        
         // Liquidation info
         // If the agent is in CCB or if current liquidation started in CCB, the time agent entered CCB (otherwise 0).
         uint256 ccbStartTimestamp;
+        
         // If the agent is in LIQUIDATION or FULL_LIQUIDATION, the time agent entered liquidation.
         // If the agent is in CCB, the time agent will enter liquidation (in future).
         // If status is neither of that, returns 0.
         // Can be used for calculating current liquidation premium, which depends on time since liquidation started.
         uint256 liquidationStartTimestamp;
+        
         // Underlying balance info (balance on agent's underlying adress)
         // Balance required for backing current mintings.
         uint256 lockedUnderlyingBalanceUBA;
+        
         // Remaining underlying balance (can be used for gas/fees or withdrawn after announcement).
         int256 freeUnderlyingBalanceUBA;
+        
         // Current underlying withdrawal announcement (or 0 if no announcement was made).
         uint256 announcedUnderlyingWithdrawalId;
     }
@@ -102,6 +121,7 @@ library FullAgentInfo {
             Math.max(agent.agentMinCollateralRatioBIPS, _state.settings.minCollateralRatioBIPS);
         _agentState.totalCollateralNATWei = Agents.fullCollateral(_state, _agentVault);
         _agentState.freeCollateralNATWei = collateralData.freeCollateralWei(agent, _state.settings);
+        _agentState.freeCollateralLots = collateralData.freeCollateralLots(agent, _state.settings);
         (_agentState.collateralRatioBIPS,,) = Liquidation.getCollateralRatio(_state, agent, _agentVault);
         _agentState.mintedUBA = Conversion.convertAmgToUBA(_state.settings, agent.mintedAMG);
         _agentState.reservedUBA = Conversion.convertAmgToUBA(_state.settings, agent.reservedAMG);

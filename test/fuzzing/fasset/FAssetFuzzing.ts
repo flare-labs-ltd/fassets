@@ -37,8 +37,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let truffleEvents: EvmEvents;
     let eventQueue: EventExecutionQueue;
     let chainEvents: UnderlyingChainEvents;
-    let runner: FuzzingRunner;
     let fuzzingState: FuzzingState;
+    let runner: FuzzingRunner;
 
     before(async () => {
         // by default, hardhat test network starts with timestamp 2021-01-01, but for fuzzing we prefer to sync with real time
@@ -63,10 +63,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         truffleEvents = new EvmEvents(interceptor, eventQueue);
         chainEvents = new UnderlyingChainEvents(context.chainEvents, eventQueue);
         timeline = new FuzzingTimeline(chain, eventQueue);
-        // runner
-        runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, AVOID_ERRORS);
         // state checker
         fuzzingState = new FuzzingState(context, timeline, truffleEvents, chainEvents, eventDecoder);
+        // runner
+        runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, fuzzingState, AVOID_ERRORS);
         // logging
         interceptor.openLog("test_logs/fasset-fuzzing.log");
         interceptor.logViewMethods = false;
@@ -110,6 +110,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         const actions: Array<[() => Promise<void>, number]> = [
             [testMint, 10],
             [testRedeem, 10],
+            [testSelfMint, 10],
+            [testSelfClose, 10],
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
         ];
@@ -186,8 +188,18 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         runner.startThread((scope) => customer.minting(scope));
     }
     
+    async function testSelfMint() {
+        const agent = randomChoice(agents);
+        runner.startThread((scope) => agent.selfMint(scope));
+    }
+
     async function testRedeem() {
         const customer = randomChoice(customers);
         runner.startThread((scope) => customer.redemption(scope));
+    }
+
+    async function testSelfClose() {
+        const agent = randomChoice(agents);
+        runner.startThread((scope) => agent.selfClose(scope));
     }
 });
