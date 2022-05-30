@@ -54,12 +54,12 @@ export class FuzzingState {
             this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
         });
         // track setting changes
-        this.truffleEvents.event(this.context.assetManagerController, 'SettingChanged').immediate().subscribe(args => {
+        this.assetManagerEvent('SettingChanged').subscribe(args => {
             if (!(args.name in this.settings)) assert.fail(`Invalid setting change ${args.name}`);
             this.logFile?.log(`SETTING CHANGED ${args.name} FROM ${(this.settings as any)[args.name]} TO ${args.value}`);
             (this.settings as any)[args.name] = web3Normalize(args.value);
         });
-        this.truffleEvents.event(this.context.assetManagerController, 'SettingArrayChanged').immediate().subscribe(args => {
+        this.assetManagerEvent('SettingArrayChanged').subscribe(args => {
             if (!(args.name in this.settings)) assert.fail(`Invalid setting array change ${args.name}`);
             this.logFile?.log(`SETTING ARRAY CHANGED ${args.name} FROM ${stringifyJson((this.settings as any)[args.name])} TO ${stringifyJson(args.value)}`);
             (this.settings as any)[args.name] = web3DeepNormalize(args.value);

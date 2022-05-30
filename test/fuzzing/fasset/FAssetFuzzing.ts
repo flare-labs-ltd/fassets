@@ -4,8 +4,8 @@ import { ChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/C
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { currentRealTime, getEnv, randomChoice, weightedRandomChoice } from "../../utils/fuzzing-utils";
-import { expectErrors, getTestFile, latestBlockTimestamp, sleep, systemTimestamp, toWei } from "../../utils/helpers";
+import { currentRealTime, getEnv, randomChoice, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
+import { expectErrors, formatBN, getTestFile, latestBlockTimestamp, sleep, systemTimestamp, toBN, toWei } from "../../utils/helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingRunner } from "./FuzzingRunner";
@@ -24,6 +24,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     const N_CUSTOMERS = getEnv('N_CUSTOMERS', 'number', 10);     // minters and redeemers
     const CUSTOMER_BALANCE = toWei(getEnv('CUSTOMER_BALANCE', 'number', 10_000));  // initial underlying balance
     const AVOID_ERRORS = getEnv('AVOID_ERRORS', 'boolean', true);
+    const CHANGE_LOT_SIZE_AT = getEnv('CHANGE_LOT_SIZE_AT', 'number[]', []);
+    const CHANGE_LOT_SIZE_FACTOR = getEnv('CHANGE_LOT_SIZE_FACTOR', 'number[]', []);
 
     let commonContext: CommonContext;
     let context: AssetContext;
@@ -117,17 +119,32 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
         ];
+        const timedActions: Array<[(index: number) => Promise<void>, number[]]> = [
+            [testChangeLotSize, CHANGE_LOT_SIZE_AT],
+        ];
         // switch underlying chain to timed mining
         chain.automine = false;
         chain.finalizationBlocks = chainInfo.finalizationBlocks;
         // perform actions
         for (let loop = 1; loop <= LOOPS; loop++) {
+            // run random action
             const action = weightedRandomChoice(actions);
             try {
                 await action();
             } catch (e) {
                 interceptor.logUnexpectedError(e, '!!! JS ERROR');
                 expectErrors(e, []);
+            }
+            // run actions, triggered at certain loop numbers
+            for (const [timedAction, runAt] of timedActions) {
+                if (runAt.length === 0 || !runAt.includes(loop)) continue;
+                try {
+                    const index = runAt.indexOf(loop);
+                    await timedAction(index);
+                } catch (e) {
+                    interceptor.logUnexpectedError(e, '!!! JS ERROR');
+                    expectErrors(e, []);
+                }
             }
             // fail immediately on unexpected errors from threads
             if (runner.uncaughtError != null) {
@@ -208,5 +225,14 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     async function testConvertDustToTickets() {
         const agent = randomChoice(agents);
         runner.startThread((scope) => agent.convertDustToTickets(scope));
+    }
+    
+    async function testChangeLotSize(index: number) {
+        const lotSizeAMG = toBN(fuzzingState.settings.lotSizeAMG);
+        const factor = CHANGE_LOT_SIZE_FACTOR.length > index ? CHANGE_LOT_SIZE_FACTOR[index] : randomNum(0.5, 2);
+        const newLotSizeAMG = lotSizeAMG.muln(factor);
+        interceptor.comment(`Changing lot size by factor ${factor}, old=${formatBN(lotSizeAMG)}, new=${formatBN(newLotSizeAMG)}`);
+        await context.assetManagerController.setLotSizeAmg([context.assetManager.address], newLotSizeAMG, { from: context.governance })
+            .catch(e => expectErrors(e, ['too close to previous update']));
     }
 });

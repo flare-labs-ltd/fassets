@@ -193,6 +193,12 @@ const envConverters = {
 type EnvConverterType = keyof(typeof envConverters);
 type EnvConverterResult<T extends EnvConverterType> = ReturnType<typeof envConverters[T]>;
 
+/**
+ * Get an anvironment variable and convert it to some type.
+ * @param name environment variable name
+ * @param type conversion type, one of "string" | "number" | "boolean" | "number[]" | "string[]" | "boolean[]"
+ * @param defaultValue the value to return if the environment variable does not exist
+ */
 export function getEnv<T extends EnvConverterType, D extends EnvConverterResult<T> | null>(name: string, type: T, defaultValue: D): EnvConverterResult<T> | D {
     const value = process.env[name];
     if (value == null) return defaultValue;

@@ -73,7 +73,8 @@ export class FuzzingAgent extends FuzzingActor {
         // execute
         const proof = await this.context.attestationProvider.provePayment(txHash, null, this.underlyingAddress);
         const res = await this.context.assetManager.selfMint(proof, this.agentVault.address, lots, { from: this.ownerAddress })
-            .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral']));
+            .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral', 'self-mint payment too small']));
+        // 'self-mint payment too small' can happen after lot size change
         const args = requiredEventArgs(res, 'MintingExecuted');
         // TODO: accounting?
     }
