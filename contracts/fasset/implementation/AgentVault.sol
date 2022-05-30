@@ -28,8 +28,8 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     }
     
     // needed to allow wNat.withdraw() to send back funds
-    // does not lock funds - they can be retrieved by the owner via withdrawAccidental() or destroy()
     receive() external payable {
+        require(msg.sender == address(assetManager.getWNat()), "only wNat");
     }
 
     // without "onlyOwner" to allow owner to send funds from any source
@@ -61,16 +61,12 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         ftsoRewardManager.claimReward(_recipient, _rewardEpochs);
     }
     
-    function withdraw(address payable _recipient, uint256 _amount) external override onlyOwner {
+    function withdraw(address payable _recipient, uint256 _amount) external override onlyOwner nonReentrant {
         // check that enough was announced and reduce announcement
         assetManager.withdrawCollateral(_amount);
         // withdraw from wnat contract and transfer it to _recipient
         assetManager.getWNat().withdraw(_amount);
-        _recipient.transfer(_amount);
-    }
-    
-    function withdrawAccidental(address payable _recipient) external override onlyOwner {
-        _recipient.transfer(address(this).balance);
+        _transferNAT(_recipient, _amount);
     }
 
     // Used by asset manager when destroying agent.
@@ -101,6 +97,16 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         nonReentrant
     {
         wNat.withdraw(_amount);
-        _recipient.transfer(_amount);
+        _transferNAT(_recipient, _amount);
+    }
+
+    function _transferNAT(address payable _recipient, uint256 _amount) private {
+        if (_amount > 0) {
+            /* solhint-disable avoid-low-level-calls */
+            //slither-disable-next-line arbitrary-send
+            (bool success, ) = _recipient.call{value: _amount}("");
+            /* solhint-enable avoid-low-level-calls */
+            require(success, "transfer failed");
+        }
     }
 }

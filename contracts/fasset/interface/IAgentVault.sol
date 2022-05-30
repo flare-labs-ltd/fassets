@@ -22,8 +22,6 @@ interface IAgentVault {
     ) external;
     
     function withdraw(address payable _recipient, uint256 _amount) external;
-    
-    function withdrawAccidental(address payable _recipient) external;
 
     // agent should make sure to claim rewards before calling destroy(), or they will be forfeit
     function destroy(IWNat wNat, address payable _recipient) external;

@@ -1,4 +1,4 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
+import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AddressUpdaterInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { findRequiredEvent } from "../../../utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
@@ -59,7 +59,6 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     });
 
-
     it("should deposit from any address", async () => {
         const tx = await assetManager.createAgent("12345");
         const event = findRequiredEvent(tx, 'AgentCreated');
@@ -79,6 +78,23 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     it("cannot deposit if agent vault not created through asset manager", async () => {
         const res = agentVault.deposit({ from: owner , value: toBN(100) });
         await expectRevert(res, "invalid agent vault address")
+    });
+
+    it("cannot transfer to agent vault if not wnat contract", async () => {
+        const res = web3.eth.sendTransaction({ from: owner, to: agentVault.address, value: 500 });
+        await expectRevert(res, "only wNat")
+    });
+
+    it("cannot withdraw if transfer fails", async () => {
+        const tx = await assetManager.createAgent("12345", { from: owner });
+        const event = findRequiredEvent(tx, 'AgentCreated');
+        agentVault = await AgentVault.at(event.args.agentVault);
+        await agentVault.deposit({ from: owner , value: toBN(100) });
+        await assetManager.announceCollateralWithdrawal(agentVault.address, 100, { from: owner });
+        await time.increase(300);
+        await agentVault.withdraw(agentVault.address, 0, { from: owner });
+        const res = agentVault.withdraw(agentVault.address, 100, { from: owner });
+        await expectRevert(res, "transfer failed")
     });
 
     it("cannot delegate if not owner", async () => {
@@ -140,20 +156,6 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     it("cannot withdraw if not owner", async () => {
         const res = agentVault.withdraw(accounts[2], 100, { from: accounts[2] });
-        await expectRevert(res, "only owner")
-    });
-
-    it("should withdraw accidental", async () => {
-        await web3.eth.sendTransaction({ from: accounts[3], to: agentVault.address, value: 500 });
-        await web3.eth.sendTransaction({ from: accounts[0], to: agentVault.address, value: 800 });
-        const startBalance = toBN(await web3.eth.getBalance(accounts[2]));
-        await agentVault.withdrawAccidental(accounts[2], { from: owner });
-        const endBalance = toBN(await web3.eth.getBalance(accounts[2]));
-        assert.equal(endBalance.sub(startBalance).toNumber(), 1300);
-    });
-
-    it("cannot withdraw accidental if not owner", async () => {
-        const res = agentVault.withdrawAccidental(accounts[2], { from: accounts[2] });
         await expectRevert(res, "only owner")
     });
 

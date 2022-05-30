@@ -272,6 +272,9 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await agentVault.deposit({ from: agentOwner1, value: amount });
         // act
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
+        // should update status
+        const info = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info.status, 4);
         await time.increase(150);
         const recipient = randomAddress();
         // should not change destroy time
