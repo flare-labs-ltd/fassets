@@ -189,7 +189,7 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
         this.blocks.push({ hash, number, timestamp, transactions });
         this.blockIndex[hash] = number;
         // log
-        if (this.logFile) {
+        if (this.logFile && transactions.length > 0) {
             this.logFile.log(`MINED UNDERLYING BLOCK ${number}  hash=${hash}`);
             for (const transaction of transactions) {
                 if (transaction.inputs.length === 1 && transaction.outputs.length === 1) {

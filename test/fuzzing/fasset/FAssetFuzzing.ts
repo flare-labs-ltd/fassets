@@ -20,6 +20,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     const governance = accounts[1];
 
     const LOOPS = getEnv('LOOPS', 'number', 100);
+    const AUTOMINE = getEnv('AUTOMINE', 'boolean', true);
     const N_AGENTS = getEnv('N_AGENTS', 'number', 10);
     const N_CUSTOMERS = getEnv('N_CUSTOMERS', 'number', 10);     // minters and redeemers
     const CUSTOMER_BALANCE = toWei(getEnv('CUSTOMER_BALANCE', 'number', 10_000));  // initial underlying balance
@@ -53,7 +54,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         chain = context.chain as MockChain;
         // create interceptor
         eventDecoder = new Web3EventDecoder({});
-        interceptor = new TruffleTransactionInterceptor(eventDecoder);
+        interceptor = new TruffleTransactionInterceptor(eventDecoder, accounts[0]);
         interceptor.captureEvents({
             assetManager: context.assetManager,
             assetManagerController: context.assetManagerController,
@@ -71,7 +72,6 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, fuzzingState, AVOID_ERRORS);
         // logging
         interceptor.openLog("test_logs/fasset-fuzzing.log");
-        interceptor.logViewMethods = false;
         chain.logFile = interceptor.logFile;
         timeline.logFile = interceptor.logFile;
         (context.stateConnectorClient as MockStateConnectorClient).logFile = interceptor.logFile;
@@ -125,6 +125,9 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         // switch underlying chain to timed mining
         chain.automine = false;
         chain.finalizationBlocks = chainInfo.finalizationBlocks;
+        if (!AUTOMINE) {
+            await interceptor.setMiningMode('manual', 1000);
+        }
         // perform actions
         for (let loop = 1; loop <= LOOPS; loop++) {
             // run random action
@@ -137,6 +140,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             }
             // run actions, triggered at certain loop numbers
             for (const [timedAction, runAt] of timedActions) {
+                await interceptor.allHandled();
                 if (runAt.length === 0 || !runAt.includes(loop)) continue;
                 try {
                     const index = runAt.indexOf(loop);
@@ -145,21 +149,22 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
                     interceptor.logUnexpectedError(e, '!!! JS ERROR');
                     expectErrors(e, []);
                 }
+                await interceptor.allHandled();
             }
             // fail immediately on unexpected errors from threads
             if (runner.uncaughtError != null) {
                 throw runner.uncaughtError;
             }
-            // run all queued event handlers
-            eventQueue.runAll();
             // occassionally skip some time
             if (loop % 10 === 0) {
+                // run all queued event handlers
+                eventQueue.runAll();
                 await fuzzingState.checkInvariants(false);     // state change may happen during check, so we don't wany failure here
                 interceptor.comment(`-----  LOOP ${loop}  ${await timeInfo()}  -----`);
                 await timeline.skipTime(100);
+                await timeline.executeTriggers();
+                await interceptor.allHandled();
             }
-            await timeline.executeTriggers();
-            await interceptor.allHandled();
         }
         // wait for all threads to finish
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
@@ -206,7 +211,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         const customer = randomChoice(customers);
         runner.startThread((scope) => customer.minting(scope));
     }
-    
+
     async function testSelfMint() {
         const agent = randomChoice(agents);
         runner.startThread((scope) => agent.selfMint(scope));

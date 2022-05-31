@@ -132,6 +132,14 @@ export function randomShuffled<T>(array: T[] | Iterable<T>): T[] {
     return copy;
 }
 
+export function* range(start: number, end: number, step: number = 1) {
+    if (step > 0) {
+        for (let i = start; i < end; i += step) yield i;
+    } else {
+        for (let i = start; i > end; i += step) yield i;
+    }
+}
+
 // current time in seconds (not an integer)
 export function currentRealTime() {
     return new Date().getTime() / 1000;
