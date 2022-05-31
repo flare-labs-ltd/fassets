@@ -10,7 +10,7 @@ import { SourceId } from "../../../utils/verification/sources/sources";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { createTestSettings } from "../test-settings";
 import { PaymentReference } from "../../../utils/fasset/PaymentReference";
-import { expectRevert } from "@openzeppelin/test-helpers";
+import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { ethers } from "hardhat";
 
 const AgentVault = artifacts.require('AgentVault');
@@ -62,7 +62,7 @@ contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFree
         // create atetstation client
         attestationClient = await AttestationClient.new();
         // create mock chain attestation provider
-        chain = new MockChain();
+        chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
         chain.mint(underlyingRandomAddress, 1000);
         stateConnectorClient = new MockStateConnectorClient(attestationClient, { [chainId]: chain }, 'auto');

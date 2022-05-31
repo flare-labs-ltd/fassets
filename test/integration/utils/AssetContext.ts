@@ -1,4 +1,4 @@
-import { constants } from "@openzeppelin/test-helpers";
+import { constants, time } from "@openzeppelin/test-helpers";
 import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { ContractWithEvents } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
@@ -170,7 +170,7 @@ export class AssetContext {
     
     static async createTest(common: CommonContext, chainInfo: ChainInfo): Promise<AssetContext> {
         // create mock chain attestation provider
-        const chain = new MockChain();
+        const chain = new MockChain(await time.latest());
         chain.secondsPerBlock = chainInfo.blockTime;
         const chainEvents = chain;
         const stateConnectorClient = new MockStateConnectorClient(common.attestationClient, { [chainInfo.chainId]: chain }, 'on_wait');

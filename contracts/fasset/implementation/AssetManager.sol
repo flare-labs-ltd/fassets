@@ -9,8 +9,6 @@ import "../../generated/interface/IAttestationClient.sol";
 import "../interface/IFAsset.sol";
 import "../library/AssetManagerState.sol";
 import "../library/AssetManagerSettings.sol";
-import "../library/Conversion.sol";
-import "../library/PaymentConfirmations.sol";
 // external
 import "../library/SettingsUpdater.sol";
 import "../library/StateUpdater.sol";

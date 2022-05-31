@@ -62,7 +62,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         // create atetstation client
         attestationClient = await AttestationClient.new();
         // create mock chain attestation provider
-        chain = new MockChain();
+        chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
         stateConnectorClient = new MockStateConnectorClient(attestationClient, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);

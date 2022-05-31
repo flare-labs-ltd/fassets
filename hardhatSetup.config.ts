@@ -98,7 +98,6 @@ const config: HardhatUserConfig = {
         },
         hardhat: {
             accounts,
-            initialDate: "2021-01-01",  // no time - get UTC @ 00:00:00
             blockGasLimit: 125000000 // 10x ETH gas
         },
         local: {

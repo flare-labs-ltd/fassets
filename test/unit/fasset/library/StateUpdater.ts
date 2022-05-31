@@ -1,3 +1,4 @@
+import { time } from "@openzeppelin/test-helpers";
 import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
@@ -40,7 +41,7 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
         // create atetstation client
         attestationClient = await AttestationClient.new();
         // create mock chain attestation provider
-        chain = new MockChain();
+        chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
         stateConnectorClient = new MockStateConnectorClient(attestationClient, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);

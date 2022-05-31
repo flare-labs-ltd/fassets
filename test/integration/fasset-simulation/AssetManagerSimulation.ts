@@ -1,5 +1,6 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { TX_BLOCKED, TX_FAILED } from "../../utils/fasset/ChainInterfaces";
+import { MockChain } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BN_ZERO, DAYS, getTestFile, toBN, toBNExp, toWei } from "../../utils/helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
@@ -1361,6 +1362,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(agent.buybackAgentCollateral(), "f-asset not terminated");
             await expectRevert(context.assetManagerController.terminate([context.assetManager.address], {from: governance}), "asset manager not paused enough");
             await time.increase(30 * DAYS);
+            await (context.chain as MockChain).skipTime(30 * DAYS);
             const [redemptionRequests2, remainingLots2, dustChanges2] = await redeemer.requestRedemption(1);
             assertWeb3Equal(remainingLots2, 0);
             assert.equal(dustChanges2.length, 0);

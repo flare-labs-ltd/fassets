@@ -86,7 +86,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // create atetstation client
         attestationClient = await AttestationClient.new();
         // create mock chain attestation provider
-        chain = new MockChain();
+        chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
         stateConnectorClient = new MockStateConnectorClient(attestationClient, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);

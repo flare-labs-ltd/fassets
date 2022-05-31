@@ -1,3 +1,4 @@
+import { time } from "@openzeppelin/test-helpers";
 import { stringifyJson } from "../fuzzing-utils";
 import { BNish, BN_ZERO, Dict, formatBN, systemTimestamp, toBN } from "../helpers";
 import { LogFile } from "../LogFile";
@@ -28,6 +29,12 @@ export interface MockChainBlock {
  * (these are handled in attestation system and are not really visible in fasset system).
  */
 export class MockChain implements IBlockChain, IBlockChainEvents {
+    constructor(
+        currentTime: BN
+    ) {
+        this.skipTimeTo(currentTime.toNumber());
+    }
+
     blocks: MockChainBlock[] = [];
     blockIndex: { [hash: string]: number } = {};
     transactionIndex: { [hash: string]: [block: number, txIndex: number] } = {};

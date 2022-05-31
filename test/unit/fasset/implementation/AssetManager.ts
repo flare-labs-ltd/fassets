@@ -47,7 +47,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         // create atetstation client
         attestationClient = await AttestationClient.new();
         // create mock chain attestation provider
-        chain = new MockChain();
+        chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
         stateConnectorClient = new MockStateConnectorClient(attestationClient, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
@@ -109,7 +109,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")), 
                 web3.eth.abi.encodeParameters(['address'], [whitelist.address]), 
                 { from: assetManagerController });
-            await time.increase(toBN(settings.timelockSeconds).addn(1));
+            const timeIncrease = toBN(settings.timelockSeconds).addn(1);
+            await time.increase(timeIncrease);
+            chain.skipTime(timeIncrease.toNumber());
             await time.advanceBlock();
             await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("executeSetWhitelist()")), 
                 constants.ZERO_ADDRESS,
