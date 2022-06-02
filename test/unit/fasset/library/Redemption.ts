@@ -9,7 +9,7 @@ import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../../utils/fasset/PaymentReference";
-import { getTestFile, randomAddress, toBN, toBNExp, toWei } from "../../../utils/helpers";
+import { getTestFile, randomAddress, toBN, toBNExp, toNumber, toWei } from "../../../utils/helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../utils/verification/sources/sources";
 import { createTestSettings } from "../test-settings";
@@ -74,9 +74,16 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await assetManager.makeAgentAvailable(agentVault.address, 500, 2_2000, { from: owner });
     }
 
-    async function mintAndRedeem(agentVault: AgentVaultInstance, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, underlyingRedeemerAddress: string, redeemerAddress: string) {
+    async function updateUnderlyingBlock() {
+        const proof = await attestationProvider.proveConfirmedBlockHeightExists();
+        await assetManager.updateCurrentBlock(proof);
+        return toNumber(proof.blockNumber) + toNumber(proof.numberOfConfirmations);
+    }
+    
+    async function mintAndRedeem(agentVault: AgentVaultInstance, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, underlyingRedeemerAddress: string, redeemerAddress: string, updateBlock: boolean) {
         // minter
         chain.mint(underlyingMinterAddress, toBNExp(10000, 18));
+        if (updateBlock) await updateUnderlyingBlock();
         // perform minting
         const lots = 3;
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
@@ -129,7 +136,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
         //perform redemption payment
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
@@ -143,7 +150,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
         //perform redemption payment
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
@@ -156,8 +163,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1);
-        const request2 = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer2, redeemerAddress2);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+        const request2 = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer2, redeemerAddress2, true);
         //perform redemption payment
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
@@ -170,7 +177,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
         //perform redemption payment
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
@@ -183,8 +190,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1);
-        const request2 = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer2, redeemerAddress2);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+        const request2 = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer2, redeemerAddress2, true);
         //perform redemption payment
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request2.paymentAddress, paymentAmt, request.paymentReference);
@@ -231,7 +238,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     it("should execute redemption payment default - redeemer", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
@@ -251,7 +258,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     it("should execute redemption payment default - agent", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
@@ -271,7 +278,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     it("should not execute redemption payment default - not agent or redeemer", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
@@ -290,7 +297,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     it("should not execute redemption payment default - redemption non-payment mismatch", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
@@ -311,8 +318,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1);
-        const request2 = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer2, redeemerAddress2);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+        const request2 = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer2, redeemerAddress2, true);
         //perform redemption payment
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request2.paymentAddress, paymentAmt, request.paymentReference);
@@ -327,7 +334,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     it("should execute redemption payment default - invalid redemption status", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
         for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
@@ -337,6 +344,32 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const resReAg = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
         await expectRevert(resReAg, "invalid redemption status");
     });
+
+    it("should execute redemption payment default - redemption request too old", async () => {
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+
+        const timeIncrease = toBN(settings.timelockSeconds).addn(1);
+        await time.increase(timeIncrease);
+        chain.skipTime(timeIncrease.toNumber());
+        await time.advanceBlock();
+
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, false);
+        const paymentAmt = request.valueUBA.sub(request.feeUBA);
+        const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
+        const proofPay = await attestationProvider.provePayment(transactionHash, underlyingAgent1, request.paymentAddress);
+        const resPay = await assetManager.confirmRedemptionPayment(proofPay, request.requestId, { from: agentOwner1 });
+        expectEvent(resPay, 'RedemptionFinished');
+        expectEvent(resPay, 'RedemptionPaymentFailed');
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
+        }
+
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const res =  assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
+        await expectRevert(res, 'redemption request too old');
+    });
+
 
     it("should self-mint - multiple tickets", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
