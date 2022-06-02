@@ -1,15 +1,15 @@
 import BN from "bn.js";
 import {
-    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, MintingExecuted, MintingPaymentDefault,
+    AgentAvailable, AgentInCCB, AllEvents, AssetManagerInstance, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose
 } from "../../../typechain-truffle/AssetManager";
 import { NAT_WEI } from "../../integration/utils/AssetContext";
-import { EvmEvent } from "../../utils/events";
+import { ContractWithEvents, EvmEvent } from "../../utils/events";
 import { BN_ZERO, formatBN, MAX_BIPS, sumBN, toBN } from "../../utils/helpers";
 import { ILogger } from "../../utils/LogFile";
 import { FuzzingState, Prices } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
-import { EvmEventArgs } from "./WrappedEvents";
+import { EvmEventArgs, EvmEventArgsForName } from "./WrappedEvents";
 
 // status as returned from getAgentInfo
 export enum AgentStatus {
@@ -198,6 +198,16 @@ export class FuzzingStateAgent {
         const change = args.dustUBA.sub(this.reportedDustUBA);
         this.reportedDustUBA = args.dustUBA;
         this.logAction(`dust changed by ${change}, new dust=${formatBN(this.reportedDustUBA)}`, args.$event);
+    }
+    
+    handleStatusChange(status: AgentStatus, timestamp?: BN): void {
+        if (timestamp && status === AgentStatus.NORMAL && this.status === AgentStatus.CCB) {
+            this.ccbStartTimestamp = timestamp;
+        }
+        if (timestamp && (status === AgentStatus.NORMAL || status === AgentStatus.CCB) && (this.status === AgentStatus.LIQUIDATION || this.status === AgentStatus.FULL_LIQUIDATION)) {
+            this.liquidationStartTimestamp = timestamp;
+        }
+        this.status = status;
     }
     
     // agent state changing
@@ -443,6 +453,8 @@ export class FuzzingStateAgent {
         problems += checker.checkNumericDifference(`${agentName}.underlyingBalanceUBA`, underlyingBalanceUBA, 'gte', mintedUBA.add(freeUnderlyingBalanceUBA));
         // dust
         problems += checker.checkEquality(`${agentName}.dustUBA`, this.reportedDustUBA, this.calculatedDustUBA);
+        // status
+        problems += checker.checkEquality(`${agentName}.status`, agentInfo.status, this.status);
         // log
         if (problems > 0) {
             this.writeActionLog(checker.logger);

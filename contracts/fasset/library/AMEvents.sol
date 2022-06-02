@@ -9,9 +9,13 @@ library AMEvents {
         address agentVault,
         string underlyingAddress);
 
+    event AgentDestroyAnnounced(
+        address indexed agentVault,
+        uint256 timestamp);
+
     event AgentDestroyed(
         address indexed agentVault);
-
+        
     /**
      * Agent was added to the list of available agents and can accept collateral reservation requests.
      */ 

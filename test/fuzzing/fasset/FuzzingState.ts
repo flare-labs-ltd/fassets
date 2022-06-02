@@ -8,9 +8,10 @@ import { BN_ZERO, formatBN, sumBN, toBN } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { web3DeepNormalize, web3Normalize } from "../../utils/web3assertions";
-import { FuzzingStateAgent } from "./FuzzingStateAgent";
+import { AgentStatus, FuzzingStateAgent } from "./FuzzingStateAgent";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
 import { FuzzingTimeline } from "./FuzzingTimeline";
+import { EventExecutionQueue, TriggerableEvent } from "./ScopedEvents";
 import { EvmEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
 export class Prices {
@@ -49,12 +50,16 @@ export class FuzzingState {
     // settings
     logFile?: LogFile;
     
+    // synthetic events
+    pricesUpdated = new TriggerableEvent<void>(this.eventQueue);
+    
     constructor(
         public context: AssetContext,
         public timeline: FuzzingTimeline,
         public truffleEvents: EvmEvents,
         public chainEvents: UnderlyingChainEvents,
         public eventFormatter: EventFormatter,
+        public eventQueue: EventExecutionQueue,
     ) {
         this.settings = { ...context.settings };
         this.registerHandlers();
@@ -62,7 +67,6 @@ export class FuzzingState {
     
     // async initialization part
     async initialize() {
-        [this.amgPriceNatWei, this.amgPriceNatWeiFromTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
         [this.prices, this.trustedPrices] = await this.getPrices();
     }
     
@@ -116,12 +120,16 @@ export class FuzzingState {
         });
         // track price changes
         this.truffleEvents.event(this.context.ftsoManager, 'PriceEpochFinalized').subscribe(async args => {
+            // BN amg prices
             const [amgPriceNatWei, amgPriceNatWeiFromTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
-            const [prices, trustedPrices] = await this.getPrices();
             this.logFile?.log(`PRICES CHANGED  ftso=${formatBN(this.amgPriceNatWei)}->${formatBN(amgPriceNatWei)}  trusted=${formatBN(this.amgPriceNatWeiFromTrusted)}->${formatBN(amgPriceNatWeiFromTrusted)}`);
             [this.amgPriceNatWei, this.amgPriceNatWeiFromTrusted] = [amgPriceNatWei, amgPriceNatWeiFromTrusted];
+            // number prices
+            const [prices, trustedPrices] = await this.getPrices();
             this.logFile?.log(`PRICES CHANGED  ftso=${this.prices}->${prices}  trusted=${this.trustedPrices}->${trustedPrices}`);
             [this.prices, this.trustedPrices] = [prices, trustedPrices];
+            // trigger event
+            this.pricesUpdated.trigger();
         });
         // agents
         this.registerAgentHandlers();
@@ -163,6 +171,12 @@ export class FuzzingState {
         // track dust
         this.assetManagerEvent('DustConvertedToTicket').subscribe(args => this.getAgent(args.agentVault).handleDustConvertedToTicket(args));
         this.assetManagerEvent('DustChanged').subscribe(args => this.getAgent(args.agentVault).handleDustChanged(args));
+        // status changes
+        this.assetManagerEvent('AgentInCCB').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.CCB, args.timestamp));
+        this.assetManagerEvent('LiquidationStarted').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.LIQUIDATION, args.timestamp));
+        this.assetManagerEvent('FullLiquidationStarted').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.FULL_LIQUIDATION, args.timestamp));
+        this.assetManagerEvent('LiquidationEnded').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.NORMAL));
+        this.assetManagerEvent('AgentDestroyAnnounced').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.DESTROYING, args.timestamp));
     }
 
     getAgent(address: string) {

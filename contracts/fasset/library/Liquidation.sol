@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/SafeBips.sol";
 import "../../utils/lib/MathUtils.sol";
+import "./AMEvents.sol";
 import "./Agents.sol";
 import "./AssetManagerSettings.sol";
 import "./AssetManagerState.sol";

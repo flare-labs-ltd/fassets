@@ -179,6 +179,7 @@ library Agents {
         if (agent.status != AgentStatus.DESTROYING) {
             agent.status = AgentStatus.DESTROYING;
             agent.withdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
+            emit AMEvents.AgentDestroyAnnounced(_agentVault, block.timestamp);
         }
     }
 

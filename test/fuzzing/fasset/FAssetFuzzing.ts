@@ -9,6 +9,7 @@ import { currentRealTime, getEnv, InclusionIterable, randomChoice, randomNum, we
 import { expectErrors, formatBN, getTestFile, latestBlockTimestamp, MAX_BIPS, sleep, systemTimestamp, toBN, toWei } from "../../utils/helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
+import { FuzzingLiquidator } from "./FuzzingLiquidator";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
@@ -25,6 +26,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     const AUTOMINE = getEnv('AUTOMINE', 'boolean', true);
     const N_AGENTS = getEnv('N_AGENTS', 'number', 10);
     const N_CUSTOMERS = getEnv('N_CUSTOMERS', 'number', 10);     // minters and redeemers
+    const N_LIQUIDATORS = getEnv('N_LIQUIDATORS', 'number', 1);
     const CUSTOMER_BALANCE = toWei(getEnv('CUSTOMER_BALANCE', 'number', 10_000));  // initial underlying balance
     const AVOID_ERRORS = getEnv('AVOID_ERRORS', 'boolean', true);
     const CHANGE_LOT_SIZE_AT = getEnv('CHANGE_LOT_SIZE_AT', 'range', null);
@@ -37,6 +39,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let timeline: FuzzingTimeline;
     let agents: FuzzingAgent[] = [];
     let customers: FuzzingCustomer[] = [];
+    let liquidators: FuzzingLiquidator[] = [];
     let chainInfo: ChainInfo;
     let chain: MockChain;
     let eventDecoder: Web3EventDecoder;
@@ -72,7 +75,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         chainEvents = new UnderlyingChainEvents(context.chainEvents, eventQueue);
         timeline = new FuzzingTimeline(chain, eventQueue);
         // state checker
-        fuzzingState = new FuzzingState(context, timeline, truffleEvents, chainEvents, eventDecoder);
+        fuzzingState = new FuzzingState(context, timeline, truffleEvents, chainEvents, eventDecoder, eventQueue);
         await fuzzingState.initialize();
         // runner
         runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, fuzzingState, AVOID_ERRORS);
@@ -102,13 +105,20 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             agents.push(fa);
         }
         // create customers
-        const firstCustomerAddress = firstAgentAddress + N_CUSTOMERS;
+        const firstCustomerAddress = firstAgentAddress + N_AGENTS;
         for (let i = 0; i < N_CUSTOMERS; i++) {
             const underlyingAddress = "underlying_customer_" + i;
             const customer = await FuzzingCustomer.createTest(runner, accounts[firstCustomerAddress + i], underlyingAddress, CUSTOMER_BALANCE);
             chain.mint(underlyingAddress, 1_000_000);
             customers.push(customer);
             eventDecoder.addAddress(`CUSTOMER_${i}`, customer.address);
+        }
+        // create liquidators
+        const firstLiquidatorAddress = firstAgentAddress + N_AGENTS + N_CUSTOMERS;
+        for (let i = 0; i < N_LIQUIDATORS; i++) {
+            const liquidator = new FuzzingLiquidator(runner, accounts[firstLiquidatorAddress + i]);
+            liquidators.push(liquidator);
+            eventDecoder.addAddress(`LIQUIDATOR_${i}`, liquidator.address);
         }
         // await context.wnat.send("1000", { from: governance });
         await interceptor.allHandled();
@@ -190,18 +200,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
         await fuzzingState.checkInvariants(true);  // all events are flushed, state must match
         // logStateAgentActions();
-        logStateAgentCRs();
     });
     
-    function logStateAgentCRs() {
-        for (const agent of fuzzingState.agents.values()) {
-            if (agent.mintedUBA.isZero()) continue;
-            const crNum = agent.collateralRatio();
-            const crBN = Number(agent.collateralRatioBIPS()) / MAX_BIPS;
-            console.log(`${agent.name()}:  crNum=${crNum.toFixed(3)}  crBN=${crBN.toFixed(3)}  diff=${(crNum - crBN).toExponential(6)}`);
-        }
-    }
-
     function logStateAgentActions() {
         if (!interceptor.logFile) return;
         interceptor.logFile.log("AGENT ACTIONS");
