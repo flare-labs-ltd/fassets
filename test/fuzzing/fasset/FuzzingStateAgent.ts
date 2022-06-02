@@ -1,14 +1,15 @@
 import BN from "bn.js";
 import {
-    AgentAvailable, AllEvents, AssetManagerInstance, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, MintingExecuted, MintingPaymentDefault,
+    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose
 } from "../../../typechain-truffle/AssetManager";
-import { ContractWithEvents, EvmEvent } from "../../utils/events";
+import { NAT_WEI } from "../../integration/utils/AssetContext";
+import { EvmEvent } from "../../utils/events";
 import { BN_ZERO, formatBN, MAX_BIPS, sumBN, toBN } from "../../utils/helpers";
 import { ILogger } from "../../utils/LogFile";
-import { FuzzingState } from "./FuzzingState";
+import { FuzzingState, Prices } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
-import { EvmEventArgs, EvmEventArgsForName } from "./WrappedEvents";
+import { EvmEventArgs } from "./WrappedEvents";
 
 // status as returned from getAgentInfo
 export enum AgentStatus {
@@ -380,7 +381,11 @@ export class FuzzingStateAgent {
     
     // calculations
     
-    private collateralRatioForPrice(amgToNATWeiPrice: BN) {
+    name() {
+        return this.parent.eventFormatter.formatAddress(this.address);
+    }
+
+    private collateralRatioForPriceBIPS(amgToNATWeiPrice: BN) {
         if (this.mintedUBA.isZero()) return MAX_UINT256;
         const reservedUBA = this.reservedUBA.add(this.redeemingUBA)
         const reservedCollateral = this.parent.context.convertUBAToNATWei(reservedUBA, amgToNATWeiPrice)
@@ -389,17 +394,35 @@ export class FuzzingStateAgent {
         const backingCollateral = this.parent.context.convertUBAToNATWei(this.mintedUBA, amgToNATWeiPrice);
         return availableCollateral.muln(MAX_BIPS).div(backingCollateral);
     }
+
+    collateralRatioBIPS() {
+        const ratio = this.collateralRatioForPriceBIPS(this.parent.amgPriceNatWei);
+        const ratioFromTrusted = this.collateralRatioForPriceBIPS(this.parent.amgPriceNatWeiFromTrusted);
+        return BN.max(ratio, ratioFromTrusted);
+    }
+
+    private collateralRatioForPrice(prices: Prices) {
+        if (this.mintedUBA.isZero()) return Number.MAX_VALUE;
+        const assetUnitUBA = Number(this.parent.settings.assetUnitUBA);
+        const reserved = (Number(this.reservedUBA) + Number(this.redeemingUBA)) / assetUnitUBA;
+        const minCollateralRatio = Number(this.parent.settings.minCollateralRatioBIPS) / MAX_BIPS;
+        const reservedCollateral = reserved * prices.assetNat * minCollateralRatio;
+        const totalCollateral = Number(this.totalCollateralNATWei) / Number(NAT_WEI);
+        const availableCollateral = Math.max(totalCollateral - reservedCollateral, 0);
+        const backingCollateral = Number(this.mintedUBA) / assetUnitUBA * prices.assetNat;
+        return availableCollateral / backingCollateral;
+    }
     
     collateralRatio() {
-        const ratio = this.collateralRatioForPrice(this.parent.amgPriceNatWei);
-        const ratioFromTrusted = this.collateralRatioForPrice(this.parent.amgPriceNatWeiFromTrusted);
-        return BN.max(ratio, ratioFromTrusted);
+        const ratio = this.collateralRatioForPrice(this.parent.prices);
+        const ratioFromTrusted = this.collateralRatioForPrice(this.parent.trustedPrices);
+        return Math.max(ratio, ratioFromTrusted);
     }
 
     // checking
 
     async checkInvariants(checker: FuzzingStateComparator) {
-        const agentName = this.parent.eventFormatter.formatAddress(this.address);
+        const agentName = this.name();
         // get actual agent state
         const agentInfo = await this.parent.context.assetManager.getAgentInfo(this.address);
         let problems = 0;
@@ -427,8 +450,7 @@ export class FuzzingStateAgent {
     }
     
     writeActionLog(logger: ILogger) {
-        const agentName = this.parent.eventFormatter.formatAddress(this.address);
-        logger.log(`    action log for ${agentName}`);
+        logger.log(`    action log for ${this.name()}`);
         for (const log of this.actionLog) {
             const eventInfo = `event=${log.event.event} at ${log.event.blockNumber}.${log.event.logIndex}`;
             logger.log(`        ${log.text}  ${eventInfo}`);

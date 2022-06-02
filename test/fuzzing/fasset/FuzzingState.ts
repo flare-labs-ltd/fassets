@@ -13,14 +13,32 @@ import { FuzzingStateComparator } from "./FuzzingStateComparator";
 import { FuzzingTimeline } from "./FuzzingTimeline";
 import { EvmEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
+export class Prices {
+    constructor(
+        public natUSD: number, 
+        public assetUSD: number,
+    ) {}
+    
+    get assetNat() {
+        return this.assetUSD / this.natUSD;
+    } 
+    
+    toString() {
+        return `(nat=${this.natUSD.toFixed(3)}$, asset=${this.assetUSD.toFixed(3)}$, asset/nat=${this.assetNat.toFixed(3)})`;
+    }
+}
+
 export class FuzzingState {
     // state
     fAssetSupply = BN_ZERO;
     fAssetBalance = new SparseArray();
     
+    prices: Prices = { natUSD: 0, assetUSD: 0, assetNat: 0 };
+    trustedPrices: Prices = { natUSD: 0, assetUSD: 0, assetNat: 0 };
+    
     amgPriceNatWei = BN_ZERO;
     amgPriceNatWeiFromTrusted = BN_ZERO;
-    
+
     // settings
     settings: AssetManagerSettings;
     
@@ -45,6 +63,21 @@ export class FuzzingState {
     // async initialization part
     async initialize() {
         [this.amgPriceNatWei, this.amgPriceNatWeiFromTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
+        [this.prices, this.trustedPrices] = await this.getPrices();
+    }
+    
+    async getPrices(): Promise<[Prices, Prices]> {
+        const convertPriceAndTimestamp = ({ 0: price, 1: timestamp }: { 0: BN, 1: BN }) => [Number(price) * 1e-5, Number(timestamp)] as const;
+        const [natPrice, natTimestamp] = convertPriceAndTimestamp(await this.context.natFtso.getCurrentPrice());
+        const [assetPrice, assetTimestamp] = convertPriceAndTimestamp(await this.context.assetFtso.getCurrentPrice());
+        const [natPriceTrusted, natTimestampTrusted] = convertPriceAndTimestamp(await this.context.natFtso.getCurrentPriceFromTrustedProviders());
+        const [assetPriceTrusted, assetTimestampTrusted] = convertPriceAndTimestamp(await this.context.assetFtso.getCurrentPriceFromTrustedProviders());
+        const ftsoPrices = new Prices(natPrice, assetPrice);
+        const trustedPrices = new Prices(natPriceTrusted, assetPriceTrusted);
+        const maxAge = Number(this.settings.maxTrustedPriceAgeSeconds);
+        const trustedPricesFresh = natTimestampTrusted + maxAge >= natTimestamp && assetTimestampTrusted + maxAge >= assetTimestamp;
+        return [ftsoPrices, trustedPricesFresh ? trustedPrices : ftsoPrices];
+        
     }
     
     registerHandlers() {
@@ -84,8 +117,11 @@ export class FuzzingState {
         // track price changes
         this.truffleEvents.event(this.context.ftsoManager, 'PriceEpochFinalized').subscribe(async args => {
             const [amgPriceNatWei, amgPriceNatWeiFromTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
+            const [prices, trustedPrices] = await this.getPrices();
             this.logFile?.log(`PRICES CHANGED  ftso=${formatBN(this.amgPriceNatWei)}->${formatBN(amgPriceNatWei)}  trusted=${formatBN(this.amgPriceNatWeiFromTrusted)}->${formatBN(amgPriceNatWeiFromTrusted)}`);
             [this.amgPriceNatWei, this.amgPriceNatWeiFromTrusted] = [amgPriceNatWei, amgPriceNatWeiFromTrusted];
+            this.logFile?.log(`PRICES CHANGED  ftso=${this.prices}->${prices}  trusted=${this.trustedPrices}->${trustedPrices}`);
+            [this.prices, this.trustedPrices] = [prices, trustedPrices];
         });
         // agents
         this.registerAgentHandlers();

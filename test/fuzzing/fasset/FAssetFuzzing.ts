@@ -6,7 +6,7 @@ import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { currentRealTime, getEnv, InclusionIterable, randomChoice, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
-import { expectErrors, formatBN, getTestFile, latestBlockTimestamp, sleep, systemTimestamp, toBN, toWei } from "../../utils/helpers";
+import { expectErrors, formatBN, getTestFile, latestBlockTimestamp, MAX_BIPS, sleep, systemTimestamp, toBN, toWei } from "../../utils/helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingRunner } from "./FuzzingRunner";
@@ -120,7 +120,6 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [testRedeem, 10],
             [testSelfMint, 10],
             [testSelfClose, 10],
-            [testSelfClose, 10],
             [testConvertDustToTickets, 10],
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
@@ -191,8 +190,18 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
         await fuzzingState.checkInvariants(true);  // all events are flushed, state must match
         // logStateAgentActions();
+        logStateAgentCRs();
     });
     
+    function logStateAgentCRs() {
+        for (const agent of fuzzingState.agents.values()) {
+            if (agent.mintedUBA.isZero()) continue;
+            const crNum = agent.collateralRatio();
+            const crBN = Number(agent.collateralRatioBIPS()) / MAX_BIPS;
+            console.log(`${agent.name()}:  crNum=${crNum.toFixed(3)}  crBN=${crBN.toFixed(3)}  diff=${(crNum - crBN).toExponential(6)}`);
+        }
+    }
+
     function logStateAgentActions() {
         if (!interceptor.logFile) return;
         interceptor.logFile.log("AGENT ACTIONS");

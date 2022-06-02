@@ -21,8 +21,8 @@ const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const FtsoManagerMock = artifacts.require('FtsoManagerMock');
 
-export const AMG_NATWEI_PRICE_SCALE = toBN(1e9);
-export const NAT_WEI = toBN(1e18);
+export const AMG_NATWEI_PRICE_SCALE = toBNExp(1, 9);
+export const NAT_WEI = toBNExp(1, 18);
 
 export type AddressUpdaterEvents = import('../../../typechain-truffle/AddressUpdater').AllEvents;
 export type AssetManagerControllerEvents = import('../../../typechain-truffle/AssetManagerController').AllEvents;
