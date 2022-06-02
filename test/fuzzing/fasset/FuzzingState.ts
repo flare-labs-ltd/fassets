@@ -4,7 +4,7 @@ import { EventFormatter } from "../../utils/EventDecoder";
 import { ExtractedEventArgs } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { stringifyJson } from "../../utils/fuzzing-utils";
-import { BN_ZERO, sumBN, toBN } from "../../utils/helpers";
+import { BN_ZERO, formatBN, sumBN, toBN } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { web3DeepNormalize, web3Normalize } from "../../utils/web3assertions";
@@ -17,6 +17,9 @@ export class FuzzingState {
     // state
     fAssetSupply = BN_ZERO;
     fAssetBalance = new SparseArray();
+    
+    amgPriceNatWei = BN_ZERO;
+    amgPriceNatWeiFromTrusted = BN_ZERO;
     
     // settings
     settings: AssetManagerSettings;
@@ -37,6 +40,11 @@ export class FuzzingState {
     ) {
         this.settings = { ...context.settings };
         this.registerHandlers();
+    }
+    
+    // async initialization part
+    async initialize() {
+        [this.amgPriceNatWei, this.amgPriceNatWeiFromTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
     }
     
     registerHandlers() {
@@ -72,6 +80,12 @@ export class FuzzingState {
             if (args.to !== constants.ZERO_ADDRESS) {
                 this.fAssetBalance.addTo(args.to, args.value);
             }
+        });
+        // track price changes
+        this.truffleEvents.event(this.context.ftsoManager, 'PriceEpochFinalized').subscribe(async args => {
+            const [amgPriceNatWei, amgPriceNatWeiFromTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
+            this.logFile?.log(`PRICES CHANGED  ftso=${formatBN(this.amgPriceNatWei)}->${formatBN(amgPriceNatWei)}  trusted=${formatBN(this.amgPriceNatWeiFromTrusted)}->${formatBN(amgPriceNatWeiFromTrusted)}`);
+            [this.amgPriceNatWei, this.amgPriceNatWeiFromTrusted] = [amgPriceNatWei, amgPriceNatWeiFromTrusted];
         });
         // agents
         this.registerAgentHandlers();
@@ -125,7 +139,7 @@ export class FuzzingState {
         const fAssetSupply = await this.context.fAsset.totalSupply();
         checker.checkEquality('fAsset supply', fAssetSupply, this.fAssetSupply, true);
         // total minted value by all agents
-        const totalMintedUBA = sumBN(this.agents.values(), agent => agent.mintedUBA());
+        const totalMintedUBA = sumBN(this.agents.values(), agent => agent.calculateMintedUBA());
         checker.checkEquality('fAsset supply / total minted by agents', fAssetSupply, totalMintedUBA, true);
         // settings
         const actualSettings = await this.context.assetManager.getSettings();

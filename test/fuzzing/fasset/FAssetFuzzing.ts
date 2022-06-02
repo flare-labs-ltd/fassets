@@ -1,10 +1,11 @@
 import { time } from "@openzeppelin/test-helpers";
+import { FtsoMockInstance } from "../../../typechain-truffle";
 import { AssetContext, CommonContext } from "../../integration/utils/AssetContext";
 import { ChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/ChainInfo";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { currentRealTime, getEnv, randomChoice, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
+import { currentRealTime, getEnv, InclusionIterable, randomChoice, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
 import { expectErrors, formatBN, getTestFile, latestBlockTimestamp, sleep, systemTimestamp, toBN, toWei } from "../../utils/helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
@@ -25,8 +26,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     const N_CUSTOMERS = getEnv('N_CUSTOMERS', 'number', 10);     // minters and redeemers
     const CUSTOMER_BALANCE = toWei(getEnv('CUSTOMER_BALANCE', 'number', 10_000));  // initial underlying balance
     const AVOID_ERRORS = getEnv('AVOID_ERRORS', 'boolean', true);
-    const CHANGE_LOT_SIZE_AT = getEnv('CHANGE_LOT_SIZE_AT', 'number[]', []);
+    const CHANGE_LOT_SIZE_AT = getEnv('CHANGE_LOT_SIZE_AT', 'range', null);
     const CHANGE_LOT_SIZE_FACTOR = getEnv('CHANGE_LOT_SIZE_FACTOR', 'number[]', []);
+    const CHANGE_PRICE_AT = getEnv('CHANGE_PRICE_AT', 'range', null);
+    const CHANGE_PRICE_FACTOR = getEnv('CHANGE_PRICE_FACTOR', 'json', null) as { nat?: [number, number], asset?: [number, number] };
 
     let commonContext: CommonContext;
     let context: AssetContext;
@@ -60,6 +63,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             assetManagerController: context.assetManagerController,
             fAsset: context.fAsset,
             wnat: context.wnat,
+            ftsoManager: context.ftsoManager,
         });
         // uniform event handlers
         eventQueue = new EventExecutionQueue();
@@ -68,6 +72,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         timeline = new FuzzingTimeline(chain, eventQueue);
         // state checker
         fuzzingState = new FuzzingState(context, timeline, truffleEvents, chainEvents, eventDecoder);
+        await fuzzingState.initialize();
         // runner
         runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, fuzzingState, AVOID_ERRORS);
         // logging
@@ -119,8 +124,9 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
         ];
-        const timedActions: Array<[(index: number) => Promise<void>, number[]]> = [
+        const timedActions: Array<[(index: number) => Promise<void>, InclusionIterable<number> | null]> = [
             [testChangeLotSize, CHANGE_LOT_SIZE_AT],
+            [testChangePrices, CHANGE_PRICE_AT],
         ];
         // switch underlying chain to timed mining
         chain.automine = false;
@@ -141,7 +147,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             // run actions, triggered at certain loop numbers
             for (const [timedAction, runAt] of timedActions) {
                 await interceptor.allHandled();
-                if (runAt.length === 0 || !runAt.includes(loop)) continue;
+                if (!runAt?.includes(loop)) continue;
                 try {
                     const index = runAt.indexOf(loop);
                     await timedAction(index);
@@ -234,10 +240,25 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     
     async function testChangeLotSize(index: number) {
         const lotSizeAMG = toBN(fuzzingState.settings.lotSizeAMG);
-        const factor = CHANGE_LOT_SIZE_FACTOR.length > index ? CHANGE_LOT_SIZE_FACTOR[index] : randomNum(0.5, 2);
+        const factor = CHANGE_LOT_SIZE_FACTOR.length > 0 ? CHANGE_LOT_SIZE_FACTOR[index % CHANGE_LOT_SIZE_FACTOR.length] : randomNum(0.5, 2);
         const newLotSizeAMG = lotSizeAMG.muln(factor);
         interceptor.comment(`Changing lot size by factor ${factor}, old=${formatBN(lotSizeAMG)}, new=${formatBN(newLotSizeAMG)}`);
         await context.assetManagerController.setLotSizeAmg([context.assetManager.address], newLotSizeAMG, { from: context.governance })
             .catch(e => expectErrors(e, ['too close to previous update']));
+    }
+    
+    async function testChangePrices(index: number) {
+        const [natMinF, natMaxF] = CHANGE_PRICE_FACTOR?.nat ?? [0.9, 1.1];
+        await _changePriceOnFtso(context.natFtso, randomNum(natMinF, natMaxF));
+        const [assetMinF, assetMaxF] = CHANGE_PRICE_FACTOR?.asset ?? [0.9, 1.1];
+        await _changePriceOnFtso(context.assetFtso, randomNum(assetMinF, assetMaxF));
+        await context.ftsoManager.mockFinalizePriceEpoch();
+    }
+
+    async function _changePriceOnFtso(ftso: FtsoMockInstance, factor: number) {
+        const { 0: price } = await ftso.getCurrentPrice();
+        const newPrice = price.muln(factor);
+        await ftso.setCurrentPrice(newPrice, 0);
+        await ftso.setCurrentPriceFromTrustedProviders(newPrice, 0);
     }
 });
