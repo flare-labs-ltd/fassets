@@ -20,6 +20,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     const startTimestamp = systemTimestamp();
     const governance = accounts[1];
 
+    const CHAIN = getEnv('CHAIN', 'string', 'eth');
     const LOOPS = getEnv('LOOPS', 'number', 100);
     const AUTOMINE = getEnv('AUTOMINE', 'boolean', true);
     const N_AGENTS = getEnv('N_AGENTS', 'number', 10);
@@ -52,7 +53,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         await time.advanceBlock();
         // create context
         commonContext = await CommonContext.createTest(governance, testNatInfo);
-        chainInfo = testChainInfo.eth;
+        chainInfo = testChainInfo[CHAIN] ?? assert.fail(`Invalid chain ${CHAIN}`);
         context = await AssetContext.createTest(commonContext, chainInfo);
         chain = context.chain as MockChain;
         // create interceptor
@@ -131,6 +132,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         // switch underlying chain to timed mining
         chain.automine = false;
         chain.finalizationBlocks = chainInfo.finalizationBlocks;
+        // make sure here are enough blocks in chain for block height proof to succeed
+        while (chain.blockHeight() <= chain.finalizationBlocks) chain.mine();
         if (!AUTOMINE) {
             await interceptor.setMiningMode('manual', 1000);
         }

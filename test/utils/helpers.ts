@@ -118,13 +118,13 @@ export function toStringExp(x: number | string, exponent: number): string {
         const decimals = Math.min(exponent, significantDecimals);
         xstr = x.toFixed(decimals);
     } else {
-        xstr = x.indexOf('.') >= 0 ? x : x + ".";   // always add dot
+        xstr = x;
     }
     const dot = xstr.indexOf('.');
-    const mantissa = xstr.slice(0, dot) + xstr.slice(dot + 1);
-    const precision = xstr.length - (dot + 1);
+    const mantissa = dot >= 0 ? xstr.slice(0, dot) + xstr.slice(dot + 1) : xstr;
+    const precision = dot >= 0 ? xstr.length - (dot + 1) : 0;
     if (precision === exponent) return mantissa;
-    assert.isTrue(exponent >= precision, "toStringExp: loss of precision");
+    if (exponent < precision) throw new Error("toStringExp: loss of precision");
     const zeros = Array.from({ length: exponent - precision }, () => '0').join('');   // trailing zeros
     return mantissa + zeros;
 }

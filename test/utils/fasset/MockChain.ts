@@ -75,7 +75,7 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
     }
     
     async getBlockAt(blockNumber: number): Promise<IBlock | null> {
-        return blockNumber < this.blocks.length ? this.toIBlock(this.blocks[blockNumber]) : null;
+        return blockNumber >= 0 && blockNumber < this.blocks.length ? this.toIBlock(this.blocks[blockNumber]) : null;
     }
     
     async getBlockHeight(): Promise<number> {
