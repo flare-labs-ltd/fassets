@@ -4,7 +4,7 @@ import { ITimer } from "../../utils/fasset/Timer";
 import { randomShuffle } from "../../utils/fuzzing-utils";
 import { latestBlockTimestamp, runAsync } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
-import { ClearableSubscription, EventExecutionQueue, EventHandler, EventSubscription, QueuedEventEmitter } from "./ScopedEvents";
+import { ClearableSubscription, EventEmitter, EventExecutionQueue, EventHandler, EventSubscription } from "./ScopedEvents";
 
 type TimelineEventType = 'FlareTime' | 'UnderlyingBlock' | 'UnderlyingTime';
 
@@ -23,7 +23,7 @@ interface TimedTrigger {
 export class TriggerList {
     constructor(
         public eventType: TimelineEventType,
-        public eventQueue: EventExecutionQueue,
+        public eventQueue: EventExecutionQueue | null,
     ) { }
     
     triggers: TimedTrigger[] = [];
@@ -31,7 +31,7 @@ export class TriggerList {
     static lastSubscriptionId = 0;
     
     event(triggerAt: number) {
-        return new QueuedEventEmitter<TimelineEvent>(this.eventQueue, handler => {
+        return new EventEmitter<TimelineEvent>(this.eventQueue, handler => {
             const id = ++TriggerList.lastSubscriptionId;
             this.insertTrigger({ id: id, type: this.eventType, at: triggerAt, handler: handler });
             return ClearableSubscription.of(() => this.removeTrigger(id));

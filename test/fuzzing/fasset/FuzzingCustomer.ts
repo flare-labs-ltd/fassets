@@ -47,7 +47,7 @@ export class FuzzingCustomer extends FuzzingActor {
         const lots = randomInt(Number(agent.freeCollateralLots));
         if (this.avoidErrors && lots === 0) return;
         const crt = await this.minter.reserveCollateral(agent.agentVault, lots)
-            .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral', 'not enough fee paid']));
+            .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral', 'not enough fee paid', 'rc: invalid agent status']));
         // pay
         const txHash = await this.minter.performMintingPayment(crt);
         // wait for finalization

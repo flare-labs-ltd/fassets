@@ -1,15 +1,15 @@
 import BN from "bn.js";
 import {
-    AgentAvailable, AgentInCCB, AllEvents, AssetManagerInstance, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, MintingExecuted, MintingPaymentDefault,
+    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose
 } from "../../../typechain-truffle/AssetManager";
 import { NAT_WEI } from "../../integration/utils/AssetContext";
-import { ContractWithEvents, EvmEvent } from "../../utils/events";
+import { EvmEvent } from "../../utils/events";
 import { BN_ZERO, formatBN, MAX_BIPS, sumBN, toBN } from "../../utils/helpers";
 import { ILogger } from "../../utils/LogFile";
 import { FuzzingState, Prices } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
-import { EvmEventArgs, EvmEventArgsForName } from "./WrappedEvents";
+import { EvmEventArgs } from "./WrappedEvents";
 
 // status as returned from getAgentInfo
 export enum AgentStatus {
@@ -368,7 +368,7 @@ export class FuzzingStateAgent {
         const change: FreeUnderlyingBalanceChange = { type, amountUBA };
         this.freeUnderlyingBalanceChanges.push(change);
         this.freeUnderlyingBalanceUBA = this.freeUnderlyingBalanceUBA.add(amountUBA);
-        this.logAction(`new FreeUnderlyingBalanceChange({type}): amount=${formatBN(amountUBA)}`, event);
+        this.logAction(`new FreeUnderlyingBalanceChange(${type}): amount=${formatBN(amountUBA)}`, event);
     }
 
     logAction(text: string, event: EvmEvent) {
@@ -454,7 +454,11 @@ export class FuzzingStateAgent {
         // dust
         problems += checker.checkEquality(`${agentName}.dustUBA`, this.reportedDustUBA, this.calculatedDustUBA);
         // status
-        problems += checker.checkEquality(`${agentName}.status`, agentInfo.status, this.status);
+        const statusProblem = checker.checkEquality(`${agentName}.status`, agentInfo.status, this.status);
+        if (statusProblem != 0 && !(this.status === AgentStatus.CCB && Number(agentInfo.status) === AgentStatus.LIQUIDATION)) {
+            // transition CCB->LIQUIDATION can happen due to timing (without event) so it's not a problem
+            problems += statusProblem;
+        }
         // log
         if (problems > 0) {
             this.writeActionLog(checker.logger);
