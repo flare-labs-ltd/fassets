@@ -4,7 +4,6 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../../utils/lib/SafeBips.sol";
-import "../interface/IAgentVault.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./Agents.sol";

@@ -110,11 +110,11 @@ library AgentCollateral {
         return _data.fullCollateral.mulDiv(_valueAMG, totalAMG); // totalAMG > 0 (guarded by assert)
     }
     
-    // Agent's collateral ratio - used in liquidation.
+    // Agent's collateral ratio (BIPS) - used in liquidation.
     // Reserves CR collateral and redemption collateral at minCollateralRatio,
     // and returns only collateral ratio for minted assets.
     // Ignores collateral announced for withdrawal (withdrawals are forbidden during liquidation).
-    function collateralRatio(
+    function collateralRatioBIPS(
         Agents.Agent storage _agent, 
         AssetManagerSettings.Settings storage _settings,
         uint256 _fullCollateral,

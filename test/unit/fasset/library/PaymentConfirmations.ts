@@ -1,19 +1,15 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { ethers } from "hardhat";
 import { AgentVaultInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
-import { EventArgs, findRequiredEvent, requiredEventArgs } from "../../../utils/events";
+import { findRequiredEvent } from "../../../utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
-import { TX_BLOCKED, TX_FAILED } from "../../../utils/fasset/ChainInterfaces";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../../utils/fasset/PaymentReference";
-import { BNish, getTestFile, toBN, toBNExp, toWei } from "../../../utils/helpers";
+import { getTestFile, toBNExp } from "../../../utils/helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../utils/verification/sources/sources";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createTestSettings } from "../test-settings";
 
 const AgentVault = artifacts.require('AgentVault');
@@ -98,7 +94,7 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         const proof1 = await agentTopup(agentVault);
         // make transaction in the "future" (chains timestamp may differ)
-        await chain.skipTime(5 * 86400);
+        chain.skipTime(5 * 86400);
         const proof2 = await agentTopup(agentVault);
         // it should revert confirming twice
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
@@ -111,13 +107,13 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         await assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 });
         // skipping one more day
         await time.increase(86400);
-        await chain.skipTime(86400);
+        chain.skipTime(86400);
         await agentTopup(agentVault);
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
         await expectRevert(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
         // after 5 days it should cleanup old payment verifications
         await time.increase(5 * 86400);
-        await chain.skipTime(5 * 86400);
+        chain.skipTime(5 * 86400);
         await agentTopup(agentVault);
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
         await expectRevert(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "verified transaction too old");

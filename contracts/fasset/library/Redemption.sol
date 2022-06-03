@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
-import "../interface/IAgentVault.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./RedemptionQueue.sol";

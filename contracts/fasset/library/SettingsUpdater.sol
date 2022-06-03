@@ -4,7 +4,6 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./AMEvents.sol";
 import "./AssetManagerState.sol";
-import "./TransactionAttestation.sol";
 
 library SettingsUpdater {
     using SafeBips for *;
