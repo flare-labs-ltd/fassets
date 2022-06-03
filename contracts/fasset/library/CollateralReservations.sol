@@ -52,8 +52,7 @@ library CollateralReservations {
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
         uint256 reservationFee = _reservationFee(_state, collateralData.amgToNATWeiPrice, valueAMG);
-        require(msg.value >= reservationFee, "not enough fee paid");
-        // TODO: what if paid fee is too big?
+        require(msg.value == reservationFee, "inappropriate fee amount");
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
         uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({
@@ -67,6 +66,7 @@ library CollateralReservations {
             lastUnderlyingTimestamp: lastUnderlyingTimestamp,
             timestamp: SafeCast.toUint64(block.timestamp)
         });
+        // stack too deep error if used directly in emitted event
         string storage paymentAddress = agent.underlyingAddressString;
         emit AMEvents.CollateralReserved(_agentVault,
             _minter,

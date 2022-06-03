@@ -143,13 +143,13 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
         const tx = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer1, 100, null);
         const proof = await attestationProvider.proveBalanceDecreasingTransaction(tx, underlyingAgent1);
-        await assetManager.illegalPaymentChallenge(proof, agentVault.address)
+        await assetManager.illegalPaymentChallenge(proof, agentVault.address);
         // assert
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.status, 4);
     });
 
-    it("should not change liquidationStartedAt timestamp when liquidation phase do not change (liquidation -> full_liquidation)", async () => {
+    it("should not change liquidationStartedAt timestamp when liquidation phase does not change (liquidation -> full_liquidation)", async () => {
         // init
         chain.mint(underlyingAgent1, 100);
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
@@ -161,7 +161,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         const tx = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer1, 100, null);
         const proof = await attestationProvider.proveBalanceDecreasingTransaction(tx, underlyingAgent1);
-        await assetManager.illegalPaymentChallenge(proof, agentVault.address)
+        await assetManager.illegalPaymentChallenge(proof, agentVault.address);
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         // assert
         assertWeb3Equal(info1.liquidationStartTimestamp, info2.liquidationStartTimestamp);

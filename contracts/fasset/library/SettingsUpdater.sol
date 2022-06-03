@@ -149,7 +149,7 @@ library SettingsUpdater {
             _setLiquidationStepSeconds(_state, _params);
         } else if (_method == SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setLiquidationCollateralFactorBips(_state, _params);
+            _setLiquidationCollateralFactorBips(_state, _updates.collateralRatio, _params);
         } else if (_method == SET_ATTESTATION_WINDOW_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setAttestationWindowSeconds(_state, _params);
@@ -505,6 +505,7 @@ library SettingsUpdater {
 
     function _setLiquidationCollateralFactorBips(
         AssetManagerState.State storage _state,
+        CollateralRatioUpdate storage _update,
         bytes calldata _params
     ) 
         private 
@@ -517,6 +518,8 @@ library SettingsUpdater {
         }
         require(value[value.length - 1] <= _state.settings.safetyMinCollateralRatioBIPS, 
             "liquidation factor too high");
+        require(_update.validAt == 0 || value[value.length - 1] <= _update.safetyMinCollateralRatioBIPS,
+            "liquidation factor too high - pending update");
         // update
         delete _state.settings.liquidationCollateralFactorBIPS;
         for (uint256 i = 0; i < value.length; i++) {
