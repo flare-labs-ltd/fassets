@@ -1,5 +1,6 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { create } from "domain";
+import { AddressUpdaterInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, MockContractInstance, WNatInstance } from "../../../../typechain-truffle";
 import { findRequiredEvent } from "../../../utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
@@ -31,6 +32,25 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     const owner = accounts[1];
     const governance = accounts[10];
+    // addresses on mock underlying chain can be any string, as long as it is unique
+    const underlyingAgent1 = "Agent1";
+
+    async function createAgent(agentOwner: string, underlyingAddress: string) {
+        // create agent
+        const response = await assetManager.createAgent(underlyingAddress, { from: agentOwner });
+        // extract agent vault address from AgentCreated event
+        const event = findRequiredEvent(response, 'AgentCreated');
+        const agentVaultAddress = event.args.agentVault;
+        // get vault contract at this address
+        return await AgentVault.at(agentVaultAddress);
+    }
+
+    async function createGovernanceVP() {
+        const governanceVotePower = await MockContract.new();
+        const ownerTokenCall = web3.eth.abi.encodeFunctionCall({ type: 'function', name: 'ownerToken', inputs: [] }, []);
+        await governanceVotePower.givenMethodReturnAddress(ownerTokenCall, wnat.address);
+        return governanceVotePower;
+    }
 
     beforeEach(async () => {
         // create atetstation client
@@ -60,9 +80,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     });
 
     it("should deposit from any address", async () => {
-        const tx = await assetManager.createAgent("12345");
-        const event = findRequiredEvent(tx, 'AgentCreated');
-        agentVault = await AgentVault.at(event.args.agentVault);
+        agentVault = await createAgent(owner, underlyingAgent1);
         await agentVault.deposit({ from: owner , value: toBN(100) });
         const votePower = await wnat.votePowerOf(agentVault.address);
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
@@ -138,6 +156,38 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await expectRevert(res, "only owner")
     });
 
+    it("cannot delegate governance if not owner", async () => {
+        const res = agentVault.delegateGovernance(accounts[2]);
+        await expectRevert(res, "only owner")
+    });
+
+    it("should delegate governance", async () => {
+        const governanceVP = await createGovernanceVP();
+        await wnat.setGovernanceVotePower(governanceVP.address, { from: governance });
+        await agentVault.delegateGovernance(accounts[2], { from: owner });
+        const delegate = web3.eth.abi.encodeFunctionCall({type: "function", name: "delegate", 
+            inputs: [{name: "_to", type: "address"}]} as AbiItem, 
+            [accounts[2]] as any[]);
+        const invocationCount = await governanceVP.invocationCountForCalldata.call(delegate);
+        assert.equal(invocationCount.toNumber(), 1);
+    });
+
+    it("cannot undelegate governance if not owner", async () => {
+        const res = agentVault.undelegateGovernance();
+        await expectRevert(res, "only owner")
+    });
+
+    it("should undelegate governance", async () => {
+        const governanceVP = await createGovernanceVP();
+        await wnat.setGovernanceVotePower(governanceVP.address, { from: governance });
+        await agentVault.undelegateGovernance( { from: owner });
+        const undelegate = web3.eth.abi.encodeFunctionCall({type: "function", name: "undelegate", 
+            inputs: []} as AbiItem, 
+            [] as any[]);
+        const invocationCount = await governanceVP.invocationCountForCalldata.call(undelegate);
+        assert.equal(invocationCount.toNumber(), 1);
+    });
+
     it("should claim from reward manager", async () => {
         const rewardManagerMock = await MockContract.new();
         await agentVault.claimReward(rewardManagerMock.address, accounts[5], [1, 5, 7], { from: owner });
@@ -157,6 +207,20 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     it("cannot withdraw if not owner", async () => {
         const res = agentVault.withdraw(accounts[2], 100, { from: accounts[2] });
         await expectRevert(res, "only owner")
+    });
+
+    it("should call governanceVP.undelegate() when destroying agent if governanceVP contract is set", async () => {
+        const governanceVP = await createGovernanceVP();
+        await wnat.setGovernanceVotePower(governanceVP.address, { from: governance });
+        agentVault = await createAgent(owner, underlyingAgent1);
+        await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
+        await time.increase(settings.withdrawalWaitMinSeconds);
+        await assetManager.destroyAgent(agentVault.address, accounts[2], { from: owner });
+        const undelegate = web3.eth.abi.encodeFunctionCall({type: "function", name: "undelegate", 
+            inputs: []} as AbiItem, 
+            [] as any[]);
+        const invocationCount = await governanceVP.invocationCountForCalldata.call(undelegate);
+        assert.equal(invocationCount.toNumber(), 1);
     });
 
     it("cannot call destroy if not asset manager", async () => {

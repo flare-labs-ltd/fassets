@@ -50,6 +50,14 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         assetManager.getWNat().revokeDelegationAt(_who, _blockNumber);
     }
 
+    function delegateGovernance(address _to) external override onlyOwner {
+        assetManager.getWNat().governanceVotePower().delegate(_to);
+    }
+
+    function undelegateGovernance() external override onlyOwner {
+        assetManager.getWNat().governanceVotePower().undelegate();
+    }
+
     function claimReward(
         IFtsoRewardManager ftsoRewardManager,
         address payable _recipient,
@@ -72,6 +80,9 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     // Used by asset manager when destroying agent.
     // Completely erases agent vault and deposits all funds to the _recipient.
     function destroy(IWNat wNat, address payable _recipient) external override onlyAssetManager {
+        if (address(wNat.governanceVotePower()) != address(0)) {
+            wNat.governanceVotePower().undelegate();
+        }
         wNat.undelegateAll();
         wNat.withdraw(wNat.balanceOf(address(this)));
         selfdestruct(_recipient);

@@ -15,6 +15,10 @@ interface IAgentVault {
 
     function revokeDelegationAt(address _who, uint256 _blockNumber) external;
 
+    function delegateGovernance(address _to) external;
+
+    function undelegateGovernance() external;
+
     function claimReward(
         IFtsoRewardManager ftsoRewardManager,
         address payable _recipient,
