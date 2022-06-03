@@ -8,6 +8,7 @@ import { foreachAsyncParallel, randomChoice, randomInt } from "../../utils/fuzzi
 import { formatBN, toBN } from "../../utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
+import { AgentStatus } from "./FuzzingStateAgent";
 import { EventScope, QualifiedEvent, qualifiedEvent } from "./ScopedEvents";
 
 // debug state
@@ -28,10 +29,6 @@ export class FuzzingCustomer extends FuzzingActor {
         this.redeemer = new Redeemer(runner.context, address, underlyingAddress);
     }
     
-    get name() {
-        return this.formatAddress(this.address);
-    }
-    
     static async createTest(runner: FuzzingRunner, address: string, underlyingAddress: string, underlyingBalance: BN) {
         const chain = runner.context.chain;
         if (!(chain instanceof MockChain)) assert.fail("only for mock chains");
@@ -40,6 +37,14 @@ export class FuzzingCustomer extends FuzzingActor {
         return new FuzzingCustomer(runner, address, underlyingAddress, wallet);
     }
     
+    get name() {
+        return this.formatAddress(this.address);
+    }
+
+    async fAssetBalance() {
+        return await this.context.fAsset.balanceOf(this.address);
+    }
+
     async minting(scope: EventScope) {
         await this.context.updateUnderlyingBlock();
         // create CR
@@ -61,7 +66,7 @@ export class FuzzingCustomer extends FuzzingActor {
     async redemption(scope: EventScope) {
         const lotSize = await this.context.lotsSize();
         // request redemption
-        const holdingUBA = toBN(await this.context.fAsset.balanceOf(this.address));
+        const holdingUBA = await this.fAssetBalance();
         const holdingLots = Number(holdingUBA.div(lotSize));
         const lots = randomInt(this.avoidErrors ? holdingLots : 100);
         this.comment(`${this.name} lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
@@ -108,5 +113,17 @@ export class FuzzingCustomer extends FuzzingActor {
         const result = await this.redeemer.redemptionPaymentDefault(ticket)
             .catch(e => scope.exitOnExpectedError(e, []));
         this.comment(`${this.name}, req=${ticket.requestId}: default received ${formatBN(result.redeemedCollateralWei)}`);
+    }
+    
+    async liquidate(scope: EventScope) {
+        const agentsInLiquidation = Array.from(this.state.agents.values())
+            .filter(agent => agent.status === AgentStatus.LIQUIDATION || agent.status === AgentStatus.FULL_LIQUIDATION)
+            .map(agent => agent.address);
+        if (agentsInLiquidation.length === 0) return;
+        const agentAddress = randomChoice(agentsInLiquidation);
+        const holdingUBA = await this.fAssetBalance();
+        if (this.avoidErrors && holdingUBA.isZero()) return;
+        this.context.assetManager.liquidate(agentAddress, holdingUBA, { from: this.address })
+            .catch(e => scope.exitOnExpectedError(e, []));
     }
 }

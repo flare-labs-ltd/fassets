@@ -156,6 +156,12 @@ export class FuzzingState {
             this.agents.get(args.from)?.withdrawCollateral(toBN(args.value));
             this.agents.get(args.to)?.depositCollateral(toBN(args.value));
         });
+        // status changes
+        this.assetManagerEvent('AgentInCCB').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.CCB, args.timestamp));
+        this.assetManagerEvent('LiquidationStarted').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.LIQUIDATION, args.timestamp));
+        this.assetManagerEvent('FullLiquidationStarted').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.FULL_LIQUIDATION, args.timestamp));
+        this.assetManagerEvent('LiquidationEnded').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.NORMAL));
+        this.assetManagerEvent('AgentDestroyAnnounced').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.DESTROYING, args.timestamp));
         // enter/exit available agents list
         this.assetManagerEvent('AgentAvailable').subscribe(args => this.getAgent(args.agentVault).handleAgentAvailable(args));
         this.assetManagerEvent('AvailableAgentExited').subscribe(args => this.getAgent(args.agentVault).handleAvailableAgentExited(args));
@@ -175,12 +181,8 @@ export class FuzzingState {
         // track dust
         this.assetManagerEvent('DustConvertedToTicket').subscribe(args => this.getAgent(args.agentVault).handleDustConvertedToTicket(args));
         this.assetManagerEvent('DustChanged').subscribe(args => this.getAgent(args.agentVault).handleDustChanged(args));
-        // status changes
-        this.assetManagerEvent('AgentInCCB').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.CCB, args.timestamp));
-        this.assetManagerEvent('LiquidationStarted').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.LIQUIDATION, args.timestamp));
-        this.assetManagerEvent('FullLiquidationStarted').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.FULL_LIQUIDATION, args.timestamp));
-        this.assetManagerEvent('LiquidationEnded').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.NORMAL));
-        this.assetManagerEvent('AgentDestroyAnnounced').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.DESTROYING, args.timestamp));
+        // liquidation
+        this.assetManagerEvent('LiquidationPerformed').subscribe(args => this.getAgent(args.agentVault).handleLiquidationPerformed(args));
     }
 
     getAgent(address: string) {

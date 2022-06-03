@@ -1,6 +1,6 @@
 import BN from "bn.js";
 import {
-    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, MintingExecuted, MintingPaymentDefault,
+    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose
 } from "../../../typechain-truffle/AssetManager";
 import { NAT_WEI } from "../../integration/utils/AssetContext";
@@ -200,6 +200,8 @@ export class FuzzingStateAgent {
         this.logAction(`dust changed by ${change}, new dust=${formatBN(this.reportedDustUBA)}`, args.$event);
     }
     
+    // handlers: status
+    
     handleStatusChange(status: AgentStatus, timestamp?: BN): void {
         if (timestamp && status === AgentStatus.NORMAL && this.status === AgentStatus.CCB) {
             this.ccbStartTimestamp = timestamp;
@@ -208,6 +210,13 @@ export class FuzzingStateAgent {
             this.liquidationStartTimestamp = timestamp;
         }
         this.status = status;
+    }
+    
+    // handlers: liquidation
+    
+    handleLiquidationPerformed(args: EvmEventArgs<LiquidationPerformed>): void {
+        this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.valueUBA));
+        this.addFreeUnderlyingBalanceChange(args.$event, 'self-close', toBN(args.valueUBA));
     }
     
     // agent state changing
@@ -412,7 +421,7 @@ export class FuzzingStateAgent {
     }
     
     private collateralRatioForPrice(prices: Prices) {
-        if (this.mintedUBA.isZero()) return Number.MAX_VALUE;
+        if (this.mintedUBA.isZero()) return Number.POSITIVE_INFINITY;
         const assetUnitUBA = Number(this.parent.settings.assetUnitUBA);
         const reserved = (Number(this.reservedUBA) + Number(this.redeemingUBA)) / assetUnitUBA;
         const minCollateralRatio = Number(this.parent.settings.minCollateralRatioBIPS) / MAX_BIPS;
@@ -494,5 +503,10 @@ export class FuzzingStateAgent {
             const eventInfo = `event=${log.event.event} at ${log.event.blockNumber}.${log.event.logIndex}`;
             logger.log(`        ${log.text}  ${eventInfo}`);
         }
+    }
+    
+    writeAgentSummary(logger: ILogger) {
+        logger.log(`    ${this.name()}:  minted=${formatBN(this.mintedUBA)}  cr=${this.collateralRatio().toFixed(3)}  status=${AgentStatus[this.status]}  available=${this.publiclyAvailable}` +
+            `  (reserved=${formatBN(this.reservedUBA)}  redeeming=${formatBN(this.redeemingUBA)}  dust=${formatBN(this.reportedDustUBA)}  freeUnderlying=${formatBN(this.freeUnderlyingBalanceUBA)})`)
     }
 }

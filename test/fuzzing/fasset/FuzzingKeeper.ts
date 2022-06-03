@@ -4,7 +4,7 @@ import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingStateAgent } from "./FuzzingStateAgent";
 
-export class FuzzingLiquidator extends FuzzingActor {
+export class FuzzingKeeper extends FuzzingActor {
     constructor(
         public runner: FuzzingRunner,
         public address: string,
@@ -19,6 +19,11 @@ export class FuzzingLiquidator extends FuzzingActor {
     
     registerForEvents() {
         this.state.pricesUpdated.subscribe(() => this.checkAllAgentsForLiquidation());
+        // also check for liquidation after every minting
+        for (const agent of this.state.agents.values()) {
+            this.assetManagerEvent('MintingExecuted', { agentVault: agent.address })
+                .subscribe(() => this.checkAgentForLiquidation(agent));
+        }
     }
     
     async checkAllAgentsForLiquidation() {
