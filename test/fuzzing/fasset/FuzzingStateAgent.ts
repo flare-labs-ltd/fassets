@@ -486,8 +486,8 @@ export class FuzzingStateAgent {
         // dust
         problems += checker.checkEquality(`${agentName}.dustUBA`, this.reportedDustUBA, this.calculatedDustUBA);
         // status
-        const statusProblem = checker.checkEquality(`${agentName}.status`, agentInfo.status, this.status);
-        if (statusProblem != 0 && !(this.status === AgentStatus.CCB && Number(agentInfo.status) === AgentStatus.LIQUIDATION)) {
+        const statusProblem = checker.checkStringEquality(`${agentName}.status`, agentInfo.status, this.status);
+        if (statusProblem != 0 && !(this.status === AgentStatus.CCB && Number(agentInfo.status) === Number(AgentStatus.LIQUIDATION))) {
             // transition CCB->LIQUIDATION can happen due to timing (without event) so it's not a problem
             problems += statusProblem;
         }

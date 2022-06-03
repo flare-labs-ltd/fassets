@@ -37,4 +37,12 @@ export class FuzzingRunner extends ScopedRunner {
     assetManagerEvent<N extends AssetManagerEvents['name']>(event: N, filter?: Partial<ExtractedEventArgs<AssetManagerEvents, N>>) {
         return this.truffleEvents.event(this.context.assetManager, event, filter);
     }
+
+    log(text: string) {
+        this.interceptor.log(text);
+    }
+    
+    comment(text: string) {
+        this.interceptor.comment(text);
+    }
 }

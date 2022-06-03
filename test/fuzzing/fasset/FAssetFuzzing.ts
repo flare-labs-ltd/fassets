@@ -88,6 +88,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     });
     
     after(() => {
+        logAgentSummaries();
         interceptor.logGasUsage();
         interceptor.closeLog();
     });
@@ -200,7 +201,6 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
         await fuzzingState.checkInvariants(true);  // all events are flushed, state must match
-        logAgentSummaries();
         // logStateAgentActions();
     });
 

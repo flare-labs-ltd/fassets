@@ -87,7 +87,7 @@ export class AssetContext {
         public chainEvents: IBlockChainEvents,
         public stateConnectorClient: IStateConnectorClient,
         public attestationProvider: AttestationHelper,
-        public settings: AssetManagerSettings,
+        public settings: AssetManagerSettings,      // may not be fresh
         public assetManager: ContractWithEvents<AssetManagerInstance, AssetManagerEvents>,
         public fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>,
         public assetFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>,
