@@ -201,7 +201,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         await fuzzingState.checkInvariants(true);  // all events are flushed, state must match
         // logStateAgentActions();
     });
-    
+
     function logStateAgentActions() {
         if (!interceptor.logFile) return;
         interceptor.logFile.log("AGENT ACTIONS");

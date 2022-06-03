@@ -395,22 +395,22 @@ export class FuzzingStateAgent {
         return this.parent.eventFormatter.formatAddress(this.address);
     }
 
-    private collateralRatioForPriceBIPS(amgToNATWeiPrice: BN) {
+    private collateralRatioForPriceBIPS(prices: Prices) {
         if (this.mintedUBA.isZero()) return MAX_UINT256;
         const reservedUBA = this.reservedUBA.add(this.redeemingUBA)
-        const reservedCollateral = this.parent.context.convertUBAToNATWei(reservedUBA, amgToNATWeiPrice)
+        const reservedCollateral = this.parent.context.convertUBAToNATWei(reservedUBA, prices.amgNatWei)
             .mul(toBN(this.parent.settings.minCollateralRatioBIPS)).divn(MAX_BIPS);
         const availableCollateral = BN.max(this.totalCollateralNATWei.sub(reservedCollateral), BN_ZERO);
-        const backingCollateral = this.parent.context.convertUBAToNATWei(this.mintedUBA, amgToNATWeiPrice);
+        const backingCollateral = this.parent.context.convertUBAToNATWei(this.mintedUBA, prices.amgNatWei);
         return availableCollateral.muln(MAX_BIPS).div(backingCollateral);
     }
 
     collateralRatioBIPS() {
-        const ratio = this.collateralRatioForPriceBIPS(this.parent.amgPriceNatWei);
-        const ratioFromTrusted = this.collateralRatioForPriceBIPS(this.parent.amgPriceNatWeiFromTrusted);
+        const ratio = this.collateralRatioForPriceBIPS(this.parent.prices);
+        const ratioFromTrusted = this.collateralRatioForPriceBIPS(this.parent.trustedPrices);
         return BN.max(ratio, ratioFromTrusted);
     }
-
+    
     private collateralRatioForPrice(prices: Prices) {
         if (this.mintedUBA.isZero()) return Number.MAX_VALUE;
         const assetUnitUBA = Number(this.parent.settings.assetUnitUBA);
@@ -429,6 +429,29 @@ export class FuzzingStateAgent {
         return Math.max(ratio, ratioFromTrusted);
     }
 
+    possibleLiquidationTransition(timestamp: BN) {
+        const cr = this.collateralRatioBIPS();
+        const settings = this.parent.settings;
+        if (this.status === AgentStatus.NORMAL) {
+            if (cr.lt(toBN(settings.ccbMinCollateralRatioBIPS))) {
+                return AgentStatus.LIQUIDATION;
+            } else if (cr.lt(toBN(settings.minCollateralRatioBIPS))) {
+                return AgentStatus.CCB;
+            }
+        } else if (this.status === AgentStatus.CCB) {
+            if (cr.gte(toBN(settings.minCollateralRatioBIPS))) {
+                return AgentStatus.NORMAL;
+            } else if (cr.lt(toBN(settings.ccbMinCollateralRatioBIPS)) || timestamp.gte(this.ccbStartTimestamp.add(toBN(settings.ccbTimeSeconds)))) {
+                return AgentStatus.LIQUIDATION;
+            }
+        } else if (this.status === AgentStatus.LIQUIDATION) {
+            if (cr.gte(toBN(settings.safetyMinCollateralRatioBIPS))) {
+                return AgentStatus.NORMAL;
+            }
+        }
+        return this.status;
+    }
+    
     // checking
 
     async checkInvariants(checker: FuzzingStateComparator) {

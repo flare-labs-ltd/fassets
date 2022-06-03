@@ -1,8 +1,8 @@
 import { time } from "@openzeppelin/test-helpers";
-import { expectErrors, toBN } from "../../utils/helpers";
+import { expectErrors } from "../../utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { AgentStatus, FuzzingStateAgent } from "./FuzzingStateAgent";
+import { FuzzingStateAgent } from "./FuzzingStateAgent";
 
 export class FuzzingLiquidator extends FuzzingActor {
     constructor(
@@ -29,16 +29,11 @@ export class FuzzingLiquidator extends FuzzingActor {
     }
 
     private async checkAgentForLiquidation(agent: FuzzingStateAgent) {
-        const cr = agent.collateralRatioBIPS();
         const timestamp = await time.latest();
-        const settings = this.state.settings;
-        if (agent.status === AgentStatus.NORMAL && cr.lt(toBN(settings.minCollateralRatioBIPS))) {
+        const newStatus = agent.possibleLiquidationTransition(timestamp);
+        if (newStatus > agent.status) {
             await this.context.assetManager.startLiquidation(agent.address, { from: this.address });
-        } else if (agent.status === AgentStatus.CCB && cr.lt(toBN(settings.ccbMinCollateralRatioBIPS))) {
-            await this.context.assetManager.startLiquidation(agent.address, { from: this.address });
-        } else if (agent.status === AgentStatus.CCB && cr.lt(toBN(settings.minCollateralRatioBIPS)) && timestamp.gte(agent.ccbStartTimestamp.add(toBN(settings.ccbTimeSeconds)))) {
-            await this.context.assetManager.startLiquidation(agent.address, { from: this.address });
-        } else if ((agent.status === AgentStatus.CCB || agent.status === AgentStatus.LIQUIDATION) && cr.gt(toBN(settings.safetyMinCollateralRatioBIPS))) {
+        } else if (newStatus < agent.status) {
             await this.context.assetManager.endLiquidation(agent.address, { from: this.address });
         }
     }
