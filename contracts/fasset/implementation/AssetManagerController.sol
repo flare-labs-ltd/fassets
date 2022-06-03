@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "../interface/IWNat.sol";
 import "../interface/IAssetManager.sol";
@@ -9,7 +8,6 @@ import "../interface/IAssetManagerEvents.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
-import "../library/AssetManagerSettings.sol";
 import "../library/SettingsUpdater.sol";
 
 contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEvents {

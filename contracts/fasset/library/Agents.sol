@@ -3,7 +3,6 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../interface/IAgentVault.sol";
 import "../interface/IAssetManager.sol";
 import "../implementation/AgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";

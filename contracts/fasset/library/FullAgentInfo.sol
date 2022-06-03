@@ -3,7 +3,6 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
 import "./Conversion.sol";
 import "./Agents.sol";
@@ -122,7 +121,7 @@ library FullAgentInfo {
         _agentState.totalCollateralNATWei = Agents.fullCollateral(_state, _agentVault);
         _agentState.freeCollateralNATWei = collateralData.freeCollateralWei(agent, _state.settings);
         _agentState.freeCollateralLots = collateralData.freeCollateralLots(agent, _state.settings);
-        (_agentState.collateralRatioBIPS,,) = Liquidation.getCollateralRatio(_state, agent, _agentVault);
+        (_agentState.collateralRatioBIPS,,) = Liquidation.getCollateralRatioBIPS(_state, agent, _agentVault);
         _agentState.mintedUBA = Conversion.convertAmgToUBA(_state.settings, agent.mintedAMG);
         _agentState.reservedUBA = Conversion.convertAmgToUBA(_state.settings, agent.reservedAMG);
         _agentState.redeemingUBA = Conversion.convertAmgToUBA(_state.settings, agent.redeemingAMG);
