@@ -130,6 +130,11 @@ export class Agent extends AssetContextClient {
         const res = await this.assetManager.confirmUnderlyingWithdrawal(proof, this.agentVault.address, { from: this.ownerAddress });
         return requiredEventArgs(res, 'UnderlyingWithdrawalConfirmed');
     }
+
+    async cancelUnderlyingWithdrawal(request: EventArgs<UnderlyingWithdrawalAnnounced>) {
+        const res = await this.assetManager.cancelUnderlyingWithdrawal(this.agentVault.address, { from: this.ownerAddress });
+        return requiredEventArgs(res, 'UnderlyingWithdrawalCancelled');
+    }
     
     async performRedemptionPayment(request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
         const paymentAmount = request.valueUBA.sub(request.feeUBA);

@@ -88,7 +88,9 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     });
     
     after(() => {
-        logAgentSummaries();
+        // fuzzingState.logAllAgentActions(interceptor.logFile);
+        fuzzingState.logAllAgentSummaries(interceptor.logFile);
+        fuzzingState.logExpectationFailures(interceptor.logFile);
         interceptor.logGasUsage();
         interceptor.closeLog();
     });
@@ -98,7 +100,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         const firstAgentAddress = 10;
         for (let i = 0; i < N_AGENTS; i++) {
             const underlyingAddress = "underlying_agent_" + i;
-            const fa = await FuzzingAgent.createTest(runner, accounts[firstAgentAddress + i], underlyingAddress);
+            const ownerUnderlyingAddress = "underlying_owner_agent_" + i;
+            const fa = await FuzzingAgent.createTest(runner, accounts[firstAgentAddress + i], underlyingAddress, ownerUnderlyingAddress);
             eventDecoder.addAddress(`OWNER_${i}`, fa.agent.ownerAddress);
             interceptor.captureEventsFrom(`AGENT_${i}`, fa.agent.agentVault, 'AgentVault');
             await fa.agent.agentVault.deposit({ from: fa.agent.ownerAddress, value: toWei(10_000_000) });
@@ -133,6 +136,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [testSelfClose, 10],
             [testLiquidate, 10],
             [testConvertDustToTickets, 10],
+            [testUnderlyingWithdrawal, 5],
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
         ];
@@ -201,25 +205,9 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
         await fuzzingState.checkInvariants(true);  // all events are flushed, state must match
-        // logStateAgentActions();
+        assert.isTrue(fuzzingState.failedExpectations.length === 0, "fuzzing state has expectation failures");
     });
 
-    function logAgentSummaries() {
-        if (!interceptor.logFile) return;
-        interceptor.logFile.log("\nAGENT SUMMARIES");
-        for (const agent of fuzzingState.agents.values()) {
-            agent.writeAgentSummary(interceptor.logFile);
-        }
-    }
-    
-    function logStateAgentActions() {
-        if (!interceptor.logFile) return;
-        interceptor.logFile.log("\nAGENT ACTIONS");
-        for (const agent of fuzzingState.agents.values()) {
-            agent.writeActionLog(interceptor.logFile);
-        }
-    }
-    
     async function timeInfo() {
         return `block=${await time.latestBlock()} timestamp=${await latestBlockTimestamp() - startTimestamp}  ` +
                `underlyingBlock=${chain.blockHeight()} underlyingTimestamp=${chain.lastBlockTimestamp() - startTimestamp}  ` +
@@ -253,6 +241,11 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     async function testSelfClose() {
         const agent = randomChoice(agents);
         runner.startThread((scope) => agent.selfClose(scope));
+    }
+
+    async function testUnderlyingWithdrawal() {
+        const agent = randomChoice(agents);
+        runner.startThread((scope) => agent.announcedUnderlyingWithdrawal(scope));
     }
 
     async function testConvertDustToTickets() {

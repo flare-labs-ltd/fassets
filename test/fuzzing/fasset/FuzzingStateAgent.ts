@@ -1,15 +1,15 @@
 import BN from "bn.js";
 import {
-    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
-    RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose
+    AgentAvailable, AllEvents, AssetManagerInstance, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
+    RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/AssetManager";
 import { NAT_WEI } from "../../integration/utils/AssetContext";
-import { EvmEvent } from "../../utils/events";
+import { ContractWithEvents, EvmEvent } from "../../utils/events";
 import { BN_ZERO, formatBN, MAX_BIPS, sumBN, toBN } from "../../utils/helpers";
 import { ILogger } from "../../utils/LogFile";
-import { FuzzingState, Prices } from "./FuzzingState";
+import { FuzzingState, FuzzingStateLogRecord, Prices } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
-import { EvmEventArgs } from "./WrappedEvents";
+import { EvmEventArgs, EvmEventArgsForName } from "./WrappedEvents";
 
 // status as returned from getAgentInfo
 export enum AgentStatus {
@@ -59,11 +59,6 @@ export interface FreeUnderlyingBalanceChange {
     amountUBA: BN,
 }
 
-type ActionLogRecord = {
-    text: string;
-    event: EvmEvent;
-};
-
 const MAX_UINT256 = toBN(1).shln(256).subn(1);
 
 export class FuzzingStateAgent {
@@ -99,7 +94,7 @@ export class FuzzingStateAgent {
     freeUnderlyingBalanceChanges: FreeUnderlyingBalanceChange[] = [];
     
     // log
-    actionLog: Array<ActionLogRecord> = [];
+    actionLog: FuzzingStateLogRecord[] = [];
 
     // handlers: agent availability
 
@@ -210,6 +205,24 @@ export class FuzzingStateAgent {
             this.liquidationStartTimestamp = timestamp;
         }
         this.status = status;
+    }
+
+    // handlers: underlying withdrawal
+    
+    handleUnderlyingWithdrawalAnnounced(args: EvmEventArgs<UnderlyingWithdrawalAnnounced>): void {
+        this.expect(this.announcedUnderlyingWithdrawalId.isZero(), `underlying withdrawal announcement made twice`, args.$event);
+        this.announcedUnderlyingWithdrawalId = args.announcementId;
+    }
+
+    handleUnderlyingWithdrawalConfirmed(args: EvmEventArgs<UnderlyingWithdrawalConfirmed>): void {
+        this.expect(this.announcedUnderlyingWithdrawalId.eq(args.announcementId), `underlying withdrawal id mismatch`, args.$event);
+        this.addFreeUnderlyingBalanceChange(args.$event, 'withdrawal', args.spentUBA.neg());
+        this.announcedUnderlyingWithdrawalId = BN_ZERO;
+    }
+
+    handleUnderlyingWithdrawalCancelled(args: EvmEventArgs<UnderlyingWithdrawalCancelled>): void {
+        this.expect(this.announcedUnderlyingWithdrawalId.eq(args.announcementId), `underlying withdrawal id mismatch`, args.$event);
+        this.announcedUnderlyingWithdrawalId = BN_ZERO;
     }
     
     // handlers: liquidation
@@ -380,10 +393,6 @@ export class FuzzingStateAgent {
         this.logAction(`new FreeUnderlyingBalanceChange(${type}): amount=${formatBN(amountUBA)}`, event);
     }
 
-    logAction(text: string, event: EvmEvent) {
-        this.actionLog.push({ text, event });
-    }
-
     // totals
 
     calculateReservedUBA() {
@@ -406,7 +415,7 @@ export class FuzzingStateAgent {
 
     private collateralRatioForPriceBIPS(prices: Prices) {
         if (this.mintedUBA.isZero()) return MAX_UINT256;
-        const reservedUBA = this.reservedUBA.add(this.redeemingUBA)
+        const reservedUBA = this.reservedUBA.add(this.redeemingUBA);
         const reservedCollateral = this.parent.context.convertUBAToNATWei(reservedUBA, prices.amgNatWei)
             .mul(toBN(this.parent.settings.minCollateralRatioBIPS)).divn(MAX_BIPS);
         const availableCollateral = BN.max(this.totalCollateralNATWei.sub(reservedCollateral), BN_ZERO);
@@ -497,14 +506,26 @@ export class FuzzingStateAgent {
         }
     }
     
-    writeActionLog(logger: ILogger) {
-        logger.log(`    action log for ${this.name()}`);
-        for (const log of this.actionLog) {
-            const eventInfo = `event=${log.event.event} at ${log.event.blockNumber}.${log.event.logIndex}`;
-            logger.log(`        ${log.text}  ${eventInfo}`);
+    // expectations and logs
+    
+    expect(condition: boolean, message: string, event: EvmEvent) {
+        if (!condition) {
+            const text = `expectation failed for ${this.name}: ${message}`;
+            this.parent.failedExpectations.push({ text, event });
         }
     }
     
+    logAction(text: string, event: EvmEvent) {
+        this.actionLog.push({ text, event });
+    }
+
+    writeActionLog(logger: ILogger) {
+        logger.log(`    action log for ${this.name()}`);
+        for (const log of this.actionLog) {
+            logger.log(`        ${log.text}  ${this.parent.eventInfo(log.event)}`);
+        }
+    }
+
     writeAgentSummary(logger: ILogger) {
         logger.log(`    ${this.name()}:  minted=${formatBN(this.mintedUBA)}  cr=${this.collateralRatio().toFixed(3)}  status=${AgentStatus[this.status]}  available=${this.publiclyAvailable}` +
             `  (reserved=${formatBN(this.reservedUBA)}  redeeming=${formatBN(this.redeemingUBA)}  dust=${formatBN(this.reportedDustUBA)}  freeUnderlying=${formatBN(this.freeUnderlyingBalanceUBA)})`)
