@@ -1,7 +1,6 @@
 import BN from "bn.js";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Agent } from "../../integration/utils/Agent";
-import { AMG_NATWEI_PRICE_SCALE } from "../../integration/utils/AssetContext";
 import { EventArgs, requiredEventArgs } from "../../utils/events";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
@@ -15,6 +14,7 @@ export class FuzzingAgent extends FuzzingActor {
     constructor(
         public runner: FuzzingRunner,
         public agent: Agent,
+        public ownerUnderlyingAddress: string,
     ) {
         super(runner);
         this.registerForEvents();
@@ -32,13 +32,13 @@ export class FuzzingAgent extends FuzzingActor {
         return this.formatAddress(this.ownerAddress);
     }
     
-    get trackedAgentState() {
-        return this.runner.state.getAgent(this.agentVault.address);
+    agentState() {
+        return this.state.getAgent(this.agentVault.address);
     }
 
-    static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string) {
+    static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string) {
         const agent = await Agent.createTest(runner.context, ownerAddress, underlyingAddress);
-        return new FuzzingAgent(runner, agent);
+        return new FuzzingAgent(runner, agent, ownerUnderlyingAddress);
     }
 
     registerForEvents() {
@@ -114,7 +114,7 @@ export class FuzzingAgent extends FuzzingActor {
             const collateral = await this.context.wnat.balanceOf(this.agentVault.address);
             const [amgToNATWeiPrice, amgToNATWeiPriceTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
             const amgToNATWei = BN.min(amgToNATWeiPrice, amgToNATWeiPriceTrusted);
-            const agentState = this.state.agents.get(this.agentVault.address) ?? assert.fail(`Missing state for ${this.name}`);
+            const agentState = this.agentState();
             const totalUBA = agentState.mintedUBA.add(agentState.reservedUBA).add(agentState.redeemingUBA).addn(1000 /* to be > */);
             const requiredCR = type === 'liquidation' ? toBN(this.state.settings.safetyMinCollateralRatioBIPS) : toBN(this.state.settings.minCollateralRatioBIPS);
             const requredCollateral = this.context.convertUBAToNATWei(totalUBA, amgToNATWei).mul(requiredCR).divn(MAX_BIPS);
@@ -129,5 +129,28 @@ export class FuzzingAgent extends FuzzingActor {
             const crAfter = agentState.collateralRatio();
             this.runner.comment(`Topped up ${this.name} by ${formatBN(requiredTopup)}  crBefore=${crBefore.toFixed(3)}  crAfter=${crAfter.toFixed(3)}`);
         });
+    }
+    
+    async announcedUnderlyingWithdrawal(scope: EventScope) {
+        const agentState = this.agentState();
+        const amount = randomBN(agentState.freeUnderlyingBalanceUBA);
+        if (amount.isZero()) return;
+        // announce
+        const announcement = await this.agent.announceUnderlyingWithdrawal()
+            .catch(e => scope.exitOnExpectedError(e, []));
+        if (coinFlip(0.8)) {
+            // perform withdrawal
+            const txHash = await this.agent.performUnderlyingWithdrawal(announcement, amount, this.ownerUnderlyingAddress)
+                .catch(e => scope.exitOnExpectedError(e, []));
+            // wait for finalization
+            await this.waitForUnderlyingTransactionFinalization(scope, txHash);
+            // confirm
+            await this.agent.confirmUnderlyingWithdrawal(announcement, txHash)
+                .catch(e => scope.exitOnExpectedError(e, []));
+        } else {
+            // cancel withdrawal
+            await this.agent.cancelUnderlyingWithdrawal(announcement)
+                .catch(e => scope.exitOnExpectedError(e, []));
+        }
     }
 }

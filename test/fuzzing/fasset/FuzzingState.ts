@@ -1,11 +1,11 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
 import { EventFormatter } from "../../utils/EventDecoder";
-import { ExtractedEventArgs } from "../../utils/events";
+import { EvmEvent, ExtractedEventArgs } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { stringifyJson } from "../../utils/fuzzing-utils";
 import { BNish, BN_ZERO, sumBN, toBN } from "../../utils/helpers";
-import { LogFile } from "../../utils/LogFile";
+import { ILogger, LogFile } from "../../utils/LogFile";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { web3DeepNormalize, web3Normalize } from "../../utils/web3assertions";
 import { AgentStatus, FuzzingStateAgent } from "./FuzzingStateAgent";
@@ -17,60 +17,68 @@ import { EvmEvents, UnderlyingChainEvents } from "./WrappedEvents";
 export class Prices {
     constructor(
         private readonly context: AssetContext,
-        public readonly natUSDDec5: BN, 
+        public readonly natUSDDec5: BN,
         public readonly natTimestamp: BN,
         public readonly assetUSDDec5: BN,
         public readonly assetTimestamp: BN,
-    ) {}
+    ) { }
 
     get amgNatWei() {
         return this.context.amgToNATWeiPrice(this.natUSDDec5, this.assetUSDDec5);
     }
-    
+
     get natUSD() {
         return Number(this.natUSDDec5) * 1e-5;
-    } 
-    
+    }
+
     get assetUSD() {
         return Number(this.assetUSDDec5) * 1e-5;
-    } 
-    
+    }
+
     get assetNat() {
         return this.assetUSD / this.natUSD;
     }
-    
+
     fresh(relativeTo: Prices, maxAge: BNish) {
         maxAge = toBN(maxAge);
         return this.natTimestamp.add(maxAge).gte(relativeTo.natTimestamp) && this.assetTimestamp.add(maxAge).gte(relativeTo.assetTimestamp);
     }
-    
+
     toString() {
         return `(nat=${this.natUSD.toFixed(3)}$, asset=${this.assetUSD.toFixed(3)}$, asset/nat=${this.assetNat.toFixed(3)})`;
     }
 }
 
+export type FuzzingStateLogRecord = {
+    text: string;
+    event: EvmEvent;
+};
+
 export class FuzzingState {
     // state
     fAssetSupply = BN_ZERO;
     fAssetBalance = new SparseArray();
-    
+
     // must call initialize to init prices
     prices!: Prices;
     trustedPrices!: Prices;
-    
+
     // settings
     settings: AssetManagerSettings;
-    
+
     // agent state
     agents: Map<string, FuzzingStateAgent> = new Map();                // map agent_address => agent state
     agentsByUnderlying: Map<string, FuzzingStateAgent> = new Map();    // map underlying_address => agent state
-    
+
     // settings
     logFile?: LogFile;
-    
+
+    // logs
+    failedExpectations: FuzzingStateLogRecord[] = [];
+
     // synthetic events
     pricesUpdated = new TriggerableEvent<void>(this.eventQueue);
-    
+
     constructor(
         public context: AssetContext,
         public timeline: FuzzingTimeline,
@@ -81,13 +89,13 @@ export class FuzzingState {
     ) {
         this.settings = { ...context.settings };
     }
-    
+
     // async initialization part
     async initialize() {
         [this.prices, this.trustedPrices] = await this.getPrices();
         this.registerHandlers();
     }
-    
+
     async getPrices(): Promise<[Prices, Prices]> {
         const { 0: natPrice, 1: natTimestamp } = await this.context.natFtso.getCurrentPrice();
         const { 0: assetPrice, 1: assetTimestamp } = await this.context.assetFtso.getCurrentPrice();
@@ -98,7 +106,7 @@ export class FuzzingState {
         const trustedPricesFresh = trustedPrices.fresh(ftsoPrices, this.settings.maxTrustedPriceAgeSeconds);
         return [ftsoPrices, trustedPricesFresh ? trustedPrices : ftsoPrices];
     }
-    
+
     registerHandlers() {
         // track total supply of fAsset
         this.assetManagerEvent('MintingExecuted').subscribe(args => {
@@ -144,7 +152,7 @@ export class FuzzingState {
         // agents
         this.registerAgentHandlers();
     }
-    
+
     private registerAgentHandlers() {
         // agent create / destroy
         this.assetManagerEvent('AgentCreated').subscribe(args => {
@@ -184,6 +192,10 @@ export class FuzzingState {
         this.assetManagerEvent('RedemptionPaymentFailed').subscribe(args => this.getAgent(args.agentVault).handleRedemptionPaymentFailed(args));
         this.assetManagerEvent('RedemptionFinished').subscribe(args => this.getAgent(args.agentVault).handleRedemptionFinished(args));
         this.assetManagerEvent('SelfClose').subscribe(args => this.getAgent(args.agentVault).handleSelfClose(args));
+        // underlying withdrawal
+        this.assetManagerEvent('UnderlyingWithdrawalAnnounced').subscribe(args => this.getAgent(args.agentVault).handleUnderlyingWithdrawalAnnounced(args));
+        this.assetManagerEvent('UnderlyingWithdrawalConfirmed').subscribe(args => this.getAgent(args.agentVault).handleUnderlyingWithdrawalConfirmed(args));
+        this.assetManagerEvent('UnderlyingWithdrawalCancelled').subscribe(args => this.getAgent(args.agentVault).handleUnderlyingWithdrawalCancelled(args));
         // track dust
         this.assetManagerEvent('DustConvertedToTicket').subscribe(args => this.getAgent(args.agentVault).handleDustConvertedToTicket(args));
         this.assetManagerEvent('DustChanged').subscribe(args => this.getAgent(args.agentVault).handleDustChanged(args));
@@ -225,10 +237,47 @@ export class FuzzingState {
     assetManagerEvent<N extends AssetManagerEvents['name']>(event: N, filter?: Partial<ExtractedEventArgs<AssetManagerEvents, N>>) {
         return this.truffleEvents.event(this.context.assetManager, event, filter).immediate();
     }
-    
+
     // getters
-    
+
     lotSize() {
         return toBN(this.settings.lotSizeAMG).mul(toBN(this.settings.assetMintingGranularityUBA));
+    }
+
+    // logs
+
+    expect(condition: boolean, message: string, event: EvmEvent) {
+        if (!condition) {
+            const text = `expectation failed: ${message}`;
+            this.failedExpectations.push({ text, event });
+        }
+    }
+
+    eventInfo(event: EvmEvent) {
+        return `event=${event.event} at ${event.blockNumber}.${event.logIndex}`;
+    }
+
+    logExpectationFailures(logger: ILogger | undefined) {
+        if (!logger) return;
+        logger.log(`\nEXPECTATION FAILURES: ${this.failedExpectations.length}`);
+        for (const log of this.failedExpectations) {
+            logger.log(`        ${log.text}  ${this.eventInfo(log.event)}`);
+        }
+    }
+
+    logAllAgentSummaries(logger: ILogger | undefined) {
+        if (!logger) return;
+        logger.log("\nAGENT SUMMARIES");
+        for (const agent of this.agents.values()) {
+            agent.writeAgentSummary(logger);
+        }
+    }
+
+    logAllAgentActions(logger: ILogger | undefined) {
+        if (!logger) return;
+        logger.log("\nAGENT ACTIONS");
+        for (const agent of this.agents.values()) {
+            agent.writeActionLog(logger);
+        }
     }
 }
