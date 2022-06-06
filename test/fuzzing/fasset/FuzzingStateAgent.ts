@@ -1,14 +1,15 @@
 import BN from "bn.js";
 import {
-    AgentAvailable, AllEvents, AssetManagerInstance, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, MintingExecuted, MintingPaymentDefault,
+    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose
 } from "../../../typechain-truffle/AssetManager";
-import { ContractWithEvents, EvmEvent } from "../../utils/events";
-import { BN_ZERO, formatBN, sumBN, toBN } from "../../utils/helpers";
+import { NAT_WEI } from "../../integration/utils/AssetContext";
+import { EvmEvent } from "../../utils/events";
+import { BN_ZERO, formatBN, MAX_BIPS, sumBN, toBN } from "../../utils/helpers";
 import { ILogger } from "../../utils/LogFile";
-import { FuzzingState } from "./FuzzingState";
+import { FuzzingState, Prices } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
-import { EvmEventArgs, EvmEventArgsForName } from "./WrappedEvents";
+import { EvmEventArgs } from "./WrappedEvents";
 
 // status as returned from getAgentInfo
 export enum AgentStatus {
@@ -63,6 +64,8 @@ type ActionLogRecord = {
     event: EvmEvent;
 };
 
+const MAX_UINT256 = toBN(1).shln(256).subn(1);
+
 export class FuzzingStateAgent {
     constructor(
         public parent: FuzzingState,
@@ -77,11 +80,17 @@ export class FuzzingStateAgent {
     feeBIPS: BN = BN_ZERO;
     agentMinCollateralRatioBIPS: BN = BN_ZERO;
     totalCollateralNATWei: BN = BN_ZERO;
-    calculatedDustUBA: BN = BN_ZERO;
-    reportedDustUBA: BN = BN_ZERO;
     ccbStartTimestamp: BN = BN_ZERO;                // 0 - not in ccb/liquidation
     liquidationStartTimestamp: BN = BN_ZERO;        // 0 - not in liquidation
     announcedUnderlyingWithdrawalId: BN = BN_ZERO;  // 0 - not announced
+
+    // aggregates
+    reservedUBA: BN = BN_ZERO;
+    mintedUBA: BN = BN_ZERO;
+    redeemingUBA: BN = BN_ZERO;
+    calculatedDustUBA: BN = BN_ZERO;
+    reportedDustUBA: BN = BN_ZERO;
+    freeUnderlyingBalanceUBA: BN = BN_ZERO;
 
     // collections
     collateralReservations: Map<number, CollateralReservation> = new Map();
@@ -107,8 +116,7 @@ export class FuzzingStateAgent {
     // handlers: minting
 
     handleCollateralReserved(args: EvmEventArgs<CollateralReserved>) {
-        const cr = this.newCollateralReservation(args);
-        this.collateralReservations.set(cr.id, cr);
+        const cr = this.addCollateralReservation(args);
         this.logAction(`new CollateralReservation(${cr.id}): amount=${formatBN(cr.valueUBA)} fee=${formatBN(cr.feeUBA)}`, args.$event);
     }
 
@@ -116,8 +124,7 @@ export class FuzzingStateAgent {
         // update underlying free balance
         this.addFreeUnderlyingBalanceChange(args.$event, 'minting', toBN(args.receivedFeeUBA));
         // create redemption ticket
-        const ticket = this.newRedemptionTicket(Number(args.redemptionTicketId), toBN(args.mintedAmountUBA));
-        this.redemptionTickets.set(ticket.id, ticket);
+        const ticket = this.addRedemptionTicket(Number(args.redemptionTicketId), toBN(args.mintedAmountUBA));
         this.logAction(`new RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, args.$event);
         // delete collateral reservation
         const collateralReservationId = Number(args.collateralReservationId);
@@ -137,15 +144,14 @@ export class FuzzingStateAgent {
     // handlers: redemption and self-close
 
     handleRedemptionRequested(args: EvmEventArgs<RedemptionRequested>): void {
-        const request = this.newRedemptionRequest(args);
-        this.redemptionRequests.set(request.id, request);
+        const request = this.addRedemptionRequest(args);
         this.closeRedemptionTicketsWholeLots(args.$event, toBN(args.valueUBA));
         this.logAction(`new RedemptionRequest(${request.id}): amount=${formatBN(request.valueUBA)} fee=${formatBN(request.feeUBA)}`, args.$event);
     }
 
     handleRedemptionPerformed(args: EvmEventArgs<RedemptionPerformed>): void {
         const request = this.getRedemptionRequest(Number(args.requestId));
-        request.collateralReleased = true;
+        this.releaseRedemptionCollateral(request);
         this.releaseClosedRedemptionRequests(args.$event, request);
     }
 
@@ -155,13 +161,13 @@ export class FuzzingStateAgent {
 
     handleRedemptionPaymentBlocked(args: EvmEventArgs<RedemptionPaymentBlocked>): void {
         const request = this.getRedemptionRequest(Number(args.requestId));
-        request.collateralReleased = true;
+        this.releaseRedemptionCollateral(request);
         this.releaseClosedRedemptionRequests(args.$event, request);
     }
 
     handleRedemptionDefault(args: EvmEventArgs<RedemptionDefault>): void {
         const request = this.getRedemptionRequest(Number(args.requestId));
-        request.collateralReleased = true;
+        this.releaseRedemptionCollateral(request);
         this.releaseClosedRedemptionRequests(args.$event, request);
     }
 
@@ -194,6 +200,25 @@ export class FuzzingStateAgent {
         this.logAction(`dust changed by ${change}, new dust=${formatBN(this.reportedDustUBA)}`, args.$event);
     }
     
+    // handlers: status
+    
+    handleStatusChange(status: AgentStatus, timestamp?: BN): void {
+        if (timestamp && status === AgentStatus.NORMAL && this.status === AgentStatus.CCB) {
+            this.ccbStartTimestamp = timestamp;
+        }
+        if (timestamp && (status === AgentStatus.NORMAL || status === AgentStatus.CCB) && (this.status === AgentStatus.LIQUIDATION || this.status === AgentStatus.FULL_LIQUIDATION)) {
+            this.liquidationStartTimestamp = timestamp;
+        }
+        this.status = status;
+    }
+    
+    // handlers: liquidation
+    
+    handleLiquidationPerformed(args: EvmEventArgs<LiquidationPerformed>): void {
+        this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.valueUBA));
+        this.addFreeUnderlyingBalanceChange(args.$event, 'self-close', toBN(args.valueUBA));
+    }
+    
     // agent state changing
 
     depositCollateral(value: BN) {
@@ -218,10 +243,18 @@ export class FuzzingStateAgent {
         };
     }
 
+    addCollateralReservation(args: EvmEventArgs<CollateralReserved>) {
+        const cr = this.newCollateralReservation(args);
+        this.collateralReservations.set(cr.id, cr);
+        this.reservedUBA = this.reservedUBA.add(cr.valueUBA);
+        return cr;
+    }
+
     deleteCollateralReservation(event: EvmEvent, crId: number) {
         const cr = this.collateralReservations.get(crId);
         if (!cr) assert.fail(`Invalid collateral reservation id ${crId}`);
         this.logAction(`delete CollateralReservation(${cr.id}): amount=${formatBN(cr.valueUBA)}`, event);
+        this.reservedUBA = this.reservedUBA.sub(cr.valueUBA);
         this.collateralReservations.delete(crId);
     }
 
@@ -233,6 +266,13 @@ export class FuzzingStateAgent {
         };
     }
     
+    addRedemptionTicket(ticketId: number, amountUBA: BN) {
+        const ticket = this.newRedemptionTicket(ticketId, amountUBA);
+        this.redemptionTickets.set(ticket.id, ticket);
+        this.mintedUBA = this.mintedUBA.add(ticket.amountUBA);
+        return ticket;
+    }
+
     closeRedemptionTicketsWholeLots(event: EvmEvent, amountUBA: BN) {
         const lotSize = this.parent.lotSize();
         const tickets = Array.from(this.redemptionTickets.values());
@@ -258,7 +298,9 @@ export class FuzzingStateAgent {
             ++count;
         }
         const redeemedLots = amountLots.sub(remainingLots);
-        const remainingUBA = amountUBA.sub(redeemedLots.mul(lotSize));
+        const redeemedUBA = redeemedLots.mul(lotSize);
+        this.mintedUBA = this.mintedUBA.sub(redeemedUBA);
+        const remainingUBA = amountUBA.sub(redeemedUBA);
         this.logAction(`redeemed ${count} tickets, ${redeemedLots} lots, remainingUBA=${formatBN(remainingUBA)}, lotSize=${formatBN(lotSize)}`, event);
     }
 
@@ -289,6 +331,7 @@ export class FuzzingStateAgent {
             ++count;
         }
         const redeemedUBA = amountUBA.sub(remainingUBA);
+        this.mintedUBA = this.mintedUBA.sub(redeemedUBA);
         this.logAction(`redeemed (any amount) ${count} tickets, redeemed=${formatBN(redeemedUBA)}, remainingUBA=${formatBN(remainingUBA)}, lotSize=${formatBN(lotSize)}`, event);
     }
     
@@ -307,8 +350,20 @@ export class FuzzingStateAgent {
         };
     }
     
+    addRedemptionRequest(args: EvmEventArgs<RedemptionRequested>) {
+        const request = this.newRedemptionRequest(args);
+        this.redemptionRequests.set(request.id, request);
+        this.redeemingUBA = this.redeemingUBA.add(request.valueUBA);
+        return request;
+    }
+
     getRedemptionRequest(requestId: number) {
         return this.redemptionRequests.get(requestId) ?? assert.fail(`Invalid redemption request id ${requestId}`);
+    }
+
+    releaseRedemptionCollateral(request: RedemptionRequest) {
+        request.collateralReleased = true;
+        this.redeemingUBA = this.redeemingUBA.sub(request.valueUBA);
     }
 
     releaseClosedRedemptionRequests(event: EvmEvent, request: RedemptionRequest) {
@@ -321,7 +376,8 @@ export class FuzzingStateAgent {
     addFreeUnderlyingBalanceChange(event: EvmEvent, type: FreeUnderlyingBalanceChangeType, amountUBA: BN) {
         const change: FreeUnderlyingBalanceChange = { type, amountUBA };
         this.freeUnderlyingBalanceChanges.push(change);
-        this.logAction(`new FreeUnderlyingBalanceChange({type}): amount=${formatBN(amountUBA)}`, event);
+        this.freeUnderlyingBalanceUBA = this.freeUnderlyingBalanceUBA.add(amountUBA);
+        this.logAction(`new FreeUnderlyingBalanceChange(${type}): amount=${formatBN(amountUBA)}`, event);
     }
 
     logAction(text: string, event: EvmEvent) {
@@ -330,39 +386,111 @@ export class FuzzingStateAgent {
 
     // totals
 
-    reservedUBA() {
+    calculateReservedUBA() {
         return sumBN(this.collateralReservations.values(), ticket => ticket.valueUBA);
     }
 
-    mintedUBA() {
+    calculateMintedUBA() {
         return sumBN(this.redemptionTickets.values(), ticket => ticket.amountUBA).add(this.reportedDustUBA);
     }
 
-    freeUnderlyingBalanceUBA() {
+    calculateFreeUnderlyingBalanceUBA() {
         return sumBN(this.freeUnderlyingBalanceChanges, change => change.amountUBA);
     }
+    
+    // calculations
+    
+    name() {
+        return this.parent.eventFormatter.formatAddress(this.address);
+    }
 
+    private collateralRatioForPriceBIPS(prices: Prices) {
+        if (this.mintedUBA.isZero()) return MAX_UINT256;
+        const reservedUBA = this.reservedUBA.add(this.redeemingUBA)
+        const reservedCollateral = this.parent.context.convertUBAToNATWei(reservedUBA, prices.amgNatWei)
+            .mul(toBN(this.parent.settings.minCollateralRatioBIPS)).divn(MAX_BIPS);
+        const availableCollateral = BN.max(this.totalCollateralNATWei.sub(reservedCollateral), BN_ZERO);
+        const backingCollateral = this.parent.context.convertUBAToNATWei(this.mintedUBA, prices.amgNatWei);
+        return availableCollateral.muln(MAX_BIPS).div(backingCollateral);
+    }
+
+    collateralRatioBIPS() {
+        const ratio = this.collateralRatioForPriceBIPS(this.parent.prices);
+        const ratioFromTrusted = this.collateralRatioForPriceBIPS(this.parent.trustedPrices);
+        return BN.max(ratio, ratioFromTrusted);
+    }
+    
+    private collateralRatioForPrice(prices: Prices) {
+        if (this.mintedUBA.isZero()) return Number.POSITIVE_INFINITY;
+        const assetUnitUBA = Number(this.parent.settings.assetUnitUBA);
+        const reserved = (Number(this.reservedUBA) + Number(this.redeemingUBA)) / assetUnitUBA;
+        const minCollateralRatio = Number(this.parent.settings.minCollateralRatioBIPS) / MAX_BIPS;
+        const reservedCollateral = reserved * prices.assetNat * minCollateralRatio;
+        const totalCollateral = Number(this.totalCollateralNATWei) / Number(NAT_WEI);
+        const availableCollateral = Math.max(totalCollateral - reservedCollateral, 0);
+        const backingCollateral = Number(this.mintedUBA) / assetUnitUBA * prices.assetNat;
+        return availableCollateral / backingCollateral;
+    }
+    
+    collateralRatio() {
+        const ratio = this.collateralRatioForPrice(this.parent.prices);
+        const ratioFromTrusted = this.collateralRatioForPrice(this.parent.trustedPrices);
+        return Math.max(ratio, ratioFromTrusted);
+    }
+
+    possibleLiquidationTransition(timestamp: BN) {
+        const cr = this.collateralRatioBIPS();
+        const settings = this.parent.settings;
+        if (this.status === AgentStatus.NORMAL) {
+            if (cr.lt(toBN(settings.ccbMinCollateralRatioBIPS))) {
+                return AgentStatus.LIQUIDATION;
+            } else if (cr.lt(toBN(settings.minCollateralRatioBIPS))) {
+                return AgentStatus.CCB;
+            }
+        } else if (this.status === AgentStatus.CCB) {
+            if (cr.gte(toBN(settings.minCollateralRatioBIPS))) {
+                return AgentStatus.NORMAL;
+            } else if (cr.lt(toBN(settings.ccbMinCollateralRatioBIPS)) || timestamp.gte(this.ccbStartTimestamp.add(toBN(settings.ccbTimeSeconds)))) {
+                return AgentStatus.LIQUIDATION;
+            }
+        } else if (this.status === AgentStatus.LIQUIDATION) {
+            if (cr.gte(toBN(settings.safetyMinCollateralRatioBIPS))) {
+                return AgentStatus.NORMAL;
+            }
+        }
+        return this.status;
+    }
+    
     // checking
 
     async checkInvariants(checker: FuzzingStateComparator) {
-        const agentName = this.parent.eventFormatter.formatAddress(this.address);
+        const agentName = this.name();
         // get actual agent state
         const agentInfo = await this.parent.context.assetManager.getAgentInfo(this.address);
         let problems = 0;
         // reserved
-        const reservedUBA = this.reservedUBA();
+        const reservedUBA = this.calculateReservedUBA();
         problems += checker.checkEquality(`${agentName}.reservedUBA`, agentInfo.reservedUBA, reservedUBA);
+        problems += checker.checkEquality(`${agentName}.reservedUBA.cumulative`, this.reservedUBA, reservedUBA);
         // minted
-        const mintedUBA = this.mintedUBA();
+        const mintedUBA = this.calculateMintedUBA();
         problems += checker.checkEquality(`${agentName}.mintedUBA`, agentInfo.mintedUBA, mintedUBA);
+        problems += checker.checkEquality(`${agentName}.mintedUBA.cumulative`, this.mintedUBA, mintedUBA);
         // free balance
-        const freeUnderlyingBalanceUBA = this.freeUnderlyingBalanceUBA();
+        const freeUnderlyingBalanceUBA = this.calculateFreeUnderlyingBalanceUBA();
         problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
+        problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA.cumulative`, this.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
         // minimum underlying backing (TODO: check that all illegel payments have been challenged already)
         const underlyingBalanceUBA = await this.parent.context.chain.getBalance(this.underlyingAddressString);
         problems += checker.checkNumericDifference(`${agentName}.underlyingBalanceUBA`, underlyingBalanceUBA, 'gte', mintedUBA.add(freeUnderlyingBalanceUBA));
         // dust
         problems += checker.checkEquality(`${agentName}.dustUBA`, this.reportedDustUBA, this.calculatedDustUBA);
+        // status
+        const statusProblem = checker.checkStringEquality(`${agentName}.status`, agentInfo.status, this.status);
+        if (statusProblem != 0 && !(this.status === AgentStatus.CCB && Number(agentInfo.status) === Number(AgentStatus.LIQUIDATION))) {
+            // transition CCB->LIQUIDATION can happen due to timing (without event) so it's not a problem
+            problems += statusProblem;
+        }
         // log
         if (problems > 0) {
             this.writeActionLog(checker.logger);
@@ -370,11 +498,15 @@ export class FuzzingStateAgent {
     }
     
     writeActionLog(logger: ILogger) {
-        const agentName = this.parent.eventFormatter.formatAddress(this.address);
-        logger.log(`    action log for ${agentName}`);
+        logger.log(`    action log for ${this.name()}`);
         for (const log of this.actionLog) {
             const eventInfo = `event=${log.event.event} at ${log.event.blockNumber}.${log.event.logIndex}`;
             logger.log(`        ${log.text}  ${eventInfo}`);
         }
+    }
+    
+    writeAgentSummary(logger: ILogger) {
+        logger.log(`    ${this.name()}:  minted=${formatBN(this.mintedUBA)}  cr=${this.collateralRatio().toFixed(3)}  status=${AgentStatus[this.status]}  available=${this.publiclyAvailable}` +
+            `  (reserved=${formatBN(this.reservedUBA)}  redeeming=${formatBN(this.redeemingUBA)}  dust=${formatBN(this.reportedDustUBA)}  freeUnderlying=${formatBN(this.freeUnderlyingBalanceUBA)})`)
     }
 }

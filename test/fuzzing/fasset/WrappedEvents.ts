@@ -1,7 +1,7 @@
 import { ContractWithEventsBase, EventArgs, EventArgsForName, EventNamesFor, EventSelector, EvmEvent } from "../../utils/events";
 import { IBlockChainEvents, IBlockId, ITransaction } from "../../utils/fasset/ChainInterfaces";
 import { multimapAdd, multimapDelete } from "../../utils/helpers";
-import { ClearableSubscription, EventEmitter, EventExecutionQueue, QueuedEventEmitter } from "./ScopedEvents";
+import { ClearableSubscription, EventEmitter, EventExecutionQueue } from "./ScopedEvents";
 import { TransactionInterceptor } from "./TransactionInterceptor";
 
 export type EvmEventArgs<E extends EventSelector> = EventArgs<E> & { $event: EvmEvent };
@@ -15,7 +15,7 @@ export interface FilteredHandler {
 export class EvmEvents {
     constructor(
         public interceptor: TransactionInterceptor,
-        public eventQueue: EventExecutionQueue,
+        public eventQueue: EventExecutionQueue | null,
     ) {
         interceptor.eventHandlers.set('EvmEventsDispatcher', this.handleEvent.bind(this));
     }
@@ -41,7 +41,7 @@ export class EvmEvents {
     }
 
     public event<C extends ContractWithEventsBase, N extends EventNamesFor<C>>(contract: C, event: N, filter?: Partial<EventArgsForName<C, N>>) {
-        return new QueuedEventEmitter<EvmEventArgsForName<C, N>>(this.eventQueue, handler => {
+        return new EventEmitter<EvmEventArgsForName<C, N>>(this.eventQueue, handler => {
             const key = `${contract.address}:${event}`;
             const filteredHandler: FilteredHandler = { filter, handler };
             multimapAdd(this.handlers, key, filteredHandler);
@@ -53,18 +53,18 @@ export class EvmEvents {
 export class UnderlyingChainEvents {
     constructor(
         private events: IBlockChainEvents,
-        public eventQueue: EventExecutionQueue,
+        public eventQueue: EventExecutionQueue | null,
     ) { }
     
     blockEvent(): EventEmitter<IBlockId> {
-        return new QueuedEventEmitter(this.eventQueue, handler => {
+        return new EventEmitter(this.eventQueue, handler => {
             const subscriptionId = this.events.addBlockHandler(handler);
             return ClearableSubscription.of(() => this.events.removeHandler(subscriptionId));
         });
     }
     
     transactionEvent(filter: { [name: string]: string } | null = null): EventEmitter<ITransaction> {
-        return new QueuedEventEmitter(this.eventQueue, handler => {
+        return new EventEmitter(this.eventQueue, handler => {
             const subscriptionId = this.events.addTransactionHandler(filter, handler);
             return ClearableSubscription.of(() => this.events.removeHandler(subscriptionId));
         });

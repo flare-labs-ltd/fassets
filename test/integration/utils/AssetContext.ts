@@ -1,5 +1,5 @@
 import { constants, time } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { ContractWithEvents } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../utils/fasset/AttestationHelper";
@@ -19,9 +19,10 @@ const AddressUpdater = artifacts.require('AddressUpdater');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
+const FtsoManagerMock = artifacts.require('FtsoManagerMock');
 
-const AMG_NATWEI_PRICE_SCALE = toBN(1e9);
-const NAT_WEI = toBN(1e18);
+export const AMG_NATWEI_PRICE_SCALE = toBNExp(1, 9);
+export const NAT_WEI = toBNExp(1, 18);
 
 export type AddressUpdaterEvents = import('../../../typechain-truffle/AddressUpdater').AllEvents;
 export type AssetManagerControllerEvents = import('../../../typechain-truffle/AssetManagerController').AllEvents;
@@ -29,6 +30,7 @@ export type WNatEvents = import('../../../typechain-truffle/WNat').AllEvents;
 export type AttestationClientMockEvents = import('../../../typechain-truffle/AttestationClientMock').AllEvents;
 export type FtsoRegistryMockEvents = import('../../../typechain-truffle/FtsoRegistryMock').AllEvents;
 export type FtsoMockEvents = import('../../../typechain-truffle/FtsoMock').AllEvents;
+export type FtsoManagerMockEvents = import('../../../typechain-truffle/FtsoManagerMock').AllEvents;
 export type AssetManagerEvents = import('../../../typechain-truffle/AssetManager').AllEvents;
 export type FAssetEvents = import('../../../typechain-truffle/FAsset').AllEvents;
 
@@ -40,6 +42,7 @@ export class CommonContext {
         public assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>,
         public attestationClient: ContractWithEvents<AttestationClientMockInstance, AttestationClientMockEvents>,
         public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryMockEvents>,
+        public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerMockEvents>,
         public wnat: ContractWithEvents<WNatInstance, WNatEvents>,
         public natFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>,
     ) {}
@@ -59,7 +62,8 @@ export class CommonContext {
         // create ftso registry
         const ftsoRegistry = await FtsoRegistryMock.new();
         await ftsoRegistry.addFtso(natFtso.address);
-        return new CommonContext(governance, addressUpdater, assetManagerController, attestationClient, ftsoRegistry, wnat, natFtso);
+        const ftsoManager = await FtsoManagerMock.new();
+        return new CommonContext(governance, addressUpdater, assetManagerController, attestationClient, ftsoRegistry, ftsoManager, wnat, natFtso);
     }
 }
 
@@ -72,6 +76,7 @@ export class AssetContext {
         public assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>,
         public attestationClient: ContractWithEvents<AttestationClientMockInstance, AttestationClientMockEvents>,
         public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryMockEvents>,
+        public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerMockEvents>,
         public wnat: ContractWithEvents<WNatInstance, WNatEvents>,
         public natFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>,
         // asset context
@@ -80,7 +85,7 @@ export class AssetContext {
         public chainEvents: IBlockChainEvents,
         public stateConnectorClient: IStateConnectorClient,
         public attestationProvider: AttestationHelper,
-        public settings: AssetManagerSettings,
+        public settings: AssetManagerSettings,      // may not be fresh
         public assetManager: ContractWithEvents<AssetManagerInstance, AssetManagerEvents>,
         public fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>,
         public assetFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>,
@@ -120,7 +125,7 @@ export class AssetContext {
         return this.amgToNATWeiPrice(natPrice, assetPrice);
     }
 
-    async currentAmgToNATWeiPriceWithTrusted() {
+    async currentAmgToNATWeiPriceWithTrusted(): Promise<[ftsoPrice: BN, trustedPrice: BN]> {
         const {0: natPrice, 1: natTimestamp } = await this.natFtso.getCurrentPrice();
         const {0: assetPrice, 1: assetTimestamp } = await this.assetFtso.getCurrentPrice();
         const {0: natPriceTrusted, 1: natTimestampTrusted } = await this.natFtso.getCurrentPriceFromTrustedProviders();
@@ -168,6 +173,10 @@ export class AssetContext {
         return toBN(valueNATWei).mul(AMG_NATWEI_PRICE_SCALE).div(toBN(amgToNATWeiPrice));
     }
     
+    convertUBAToNATWei(valueUBA: BNish, amgToNATWeiPrice: BNish) {
+        return this.convertAmgToNATWei(this.convertUBAToAmg(valueUBA), amgToNATWeiPrice);
+    }
+    
     static async createTest(common: CommonContext, chainInfo: ChainInfo): Promise<AssetContext> {
         // create mock chain attestation provider
         const chain = new MockChain(await time.latest());
@@ -184,7 +193,8 @@ export class AssetContext {
         // web3DeepNormalize is required when passing structs, otherwise BN is incorrectly serialized
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
             chainInfo.name, chainInfo.symbol, chainInfo.decimals, web3DeepNormalize(settings));
-        return new AssetContext(common.governance, common.addressUpdater, common.assetManagerController, common.attestationClient, common.ftsoRegistry, common.wnat, common.natFtso,
+        return new AssetContext(common.governance, common.addressUpdater, common.assetManagerController, common.attestationClient, 
+            common.ftsoRegistry, common.ftsoManager, common.wnat, common.natFtso,
             chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider, settings, assetManager, fAsset, assetFtso);
     }
     

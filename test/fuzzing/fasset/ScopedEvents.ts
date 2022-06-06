@@ -103,11 +103,19 @@ export function qualifiedEvent<N extends string, A>(name: N, args: A): Qualified
 
 export class EventEmitter<E> {
     constructor(
+        private executionQueue: EventExecutionQueue | null,
         protected _subscribe: (handler: EventHandler<E>) => EventSubscription,
     ) { }
 
     public subscribe(handler: EventHandler<E>): EventSubscription {
-        return this._subscribe(handler);
+        const executionQueue = this.executionQueue;
+        if (executionQueue) {
+            return this._subscribe((args: E) => {
+                executionQueue.push(() => handler(args));
+            });
+        } else {
+            return this._subscribe(handler);
+        }
     }
 
     public subscribeOnce(handler: EventHandler<E>): EventSubscription {
@@ -138,9 +146,15 @@ export class EventEmitter<E> {
     }
     
     qualified<N extends string>(name: N): EventEmitter<QualifiedEvent<N, E>> {
-        return new EventEmitter((handler) => {
+        return new EventEmitter(this.executionQueue, (handler) => {
             return this.subscribe((args: E) => handler({ name, args }));
         });
+    }
+    
+    // convert to emitter without queue (immediate)
+    immediate() {
+        if (this.executionQueue == null) return this;   // already immediate
+        return new EventEmitter<E>(null, this._subscribe);
     }
 }
 
@@ -169,22 +183,19 @@ export class EventExecutionQueue {
     }
 }
 
-export class QueuedEventEmitter<E> extends EventEmitter<E> {
-    constructor(
-        private executionQueue: EventExecutionQueue,
-        _subscribe: (handler: EventHandler<E>) => EventSubscription,
-    ) {
-        super(_subscribe);
-    }
-    
-    public override subscribe(handler: EventHandler<E>): EventSubscription {
-        return this._subscribe((args: E) => {
-            this.executionQueue.push(() => handler(args));
+export class TriggerableEvent<E> extends EventEmitter<E> {
+    constructor(executionQueue: EventExecutionQueue | null = null) {
+        super(executionQueue, handler => {
+            this.handlers.add(handler);
+            return { unsubscribe: () => this.handlers.delete(handler) };
         });
     }
     
-    // convert to ordinary (immediate) emitter
-    public immediate() {
-        return new EventEmitter<E>(this._subscribe);
+    private handlers = new Set<EventHandler<E>>();
+    
+    trigger(event: E) {
+        for (const handler of this.handlers) {
+            handler(event);
+        }
     }
 }

@@ -50,5 +50,18 @@ export const testChainInfo: { [name: string]: ChainInfo } = {
         underlyingBlocksForPayment: 8,
         lotSize: 2,
         requireEOAProof: false,
+    },
+    xrp: {
+        chainId: 3,
+        name: "Ripple",
+        symbol: "XRP",
+        decimals: 6,
+        amgDecimals: 0,
+        startPrice: 0.8,
+        blockTime: 10,
+        finalizationBlocks: 6,
+        underlyingBlocksForPayment: 10,
+        lotSize: 10_000,
+        requireEOAProof: false,
     }
 }

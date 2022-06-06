@@ -132,11 +132,48 @@ export function randomShuffled<T>(array: T[] | Iterable<T>): T[] {
     return copy;
 }
 
-export function* range(start: number, end: number, step: number = 1) {
-    if (step > 0) {
-        for (let i = start; i < end; i += step) yield i;
+export interface InclusionIterable<T> extends Iterable<T> {
+    indexOf(x: T): number;
+    includes(x: T): boolean;
+}
+
+export function range(start: number, end: number | null, step: number = 1, inclusive?: 'inclusive'): InclusionIterable<number> {
+    let endN = end ?? (step > 0 ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
+    if (inclusive === 'inclusive') endN += step;
+    return {
+        [Symbol.iterator]: function* () {
+            if (step > 0) {
+                for (let i = start; i < endN; i += step) yield i;
+            } else {
+                for (let i = start; i > endN; i += step) yield i;
+            }
+        },
+        indexOf(x: number) {
+            if (step > 0) {
+                if (x < start || x >= endN) return -1;
+            } else {
+                if (x > start || x <= endN) return -1;
+            }
+            const ind = (x - start) / step;
+            return Math.floor(ind) === ind ? ind : -1; // is ind whole number?
+        },
+        includes(x: number) {
+            return this.indexOf(x) >= 0;
+        },
+        toString() {
+            const incl = Number.isFinite(endN) && inclusive === 'inclusive';
+            return `range(${start}, ${incl ? (endN - step) + ' (inclusive)' : endN}, ${step})`;
+        }
+    } as InclusionIterable<number>;
+}
+
+export function parseRange(s: string) {
+    if (/^(\d+(,\d+)*)?$/.test(s)) {
+        return s != '' ? s.split(',').map(Number) : [];
     } else {
-        for (let i = start; i > end; i += step) yield i;
+        const m = s.match(/^(\d+)(?:,(\d+))?,?...,?(\d+)?$/);
+        if (m) return range(Number(m[1]), m[3] ? Number(m[3]) : null, m[2] ? Number(m[2]) - Number(m[1]) : 1, 'inclusive');
+        throw new Error("Invalid range value");
     }
 }
 
@@ -192,19 +229,21 @@ const envConverters = {
     'boolean': (s: string): boolean => {
         if (s === 'true') return true;
         if (s === 'false') return false;
-        throw new Error ("Invalid boolean value");
+        throw new Error("Invalid boolean value");
     },
-    'number[]': (s: string) => s.split(',').map(Number),
+    'number[]': (s: string) => s != '' ? s.split(',').map(Number) : [],
     'string[]': (s: string) => s.split(','),
     'boolean[]': (s: string) => s.split(',').map(p => envConverters['boolean'](p)),
+    'range': (s: string) => parseRange(s),
+    'json': (s: string) => JSON.parse(s),
 } as const;
-type EnvConverterType = keyof(typeof envConverters);
+type EnvConverterType = keyof (typeof envConverters);
 type EnvConverterResult<T extends EnvConverterType> = ReturnType<typeof envConverters[T]>;
 
 /**
  * Get an anvironment variable and convert it to some type.
  * @param name environment variable name
- * @param type conversion type, one of "string" | "number" | "boolean" | "number[]" | "string[]" | "boolean[]"
+ * @param type conversion type, one of "string" | "number" | "boolean" | "number[]" | "string[]" | "boolean[] | range" | "json"
  * @param defaultValue the value to return if the environment variable does not exist
  */
 export function getEnv<T extends EnvConverterType, D extends EnvConverterResult<T> | null>(name: string, type: T, defaultValue: D): EnvConverterResult<T> | D {

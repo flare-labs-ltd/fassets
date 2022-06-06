@@ -8,7 +8,7 @@ import { formatBN, isNotNull, toBN } from "./helpers";
 declare type RawEvent = import("web3-core").Log;
 
 function isBigNumber(x: any): x is BigNumber | BN {
-    return BN.isBN(x) || x instanceof BigNumber;
+    return BN.isBN(x) || x instanceof BigNumber || (typeof x === 'string' && /^\d+$/.test(x));
 }
 
 export class EventFormatter {

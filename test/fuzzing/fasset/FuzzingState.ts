@@ -4,19 +4,59 @@ import { EventFormatter } from "../../utils/EventDecoder";
 import { ExtractedEventArgs } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { stringifyJson } from "../../utils/fuzzing-utils";
-import { BN_ZERO, sumBN, toBN } from "../../utils/helpers";
+import { BNish, BN_ZERO, sumBN, toBN } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { web3DeepNormalize, web3Normalize } from "../../utils/web3assertions";
-import { FuzzingStateAgent } from "./FuzzingStateAgent";
+import { AgentStatus, FuzzingStateAgent } from "./FuzzingStateAgent";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
 import { FuzzingTimeline } from "./FuzzingTimeline";
+import { EventExecutionQueue, TriggerableEvent } from "./ScopedEvents";
 import { EvmEvents, UnderlyingChainEvents } from "./WrappedEvents";
+
+export class Prices {
+    constructor(
+        private readonly context: AssetContext,
+        public readonly natUSDDec5: BN, 
+        public readonly natTimestamp: BN,
+        public readonly assetUSDDec5: BN,
+        public readonly assetTimestamp: BN,
+    ) {}
+
+    get amgNatWei() {
+        return this.context.amgToNATWeiPrice(this.natUSDDec5, this.assetUSDDec5);
+    }
+    
+    get natUSD() {
+        return Number(this.natUSDDec5) * 1e-5;
+    } 
+    
+    get assetUSD() {
+        return Number(this.assetUSDDec5) * 1e-5;
+    } 
+    
+    get assetNat() {
+        return this.assetUSD / this.natUSD;
+    }
+    
+    fresh(relativeTo: Prices, maxAge: BNish) {
+        maxAge = toBN(maxAge);
+        return this.natTimestamp.add(maxAge).gte(relativeTo.natTimestamp) && this.assetTimestamp.add(maxAge).gte(relativeTo.assetTimestamp);
+    }
+    
+    toString() {
+        return `(nat=${this.natUSD.toFixed(3)}$, asset=${this.assetUSD.toFixed(3)}$, asset/nat=${this.assetNat.toFixed(3)})`;
+    }
+}
 
 export class FuzzingState {
     // state
     fAssetSupply = BN_ZERO;
     fAssetBalance = new SparseArray();
+    
+    // must call initialize to init prices
+    prices!: Prices;
+    trustedPrices!: Prices;
     
     // settings
     settings: AssetManagerSettings;
@@ -28,15 +68,35 @@ export class FuzzingState {
     // settings
     logFile?: LogFile;
     
+    // synthetic events
+    pricesUpdated = new TriggerableEvent<void>(this.eventQueue);
+    
     constructor(
         public context: AssetContext,
         public timeline: FuzzingTimeline,
         public truffleEvents: EvmEvents,
         public chainEvents: UnderlyingChainEvents,
         public eventFormatter: EventFormatter,
+        public eventQueue: EventExecutionQueue,
     ) {
         this.settings = { ...context.settings };
+    }
+    
+    // async initialization part
+    async initialize() {
+        [this.prices, this.trustedPrices] = await this.getPrices();
         this.registerHandlers();
+    }
+    
+    async getPrices(): Promise<[Prices, Prices]> {
+        const { 0: natPrice, 1: natTimestamp } = await this.context.natFtso.getCurrentPrice();
+        const { 0: assetPrice, 1: assetTimestamp } = await this.context.assetFtso.getCurrentPrice();
+        const { 0: natPriceTrusted, 1: natTimestampTrusted } = await this.context.natFtso.getCurrentPriceFromTrustedProviders();
+        const { 0: assetPriceTrusted, 1: assetTimestampTrusted } = await this.context.assetFtso.getCurrentPriceFromTrustedProviders();
+        const ftsoPrices = new Prices(this.context, natPrice, natTimestamp, assetPrice, assetTimestamp);
+        const trustedPrices = new Prices(this.context, natPriceTrusted, natTimestampTrusted, assetPriceTrusted, assetTimestampTrusted);
+        const trustedPricesFresh = trustedPrices.fresh(ftsoPrices, this.settings.maxTrustedPriceAgeSeconds);
+        return [ftsoPrices, trustedPricesFresh ? trustedPrices : ftsoPrices];
     }
     
     registerHandlers() {
@@ -73,6 +133,14 @@ export class FuzzingState {
                 this.fAssetBalance.addTo(args.to, args.value);
             }
         });
+        // track price changes
+        this.truffleEvents.event(this.context.ftsoManager, 'PriceEpochFinalized').subscribe(async args => {
+            const [prices, trustedPrices] = await this.getPrices();
+            this.logFile?.log(`PRICES CHANGED  ftso=${this.prices}->${prices}  trusted=${this.trustedPrices}->${trustedPrices}`);
+            [this.prices, this.trustedPrices] = [prices, trustedPrices];
+            // trigger event
+            this.pricesUpdated.trigger();
+        });
         // agents
         this.registerAgentHandlers();
     }
@@ -94,6 +162,12 @@ export class FuzzingState {
             this.agents.get(args.from)?.withdrawCollateral(toBN(args.value));
             this.agents.get(args.to)?.depositCollateral(toBN(args.value));
         });
+        // status changes
+        this.assetManagerEvent('AgentInCCB').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.CCB, args.timestamp));
+        this.assetManagerEvent('LiquidationStarted').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.LIQUIDATION, args.timestamp));
+        this.assetManagerEvent('FullLiquidationStarted').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.FULL_LIQUIDATION, args.timestamp));
+        this.assetManagerEvent('LiquidationEnded').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.NORMAL));
+        this.assetManagerEvent('AgentDestroyAnnounced').subscribe(args => this.getAgent(args.agentVault).handleStatusChange(AgentStatus.DESTROYING, args.timestamp));
         // enter/exit available agents list
         this.assetManagerEvent('AgentAvailable').subscribe(args => this.getAgent(args.agentVault).handleAgentAvailable(args));
         this.assetManagerEvent('AvailableAgentExited').subscribe(args => this.getAgent(args.agentVault).handleAvailableAgentExited(args));
@@ -113,6 +187,8 @@ export class FuzzingState {
         // track dust
         this.assetManagerEvent('DustConvertedToTicket').subscribe(args => this.getAgent(args.agentVault).handleDustConvertedToTicket(args));
         this.assetManagerEvent('DustChanged').subscribe(args => this.getAgent(args.agentVault).handleDustChanged(args));
+        // liquidation
+        this.assetManagerEvent('LiquidationPerformed').subscribe(args => this.getAgent(args.agentVault).handleLiquidationPerformed(args));
     }
 
     getAgent(address: string) {
@@ -125,7 +201,7 @@ export class FuzzingState {
         const fAssetSupply = await this.context.fAsset.totalSupply();
         checker.checkEquality('fAsset supply', fAssetSupply, this.fAssetSupply, true);
         // total minted value by all agents
-        const totalMintedUBA = sumBN(this.agents.values(), agent => agent.mintedUBA());
+        const totalMintedUBA = sumBN(this.agents.values(), agent => agent.calculateMintedUBA());
         checker.checkEquality('fAsset supply / total minted by agents', fAssetSupply, totalMintedUBA, true);
         // settings
         const actualSettings = await this.context.assetManager.getSettings();

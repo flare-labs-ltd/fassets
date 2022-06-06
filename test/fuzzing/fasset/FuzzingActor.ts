@@ -9,6 +9,7 @@ export class FuzzingActor {
     ) { }
     
     context = this.runner.context;
+    state = this.runner.state;
     timeline = this.runner.timeline;
     truffleEvents = this.runner.truffleEvents;
     chainEvents = this.runner.chainEvents;
