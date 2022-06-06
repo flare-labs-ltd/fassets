@@ -2,6 +2,7 @@ import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { ethers } from "hardhat";
 import { AgentVaultInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
+import { ChainInfo, testChainInfo } from "../../../integration/utils/ChainInfo";
 import { EventArgs, findRequiredEvent, requiredEventArgs } from "../../../utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
@@ -35,6 +36,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     let settings: AssetManagerSettings;
     const chainId: SourceId = 1;
     let chain: MockChain;
+    let chainInfo: ChainInfo;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
@@ -95,6 +97,8 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         attestationClient = await AttestationClient.new();
         // create mock chain attestation provider
         chain = new MockChain(await time.latest());
+        chainInfo = testChainInfo.eth;
+        chain.secondsPerBlock = chainInfo.blockTime;
         wallet = new MockChainWallet(chain);
         stateConnectorClient = new MockStateConnectorClient(attestationClient, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
@@ -216,40 +220,67 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await expectRevert(promise2, "inappropriate fee amount");
     });
 
-    
-    it.skip("should not execute minting default if minting payment too small", async () => {
+    it("should not default minting if minting non-payment mismatch", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
-        const amount = toWei(3e8);
-        await agentVault.deposit({ from: agentOwner1, value: amount });
-        await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const crt = await reserveCollateral(agentVault.address, 3);
+        // mine some blocks to create overflow block
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
+        }
         // act
-        const crt = await reserveCollateral(agentVault.address, 1);
-        const paymentAmount = crt.valueUBA.add(crt.feeUBA).subn(1);
-        chain.mint(underlyingMinter1, paymentAmount);
-        const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
-        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
-        const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        // wrong address
+        const proofAddress = await attestationProvider.proveReferencedPaymentNonexistence(
+            underlyingMinter1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
+        const promiseAddress = assetManager.mintingPaymentDefault(proofAddress, crt.collateralReservationId, { from: agentOwner1 });
+        // wrong reference
+        const proofReference = await attestationProvider.proveReferencedPaymentNonexistence(
+            underlyingAgent1, PaymentReference.minting(crt.collateralReservationId.addn(1)), crt.valueUBA.add(crt.feeUBA), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
+        const promiseReference = assetManager.mintingPaymentDefault(proofReference, crt.collateralReservationId, { from: agentOwner1 });
+        // wrong amount
+        const proofAmount = await attestationProvider.proveReferencedPaymentNonexistence(
+            underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA).addn(1), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
+        const promiseAmount = assetManager.mintingPaymentDefault(proofAmount, crt.collateralReservationId, { from: agentOwner1 });
         // assert
-        await expectRevert(promise, "minting payment too small");
+        await expectRevert(promiseAddress, "minting non-payment mismatch");
+        await expectRevert(promiseReference, "minting non-payment mismatch");
+        await expectRevert(promiseAmount, "minting non-payment mismatch");
     });
 
-    it.skip("should not self-mint if self-mint payment too old", async () => {
+    it("should not default minting if called too early", async () => {
         // init
-        const lots = 2;
-        const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
-        chain.mint(underlyingRandomAddress, paymentAmount);
-        const nonce = await ethers.provider.getTransactionCount(assetManager.address);
-        let agentVaultAddressCalc = ethers.utils.getContractAddress({from: assetManager.address, nonce: nonce});
-        const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVaultAddressCalc));
-        
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
-        const amount = toWei(3e8);
-        await agentVault.deposit({ from: agentOwner1, value: amount });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const crt = await reserveCollateral(agentVault.address, 3);
+        // mine some blocks to create overflow block
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
+        }
         // act
-        const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
-        const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
+        // wrong overflow block
+        const proofOverflow = await attestationProvider.proveReferencedPaymentNonexistence(
+            underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA), crt.lastUnderlyingBlock.toNumber() - 1, crt.lastUnderlyingTimestamp.toNumber() - chainInfo.blockTime * 2);
+        const promiseOverflow = assetManager.mintingPaymentDefault(proofOverflow, crt.collateralReservationId, { from: agentOwner1 });
         // assert
-        await expectRevert(promise, "self-mint payment too old");
+        await expectRevert(promiseOverflow, "minting default too early");
+    });
+
+    it("should not default minting if minting request too old", async () => {
+        // init
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const crt = await reserveCollateral(agentVault.address, 3);
+        // mine some blocks to create overflow block
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2000; i++) {
+            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
+        }
+        // act
+        // wrong overflow block
+        const proofOverflow = await attestationProvider.proveReferencedPaymentNonexistence(
+            underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber() + 86400);
+        const promiseOverflow = assetManager.mintingPaymentDefault(proofOverflow, crt.collateralReservationId, { from: agentOwner1 });
+        // assert
+        await expectRevert(promiseOverflow, "minting request too old");
     });
 });
