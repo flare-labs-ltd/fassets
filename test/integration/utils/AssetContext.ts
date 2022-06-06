@@ -58,9 +58,7 @@ export class CommonContext {
         await setDefaultVPContract(wnat, governance);
         // create NAT ftso
         const natFtso = await FtsoMock.new(natInfo.symbol);
-        const startPrice = toBNExp(natInfo.startPrice, 5);
-        await natFtso.setCurrentPrice(startPrice, 0);
-        await natFtso.setCurrentPriceFromTrustedProviders(startPrice, 0);
+        await natFtso.setCurrentPrice(toBNExp(natInfo.startPrice, 5), 0);
         // create ftso registry
         const ftsoRegistry = await FtsoRegistryMock.new();
         await ftsoRegistry.addFtso(natFtso.address);
@@ -188,9 +186,7 @@ export class AssetContext {
         const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId, 0);
         // create asset FTSO and set some price
         const assetFtso = await FtsoMock.new(chainInfo.symbol);
-        const startPrice = toBNExp(chainInfo.startPrice, 5);
-        await assetFtso.setCurrentPrice(startPrice, 0);
-        await assetFtso.setCurrentPriceFromTrustedProviders(startPrice, 0);
+        await assetFtso.setCurrentPrice(toBNExp(chainInfo.startPrice, 5), 0);
         await common.ftsoRegistry.addFtso(assetFtso.address);
         // create asset manager
         const settings = await AssetContext.createTestSettings(common, chainInfo);

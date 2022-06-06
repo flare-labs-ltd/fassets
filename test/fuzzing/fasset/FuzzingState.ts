@@ -4,7 +4,7 @@ import { EventFormatter } from "../../utils/EventDecoder";
 import { ExtractedEventArgs } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { stringifyJson } from "../../utils/fuzzing-utils";
-import { BN_ZERO, sumBN, toBN } from "../../utils/helpers";
+import { BNish, BN_ZERO, sumBN, toBN } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { web3DeepNormalize, web3Normalize } from "../../utils/web3assertions";
@@ -16,14 +16,16 @@ import { EvmEvents, UnderlyingChainEvents } from "./WrappedEvents";
 
 export class Prices {
     constructor(
-        context: AssetContext,
+        private readonly context: AssetContext,
         public readonly natUSDDec5: BN, 
+        public readonly natTimestamp: BN,
         public readonly assetUSDDec5: BN,
-    ) {
-        this.amgNatWei = context.amgToNATWeiPrice(natUSDDec5, assetUSDDec5);
-    }
+        public readonly assetTimestamp: BN,
+    ) {}
 
-    amgNatWei: BN;
+    get amgNatWei() {
+        return this.context.amgToNATWeiPrice(this.natUSDDec5, this.assetUSDDec5);
+    }
     
     get natUSD() {
         return Number(this.natUSDDec5) * 1e-5;
@@ -33,8 +35,13 @@ export class Prices {
         return Number(this.assetUSDDec5) * 1e-5;
     } 
     
-    get assetNat(){
+    get assetNat() {
         return this.assetUSD / this.natUSD;
+    }
+    
+    fresh(relativeTo: Prices, maxAge: BNish) {
+        maxAge = toBN(maxAge);
+        return this.natTimestamp.add(maxAge).gte(relativeTo.natTimestamp) && this.assetTimestamp.add(maxAge).gte(relativeTo.assetTimestamp);
     }
     
     toString() {
@@ -86,10 +93,9 @@ export class FuzzingState {
         const { 0: assetPrice, 1: assetTimestamp } = await this.context.assetFtso.getCurrentPrice();
         const { 0: natPriceTrusted, 1: natTimestampTrusted } = await this.context.natFtso.getCurrentPriceFromTrustedProviders();
         const { 0: assetPriceTrusted, 1: assetTimestampTrusted } = await this.context.assetFtso.getCurrentPriceFromTrustedProviders();
-        const maxAge = toBN(this.settings.maxTrustedPriceAgeSeconds);
-        const trustedPricesFresh = natTimestampTrusted.add(maxAge).gte(natTimestamp) && assetTimestampTrusted.add(maxAge).gte(assetTimestamp);
-        const ftsoPrices = new Prices(this.context, natPrice, assetPrice);
-        const trustedPrices = new Prices(this.context, natPriceTrusted, assetPriceTrusted);
+        const ftsoPrices = new Prices(this.context, natPrice, natTimestamp, assetPrice, assetTimestamp);
+        const trustedPrices = new Prices(this.context, natPriceTrusted, natTimestampTrusted, assetPriceTrusted, assetTimestampTrusted);
+        const trustedPricesFresh = trustedPrices.fresh(ftsoPrices, this.settings.maxTrustedPriceAgeSeconds);
         return [ftsoPrices, trustedPricesFresh ? trustedPrices : ftsoPrices];
     }
     
