@@ -5,24 +5,28 @@ import { EventArgs, requiredEventArgs } from "../../utils/events";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { coinFlip, randomBN, randomInt } from "../../utils/fuzzing-utils";
-import { BN_ZERO, checkedCast, formatBN, MAX_BIPS, toBN } from "../../utils/helpers";
+import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN } from "../../utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { EventScope } from "./ScopedEvents";
+import { AgentStatus } from "./FuzzingStateAgent";
+import { EventScope, EventSubscription } from "./ScopedEvents";
 
 export class FuzzingAgent extends FuzzingActor {
     constructor(
         public runner: FuzzingRunner,
         public agent: Agent,
+        public ownerAddress: string,
         public ownerUnderlyingAddress: string,
     ) {
         super(runner);
-        this.registerForEvents();
+        this.registerForEvents(agent.agentVault.address);
     }
     
     agentVault = this.agent.agentVault;
-    underlyingAddress = this.agent.underlyingAddress;
-    ownerAddress = this.agent.ownerAddress;
+    
+    get underlyingAddress() {
+        return this.agent.underlyingAddress;
+    }
     
     get name() {
         return this.formatAddress(this.agentVault.address);
@@ -38,16 +42,35 @@ export class FuzzingAgent extends FuzzingActor {
 
     static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string) {
         const agent = await Agent.createTest(runner.context, ownerAddress, underlyingAddress);
-        return new FuzzingAgent(runner, agent, ownerUnderlyingAddress);
+        return new FuzzingAgent(runner, agent, ownerAddress, ownerUnderlyingAddress);
     }
 
-    registerForEvents() {
-        this.runner.assetManagerEvent('RedemptionRequested', { agentVault: this.agentVault.address })
-            .subscribe((args) => this.handleRedemptionRequest(args));
-        this.runner.assetManagerEvent('AgentInCCB', { agentVault: this.agentVault.address })
-            .subscribe((args) => this.topupCollateral('ccb', args.timestamp));
-        this.runner.assetManagerEvent('LiquidationStarted', { agentVault: this.agentVault.address })
-            .subscribe((args) => this.topupCollateral('liquidation', args.timestamp));
+    eventSubscriptions: EventSubscription[] = [];
+    
+    registerForEvents(agentVaultAddress: string) {
+        this.eventSubscriptions = [
+            this.runner.assetManagerEvent('RedemptionRequested', { agentVault: agentVaultAddress })
+                .subscribe((args) => this.handleRedemptionRequest(args)),
+            this.runner.assetManagerEvent('AgentInCCB', { agentVault: agentVaultAddress })
+                .subscribe((args) => this.topupCollateral('ccb', args.timestamp)),
+            this.runner.assetManagerEvent('LiquidationStarted', { agentVault: agentVaultAddress })
+                .subscribe((args) => this.topupCollateral('liquidation', args.timestamp)),
+            // handle all possible full liquidation ends: Redemption*???, LiquidationPerformed, SelfClose
+            this.runner.assetManagerEvent('RedemptionFinished', { agentVault: agentVaultAddress })
+                .subscribe((args) => this.checkForFullLiquidationEnd()),
+            this.runner.assetManagerEvent('RedemptionDefault', { agentVault: agentVaultAddress })
+                .subscribe((args) => this.checkForFullLiquidationEnd()),
+            this.runner.assetManagerEvent('LiquidationPerformed', { agentVault: agentVaultAddress })
+                .subscribe((args) => this.checkForFullLiquidationEnd()),
+            this.runner.assetManagerEvent('SelfClose', { agentVault: agentVaultAddress })
+                .subscribe((args) => this.checkForFullLiquidationEnd()),
+        ];
+    }
+    
+    unregisterEvents() {
+        for (const subscription of this.eventSubscriptions) {
+            subscription.unsubscribe();
+        }
     }
 
     async handleRedemptionRequest(request: EventArgs<RedemptionRequested>) {
@@ -91,8 +114,10 @@ export class FuzzingAgent extends FuzzingActor {
     }
     
     async selfClose(scope: EventScope) {
+        const mintedAssets = this.agentState().mintedUBA;
+        if (mintedAssets.isZero()) return;
         const ownersAssets = await this.context.fAsset.balanceOf(this.ownerAddress);
-        if ( ownersAssets.isZero()) return;
+        if (ownersAssets.isZero()) return;
         // TODO: buy fassets
         const amountUBA = randomBN(ownersAssets);
         if (this.avoidErrors && amountUBA.isZero()) return;
@@ -137,7 +162,7 @@ export class FuzzingAgent extends FuzzingActor {
         if (amount.isZero()) return;
         // announce
         const announcement = await this.agent.announceUnderlyingWithdrawal()
-            .catch(e => scope.exitOnExpectedError(e, []));
+            .catch(e => scope.exitOnExpectedError(e, ['announced underlying withdrawal active']));
         if (coinFlip(0.8)) {
             // perform withdrawal
             const txHash = await this.agent.performUnderlyingWithdrawal(announcement, amount, this.ownerUnderlyingAddress)
@@ -162,4 +187,56 @@ export class FuzzingAgent extends FuzzingActor {
         await this.agent.wallet.addTransaction(this.underlyingAddress, this.ownerUnderlyingAddress, amount, null);
     }
     
+    checkForFullLiquidationEnd(): void {
+        const agentState = this.agentState();
+        if (agentState.status !== AgentStatus.FULL_LIQUIDATION) return;
+        if (agentState.mintedUBA.gt(BN_ZERO) || agentState.reservedUBA.gt(BN_ZERO) || agentState.redeemingUBA.gt(BN_ZERO)) return;
+        this.runner.startThread((scope) => this.destroyAndReenter(scope));
+    }
+    
+    destroying: boolean = false;
+    
+    async destroyAgent(scope: EventScope) {
+        if (this.destroying) return;
+        if (this.avoidErrors) {
+            this.destroying = true;
+        }
+        this.comment(`Destroying agent ${this.name}`);
+        const agentState = this.agentState();
+        if (agentState.publiclyAvailable) {
+            await this.agent.exitAvailable()
+                .catch(e => scope.exitOnExpectedError(e, ['agent not available']));
+        }
+        await this.agent.announceDestroy();
+        const timestamp = await latestBlockTimestamp();
+        const waitTime = Number(this.state.settings.withdrawalWaitMinSeconds);
+        await this.timeline.flareTimestamp(timestamp + waitTime).wait(scope);
+        await this.agent.destroy();
+        this.unregisterEvents();
+    }
+    
+    async destroyAndReenter(scope: EventScope) {
+        if (this.destroying) return;
+        if (this.avoidErrors) {
+            this.destroying = true;
+        }
+        // save old agent's data
+        const agentState = this.agentState();
+        const name = this.name;
+        const collateral = agentState.totalCollateralNATWei;
+        const feeBIPS = agentState.feeBIPS;
+        const agentMinCollateralRatioBIPS = agentState.agentMinCollateralRatioBIPS;
+        const underlyingAddress = this.agent.underlyingAddress;
+        // destroy old agent vault
+        await this.destroyAgent(scope);
+        // create the agent again
+        this.agent = await Agent.createTest(this.runner.context, this.ownerAddress, underlyingAddress + '*');
+        this.agentVault = this.agent.agentVault;
+        this.registerForEvents(this.agentVault.address);
+        this.runner.interceptor.captureEventsFrom(name + '*', this.agent.agentVault, 'AgentVault');
+        await this.agent.agentVault.deposit({ from: this.ownerAddress, value: collateral });
+        await this.agent.makeAvailable(feeBIPS, agentMinCollateralRatioBIPS);
+        // make all working again
+        this.destroying = false;
+    }
 }

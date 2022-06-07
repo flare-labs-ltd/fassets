@@ -1,15 +1,15 @@
 import BN from "bn.js";
 import {
-    AgentAvailable, AllEvents, AssetManagerInstance, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
+    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/AssetManager";
 import { NAT_WEI } from "../../integration/utils/AssetContext";
-import { ContractWithEvents, EvmEvent } from "../../utils/events";
+import { EvmEvent } from "../../utils/events";
 import { BN_ZERO, formatBN, MAX_BIPS, sumBN, toBN } from "../../utils/helpers";
 import { ILogger } from "../../utils/LogFile";
 import { FuzzingState, FuzzingStateLogRecord, Prices } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
-import { EvmEventArgs, EvmEventArgsForName } from "./WrappedEvents";
+import { EvmEventArgs } from "./WrappedEvents";
 
 // status as returned from getAgentInfo
 export enum AgentStatus {
@@ -489,14 +489,18 @@ export class FuzzingStateAgent {
         const freeUnderlyingBalanceUBA = this.calculateFreeUnderlyingBalanceUBA();
         problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
         problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA.cumulative`, this.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
-        // minimum underlying backing (TODO: check that all illegel payments have been challenged already)
-        const underlyingBalanceUBA = await this.parent.context.chain.getBalance(this.underlyingAddressString);
-        problems += checker.checkNumericDifference(`${agentName}.underlyingBalanceUBA`, underlyingBalanceUBA, 'gte', mintedUBA.add(freeUnderlyingBalanceUBA));
+        // minimum underlying backing (unless in full liquidation)
+        if (this.status !== AgentStatus.FULL_LIQUIDATION) {
+            const underlyingBalanceUBA = await this.parent.context.chain.getBalance(this.underlyingAddressString);
+            problems += checker.checkNumericDifference(`${agentName}.underlyingBalanceUBA`, underlyingBalanceUBA, 'gte', mintedUBA.add(freeUnderlyingBalanceUBA));
+        }
         // dust
         problems += checker.checkEquality(`${agentName}.dustUBA`, this.reportedDustUBA, this.calculatedDustUBA);
         // status
         const statusProblem = checker.checkStringEquality(`${agentName}.status`, agentInfo.status, this.status);
         if (statusProblem != 0 && !(this.status === AgentStatus.CCB && Number(agentInfo.status) === Number(AgentStatus.LIQUIDATION))) {
+            checker.logger.log(`CCB/LIQUIDATION problem: statusProblem=${statusProblem}, this.status=${this.status}, AgentStatus.CCB=${AgentStatus.CCB}, '='=${this.status === AgentStatus.CCB},` + 
+                ` Number(agentInfo.status)=${Number(agentInfo.status)}, Number(AgentStatus.LIQUIDATION)=${Number(AgentStatus.LIQUIDATION)}, '='=${Number(agentInfo.status) === Number(AgentStatus.LIQUIDATION)}`);
             // transition CCB->LIQUIDATION can happen due to timing (without event) so it's not a problem
             problems += statusProblem;
         }

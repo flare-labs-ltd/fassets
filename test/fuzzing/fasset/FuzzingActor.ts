@@ -27,7 +27,7 @@ export class FuzzingActor {
         return this.runner.eventDecoder.formatAddress(address);
     }
     
-    async waitForTransaction(scope: EventScope, txHash: string, maxBlocksToWaitForTx?: number) {
+    async waitForUnderlyingTransaction(scope: EventScope, txHash: string, maxBlocksToWaitForTx?: number) {
         const transaction = await this.context.chain.getTransaction(txHash);
         if (transaction != null) return transaction;
         const waitBlocks = maxBlocksToWaitForTx ?? Math.max(this.context.chain.finalizationBlocks, 1);
@@ -39,7 +39,7 @@ export class FuzzingActor {
     }
     
     async waitForUnderlyingTransactionFinalization(scope: EventScope, txHash: string, maxBlocksToWaitForTx?: number) {
-        const tx = await this.waitForTransaction(scope, txHash, maxBlocksToWaitForTx);
+        const tx = await this.waitForUnderlyingTransaction(scope, txHash, maxBlocksToWaitForTx);
         if (tx == null) return false;
         // find transaction block
         const block = await this.context.chain.getTransactionBlock(txHash);
