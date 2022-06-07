@@ -13,9 +13,10 @@ import { FuzzingKeeper } from "./FuzzingKeeper";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { EventExecutionQueue } from "./ScopedEvents";
+import { EventExecutionQueue } from "../../utils/fasset/ScopedEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
-import { EvmEvents, UnderlyingChainEvents } from "./WrappedEvents";
+import { EvmEvents } from "./EvmEvents";
+import { UnderlyingChainEvents } from "../../utils/fasset/UnderlyingChainEvents";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
     const startTimestamp = systemTimestamp();
@@ -72,7 +73,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         // uniform event handlers
         eventQueue = new EventExecutionQueue();
         truffleEvents = new EvmEvents(interceptor, eventQueue);
-        chainEvents = new UnderlyingChainEvents(context.chainEvents, eventQueue);
+        chainEvents = context.chainEvents = new UnderlyingChainEvents(context.chainEventsRaw, eventQueue);
         timeline = new FuzzingTimeline(chain, eventQueue);
         // state checker
         fuzzingState = new FuzzingState(context, timeline, truffleEvents, chainEvents, eventDecoder, eventQueue);

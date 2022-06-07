@@ -1,16 +1,10 @@
-import { expectErrors, filterStackTrace } from "../../utils/helpers";
-import { LogFile } from "../../utils/LogFile";
+import { expectErrors, filterStackTrace } from "../helpers";
+import { LogFile } from "../LogFile";
 
 export type EventHandler<E> = (event: E) => void;
 
 export interface EventSubscription {
     unsubscribe(): void;
-}
-
-export class ExitScope extends Error {
-    constructor(public scope?: EventScope) {
-        super("no matching scope");
-    }
 }
 
 export class ClearableSubscription implements EventSubscription {
@@ -45,6 +39,12 @@ class ScopedSubscription implements EventSubscription {
             this.subscription.unsubscribe();
             this.subscription = undefined;
         }
+    }
+}
+
+export class ExitScope extends Error {
+    constructor(public scope?: EventScope) {
+        super("no matching scope");
     }
 }
 
@@ -97,17 +97,13 @@ export interface QualifiedEvent<N extends string, A> {
     args: A;
 }
 
-export function qualifiedEvent<N extends string, A>(name: N, args: A): QualifiedEvent<N, A> {
-    return { name, args };
-}
-
 export class EventEmitter<E> {
     constructor(
         private executionQueue: EventExecutionQueue | null,
         protected _subscribe: (handler: EventHandler<E>) => EventSubscription,
     ) { }
 
-    public subscribe(handler: EventHandler<E>): EventSubscription {
+    subscribe(handler: EventHandler<E>): EventSubscription {
         const executionQueue = this.executionQueue;
         if (executionQueue) {
             return this._subscribe((args: E) => {
@@ -118,7 +114,7 @@ export class EventEmitter<E> {
         }
     }
 
-    public subscribeOnce(handler: EventHandler<E>): EventSubscription {
+    subscribeOnce(handler: EventHandler<E>): EventSubscription {
         const subscription = new ClearableSubscription();
         subscription.base = this.subscribe(event => {
             subscription.unsubscribe();
@@ -127,22 +123,34 @@ export class EventEmitter<E> {
         return subscription;
     }
 
-    public subscribeIn(scope: EventScope, handler: EventHandler<E>) {
+    subscribeIn(scope: EventScope, handler: EventHandler<E>) {
         const subscription = this.subscribe(handler);
         return scope.add(subscription);
     }
 
-    public subscribeOnceIn(scope: EventScope, handler: EventHandler<E>) {
+    subscribeOnceIn(scope: EventScope, handler: EventHandler<E>) {
         const subscription = this.subscribeOnce(handler);
         return scope.add(subscription);
     }
-
-    public wait(scope?: EventScope): Promise<E> {
+    
+    wait(scope?: EventScope): Promise<E> {
         if (scope) {
             return new Promise((resolve) => this.subscribeOnceIn(scope, resolve));
         } else {
             return new Promise((resolve) => this.subscribeOnce(resolve));
         }
+    }
+    
+    filter(condition: (event: E) => boolean): EventEmitter<E> {
+        return new EventEmitter<E>(this.executionQueue, (handler) => this._subscribe(event => {
+            if (condition(event)) handler(event);
+        }));
+    }
+
+    map<F>(convert: (event: E) => F): EventEmitter<F> {
+        return new EventEmitter<F>(this.executionQueue, (handler) => this._subscribe(event => {
+            handler(convert(event));
+        }));
     }
     
     qualified<N extends string>(name: N): EventEmitter<QualifiedEvent<N, E>> {
@@ -198,4 +206,22 @@ export class TriggerableEvent<E> extends EventEmitter<E> {
             handler(event);
         }
     }
+}
+
+export function qualifiedEvent<N extends string, A>(name: N, args: A): QualifiedEvent<N, A> {
+    return { name, args };
+}
+
+export function timeoutEvent(executionQueue: EventExecutionQueue | null, ms: number) {
+    return new EventEmitter<void>(executionQueue, (handler) => {
+        const timerId = setTimeout(handler, ms);
+        return ClearableSubscription.of(() => clearTimeout(timerId));
+    });
+}
+
+export function intervalEvent(executionQueue: EventExecutionQueue | null, ms: number) {
+    return new EventEmitter<void>(executionQueue, (handler) => {
+        const timerId = setInterval(handler, ms);
+        return ClearableSubscription.of(() => clearInterval(timerId));
+    });
 }

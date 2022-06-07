@@ -5,11 +5,11 @@ import { EventArgs, requiredEventArgs } from "../../utils/events";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { coinFlip, randomBN, randomInt } from "../../utils/fuzzing-utils";
-import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN } from "../../utils/helpers";
+import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { AgentStatus } from "./FuzzingStateAgent";
-import { EventScope, EventSubscription } from "./ScopedEvents";
+import { EventScope, EventSubscription } from "../../utils/fasset/ScopedEvents";
 
 export class FuzzingAgent extends FuzzingActor {
     constructor(
@@ -81,7 +81,7 @@ export class FuzzingAgent extends FuzzingActor {
                 request = { ...request, feeUBA: request.feeUBA.muln(2) };   // pay less by taking some extra fee
             }
             const txHash = await this.agent.performRedemptionPayment(request);
-            await this.waitForUnderlyingTransactionFinalization(scope, txHash);
+            await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
             if (!cheatOnPayment) {
                 await this.agent.confirmActiveRedemptionPayment(request, txHash);
             } else {
@@ -103,7 +103,7 @@ export class FuzzingAgent extends FuzzingActor {
         // perform payment
         const txHash = await this.agent.wallet.addTransaction(ownerUnderlyingAddress, this.underlyingAddress, miningUBA, PaymentReference.selfMint(this.agentVault.address));
         // wait for finalization
-        await this.waitForUnderlyingTransactionFinalization(scope, txHash);
+        await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
         // execute
         const proof = await this.context.attestationProvider.provePayment(txHash, null, this.underlyingAddress);
         const res = await this.context.assetManager.selfMint(proof, this.agentVault.address, lots, { from: this.ownerAddress })
@@ -168,7 +168,7 @@ export class FuzzingAgent extends FuzzingActor {
             const txHash = await this.agent.performUnderlyingWithdrawal(announcement, amount, this.ownerUnderlyingAddress)
                 .catch(e => scope.exitOnExpectedError(e, []));
             // wait for finalization
-            await this.waitForUnderlyingTransactionFinalization(scope, txHash);
+            await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
             // confirm
             await this.agent.confirmUnderlyingWithdrawal(announcement, txHash)
                 .catch(e => scope.exitOnExpectedError(e, []));
@@ -223,7 +223,7 @@ export class FuzzingAgent extends FuzzingActor {
         // save old agent's data
         const agentState = this.agentState();
         const name = this.name;
-        const collateral = agentState.totalCollateralNATWei;
+        // const collateral = agentState.totalCollateralNATWei;
         const feeBIPS = agentState.feeBIPS;
         const agentMinCollateralRatioBIPS = agentState.agentMinCollateralRatioBIPS;
         const underlyingAddress = this.agent.underlyingAddress;
@@ -234,7 +234,7 @@ export class FuzzingAgent extends FuzzingActor {
         this.agentVault = this.agent.agentVault;
         this.registerForEvents(this.agentVault.address);
         this.runner.interceptor.captureEventsFrom(name + '*', this.agent.agentVault, 'AgentVault');
-        await this.agent.agentVault.deposit({ from: this.ownerAddress, value: collateral });
+        await this.agent.agentVault.deposit({ from: this.ownerAddress, value: toWei(10_000_000) });
         await this.agent.makeAvailable(feeBIPS, agentMinCollateralRatioBIPS);
         // make all working again
         this.destroying = false;

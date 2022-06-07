@@ -9,7 +9,7 @@ import { BN_ZERO, formatBN, MAX_BIPS, sumBN, toBN } from "../../utils/helpers";
 import { ILogger } from "../../utils/LogFile";
 import { FuzzingState, FuzzingStateLogRecord, Prices } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
-import { EvmEventArgs } from "./WrappedEvents";
+import { EvmEventArgs } from "./EvmEvents";
 
 // status as returned from getAgentInfo
 export enum AgentStatus {

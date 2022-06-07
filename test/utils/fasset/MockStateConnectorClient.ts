@@ -13,7 +13,6 @@ import { SourceId } from "../verification/sources/sources";
 import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "./IStateConnectorClient";
 import { MockAttestationProver } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
-import { ITimer } from "./Timer";
 
 interface DHProof {
     attestationType: AttestationType;
@@ -45,9 +44,9 @@ export class MockStateConnectorClient implements IStateConnectorClient {
     finalizedRounds: FinalizedRound[] = [];
     logFile?: LogFile;
     
-    setTimedFinalization(timedRoundSeconds: number, timer: ITimer<any>) {
+    setTimedFinalization(timedRoundSeconds: number) {
         this.finalizationType = 'timed';
-        timer.every(timedRoundSeconds, () => this.finalizeRound());
+        setInterval(() => this.finalizeRound(), timedRoundSeconds * 1000);
     }
     
     addChain(id: SourceId, chain: MockChain) {

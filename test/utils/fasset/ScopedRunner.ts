@@ -1,4 +1,4 @@
-import { reportError } from "../../utils/helpers";
+import { reportError } from "../helpers";
 import { EventScope, ExitScope } from "./ScopedEvents";
 
 export class ScopedRunner {

@@ -6,9 +6,10 @@ import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { ScopedRunner } from "./ScopedRunner";
+import { ScopedRunner } from "../../utils/fasset/ScopedRunner";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
-import { EvmEvents, UnderlyingChainEvents } from "./WrappedEvents";
+import { EvmEvents } from "./EvmEvents";
+import { UnderlyingChainEvents } from "../../utils/fasset/UnderlyingChainEvents";
 
 export class FuzzingRunner extends ScopedRunner {
     constructor(

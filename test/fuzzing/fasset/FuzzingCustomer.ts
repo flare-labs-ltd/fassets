@@ -9,7 +9,7 @@ import { formatBN, toBN } from "../../utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { AgentStatus } from "./FuzzingStateAgent";
-import { EventScope, QualifiedEvent, qualifiedEvent } from "./ScopedEvents";
+import { EventScope, QualifiedEvent, qualifiedEvent } from "../../utils/fasset/ScopedEvents";
 
 // debug state
 let mintedLots = 0;
@@ -56,7 +56,7 @@ export class FuzzingCustomer extends FuzzingActor {
         // pay
         const txHash = await this.minter.performMintingPayment(crt);
         // wait for finalization
-        await this.waitForUnderlyingTransactionFinalization(scope, txHash);
+        await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
         // execute
         await this.minter.executeMinting(crt, txHash)
             .catch(e => scope.exitOnExpectedError(e, []));

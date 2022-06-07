@@ -3,11 +3,13 @@ import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerIns
 import { ContractWithEvents } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../utils/fasset/AttestationHelper";
-import { IBlockChain, IBlockChainEvents, ITransaction } from "../../utils/fasset/ChainInterfaces";
+import { IBlockChain, IBlockChainEvents } from "../../utils/fasset/ChainInterfaces";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { IStateConnectorClient } from "../../utils/fasset/IStateConnectorClient";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
+import { EventScope } from "../../utils/fasset/ScopedEvents";
+import { UnderlyingChainEvents } from "../../utils/fasset/UnderlyingChainEvents";
 import { BNish, DAYS, HOURS, toBN, toBNExp, toNumber, toWei, WEEKS } from "../../utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { web3DeepNormalize } from "../../utils/web3assertions";
@@ -82,7 +84,7 @@ export class AssetContext {
         // asset context
         public chainInfo: ChainInfo,
         public chain: IBlockChain,
-        public chainEvents: IBlockChainEvents,
+        public chainEventsRaw: IBlockChainEvents,
         public stateConnectorClient: IStateConnectorClient,
         public attestationProvider: AttestationHelper,
         public settings: AssetManagerSettings,      // may not be fresh
@@ -92,6 +94,8 @@ export class AssetContext {
     ) {
     }
 
+    chainEvents = new UnderlyingChainEvents(this.chainEventsRaw, null);
+    
     get chainId() {
         return this.chainInfo.chainId;
     }
@@ -176,39 +180,27 @@ export class AssetContext {
     convertUBAToNATWei(valueUBA: BNish, amgToNATWeiPrice: BNish) {
         return this.convertAmgToNATWei(this.convertUBAToAmg(valueUBA), amgToNATWeiPrice);
     }
-    
-    private waitForTransactionNoTimeout(txHash: string) {
-        return new Promise((resolve) => {
-            
-        })
-    }
-    
-    async waitForUnderlyingTransaction(txHash: string, maxBlocksToWaitForTx?: number) {
+
+    async waitForUnderlyingTransaction(scope: EventScope | undefined, txHash: string, maxBlocksToWaitForTx?: number) {
         const transaction = await this.chain.getTransaction(txHash);
         if (transaction != null) return transaction;
+        const blockHeight = await this.chain.getBlockHeight();
         const waitBlocks = maxBlocksToWaitForTx ?? Math.max(this.chain.finalizationBlocks, 1);
-        const blockToWait = await this.chain.getBlockHeight() + waitBlocks;
-        const res = await new Promise<ITransaction | null>((resolve) => {
-            const sub = this.chainEvents.addBlockHandler({ hash: txHash }, (tx) => sleep(0).then(() => {
-                // this.chainEvents.
-                resolve(tx);
-            }))
-        })
         const event = await Promise.race([
             this.chainEvents.transactionEvent({ hash: txHash }).qualified('found').wait(scope),
-            this.timeline.underlyingBlocks(waitBlocks).qualified('timeout').wait(scope),
+            this.chainEvents.blockHeightReachedEvent(blockHeight + waitBlocks).qualified('timeout').wait(scope),
         ]);
         return event.name === 'found' ? event.args : null;
     }
 
-    async waitForUnderlyingTransactionFinalization(scope: EventScope, txHash: string, maxBlocksToWaitForTx?: number) {
+    async waitForUnderlyingTransactionFinalization(scope: EventScope | undefined, txHash: string, maxBlocksToWaitForTx?: number) {
         const tx = await this.waitForUnderlyingTransaction(scope, txHash, maxBlocksToWaitForTx);
         if (tx == null) return false;
         // find transaction block
-        const block = await this.context.chain.getTransactionBlock(txHash);
+        const block = await this.chain.getTransactionBlock(txHash);
         if (block == null) return false;
         // wait for finalization
-        await this.timeline.underlyingBlockNumber(block.number + this.context.chain.finalizationBlocks).wait(scope);
+        await this.chainEvents.blockHeightReachedEvent(block.number + this.chain.finalizationBlocks).wait(scope);
         return true;
     }
     

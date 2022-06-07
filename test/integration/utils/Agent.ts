@@ -42,6 +42,9 @@ export class Agent extends AssetContextClient {
         // create and prove transaction from underlyingAddress if EOA required
         if (ctx.chainInfo.requireEOAProof) {
             const txHash = await wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(ownerAddress));
+            if (ctx.chain.finalizationBlocks > 0) {
+                await ctx.waitForUnderlyingTransactionFinalization(undefined, txHash);
+            }
             const proof = await ctx.attestationProvider.provePayment(txHash, underlyingAddress, underlyingAddress);
             await ctx.assetManager.proveUnderlyingAddressEOA(proof, { from: ownerAddress });
         }

@@ -11,8 +11,9 @@ import { web3DeepNormalize, web3Normalize } from "../../utils/web3assertions";
 import { AgentStatus, FuzzingStateAgent } from "./FuzzingStateAgent";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { EventExecutionQueue, TriggerableEvent } from "./ScopedEvents";
-import { EvmEvents, UnderlyingChainEvents } from "./WrappedEvents";
+import { EventExecutionQueue, TriggerableEvent } from "../../utils/fasset/ScopedEvents";
+import { EvmEvents } from "./EvmEvents";
+import { UnderlyingChainEvents } from "../../utils/fasset/UnderlyingChainEvents";
 
 export class Prices {
     constructor(

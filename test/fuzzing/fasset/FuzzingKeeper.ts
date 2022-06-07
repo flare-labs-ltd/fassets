@@ -6,8 +6,8 @@ import { expectErrors } from "../../utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingStateAgent } from "./FuzzingStateAgent";
-import { EventScope } from "./ScopedEvents";
-import { EvmEventArgs } from "./WrappedEvents";
+import { EventScope } from "../../utils/fasset/ScopedEvents";
+import { EvmEventArgs } from "./EvmEvents";
 
 export class FuzzingKeeper extends FuzzingActor {
     constructor(
@@ -65,7 +65,7 @@ export class FuzzingKeeper extends FuzzingActor {
     }
     
     async illegalTransactionChallenge(scope: EventScope, transaction: ITransaction, agent: FuzzingStateAgent) {
-        await this.waitForUnderlyingTransactionFinalization(scope, transaction.hash);
+        await this.context.waitForUnderlyingTransactionFinalization(scope, transaction.hash);
         const proof = await this.context.attestationProvider.proveBalanceDecreasingTransaction(transaction.hash, agent.underlyingAddressString);
         // challenge everything - we want to see if the system properly rejects challenges of legal transactions
         const res = await this.context.assetManager.illegalPaymentChallenge(proof, agent.address, { from: this.address })

@@ -1,7 +1,6 @@
 import { ContractWithEventsBase, EventArgs, EventArgsForName, EventNamesFor, EventSelector, EvmEvent } from "../../utils/events";
-import { IBlockChainEvents, IBlockId, ITransaction } from "../../utils/fasset/ChainInterfaces";
 import { multimapAdd, multimapDelete } from "../../utils/helpers";
-import { ClearableSubscription, EventEmitter, EventExecutionQueue } from "./ScopedEvents";
+import { ClearableSubscription, EventEmitter, EventExecutionQueue } from "../../utils/fasset/ScopedEvents";
 import { TransactionInterceptor } from "./TransactionInterceptor";
 
 export type EvmEventArgs<E extends EventSelector> = EventArgs<E> & { $event: EvmEvent };
@@ -46,27 +45,6 @@ export class EvmEvents {
             const filteredHandler: FilteredHandler = { filter, handler };
             multimapAdd(this.handlers, key, filteredHandler);
             return ClearableSubscription.of(() => multimapDelete(this.handlers, key, filteredHandler));
-        });
-    }
-}
-
-export class UnderlyingChainEvents {
-    constructor(
-        private events: IBlockChainEvents,
-        public eventQueue: EventExecutionQueue | null,
-    ) { }
-    
-    blockEvent(): EventEmitter<IBlockId> {
-        return new EventEmitter(this.eventQueue, handler => {
-            const subscriptionId = this.events.addBlockHandler(handler);
-            return ClearableSubscription.of(() => this.events.removeHandler(subscriptionId));
-        });
-    }
-    
-    transactionEvent(filter: { [name: string]: string } | null = null): EventEmitter<ITransaction> {
-        return new EventEmitter(this.eventQueue, handler => {
-            const subscriptionId = this.events.addTransactionHandler(filter, handler);
-            return ClearableSubscription.of(() => this.events.removeHandler(subscriptionId));
         });
     }
 }
