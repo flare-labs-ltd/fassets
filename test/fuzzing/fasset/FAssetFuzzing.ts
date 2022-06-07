@@ -139,6 +139,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [testUnderlyingWithdrawal, 5],
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
+            [testIllegalTransaction, 1],
         ];
         const timedActions: Array<[(index: number) => Promise<void>, InclusionIterable<number> | null]> = [
             [testChangeLotSize, CHANGE_LOT_SIZE_AT],
@@ -251,6 +252,11 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     async function testConvertDustToTickets() {
         const agent = randomChoice(agents);
         runner.startThread((scope) => agent.convertDustToTickets(scope));
+    }
+
+    async function testIllegalTransaction() {
+        const agent = randomChoice(agents);
+        runner.startThread((scope) => agent.makeIllegalTransaction(scope));
     }
     
     async function testLiquidate() {

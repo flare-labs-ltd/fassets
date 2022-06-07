@@ -33,7 +33,7 @@ export class FuzzingActor {
         const waitBlocks = maxBlocksToWaitForTx ?? Math.max(this.context.chain.finalizationBlocks, 1);
         const event = await Promise.race([
             this.chainEvents.transactionEvent({ hash: txHash }).qualified('found').wait(scope),
-            this.timeline.underlyingBlocksRel(waitBlocks).qualified('timeout').wait(scope),
+            this.timeline.underlyingBlocks(waitBlocks).qualified('timeout').wait(scope),
         ]);
         return event.name === 'found' ? event.args : null;
     }
@@ -45,7 +45,7 @@ export class FuzzingActor {
         const block = await this.context.chain.getTransactionBlock(txHash);
         if (block == null) return false;
         // wait for finalization
-        await this.timeline.underlyingBlockAbs(block.number + this.context.chain.finalizationBlocks).wait(scope);
+        await this.timeline.underlyingBlockNumber(block.number + this.context.chain.finalizationBlocks).wait(scope);
         return true;
     }
 }

@@ -101,11 +101,11 @@ export class FuzzingCustomer extends FuzzingActor {
     private async waitForPaymentTimeout(scope: EventScope, ticket: EventArgs<RedemptionRequested>): Promise<QualifiedEvent<"timeout", null>> {
         // both block number and timestamp must be large enough
         await Promise.all([
-            this.timeline.underlyingBlockAbs(Number(ticket.lastUnderlyingBlock) + 1).wait(scope),
-            this.timeline.underlyingTimeAbs(Number(ticket.lastUnderlyingTimestamp) + 1).wait(scope),
+            this.timeline.underlyingBlockNumber(Number(ticket.lastUnderlyingBlock) + 1).wait(scope),
+            this.timeline.underlyingTimestamp(Number(ticket.lastUnderlyingTimestamp) + 1).wait(scope),
         ]);
         // after that, we have to wait for finalization
-        await this.timeline.underlyingBlocksRel(this.context.chain.finalizationBlocks).wait(scope);
+        await this.timeline.underlyingBlocks(this.context.chain.finalizationBlocks).wait(scope);
         return qualifiedEvent('timeout', null);
     }
 

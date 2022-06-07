@@ -153,4 +153,13 @@ export class FuzzingAgent extends FuzzingActor {
                 .catch(e => scope.exitOnExpectedError(e, []));
         }
     }
+
+    async makeIllegalTransaction(scope: EventScope): Promise<void> {
+        const balance = await this.context.chain.getBalance(this.agent.underlyingAddress);
+        if (balance.isZero()) return;
+        const amount = randomBN(balance);
+        this.comment(`Making illegal transaction of ${formatBN(amount)} from ${this.agent.underlyingAddress}`);
+        await this.agent.wallet.addTransaction(this.underlyingAddress, this.ownerUnderlyingAddress, amount, null);
+    }
+    
 }

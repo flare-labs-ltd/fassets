@@ -125,29 +125,29 @@ export class FuzzingTimeline {
         }
     }
 
-    flareTimeAbs(timestamp: number) {
+    flareTimestamp(timestamp: number) {
         return this.flareTimeTriggers.event(timestamp);
     }
 
-    underlyingBlockAbs(blockNumber: number) {
+    underlyingBlockNumber(blockNumber: number) {
         return this.underlyingBlockTriggers.event(blockNumber);
     }
 
-    underlyingTimeAbs(timestamp: number) {
+    underlyingTimestamp(timestamp: number) {
         return this.underlyingTimeTriggers.event(timestamp);
     }
     
-    async flareTimeRel(seconds: number) {
+    async flareSeconds(seconds: number) {
         const triggerTime = await latestBlockTimestamp() + seconds;
         return this.flareTimeTriggers.event(triggerTime);
     }
 
-    underlyingBlocksRel(blocks: number) {
+    underlyingBlocks(blocks: number) {
         const triggerBlock = this.chain.blockHeight() + blocks;
         return this.underlyingBlockTriggers.event(triggerBlock);
     }
 
-    underlyingTimeRel(seconds: number) {
+    underlyingSeconds(seconds: number) {
         const triggerTime = this.chain.currentTimestamp() + seconds;
         return this.underlyingTimeTriggers.event(triggerTime);
     }
