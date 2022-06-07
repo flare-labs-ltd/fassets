@@ -441,6 +441,28 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         expectEvent(resSelf, 'SelfClose');
     });
 
+    it("should not execute redemption payment default - non-payment not proved", async () => {
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+
+        const paymentAmt = request.valueUBA.sub(request.feeUBA);
+        const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
+        const proofPay = await attestationProvider.provePayment(transactionHash, underlyingAgent1, request.paymentAddress);
+        const resPay = await assetManager.confirmRedemptionPayment(proofPay, request.requestId, { from: agentOwner1 });
+        expectEvent(resPay, 'RedemptionFinished');
+        expectEvent(resPay, 'RedemptionPaymentFailed');
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
+        }
+
+        const chainId: SourceId = 2;
+        stateConnectorClient = new MockStateConnectorClient(attestationClient, { [chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: agentOwner1 });
+        await expectRevert(res, 'non-payment not proved');
+    });
 
 });
 

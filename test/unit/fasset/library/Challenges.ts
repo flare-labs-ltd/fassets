@@ -124,6 +124,16 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
                 proof, agentVault.address, { from: whitelistedAccount });
             expectEvent(res, "IllegalPaymentConfirmed");
         });
+
+        it("should not succeed challenging illegal payment - verified transaction too old", async() => {
+            let txHash = await wallet.addTransaction(
+                underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(0));
+            let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
+            await time.increase(5 * 86400);
+            let res = assetManager.illegalPaymentChallenge(
+                proof, agentVault.address, { from: whitelistedAccount });
+            await expectRevert(res, "verified transaction too old")
+        });
     });
 
     describe("double payment challenge", () => {
@@ -185,20 +195,11 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         });
 
         it("should succeed in challenging payments iff they make balance negative", async() => {
-            console.log((await chain.getBalance(underlyingAgent1)).toString());
-
             const info = await assetManager.getAgentInfo(agentVault.address);
-            
-            console.log(info.freeUnderlyingBalanceUBA.toString());
-
             let txHash2 = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.announcedWithdrawal(2));
             let proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
             
-            console.log((await chain.getBalance(underlyingAgent1)).toString());
-            console.log((agentTxProof.spentAmount.toString()));
-            console.log(info.freeUnderlyingBalanceUBA.toString());
-
             /* 
             // enough free balance
             let prms2 = assetManager.freeBalanceNegativeChallenge(
