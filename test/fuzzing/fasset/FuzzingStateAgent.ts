@@ -5,7 +5,7 @@ import {
 } from "../../../typechain-truffle/AssetManager";
 import { NAT_WEI } from "../../integration/utils/AssetContext";
 import { EvmEvent } from "../../utils/events";
-import { BN_ZERO, formatBN, MAX_BIPS, sumBN, toBN } from "../../utils/helpers";
+import { BN_ZERO, formatBN, latestBlockTimestamp, MAX_BIPS, sumBN, toBN } from "../../utils/helpers";
 import { ILogger } from "../../utils/LogFile";
 import { FuzzingState, FuzzingStateLogRecord, Prices } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
@@ -198,10 +198,10 @@ export class FuzzingStateAgent {
     // handlers: status
     
     handleStatusChange(status: AgentStatus, timestamp?: BN): void {
-        if (timestamp && status === AgentStatus.NORMAL && this.status === AgentStatus.CCB) {
+        if (timestamp && this.status === AgentStatus.NORMAL && status === AgentStatus.CCB) {
             this.ccbStartTimestamp = timestamp;
         }
-        if (timestamp && (status === AgentStatus.NORMAL || status === AgentStatus.CCB) && (this.status === AgentStatus.LIQUIDATION || this.status === AgentStatus.FULL_LIQUIDATION)) {
+        if (timestamp && (this.status === AgentStatus.NORMAL || this.status === AgentStatus.CCB) && (status === AgentStatus.LIQUIDATION || status === AgentStatus.FULL_LIQUIDATION)) {
             this.liquidationStartTimestamp = timestamp;
         }
         this.status = status;
@@ -497,12 +497,10 @@ export class FuzzingStateAgent {
         // dust
         problems += checker.checkEquality(`${agentName}.dustUBA`, this.reportedDustUBA, this.calculatedDustUBA);
         // status
-        const statusProblem = checker.checkStringEquality(`${agentName}.status`, agentInfo.status, this.status);
-        if (statusProblem != 0 && !(this.status === AgentStatus.CCB && Number(agentInfo.status) === Number(AgentStatus.LIQUIDATION))) {
-            checker.logger.log(`CCB/LIQUIDATION problem: statusProblem=${statusProblem}, this.status=${this.status}, AgentStatus.CCB=${AgentStatus.CCB}, '='=${this.status === AgentStatus.CCB},` + 
-                ` Number(agentInfo.status)=${Number(agentInfo.status)}, Number(AgentStatus.LIQUIDATION)=${Number(AgentStatus.LIQUIDATION)}, '='=${Number(agentInfo.status) === Number(AgentStatus.LIQUIDATION)}`);
-            // transition CCB->LIQUIDATION can happen due to timing (without event) so it's not a problem
-            problems += statusProblem;
+        if (!(this.status === AgentStatus.CCB && Number(agentInfo.status) === Number(AgentStatus.LIQUIDATION))) {
+            problems += checker.checkStringEquality(`${agentName}.status`, agentInfo.status, this.status);
+        } else {
+            checker.logger.log(`    ${agentName}.status: CCB -> LIQUIDATION issue, time=${await latestBlockTimestamp() - Number(this.ccbStartTimestamp)}`);
         }
         // log
         if (problems > 0) {
