@@ -141,6 +141,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
             [testIllegalTransaction, 1],
+            [testDoublePayment, 1],
         ];
         const timedActions: Array<[(index: number) => Promise<void>, InclusionIterable<number> | null]> = [
             [testChangeLotSize, CHANGE_LOT_SIZE_AT],
@@ -258,6 +259,13 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     async function testIllegalTransaction() {
         const agent = randomChoice(agents);
         runner.startThread((scope) => agent.makeIllegalTransaction(scope));
+    }
+
+    async function testDoublePayment() {
+        const agentsWithRedemptions = agents.filter(agent => (fuzzingState.agents.get(agent.agent.vaultAddress)?.redemptionRequests?.size ?? 0) > 0);
+        if (agentsWithRedemptions.length === 0) return;
+        const agent = randomChoice(agentsWithRedemptions);
+        runner.startThread((scope) => agent.makeDoublePayment(scope));
     }
     
     async function testLiquidate() {
