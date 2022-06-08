@@ -1,8 +1,7 @@
-import { time } from "@openzeppelin/test-helpers";
 import { stringifyJson } from "../fuzzing-utils";
 import { BNish, BN_ZERO, Dict, formatBN, systemTimestamp, toBN } from "../helpers";
 import { LogFile } from "../LogFile";
-import { BlockHandler, IBlock, IBlockChain, IBlockId, IBlockChainEvents, IChainWallet, ITransaction, TransactionHandler, TransactionOptions, TransactionOptionsWithFee, TxInputOutput, TX_FAILED, TX_SUCCESS } from "./ChainInterfaces";
+import { BlockHandler, IBlock, IBlockChain, IBlockChainEvents, IBlockId, IChainWallet, ITransaction, TransactionHandler, TransactionOptions, TransactionOptionsWithFee, TxInputOutput, TX_FAILED, TX_SUCCESS } from "./ChainInterfaces";
 
 export type MockTransactionOptions = TransactionOptions & { status?: number };
 export type MockTransactionOptionsWithFee = TransactionOptionsWithFee & { status?: number };
@@ -163,25 +162,31 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
     
     private addBlock(transactions: MockChainTransaction[]) {
         // check that balances stay positive
-        const changedBalances: { [address: string]: BN } = {};
         for (let i = 0; i < transactions.length; i++) {
             const transaction = transactions[i];
+            if (transaction.status !== TX_SUCCESS) continue;
+            const changedBalances: { [address: string]: BN } = {};
             for (const [src, value] of transaction.inputs) {
                 changedBalances[src] = (changedBalances[src] ?? this.balances[src] ?? BN_ZERO).sub(value);
             }
             for (const [dest, value] of transaction.outputs) {
                 changedBalances[dest] = (changedBalances[dest] ?? this.balances[dest] ?? BN_ZERO).add(value);
             }
-            for (const [address, value] of Object.entries(changedBalances)) {
-                assert.isFalse(value.isNeg(), `MockChain: transaction ${transaction.hash} makes balance of ${address} negative`);
+            const negative = Object.entries(changedBalances).filter(([address, value]) => value.isNeg());
+            if (negative.length > 0) {
+                for (const [address, value] of negative) {
+                    this.logFile?.log(`!!! Mock chain: transaction ${transaction.hash} makes balance of ${address} negative`);
+                }
+                transaction.status = TX_FAILED;
+            } else {
+                // update balances
+                Object.assign(this.balances, changedBalances);
             }
         }
         // update transaction index
         for (let i = 0; i < transactions.length; i++) {
             this.transactionIndex[transactions[i].hash] = [this.blocks.length, i];
         }
-        // update balances
-        Object.assign(this.balances, changedBalances);
         // create new block
         const number = this.blocks.length;
         const timestamp = this.newBlockTimestamp();
