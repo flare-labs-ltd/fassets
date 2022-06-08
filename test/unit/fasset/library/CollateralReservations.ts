@@ -1,12 +1,10 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { ethers } from "hardhat";
-import { AgentVaultInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { AgentVaultInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
 import { ChainInfo, testChainInfo } from "../../../integration/utils/ChainInfo";
 import { EventArgs, findRequiredEvent, requiredEventArgs } from "../../../utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
-import { TX_BLOCKED, TX_FAILED } from "../../../utils/fasset/ChainInterfaces";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
@@ -18,15 +16,16 @@ import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createTestSettings } from "../test-settings";
 
 const AgentVault = artifacts.require('AgentVault');
-const AttestationClient = artifacts.require('AttestationClientMock');
+const AttestationClient = artifacts.require('AttestationClientSC');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
+const StateConnector = artifacts.require('StateConnectorMock');
 
 contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralReservations basic tests`, async accounts => {
     const governance = accounts[10];
     let assetManagerController = accounts[11];
-    let attestationClient: AttestationClientMockInstance;
+    let attestationClient: AttestationClientSCInstance;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
     let wnat: WNatInstance;
@@ -93,14 +92,16 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     }
 
     beforeEach(async () => {
+        // create state connector
+        const stateConnector = await StateConnector.new();
         // create atetstation client
-        attestationClient = await AttestationClient.new();
+        attestationClient = await AttestationClient.new(stateConnector.address);
         // create mock chain attestation provider
         chain = new MockChain(await time.latest());
         chainInfo = testChainInfo.eth;
         chain.secondsPerBlock = chainInfo.blockTime;
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(attestationClient, { [chainId]: chain }, 'auto');
+        stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");

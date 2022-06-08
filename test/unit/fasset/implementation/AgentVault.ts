@@ -1,6 +1,5 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { create } from "domain";
-import { AddressUpdaterInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, MockContractInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AddressUpdaterInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { findRequiredEvent } from "../../../utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
@@ -13,17 +12,18 @@ const WNat = artifacts.require("WNat");
 const AgentVault = artifacts.require("AgentVault");
 const AddressUpdater = artifacts.require('AddressUpdater');
 const AssetManagerController = artifacts.require('AssetManagerController');
-const AttestationClient = artifacts.require('AttestationClientMock');
+const AttestationClient = artifacts.require('AttestationClientSC');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const MockContract = artifacts.require('MockContract');
+const StateConnector = artifacts.require('StateConnectorMock');
 
 contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, async accounts => {
     let wnat: WNatInstance;
     let agentVault: AgentVaultInstance;
     let assetManagerController: AssetManagerControllerInstance;
     let addressUpdater: AddressUpdaterInstance;
-    let attestationClient: AttestationClientMockInstance;
+    let attestationClient: AttestationClientSCInstance;
     let natFtso: FtsoMockInstance;
     let assetFtso: FtsoMockInstance;
     let settings: AssetManagerSettings;
@@ -53,8 +53,10 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     }
 
     beforeEach(async () => {
+        // create state connector
+        const stateConnector = await StateConnector.new();
         // create atetstation client
-        attestationClient = await AttestationClient.new();
+        attestationClient = await AttestationClient.new(stateConnector.address);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);

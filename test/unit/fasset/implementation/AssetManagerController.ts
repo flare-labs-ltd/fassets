@@ -1,5 +1,5 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { DAYS, getTestFile, HOURS, MAX_BIPS, randomAddress, toBN, toBNExp, toStringExp } from "../../../utils/helpers";
@@ -7,18 +7,19 @@ import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
 import { createTestSettings } from "../test-settings";
 
-const AttestationClient = artifacts.require('AttestationClientMock');
+const AttestationClient = artifacts.require('AttestationClientSC');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const AssetManagerController = artifacts.require('AssetManagerController');
 const Whitelist = artifacts.require('Whitelist');
+const StateConnector = artifacts.require('StateConnectorMock');
 
 contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager controller basic tests`, async accounts => {
     const governance = accounts[10];
     const updateExecutor = accounts[11];
-    let attestationClient: AttestationClientMockInstance;
+    let attestationClient: AttestationClientSCInstance;
     let addressUpdater: AddressUpdaterInstance;
     let assetManagerController: AssetManagerControllerInstance;
     let assetManager: AssetManagerInstance;
@@ -30,8 +31,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     let whitelist: WhitelistInstance;
 
     beforeEach(async () => {
+        // create state connector
+        const stateConnector = await StateConnector.new();
         // create atetstation client
-        attestationClient = await AttestationClient.new();
+        attestationClient = await AttestationClient.new(stateConnector.address);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);

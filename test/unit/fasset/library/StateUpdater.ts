@@ -1,5 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
@@ -11,15 +11,16 @@ import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../utils/verification/sources/sources";
 import { createTestSettings } from "../test-settings";
 
-const AttestationClient = artifacts.require('AttestationClientMock');
+const AttestationClient = artifacts.require('AttestationClientSC');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
+const StateConnector = artifacts.require('StateConnectorMock');
 
 contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests`, async accounts => {
     const governance = accounts[10];
     let assetManagerController = accounts[11];
-    let attestationClient: AttestationClientMockInstance;
+    let attestationClient: AttestationClientSCInstance;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
     let wnat: WNatInstance;
@@ -38,12 +39,14 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
 
     beforeEach(async () => {
+        // create state connector
+        const stateConnector = await StateConnector.new();
         // create atetstation client
-        attestationClient = await AttestationClient.new();
+        attestationClient = await AttestationClient.new(stateConnector.address);
         // create mock chain attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(attestationClient, { [chainId]: chain }, 'auto');
+        stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");

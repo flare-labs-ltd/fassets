@@ -68,44 +68,45 @@ library RedemptionQueue {
     
     function deleteRedemptionTicket(
         State storage _state, 
-        uint64 ticketId
+        uint64 _ticketId
     )
         internal
     {
-        Ticket storage ticket = _state.tickets[ticketId];
+        Ticket storage ticket = _state.tickets[_ticketId];
+        assert(ticket.agentVault != address(0));
         AgentQueue storage agent = _state.agents[ticket.agentVault];
         // unlink from global queue
         if (ticket.prev == 0) {
-            assert(ticketId == _state.firstTicketId);     // ticket is first in queue
+            assert(_ticketId == _state.firstTicketId);     // ticket is first in queue
             _state.firstTicketId = ticket.next;
         } else {
-            assert(ticketId != _state.firstTicketId);     // ticket is not first in queue
+            assert(_ticketId != _state.firstTicketId);     // ticket is not first in queue
             _state.tickets[ticket.prev].next = ticket.next;
         }
         if (ticket.next == 0) {
-            assert(ticketId == _state.lastTicketId);     // ticket is last in queue
+            assert(_ticketId == _state.lastTicketId);     // ticket is last in queue
             _state.lastTicketId = ticket.prev;
         } else {
-            assert(ticketId != _state.lastTicketId);     // ticket is not last in queue
+            assert(_ticketId != _state.lastTicketId);     // ticket is not last in queue
             _state.tickets[ticket.next].prev = ticket.prev;
         }
         // unlink from agent queue
         if (ticket.prevForAgent == 0) {
-            assert(ticketId == agent.firstTicketId);     // ticket is first in agent queue
+            assert(_ticketId == agent.firstTicketId);     // ticket is first in agent queue
             agent.firstTicketId = ticket.nextForAgent;
         } else {
-            assert(ticketId != agent.firstTicketId);     // ticket is not first in agent queue
+            assert(_ticketId != agent.firstTicketId);     // ticket is not first in agent queue
             _state.tickets[ticket.prevForAgent].nextForAgent = ticket.nextForAgent;
         }
         if (ticket.nextForAgent == 0) {
-            assert(ticketId == agent.lastTicketId);     // ticket is last in agent queue
+            assert(_ticketId == agent.lastTicketId);     // ticket is last in agent queue
             agent.lastTicketId = ticket.prevForAgent;
         } else {
-            assert(ticketId != agent.lastTicketId);     // ticket is not last in agent queue
+            assert(_ticketId != agent.lastTicketId);     // ticket is not last in agent queue
             _state.tickets[ticket.nextForAgent].prevForAgent = ticket.prevForAgent;
         }
         // delete storage
-        delete _state.tickets[ticketId];
+        delete _state.tickets[_ticketId];
     }
     
     function getTicket(State storage _state, uint64 _id) internal view returns (Ticket storage) {

@@ -1,5 +1,5 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentVaultInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { ChainInfo, testChainInfo } from "../../../integration/utils/ChainInfo";
 import { filterEvents, findRequiredEvent, requiredEventArgs } from "../../../utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
@@ -15,15 +15,16 @@ import { SourceId } from "../../../utils/verification/sources/sources";
 import { createTestSettings } from "../test-settings";
 
 const AgentVault = artifacts.require('AgentVault');
-const AttestationClient = artifacts.require('AttestationClientMock');
+const AttestationClient = artifacts.require('AttestationClientSC');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
+const StateConnector = artifacts.require('StateConnectorMock');
 
 contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, async accounts => {
     const governance = accounts[10];
     let assetManagerController = accounts[11];
-    let attestationClient: AttestationClientMockInstance;
+    let attestationClient: AttestationClientSCInstance;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
     let wnat: WNatInstance;
@@ -37,6 +38,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
+    let stateConnector: StateConnectorMockInstance;
 
     // addresses
     const agentOwner1 = accounts[20];
@@ -106,14 +108,16 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
 
     beforeEach(async () => {
+        // create state connector
+        stateConnector = await StateConnector.new();
         // create atetstation client
-        attestationClient = await AttestationClient.new();
+        attestationClient = await AttestationClient.new(stateConnector.address);
         // create mock chain attestation provider
         chain = new MockChain(await time.latest());
         chainInfo = testChainInfo.eth;
         chain.secondsPerBlock = chainInfo.blockTime;
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(attestationClient, { [chainId]: chain }, 'auto');
+        stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
@@ -457,7 +461,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         }
 
         const chainId: SourceId = 2;
-        stateConnectorClient = new MockStateConnectorClient(attestationClient, { [chainId]: chain }, 'auto');
+        stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: agentOwner1 });
