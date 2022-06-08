@@ -1,5 +1,5 @@
 import { constants, time } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientMockInstance, FAssetInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { ContractWithEvents } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../utils/fasset/AttestationHelper";
@@ -15,13 +15,14 @@ import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { web3DeepNormalize } from "../../utils/web3assertions";
 import { ChainInfo, NatInfo } from "./ChainInfo";
 
-const AttestationClient = artifacts.require('AttestationClientMock');
+const AttestationClient = artifacts.require('AttestationClientSC');
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const FtsoManagerMock = artifacts.require('FtsoManagerMock');
+const StateConnector = artifacts.require('StateConnectorMock');
 
 export const AMG_NATWEI_PRICE_SCALE = toBNExp(1, 9);
 export const NAT_WEI = toBNExp(1, 18);
@@ -29,7 +30,8 @@ export const NAT_WEI = toBNExp(1, 18);
 export type AddressUpdaterEvents = import('../../../typechain-truffle/AddressUpdater').AllEvents;
 export type AssetManagerControllerEvents = import('../../../typechain-truffle/AssetManagerController').AllEvents;
 export type WNatEvents = import('../../../typechain-truffle/WNat').AllEvents;
-export type AttestationClientMockEvents = import('../../../typechain-truffle/AttestationClientMock').AllEvents;
+export type StateConnectorMockEvents = import('../../../typechain-truffle/StateConnectorMock').AllEvents;
+export type AttestationClientSCEvents = import('../../../typechain-truffle/AttestationClientSC').AllEvents;
 export type FtsoRegistryMockEvents = import('../../../typechain-truffle/FtsoRegistryMock').AllEvents;
 export type FtsoMockEvents = import('../../../typechain-truffle/FtsoMock').AllEvents;
 export type FtsoManagerMockEvents = import('../../../typechain-truffle/FtsoManagerMock').AllEvents;
@@ -42,7 +44,8 @@ export class CommonContext {
         public governance: string,
         public addressUpdater: ContractWithEvents<AddressUpdaterInstance, AddressUpdaterEvents>,
         public assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>,
-        public attestationClient: ContractWithEvents<AttestationClientMockInstance, AttestationClientMockEvents>,
+        public stateConnector: ContractWithEvents<StateConnectorMockInstance, StateConnectorMockEvents>,
+        public attestationClient: ContractWithEvents<AttestationClientSCInstance, AttestationClientSCEvents>,
         public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryMockEvents>,
         public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerMockEvents>,
         public wnat: ContractWithEvents<WNatInstance, WNatEvents>,
@@ -50,8 +53,10 @@ export class CommonContext {
     ) {}
 
     static async createTest(governance: string, natInfo: NatInfo): Promise<CommonContext> {
+        // create state connector
+        const stateConnector = await StateConnector.new();
         // create attestation client
-        const attestationClient = await AttestationClient.new();
+        const attestationClient = await AttestationClient.new(stateConnector.address);
         // create asset manager controller
         const addressUpdater = await AddressUpdater.new(governance);
         const assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
@@ -65,7 +70,7 @@ export class CommonContext {
         const ftsoRegistry = await FtsoRegistryMock.new();
         await ftsoRegistry.addFtso(natFtso.address);
         const ftsoManager = await FtsoManagerMock.new();
-        return new CommonContext(governance, addressUpdater, assetManagerController, attestationClient, ftsoRegistry, ftsoManager, wnat, natFtso);
+        return new CommonContext(governance, addressUpdater, assetManagerController, stateConnector, attestationClient, ftsoRegistry, ftsoManager, wnat, natFtso);
     }
 }
 
@@ -76,7 +81,7 @@ export class AssetContext {
         public governance: string,
         public addressUpdater: ContractWithEvents<AddressUpdaterInstance, AddressUpdaterEvents>,
         public assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>,
-        public attestationClient: ContractWithEvents<AttestationClientMockInstance, AttestationClientMockEvents>,
+        public attestationClient: ContractWithEvents<AttestationClientSCInstance, AttestationClientSCEvents>,
         public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryMockEvents>,
         public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerMockEvents>,
         public wnat: ContractWithEvents<WNatInstance, WNatEvents>,
@@ -209,7 +214,7 @@ export class AssetContext {
         const chain = new MockChain(await time.latest());
         chain.secondsPerBlock = chainInfo.blockTime;
         const chainEvents = chain;
-        const stateConnectorClient = new MockStateConnectorClient(common.attestationClient, { [chainInfo.chainId]: chain }, 'on_wait');
+        const stateConnectorClient = new MockStateConnectorClient(common.stateConnector, { [chainInfo.chainId]: chain }, 'on_wait');
         const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId, 0);
         // create asset FTSO and set some price
         const assetFtso = await FtsoMock.new(chainInfo.symbol);

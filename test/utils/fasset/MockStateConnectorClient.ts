@@ -1,5 +1,5 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { AttestationClientMockInstance } from "../../../typechain-truffle";
+import { StateConnectorMockInstance } from "../../../typechain-truffle";
 import { stringifyJson } from "../fuzzing-utils";
 import { sleep, toBN, toNumber } from "../helpers";
 import { LogFile } from "../LogFile";
@@ -34,7 +34,7 @@ export type AutoFinalizationType = 'auto' | 'on_wait' | 'timed' | 'manual';
 
 export class MockStateConnectorClient implements IStateConnectorClient {
     constructor(
-        public attestationClient: AttestationClientMockInstance,
+        public stateConnector: StateConnectorMockInstance,
         public supportedChains: { [chainId: number]: MockChain },
         public finalizationType: AutoFinalizationType,
     ) {
@@ -128,7 +128,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         // build merkle tree
         const hashes = Object.values(proofs).map(proof => proof.hash);
         const tree = new MerkleTree(hashes);
-        await this.attestationClient.setMerkleRootForStateConnectorRound(tree.root ?? constants.ZERO_BYTES32, round);
+        await this.stateConnector.setMerkleRoot(round, tree.root ?? constants.ZERO_BYTES32);
         for (const proof of Object.values(proofs)) {
             proof.data.stateConnectorRound = round;
             proof.data.merkleProof = tree.getProofForValue(proof.hash) ?? [];
