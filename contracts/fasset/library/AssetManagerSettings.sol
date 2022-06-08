@@ -59,8 +59,11 @@ library AssetManagerSettings {
         // immutable
         uint64 assetUnitUBA;
         
-        // the granularity in which lots are measured = the value of AMG (asset minting granularity) in UBA
-        // can only be changed via redeploy of AssetManager
+        // The granularity in which lots are measured = the value of AMG (asset minting granularity) in UBA.
+        // Can only be changed via redeploy of AssetManager.
+        // AMG is used internally instead of UBA so that minted quantities fit into 64bits to reduce storage.
+        // So assetMintingGranularityUBA should be set so that the max supply in AMG of this currency
+        // in foreseeable time (say 100yr) cannot overflow 64 bits.
         // immutable
         uint64 assetMintingGranularityUBA;
         
