@@ -5,7 +5,7 @@ import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const AttestationClient = artifacts.require('AttestationClientMock');
 
-contract(`AttestationClientMock.sol; ${getTestFile(__filename)}; AttestationClientMock basic tests`, async accounts => {
+contract(`AttestationClientMock.sol; ${getTestFile(__filename)}; Attestation client mock basic tests`, async accounts => {
     let attestationClient: AttestationClientMockInstance;
 
     describe("create and set", () => {
