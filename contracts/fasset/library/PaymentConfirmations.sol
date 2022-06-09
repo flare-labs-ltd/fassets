@@ -15,7 +15,8 @@ library PaymentConfirmations {
         uint256 verifiedPaymentsForDayStart;
     }
     
-    uint256 internal constant VERIFICATION_CLEANUP_DAYS = 5;
+    uint256 internal constant DAY = 1 days;
+    uint256 internal constant VERIFICATION_CLEANUP_DAYS = 14;
     
     /**
      * For payment transaction with non-unique payment reference (generated from address, not id), 
@@ -76,7 +77,7 @@ library PaymentConfirmations {
     {
         require(_state.verifiedPayments[_txKey] == 0, "payment already confirmed");
         // add to cleanup list
-        uint256 day = block.timestamp / 86400;
+        uint256 day = block.timestamp / DAY;
         bytes32 first = _state.verifiedPaymentsForDay[day];
         // set next linked list element - last in list points to itself
         _state.verifiedPayments[_txKey] = first != 0 ? first : _txKey;
@@ -85,13 +86,13 @@ library PaymentConfirmations {
         if (_state.verifiedPaymentsForDayStart == 0) {
             _state.verifiedPaymentsForDayStart = day;
         }
-        // cleanup one old payment hash (> 5 days) for each new payment hash
+        // cleanup one old payment hash (> 14 days) for each new payment hash
         _cleanupPaymentVerification(_state);
     }
     
     function _cleanupPaymentVerification(State storage _state) private {
         uint256 startDay = _state.verifiedPaymentsForDayStart;
-        if (startDay == 0 || startDay > block.timestamp / 86400 - VERIFICATION_CLEANUP_DAYS) return;
+        if (startDay == 0 || startDay >= block.timestamp / DAY - VERIFICATION_CLEANUP_DAYS) return;
         bytes32 first = _state.verifiedPaymentsForDay[startDay];
         if (first != 0) {
             bytes32 next = _state.verifiedPayments[first];

@@ -174,7 +174,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(0));
             let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             
-            await time.increase(5 * 86400);
+            await time.increase(14 * 86400);
             let res = assetManager.illegalPaymentChallenge(
                 proof, agentVault.address, { from: whitelistedAccount });
             await expectRevert(res, "verified transaction too old")

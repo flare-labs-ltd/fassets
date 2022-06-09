@@ -102,8 +102,8 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         // it should revert confirming twice
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
         await expectRevert(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
-        // after 5 days it should cleanup old payment verifications
-        await time.increase(5 * 86400);
+        // after 15 days it should cleanup old payment verifications
+        await time.increase(15 * 86400);
         await agentTopup(agentVault);
         await agentTopup(agentVault);
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
