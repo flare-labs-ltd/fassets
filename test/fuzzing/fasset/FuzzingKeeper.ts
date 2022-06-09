@@ -8,6 +8,7 @@ import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingStateAgent } from "./FuzzingStateAgent";
 import { EventScope } from "../../utils/fasset/ScopedEvents";
 import { EvmEventArgs } from "./EvmEvents";
+import { PaymentReference } from "../../utils/fasset/PaymentReference";
 
 export class FuzzingKeeper extends FuzzingActor {
     constructor(
@@ -56,11 +57,23 @@ export class FuzzingKeeper extends FuzzingActor {
         }
     }
 
+    transactionForPaymentReference = new Map<string, string>();
+    
     handleUnderlyingTransaction(transaction: ITransaction): void {
         for (const [address, amount] of transaction.inputs) {
             const agent = this.state.agentsByUnderlying.get(address);
             if (agent == null) continue;
+            // illegal transaction challenge
             this.runner.startThread((scope) => this.illegalTransactionChallenge(scope, transaction, agent));
+            // double payment challenge
+            if (PaymentReference.isValid(transaction.reference)) {
+                const existingHash = this.transactionForPaymentReference.get(transaction.reference!);
+                if (existingHash && existingHash != transaction.hash) {
+                    this.runner.startThread((scope) => this.doublePaymentChallenge(scope, transaction.hash, existingHash, agent));
+                } else {
+                    this.transactionForPaymentReference.set(transaction.reference!, transaction.hash);
+                }
+            }
         }
     }
     
@@ -72,5 +85,17 @@ export class FuzzingKeeper extends FuzzingActor {
             .catch(e => scope.exitOnExpectedError(e, ['chlg: already liquidating', 'chlg: transaction confirmed', 'matching redemption active', 'matching ongoing announced pmt']));
         // if there is no error, illegal payment must be confirmed
         findRequiredEvent(res, 'IllegalPaymentConfirmed');
+    }
+    
+    async doublePaymentChallenge(scope: EventScope, tx1hash: string, tx2hash: string, agent: FuzzingStateAgent) {
+        await Promise.all([
+            this.context.waitForUnderlyingTransactionFinalization(scope, tx1hash),
+            this.context.waitForUnderlyingTransactionFinalization(scope, tx2hash),
+        ]);
+        const proof1 = await this.context.attestationProvider.proveBalanceDecreasingTransaction(tx1hash, agent.underlyingAddressString);
+        const proof2 = await this.context.attestationProvider.proveBalanceDecreasingTransaction(tx2hash, agent.underlyingAddressString);
+        const res = await this.context.assetManager.doublePaymentChallenge(proof1, proof2, agent.address, { from: this.address })
+            .catch(e => scope.exitOnExpectedError(e, ['chlg dbl: already liquidating']));
+        findRequiredEvent(res, 'DuplicatePaymentConfirmed');
     }
 }

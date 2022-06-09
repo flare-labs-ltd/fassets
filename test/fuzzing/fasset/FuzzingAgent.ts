@@ -4,7 +4,7 @@ import { Agent } from "../../integration/utils/Agent";
 import { EventArgs, requiredEventArgs } from "../../utils/events";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { coinFlip, randomBN, randomInt } from "../../utils/fuzzing-utils";
+import { coinFlip, randomBN, randomChoice, randomInt } from "../../utils/fuzzing-utils";
 import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
@@ -186,6 +186,17 @@ export class FuzzingAgent extends FuzzingActor {
         const amount = randomBN(balance);
         this.comment(`Making illegal transaction of ${formatBN(amount)} from ${agent.underlyingAddress}`);
         await agent.wallet.addTransaction(agent.underlyingAddress, this.ownerUnderlyingAddress, amount, null);
+    }
+
+    async makeDoublePayment(scope: EventScope): Promise<void> {
+        const agent = this.agent;   // save in case it is destroyed and re-created
+        const agentState = this.agentState(agent);
+        const redemptions = Array.from(agentState.redemptionRequests.values());
+        if (redemptions.length === 0) return;
+        const redemption = randomChoice(redemptions);
+        const amount = redemption.valueUBA;
+        this.comment(`Making double payment of ${formatBN(amount)} from ${agent.underlyingAddress}`);
+        await agent.wallet.addTransaction(agent.underlyingAddress, this.ownerUnderlyingAddress, amount, redemption.paymentReference);
     }
     
     checkForFullLiquidationEnd(): void {
