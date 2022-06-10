@@ -43,6 +43,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
     rounds: string[][] = [];
     finalizedRounds: FinalizedRound[] = [];
     logFile?: LogFile;
+    queryWindowSeconds = 86400;
     
     setTimedFinalization(timedRoundSeconds: number) {
         this.finalizationType = 'timed';
@@ -155,7 +156,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
     private proveParsedRequest(parsedRequest: ARType): DHType | null {
         const chain = this.supportedChains[parsedRequest.sourceId];
         if (chain == null) throw new Error("unsupported chain");
-        const prover = new MockAttestationProver(chain);
+        const prover = new MockAttestationProver(chain, this.queryWindowSeconds);
         switch (parsedRequest.attestationType) {
             case AttestationType.Payment: {
                 const request = parsedRequest as ARPayment;
@@ -173,6 +174,9 @@ export class MockStateConnectorClient implements IStateConnectorClient {
             case AttestationType.ConfirmedBlockHeightExists: {
                 const request = parsedRequest as ARConfirmedBlockHeightExists;
                 return prover.confirmedBlockHeightExists(request.upperBoundProof);
+            }
+            case AttestationType.TrustlineIssuance: {
+                throw new Error(`Unsupported attestation request ${AttestationType[parsedRequest.attestationType]}`);
             }
         }
     }

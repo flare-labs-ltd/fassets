@@ -24,9 +24,8 @@ function totalReceivedValue(transaction: MockChainTransaction, receivingAddressH
 export class MockAttestationProver {
     constructor(
         public chain: MockChain,
+        public queryWindowSeconds: number,
     ) { }
-
-    CHECK_WINDOW = 86400;
 
     payment(transactionHash: string, inUtxo: number, utxo: number): DHPayment | null {
         if (!(transactionHash in this.chain.transactionIndex)) {
@@ -104,7 +103,7 @@ export class MockAttestationProver {
         let lowerBoundaryBlockNumber = -1;
         for (let bn = 0; bn < this.chain.blocks.length; bn++) {
             const block = this.chain.blocks[bn];
-            if (block.timestamp < endTimestamp - this.CHECK_WINDOW) {
+            if (block.timestamp < endTimestamp - this.queryWindowSeconds) {
                 continue;   // skip blocks before `endTimestamp - CHECK_WINDOW`
             }
             if (lowerBoundaryBlockNumber === -1) {
@@ -137,6 +136,8 @@ export class MockAttestationProver {
             blockTimestamp: toBN(block.timestamp),
             numberOfConfirmations: toBN(this.chain.finalizationBlocks),
             averageBlockProductionTimeMs: toBN(Math.round(this.chain.secondsPerBlock * 1000)),
+            lowestQueryWindowBlockNumber: toBN(Math.max(0, block.number - Math.round(this.queryWindowSeconds / this.chain.secondsPerBlock))),
+            lowestQueryWindowBlockTimestamp: toBN(Math.max(0, block.timestamp - this.queryWindowSeconds)),
         };
         return web3DeepNormalize(proof);
     }

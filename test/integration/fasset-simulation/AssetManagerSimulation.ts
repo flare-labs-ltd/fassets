@@ -2,6 +2,7 @@ import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { TX_BLOCKED, TX_FAILED } from "../../utils/fasset/ChainInterfaces";
 import { MockChain } from "../../utils/fasset/MockChain";
+import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { BN_ZERO, DAYS, getTestFile, toBN, toBNExp, toWei } from "../../utils/helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
@@ -461,6 +462,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         });
         
         it("mint unstick - no underlying payment", async () => {
+            const mockChain = context.chain as MockChain;
+            const mockClient = context.stateConnectorClient as MockStateConnectorClient;
+            mockClient.queryWindowSeconds = 300;
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
@@ -480,6 +484,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that calling unstickMinting after no payment will revert if called too soon
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
             await time.increase(DAYS);
+            for (let i = 0; i <= mockClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
+                mockChain.mine();
+            }
             await agent.checkAgentInfo(fullAgentCollateral, 0, 0, 0, await context.convertLotsToUBA(lots));
             // test rewarding for unstick default
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
@@ -504,6 +511,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("mint unstick - failed underlying payment", async () => {
+            const mockChain = context.chain as MockChain;
+            const mockClient = context.stateConnectorClient as MockStateConnectorClient;
+            mockClient.queryWindowSeconds = 300;
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
@@ -525,6 +535,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that calling unstickMinting after failed minting payment will revert if called too soon
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
             await time.increase(DAYS);
+            for (let i = 0; i <= mockClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
+                mockChain.mine();
+            }
             // test rewarding for unstick default
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
             const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
@@ -547,6 +560,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("mint unstick - unconfirmed underlying payment", async () => {
+            const mockChain = context.chain as MockChain;
+            const mockClient = context.stateConnectorClient as MockStateConnectorClient;
+            mockClient.queryWindowSeconds = 300;
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
@@ -569,6 +585,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that calling unstickMinting after unconfirmed payment will revert if called too soon
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
             await time.increase(DAYS);
+            for (let i = 0; i <= mockClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
+                mockChain.mine();
+            }
             // test rewarding for unstick default
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
             const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
@@ -847,6 +866,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("mint and redeem defaults (after a day) - no underlying payment (default not needed after a day)", async () => {
+            const mockChain = context.chain as MockChain;
+            const mockClient = context.stateConnectorClient as MockStateConnectorClient;
+            mockClient.queryWindowSeconds = 300;
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
@@ -879,6 +901,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that calling finishRedemptionWithoutPayment after no redemption payment will revert if called too soon
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "should default first");
             await time.increase(DAYS);
+            for (let i = 0; i <= mockClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
+                mockChain.mine();
+            }
             // test rewarding for redemption payment default
             const startBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
             const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);

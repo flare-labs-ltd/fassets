@@ -186,7 +186,8 @@ export class Agent extends AssetContextClient {
     }
 
     async finishRedemptionWithoutPayment(request: EventArgs<RedemptionRequested>): Promise<[redemptionFinished: EventArgs<RedemptionFinished>, redemptionDefault: EventArgs<RedemptionDefault>]> {
-        const res = await this.assetManager.finishRedemptionWithoutPayment(request.requestId, { from: this.ownerAddress });
+        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists();
+        const res = await this.assetManager.finishRedemptionWithoutPayment(proof, request.requestId, { from: this.ownerAddress });
         return [eventArgs(res, 'RedemptionFinished'), eventArgs(res, "RedemptionDefault")];
     }
 
@@ -225,7 +226,8 @@ export class Agent extends AssetContextClient {
     }
 
     async unstickMinting(crt: EventArgs<CollateralReserved>) {
-        await this.assetManager.unstickMinting(crt.collateralReservationId, { from: this.ownerAddress });
+        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists();
+        await this.assetManager.unstickMinting(proof, crt.collateralReservationId, { from: this.ownerAddress });
     }
 
     async selfMint(amountUBA: BNish, lots: BNish) {
