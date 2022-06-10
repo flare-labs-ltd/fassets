@@ -3,6 +3,7 @@ pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
+import "flare-smart-contracts/contracts/userInterfaces/IDistributionToDelegators.sol";
 import "./IWNat.sol";
 
 
@@ -19,11 +20,19 @@ interface IAgentVault {
 
     function undelegateGovernance() external;
 
-    function claimReward(
+    function claimFtsoRewards(
         IFtsoRewardManager ftsoRewardManager,
         address payable _recipient,
         uint256[] memory _rewardEpochs
-    ) external;
+    ) external returns (uint256);
+
+    function optOutOfAirdrop(IDistributionToDelegators _distribution) external;
+
+    function claimAirdropDistribution(
+        IDistributionToDelegators _distribution,
+        address payable _recipient,
+        uint256 _month
+    ) external returns(uint256);
     
     function withdraw(address payable _recipient, uint256 _amount) external;
 

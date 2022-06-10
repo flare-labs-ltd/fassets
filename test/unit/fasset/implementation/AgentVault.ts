@@ -190,9 +190,9 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assert.equal(invocationCount.toNumber(), 1);
     });
 
-    it("should claim from reward manager", async () => {
+    it("should claim ftso rewards", async () => {
         const rewardManagerMock = await MockContract.new();
-        await agentVault.claimReward(rewardManagerMock.address, accounts[5], [1, 5, 7], { from: owner });
+        await agentVault.claimFtsoRewards(rewardManagerMock.address, accounts[5], [1, 5, 7], { from: owner });
         const claimReward = web3.eth.abi.encodeFunctionCall({type: "function", name: "claimReward", 
             inputs: [{name: "_recipient", type: "address"}, {name: "_rewardEpochs", type: "uint256[]"}]} as AbiItem, 
             [accounts[5], [1, 5, 7]] as any[]);
@@ -200,9 +200,41 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assert.equal(invocationCount.toNumber(), 1);
     });
 
-    it("cannot claim from reward manager if not owner", async () => {
+    it("cannot claim ftso rewards if not owner", async () => {
         const rewardManagerMock = await MockContract.new();
-        const claimPromise = agentVault.claimReward(rewardManagerMock.address, accounts[5], [1, 5, 7], { from: accounts[2] });
+        const claimPromise = agentVault.claimFtsoRewards(rewardManagerMock.address, accounts[5], [1, 5, 7], { from: accounts[2] });
+        await expectRevert(claimPromise, "only owner");
+    });
+
+    it("should opt out of airdrop distribution", async () => {
+        const distributionMock = await MockContract.new();
+        await agentVault.optOutOfAirdrop(distributionMock.address, { from: owner });
+        const optOutOfAirdrop = web3.eth.abi.encodeFunctionCall({type: "function", name: "optOutOfAirdrop", 
+            inputs: []} as AbiItem, 
+            [] as any[]);
+        const invocationCount = await distributionMock.invocationCountForCalldata.call(optOutOfAirdrop);
+        assert.equal(invocationCount.toNumber(), 1);
+    });
+
+    it("cannot opt out of airdrop distribution if not owner", async () => {
+        const distributionMock = await MockContract.new();
+        const optOutOfAirdropPromise = agentVault.optOutOfAirdrop(distributionMock.address, { from: accounts[2] });
+        await expectRevert(optOutOfAirdropPromise, "only owner");
+    });
+
+    it("should claim airdrop distribution", async () => {
+        const distributionMock = await MockContract.new();
+        await agentVault.claimAirdropDistribution(distributionMock.address, accounts[5], 2, { from: owner });
+        const claim = web3.eth.abi.encodeFunctionCall({type: "function", name: "claim", 
+            inputs: [{name: "_recipient", type: "address"}, {name: "_month", type: "uint256"}]} as AbiItem, 
+            [accounts[5], 2] as any[]);
+        const invocationCount = await distributionMock.invocationCountForCalldata.call(claim);
+        assert.equal(invocationCount.toNumber(), 1);
+    });
+
+    it("cannot claim airdrop distribution if not owner", async () => {
+        const distributionMock = await MockContract.new();
+        const claimPromise = agentVault.claimAirdropDistribution(distributionMock.address, accounts[5], 2, { from: accounts[2] });
         await expectRevert(claimPromise, "only owner");
     });
 
