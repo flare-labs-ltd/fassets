@@ -169,11 +169,12 @@ library Redemption {
         external
     {
         RedemptionRequest storage request = _getRedemptionRequest(_state, _redemptionRequestId);
+        Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
         // Usually, we require the agent to trigger confirmation.
         // But if the agent doesn't respond for long enough, 
         // we allow anybody and that user gets rewarded from agent's vault.
         bool isAgent = msg.sender == Agents.vaultOwner(request.agentVault);
-        require(isAgent || _othersCanConfirmPayment(_state, request, _payment),
+        require(isAgent || _othersCanConfirmPayment(_state, agent, request, _payment),
             "only agent vault owner");
         // verify transaction
         TransactionAttestation.verifyPayment(_state.settings, _payment);
@@ -201,6 +202,10 @@ library Redemption {
                         _redemptionRequestId);
                 }
             } else {
+                // we only need failure reports from agent's underlying address, so disallow others to
+                // lower the attack surface in case of hijacked agent's address
+                require(_payment.sourceAddressHash == agent.underlyingAddressHash,
+                    "confirm failed payment only from agent's address");
                 // we do not allow retrying failed payments, so just default here
                 _executeDefaultPayment(_state, request, _redemptionRequestId);
                 // notify
@@ -209,7 +214,7 @@ library Redemption {
             }
         }
         // agent has finished with redemption - account for used underlying balance and free the remainder
-        int256 freeBalanceChangeUBA = _updateFreeBalanceAfterPayment(_state, _payment, request);
+        int256 freeBalanceChangeUBA = _updateFreeBalanceAfterPayment(_state, agent, _payment, request);
         emit AMEvents.RedemptionFinished(request.agentVault, freeBalanceChangeUBA, _redemptionRequestId);
         // record source decreasing transaction so that it cannot be challenged
         _state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
@@ -225,6 +230,7 @@ library Redemption {
     
     function _othersCanConfirmPayment(
         AssetManagerState.State storage _state,
+        Agents.Agent storage _agent,
         RedemptionRequest storage request,
         IAttestationClient.Payment calldata _payment
     )
@@ -240,8 +246,7 @@ library Redemption {
         // - we really only need 3rd party confirmations for payments from agent's underlying address,
         //   to properly account for underlying free balance (unless payment is failed, the collateral also gets
         //   unlocked, but that only benefits the agent, so the agent should take care of that)
-        Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
-        return _payment.sourceAddressHash == agent.underlyingAddressHash;
+        return _payment.sourceAddressHash == _agent.underlyingAddressHash;
     }
     
     function _validatePayment(
@@ -267,19 +272,18 @@ library Redemption {
     
     function _updateFreeBalanceAfterPayment(
         AssetManagerState.State storage _state,
+        Agents.Agent storage _agent,
         IAttestationClient.Payment calldata _payment,
         RedemptionRequest storage _request
     )
         private
         returns (int256 _freeBalanceChangeUBA)
     {
-        address agentVault = _request.agentVault;
-        Agents.Agent storage agent = Agents.getAgent(_state, agentVault);
         _freeBalanceChangeUBA = SafeCast.toInt256(_request.underlyingValueUBA);
-        if (_payment.sourceAddressHash == agent.underlyingAddressHash) {
+        if (_payment.sourceAddressHash == _agent.underlyingAddressHash) {
             _freeBalanceChangeUBA -= _payment.spentAmount;
         }
-        UnderlyingFreeBalance.updateFreeBalance(_state, agentVault, _freeBalanceChangeUBA);
+        UnderlyingFreeBalance.updateFreeBalance(_state, _request.agentVault, _freeBalanceChangeUBA);
     }
     
     function redemptionPaymentDefault(
@@ -306,6 +310,12 @@ library Redemption {
         // We allow only redeemer to trigger redemption default, but it can be called indirectly
         // by the agent presenting failed payment proof or calling finishRedemptionWithoutPayment.
         require(msg.sender == request.redeemer, "only redeemer");
+        // We allow only redeemers or agents to trigger redemption default, since they may want
+        // to do it at some particular time. (Agent might want to call default to unstick redemption when 
+        // the redeemer is unresponsive.)
+        address agentOwner = Agents.vaultOwner(request.agentVault);
+        require(msg.sender == request.redeemer || msg.sender == agentOwner,
+            "only redeemer or agent");
         // pay redeemer in native currency and mark as defaulted
         _executeDefaultPayment(_state, request, _redemptionRequestId);
         // don't delete redemption request at end - the agent might still confirm failed payment
