@@ -447,15 +447,18 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * available. In this case agent can call this method, which burns reserved collateral at market price
      * and releases the remaining collateral (CRF is also burned).
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
+     * @param _proof proof that the attestation query window can not not contain 
+     *      the payment/non-payment proof anymore
      * @param _collateralReservationId collateral reservation id
      */
     function unstickMinting(
+        IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
         uint256 _collateralReservationId
     ) 
         external 
         nonReentrant
     {
-        CollateralReservations.unstickMinting(state, SafeCast.toUint64(_collateralReservationId));
+        CollateralReservations.unstickMinting(state, _proof, SafeCast.toUint64(_collateralReservationId));
     }
     
     /**
@@ -558,14 +561,17 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * or this method can trigger the default payment without proof, but only after enough time has passed so that 
      * attestation proof of non-payment is not available any more.
      * NOTE: may only be called by the owner of the agent vault in the redemption request.
+     * @param _proof proof that the attestation query window can not not contain 
+     *      the payment/non-payment proof anymore
      * @param _redemptionRequestId id of an existing, but already defaulted, redemption request
      */
     function finishRedemptionWithoutPayment(
+        IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
         uint256 _redemptionRequestId
     )
         external
     {
-        Redemption.finishRedemptionWithoutPayment(state, SafeCast.toUint64(_redemptionRequestId));
+        Redemption.finishRedemptionWithoutPayment(state, _proof, SafeCast.toUint64(_redemptionRequestId));
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
