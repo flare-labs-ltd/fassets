@@ -231,14 +231,14 @@ library Redemption {
     function _othersCanConfirmPayment(
         AssetManagerState.State storage _state,
         Agents.Agent storage _agent,
-        RedemptionRequest storage request,
+        RedemptionRequest storage _request,
         IAttestationClient.Payment calldata _payment
     )
         private view
         returns (bool)
     {
         // others can confirm payments only after several hours
-        if (block.timestamp <= request.timestamp + _state.settings.confirmationByOthersAfterSeconds) return false;
+        if (block.timestamp <= _request.timestamp + _state.settings.confirmationByOthersAfterSeconds) return false;
         // others can confirm only payments arriving from agent's underlying address
         // - on utxo chains for multi-source payment, 3rd party might lie about payment not coming from agent's
         //   source, which would delete redemption request but not mark source decresing transaction as used;
@@ -307,9 +307,6 @@ library Redemption {
             "redemption default too early");
         require(_nonPayment.lowerBoundaryBlockNumber <= request.firstUnderlyingBlock,
             "redemption request too old");
-        // We allow only redeemer to trigger redemption default, but it can be called indirectly
-        // by the agent presenting failed payment proof or calling finishRedemptionWithoutPayment.
-        require(msg.sender == request.redeemer, "only redeemer");
         // We allow only redeemers or agents to trigger redemption default, since they may want
         // to do it at some particular time. (Agent might want to call default to unstick redemption when 
         // the redeemer is unresponsive.)

@@ -151,15 +151,16 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should finish redemption payment - payment not from agent's address", async () => {
-        chain.mint(underlyingAgent2, 500);
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
-
-        const tx1Hash = await wallet.addTransaction(underlyingAgent2, request.paymentAddress, 500, request.paymentReference);
+        
+        const paymentAmt = request.valueUBA.sub(request.feeUBA);
+        chain.mint(underlyingAgent2, paymentAmt);
+        const tx1Hash = await wallet.addTransaction(underlyingAgent2, request.paymentAddress, paymentAmt, request.paymentReference);
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent2, request.paymentAddress);
         let res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-        expectEvent(res, 'RedemptionFinished');
+        await expectEvent(res, 'RedemptionFinished');
     });
 
     it("should not confirm redemption payment - only agent vault owner", async () => {
@@ -248,7 +249,21 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         expectEvent(res, 'RedemptionDefault');
     });
 
-    it("should not execute redemption payment default - only redeemer", async () => {
+    it("should execute redemption payment default - agent", async () => {
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
+        }
+
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: agentOwner1 });
+        expectEvent(res, 'RedemptionDefault');
+    });
+
+    it("should not execute redemption payment default - only redeemer or agent", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
@@ -259,7 +274,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: minterAddress1 });
-        await expectRevert(res, 'only redeemer');
+        await expectRevert(res, 'only redeemer or agent');
     });
 
     it("should not execute redemption payment default - redemption non-payment mismatch", async () => {
@@ -280,7 +295,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
-        
+
         for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
