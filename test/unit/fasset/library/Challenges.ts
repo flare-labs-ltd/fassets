@@ -169,6 +169,15 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             expectEvent(res, "IllegalPaymentConfirmed");
         });
 
+        it("should succeed challenging illegal withdrawal payment", async() => {
+            let txHash = await wallet.addTransaction(
+                underlyingAgent1, underlyingRedeemer, 1, PaymentReference.announcedWithdrawal(1));
+            let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
+            let res = await assetManager.illegalPaymentChallenge(
+                proof, agentVault.address, { from: whitelistedAccount });
+            expectEvent(res, "IllegalPaymentConfirmed");
+        });
+
         it("should not succeed challenging illegal payment - verified transaction too old", async() => {
             let txHash = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(0));
@@ -268,6 +277,22 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             await expectRevert(prmsW, "mult chlg: not agent's address");
         });
 
+        it("should revert - mult chlg: payment confirmed", async () => {
+            // init
+            await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+            const request = await mintAndRedeem(agentVault, chain, underlyingMinterAddress, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+            //perform redemption payment
+            const paymentAmt = request.valueUBA.sub(request.feeUBA);
+            const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
+            const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
+            await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
+            
+            let proof2 = await attestationProvider.proveBalanceDecreasingTransaction(tx1Hash, underlyingAgent1);
+    
+            let res = assetManager.freeBalanceNegativeChallenge([agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
+            await expectRevert(res, "mult chlg: payment confirmed");
+        });
+
         it("should revert - mult chlg: enough free balance", async () => {
             // init
             await depositAndMakeAgentAvailable(agentVault, agentOwner1);
@@ -282,7 +307,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             let proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
     
             let res = assetManager.freeBalanceNegativeChallenge([agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
-            expectRevert(res, "mult chlg: enough free balance");
+            await expectRevert(res, "mult chlg: enough free balance");
         });
 
         it("should succeed in challenging payments if they make balance negative", async() => {
@@ -290,19 +315,8 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             let txHash2 = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.announcedWithdrawal(2));
             let proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
-            
-            /* 
-            // enough free balance
-            let prms2 = assetManager.freeBalanceNegativeChallenge(
-                [proof1], agentVault.address, { from: whitelistedAccount });
-            await expectRevert(prms2, "mult chlg: enough free balance");
-            
-            let txHash2 = await wallet.addTransaction(
-                underlyingAgent1, underlyingRedeemer, 100000, PaymentReference.announcedWithdrawal(2));
-            let proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1); */
-            
             // successful challenge
-           let res1 = await assetManager.freeBalanceNegativeChallenge(
+            let res1 = await assetManager.freeBalanceNegativeChallenge(
                 [agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
             expectEvent(res1, 'UnderlyingFreeBalanceNegative', {agentVault: agentVault.address});
        });
