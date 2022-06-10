@@ -105,15 +105,12 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await expectRevert(res, "only wNat")
     });
 
-    it("cannot withdraw if transfer fails", async () => {
-        const tx = await assetManager.createAgent("12345", { from: owner });
-        const event = findRequiredEvent(tx, 'AgentCreated');
-        agentVault = await AgentVault.at(event.args.agentVault);
-        await agentVault.deposit({ from: owner , value: toBN(100) });
-        await assetManager.announceCollateralWithdrawal(agentVault.address, 100, { from: owner });
-        await time.increase(300);
-        await agentVault.withdraw(agentVault.address, 0, { from: owner });
-        const res = agentVault.withdraw(agentVault.address, 100, { from: owner });
+    it("cannot payoutNAT if transfer fails", async () => {
+        const AssetManagerMock = artifacts.require("AssetManagerMock");
+        const assetManagerMock = await AssetManagerMock.new(wnat.address);
+        agentVault = await AgentVault.new(assetManagerMock.address, owner);
+        await wnat.depositTo(agentVault.address, { value: toBN(100) });
+        const res = assetManagerMock.payoutNAT(agentVault.address, agentVault.address, 100, { from: owner });
         await expectRevert(res, "transfer failed")
     });
 
@@ -192,17 +189,17 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     it("should claim ftso rewards", async () => {
         const rewardManagerMock = await MockContract.new();
-        await agentVault.claimFtsoRewards(rewardManagerMock.address, accounts[5], [1, 5, 7], { from: owner });
+        await agentVault.claimFtsoRewards(rewardManagerMock.address, [1, 5, 7], { from: owner });
         const claimReward = web3.eth.abi.encodeFunctionCall({type: "function", name: "claimReward", 
             inputs: [{name: "_recipient", type: "address"}, {name: "_rewardEpochs", type: "uint256[]"}]} as AbiItem, 
-            [accounts[5], [1, 5, 7]] as any[]);
+            [owner, [1, 5, 7]] as any[]);
         const invocationCount = await rewardManagerMock.invocationCountForCalldata.call(claimReward);
         assert.equal(invocationCount.toNumber(), 1);
     });
 
     it("cannot claim ftso rewards if not owner", async () => {
         const rewardManagerMock = await MockContract.new();
-        const claimPromise = agentVault.claimFtsoRewards(rewardManagerMock.address, accounts[5], [1, 5, 7], { from: accounts[2] });
+        const claimPromise = agentVault.claimFtsoRewards(rewardManagerMock.address, [1, 5, 7], { from: accounts[2] });
         await expectRevert(claimPromise, "only owner");
     });
 
@@ -224,22 +221,22 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     it("should claim airdrop distribution", async () => {
         const distributionMock = await MockContract.new();
-        await agentVault.claimAirdropDistribution(distributionMock.address, accounts[5], 2, { from: owner });
+        await agentVault.claimAirdropDistribution(distributionMock.address, 2, { from: owner });
         const claim = web3.eth.abi.encodeFunctionCall({type: "function", name: "claim", 
             inputs: [{name: "_recipient", type: "address"}, {name: "_month", type: "uint256"}]} as AbiItem, 
-            [accounts[5], 2] as any[]);
+            [owner, 2] as any[]);
         const invocationCount = await distributionMock.invocationCountForCalldata.call(claim);
         assert.equal(invocationCount.toNumber(), 1);
     });
 
     it("cannot claim airdrop distribution if not owner", async () => {
         const distributionMock = await MockContract.new();
-        const claimPromise = agentVault.claimAirdropDistribution(distributionMock.address, accounts[5], 2, { from: accounts[2] });
+        const claimPromise = agentVault.claimAirdropDistribution(distributionMock.address, 2, { from: accounts[2] });
         await expectRevert(claimPromise, "only owner");
     });
 
     it("cannot withdraw if not owner", async () => {
-        const res = agentVault.withdraw(accounts[2], 100, { from: accounts[2] });
+        const res = agentVault.withdraw(100, { from: accounts[2] });
         await expectRevert(res, "only owner")
     });
 
@@ -249,7 +246,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         agentVault = await createAgent(owner, underlyingAgent1);
         await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
         await time.increase(settings.withdrawalWaitMinSeconds);
-        await assetManager.destroyAgent(agentVault.address, accounts[2], { from: owner });
+        await assetManager.destroyAgent(agentVault.address, { from: owner });
         const undelegate = web3.eth.abi.encodeFunctionCall({type: "function", name: "undelegate", 
             inputs: []} as AbiItem, 
             [] as any[]);
@@ -258,7 +255,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     });
 
     it("cannot call destroy if not asset manager", async () => {
-        const res = agentVault.destroy(wnat.address, accounts[2], { from: accounts[2] });
+        const res = agentVault.destroy(wnat.address, { from: accounts[2] });
         await expectRevert(res, "only asset manager")
     });
 

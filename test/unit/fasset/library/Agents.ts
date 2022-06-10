@@ -1,5 +1,6 @@
 import { balance, ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { calcGasCost } from "../../../utils/eth";
 import { findRequiredEvent } from "../../../utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
@@ -7,7 +8,7 @@ import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../../utils/fasset/PaymentReference";
-import { getTestFile, randomAddress, toBN, toBNExp, toWei } from "../../../utils/helpers";
+import { getTestFile, toBN, toBNExp, toWei } from "../../../utils/helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../utils/verification/sources/sources";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
@@ -242,7 +243,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.destroyAgent(agentVault.address, agentOwner1),
+        await expectRevert(assetManager.destroyAgent(agentVault.address),
             "only agent vault owner");
     });
 
@@ -251,7 +252,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 }),
+        await expectRevert(assetManager.destroyAgent(agentVault.address, { from: agentOwner1 }),
             "destroy not announced");
     });
 
@@ -263,9 +264,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // act
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
         await time.increase(150);
-        const recipient = randomAddress();
         // assert
-        await expectRevert(assetManager.destroyAgent(agentVault.address, recipient, { from: agentOwner1 }), "destroy: not allowed yet");
+        await expectRevert(assetManager.destroyAgent(agentVault.address, { from: agentOwner1 }), "destroy: not allowed yet");
     });
 
     it("should destroy agent after announced withdrawal time passes", async () => {
@@ -279,15 +279,14 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.status, 4);
         await time.increase(150);
-        const recipient = randomAddress();
         // should not change destroy time
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
         await time.increase(150);
-        const startBalance = await balance.current(recipient);
-        await expectRevert(agentVault.withdraw(agentOwner1, 100, { from: agentOwner1 }), "withdrawal: invalid status");
-        await assetManager.destroyAgent(agentVault.address, recipient, { from: agentOwner1 });
+        const startBalance = await balance.current(agentOwner1);
+        await expectRevert(agentVault.withdraw(100, { from: agentOwner1 }), "withdrawal: invalid status");
+        const tx = await assetManager.destroyAgent(agentVault.address, { from: agentOwner1 });
         // assert
-        const recovered = (await balance.current(recipient)).sub(startBalance);
+        const recovered = (await balance.current(agentOwner1)).sub(startBalance).add(await calcGasCost(tx));
         // console.log(`recovered = ${recovered},  rec=${recipient}`);
         assert.isTrue(recovered.gte(amount), `value recovered from agent vault is ${recovered}, which is less than deposited ${amount}`);
     });
@@ -358,12 +357,11 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
-        const recipient = randomAddress();
         await time.increase(300);
-        const startBalance = await balance.current(recipient);
-        await agentVault.withdraw(recipient, 100, { from: agentOwner1 });
+        const startBalance = await balance.current(agentOwner1);
+        const tx = await agentVault.withdraw(100, { from: agentOwner1 });
         // assert
-        const withdrawn = (await balance.current(recipient)).sub(startBalance);
+        const withdrawn = (await balance.current(agentOwner1)).sub(startBalance).add(await calcGasCost(tx));
         assertWeb3Equal(withdrawn, 100);
     });
 
@@ -374,17 +372,16 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
-        const recipient = randomAddress();
         await time.increase(300);
-        const startBalance = await balance.current(recipient);
-        await agentVault.withdraw(recipient, 45, { from: agentOwner1 });
-        const withdrawn1 = (await balance.current(recipient)).sub(startBalance);
-        await agentVault.withdraw(recipient, 55, { from: agentOwner1 });
-        const withdrawn2 = (await balance.current(recipient)).sub(startBalance);
+        const startBalance = await balance.current(agentOwner1);
+        const tx1 = await agentVault.withdraw(45, { from: agentOwner1 });
+        const withdrawn1 = (await balance.current(agentOwner1)).sub(startBalance).add(await calcGasCost(tx1));
+        const tx2 = await agentVault.withdraw(55, { from: agentOwner1 });
+        const withdrawn2 = (await balance.current(agentOwner1)).sub(startBalance).add(await calcGasCost(tx1)).add(await calcGasCost(tx2));
         // assert
         assertWeb3Equal(withdrawn1, 45);
         assertWeb3Equal(withdrawn2, 100);
-        await expectRevert(agentVault.withdraw(recipient, 1, { from: agentOwner1 }),
+        await expectRevert(agentVault.withdraw(1, { from: agentOwner1 }),
             "withdrawal: more than announced");
     });
 
@@ -395,7 +392,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await agentVault.deposit({ from: agentOwner1, value: amount });
         // act
         // assert
-        await expectRevert(agentVault.withdraw(agentVault.address, 100),
+        await expectRevert(agentVault.withdraw(100),
             "only owner");
     });
 
@@ -406,7 +403,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await agentVault.deposit({ from: agentOwner1, value: amount });
         // act
         // assert
-        await expectRevert(agentVault.withdraw(agentVault.address, 100, { from: agentOwner1 }),
+        await expectRevert(agentVault.withdraw(100, { from: agentOwner1 }),
             "withdrawal: not announced");
     });
 
@@ -417,10 +414,9 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
-        const recipient = randomAddress();
         await time.increase(150);
         // assert
-        await expectRevert(agentVault.withdraw(recipient, 100, { from: agentOwner1 }),
+        await expectRevert(agentVault.withdraw(100, { from: agentOwner1 }),
             "withdrawal: not allowed yet");
     });
 
@@ -431,10 +427,9 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
-        const recipient = randomAddress();
         await time.increase(300);
         // assert
-        await expectRevert(agentVault.withdraw(recipient, 101, { from: agentOwner1 }),
+        await expectRevert(agentVault.withdraw(101, { from: agentOwner1 }),
             "withdrawal: more than announced");
     });
     

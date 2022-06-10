@@ -1,4 +1,5 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { calcGasCost } from "../../utils/eth";
 import { findRequiredEvent, requiredEventArgs } from "../../utils/events";
 import { TX_BLOCKED, TX_FAILED } from "../../utils/fasset/ChainInterfaces";
 import { MockChain } from "../../utils/fasset/MockChain";
@@ -1457,13 +1458,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const withdrawalAmount = fullAgentCollateral.sub(reservedCollateral);
             await agent.announceCollateralWithdrawal(withdrawalAmount);
             await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA, 0, 0, withdrawalAmount);
-            await expectRevert(agent.withdrawCollateral(withdrawalAmount, accounts[1]), "withdrawal: not allowed yet");
+            await expectRevert(agent.withdrawCollateral(withdrawalAmount), "withdrawal: not allowed yet");
             await time.increase(300);
-            const startBalance = toBN(await web3.eth.getBalance(accounts[1]));
-            await agent.withdrawCollateral(withdrawalAmount, accounts[1]);
+            const startBalance = toBN(await web3.eth.getBalance(agent.ownerAddress));
+            const tx = await agent.withdrawCollateral(withdrawalAmount);
             await agent.checkAgentInfo(reservedCollateral, crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA);
-            const endBalance = toBN(await web3.eth.getBalance(accounts[1]));
-            assertWeb3Equal(endBalance.sub(startBalance), withdrawalAmount);
+            const endBalance = toBN(await web3.eth.getBalance(agent.ownerAddress));
+            assertWeb3Equal(endBalance.sub(startBalance).add(await calcGasCost(tx)), withdrawalAmount);
             await expectRevert(agent.announceCollateralWithdrawal(1), "withdrawal: value too high");
         });
 

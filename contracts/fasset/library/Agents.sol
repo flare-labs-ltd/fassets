@@ -140,7 +140,7 @@ library Agents {
     ) 
         external 
     {
-        IAgentVault agentVault = new AgentVault(_assetManager, msg.sender);
+        IAgentVault agentVault = new AgentVault(_assetManager, payable(msg.sender));
         Agent storage agent = _state.agents[address(agentVault)];
         assert(agent.agentType == AgentType.NONE);
         assert(_agentType == AgentType.AGENT_100); // AGENT_0 not supported yet

@@ -43,7 +43,7 @@ library Liquidation {
         uint256 _amountUBA
     )
         external
-        returns (uint256)
+        returns (uint256 _liquidatedAmountUBA, uint256 _amountPaid)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         (uint256 collateralRatioBIPS, uint256 amgToNATWeiPrice,) = getCollateralRatioBIPS(_state, agent, _agentVault);
@@ -61,13 +61,12 @@ library Liquidation {
         // pay the liquidator
         uint256 rewardNATWei = Conversion.convertAmgToNATWei(liquidatedAmountAMG.mulBips(factorBIPS), 
             amgToNATWeiPrice);
-        Agents.payout(_state, _agentVault, msg.sender, rewardNATWei);
+        _amountPaid = Agents.payout(_state, _agentVault, msg.sender, rewardNATWei);
         // try to pull agent out of liquidation
         _endLiquidationIfHealthy(_state, agent, _agentVault);
         // notify about liquidation
-        uint256 liquidatedAmountUBA = Conversion.convertAmgToUBA(_state.settings, liquidatedAmountAMG);
-        emit AMEvents.LiquidationPerformed(_agentVault, msg.sender, liquidatedAmountUBA);
-        return liquidatedAmountUBA;
+        _liquidatedAmountUBA = Conversion.convertAmgToUBA(_state.settings, liquidatedAmountAMG);
+        emit AMEvents.LiquidationPerformed(_agentVault, msg.sender, _liquidatedAmountUBA);
     }
     
     // Cancel liquidation, requires that agent is healthy.

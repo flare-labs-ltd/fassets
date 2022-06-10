@@ -148,17 +148,16 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * - announce destroy (and wait the required time)
      * - call destroyAgent()
      * NOTE: may only be called by the agent vault owner.
+     * NOTE: the remaining funds from the vault will be transfered (as native currency) to the agent vault owner.
      * @param _agentVault address of the agent's vault to destroy
-     * @param _recipient the address where the remaining funds from the vault will be transfered (as native currency)
      */
     function destroyAgent(
-        address _agentVault,
-        address payable _recipient
+        address _agentVault
     )
         external
     {
         Agents.destroyAgent(state, _agentVault);
-        IAgentVault(_agentVault).destroy(state.settings.wNat, _recipient);
+        IAgentVault(_agentVault).destroy(state.settings.wNat);
     }
     
     /**
@@ -750,16 +749,19 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _agentVault agent vault address
      * @param _amountUBA the amount of f-assets to liquidate
+     * @return _liquidatedAmountUBA liquidated amount of f-asset
+     * @return _amountPaid amount paid to liquidator (in WNat)
      */
     function liquidate(
         address _agentVault,
         uint256 _amountUBA
     )
         external
+        returns (uint256 _liquidatedAmountUBA, uint256 _amountPaid)
     {
         requireWhitelistedSender();
-        uint256 liquidatedUBA = Liquidation.liquidate(state, _agentVault, _amountUBA);
-        fAsset.burn(msg.sender, liquidatedUBA);
+        (_liquidatedAmountUBA, _amountPaid) = Liquidation.liquidate(state, _agentVault, _amountUBA);
+        fAsset.burn(msg.sender, _liquidatedAmountUBA);
     }
     
     /**

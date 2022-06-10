@@ -22,7 +22,6 @@ interface IAgentVault {
 
     function claimFtsoRewards(
         IFtsoRewardManager ftsoRewardManager,
-        address payable _recipient,
         uint256[] memory _rewardEpochs
     ) external returns (uint256);
 
@@ -30,14 +29,13 @@ interface IAgentVault {
 
     function claimAirdropDistribution(
         IDistributionToDelegators _distribution,
-        address payable _recipient,
         uint256 _month
     ) external returns(uint256);
     
-    function withdraw(address payable _recipient, uint256 _amount) external;
+    function withdraw(uint256 _amount) external;
 
     // agent should make sure to claim rewards before calling destroy(), or they will be forfeit
-    function destroy(IWNat wNat, address payable _recipient) external;
+    function destroy(IWNat wNat) external;
 
     // Used by asset manager for liquidation and failed redemption.
     // Since _recipient is typically an unknown address, we do not directly send NAT,
@@ -50,5 +48,5 @@ interface IAgentVault {
     // Only asset manager can call this method.
     function payoutNAT(IWNat wNat, address payable _recipient, uint256 _amount) external;
 
-    function owner() external view returns (address);
+    function owner() external view returns (address payable);
 }
