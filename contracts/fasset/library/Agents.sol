@@ -344,7 +344,7 @@ library Agents {
         emit AMEvents.DustChanged(_agentVault, dustUBA);
     }
     
-    function convertDustToTickets(
+    function convertDustToTicket(
         AssetManagerState.State storage _state,
         address _agentVault
     )

@@ -470,11 +470,11 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         assertWeb3Equal(info.agentMinCollateralRatioBIPS, 2_1000);
     });
 
-    it("anyone can call convertDustToTickets", async () => {
+    it("anyone can call convertDustToTicket", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         // act
         // assert
-        await assetManager.convertDustToTickets(agentVault.address);
+        await assetManager.convertDustToTicket(agentVault.address);
     });
 });

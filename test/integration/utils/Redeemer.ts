@@ -26,8 +26,8 @@ export class Redeemer extends AssetContextClient {
         return [redemptionRequests, remainingLots, dustChangedEvents];
     }
 
-    async convertDustToTickets(agent: Agent) {
-        const res = await this.assetManager.convertDustToTickets(agent.agentVault.address);
+    async convertDustToTicket(agent: Agent) {
+        const res = await this.assetManager.convertDustToTicket(agent.agentVault.address);
         const dustChangedEvent = requiredEventArgs(res, 'DustChanged');
         assert.equal(dustChangedEvent.agentVault, agent.agentVault.address);
         return dustChangedEvent.dustUBA;

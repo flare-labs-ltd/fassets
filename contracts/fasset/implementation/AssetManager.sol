@@ -247,12 +247,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * allow anyone to convert dust to tickets to increase asset fungibility.
      * @param _agentVault agent vault address
      */
-    function convertDustToTickets(
+    function convertDustToTicket(
         address _agentVault
     )
         external
     {
-        Agents.convertDustToTickets(state, _agentVault);
+        Agents.convertDustToTicket(state, _agentVault);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

@@ -122,9 +122,9 @@ export class FuzzingAgent extends FuzzingActor {
             .catch(e => scope.exitOnExpectedError(e, ['Burn too big for owner', 'redeem 0 lots']));
     }
 
-    async convertDustToTickets(scope: EventScope): Promise<void> {
+    async convertDustToTicket(scope: EventScope): Promise<void> {
         const agent = this.agent;   // save in case agent is destroyed and re-created
-        await this.context.assetManager.convertDustToTickets(agent.vaultAddress)
+        await this.context.assetManager.convertDustToTicket(agent.vaultAddress)
             .catch(e => scope.exitOnExpectedError(e, []));
     }
 

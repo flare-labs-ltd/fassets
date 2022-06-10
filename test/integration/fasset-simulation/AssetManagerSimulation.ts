@@ -1148,7 +1148,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const info2 = await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA.add(selfCloseAmountUBA), dustAmountUBA, dustAmountUBA);
             assertWeb3Equal(info2.dustUBA, dustAmountUBA);
             // convert dust to redemption tickets
-            const dustChangeUBA2 = await redeemer.convertDustToTickets(agent);
+            const dustChangeUBA2 = await redeemer.convertDustToTicket(agent);
             const newDustAmount = (await context.convertLotsToUBA(1)).sub(context.convertAmgToUBA(5));
             assertWeb3Equal(dustChangeUBA2, newDustAmount);
             const info3 = await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA.add(selfCloseAmountUBA), dustAmountUBA, dustAmountUBA);
