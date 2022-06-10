@@ -169,8 +169,6 @@ library Redemption {
         external
     {
         RedemptionRequest storage request = _getRedemptionRequest(_state, _redemptionRequestId);
-        require(request.status == RedemptionStatus.ACTIVE || request.status == RedemptionStatus.DEFAULTED, 
-            "invalid redemption status");
         // Usually, we require the agent to trigger confirmation.
         // But if the agent doesn't respond for long enough, 
         // we allow anybody and that user gets rewarded from agent's vault.
@@ -211,7 +209,6 @@ library Redemption {
             }
         }
         // agent has finished with redemption - account for used underlying balance and free the remainder
-        // (however, collateral might still be held in case of failed payment)
         int256 freeBalanceChangeUBA = _updateFreeBalanceAfterPayment(_state, _payment, request);
         emit AMEvents.RedemptionFinished(request.agentVault, freeBalanceChangeUBA, _redemptionRequestId);
         // record source decreasing transaction so that it cannot be challenged
@@ -312,6 +309,7 @@ library Redemption {
         // pay redeemer in native currency and mark as defaulted
         _executeDefaultPayment(_state, request, _redemptionRequestId);
         // don't delete redemption request at end - the agent might still confirm failed payment
+        request.status = RedemptionStatus.DEFAULTED;
     }
     
     function finishRedemptionWithoutPayment(
@@ -323,9 +321,9 @@ library Redemption {
         RedemptionRequest storage request = _getRedemptionRequest(_state, _redemptionRequestId);
         Agents.requireAgentVaultOwner(request.agentVault);
         // the request should have been defaulted by providing a non-payment proof to redemptionPaymentDefault(),
-        // except in very rare case when both agent and redeemer cannot preform confirmation while the attestation
+        // except in very rare case when both agent and redeemer cannot perform confirmation while the attestation
         // is still available (~ 1 day) - in this case the agent can perform default without proof
-        if (request.status != RedemptionStatus.DEFAULTED) {
+        if (request.status == RedemptionStatus.ACTIVE) {
             // if non-payment proof is stil available, should use redemptionPaymentDefault() instead
             require(block.timestamp >= request.timestamp + _state.settings.attestationWindowSeconds,
                 "should default first");

@@ -202,23 +202,6 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(resRe, "invalid request id");
     });
 
-    it("should not confirm redemption payment - invalid redemption status", async () => {
-        // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
-        const request2 = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer2, redeemerAddress2, true);
-        //perform redemption payment
-        const paymentAmt = request.valueUBA.sub(request.feeUBA);
-        const tx1Hash = await wallet.addTransaction(underlyingAgent1, request2.paymentAddress, paymentAmt, request.paymentReference);
-        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request2.paymentAddress);
-        const resRe = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-        expectEvent(resRe, 'RedemptionFinished');
-        expectEvent(resRe, 'RedemptionPaymentFailed');
-        const resReAg = assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-        await expectRevert(resReAg, "invalid redemption status");
-    });
-
     it("should not self close - self close of 0", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
@@ -256,12 +239,6 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
-        const paymentAmt = request.valueUBA.sub(request.feeUBA);
-        const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
-        const proofPay = await attestationProvider.provePayment(transactionHash, underlyingAgent1, request.paymentAddress);
-        const resPay = await assetManager.confirmRedemptionPayment(proofPay, request.requestId, { from: agentOwner1 });
-        expectEvent(resPay, 'RedemptionFinished');
-        expectEvent(resPay, 'RedemptionPaymentFailed');
         for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
@@ -271,43 +248,18 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         expectEvent(res, 'RedemptionDefault');
     });
 
-    it("should execute redemption payment default - agent", async () => {
+    it("should not execute redemption payment default - only redeemer", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
-        const paymentAmt = request.valueUBA.sub(request.feeUBA);
-        const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
-        const proofPay = await attestationProvider.provePayment(transactionHash, underlyingAgent1, request.paymentAddress);
-        const resPay = await assetManager.confirmRedemptionPayment(proofPay, request.requestId, { from: agentOwner1 });
-        expectEvent(resPay, 'RedemptionFinished');
-        expectEvent(resPay, 'RedemptionPaymentFailed');
         for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
-        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
-        const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: agentOwner1 });
-        expectEvent(res, 'RedemptionDefault');
-    });
-
-    it("should not execute redemption payment default - not agent or redeemer", async () => {
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
-
-        const paymentAmt = request.valueUBA.sub(request.feeUBA);
-        const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
-        const proofPay = await attestationProvider.provePayment(transactionHash, underlyingAgent1, request.paymentAddress);
-        const resPay = await assetManager.confirmRedemptionPayment(proofPay, request.requestId, { from: agentOwner1 });
-        expectEvent(resPay, 'RedemptionFinished');
-        expectEvent(resPay, 'RedemptionPaymentFailed');
-        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
-            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
-        }
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: minterAddress1 });
-        await expectRevert(res, 'only redeemer or agent');
+        await expectRevert(res, 'only redeemer');
     });
 
     it("should not execute redemption payment default - redemption non-payment mismatch", async () => {
@@ -315,12 +267,6 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
-        const paymentAmt = request.valueUBA.sub(request.feeUBA);
-        const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
-        const proofPay = await attestationProvider.provePayment(transactionHash, underlyingAgent1, request.paymentAddress);
-        const resPay = await assetManager.confirmRedemptionPayment(proofPay, request.requestId, { from: agentOwner1 });
-        expectEvent(resPay, 'RedemptionFinished');
-        expectEvent(resPay, 'RedemptionPaymentFailed');
         for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
@@ -330,27 +276,11 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(res, 'redemption non-payment mismatch');
     });
 
-    it("should not confirm redemption payment - invalid redemption status", async () => {
-        // init
+    it("should not execute redemption payment default - invalid redemption status", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
-        const request2 = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer2, redeemerAddress2, true);
-        //perform redemption payment
-        const paymentAmt = request.valueUBA.sub(request.feeUBA);
-        const tx1Hash = await wallet.addTransaction(underlyingAgent1, request2.paymentAddress, paymentAmt, request.paymentReference);
-        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request2.paymentAddress);
-        const resRe = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-        expectEvent(resRe, 'RedemptionFinished');
-        expectEvent(resRe, 'RedemptionPaymentFailed');
-        const resReAg = assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-        await expectRevert(resReAg, "invalid redemption status");
-    });
-
-    it("should execute redemption payment default - invalid redemption status", async () => {
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+        
         for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
@@ -361,7 +291,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(resReAg, "invalid redemption status");
     });
 
-    it("should execute redemption payment default - redemption request too old", async () => {
+    it("should not execute redemption payment default - redemption request too old", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
 
@@ -371,12 +301,6 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await time.advanceBlock();
 
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, false);
-        const paymentAmt = request.valueUBA.sub(request.feeUBA);
-        const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
-        const proofPay = await attestationProvider.provePayment(transactionHash, underlyingAgent1, request.paymentAddress);
-        const resPay = await assetManager.confirmRedemptionPayment(proofPay, request.requestId, { from: agentOwner1 });
-        expectEvent(resPay, 'RedemptionFinished');
-        expectEvent(resPay, 'RedemptionPaymentFailed');
         for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
@@ -386,17 +310,11 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(res, 'redemption request too old');
     });
 
-    it("should execute redemption payment default - redemption default too early", async () => {
+    it("should not execute redemption payment default - redemption default too early", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
-        const paymentAmt = request.valueUBA.sub(request.feeUBA);
-        const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
-        const proofPay = await attestationProvider.provePayment(transactionHash, underlyingAgent1, request.paymentAddress);
-        const resPay = await assetManager.confirmRedemptionPayment(proofPay, request.requestId, { from: agentOwner1 });
-        expectEvent(resPay, 'RedemptionFinished');
-        expectEvent(resPay, 'RedemptionPaymentFailed');
         for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
@@ -450,12 +368,6 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
-        const paymentAmt = request.valueUBA.sub(request.feeUBA);
-        const transactionHash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
-        const proofPay = await attestationProvider.provePayment(transactionHash, underlyingAgent1, request.paymentAddress);
-        const resPay = await assetManager.confirmRedemptionPayment(proofPay, request.requestId, { from: agentOwner1 });
-        expectEvent(resPay, 'RedemptionFinished');
-        expectEvent(resPay, 'RedemptionPaymentFailed');
         for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
