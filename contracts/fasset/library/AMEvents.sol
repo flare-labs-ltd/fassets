@@ -257,6 +257,13 @@ library AMEvents {
     event UnderlyingWithdrawalCancelled(
         address agentVault,
         uint64 announcementId);
+
+    /**
+     * Emitted when the agent tops up the underlying address balance.
+     */
+    event UnderlyingBalanceToppedUp(
+        address agentVault,
+        uint256 freeBalanceChangeUBA);
         
     /**
      * An unexpected transaction from the agent's underlying address was proved.
