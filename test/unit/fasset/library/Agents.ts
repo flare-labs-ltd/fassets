@@ -282,8 +282,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // should not change destroy time
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
         await time.increase(150);
-        const startBalance = await balance.current(agentOwner1);
         await expectRevert(agentVault.withdraw(100, { from: agentOwner1 }), "withdrawal: invalid status");
+        const startBalance = await balance.current(agentOwner1);
         const tx = await assetManager.destroyAgent(agentVault.address, { from: agentOwner1 });
         // assert
         const recovered = (await balance.current(agentOwner1)).sub(startBalance).add(await calcGasCost(tx));

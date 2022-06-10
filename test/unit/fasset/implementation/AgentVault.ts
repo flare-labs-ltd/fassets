@@ -110,6 +110,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const assetManagerMock = await AssetManagerMock.new(wnat.address);
         agentVault = await AgentVault.new(assetManagerMock.address, owner);
         await wnat.depositTo(agentVault.address, { value: toBN(100) });
+        await assetManagerMock.payoutNAT(agentVault.address, agentVault.address, 0, { from: owner });
         const res = assetManagerMock.payoutNAT(agentVault.address, agentVault.address, 100, { from: owner });
         await expectRevert(res, "transfer failed")
     });
