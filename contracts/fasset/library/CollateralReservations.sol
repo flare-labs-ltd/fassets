@@ -26,7 +26,6 @@ library CollateralReservations {
         uint128 underlyingFeeUBA;
         uint128 reservationFeeNatWei;
         address agentVault;
-        uint64 timestamp;
         address minter;
     }
     
@@ -63,8 +62,7 @@ library CollateralReservations {
             minter: _minter,
             firstUnderlyingBlock: _state.currentUnderlyingBlock,
             lastUnderlyingBlock: lastUnderlyingBlock,
-            lastUnderlyingTimestamp: lastUnderlyingTimestamp,
-            timestamp: SafeCast.toUint64(block.timestamp)
+            lastUnderlyingTimestamp: lastUnderlyingTimestamp
         });
         // stack too deep error if used directly in emitted event
         string storage paymentAddress = agent.underlyingAddressString;
@@ -110,15 +108,19 @@ library CollateralReservations {
     }
     
     function unstickMinting(
-        AssetManagerState.State storage _state, 
+        AssetManagerState.State storage _state,
+        IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
         uint64 _crtId
     )
         external
     {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
         Agents.requireAgentVaultOwner(crt.agentVault);
+        // verify proof
+        TransactionAttestation.verifyConfirmedBlockHeightExists(_state.settings, _proof);
         // enough time must pass so that proofs are no longer available
-        require(block.timestamp >= crt.timestamp + _state.settings.attestationWindowSeconds,
+        require(_proof.lowestQueryWindowBlockNumber > crt.lastUnderlyingBlock
+            && _proof.lowestQueryWindowBlockTimestamp > crt.lastUnderlyingTimestamp,
             "cannot unstick minting yet");
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
         _state.settings.burnAddress.transfer(crt.reservationFeeNatWei);

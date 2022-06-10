@@ -321,6 +321,7 @@ library Redemption {
     
     function finishRedemptionWithoutPayment(
         AssetManagerState.State storage _state,
+        IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
         uint64 _redemptionRequestId
     )
         external
@@ -331,8 +332,11 @@ library Redemption {
         // except in very rare case when both agent and redeemer cannot perform confirmation while the attestation
         // is still available (~ 1 day) - in this case the agent can perform default without proof
         if (request.status == RedemptionStatus.ACTIVE) {
+            // verify proof
+            TransactionAttestation.verifyConfirmedBlockHeightExists(_state.settings, _proof);
             // if non-payment proof is stil available, should use redemptionPaymentDefault() instead
-            require(block.timestamp >= request.timestamp + _state.settings.attestationWindowSeconds,
+            require(_proof.lowestQueryWindowBlockNumber > request.lastUnderlyingBlock
+                && _proof.lowestQueryWindowBlockTimestamp > request.lastUnderlyingTimestamp,
                 "should default first");
             _executeDefaultPayment(_state, request, _redemptionRequestId);
         }

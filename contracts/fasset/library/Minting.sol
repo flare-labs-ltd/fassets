@@ -70,7 +70,6 @@ library Minting {
         assert(agent.agentType == Agents.AgentType.AGENT_100); // AGENT_0 not supported yet
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         require(_state.pausedAt == 0, "minting paused");
-        require(_lots > 0, "cannot mint 0 lots");
         require(agent.status == Agents.AgentStatus.NORMAL, "self-mint invalid agent status");
         require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
@@ -84,7 +83,12 @@ library Minting {
         require(_payment.blockNumber >= agent.underlyingBlockAtCreation,
             "self-mint payment too old");
         _state.paymentConfirmations.confirmIncomingPayment(_payment);
-        uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(_agentVault, valueAMG);
+        // case _lots==0 is allowed for self minting because if lot size increases between the underlying payment
+        // and selfMint call, the paid assets would otherwise be stuck; in this way they are converted to free balance
+        uint64 redemptionTicketId = 0;
+        if (_lots > 0) {
+            redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(_agentVault, valueAMG);
+        }
         uint256 receivedFeeUBA = uint256(_payment.receivedAmount) - _mintValueUBA;  // guarded by require
         emit AMEvents.MintingExecuted(_agentVault, 0, redemptionTicketId, _mintValueUBA, receivedFeeUBA);
         Agents.allocateMintedAssets(_state, _agentVault, valueAMG);

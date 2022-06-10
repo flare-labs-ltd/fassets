@@ -9,6 +9,7 @@ import {
    ARBalanceDecreasingTransaction,
    ARConfirmedBlockHeightExists,
    ARReferencedPaymentNonexistence,
+   ARTrustlineIssuance,
    ARType 
 } from "./attestation-request-types";
 import { AttestationType } from "./attestation-types-enum";
@@ -147,6 +148,23 @@ export function parseReferencedPaymentNonexistence(bytes: string): ARReferencedP
    }
 }
 
+export function parseTrustlineIssuance(bytes: string): ARTrustlineIssuance {
+   if(!bytes) {
+      throw new AttestationRequestParseError("Empty attestation request")
+   }
+   let input = unPrefix0x(bytes);  
+   if(input.length != 116) {
+      throw new AttestationRequestParseError("Incorrectly formatted attestation request")
+   }
+  
+   return {
+      attestationType: fromUnprefixedBytes(input.slice(0, 4), "AttestationType", 2) as AttestationType,
+      sourceId: fromUnprefixedBytes(input.slice(4, 12), "SourceId", 4) as SourceId,
+      upperBoundProof: fromUnprefixedBytes(input.slice(12, 76), "ByteSequenceLike", 32) as string,
+      issuerAccount: fromUnprefixedBytes(input.slice(76, 116), "ByteSequenceLike", 20) as string
+   }
+}
+
 export function parseRequest(bytes: string): ARType {  
    let { attestationType } = getAttestationTypeAndSource(bytes);
    switch(attestationType) {
@@ -158,6 +176,8 @@ export function parseRequest(bytes: string): ARType {
          return parseConfirmedBlockHeightExists(bytes);
       case AttestationType.ReferencedPaymentNonexistence:
          return parseReferencedPaymentNonexistence(bytes);
+      case AttestationType.TrustlineIssuance:
+         return parseTrustlineIssuance(bytes);
       default:
          throw new AttestationRequestParseError("Invalid attestation type");
    }

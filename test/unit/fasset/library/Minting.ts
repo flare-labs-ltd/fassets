@@ -1,4 +1,4 @@
-import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { ethers } from "hardhat";
 import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
@@ -411,7 +411,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         await expectRevert(promise, "not enough free collateral");
     });
 
-    it("should not self-mint if trying to mint 0 lots", async () => {
+    it("should only topup if trying to self-mint 0 lots", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
@@ -423,9 +423,12 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         chain.mint(underlyingRandomAddress, paymentAmount);
         const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVault.address));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
-        const promise = assetManager.selfMint(proof, agentVault.address, 0, { from: agentOwner1 });
+        const before = await assetManager.getAgentInfo(agentVault.address);
+        const res = await assetManager.selfMint(proof, agentVault.address, 0, { from: agentOwner1 });
+        const after = await assetManager.getAgentInfo(agentVault.address);
         // assert
-        await expectRevert(promise, "cannot mint 0 lots");
+        expectEvent(res, 'MintingExecuted', { agentVault: agentVault.address, collateralReservationId: toBN(0), mintedAmountUBA: toBN(0), receivedFeeUBA: paymentAmount });
+        assertWeb3Equal(toBN(after.freeUnderlyingBalanceUBA).sub(toBN(before.freeUnderlyingBalanceUBA)), paymentAmount, "invalid self-mint topup value");
     });
 
     it("should not self-mint if agent's status is not 'NORMAL'", async () => {

@@ -7,6 +7,7 @@ import {
    ARBalanceDecreasingTransaction,
    ARConfirmedBlockHeightExists,
    ARReferencedPaymentNonexistence,
+   ARTrustlineIssuance,
    ARType 
 } from "./attestation-request-types";
 import { toHex, unPrefix0x } from "./attestation-request-parse";
@@ -155,6 +156,27 @@ export function encodeReferencedPaymentNonexistence(request: ARReferencedPayment
    return bytes;
 }
 
+export function encodeTrustlineIssuance(request: ARTrustlineIssuance) {
+   if(request.attestationType == null) {
+      throw new AttestationRequestEncodeError("Missing 'attestationType'")
+   }
+   if(request.sourceId == null) {
+      throw new AttestationRequestEncodeError("Missing 'sourceId'")
+   }
+   if(request.upperBoundProof == null) {
+      throw new AttestationRequestEncodeError("Missing 'upperBoundProof'")
+   }
+   if(request.issuerAccount == null) {
+      throw new AttestationRequestEncodeError("Missing 'issuerAccount'")
+   }
+   let bytes = "0x"
+   bytes += toUnprefixedBytes(request.attestationType, "AttestationType", 2, "attestationType");
+   bytes += toUnprefixedBytes(request.sourceId, "SourceId", 4, "sourceId");
+   bytes += toUnprefixedBytes(request.upperBoundProof, "ByteSequenceLike", 32, "upperBoundProof");
+   bytes += toUnprefixedBytes(request.issuerAccount, "ByteSequenceLike", 20, "issuerAccount");
+   return bytes;
+}
+
 export function encodeRequest(request: ARType): string  {  
    switch(request.attestationType) {
       case AttestationType.Payment:
@@ -165,6 +187,8 @@ export function encodeRequest(request: ARType): string  {
          return encodeConfirmedBlockHeightExists(request as ARConfirmedBlockHeightExists);
       case AttestationType.ReferencedPaymentNonexistence:
          return encodeReferencedPaymentNonexistence(request as ARReferencedPaymentNonexistence);
+      case AttestationType.TrustlineIssuance:
+         return encodeTrustlineIssuance(request as ARTrustlineIssuance);
       default:
          throw new AttestationRequestEncodeError("Invalid attestation type");
    }

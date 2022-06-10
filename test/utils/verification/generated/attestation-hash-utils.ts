@@ -8,6 +8,7 @@ import {
    ARBalanceDecreasingTransaction,
    ARConfirmedBlockHeightExists,
    ARReferencedPaymentNonexistence,
+   ARTrustlineIssuance,
    ARType 
 } from "./attestation-request-types";
 import {
@@ -15,6 +16,7 @@ import {
    DHBalanceDecreasingTransaction,
    DHConfirmedBlockHeightExists,
    DHReferencedPaymentNonexistence,
+   DHTrustlineIssuance,
    DHType 
 } from "./attestation-hash-types";
 import { AttestationType } from "./attestation-types-enum";
@@ -100,6 +102,8 @@ export function hashConfirmedBlockHeightExists(request: ARConfirmedBlockHeightEx
          "uint64",		// blockTimestamp
          "uint8",		// numberOfConfirmations
          "uint64",		// averageBlockProductionTimeMs
+         "uint64",		// lowestQueryWindowBlockNumber
+         "uint64",		// lowestQueryWindowBlockTimestamp
       ],
       [
          request.attestationType,
@@ -107,7 +111,9 @@ export function hashConfirmedBlockHeightExists(request: ARConfirmedBlockHeightEx
          response.blockNumber,
          response.blockTimestamp,
          response.numberOfConfirmations,
-         response.averageBlockProductionTimeMs
+         response.averageBlockProductionTimeMs,
+         response.lowestQueryWindowBlockNumber,
+         response.lowestQueryWindowBlockTimestamp
       ]
    );
    return web3.utils.soliditySha3(encoded)!;
@@ -145,6 +151,28 @@ export function hashReferencedPaymentNonexistence(request: ARReferencedPaymentNo
    return web3.utils.soliditySha3(encoded)!;
 }
 
+export function hashTrustlineIssuance(request: ARTrustlineIssuance, response: DHTrustlineIssuance) {
+   let encoded = web3.eth.abi.encodeParameters(
+      [
+         "uint16",		// attestationType
+         "uint32",		// sourceId
+         "bytes32",		// tokenCurrencyCode
+         "uint256",		// tokenValueNominator
+         "uint256",		// tokenValueDenominator
+         "bytes32",		// tokenIssuer
+      ],
+      [
+         request.attestationType,
+         request.sourceId,
+         response.tokenCurrencyCode,
+         response.tokenValueNominator,
+         response.tokenValueDenominator,
+         response.tokenIssuer
+      ]
+   );
+   return web3.utils.soliditySha3(encoded)!;
+}
+
 export function dataHash(request: ARType, response: DHType) {  
    switch(request.attestationType) {
       case AttestationType.Payment:
@@ -155,6 +183,8 @@ export function dataHash(request: ARType, response: DHType) {
          return hashConfirmedBlockHeightExists(request as ARConfirmedBlockHeightExists, response as DHConfirmedBlockHeightExists);
       case AttestationType.ReferencedPaymentNonexistence:
          return hashReferencedPaymentNonexistence(request as ARReferencedPaymentNonexistence, response as DHReferencedPaymentNonexistence);
+      case AttestationType.TrustlineIssuance:
+         return hashTrustlineIssuance(request as ARTrustlineIssuance, response as DHTrustlineIssuance);
       default:
          throw new Error("Invalid attestation type");
    }

@@ -136,7 +136,8 @@ The amount searched for.
          type: "uint64",
          description:
 `
-The first confirmed block that gets checked. It is the lowest block in the synchronized query window. 
+The first confirmed block that gets checked.
+It is the lowest block in the synchronized query window.
 `
       },
       {
@@ -152,7 +153,8 @@ Timestamp of the lowerBoundaryBlockNumber.
          type: "uint64",
          description:
 `
-The first (lowest) confirmed block with 'timestamp > deadlineTimestamp' and 'blockNumber  > deadlineBlockNumber'.
+The first (lowest) confirmed block with 'timestamp > deadlineTimestamp' 
+and 'blockNumber  > deadlineBlockNumber'.
 `
       },
       {

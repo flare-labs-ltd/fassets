@@ -136,7 +136,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [testSelfMint, 10],
             [testSelfClose, 10],
             [testLiquidate, 10],
-            [testConvertDustToTickets, 10],
+            [testConvertDustToTicket, 10],
             [testUnderlyingWithdrawal, 5],
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
@@ -251,9 +251,9 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         runner.startThread((scope) => agent.announcedUnderlyingWithdrawal(scope));
     }
 
-    async function testConvertDustToTickets() {
+    async function testConvertDustToTicket() {
         const agent = randomChoice(agents);
-        runner.startThread((scope) => agent.convertDustToTickets(scope));
+        runner.startThread((scope) => agent.convertDustToTicket(scope));
     }
 
     async function testIllegalTransaction() {
