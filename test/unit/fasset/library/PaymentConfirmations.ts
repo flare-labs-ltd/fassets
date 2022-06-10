@@ -93,11 +93,11 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
     });
 
-    it("should cleanup payment verifications after 5 days", async () => {
+    it("should cleanup payment verifications after 15 days", async () => {
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         const proof1 = await agentTopup(agentVault);
         // make transaction in the "future" (chains timestamp may differ)
-        chain.skipTime(5 * 86400);
+        chain.skipTime(15 * 86400);
         const proof2 = await agentTopup(agentVault);
         // it should revert confirming twice
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
@@ -114,9 +114,9 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         await agentTopup(agentVault);
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
         await expectRevert(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
-        // after 5 days it should cleanup old payment verifications
-        await time.increase(5 * 86400);
-        chain.skipTime(5 * 86400);
+        // after 15 days it should cleanup old payment verifications
+        await time.increase(15 * 86400);
+        chain.skipTime(15 * 86400);
         await agentTopup(agentVault);
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
         await expectRevert(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
