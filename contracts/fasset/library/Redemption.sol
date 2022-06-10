@@ -27,7 +27,6 @@ library Redemption {
     enum RedemptionStatus {
         EMPTY,
         ACTIVE,
-        FAILED,
         DEFAULTED
     }
     
@@ -183,16 +182,15 @@ library Redemption {
         // payment reference must match
         require(_payment.paymentReference == PaymentReference.redemption(_redemptionRequestId), 
             "invalid redemption reference");
-        // Valid payments are to correct destination ands must have value at least the request payment value.
-        // If payment is valid, agent's collateral is released, otherwise request is marked as failed and
-        // awaits the redeemer to call default.
-        (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
         // When status is active, agent has either paid in time / was blocked and agent's collateral is released
-        // or the payment failed and the collateral is held until default is called.
+        // or the payment failed and the default is called.
         // Otherwise, agent has already defaulted on payment and this method is only needed for proper 
         // accounting of underlying balance. It still has to be called in time, otherwise it can be
-        // called by challenger and in this case, challenger gets some reward from agent's vault.
+        // called by 3rd party and in this case, the caller gets some reward from agent's vault.
         if (request.status == RedemptionStatus.ACTIVE) {
+            // Valid payments are to correct destination ands must have value at least the request payment value.
+            // If payment is valid, agent's collateral is released, otherwise the collateral payment is done.
+            (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
             if (paymentValid) {
                 // release agent collateral
                 Agents.endRedeemingAssets(_state, request.agentVault, request.valueAMG);
@@ -205,6 +203,9 @@ library Redemption {
                         _redemptionRequestId);
                 }
             } else {
+                // we do not allow retrying failed payments, so just default here
+                _executeDefaultPayment(_state, request, _redemptionRequestId);
+                // notify
                 emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer, 
                     _redemptionRequestId, failureReason);
             }
@@ -221,13 +222,8 @@ library Redemption {
         }
         // redemption can make agent healthy, so check and pull out of liquidation
         Liquidation.endLiquidationIfHealthy(_state, request.agentVault);
-        // delete redemption request at end if we don't need it any more
-        // otherwise mark it as FAILED and wait for default
-        if (paymentValid || request.status == RedemptionStatus.DEFAULTED) {
-            delete _state.redemptionRequests[_redemptionRequestId];
-        } else {
-            request.status = RedemptionStatus.FAILED;
-        }
+        // delete redemption request at end
+        delete _state.redemptionRequests[_redemptionRequestId];
     }
     
     function _othersCanConfirmPayment(
@@ -297,8 +293,7 @@ library Redemption {
         external
     {
         RedemptionRequest storage request = _getRedemptionRequest(_state, _redemptionRequestId);
-        require(request.status == RedemptionStatus.ACTIVE || request.status == RedemptionStatus.FAILED,
-            "invalid redemption status");
+        require(request.status == RedemptionStatus.ACTIVE, "invalid redemption status");
         // verify transaction
         TransactionAttestation.verifyReferencedPaymentNonexistence(_state.settings, _nonPayment);
         // check non-payment proof
@@ -311,20 +306,12 @@ library Redemption {
             "redemption default too early");
         require(_nonPayment.lowerBoundaryBlockNumber <= request.firstUnderlyingBlock,
             "redemption request too old");
-        // We allow only redeemers or agents to trigger redemption failures, since they may want
-        // to do it at some particular time. (Agent might want to call default to unstick redemption after 
-        // failed payment and unresponsive redeemer.)
-        address agentOwner = Agents.vaultOwner(request.agentVault);
-        require(msg.sender == request.redeemer || msg.sender == agentOwner,
-            "only redeemer or agent");
+        // We allow only redeemer to trigger redemption default, but it can be called indirectly
+        // by the agent presenting failed payment proof or calling finishRedemptionWithoutPayment.
+        require(msg.sender == request.redeemer, "only redeemer");
         // pay redeemer in native currency and mark as defaulted
         _executeDefaultPayment(_state, request, _redemptionRequestId);
-        // delete redemption request at end (only if failure was already reported)
-        if (request.status == RedemptionStatus.FAILED) {
-            delete _state.redemptionRequests[_redemptionRequestId];
-        } else {
-            request.status = RedemptionStatus.DEFAULTED;
-        }
+        // don't delete redemption request at end - the agent might still confirm failed payment
     }
     
     function finishRedemptionWithoutPayment(
@@ -338,22 +325,18 @@ library Redemption {
         // the request should have been defaulted by providing a non-payment proof to redemptionPaymentDefault(),
         // except in very rare case when both agent and redeemer cannot preform confirmation while the attestation
         // is still available (~ 1 day) - in this case the agent can perform default without proof
-        if (request.status != RedemptionStatus.DEFAULTED) {     // ACTIVE or FAILED
+        if (request.status != RedemptionStatus.DEFAULTED) {
             // if non-payment proof is stil available, should use redemptionPaymentDefault() instead
             require(block.timestamp >= request.timestamp + _state.settings.attestationWindowSeconds,
                 "should default first");
             _executeDefaultPayment(_state, request, _redemptionRequestId);
-            // now the default payment has been done, but status remains ACTIVE or FAILED,
-            // so that next step knows whether to free underlying balance
         }
         // request is in defaulted state, but underlying balance is not freed, since we are
         // still waiting for the agent to possibly present late or failed payment
         // with this method, the agent asserts there was no payment and frees underlying balance
-        if (request.status != RedemptionStatus.FAILED) {    // ACTIVE or DEFAULTED
-            int256 freeBalanceChangeUBA = SafeCast.toInt256(request.underlyingValueUBA);
-            UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, freeBalanceChangeUBA);
-            emit AMEvents.RedemptionFinished(request.agentVault, freeBalanceChangeUBA, _redemptionRequestId);
-        }
+        int256 freeBalanceChangeUBA = SafeCast.toInt256(request.underlyingValueUBA);
+        UnderlyingFreeBalance.updateFreeBalance(_state, request.agentVault, freeBalanceChangeUBA);
+        emit AMEvents.RedemptionFinished(request.agentVault, freeBalanceChangeUBA, _redemptionRequestId);
         // delete redemption request - not needed any more
         delete _state.redemptionRequests[_redemptionRequestId];
     }
