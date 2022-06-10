@@ -70,6 +70,21 @@ Number of confirmations for the blockchain.
 Average block production time based on the data in the query window.
 `
       },
-
+      {
+         key: "lowestQueryWindowBlockNumber",
+         type: "uint64",
+         description:
+`
+Lowest query window block number.
+`
+      },
+      {
+         key: "lowestQueryWindowBlockTimestamp",
+         type: "uint64",
+         description:
+`
+Lowest query window block timestamp.
+`
+      }
    ]
 }

@@ -63,6 +63,7 @@ export const UPPER_BOUND_PROOF_BYTES = 32;
 export const SOURCE_ADDRESS_KEY_BYTES = 32;
 export const SOURCE_ADDRESS_CHEKSUM_BYTES = 4;
 export const PAYMENT_REFERENCE_BYTES = 32;
+export const XRP_ACCOUNT_BYTES = 20;
 
 export type NumberLike = number | BN | string;
 export type ByteSequenceLike = string;

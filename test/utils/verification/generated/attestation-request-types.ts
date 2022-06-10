@@ -79,4 +79,18 @@ export interface ARReferencedPaymentNonexistence {
    // The payment reference to search for.
    paymentReference: ByteSequenceLike;
 }
-export type ARType = ARPayment | ARBalanceDecreasingTransaction | ARConfirmedBlockHeightExists | ARReferencedPaymentNonexistence;
+
+export interface ARTrustlineIssuance {
+   // Attestation type id for this request, see 'AttestationType' enum.
+   attestationType: AttestationType;
+
+   // The ID of the underlying chain, see 'SourceId' enum.
+   sourceId: SourceId;
+
+   // The hash of the confirmation block for an upper query window boundary block.
+   upperBoundProof: ByteSequenceLike;
+
+   // Ripple account address as bytes.
+   issuerAccount: ByteSequenceLike;
+}
+export type ARType = ARPayment | ARBalanceDecreasingTransaction | ARConfirmedBlockHeightExists | ARReferencedPaymentNonexistence | ARTrustlineIssuance;

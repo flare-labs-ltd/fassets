@@ -8,6 +8,7 @@ import {
    ARBalanceDecreasingTransaction,
    ARConfirmedBlockHeightExists,
    ARReferencedPaymentNonexistence,
+   ARTrustlineIssuance,
    ARType 
 } from "./attestation-request-types";
 import { AttestationType } from "./attestation-types-enum";
@@ -121,6 +122,22 @@ export function equalsReferencedPaymentNonexistence(request1: ARReferencedPaymen
    return true;
 }
 
+export function equalsTrustlineIssuance(request1: ARTrustlineIssuance, request2: ARTrustlineIssuance) {
+   if(!assertEqualsByScheme(request1.attestationType, request2.attestationType, "AttestationType")) {
+      return false;
+   }
+   if(!assertEqualsByScheme(request1.sourceId, request2.sourceId, "SourceId")) {
+      return false;
+   }
+   if(!assertEqualsByScheme(request1.upperBoundProof, request2.upperBoundProof, "ByteSequenceLike")) {
+      return false;
+   }
+   if(!assertEqualsByScheme(request1.issuerAccount, request2.issuerAccount, "ByteSequenceLike")) {
+      return false;
+   }
+   return true;
+}
+
 export function equalsRequest(request1: ARType, request2: ARType): boolean  {  
    if(request1.attestationType != request2.attestationType) {
       return false;
@@ -134,6 +151,8 @@ export function equalsRequest(request1: ARType, request2: ARType): boolean  {
          return equalsConfirmedBlockHeightExists(request1 as ARConfirmedBlockHeightExists, request2 as ARConfirmedBlockHeightExists);
       case AttestationType.ReferencedPaymentNonexistence:
          return equalsReferencedPaymentNonexistence(request1 as ARReferencedPaymentNonexistence, request2 as ARReferencedPaymentNonexistence);
+      case AttestationType.TrustlineIssuance:
+         return equalsTrustlineIssuance(request1 as ARTrustlineIssuance, request2 as ARTrustlineIssuance);
       default:
          throw new AttestationRequestEqualsError("Invalid attestation type");
    }

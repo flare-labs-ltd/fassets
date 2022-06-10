@@ -90,7 +90,8 @@ Index of the transaction input indicating source address on UTXO chains, 0 on no
          type: "bytes32",
          description:
 `
-Hash of the source address as a string. For UTXO transactions with multiple input addresses this is the address that is on the input indicated by 'inUtxo' parameter.
+Hash of the source address as a string. For UTXO transactions with multiple input addresses 
+this is the address that is on the input indicated by 'inUtxo' parameter.
 `
       },
       {
@@ -98,7 +99,12 @@ Hash of the source address as a string. For UTXO transactions with multiple inpu
          type: "int256",
          description:
 `
-The amount that went out of the source address, in the smallest underlying units. In non-UTXO chains it includes both payment value and fee (gas). Calculation for UTXO chains depends on the existence of standardized payment reference. If it exists, it is calculated as 'outgoing_amount - returned_amount' and can be negative. If the standardized payment reference does not exist, then it is just the spent amount on the input indicated by 'inUtxo'.
+The amount that went out of the source address, in the smallest underlying units.
+In non-UTXO chains it includes both payment value and fee (gas).
+Calculation for UTXO chains depends on the existence of standardized payment reference.
+If it exists, it is calculated as 'outgoing_amount - returned_amount' and can be negative.
+If the standardized payment reference does not exist, then it is just the spent amount
+on the input indicated by 'inUtxo'.
 `
       },
       {
