@@ -34,6 +34,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     const CHANGE_LOT_SIZE_FACTOR = getEnv('CHANGE_LOT_SIZE_FACTOR', 'number[]', []);
     const CHANGE_PRICE_AT = getEnv('CHANGE_PRICE_AT', 'range', null);
     const CHANGE_PRICE_FACTOR = getEnv('CHANGE_PRICE_FACTOR', 'json', null) as { nat?: [number, number], asset?: [number, number] };
+    const ILLEGAL_PROB = getEnv('ILLEGAL_PROB', 'number', 1);     // likelihood of illegal operations (not normalized)
 
     let commonContext: CommonContext;
     let context: AssetContext;
@@ -140,8 +141,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [testUnderlyingWithdrawal, 5],
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
-            [testIllegalTransaction, 1],
-            [testDoublePayment, 1],
+            [testIllegalTransaction, ILLEGAL_PROB],
+            [testDoublePayment, ILLEGAL_PROB],
         ];
         const timedActions: Array<[(index: number) => Promise<void>, InclusionIterable<number> | null]> = [
             [testChangeLotSize, CHANGE_LOT_SIZE_AT],

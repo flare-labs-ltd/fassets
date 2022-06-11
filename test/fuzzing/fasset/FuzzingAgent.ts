@@ -78,7 +78,8 @@ export class FuzzingAgent extends FuzzingActor {
             const txHash = await agent.performRedemptionPayment(request);
             await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
             if (!cheatOnPayment) {
-                await agent.confirmActiveRedemptionPayment(request, txHash);
+                await agent.confirmActiveRedemptionPayment(request, txHash)
+                    .catch(e => scope.exitOnExpectedError(e, []));
             } else {
                 await agent.confirmFailedRedemptionPayment(request, txHash)
                     .catch(e => scope.exitOnExpectedError(e, ['Missing event RedemptionPaymentFailed']));
@@ -111,7 +112,9 @@ export class FuzzingAgent extends FuzzingActor {
     
     async selfClose(scope: EventScope) {
         const agent = this.agent;   // save in case agent is destroyed and re-created
-        const mintedAssets = this.agentState(agent).mintedUBA;
+        const agentState = this.agentState(agent);
+        if (agentState.status !== AgentStatus.NORMAL) return;   // reduce noise in case of (full) liquidation
+        const mintedAssets = agentState.mintedUBA;
         if (mintedAssets.isZero()) return;
         const ownersAssets = await this.context.fAsset.balanceOf(this.ownerAddress);
         if (ownersAssets.isZero()) return;
@@ -158,6 +161,7 @@ export class FuzzingAgent extends FuzzingActor {
     async announcedUnderlyingWithdrawal(scope: EventScope) {
         const agent = this.agent;   // save in case agent is destroyed and re-created
         const agentState = this.agentState(agent);
+        if (agentState.status !== AgentStatus.NORMAL) return;   // reduce noise in case of (full) liquidation
         const amount = randomBN(agentState.freeUnderlyingBalanceUBA);
         if (amount.isZero()) return;
         // announce

@@ -283,6 +283,17 @@ export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN) {
     return reduce(list, BN_ZERO, (a, x) => a.add(elementValue(x)));
 }
 
+/**
+ * Return a struct whose `value` field is set when promise id fullfiled.
+ */
+export function promiseValue<T>(promise: Promise<T>): { value: T | undefined } {
+    const result = { value: undefined as T | undefined };
+    void promise.then(value => { 
+        result.value = value;
+    });
+    return result;
+}
+
 // Error handling
 
 export function filterStackTrace(e: any) {
@@ -304,8 +315,7 @@ export function messageIncluded(message: unknown, expectedMessages: string[]) {
     return false;
 }
 
-export function expectErrors(e: any, expectedMessages: string[]) {
-    if (!messageIncluded(e?.message, expectedMessages)) {
-        throw e;    // unexpected error
-    }
+export function expectErrors(e: any, expectedMessages: string[]): undefined {
+    if (messageIncluded(e?.message, expectedMessages)) return;
+    throw e;    // unexpected error
 }

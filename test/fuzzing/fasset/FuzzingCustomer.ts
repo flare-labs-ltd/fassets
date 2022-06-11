@@ -4,12 +4,12 @@ import { Redeemer } from "../../integration/utils/Redeemer";
 import { EventArgs } from "../../utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
+import { EventScope, QualifiedEvent, qualifiedEvent } from "../../utils/fasset/ScopedEvents";
 import { foreachAsyncParallel, randomChoice, randomInt } from "../../utils/fuzzing-utils";
-import { formatBN, toBN } from "../../utils/helpers";
+import { expectErrors, formatBN, promiseValue } from "../../utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { AgentStatus } from "./FuzzingStateAgent";
-import { EventScope, QualifiedEvent, qualifiedEvent } from "../../utils/fasset/ScopedEvents";
 
 // debug state
 let mintedLots = 0;
@@ -77,6 +77,10 @@ export class FuzzingCustomer extends FuzzingActor {
         this.comment(`${this.name}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
         // wait for all redemption payments or non-payments
         await foreachAsyncParallel(tickets, async ticket => {
+            // detect if default happened during wait
+            const redemptionDefaultPromise = this.assetManagerEvent('RedemptionDefault', { requestId: ticket.requestId }).immediate().wait(scope);
+            const redemptionDefault = promiseValue(redemptionDefaultPromise);
+            // wait for payment or timeout
             const event = await Promise.race([
                 this.chainEvents.transactionEvent({ reference: ticket.paymentReference }).qualified('paid').wait(scope),
                 this.waitForPaymentTimeout(scope, ticket),
@@ -89,7 +93,11 @@ export class FuzzingCustomer extends FuzzingActor {
                 } else {
                     this.comment(`${this.name}, req=${ticket.requestId}: Invalid redemption, paid=${formatBN(amountPaid)} expected=${expectedAmount} target=${targetAddress}`);
                     await this.waitForPaymentTimeout(scope, ticket);    // still have to wait for timeout to be able to get non payment proof from SC
-                    await this.redemptionDefault(scope, ticket);
+                    if (redemptionDefault.value == null) {   // perhaps the agent has already submitted failed payment and defaulted
+                        await this.redemptionDefault(scope, ticket);
+                    }
+                    const result = await redemptionDefaultPromise; // now it must be fulfiled, by agent or by customer's default call
+                    this.comment(`${this.name}, req=${ticket.requestId}: default received ${formatBN(result.redeemedCollateralWei)}`);
                 }
             } else {
                 this.comment(`${this.name}, req=${ticket.requestId}: Missing redemption, reference=${ticket.paymentReference}`);
@@ -110,9 +118,11 @@ export class FuzzingCustomer extends FuzzingActor {
     }
 
     async redemptionDefault(scope: EventScope, ticket: EventArgs<RedemptionRequested>) {
+        this.comment(`${this.name}, req=${ticket.requestId}: starting default, block=${(this.context.chain as MockChain).blockHeight()}`);
         const result = await this.redeemer.redemptionPaymentDefault(ticket)
+            .catch(e => expectErrors(e, ['invalid request id']))    // can happen if agent confirms failed payment
             .catch(e => scope.exitOnExpectedError(e, []));
-        this.comment(`${this.name}, req=${ticket.requestId}: default received ${formatBN(result.redeemedCollateralWei)}`);
+        return result;
     }
     
     async liquidate(scope: EventScope) {
