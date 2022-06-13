@@ -1,8 +1,4 @@
-// import config used for compilation
-import config from "./hardhatSetup.config";
-
 import "@nomiclabs/hardhat-ethers";
-// Use also truffle and web3 for backward compatibility
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
@@ -14,6 +10,9 @@ import "hardhat-gas-reporter";
 import { extendEnvironment, task } from "hardhat/config";
 import 'solidity-coverage';
 import "./type-extensions";
+
+// import config used for compilation
+import config from "./hardhatSetup.config";
 
 
 dotenv.config();
@@ -45,17 +44,5 @@ function getChainConfigParameters(chainConfig: string | undefined): any {
 extendEnvironment((hre) => {
     hre.getChainConfigParameters = getChainConfigParameters;
 });
-
-// // Rig up deployment tasks
-// task("deploy-contracts", "Deploy all contracts")
-//     .addFlag("quiet", "Suppress console output")
-//     .setAction(async (args, hre, runSuper) => {
-//         const parameters = getChainConfigParameters(process.env.CHAIN_CONFIG);
-//         if (parameters) {
-//             await deployContracts(hre, parameters, args.quiet);
-//         } else {
-//             throw Error("CHAIN_CONFIG environment variable not set. Must be parameter json file name.")
-//         }
-//     });
 
 export default config;

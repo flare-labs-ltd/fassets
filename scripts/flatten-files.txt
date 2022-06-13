@@ -1,0 +1,3 @@
+contracts/token/implementation/VPToken.sol
+contracts/token/implementation/WNat.sol
+contracts/addressUpdater/implementation/AddressUpdater.sol
