@@ -60,7 +60,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         bytes32 _method,
         bytes calldata _params
     ) 
-        external
+        external override
         onlyAssetManagerController
     {
         SettingsUpdater.callUpdate(state, pendingUpdates, _method, _params);
@@ -795,12 +795,24 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
     function pause()
-        external
+        external override
         onlyAssetManagerController
     {
         if (state.pausedAt == 0) {
             state.pausedAt = SafeCast.toUint64(block.timestamp);
         }
+    }
+
+    /**
+     * If f-asset was not terminated yet, minting can continue.
+     * NOTE: may not be called directly - only through asset manager controller by governance.
+     */
+    function unpause()
+        external override
+        onlyAssetManagerController
+    {
+        require(!fAsset.terminated(), "f-asset terminated");
+        state.pausedAt = 0;
     }
     
     /**
@@ -812,7 +824,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
     function terminate()
-        external
+        external override
         onlyAssetManagerController
     {
         require(state.pausedAt != 0 && block.timestamp > state.pausedAt + MINIMUM_PAUSE_BEFORE_STOP,
@@ -854,7 +866,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * @return WNat contract
      */    
     function getWNat() 
-        external view 
+        external view override
         returns (IWNat)
     {
         return state.settings.wNat;

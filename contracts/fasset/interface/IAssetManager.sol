@@ -7,6 +7,7 @@ import "./IWNat.sol";
 interface IAssetManager {
     function updateSettings(bytes32 _method, bytes calldata _params) external;
     function pause() external;
+    function unpause() external;
     function terminate() external;
     function withdrawCollateral(uint256 _valueNATWei) external;
     function depositCollateral(uint256 _valueNATWei) external;

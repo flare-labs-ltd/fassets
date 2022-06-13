@@ -297,6 +297,18 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             _assetManagers[i].pause();
         }
     }
+
+    /**
+     * If f-asset was not terminated yet, minting can continue.
+     */
+    function unpause(IAssetManager[] calldata _assetManagers)
+        external
+        onlyGovernance
+    {
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _assetManagers[i].unpause();
+        }
+    }
     
     /**
      * When f-asset is terminated, no transfers can be made anymore.

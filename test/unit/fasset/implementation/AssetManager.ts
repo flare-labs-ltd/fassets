@@ -149,12 +149,39 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isFalse(await fAsset.terminated());
             await assetManager.terminate({ from: assetManagerController });
             assert.isTrue(await fAsset.terminated());
+            await expectRevert(assetManager.unpause({ from: assetManagerController }), "f-asset terminated");
+        });
+
+        it("should unpause if not yet terminated", async () => {
+            await assetManager.pause({ from: assetManagerController });
+            assert.isTrue(await assetManager.paused());
+            await assetManager.unpause({ from: assetManagerController });
+            assert.isFalse(await assetManager.paused());
         });
 
         it("should not pause if not called from asset manager controller", async () => {
             const promise = assetManager.pause({ from: accounts[0] });
             await expectRevert(promise, "only asset manager controller");
             assert.isFalse(await assetManager.paused());
+        });
+
+        it("should not unpause if not called from asset manager controller", async () => {
+            await assetManager.pause({ from: assetManagerController });
+            assert.isTrue(await assetManager.paused());
+            const promise = assetManager.unpause({ from: accounts[0] });
+            await expectRevert(promise, "only asset manager controller");
+            assert.isTrue(await assetManager.paused());
+        });
+
+        it("should not terminate if not called from asset manager controller", async () => {
+            const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
+            assert.isFalse(await assetManager.paused());
+            await assetManager.pause({ from: assetManagerController });
+            assert.isTrue(await assetManager.paused());
+            await time.increase(MINIMUM_PAUSE_BEFORE_STOP);
+            const promise = assetManager.terminate({ from: accounts[0] });
+            await expectRevert(promise, "only asset manager controller");
+            assert.isFalse(await fAsset.terminated());
         });
     });
 
