@@ -1,4 +1,4 @@
-import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { findRequiredEvent } from "../../../utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
@@ -19,11 +19,13 @@ const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const StateConnector = artifacts.require('StateConnectorMock');
+const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFreeBalance unit tests`, async accounts => {
 
     const governance = accounts[10];
     let assetManagerController = accounts[11];
+    let agentVaultFactory: AgentVaultFactoryInstance;
     let attestationClient: AttestationClientSCInstance;
     let assetManager: AssetManagerInstance;
     let wnat: WNatInstance;
@@ -62,6 +64,8 @@ contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFree
     beforeEach(async () => {
         // create state connector
         const stateConnector = await StateConnector.new();
+        // create agent vault factory
+        agentVaultFactory = await AgentVaultFactory.new();
         // create atetstation client
         attestationClient = await AttestationClient.new(stateConnector.address);
         // create mock chain attestation provider
@@ -83,7 +87,7 @@ contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFree
         await ftsoRegistry.addFtso(natFtso.address);
         await ftsoRegistry.addFtso(assetFtso.address);
         // create asset manager
-        settings = createTestSettings(attestationClient, wnat, ftsoRegistry);
+        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
     });
 
@@ -120,7 +124,7 @@ contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFree
         await expectRevert(res, 'not a topup payment');
     });
     it("should reject confirmation of top up payment - topup before agent created", async () => {
-        let agentVaultAddressCalc = ethers.utils.getContractAddress({from: assetManager.address, nonce: 1});
+        let agentVaultAddressCalc = ethers.utils.getContractAddress({from: agentVaultFactory.address, nonce: 1});
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, 500, PaymentReference.topup(agentVaultAddressCalc));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);  

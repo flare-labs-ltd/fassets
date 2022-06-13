@@ -1,11 +1,12 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { AttestationClientSCInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { AgentVaultFactoryInstance, AttestationClientSCInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { DAYS, HOURS, toStringExp, WEEKS } from "../../utils/helpers";
 
-export function createTestSettings(attestationClient: AttestationClientSCInstance, wNat: WNatInstance, ftsoRegistry: FtsoRegistryMockInstance, requireEOAAddressProof: boolean = true): AssetManagerSettings {
+export function createTestSettings(agentVaultFactory: AgentVaultFactoryInstance, attestationClient: AttestationClientSCInstance, wNat: WNatInstance, ftsoRegistry: FtsoRegistryMockInstance, requireEOAAddressProof: boolean = true): AssetManagerSettings {
     return {
         assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
+        agentVaultFactory: agentVaultFactory.address,
         attestationClient: attestationClient.address,
         wNat: wNat.address,
         whitelist: constants.ZERO_ADDRESS,

@@ -19,6 +19,7 @@ const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const StateConnector = artifacts.require('StateConnectorMock');
+const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction attestation basic tests`, async accounts => {
     const governance = accounts[10];
@@ -61,6 +62,8 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     beforeEach(async () => {
         // create state connector
         stateConnector = await StateConnector.new();
+        // create agent vault factory
+        const agentVaultFactory = await AgentVaultFactory.new();
         // create atetstation client
         attestationClient = await AttestationClient.new(stateConnector.address);
         // create mock chain attestation provider
@@ -84,7 +87,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         await ftsoRegistry.addFtso(natFtso.address);
         await ftsoRegistry.addFtso(assetFtso.address);
         // create asset manager
-        settings = createTestSettings(attestationClient, wnat, ftsoRegistry);
+        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
     });
 

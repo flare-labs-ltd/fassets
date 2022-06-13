@@ -17,6 +17,7 @@ const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const MockContract = artifacts.require('MockContract');
 const StateConnector = artifacts.require('StateConnectorMock');
+const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, async accounts => {
     let wnat: WNatInstance;
@@ -55,6 +56,8 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     beforeEach(async () => {
         // create state connector
         const stateConnector = await StateConnector.new();
+        // create agent vault factory
+        const agentVaultFactory = await AgentVaultFactory.new();
         // create atetstation client
         attestationClient = await AttestationClient.new(stateConnector.address);
         // create WNat token
@@ -73,7 +76,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         addressUpdater = await AddressUpdater.new(governance);
         assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
         // create asset manager
-        settings = createTestSettings(attestationClient, wnat, ftsoRegistry, false);
+        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry, false);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController.address, "Ethereum", "ETH", 18, settings);
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
         // create agent vault

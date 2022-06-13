@@ -35,7 +35,7 @@ library SettingsUpdater {
     }
     
     bytes32 internal constant UPDATE_CONTRACTS = 
-        keccak256("updateContracts(address,IAttestationClient,IFtsoRegistry,IWNat)");
+        keccak256("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)");
     bytes32 internal constant REFRESH_FTSO_INDEXES = 
         keccak256("refreshFtsoIndexes()");
     bytes32 internal constant SET_COLLATERAL_RATIOS =
@@ -168,11 +168,22 @@ library SettingsUpdater {
     ) 
         private 
     {
-        (address controller, IAttestationClient attestationClient, IFtsoRegistry ftsoRegistry, IWNat wNat) =
-            abi.decode(_params, (address, IAttestationClient, IFtsoRegistry, IWNat));
+        (
+            address controller,
+            IAgentVaultFactory agentVaultFactory,
+            IAttestationClient attestationClient,
+            IFtsoRegistry ftsoRegistry,
+            IWNat wNat
+        )
+            = abi.decode(_params, (address, IAgentVaultFactory, IAttestationClient, IFtsoRegistry, IWNat));
+
         if (_state.settings.assetManagerController != controller) {
             _state.settings.assetManagerController = controller;
             emit AMEvents.ContractChanged("assetManagerController", address(controller));
+        }
+        if (_state.settings.agentVaultFactory != agentVaultFactory) {
+            _state.settings.agentVaultFactory = agentVaultFactory;
+            emit AMEvents.ContractChanged("agentVaultFactory", address(agentVaultFactory));
         }
         if (_state.settings.attestationClient != attestationClient) {
             _state.settings.attestationClient = attestationClient;

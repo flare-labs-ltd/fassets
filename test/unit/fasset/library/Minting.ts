@@ -1,8 +1,7 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { ethers } from "hardhat";
-import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
-import { testChainInfo } from "../../../integration/utils/ChainInfo";
 import { EventArgs, findRequiredEvent, requiredEventArgs } from "../../../utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
@@ -11,7 +10,7 @@ import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../../utils/fasset/PaymentReference";
-import { BNish, DAYS, getTestFile, toBN, toBNExp, toWei } from "../../../utils/helpers";
+import { BNish, getTestFile, toBN, toBNExp, toWei } from "../../../utils/helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../utils/verification/sources/sources";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
@@ -23,11 +22,12 @@ const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const StateConnector = artifacts.require('StateConnectorMock');
-const MockContract = artifacts.require('MockContract');
+const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async accounts => {
     const governance = accounts[10];
     let assetManagerController = accounts[11];
+    let agentVaultFactory: AgentVaultFactoryInstance;
     let attestationClient: AttestationClientSCInstance;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
@@ -87,6 +87,8 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     beforeEach(async () => {
         // create state connector
         const stateConnector = await StateConnector.new();
+        // create agent vault factory
+        agentVaultFactory = await AgentVaultFactory.new();
         // create atetstation client
         attestationClient = await AttestationClient.new(stateConnector.address);
         // create mock chain attestation provider
@@ -107,7 +109,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         await ftsoRegistry.addFtso(natFtso.address);
         await ftsoRegistry.addFtso(assetFtso.address);
         // create asset manager
-        settings = createTestSettings(attestationClient, wnat, ftsoRegistry);
+        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
     });
 
@@ -453,8 +455,8 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const lots = 2;
         const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
         chain.mint(underlyingRandomAddress, paymentAmount);
-        const nonce = await ethers.provider.getTransactionCount(assetManager.address);
-        let agentVaultAddressCalc = ethers.utils.getContractAddress({from: assetManager.address, nonce: nonce});
+        const nonce = await ethers.provider.getTransactionCount(agentVaultFactory.address);
+        let agentVaultAddressCalc = ethers.utils.getContractAddress({from: agentVaultFactory.address, nonce: nonce});
         const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVaultAddressCalc));
         
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);

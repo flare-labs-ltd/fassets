@@ -15,6 +15,7 @@ const AddressUpdater = artifacts.require('AddressUpdater');
 const AssetManagerController = artifacts.require('AssetManagerController');
 const Whitelist = artifacts.require('Whitelist');
 const StateConnector = artifacts.require('StateConnectorMock');
+const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager controller basic tests`, async accounts => {
     const governance = accounts[10];
@@ -33,6 +34,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     beforeEach(async () => {
         // create state connector
         const stateConnector = await StateConnector.new();
+        // create agent vault factory
+        const agentVaultFactory = await AgentVaultFactory.new();
         // create atetstation client
         attestationClient = await AttestationClient.new(stateConnector.address);
         // create WNat token
@@ -53,7 +56,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         addressUpdater = await AddressUpdater.new(governance);
         assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
         // create asset manager
-        settings = createTestSettings(attestationClient, wnat, ftsoRegistry);
+        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController.address, "Ethereum", "ETH", 18, settings);
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
         await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance });
@@ -469,8 +472,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should change contracts", async () => {
-            await addressUpdater.update(["AddressUpdater", "AssetManagerController", "AttestationClient", "FtsoRegistry", "WNat"],
-                [addressUpdater.address, assetManagerController.address, accounts[80], accounts[81], accounts[82]],
+            await addressUpdater.update(["AddressUpdater", "AssetManagerController", "AttestationClient", "FtsoRegistry", "WNat", "AgentVaultFactory"],
+                [addressUpdater.address, assetManagerController.address, accounts[80], accounts[81], accounts[82], accounts[83]],
                 [assetManagerController.address],
                 { from: governance });
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
@@ -478,12 +481,13 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(settings.attestationClient, accounts[80]);
             assertWeb3Equal(settings.ftsoRegistry, accounts[81]);
             assertWeb3Equal(settings.wNat, accounts[82]);
+            assertWeb3Equal(settings.agentVaultFactory, accounts[83]);
             assertWeb3Equal(await assetManagerController.replacedBy(), constants.ZERO_ADDRESS);
         });
 
         it("should change contracts, including asset manager controller", async () => {
-            await addressUpdater.update(["AddressUpdater", "AssetManagerController", "AttestationClient", "FtsoRegistry", "WNat"],
-                [addressUpdater.address, accounts[79], accounts[80], accounts[81], accounts[82]],
+            await addressUpdater.update(["AddressUpdater", "AssetManagerController", "AttestationClient", "FtsoRegistry", "WNat", "AgentVaultFactory"],
+                [addressUpdater.address, accounts[79], accounts[80], accounts[81], accounts[82], accounts[83]],
                 [assetManagerController.address],
                 { from: governance });
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
@@ -491,6 +495,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(settings.attestationClient, accounts[80]);
             assertWeb3Equal(settings.ftsoRegistry, accounts[81]);
             assertWeb3Equal(settings.wNat, accounts[82]);
+            assertWeb3Equal(settings.agentVaultFactory, accounts[83]);
             assertWeb3Equal(await assetManagerController.replacedBy(), accounts[79]);
         });
 

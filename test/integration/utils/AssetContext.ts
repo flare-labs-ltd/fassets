@@ -1,5 +1,5 @@
 import { constants, time } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { ContractWithEvents } from "../../utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../utils/fasset/AttestationHelper";
@@ -15,6 +15,7 @@ import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { web3DeepNormalize } from "../../utils/web3assertions";
 import { ChainInfo, NatInfo } from "./ChainInfo";
 
+const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const AttestationClient = artifacts.require('AttestationClientSC');
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AddressUpdater = artifacts.require('AddressUpdater');
@@ -31,6 +32,7 @@ export type AddressUpdaterEvents = import('../../../typechain-truffle/AddressUpd
 export type AssetManagerControllerEvents = import('../../../typechain-truffle/AssetManagerController').AllEvents;
 export type WNatEvents = import('../../../typechain-truffle/WNat').AllEvents;
 export type StateConnectorMockEvents = import('../../../typechain-truffle/StateConnectorMock').AllEvents;
+export type AgentVaultFactoryEvents = import('../../../typechain-truffle/AgentVaultFactory').AllEvents;
 export type AttestationClientSCEvents = import('../../../typechain-truffle/AttestationClientSC').AllEvents;
 export type FtsoRegistryMockEvents = import('../../../typechain-truffle/FtsoRegistryMock').AllEvents;
 export type FtsoMockEvents = import('../../../typechain-truffle/FtsoMock').AllEvents;
@@ -45,6 +47,7 @@ export class CommonContext {
         public addressUpdater: ContractWithEvents<AddressUpdaterInstance, AddressUpdaterEvents>,
         public assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>,
         public stateConnector: ContractWithEvents<StateConnectorMockInstance, StateConnectorMockEvents>,
+        public agentVaultFactory: ContractWithEvents<|AgentVaultFactoryInstance, AgentVaultFactoryEvents>,
         public attestationClient: ContractWithEvents<AttestationClientSCInstance, AttestationClientSCEvents>,
         public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryMockEvents>,
         public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerMockEvents>,
@@ -55,6 +58,8 @@ export class CommonContext {
     static async createTest(governance: string, natInfo: NatInfo): Promise<CommonContext> {
         // create state connector
         const stateConnector = await StateConnector.new();
+        // create agent vault factory
+        const agentVaultFactory = await AgentVaultFactory.new();
         // create attestation client
         const attestationClient = await AttestationClient.new(stateConnector.address);
         // create asset manager controller
@@ -70,7 +75,7 @@ export class CommonContext {
         const ftsoRegistry = await FtsoRegistryMock.new();
         await ftsoRegistry.addFtso(natFtso.address);
         const ftsoManager = await FtsoManagerMock.new();
-        return new CommonContext(governance, addressUpdater, assetManagerController, stateConnector, attestationClient, ftsoRegistry, ftsoManager, wnat, natFtso);
+        return new CommonContext(governance, addressUpdater, assetManagerController, stateConnector, agentVaultFactory, attestationClient, ftsoRegistry, ftsoManager, wnat, natFtso);
     }
 }
 
@@ -233,6 +238,7 @@ export class AssetContext {
     static async createTestSettings(ctx: CommonContext, ci: ChainInfo): Promise<AssetManagerSettings> {
         return {
             assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
+            agentVaultFactory: ctx.agentVaultFactory.address,
             attestationClient: ctx.attestationClient.address,
             wNat: ctx.wnat.address,
             whitelist: constants.ZERO_ADDRESS,

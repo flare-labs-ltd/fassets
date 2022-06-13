@@ -3,6 +3,7 @@ pragma solidity 0.8.11;
 
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "../../generated/interface/IAttestationClient.sol";
+import "../interface/IAgentVaultFactory.sol";
 import "../interface/IWNat.sol";
 import "../interface/IWhitelist.sol";
 
@@ -12,6 +13,9 @@ library AssetManagerSettings {
         // Required contracts.
         // Only used to verify that calls come from assetManagerController.
         address assetManagerController;
+
+        // Factory for creating new agent vaults.
+        IAgentVaultFactory agentVaultFactory;
         
         // If set, the whitelist contains a list of accounts that can call public methods
         // (minting, redeeming, challenging, etc.)

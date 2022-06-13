@@ -1,5 +1,5 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
@@ -18,10 +18,12 @@ const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const Whitelist = artifacts.require('Whitelist');
 const StateConnector = artifacts.require('StateConnectorMock');
+const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic tests`, async accounts => {
     const governance = accounts[10];
     let assetManagerController = accounts[11];
+    let agentVaultFactory: AgentVaultFactoryInstance;
     let attestationClient: AttestationClientSCInstance;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
@@ -47,6 +49,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     beforeEach(async () => {
         // create state connector
         const stateConnector = await StateConnector.new();
+        // create agent vault factory
+        agentVaultFactory = await AgentVaultFactory.new();
         // create atetstation client
         attestationClient = await AttestationClient.new(stateConnector.address);
         // create mock chain attestation provider
@@ -67,7 +71,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         await ftsoRegistry.addFtso(natFtso.address);
         await ftsoRegistry.addFtso(assetFtso.address);
         // create asset manager
-        settings = createTestSettings(attestationClient, wnat, ftsoRegistry);
+        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
     });
 
@@ -156,14 +160,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
     describe("should update contracts", () => {
         it("should update contract addresses", async () => {
-            let attestationClientNewAddress = accounts[21];
-            let ftsoRegistryNewAddress = accounts[22];
-            let wnatNewAddress = accounts[23];
+            let agentVaultFactoryNewAddress = accounts[21];
+            let attestationClientNewAddress = accounts[22];
+            let ftsoRegistryNewAddress = accounts[23];
+            let wnatNewAddress = accounts[24];
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAttestationClient,IFtsoRegistry,IWNat)")), 
-            web3.eth.abi.encodeParameters(['address', 'address', 'address', 'address'], [assetManagerController, attestationClientNewAddress, ftsoRegistryNewAddress, wnatNewAddress]), 
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)")), 
+            web3.eth.abi.encodeParameters(['address', 'address', 'address', 'address', 'address'], [assetManagerController, agentVaultFactoryNewAddress, attestationClientNewAddress, ftsoRegistryNewAddress, wnatNewAddress]), 
                 { from: assetManagerController });
             const res = web3ResultStruct(await assetManager.getSettings());
+            assert.notEqual(newSettings.agentVaultFactory, res.agentVaultFactory)
             assert.notEqual(newSettings.attestationClient, res.attestationClient)
             assert.notEqual(newSettings.ftsoRegistry, res.ftsoRegistry)
             assert.notEqual(newSettings.wNat, res.wNat)
@@ -171,8 +177,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should not update contract addresses", async () => {
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAttestationClient,IFtsoRegistry,IWNat)")), 
-            web3.eth.abi.encodeParameters(['address', 'address', 'address', 'address'], [assetManagerController, attestationClient.address, ftsoRegistry.address, wnat.address]), 
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)")), 
+            web3.eth.abi.encodeParameters(['address', 'address', 'address', 'address', 'address'], [assetManagerController, agentVaultFactory.address, attestationClient.address, ftsoRegistry.address, wnat.address]), 
                 { from: assetManagerController });
             const res = web3ResultStruct(await assetManager.getSettings());
             assertWeb3DeepEqual(res, newSettings)

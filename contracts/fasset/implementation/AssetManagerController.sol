@@ -325,6 +325,8 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     {
         address assetManagerController =
             _getContractAddress(_contractNameHashes, _contractAddresses, "AssetManagerController");
+        IAgentVaultFactory agentVaultFactory =
+            IAgentVaultFactory(_getContractAddress(_contractNameHashes, _contractAddresses, "AgentVaultFactory"));
         IAttestationClient attestationClient = 
             IAttestationClient(_getContractAddress(_contractNameHashes, _contractAddresses, "AttestationClient"));
         IFtsoRegistry ftsoRegistry =
@@ -335,7 +337,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             IAssetManager assetManager = assetManagers[i];
             assetManager.updateSettings(
                 SettingsUpdater.UPDATE_CONTRACTS, 
-                abi.encode(assetManagerController, attestationClient, ftsoRegistry, wNat));
+                abi.encode(assetManagerController, agentVaultFactory, attestationClient, ftsoRegistry, wNat));
         }
         // if this controller was replaced, set forwarding address
         if (assetManagerController != address(this)) {

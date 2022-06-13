@@ -4,7 +4,6 @@ import { ChainInfo, testChainInfo } from "../../../integration/utils/ChainInfo";
 import { filterEvents, findRequiredEvent, requiredEventArgs } from "../../../utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
-import { TX_FAILED } from "../../../utils/fasset/ChainInterfaces";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
@@ -20,6 +19,7 @@ const WNat = artifacts.require('WNat');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const StateConnector = artifacts.require('StateConnectorMock');
+const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, async accounts => {
     const governance = accounts[10];
@@ -110,6 +110,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     beforeEach(async () => {
         // create state connector
         stateConnector = await StateConnector.new();
+        // create agent vault factory
+        const agentVaultFactory = await AgentVaultFactory.new();
         // create atetstation client
         attestationClient = await AttestationClient.new(stateConnector.address);
         // create mock chain attestation provider
@@ -132,7 +134,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await ftsoRegistry.addFtso(natFtso.address);
         await ftsoRegistry.addFtso(assetFtso.address);
         // create asset manager
-        settings = createTestSettings(attestationClient, wnat, ftsoRegistry);
+        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
     });
 
