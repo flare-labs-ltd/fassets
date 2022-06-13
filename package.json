@@ -12,8 +12,8 @@
   "directories": {},
   "scripts": {
     "---------HOOKS": "",
-    "prepare": "yarn flatten-dependencies ../flare-smart-contracts scripts/flatten-files.txt cache/flattened/FlareSmartContracts.sol",
-    
+    "postinstall": "echo Running install in flare-smart-contracts... && cd node_modules/flare-smart-contracts && yarn",
+    "prepare": "yarn flatten-dependencies node_modules/flare-smart-contracts scripts/flatten-files.txt cache/flattened/FlareSmartContracts.sol",
     "---------TEST---SCRIPTS": "",
     "test": "yarn hardhat test",
     "coverage": "env NODE_OPTIONS=\"--max_old_space_size=8192\" yarn hardhat coverage --testfiles",
@@ -23,7 +23,6 @@
     "test_unit_hh": "env TEST_PATH=./test/unit yarn hardhat test --network hardhat",
     "test_integration_hh": "env TEST_PATH=./test/integration yarn hardhat test --network hardhat",
     "fuzzing_fasset": "yarn test test/fuzzing/fasset/FAssetFuzzing.ts",
-
     "---------COMPILE---SCRIPTS": "",
     "clean": "env rm -rf cache artifacts typechain typechain-truffle",
     "clean-all": "yarn clean && env rm -rf node_modules",
@@ -40,7 +39,6 @@
     "slither-show-stderr": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json || true; node node_modules/flare-smart-contracts/scripts/slither-parse.js ./slither.json",
     "flatten-dependencies": "env bash scripts/flatten-dependencies.sh",
     "generate-attester-code": "env bash scripts/generate-attester-code.sh",
-
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",
     "gas-report": "ts-node node_modules/flare-smart-contracts/scripts/process-gas-report.ts && cat .gas-report.txt",
@@ -49,7 +47,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "4.4.2",
-    "@tenderly/hardhat-tenderly": "1.0.12",
+    "@tenderly/hardhat-tenderly": "1.0.13",
     "@typescript-eslint/eslint-plugin": "5.10.2",
     "@typescript-eslint/parser": "5.10.2",
     "cli-progress": "3.9.1",
@@ -58,16 +56,16 @@
     "eslint": "8.8.0",
     "ethereum-tx-decoder": "3.0.0",
     "got": "11.8.3",
-    "hardhat": "2.3.0",
+    "hardhat": "2.9.1",
     "solhint": "3.3.7",
     "solidity-coverage": "0.7.20",
-    "flare-smart-contracts": "link:../flare-smart-contracts"
+    "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#master"
   },
   "devDependencies": {
     "@gnosis.pm/mock-contract": "4.0.0",
-    "@nomiclabs/hardhat-ethers": "2.0.2",
-    "@nomiclabs/hardhat-truffle5": "2.0.0",
-    "@nomiclabs/hardhat-waffle": "2.0.1",
+    "@nomiclabs/hardhat-ethers": "2.0.5",
+    "@nomiclabs/hardhat-truffle5": "2.0.5",
+    "@nomiclabs/hardhat-waffle": "2.0.3",
     "@nomiclabs/hardhat-web3": "2.0.0",
     "@openzeppelin/test-helpers": "0.5.15",
     "@typechain/ethers-v5": "9.0.0",
@@ -82,9 +80,9 @@
     "ethereum-waffle": "3.4.0",
     "ethereumjs-wallet": "1.0.2",
     "ethers": "5.5.4",
-    "hardhat-contract-sizer": "2.0.3",
-    "hardhat-deploy": "0.7.10",
-    "hardhat-gas-reporter": "1.0.4",
+    "hardhat-contract-sizer": "2.5.0",
+    "hardhat-deploy": "0.10.5",
+    "hardhat-gas-reporter": "1.0.8",
     "intercept-stdout": "0.1.2",
     "openpgp": "5.2.0",
     "pascal-case": "3.1.2",
