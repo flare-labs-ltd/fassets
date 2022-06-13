@@ -111,7 +111,8 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         onlyAssetManager
         nonReentrant
     {
-        _wNat.transfer(_recipient, _amount);
+        bool success = _wNat.transfer(_recipient, _amount);
+        assert(success);
     }
     
     // Used by asset manager (only for burn for now).
