@@ -313,7 +313,7 @@ library Agents {
             }
         }
         agent.withdrawalAnnouncedNATWei = SafeCast.toUint128(_valueNATWei);
-        // TODO: should emit event?
+        emit AMEvents.CollateralWithdrawalAnnounced(_agentVault, _valueNATWei, agent.withdrawalAnnouncedAt);
     }
 
     function increaseDust(
@@ -391,7 +391,6 @@ library Agents {
         agent.withdrawalAnnouncedNATWei -= uint128(_valueNATWei);    // guarded by above require
         // could reset agent.withdrawalAnnouncedAt if agent.withdrawalAnnouncedNATWei == 0, 
         // but it's not needed, since no withdrawal can be made anyway
-        // TODO: should emit event?
     }
 
     function payout(

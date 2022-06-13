@@ -128,7 +128,7 @@ library FullAgentInfo {
         _agentState.dustUBA = Conversion.convertAmgToUBA(_state.settings, agent.dustAMG);
         _agentState.ccbStartTimestamp = _getCCBStartTime(agent);
         _agentState.liquidationStartTimestamp = _getLiquidationStartTime(_state, agent);
-        _agentState.lockedUnderlyingBalanceUBA = _agentState.mintedUBA; // TODO: record all incoming/outgoing?
+        _agentState.lockedUnderlyingBalanceUBA = _agentState.mintedUBA;
         _agentState.freeUnderlyingBalanceUBA = agent.freeUnderlyingBalanceUBA;
         _agentState.announcedUnderlyingWithdrawalId = agent.announcedUnderlyingWithdrawalId;
     }

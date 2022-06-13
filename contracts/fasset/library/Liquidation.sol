@@ -132,7 +132,6 @@ library Liquidation {
         // if agent is safe, restore status to NORMAL
         if (collateralRatioBIPS >= targetRatioBIPS) {
             _agent.status = Agents.AgentStatus.NORMAL;
-            // TODO: are these two lines needed?
             _agent.liquidationStartedAt = 0;
             _agent.initialLiquidationPhase = Agents.LiquidationPhase.NONE;
             emit AMEvents.LiquidationEnded(_agentVault);

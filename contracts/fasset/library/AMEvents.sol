@@ -3,18 +3,38 @@ pragma solidity 0.8.11;
 
 
 library AMEvents {
+    /**
+     * A new agent vault was created.
+     */ 
     event AgentCreated(
         address indexed owner,
         uint8 agentType,
         address agentVault,
         string underlyingAddress);
 
+    /**
+     * Agent has announced destroy (close) of agent vault and will be able to
+     * perform destroy in withdrawalWaitMinSeconds seconds.
+     */ 
     event AgentDestroyAnnounced(
         address indexed agentVault,
         uint256 timestamp);
 
+    /**
+     * Agent has destroyed (closed) the agent vault.
+     */ 
     event AgentDestroyed(
         address indexed agentVault);
+
+    /**
+     * Agent has announced a withdrawal of collateral and will be able to
+     * withdraw the announced amount in withdrawalWaitMinSeconds seconds.
+     * If withdrawal was canceled, value and timestamp are zero.
+     */ 
+    event CollateralWithdrawalAnnounced(
+        address indexed agentVault,
+        uint256 valueNATWei,
+        uint256 timestamp);
         
     /**
      * Agent was added to the list of available agents and can accept collateral reservation requests.
