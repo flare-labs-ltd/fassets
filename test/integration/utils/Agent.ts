@@ -6,7 +6,7 @@ import { checkEventNotEmited, eventArgs, EventArgs, filterEvents, findRequiredEv
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { BNish, BN_ZERO, randomAddress, toBN } from "../../utils/helpers";
+import { BNish, BN_ZERO, MAX_BIPS, randomAddress, toBN } from "../../utils/helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
@@ -264,15 +264,10 @@ export class Agent extends AssetContextClient {
     }
 
     private async collateralRatio(fullCollateral: BNish, amgToNATWeiPrice: BNish, mintedAMG: BNish, reservedAMG: BNish = 0, redeemingAMG: BNish = 0) {
-        if (toBN(mintedAMG).eqn(0)) return toBN(2).pow(toBN(256)).subn(1);    // nothing minted - ~infinite collateral ratio
-        // reserve CR collateral and redemption collateral at minCollateralRatio
-        const totalReservedAMG = toBN(reservedAMG).add(toBN(redeemingAMG));
-        const reservedCollateral = this.context.convertAmgToNATWei(totalReservedAMG, amgToNATWeiPrice)
-            .mul(toBN((await this.assetManager.getSettings()).minCollateralRatioBIPS)).divn(10_000);
-        const availableCollateral = toBN(fullCollateral).gt(reservedCollateral) ? toBN(fullCollateral).sub(reservedCollateral) : BN_ZERO;
-        // calculate NATWei value of minted assets
-        const backingNATWei = this.context.convertAmgToNATWei(mintedAMG, amgToNATWeiPrice);
-        return availableCollateral.muln(10_000).div(backingNATWei);
+        const totalAMG = toBN(reservedAMG).add(toBN(mintedAMG)).add(toBN(redeemingAMG));
+        if (totalAMG.eqn(0)) return toBN(2).pow(toBN(256)).subn(1);    // nothing minted - ~infinite collateral ratio
+        const backingNATWei = this.context.convertAmgToNATWei(totalAMG, amgToNATWeiPrice);
+        return toBN(fullCollateral).muln(MAX_BIPS).div(backingNATWei);
     }
 
     async lockedCollateralWei(mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0, withdrawalAnnouncedNATWei: BNish = 0) {

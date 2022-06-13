@@ -276,9 +276,9 @@ library Liquidation {
         (_amgToNATWeiPrice, _amgToNATWeiPriceTrusted) = 
             Conversion.currentAmgToNATWeiPriceWithTrusted(_state.settings);
         uint256 ratio = 
-            AgentCollateral.collateralRatioBIPS(_agent, _state.settings, fullCollateral, _amgToNATWeiPrice);
+            AgentCollateral.collateralRatioBIPS(_agent, fullCollateral, _amgToNATWeiPrice);
         uint256 ratioTrusted = 
-            AgentCollateral.collateralRatioBIPS(_agent, _state.settings, fullCollateral, _amgToNATWeiPriceTrusted);
+            AgentCollateral.collateralRatioBIPS(_agent, fullCollateral, _amgToNATWeiPriceTrusted);
         _collateralRatioBIPS = Math.max(ratio, ratioTrusted);
     }
 }

@@ -414,13 +414,10 @@ export class FuzzingStateAgent {
     }
 
     private collateralRatioForPriceBIPS(prices: Prices) {
-        if (this.mintedUBA.isZero()) return MAX_UINT256;
-        const reservedUBA = this.reservedUBA.add(this.redeemingUBA);
-        const reservedCollateral = this.parent.context.convertUBAToNATWei(reservedUBA, prices.amgNatWei)
-            .mul(toBN(this.parent.settings.minCollateralRatioBIPS)).divn(MAX_BIPS);
-        const availableCollateral = BN.max(this.totalCollateralNATWei.sub(reservedCollateral), BN_ZERO);
-        const backingCollateral = this.parent.context.convertUBAToNATWei(this.mintedUBA, prices.amgNatWei);
-        return availableCollateral.muln(MAX_BIPS).div(backingCollateral);
+        const totalUBA = this.reservedUBA.add(this.mintedUBA).add(this.redeemingUBA);
+        if (totalUBA.isZero()) return MAX_UINT256;
+        const backingCollateral = this.parent.context.convertUBAToNATWei(totalUBA, prices.amgNatWei);
+        return this.totalCollateralNATWei.muln(MAX_BIPS).div(backingCollateral);
     }
 
     collateralRatioBIPS() {
@@ -430,15 +427,12 @@ export class FuzzingStateAgent {
     }
     
     private collateralRatioForPrice(prices: Prices) {
-        if (this.mintedUBA.isZero()) return Number.POSITIVE_INFINITY;
         const assetUnitUBA = Number(this.parent.settings.assetUnitUBA);
-        const reserved = (Number(this.reservedUBA) + Number(this.redeemingUBA)) / assetUnitUBA;
-        const minCollateralRatio = Number(this.parent.settings.minCollateralRatioBIPS) / MAX_BIPS;
-        const reservedCollateral = reserved * prices.assetNat * minCollateralRatio;
+        const backedAmount = (Number(this.reservedUBA) + Number(this.mintedUBA) + Number(this.redeemingUBA)) / assetUnitUBA;
+        if (backedAmount === 0) return Number.POSITIVE_INFINITY;
         const totalCollateral = Number(this.totalCollateralNATWei) / Number(NAT_WEI);
-        const availableCollateral = Math.max(totalCollateral - reservedCollateral, 0);
-        const backingCollateral = Number(this.mintedUBA) / assetUnitUBA * prices.assetNat;
-        return availableCollateral / backingCollateral;
+        const backingCollateral = Number(backedAmount) * prices.assetNat;
+        return totalCollateral / backingCollateral;
     }
     
     collateralRatio() {

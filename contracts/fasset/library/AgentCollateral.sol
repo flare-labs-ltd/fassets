@@ -111,26 +111,18 @@ library AgentCollateral {
     }
     
     // Agent's collateral ratio (BIPS) - used in liquidation.
-    // Reserves CR collateral and redemption collateral at minCollateralRatio,
-    // and returns only collateral ratio for minted assets.
     // Ignores collateral announced for withdrawal (withdrawals are forbidden during liquidation).
     function collateralRatioBIPS(
         Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings,
         uint256 _fullCollateral,
         uint256 _amgToNATWeiPrice
     )
         internal view
         returns (uint256) 
     {
-        if (_agent.mintedAMG == 0) return type(uint256).max;    // nothing minted - ~infinite collateral ratio
-        // reserve CR collateral and redemption collateral at minCollateralRatio
-        uint256 reservedAMG = uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG); 
-        uint256 reservedCollateral = Conversion.convertAmgToNATWei(reservedAMG, _amgToNATWeiPrice)
-            .mulBips(_settings.minCollateralRatioBIPS);
-        (, uint256 availableCollateral) = _fullCollateral.trySub(reservedCollateral);
-        // calculate NATWei value of minted assets
-        uint256 backingNATWei = Conversion.convertAmgToNATWei(_agent.mintedAMG, _amgToNATWeiPrice);
-        return availableCollateral.mulDiv(SafeBips.MAX_BIPS, backingNATWei);
+        uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG);
+        if (totalAMG == 0) return type(uint256).max;    // nothing minted - ~infinite collateral ratio
+        uint256 backingNATWei = Conversion.convertAmgToNATWei(totalAMG, _amgToNATWeiPrice);
+        return _fullCollateral.mulDiv(SafeBips.MAX_BIPS, backingNATWei);
     }
 }
