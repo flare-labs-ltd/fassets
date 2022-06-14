@@ -176,8 +176,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await time.increase(toBN(settings.timelockSeconds).addn(1));
             await time.advanceBlock();
 
+            let val = toStringExp(100, 18);
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            let paymentChallengeRewardNATWei_big = toBN(newSettings.paymentChallengeRewardNATWei).muln(5);
+            let paymentChallengeRewardNATWei_big = (toBN(newSettings.paymentChallengeRewardNATWei).add(toBN(val))).muln(5);
             let paymentChallengeRewardNATWei_small = toBN(newSettings.paymentChallengeRewardNATWei).divn(5);
 
             let res1 = assetManagerController.setPaymentChallengeReward([assetManager.address], paymentChallengeRewardNATWei_big, newSettings.paymentChallengeRewardBIPS, { from: governance });
@@ -185,7 +186,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let res2 = assetManagerController.setPaymentChallengeReward([assetManager.address], paymentChallengeRewardNATWei_small, newSettings.paymentChallengeRewardBIPS, { from: governance });
             await expectRevert(res2, "decrease too big");
 
-            let paymentChallengeRewardBIPS_big = toBN(newSettings.paymentChallengeRewardBIPS).add(toBN(100)).muln(5);
+            let paymentChallengeRewardBIPS_big = (toBN(newSettings.paymentChallengeRewardBIPS).addn(100)).muln(5);
             let paymentChallengeRewardBIPS_small = toBN(newSettings.paymentChallengeRewardBIPS).divn(5);
 
             let res3 = assetManagerController.setPaymentChallengeReward([assetManager.address], newSettings.paymentChallengeRewardNATWei, paymentChallengeRewardBIPS_big, { from: governance });
@@ -196,15 +197,12 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should set payment challenge reward", async () => {
             const currentSettings = await assetManager.getSettings();
-            // payment challenge reward could be zero 
-            if (!toBN(currentSettings.paymentChallengeRewardNATWei).eqn(0)) {
-                let paymentChallengeRewardNATWei_new = toBN(currentSettings.paymentChallengeRewardNATWei).muln(4);
-                let paymentChallengeRewardBIPS_new = toBN(currentSettings.paymentChallengeRewardBIPS).muln(4);
+            let paymentChallengeRewardNATWei_new = toBN(currentSettings.paymentChallengeRewardNATWei).muln(4);
+            let paymentChallengeRewardBIPS_new = (toBN(currentSettings.paymentChallengeRewardBIPS).addn(100)).muln(4);
 
-                let res = await assetManagerController.setPaymentChallengeReward([assetManager.address], paymentChallengeRewardNATWei_new, paymentChallengeRewardBIPS_new, { from: governance });
-                expectEvent(res, "SettingChanged", { name: "paymentChallengeRewardNATWei", value: paymentChallengeRewardNATWei_new })
-                expectEvent(res, "SettingChanged", { name: "paymentChallengeRewardBIPS", value: paymentChallengeRewardBIPS_new })
-            }
+            let res = await assetManagerController.setPaymentChallengeReward([assetManager.address], paymentChallengeRewardNATWei_new, paymentChallengeRewardBIPS_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "paymentChallengeRewardNATWei", value: paymentChallengeRewardNATWei_new });
+            expectEvent(res, "SettingChanged", { name: "paymentChallengeRewardBIPS", value: paymentChallengeRewardBIPS_new });
         });       
 
         it("should set time for payment", async () => {
