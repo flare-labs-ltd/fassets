@@ -162,9 +162,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let lotSizeAMG_small = toBN(currentSettings.lotSizeAMG).divn(5);
             const res_big = assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG_big, { from: governance });
             const res_small = assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG_small, { from: governance });
+            const res_zero = assetManagerController.setLotSizeAmg([assetManager.address], 0, { from: governance });
 
             await expectRevert(res_big, "lot size increase too big");
-            await expectRevert(res_small, "lot size decrease too big")
+            await expectRevert(res_small, "lot size decrease too big");
+            await expectRevert(res_zero, "cannot be zero");
         });
 
         it("should revert setting payment challenge reward when increase or decrease is too big", async () => {
@@ -220,8 +222,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let maxTrustedPriceAgeSeconds_small = toBN(currentSettings.maxTrustedPriceAgeSeconds).divn(60);
             let res_big = assetManagerController.setMaxTrustedPriceAgeSeconds([assetManager.address], maxTrustedPriceAgeSeconds_big, { from: governance });
             let res_small = assetManagerController.setMaxTrustedPriceAgeSeconds([assetManager.address], maxTrustedPriceAgeSeconds_small, { from: governance });
+            let res_zero = assetManagerController.setMaxTrustedPriceAgeSeconds([assetManager.address], 0, { from: governance });
             await expectRevert(res_big, "fee increase too big");
             await expectRevert(res_small, "fee decrease too big");
+            await expectRevert(res_zero, "cannot be zero");
         });
 
         it("should set max trusted price age seconds", async () => {
@@ -239,9 +243,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let res_big = assetManagerController.setCollateralReservationFeeBips([assetManager.address], collateralReservationFeeBIPS_big, { from: governance });
             let res_small = assetManagerController.setCollateralReservationFeeBips([assetManager.address], collateralReservationFeeBIPS_small, { from: governance });
             let res_too_high = assetManagerController.setCollateralReservationFeeBips([assetManager.address], collateralReservationFeeBIPS_too_high, { from: governance });
+            let res_zero = assetManagerController.setCollateralReservationFeeBips([assetManager.address], 0, { from: governance });
             await expectRevert(res_big, "fee increase too big");
             await expectRevert(res_small, "fee decrease too big");
             await expectRevert(res_too_high, "bips value too high");
+            await expectRevert(res_zero, "cannot be zero");
         });
 
         it("should set collateral reservation fee bips", async () => {
@@ -259,9 +265,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let res_big = assetManagerController.setRedemptionFeeBips([assetManager.address], redemptionFeeBIPS_big, { from: governance });
             let res_small = assetManagerController.setRedemptionFeeBips([assetManager.address], redemptionFeeBIPS_small, { from: governance });
             let res_too_high = assetManagerController.setRedemptionFeeBips([assetManager.address], redemptionFeeBIPS_too_high, { from: governance });
+            let res_zero = assetManagerController.setRedemptionFeeBips([assetManager.address], 0, { from: governance });
             await expectRevert(res_big, "fee increase too big");
             await expectRevert(res_small, "fee decrease too big");
             await expectRevert(res_too_high, "bips value too high");
+            await expectRevert(res_zero, "cannot be zero");
         });
 
         it("should revert setting confirmation by others after seconds when value too low", async () => {
@@ -283,8 +291,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let confirmationByOthersRewardNATWei_small = toBN(currentSettings.confirmationByOthersRewardNATWei).divn(5);
             let res_big = assetManagerController.setConfirmationByOthersRewardNatWei([assetManager.address], confirmationByOthersRewardNATWei_big, { from: governance });
             let res_small = assetManagerController.setConfirmationByOthersRewardNatWei([assetManager.address], confirmationByOthersRewardNATWei_small, { from: governance });
+            let res_zero = assetManagerController.setConfirmationByOthersRewardNatWei([assetManager.address], 0, { from: governance });
             await expectRevert(res_big, "fee increase too big");
             await expectRevert(res_small, "fee decrease too big");
+            await expectRevert(res_zero, "cannot be zero");
         });
 
         it("should set confirmation by others reward NATWei", async () => {
@@ -342,9 +352,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
             let res_big = assetManagerController.setCcbTimeSeconds([assetManager.address], ccbTimeSeconds_big, { from: governance });
             let res_small = assetManagerController.setCcbTimeSeconds([assetManager.address], ccbTimeSeconds_small, { from: governance });
+            let res_zero = assetManagerController.setCcbTimeSeconds([assetManager.address], 0, { from: governance });
 
             await expectRevert(res_big, "increase too big");
             await expectRevert(res_small, "decrease too big");
+            await expectRevert(res_zero, "cannot be zero");
         });
 
         it("should set ccb time", async () => {
@@ -361,9 +373,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
             let res_big = assetManagerController.setLiquidationStepSeconds([assetManager.address], liquidationStepSeconds_big, { from: governance });
             let res_small = assetManagerController.setLiquidationStepSeconds([assetManager.address], liquidationStepSeconds_small, { from: governance });
+            let res_zero = assetManagerController.setLiquidationStepSeconds([assetManager.address], 0, { from: governance });
 
             await expectRevert(res_big, "increase too big");
             await expectRevert(res_small, "decrease too big");
+            await expectRevert(res_zero, "cannot be zero");
         });
 
         it("should set liquidation step", async () => {

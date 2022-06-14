@@ -353,6 +353,7 @@ library SettingsUpdater {
         // validate
         // huge lot size increase is very dangerous, because it breaks redemption
         // (converts all tickets to dust)
+        require(value > 0, "cannot be zero");
         require(value <= _state.settings.lotSizeAMG * 2, "lot size increase too big");
         require(value >= _state.settings.lotSizeAMG / 4, "lot size decrease too big");
         // update
@@ -368,6 +369,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         // validate
+        require(value > 0, "cannot be zero");
         require(value <= _state.settings.maxTrustedPriceAgeSeconds * 2, "fee increase too big");
         require(value >= _state.settings.maxTrustedPriceAgeSeconds / 2, "fee decrease too big");
         // update
@@ -383,6 +385,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         // validate
+        require(value > 0, "cannot be zero");
         require(value <= SafeBips.MAX_BIPS, "bips value too high");
         require(value <= _state.settings.collateralReservationFeeBIPS * 4, "fee increase too big");
         require(value >= _state.settings.collateralReservationFeeBIPS / 4, "fee decrease too big");
@@ -399,6 +402,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         // validate
+        require(value > 0, "cannot be zero");
         require(value <= SafeBips.MAX_BIPS, "bips value too high");
         require(value <= _state.settings.redemptionFeeBIPS * 4, "fee increase too big");
         require(value >= _state.settings.redemptionFeeBIPS / 4, "fee decrease too big");
@@ -445,6 +449,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         // validate
+        require(value > 0, "cannot be zero");
         require(value <= _state.settings.confirmationByOthersRewardNATWei * 4, "fee increase too big");
         require(value >= _state.settings.confirmationByOthersRewardNATWei / 4, "fee decrease too big");
         // update
@@ -492,6 +497,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         // validate
+        require(value > 0, "cannot be zero");
         require(value <= _state.settings.ccbTimeSeconds * 2, "increase too big");
         require(value >= _state.settings.ccbTimeSeconds / 2, "decrease too big");
         // update
@@ -507,6 +513,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         // validate
+        require(value > 0, "cannot be zero");
         require(value <= _state.settings.liquidationStepSeconds * 2, "increase too big");
         require(value >= _state.settings.liquidationStepSeconds / 2, "decrease too big");
         // update
@@ -564,8 +571,9 @@ library SettingsUpdater {
 
         require(_settings.safetyMinCollateralRatioBIPS > 0, "cannot be zero");
         require(liqFactors.length >= 1, "at least one factor required");
-        for (uint256 i = 1; i < liqFactors.length; i++) {
-            require(liqFactors[i] >= liqFactors[i - 1], "factors not increasing");
+        for (uint256 i = 0; i < liqFactors.length; i++) {
+            require(liqFactors[i] > SafeBips.MAX_BIPS, "factor not above 1");
+            require(i == 0 || liqFactors[i] > liqFactors[i - 1], "factors not increasing");
         }
         require(liqFactors[liqFactors.length - 1] <= _settings.safetyMinCollateralRatioBIPS, 
             "liquidation factor too high" );
@@ -589,7 +597,9 @@ library SettingsUpdater {
         require(_settings.minUpdateRepeatTimeSeconds > 0, "cannot be zero");
         require(_settings.buybackCollateralFactorBIPS > 0, "cannot be zero");
         require(_settings.withdrawalWaitMinSeconds > 0, "cannot be zero");
+        require(_settings.lotSizeAMG > 0, "cannot be zero");
         require(_settings.attestationWindowSeconds >= 1 days, "window too small");
         require(_settings.confirmationByOthersAfterSeconds >= 2 hours, "must be at least two hours");
     }
 }
+   

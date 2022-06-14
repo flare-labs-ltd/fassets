@@ -308,6 +308,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings18.safetyMinCollateralRatioBIPS = 0;
             let res18 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings18);
             await expectRevert(res18, "cannot be zero");
+
+            let newSettings19 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry)
+            newSettings19.lotSizeAMG = 0;
+            let res19 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings19);
+            await expectRevert(res19, "cannot be zero");
         });
 
         it("should validate settings - other validators", async () => {
@@ -341,7 +346,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             let res5 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
             await expectRevert(res5, "at least one factor required");
 
-            newSettings5.liquidationCollateralFactorBIPS = [12000, 1200];;
+            newSettings5.liquidationCollateralFactorBIPS = [12000, 11000];;
             let res6 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
             await expectRevert(res6, "factors not increasing");
 
@@ -349,8 +354,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings5.liquidationCollateralFactorBIPS = [value];
             let res7 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
             await expectRevert(res7, "liquidation factor too high");
+
+            newSettings5.liquidationCollateralFactorBIPS = [1000];
+            let res8 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
+            await expectRevert(res8, "factor not above 1");
         });
-
-
     });
 });
