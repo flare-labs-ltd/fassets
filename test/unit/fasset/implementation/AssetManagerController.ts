@@ -198,7 +198,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should set payment challenge reward", async () => {
             const currentSettings = await assetManager.getSettings();
             let paymentChallengeRewardNATWei_new = toBN(currentSettings.paymentChallengeRewardNATWei).muln(4);
-            let paymentChallengeRewardBIPS_new = (toBN(currentSettings.paymentChallengeRewardBIPS).addn(100)).muln(4);
+            let paymentChallengeRewardBIPS_new = (toBN(currentSettings.paymentChallengeRewardBIPS).muln(4)).addn(100);
 
             let res = await assetManagerController.setPaymentChallengeReward([assetManager.address], paymentChallengeRewardNATWei_new, paymentChallengeRewardBIPS_new, { from: governance });
             expectEvent(res, "SettingChanged", { name: "paymentChallengeRewardNATWei", value: paymentChallengeRewardNATWei_new });
