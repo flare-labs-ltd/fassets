@@ -6,7 +6,7 @@ import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../../utils/fasset/PaymentReference";
-import { DAYS, getTestFile, toBN, toBNExp } from "../../../utils/helpers";
+import { DAYS, getTestFile, HOURS, toBN, toBNExp, toNumber } from "../../../utils/helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../utils/verification/sources/sources";
 import { assertWeb3DeepEqual, web3ResultStruct } from "../../../utils/web3assertions";
@@ -210,5 +210,147 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const res = web3ResultStruct(await assetManager.getSettings());
             assertWeb3DeepEqual(res, newSettings)
         });
+    });
+
+    describe("should validate settings at creation", () => {
+        it("should validate settings - cannot be zero", async () => {
+            let newSettings0 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings0.collateralReservationFeeBIPS = 0;
+            let res0 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings0);
+            await expectRevert(res0, "cannot be zero");
+            
+            let newSettings1 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings1.assetUnitUBA = 0;
+            let res1 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings1);
+            await expectRevert(res1, "cannot be zero");
+
+            let newSettings2 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings2.assetMintingGranularityUBA = 0;
+            let res2 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings2);            
+            await expectRevert(res2, "cannot be zero");
+
+            let newSettings3 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings3.minCollateralRatioBIPS = 0;
+            let res3 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings3);
+            await expectRevert(res3, "cannot be zero");
+
+            let newSettings4 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings4.ccbMinCollateralRatioBIPS = 0;
+            let res4 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings4);
+            await expectRevert(res4, "cannot be zero");
+
+            let newSettings5 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings5.ccbMinCollateralRatioBIPS = 0;
+            let res5 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
+            await expectRevert(res5, "cannot be zero");
+
+            let newSettings6 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings6.underlyingBlocksForPayment = 0;
+            let res6 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings6);
+            await expectRevert(res6, "cannot be zero");
+
+            let newSettings7 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings7.underlyingSecondsForPayment = 0;
+            let res7 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings7);
+            await expectRevert(res7, "cannot be zero");
+
+            let newSettings8 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings8.redemptionFeeBIPS = 0;
+            let res8 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings8);
+            await expectRevert(res8, "cannot be zero");;
+
+            let newSettings9 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings9.confirmationByOthersRewardNATWei = 0;
+            let res9 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings9);
+            await expectRevert(res9, "cannot be zero");
+
+            let newSettings10 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings10.maxRedeemedTickets = 0;
+            let res10 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings10);
+            await expectRevert(res10, "cannot be zero");
+
+            let newSettings11 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings11.ccbTimeSeconds = 0;
+            let res11 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings11);
+            await expectRevert(res11, "cannot be zero");
+
+            let newSettings12 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings12.liquidationStepSeconds = 0;
+            let res12 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings12);
+            await expectRevert(res12, "cannot be zero");
+
+            let newSettings13 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings13.maxTrustedPriceAgeSeconds = 0;
+            let res13 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings13);
+            await expectRevert(res13, "cannot be zero");
+
+            let newSettings14 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings14.timelockSeconds = 0;
+            let res14 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings14);
+            await expectRevert(res14, "cannot be zero");
+
+            let newSettings15 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings15.minUpdateRepeatTimeSeconds = 0;
+            let res15 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings15);
+            await expectRevert(res15, "cannot be zero");
+
+            let newSettings16 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings16.buybackCollateralFactorBIPS = 0;
+            let res16 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings16);
+            await expectRevert(res16, "cannot be zero");
+
+            let newSettings17 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings17.withdrawalWaitMinSeconds = 0;
+            let res17 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings17);
+            await expectRevert(res17, "cannot be zero");
+
+            let newSettings18 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings18.safetyMinCollateralRatioBIPS = 0;
+            let res18 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings18);
+            await expectRevert(res18, "cannot be zero");
+        });
+
+        it("should validate settings - other validators", async () => {
+            let newSettings0 = createTestSettings(attestationClient, wnat, ftsoRegistry);            
+            newSettings0.collateralReservationFeeBIPS = 10001;
+            let res0 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings0);
+            await expectRevert(res0, "bips value too high");
+
+            let newSettings1 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings1.redemptionFeeBIPS = 10001;
+            let res1 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings1);
+            await expectRevert(res1, "bips value too high");
+
+            let newSettings2 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings2.redemptionDefaultFactorBIPS = 10000;
+            let res2 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings2);
+            await expectRevert(res2, "bips value too low");
+
+            let newSettings3 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings3.attestationWindowSeconds = 0.9 * DAYS;
+            let res3 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings3);
+            await expectRevert(res3, "window too small");
+
+            let newSettings4 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings4.confirmationByOthersAfterSeconds = 1.9 * HOURS;
+            let res4 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings4);
+            await expectRevert(res4, "must be at least two hours");
+
+            let newSettings5 = createTestSettings(attestationClient, wnat, ftsoRegistry);
+            newSettings5.liquidationCollateralFactorBIPS = [];
+            let res5 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
+            await expectRevert(res5, "at least one factor required");
+
+            newSettings5.liquidationCollateralFactorBIPS = [12000, 1200];;
+            let res6 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
+            await expectRevert(res6, "factors not increasing");
+
+            let value = toNumber(newSettings5.safetyMinCollateralRatioBIPS) + 10000;
+            newSettings5.liquidationCollateralFactorBIPS = [value];
+            let res7 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
+            await expectRevert(res7, "liquidation factor too high");
+        });
+
+
     });
 });

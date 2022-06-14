@@ -460,7 +460,7 @@ library SettingsUpdater {
     {
         uint256 value = abi.decode(_params, (uint256));
         // validate
-        require(value >= 1, "cannot be zero");
+        require(value > 0, "cannot be zero");
         require(value <= _state.settings.maxRedeemedTickets * 2, "increase too big");
         require(value >= _state.settings.maxRedeemedTickets / 4, "decrease too big");
         // update
@@ -477,7 +477,7 @@ library SettingsUpdater {
         uint256 value = abi.decode(_params, (uint256));
         // validate
         // making this value small doesn't present huge danger, so we don't limit decrease
-        require(value >= 1, "cannot be zero");
+        require(value > 0, "cannot be zero");
         require(value <= _state.settings.withdrawalWaitMinSeconds + 10 minutes, "increase too big");
         // update
         _state.settings.withdrawalWaitMinSeconds = SafeCast.toUint64(value);
@@ -557,9 +557,39 @@ library SettingsUpdater {
 
     function _validateSettings(
         AssetManagerSettings.Settings memory _settings
-    ) 
-        private view
+    )
+        private pure
     {
-        // TODO: define conditions for validity
+        uint32[] memory liqFactors = _settings.liquidationCollateralFactorBIPS;
+
+        require(_settings.safetyMinCollateralRatioBIPS > 0, "cannot be zero");
+        require(liqFactors.length >= 1, "at least one factor required");
+        for (uint256 i = 1; i < liqFactors.length; i++) {
+            require(liqFactors[i] >= liqFactors[i - 1], "factors not increasing");
+        }
+        require(liqFactors[liqFactors.length - 1] <= _settings.safetyMinCollateralRatioBIPS, 
+            "liquidation factor too high" );
+        require(_settings.collateralReservationFeeBIPS > 0, "cannot be zero");
+        require(_settings.collateralReservationFeeBIPS <= SafeBips.MAX_BIPS, "bips value too high");
+        require(_settings.assetUnitUBA > 0, "cannot be zero");
+        require(_settings.assetMintingGranularityUBA > 0, "cannot be zero");
+        require(_settings.minCollateralRatioBIPS > 0, "cannot be zero");
+        require(_settings.ccbMinCollateralRatioBIPS > 0, "cannot be zero");
+        require(_settings.underlyingBlocksForPayment > 0, "cannot be zero");
+        require(_settings.underlyingSecondsForPayment > 0, "cannot be zero");
+        require(_settings.redemptionFeeBIPS > 0, "cannot be zero");
+        require(_settings.redemptionFeeBIPS <= SafeBips.MAX_BIPS, "bips value too high");
+        require(_settings.redemptionDefaultFactorBIPS > SafeBips.MAX_BIPS, "bips value too low");
+        require(_settings.confirmationByOthersRewardNATWei > 0, "cannot be zero");
+        require(_settings.maxRedeemedTickets > 0, "cannot be zero");
+        require(_settings.ccbTimeSeconds > 0, "cannot be zero");
+        require(_settings.liquidationStepSeconds > 0, "cannot be zero");
+        require(_settings.maxTrustedPriceAgeSeconds > 0, "cannot be zero");
+        require(_settings.timelockSeconds > 0, "cannot be zero");
+        require(_settings.minUpdateRepeatTimeSeconds > 0, "cannot be zero");
+        require(_settings.buybackCollateralFactorBIPS > 0, "cannot be zero");
+        require(_settings.withdrawalWaitMinSeconds > 0, "cannot be zero");
+        require(_settings.attestationWindowSeconds >= 1 days, "window too small");
+        require(_settings.confirmationByOthersAfterSeconds >= 2 hours, "must be at least two hours");
     }
 }
