@@ -569,7 +569,6 @@ library SettingsUpdater {
         uint256 ccbCR = _settings.ccbMinCollateralRatioBIPS;
         uint256 safetyCR = _settings.safetyMinCollateralRatioBIPS;
 
-        require(safetyCR > 0, "cannot be zero");
         require(_settings.assetUnitUBA > 0, "cannot be zero");
         require(_settings.assetMintingGranularityUBA > 0, "cannot be zero");
         require(_settings.minCollateralRatioBIPS > 0, "cannot be zero");

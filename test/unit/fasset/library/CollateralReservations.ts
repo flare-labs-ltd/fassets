@@ -276,13 +276,13 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const crt = await reserveCollateral(agentVault.address, 3);
         // mine some blocks to create overflow block
-        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2000; i++) {
+        for (let i = 0; i <= 7200; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
         // act
         // wrong overflow block
         const proofOverflow = await attestationProvider.proveReferencedPaymentNonexistence(
-            underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber() + 86400);
+            underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseOverflow = assetManager.mintingPaymentDefault(proofOverflow, crt.collateralReservationId, { from: agentOwner1 });
         // assert
         await expectRevert(promiseOverflow, "minting request too old");

@@ -101,10 +101,11 @@ export class MockAttestationProver {
 
     private findReferencedPayment(destinationAddressHash: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number): [boolean, number, number] {
         let lowerBoundaryBlockNumber = -1;
+        const lastBlockTimestamp = this.chain.blocks[this.chain.blocks.length - 1].timestamp;
         for (let bn = 0; bn < this.chain.blocks.length; bn++) {
             const block = this.chain.blocks[bn];
-            if (block.timestamp < endTimestamp - this.queryWindowSeconds) {
-                continue;   // skip blocks before `endTimestamp - CHECK_WINDOW`
+            if (block.timestamp < lastBlockTimestamp - this.queryWindowSeconds) {
+                continue;   // skip blocks before `lastBlockTimestamp - CHECK_WINDOW`
             }
             if (lowerBoundaryBlockNumber === -1) {
                 lowerBoundaryBlockNumber = bn;

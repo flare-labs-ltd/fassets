@@ -304,11 +304,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             let res17 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings17);
             await expectRevert(res17, "cannot be zero");
 
-            let newSettings18 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
-            newSettings18.safetyMinCollateralRatioBIPS = 0;
-            let res18 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings18);
-            await expectRevert(res18, "cannot be zero");
-
             let newSettings19 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry)
             newSettings19.lotSizeAMG = 0;
             let res19 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings19);
