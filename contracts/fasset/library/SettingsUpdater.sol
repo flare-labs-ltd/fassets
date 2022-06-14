@@ -303,9 +303,9 @@ library SettingsUpdater {
     {
         (uint256 rewardNATWei, uint256 rewardBIPS) = abi.decode(_params, (uint256, uint256));
         // validate
-        require(rewardNATWei <= (_state.settings.paymentChallengeRewardNATWei + 100 ether) * 4, "increase too big");
+        require(rewardNATWei <= (_state.settings.paymentChallengeRewardNATWei * 4) + 100 ether, "increase too big");
         require(rewardNATWei >= (_state.settings.paymentChallengeRewardNATWei) / 4, "decrease too big");
-        require(rewardBIPS <= (_state.settings.paymentChallengeRewardBIPS + 100) * 4, "increase too big");
+        require(rewardBIPS <= (_state.settings.paymentChallengeRewardBIPS * 4) + 100, "increase too big");
         require(rewardBIPS >= (_state.settings.paymentChallengeRewardBIPS) / 4, "decrease too big");
         // update
         _state.settings.paymentChallengeRewardNATWei = SafeCast.toUint128(rewardNATWei);
