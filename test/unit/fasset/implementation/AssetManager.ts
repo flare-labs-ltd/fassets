@@ -358,6 +358,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings5.liquidationCollateralFactorBIPS = [1000];
             let res8 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
             await expectRevert(res8, "factor not above 1");
+
+            let newSettings6 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
+            newSettings6.minCollateralRatioBIPS = 1_8000;
+            newSettings6.ccbMinCollateralRatioBIPS = 2_2000;
+            newSettings6.safetyMinCollateralRatioBIPS = 2_4000;            
+            let res9 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings6);
+            await expectRevert(res9, "invalid collateral ratios");
         });
     });
 });
