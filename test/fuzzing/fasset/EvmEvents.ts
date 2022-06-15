@@ -1,5 +1,5 @@
-import { ContractWithEventsBase, EventArgs, EventArgsForName, EventNamesFor, EventSelector, EvmEvent } from "../../utils/events";
-import { multimapAdd, multimapDelete } from "../../utils/helpers";
+import { ContractWithEventsBase, EventArgs, EventArgsForName, EventNamesFor, EventSelector, EvmEvent } from "../../../lib/utils/events";
+import { multimapAdd, multimapDelete } from "../../../lib/utils/helpers";
 import { ClearableSubscription, EventEmitter, EventExecutionQueue } from "../../utils/fasset/ScopedEvents";
 import { TransactionInterceptor } from "./TransactionInterceptor";
 

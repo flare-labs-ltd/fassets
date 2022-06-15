@@ -1,5 +1,6 @@
 import { FtsoMockInstance } from "../../../../typechain-truffle";
-import { getTestFile, toBNExp } from "../../../utils/helpers";
+import { toBNExp } from "../../../../lib/utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const FtsoMock = artifacts.require('FtsoMock');

@@ -1,7 +1,8 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { artifacts, contract } from "hardhat";
 import { SafeMath64MockContract, SafeMath64MockInstance } from "../../../../typechain-truffle";
-import { getTestFile, toBN } from "../../../utils/helpers";
+import { toBN } from "../../../../lib/utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 
 const SafeMath64 = artifacts.require("SafeMath64Mock") as SafeMath64MockContract;
 

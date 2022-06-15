@@ -1,5 +1,4 @@
-import BN from "bn.js";
-import { BigNumber } from "ethers";
+import { web3Normalize, web3DeepNormalize } from "../../lib/utils/web3normalize";
 
 // Web3 returns struct results as union of array and struct, but later methods interpet it as an array.
 // So this method just extracts all non-array properties.
@@ -12,73 +11,6 @@ export function web3ResultStruct<T>(value: T): T {
         }
     }
     return result;
-}
-
-// convert primitive object to normalized form (mostly string)
-export function web3Normalize(x: any) {
-    if (x == null) return null;     // undefined also converted to null
-    switch (typeof x) {
-        case "boolean":
-        case "string":
-            return x;
-        case "number":
-        case "bigint":
-            return "" + x;
-        case "object":
-            if (BN.isBN(x)) {
-                return x.toString(10);
-            }
-            if (BigNumber.isBigNumber(x)) {
-                return x.toString();
-            }
-            break;
-    }
-    throw new Error("Unsupported object type");
-}
-
-export function web3DeepNormalize<T = any>(value: T): T {
-    function normalizeArray(arr: any[]) {
-        const result: any[] = [];
-        visited.add(arr);
-        for (const v of arr) {
-            result.push(normalizeImpl(v));
-        }
-        visited.delete(arr);
-        return result;
-    }
-    function normalizeObject(obj: any[]) {
-        if (obj.constructor !== Object) {
-            throw new Error(`Unsupported object type ${obj.constructor.name}`);
-        }
-        const result: any = {};
-        visited.add(obj);
-        for (const [k, v] of Object.entries(obj)) {
-            result[k] = normalizeImpl(v);
-        }
-        visited.delete(obj);
-        return result;
-    }
-    function normalizeImpl(obj: any): any {
-        if (obj == null) {
-            return null;                // undefined also converted to null
-        } else if (visited.has(obj)) {
-            throw new Error("Circular structure");
-        } else if (typeof obj === "object") {
-            if (BN.isBN(obj)) {
-                return obj.toString(10);
-            } else if (BigNumber.isBigNumber(obj)) {
-                return obj.toString();
-            } else if (Array.isArray(obj)) {
-                return normalizeArray(obj);
-            } else {
-                return normalizeObject(obj);
-            }
-        } else {
-            return web3Normalize(obj);  // normalize as primitive
-        }
-    }
-    const visited = new Set<any>();
-    return normalizeImpl(value);
 }
 
 export function assertWeb3Equal(x: any, y: any, message?: string) {

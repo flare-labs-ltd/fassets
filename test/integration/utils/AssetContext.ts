@@ -1,6 +1,6 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import { AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance } from "../../../typechain-truffle";
-import { ContractWithEvents } from "../../utils/events";
+import { ContractWithEvents } from "../../../lib/utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../utils/fasset/AttestationHelper";
 import { IBlockChain, IBlockChainEvents } from "../../utils/fasset/ChainInterfaces";
@@ -10,9 +10,9 @@ import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { EventScope } from "../../utils/fasset/ScopedEvents";
 import { UnderlyingChainEvents } from "../../utils/fasset/UnderlyingChainEvents";
-import { BNish, DAYS, HOURS, toBN, toBNExp, toNumber, toWei, WEEKS } from "../../utils/helpers";
+import { BNish, DAYS, HOURS, toBN, toBNExp, toNumber, toWei, WEEKS } from "../../../lib/utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { web3DeepNormalize } from "../../utils/web3assertions";
+import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { ChainInfo, NatInfo } from "./ChainInfo";
 
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');

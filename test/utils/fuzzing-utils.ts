@@ -1,6 +1,6 @@
 import BN from "bn.js";
 import { readFileSync, writeFileSync } from "fs";
-import { BN_ZERO, toBN, toBNExp } from "./helpers";
+import { BN_ZERO, toBN, toBNExp } from "../../lib/utils/helpers";
 
 export class Statistics {
     min?: number;

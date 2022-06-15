@@ -1,8 +1,8 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { StateConnectorMockInstance } from "../../../typechain-truffle";
 import { stringifyJson } from "../fuzzing-utils";
-import { sleep, toBN, toNumber } from "../helpers";
-import { LogFile } from "../LogFile";
+import { sleep, toBN, toNumber } from "../../../lib/utils/helpers";
+import { LogFile } from "../../../lib/utils/logging";
 import { MerkleTree } from "../MerkleTree";
 import { DHType } from "../../../lib/verification/generated/attestation-hash-types";
 import { dataHash } from "../../../lib/verification/generated/attestation-hash-utils";

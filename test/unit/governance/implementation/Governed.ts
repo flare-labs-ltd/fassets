@@ -1,7 +1,7 @@
 import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import assert from "assert";
 import { GovernedMockInstance } from "../../../../typechain-truffle/GovernedMock";
-import { getTestFile } from "../../../utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 
 const GovernedMock = artifacts.require("GovernedMock");
 

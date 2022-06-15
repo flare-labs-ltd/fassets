@@ -1,10 +1,11 @@
 import { AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { findRequiredEvent } from "../../../utils/events";
+import { findRequiredEvent } from "../../../../lib/utils/events";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile, randomAddress, toBNExp } from "../../../utils/helpers";
+import { randomAddress, toBNExp } from "../../../../lib/utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../../lib/verification/sources/sources";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";

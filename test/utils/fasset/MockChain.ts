@@ -1,6 +1,6 @@
 import { stringifyJson } from "../fuzzing-utils";
-import { BNish, BN_ZERO, Dict, formatBN, systemTimestamp, toBN } from "../helpers";
-import { LogFile } from "../LogFile";
+import { BNish, BN_ZERO, Dict, formatBN, systemTimestamp, toBN } from "../../../lib/utils/helpers";
+import { LogFile } from "../../../lib/utils/logging";
 import { BlockHandler, IBlock, IBlockChain, IBlockChainEvents, IBlockId, IChainWallet, ITransaction, TransactionHandler, TransactionOptions, TransactionOptionsWithFee, TxInputOutput, TX_FAILED, TX_SUCCESS } from "./ChainInterfaces";
 
 export type MockTransactionOptions = TransactionOptions & { status?: number };

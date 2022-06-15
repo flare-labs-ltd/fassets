@@ -1,6 +1,6 @@
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
 import { FAssetInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const FAsset = artifacts.require('FAsset');

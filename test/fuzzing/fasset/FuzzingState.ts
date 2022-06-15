@@ -1,13 +1,13 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
-import { EventFormatter } from "../../utils/EventDecoder";
-import { EvmEvent, ExtractedEventArgs } from "../../utils/events";
+import { EventFormatter } from "../../../lib/utils/EventFormatter";
+import { EvmEvent, ExtractedEventArgs } from "../../../lib/utils/events";
 import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
 import { stringifyJson } from "../../utils/fuzzing-utils";
-import { BNish, BN_ZERO, sumBN, toBN } from "../../utils/helpers";
-import { ILogger, LogFile } from "../../utils/LogFile";
+import { BNish, BN_ZERO, sumBN, toBN } from "../../../lib/utils/helpers";
+import { ILogger, LogFile } from "../../../lib/utils/logging";
 import { SparseArray } from "../../utils/SparseMatrix";
-import { web3DeepNormalize, web3Normalize } from "../../utils/web3assertions";
+import { web3DeepNormalize, web3Normalize } from "../../../lib/utils/web3normalize";
 import { AgentStatus, FuzzingStateAgent } from "./FuzzingStateAgent";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
 import { FuzzingTimeline } from "./FuzzingTimeline";

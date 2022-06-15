@@ -1,11 +1,11 @@
 import BN from "bn.js";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Agent } from "../../integration/utils/Agent";
-import { EventArgs, requiredEventArgs } from "../../utils/events";
+import { EventArgs, requiredEventArgs } from "../../../lib/utils/events";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
 import { coinFlip, randomBN, randomChoice, randomInt } from "../../utils/fuzzing-utils";
-import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../utils/helpers";
+import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { AgentStatus } from "./FuzzingStateAgent";

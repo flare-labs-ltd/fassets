@@ -1,4 +1,4 @@
-import { BN_ZERO } from "./helpers";
+import { BN_ZERO } from "../../lib/utils/helpers";
 
 export class SparseArray {
     constructor(

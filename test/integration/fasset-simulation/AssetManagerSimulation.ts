@@ -1,11 +1,12 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { calcGasCost } from "../../utils/eth";
-import { findRequiredEvent, requiredEventArgs } from "../../utils/events";
+import { findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events";
 import { TX_BLOCKED, TX_FAILED } from "../../utils/fasset/ChainInterfaces";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { BN_ZERO, DAYS, getTestFile, toBN, toBNExp, toWei } from "../../utils/helpers";
+import { BN_ZERO, DAYS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { getTestFile } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext, CommonContext } from "../utils/AssetContext";

@@ -1,6 +1,6 @@
 import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
-import { Web3EventDecoder } from "../../utils/EventDecoder";
-import { ExtractedEventArgs } from "../../utils/events";
+import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
+import { ExtractedEventArgs } from "../../../lib/utils/events";
 import { AvailableAgentInfo } from "../../utils/fasset/AssetManagerTypes";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";

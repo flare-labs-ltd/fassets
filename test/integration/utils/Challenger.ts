@@ -1,6 +1,6 @@
 import { UnderlyingWithdrawalAnnounced, FullLiquidationStarted, RedemptionRequested, RedemptionPaymentFailed, RedemptionDefault } from "../../../typechain-truffle/AssetManager";
-import { checkEventNotEmited, eventArgs, EventArgs, findRequiredEvent, requiredEventArgs } from "../../utils/events";
-import { BNish, toBN } from "../../utils/helpers";
+import { checkEventNotEmited, eventArgs, EventArgs, findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events";
+import { BNish, toBN } from "../../../lib/utils/helpers";
 import { Agent } from "./Agent";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 

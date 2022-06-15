@@ -1,8 +1,8 @@
 import { time } from "@openzeppelin/test-helpers";
 import { MintingExecuted } from "../../../typechain-truffle/AssetManager";
-import { findRequiredEvent } from "../../utils/events";
+import { findRequiredEvent } from "../../../lib/utils/events";
 import { ITransaction } from "../../utils/fasset/ChainInterfaces";
-import { expectErrors } from "../../utils/helpers";
+import { expectErrors } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingStateAgent } from "./FuzzingStateAgent";

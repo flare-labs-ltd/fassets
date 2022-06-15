@@ -1,10 +1,10 @@
 import { network } from "hardhat";
 import { TransactionReceipt } from "web3-core";
-import { Web3EventDecoder } from "../../utils/EventDecoder";
-import { EvmEvent } from "../../utils/events";
+import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
+import { EvmEvent } from "../../../lib/utils/events";
 import { currentRealTime, Statistics, truffleResultAsJson } from "../../utils/fuzzing-utils";
-import { filterStackTrace, getOrCreate, reportError, sorted, sum, tryCatch } from "../../utils/helpers";
-import { LogFile } from "../../utils/LogFile";
+import { filterStackTrace, getOrCreate, reportError, sorted, sum, tryCatch } from "../../../lib/utils/helpers";
+import { LogFile } from "../../../lib/utils/logging";
 
 export type EventHandler = (event: EvmEvent) => void;
 

@@ -1,6 +1,7 @@
 import { constants, expectRevert } from "@openzeppelin/test-helpers";
 import { RedemptionQueueMockInstance } from "../../../../typechain-truffle";
-import { BNish, getTestFile, randomAddress, toBN, toStringExp } from "../../../utils/helpers";
+import { BNish, randomAddress, toBN, toStringExp } from "../../../../lib/utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const RedemptionQueue = artifacts.require("RedemptionQueueMock");

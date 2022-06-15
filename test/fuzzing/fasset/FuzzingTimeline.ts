@@ -2,8 +2,8 @@ import { time } from "@openzeppelin/test-helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { ITimer } from "./Timer";
 import { randomShuffle } from "../../utils/fuzzing-utils";
-import { latestBlockTimestamp, runAsync } from "../../utils/helpers";
-import { LogFile } from "../../utils/LogFile";
+import { latestBlockTimestamp, runAsync } from "../../../lib/utils/helpers";
+import { LogFile } from "../../../lib/utils/logging";
 import { ClearableSubscription, EventEmitter, EventExecutionQueue, EventHandler, EventSubscription } from "../../utils/fasset/ScopedEvents";
 
 type TimelineEventType = 'FlareTime' | 'UnderlyingBlock' | 'UnderlyingTime';

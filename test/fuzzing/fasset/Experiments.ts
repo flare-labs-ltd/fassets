@@ -8,10 +8,11 @@ import { HardhatNetworkAccountUserConfig } from "hardhat/types";
 import hardhatConfig from "../../../hardhat.config";
 import { VPContract__factory, VPToken, WNat, WNat__factory } from "../../../typechain";
 import { WNatInstance } from "../../../typechain-truffle";
-import { EthersEventDecoder } from "../../utils/EventDecoder";
+import { EthersEventDecoder } from "../../utils/EthersEventDecoder";
 import { setDefaultVPContract, setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
 import { currentRealTime, randomShuffled, range } from "../../utils/fuzzing-utils";
-import { sleep, getTestFile, toBN, formatBN, toStringExp, toBNExp } from "../../utils/helpers";
+import { sleep, toBN, formatBN, toStringExp, toBNExp } from "../../../lib/utils/helpers";
+import { getTestFile } from "../../utils/test-helpers";
 
 const WNAT = artifacts.require("WNat");
 

@@ -1,7 +1,7 @@
 import BN from "bn.js";
-import { BNish, BN_ZERO, formatBN, toBN } from "../../utils/helpers";
-import { ILogger, MemoryLog } from "../../utils/LogFile";
-import { web3DeepNormalize } from "../../utils/web3assertions";
+import { BNish, BN_ZERO, formatBN, toBN } from "../../../lib/utils/helpers";
+import { ILogger, MemoryLog } from "../../../lib/utils/logging";
+import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 
 export class FuzzingStateComparator {
     logger = new MemoryLog();

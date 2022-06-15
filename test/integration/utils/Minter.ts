@@ -1,8 +1,8 @@
 import { CollateralReserved } from "../../../typechain-truffle/AssetManager";
-import { EventArgs, requiredEventArgs } from "../../utils/events";
+import { EventArgs, requiredEventArgs } from "../../../lib/utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
-import { BNish } from "../../utils/helpers";
+import { BNish } from "../../../lib/utils/helpers";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
 export class Minter extends AssetContextClient {

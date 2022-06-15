@@ -1,7 +1,7 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { BN_ZERO, toBN } from "../helpers";
+import { BN_ZERO, toBN } from "../../../lib/utils/helpers";
 import { DHBalanceDecreasingTransaction, DHConfirmedBlockHeightExists, DHPayment, DHReferencedPaymentNonexistence } from "../../../lib/verification/generated/attestation-hash-types";
-import { web3DeepNormalize } from "../web3assertions";
+import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { TxInputOutput, TX_FAILED } from "./ChainInterfaces";
 import { MockChain, MockChainTransaction } from "./MockChain";
 

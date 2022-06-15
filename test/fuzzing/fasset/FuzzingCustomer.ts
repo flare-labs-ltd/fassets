@@ -1,12 +1,12 @@
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Minter } from "../../integration/utils/Minter";
 import { Redeemer } from "../../integration/utils/Redeemer";
-import { EventArgs } from "../../utils/events";
+import { EventArgs } from "../../../lib/utils/events";
 import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { EventScope, QualifiedEvent, qualifiedEvent } from "../../utils/fasset/ScopedEvents";
 import { foreachAsyncParallel, randomChoice, randomInt } from "../../utils/fuzzing-utils";
-import { expectErrors, formatBN, promiseValue } from "../../utils/helpers";
+import { expectErrors, formatBN, promiseValue } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { AgentStatus } from "./FuzzingStateAgent";

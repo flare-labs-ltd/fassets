@@ -1,5 +1,5 @@
 import { AssetManagerEvents } from "../../integration/utils/AssetContext";
-import { ExtractedEventArgs } from "../../utils/events";
+import { ExtractedEventArgs } from "../../../lib/utils/events";
 import { FuzzingRunner } from "./FuzzingRunner";
 
 export class FuzzingActor {

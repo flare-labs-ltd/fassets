@@ -2,7 +2,8 @@ import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-h
 import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
-import { DAYS, getTestFile, HOURS, MAX_BIPS, randomAddress, toBN, toBNExp, toStringExp } from "../../../utils/helpers";
+import { DAYS, HOURS, MAX_BIPS, randomAddress, toBN, toBNExp, toStringExp } from "../../../../lib/utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
 import { createTestSettings } from "../test-settings";
