@@ -59,7 +59,7 @@ export class FuzzingCustomer extends FuzzingActor {
         await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
         // execute
         await this.minter.executeMinting(crt, txHash)
-            .catch(e => scope.exitOnExpectedError(e, []));
+            .catch(e => scope.exitOnExpectedError(e, ['payment failed']));  // 'payment failed' can happen if there are several simultaneous payments and this one makes balance negative
         mintedLots += lots;
     }
     

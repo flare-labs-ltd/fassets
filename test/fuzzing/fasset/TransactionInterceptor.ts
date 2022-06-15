@@ -3,7 +3,7 @@ import { TransactionReceipt } from "web3-core";
 import { Web3EventDecoder } from "../../utils/EventDecoder";
 import { EvmEvent } from "../../utils/events";
 import { currentRealTime, Statistics, truffleResultAsJson } from "../../utils/fuzzing-utils";
-import { filterStackTrace, getOrCreate, reportError, tryCatch } from "../../utils/helpers";
+import { filterStackTrace, getOrCreate, reportError, sorted, sum, tryCatch } from "../../utils/helpers";
 import { LogFile } from "../../utils/LogFile";
 
 export type EventHandler = (event: EvmEvent) => void;
@@ -47,22 +47,20 @@ export class TransactionInterceptor {
 
     logGasUsage() {
         if (!this.logFile) return;
-        const methods = Array.from(this.gasUsage.keys());
-        methods.sort();
         this.log('');
-        this.log(`ERRORS: ${Array.from(this.errorCounts.values()).reduce((x, y) => x + y, 0)}`);
+        this.log(`ERRORS: ${sum(this.errorCounts.values())}`);
         for (const [key, count] of this.errorCounts.entries()) {
             this.log(`${key}: ${count}`);
         }
         this.log('');
-        this.log(`EVENTS: ${Array.from(this.eventCounts.values()).reduce((x, y) => x + y, 0)}`);
-        for (const [key, count] of this.eventCounts.entries()) {
+        this.log(`EVENTS: ${sum(this.eventCounts.values())}`);
+        for (const [key, count] of sorted(this.eventCounts.entries(), e => e[0])) {
             this.log(`${key}: ${count}`);
         }
         this.log('');
         this.log('GAS USAGE');
-        for (const method of methods) {
-            this.log(`${method}:   ${this.gasUsage.get(method)?.toString(0)}`);
+        for (const [method, stats] of sorted(this.gasUsage.entries(), e => e[0])) {
+            this.log(`${method}:   ${stats.toString(0)}`);
         }
     }
 

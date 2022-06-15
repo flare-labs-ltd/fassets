@@ -107,7 +107,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             eventDecoder.addAddress(`OWNER_${i}`, fa.agent.ownerAddress);
             interceptor.captureEventsFrom(`AGENT_${i}`, fa.agent.agentVault, 'AgentVault');
             await fa.agent.agentVault.deposit({ from: fa.agent.ownerAddress, value: toWei(10_000_000) });
-            await fa.agent.makeAvailable(500, 2_5000);
+            const agentCR = toBN(context.settings.minCollateralRatioBIPS).muln(randomNum(1, 1.5));
+            await fa.agent.makeAvailable(500, agentCR);
             agents.push(fa);
         }
         // create customers

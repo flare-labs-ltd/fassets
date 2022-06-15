@@ -272,15 +272,33 @@ export function reduce<T, R>(list: Iterable<T>, initialValue: R, operation: (a: 
 /**
  * Sum all values in an Array or Iterable of numbers.
  */
-export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number) {
+export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number): number;
+export function sum(list: Iterable<number>): number;
+export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number = (x: any) => x) {
     return reduce(list, 0, (a, x) => a + elementValue(x));
 }
 
 /**
  * Sum all values in an Array or Iterable of BNs.
  */
-export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN) {
+export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN): BN;
+export function sumBN(list: Iterable<BN>): BN;
+export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN = (x: any) => x) {
     return reduce(list, BN_ZERO, (a, x) => a.add(elementValue(x)));
+}
+
+/**
+ * Return a copy of list, sorted by comparisonKey.
+ */
+export function sorted<T, K>(list: Iterable<T>, comparisonKey: (e: T) => K): T[];
+export function sorted<T>(list: Iterable<T>): T[];
+export function sorted<T, K>(list: Iterable<T>, comparisonKey: (e: T) => K = (x: any) => x) {
+    const array = Array.from(list);
+    array.sort((a, b) => {
+        const aKey = comparisonKey(a), bKey = comparisonKey(b);
+        return aKey < bKey ? -1 : (aKey > bKey ? 1 : 0);
+    });
+    return array;
 }
 
 /**
