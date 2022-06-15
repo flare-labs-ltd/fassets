@@ -6,7 +6,7 @@ import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, randomAddress, toBNExp } from "../../../utils/helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../utils/verification/sources/sources";
+import { SourceId } from "../../../../lib/verification/sources/sources";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { createTestSettings } from "../test-settings";
 import { PaymentReference } from "../../../utils/fasset/PaymentReference";

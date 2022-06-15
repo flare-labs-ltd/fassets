@@ -1,4 +1,5 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { SourceId } from "../../../../lib/verification/sources/sources";
 import { AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
 import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
@@ -8,7 +9,6 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { PaymentReference } from "../../../utils/fasset/PaymentReference";
 import { DAYS, getTestFile, toBN, toBNExp } from "../../../utils/helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../utils/verification/sources/sources";
 import { assertWeb3DeepEqual, web3ResultStruct } from "../../../utils/web3assertions";
 import { createTestSettings } from "../test-settings";
 

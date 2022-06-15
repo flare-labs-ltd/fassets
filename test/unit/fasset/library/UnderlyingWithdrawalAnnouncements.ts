@@ -9,7 +9,7 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { PaymentReference } from "../../../utils/fasset/PaymentReference";
 import { getTestFile, toBN, toBNExp } from "../../../utils/helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../utils/verification/sources/sources";
+import { SourceId } from "../../../../lib/verification/sources/sources";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createTestSettings } from "../test-settings";
 

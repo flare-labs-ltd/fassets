@@ -10,7 +10,7 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { PaymentReference } from "../../../utils/fasset/PaymentReference";
 import { getTestFile, randomAddress, toBN, toBNExp, toNumber, toWei } from "../../../utils/helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../utils/verification/sources/sources";
+import { SourceId } from "../../../../lib/verification/sources/sources";
 import { createTestSettings } from "../test-settings";
 
 const AgentVault = artifacts.require('AgentVault');
@@ -398,4 +398,3 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
 });
-

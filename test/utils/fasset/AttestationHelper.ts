@@ -1,8 +1,8 @@
-import { DHBalanceDecreasingTransaction, DHConfirmedBlockHeightExists, DHPayment, DHReferencedPaymentNonexistence, DHType } from "../verification/generated/attestation-hash-types";
-import { encodeBalanceDecreasingTransaction, encodeConfirmedBlockHeightExists, encodePayment, encodeReferencedPaymentNonexistence } from "../verification/generated/attestation-request-encode";
-import { ARBalanceDecreasingTransaction, ARConfirmedBlockHeightExists, ARPayment, ARReferencedPaymentNonexistence } from "../verification/generated/attestation-request-types";
-import { AttestationType } from "../verification/generated/attestation-types-enum";
-import { SourceId } from "../verification/sources/sources";
+import { DHBalanceDecreasingTransaction, DHConfirmedBlockHeightExists, DHPayment, DHReferencedPaymentNonexistence, DHType } from "../../../lib/verification/generated/attestation-hash-types";
+import { encodeBalanceDecreasingTransaction, encodeConfirmedBlockHeightExists, encodePayment, encodeReferencedPaymentNonexistence } from "../../../lib/verification/generated/attestation-request-encode";
+import { ARBalanceDecreasingTransaction, ARConfirmedBlockHeightExists, ARPayment, ARReferencedPaymentNonexistence } from "../../../lib/verification/generated/attestation-request-types";
+import { AttestationType } from "../../../lib/verification/generated/attestation-types-enum";
+import { SourceId } from "../../../lib/verification/sources/sources";
 import { IBlockChain, TxInputOutput } from "./ChainInterfaces";
 import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "./IStateConnectorClient";
 
