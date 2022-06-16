@@ -1,5 +1,6 @@
 import { constants, time } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance } from "../../../typechain-truffle";
+import { AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, 
+    FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance } from "../../../typechain-truffle";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
@@ -14,7 +15,8 @@ import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingC
 import { BNish, DAYS, HOURS, toBN, toBNExp, toNumber, toWei, WEEKS } from "../../../lib/utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { ChainInfo, NatInfo } from "./ChainInfo";
+import { TestChainInfo, TestNatInfo } from "./TestChainInfo";
+import { IAssetContext } from "../../../lib/fasset/IAssetContext";
 
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const AttestationClient = artifacts.require('AttestationClientSC');
@@ -56,7 +58,7 @@ export class CommonContext {
         public natFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>,
     ) {}
 
-    static async createTest(governance: string, natInfo: NatInfo): Promise<CommonContext> {
+    static async createTest(governance: string, natInfo: TestNatInfo): Promise<CommonContext> {
         // create state connector
         const stateConnector = await StateConnector.new();
         // create agent vault factory
@@ -81,7 +83,7 @@ export class CommonContext {
 }
 
 // context, specific for each asset manager (includes common context vars)
-export class AssetContext {
+export class AssetContext implements IAssetContext {
     constructor(
         // common context
         public governance: string,
@@ -93,9 +95,9 @@ export class AssetContext {
         public wnat: ContractWithEvents<WNatInstance, WNatEvents>,
         public natFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>,
         // asset context
-        public chainInfo: ChainInfo,
+        public chainInfo: TestChainInfo,
         public chain: IBlockChain,
-        public chainEventsRaw: IBlockChainEvents,
+        public chainEvents: UnderlyingChainEvents,
         public stateConnectorClient: IStateConnectorClient,
         public attestationProvider: AttestationHelper,
         public settings: AssetManagerSettings,      // may not be fresh
@@ -105,8 +107,6 @@ export class AssetContext {
     ) {
     }
 
-    chainEvents = new UnderlyingChainEvents(this.chainEventsRaw, null);
-    
     get chainId() {
         return this.chainInfo.chainId;
     }
@@ -118,11 +118,7 @@ export class AssetContext {
         return toBNExp(value, this.chainInfo.decimals);
     }
     
-    async refreshSettings() {
-        this.settings = await this.assetManager.getSettings();
-    }
-    
-    async lotsSize() {
+    async lotSize() {
         const settings = await this.assetManager.getSettings();
         return toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
     }
@@ -168,11 +164,11 @@ export class AssetContext {
     }
 
     async convertUBAToLots(valueUBA: BNish) {
-        return toBN(valueUBA).div(await this.lotsSize());
+        return toBN(valueUBA).div(await this.lotSize());
     }
     
     async convertLotsToUBA(lots: BNish) {
-        return toBN(lots).mul(await this.lotsSize());
+        return toBN(lots).mul(await this.lotSize());
     }
 
     async convertLotsToAMG(lots: BNish) {
@@ -193,33 +189,19 @@ export class AssetContext {
     }
 
     async waitForUnderlyingTransaction(scope: EventScope | undefined, txHash: string, maxBlocksToWaitForTx?: number) {
-        const transaction = await this.chain.getTransaction(txHash);
-        if (transaction != null) return transaction;
-        const blockHeight = await this.chain.getBlockHeight();
-        const waitBlocks = maxBlocksToWaitForTx ?? Math.max(this.chain.finalizationBlocks, 1);
-        const event = await Promise.race([
-            this.chainEvents.transactionEvent({ hash: txHash }).qualified('found').wait(scope),
-            this.chainEvents.blockHeightReachedEvent(blockHeight + waitBlocks).qualified('timeout').wait(scope),
-        ]);
-        return event.name === 'found' ? event.args : null;
+        return this.chainEvents.waitForUnderlyingTransaction(scope, txHash, maxBlocksToWaitForTx);
     }
 
     async waitForUnderlyingTransactionFinalization(scope: EventScope | undefined, txHash: string, maxBlocksToWaitForTx?: number) {
-        const tx = await this.waitForUnderlyingTransaction(scope, txHash, maxBlocksToWaitForTx);
-        if (tx == null) return false;
-        // find transaction block
-        const block = await this.chain.getTransactionBlock(txHash);
-        if (block == null) return false;
-        // wait for finalization
-        await this.chainEvents.blockHeightReachedEvent(block.number + this.chain.finalizationBlocks).wait(scope);
-        return true;
+        return this.chainEvents.waitForUnderlyingTransactionFinalization(scope, txHash, maxBlocksToWaitForTx);
     }
     
-    static async createTest(common: CommonContext, chainInfo: ChainInfo): Promise<AssetContext> {
+    static async createTest(common: CommonContext, chainInfo: TestChainInfo): Promise<AssetContext> {
         // create mock chain attestation provider
         const chain = new MockChain(await time.latest());
         chain.secondsPerBlock = chainInfo.blockTime;
-        const chainEvents = chain;
+        const chainEventsRaw = chain;
+        const chainEvents = new UnderlyingChainEvents(chain, chainEventsRaw, null);
         const stateConnectorClient = new MockStateConnectorClient(common.stateConnector, { [chainInfo.chainId]: chain }, 'on_wait');
         const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId, 0);
         // create asset FTSO and set some price
@@ -236,7 +218,7 @@ export class AssetContext {
             chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider, settings, assetManager, fAsset, assetFtso);
     }
     
-    static async createTestSettings(ctx: CommonContext, ci: ChainInfo): Promise<AssetManagerSettings> {
+    static async createTestSettings(ctx: CommonContext, ci: TestChainInfo): Promise<AssetManagerSettings> {
         return {
             assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
             agentVaultFactory: ctx.agentVaultFactory.address,

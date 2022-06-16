@@ -10,7 +10,7 @@ import { getTestFile } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext, CommonContext } from "../utils/AssetContext";
-import { testChainInfo, testNatInfo } from "../utils/ChainInfo";
+import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
 import { Challenger } from "../utils/Challenger";
 import { Liquidator } from "../utils/Liquidator";
 import { Minter } from "../utils/Minter";

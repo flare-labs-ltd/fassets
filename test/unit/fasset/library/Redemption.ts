@@ -1,6 +1,6 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentVaultInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { ChainInfo, testChainInfo } from "../../../integration/utils/ChainInfo";
+import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { filterEvents, findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -35,7 +35,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     let settings: AssetManagerSettings;
     const chainId: SourceId = 1;
     let chain: MockChain;
-    let chainInfo: ChainInfo;
+    let chainInfo: TestChainInfo;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;

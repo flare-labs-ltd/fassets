@@ -64,7 +64,7 @@ export class FuzzingCustomer extends FuzzingActor {
     }
     
     async redemption(scope: EventScope) {
-        const lotSize = await this.context.lotsSize();
+        const lotSize = await this.context.lotSize();
         // request redemption
         const holdingUBA = await this.fAssetBalance();
         const holdingLots = Number(holdingUBA.div(lotSize));

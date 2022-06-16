@@ -92,7 +92,7 @@ export class FuzzingAgent extends FuzzingActor {
     async selfMint(scope: EventScope) {
         const agent = this.agent;   // save in case it is destroyed and re-created
         const agentInfo = await this.context.assetManager.getAgentInfo(agent.vaultAddress);
-        const lotSize = await this.context.lotsSize();
+        const lotSize = await this.context.lotSize();
         const lots = randomInt(Number(agentInfo.freeCollateralLots));
         if (this.avoidErrors && lots === 0) return;
         const miningUBA = toBN(lots).mul(lotSize);

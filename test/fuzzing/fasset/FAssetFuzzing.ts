@@ -1,7 +1,7 @@
 import { time } from "@openzeppelin/test-helpers";
 import { FtsoMockInstance } from "../../../typechain-truffle";
 import { AssetContext, CommonContext } from "../../integration/utils/AssetContext";
-import { ChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/ChainInfo";
+import { TestChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/TestChainInfo";
 import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
@@ -43,7 +43,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let agents: FuzzingAgent[] = [];
     let customers: FuzzingCustomer[] = [];
     let keepers: FuzzingKeeper[] = [];
-    let chainInfo: ChainInfo;
+    let chainInfo: TestChainInfo;
     let chain: MockChain;
     let eventDecoder: Web3EventDecoder;
     let interceptor: TruffleTransactionInterceptor;
@@ -74,8 +74,9 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         });
         // uniform event handlers
         eventQueue = new EventExecutionQueue();
+        context.chainEvents.executionQueue = eventQueue;
         truffleEvents = new InterceptorEvmEvents(interceptor, eventQueue);
-        chainEvents = context.chainEvents = new UnderlyingChainEvents(context.chainEventsRaw, eventQueue);
+        chainEvents = context.chainEvents;
         timeline = new FuzzingTimeline(chain, eventQueue);
         // state checker
         fuzzingState = new FuzzingState(context, timeline, truffleEvents, chainEvents, eventDecoder, eventQueue);

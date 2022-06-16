@@ -1,7 +1,7 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentVaultInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
-import { ChainInfo, testChainInfo } from "../../../integration/utils/ChainInfo";
+import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
@@ -38,7 +38,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     let settings: AssetManagerSettings;
     const chainId: SourceId = 1;
     let chain: MockChain;
-    let chainInfo: ChainInfo;
+    let chainInfo: TestChainInfo;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
