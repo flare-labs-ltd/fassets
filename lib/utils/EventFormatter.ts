@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import { BaseEvent } from "./events";
+import { BaseEvent } from "./events/common";
 import { formatBN } from "./helpers";
 
 

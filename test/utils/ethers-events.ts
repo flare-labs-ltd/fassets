@@ -2,7 +2,7 @@ import { TransactionReceipt as EthersTransactionReceipt } from "@ethersproject/a
 import { BigNumber, Contract, ContractReceipt } from "ethers";
 import { TypedEventFilter } from "../../typechain/common";
 import { EthersEventDecoder } from "./EthersEventDecoder";
-import { BaseEvent, TypedEvent } from "../../lib/utils/events";
+import { BaseEvent, TypedEvent } from "../../lib/utils/events/common";
 
 export type EthersEventKeys<T extends { filters: {} }> = keyof T['filters'];
 

@@ -3,7 +3,7 @@ import { Log as EthersRawEvent, TransactionReceipt as EthersTransactionReceipt }
 import { BigNumber, Contract, ContractReceipt, Event as EthersEvent } from "ethers";
 import { isNotNull } from "../../lib/utils/helpers";
 import { EventFormatter } from "../../lib/utils/EventFormatter";
-import { EvmEvent } from "../../lib/utils/events";
+import { EvmEvent } from "../../lib/utils/events/common";
 
 
 export class EthersEventDecoder extends EventFormatter {

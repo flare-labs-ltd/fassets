@@ -4,7 +4,7 @@ import { ITimer } from "./Timer";
 import { randomShuffle } from "../../utils/fuzzing-utils";
 import { latestBlockTimestamp, runAsync } from "../../../lib/utils/helpers";
 import { LogFile } from "../../../lib/utils/logging";
-import { ClearableSubscription, EventEmitter, EventExecutionQueue, EventHandler, EventSubscription } from "../../utils/fasset/ScopedEvents";
+import { ClearableSubscription, EventEmitter, EventExecutionQueue, EventHandler, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
 
 type TimelineEventType = 'FlareTime' | 'UnderlyingBlock' | 'UnderlyingTime';
 

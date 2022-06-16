@@ -4,7 +4,7 @@ import {
     RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/AssetManager";
 import { NAT_WEI } from "../../integration/utils/AssetContext";
-import { EvmEvent } from "../../../lib/utils/events";
+import { EvmEvent } from "../../../lib/utils/events/common";
 import { BN_ZERO, formatBN, latestBlockTimestamp, MAX_BIPS, sumBN, toBN } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import { FuzzingState, FuzzingStateLogRecord, Prices } from "./FuzzingState";

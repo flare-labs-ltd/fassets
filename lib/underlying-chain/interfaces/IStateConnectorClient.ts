@@ -1,4 +1,4 @@
-import { DHType } from "../../../lib/verification/generated/attestation-hash-types";
+import { DHType } from "../../verification/generated/attestation-hash-types";
 
 export interface AttestationRequest {
     round: number;

@@ -1,5 +1,5 @@
-import { expectErrors, filterStackTrace } from "../../../lib/utils/helpers";
-import { LogFile } from "../../../lib/utils/logging";
+import { expectErrors, filterStackTrace } from "../helpers";
+import { LogFile } from "../logging";
 
 export type EventHandler<E> = (event: E) => void;
 

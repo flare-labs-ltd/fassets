@@ -1,4 +1,4 @@
-import { BNish, toBN, toHex } from "../../../lib/utils/helpers";
+import { BNish, toBN, toHex } from "../utils/helpers";
 
 export namespace PaymentReference {
     export const TYPE_SHIFT = 192;

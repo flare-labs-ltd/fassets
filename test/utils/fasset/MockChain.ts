@@ -1,7 +1,9 @@
 import { stringifyJson } from "../fuzzing-utils";
 import { BNish, BN_ZERO, Dict, formatBN, systemTimestamp, toBN } from "../../../lib/utils/helpers";
 import { LogFile } from "../../../lib/utils/logging";
-import { BlockHandler, IBlock, IBlockChain, IBlockChainEvents, IBlockId, IChainWallet, ITransaction, TransactionHandler, TransactionOptions, TransactionOptionsWithFee, TxInputOutput, TX_FAILED, TX_SUCCESS } from "./ChainInterfaces";
+import { IBlock, IBlockChain, IBlockId, ITransaction, TxInputOutput, TX_FAILED, TX_SUCCESS } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { BlockHandler, IBlockChainEvents, TransactionHandler } from "../../../lib/underlying-chain/interfaces/IBlockChainEvents";
+import { IBlockChainWallet, TransactionOptions, TransactionOptionsWithFee } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 
 export type MockTransactionOptions = TransactionOptions & { status?: number };
 export type MockTransactionOptionsWithFee = TransactionOptionsWithFee & { status?: number };
@@ -246,7 +248,7 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
     }
 }
 
-export class MockChainWallet implements IChainWallet {
+export class MockChainWallet implements IBlockChainWallet {
     constructor(
         public chain: MockChain,
     ) {}

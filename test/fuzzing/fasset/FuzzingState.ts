@@ -1,8 +1,8 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
 import { EventFormatter } from "../../../lib/utils/EventFormatter";
-import { EvmEvent, ExtractedEventArgs } from "../../../lib/utils/events";
-import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
+import { EvmEvent, ExtractedEventArgs } from "../../../lib/utils/events/common";
+import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
 import { stringifyJson } from "../../utils/fuzzing-utils";
 import { BNish, BN_ZERO, sumBN, toBN } from "../../../lib/utils/helpers";
 import { ILogger, LogFile } from "../../../lib/utils/logging";
@@ -11,9 +11,9 @@ import { web3DeepNormalize, web3Normalize } from "../../../lib/utils/web3normali
 import { AgentStatus, FuzzingStateAgent } from "./FuzzingStateAgent";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { EventExecutionQueue, TriggerableEvent } from "../../utils/fasset/ScopedEvents";
+import { EventExecutionQueue, TriggerableEvent } from "../../../lib/utils/events/ScopedEvents";
 import { EvmEvents } from "./EvmEvents";
-import { UnderlyingChainEvents } from "../../utils/fasset/UnderlyingChainEvents";
+import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 
 export class Prices {
     constructor(

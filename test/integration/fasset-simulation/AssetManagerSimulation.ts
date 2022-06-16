@@ -1,10 +1,10 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { calcGasCost } from "../../utils/eth";
-import { findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events";
-import { TX_BLOCKED, TX_FAILED } from "../../utils/fasset/ChainInterfaces";
+import { findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../utils/fasset/PaymentReference";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { BN_ZERO, DAYS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { getTestFile } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";

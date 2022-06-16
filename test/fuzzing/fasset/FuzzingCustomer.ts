@@ -1,10 +1,10 @@
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Minter } from "../../integration/utils/Minter";
 import { Redeemer } from "../../integration/utils/Redeemer";
-import { EventArgs } from "../../../lib/utils/events";
-import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
+import { EventArgs } from "../../../lib/utils/events/common";
+import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
-import { EventScope, QualifiedEvent, qualifiedEvent } from "../../utils/fasset/ScopedEvents";
+import { EventScope, QualifiedEvent, qualifiedEvent } from "../../../lib/utils/events/ScopedEvents";
 import { foreachAsyncParallel, randomChoice, randomInt } from "../../utils/fuzzing-utils";
 import { expectErrors, formatBN, promiseValue } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
@@ -22,7 +22,7 @@ export class FuzzingCustomer extends FuzzingActor {
         runner: FuzzingRunner,
         public address: string,
         public underlyingAddress: string,
-        public wallet: IChainWallet,
+        public wallet: IBlockChainWallet,
     ) {
         super(runner);
         this.minter = new Minter(runner.context, address, underlyingAddress, wallet);

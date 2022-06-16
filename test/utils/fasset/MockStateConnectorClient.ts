@@ -10,7 +10,7 @@ import { parseRequest } from "../../../lib/verification/generated/attestation-re
 import { ARBalanceDecreasingTransaction, ARConfirmedBlockHeightExists, ARPayment, ARReferencedPaymentNonexistence, ARType } from "../../../lib/verification/generated/attestation-request-types";
 import { AttestationType } from "../../../lib/verification/generated/attestation-types-enum";
 import { SourceId } from "../../../lib/verification/sources/sources";
-import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "./IStateConnectorClient";
+import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
 import { MockAttestationProver } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
 

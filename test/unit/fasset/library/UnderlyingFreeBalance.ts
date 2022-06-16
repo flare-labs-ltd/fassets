@@ -1,16 +1,16 @@
 import { AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { findRequiredEvent } from "../../../../lib/utils/events";
-import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
-import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
+import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
+import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { randomAddress, toBNExp } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../../lib/verification/sources/sources";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
 import { createTestSettings } from "../test-settings";
-import { PaymentReference } from "../../../utils/fasset/PaymentReference";
+import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { ethers } from "hardhat";
 

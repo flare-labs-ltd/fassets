@@ -1,5 +1,6 @@
-import { IBlockChainEvents, IBlockId, ITransaction } from "./ChainInterfaces";
-import { ClearableSubscription, EventEmitter, EventExecutionQueue } from "./ScopedEvents";
+import { IBlockId, ITransaction } from "./interfaces/IBlockChain";
+import { IBlockChainEvents } from "./interfaces/IBlockChainEvents";
+import { ClearableSubscription, EventEmitter, EventExecutionQueue } from "../utils/events/ScopedEvents";
 
 export class UnderlyingChainEvents {
     constructor(

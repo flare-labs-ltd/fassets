@@ -14,10 +14,10 @@ import { FuzzingKeeper } from "./FuzzingKeeper";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { EventExecutionQueue } from "../../utils/fasset/ScopedEvents";
+import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 import { EvmEvents } from "./EvmEvents";
-import { UnderlyingChainEvents } from "../../utils/fasset/UnderlyingChainEvents";
+import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
     const startTimestamp = systemTimestamp();

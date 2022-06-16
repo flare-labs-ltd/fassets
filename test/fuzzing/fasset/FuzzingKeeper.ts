@@ -1,14 +1,14 @@
 import { time } from "@openzeppelin/test-helpers";
 import { MintingExecuted } from "../../../typechain-truffle/AssetManager";
-import { findRequiredEvent } from "../../../lib/utils/events";
-import { ITransaction } from "../../utils/fasset/ChainInterfaces";
+import { findRequiredEvent } from "../../../lib/utils/events/truffle";
+import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { expectErrors } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingStateAgent } from "./FuzzingStateAgent";
-import { EventScope } from "../../utils/fasset/ScopedEvents";
+import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { EvmEventArgs } from "./EvmEvents";
-import { PaymentReference } from "../../utils/fasset/PaymentReference";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 
 export class FuzzingKeeper extends FuzzingActor {
     constructor(

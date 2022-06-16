@@ -154,7 +154,7 @@ export function randomAddress() {
  */
 export function checkedCast<S, T extends S>(obj: S, cls: new (...args: any[]) => T): T {
     if (obj instanceof cls) return obj;
-    assert.fail(`object not instance of ${cls.name}`);
+    throw new Error(`object not instance of ${cls.name}`);
 }
 
 /**

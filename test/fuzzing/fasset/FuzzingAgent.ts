@@ -1,15 +1,16 @@
 import BN from "bn.js";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Agent } from "../../integration/utils/Agent";
-import { EventArgs, requiredEventArgs } from "../../../lib/utils/events";
+import { requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { EventArgs } from "../../../lib/utils/events/common";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { PaymentReference } from "../../utils/fasset/PaymentReference";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { coinFlip, randomBN, randomChoice, randomInt } from "../../utils/fuzzing-utils";
 import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { AgentStatus } from "./FuzzingStateAgent";
-import { EventScope, EventSubscription } from "../../utils/fasset/ScopedEvents";
+import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
 
 export class FuzzingAgent extends FuzzingActor {
     constructor(

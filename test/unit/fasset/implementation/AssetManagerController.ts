@@ -1,7 +1,7 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
-import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
+import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
 import { DAYS, HOURS, MAX_BIPS, randomAddress, toBN, toBNExp, toStringExp } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";

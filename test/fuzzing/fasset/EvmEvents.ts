@@ -1,6 +1,7 @@
-import { ContractWithEventsBase, EventArgs, EventArgsForName, EventNamesFor, EventSelector, EvmEvent } from "../../../lib/utils/events";
+import { ContractWithEventsBase, EventArgsForName, EventNamesFor } from "../../../lib/utils/events/truffle";
+import { EventArgs, EventSelector, EvmEvent } from "../../../lib/utils/events/common";
 import { multimapAdd, multimapDelete } from "../../../lib/utils/helpers";
-import { ClearableSubscription, EventEmitter, EventExecutionQueue } from "../../utils/fasset/ScopedEvents";
+import { ClearableSubscription, EventEmitter, EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { TransactionInterceptor } from "./TransactionInterceptor";
 
 export type EvmEventArgs<E extends EventSelector> = EventArgs<E> & { $event: EvmEvent };

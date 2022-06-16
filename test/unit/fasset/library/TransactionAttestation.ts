@@ -1,13 +1,13 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { ChainInfo, testChainInfo } from "../../../integration/utils/ChainInfo";
-import { findRequiredEvent } from "../../../../lib/utils/events";
-import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
-import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
+import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../../utils/fasset/PaymentReference";
+import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { randomAddress, toBNExp } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
