@@ -263,12 +263,18 @@ export function sorted<T, K>(list: Iterable<T>, comparisonKey: (e: T) => K = (x:
     return array;
 }
 
+export interface PromiseValue<T> {
+    resolved: boolean;
+    value?: T;
+}
+
 /**
  * Return a struct whose `value` field is set when promise id fullfiled.
  */
-export function promiseValue<T>(promise: Promise<T>): { value: T | undefined } {
-    const result = { value: undefined as T | undefined };
+export function promiseValue<T>(promise: Promise<T>): PromiseValue<T> {
+    const result: PromiseValue<T> = { resolved: false };
     void promise.then(value => { 
+        result.resolved = true;
         result.value = value;
     });
     return result;

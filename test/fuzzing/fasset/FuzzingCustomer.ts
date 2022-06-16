@@ -93,7 +93,7 @@ export class FuzzingCustomer extends FuzzingActor {
                 } else {
                     this.comment(`${this.name}, req=${ticket.requestId}: Invalid redemption, paid=${formatBN(amountPaid)} expected=${expectedAmount} target=${targetAddress}`);
                     await this.waitForPaymentTimeout(scope, ticket);    // still have to wait for timeout to be able to get non payment proof from SC
-                    if (redemptionDefault.value == null) {   // perhaps the agent has already submitted failed payment and defaulted
+                    if (!redemptionDefault.resolved) {   // do this only if the agent has not already submitted failed payment and defaulted
                         await this.redemptionDefault(scope, ticket);
                     }
                     const result = await redemptionDefaultPromise; // now it must be fulfiled, by agent or by customer's default call

@@ -1,19 +1,19 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
+import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
+import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { EventFormatter } from "../../../lib/utils/EventFormatter";
 import { EvmEvent, ExtractedEventArgs } from "../../../lib/utils/events/common";
-import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
-import { stringifyJson } from "../../utils/fuzzing-utils";
+import { EventExecutionQueue, TriggerableEvent } from "../../../lib/utils/events/ScopedEvents";
 import { BNish, BN_ZERO, sumBN, toBN } from "../../../lib/utils/helpers";
 import { ILogger, LogFile } from "../../../lib/utils/logging";
-import { SparseArray } from "../../utils/SparseMatrix";
 import { web3DeepNormalize, web3Normalize } from "../../../lib/utils/web3normalize";
+import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
+import { stringifyJson } from "../../utils/fuzzing-utils";
+import { SparseArray } from "../../utils/SparseMatrix";
 import { AgentStatus, FuzzingStateAgent } from "./FuzzingStateAgent";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { EventExecutionQueue, TriggerableEvent } from "../../../lib/utils/events/ScopedEvents";
-import { EvmEvents } from "./EvmEvents";
-import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
+import { IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
 
 export class Prices {
     constructor(
@@ -83,7 +83,7 @@ export class FuzzingState {
     constructor(
         public context: AssetContext,
         public timeline: FuzzingTimeline,
-        public truffleEvents: EvmEvents,
+        public truffleEvents: IEvmEvents,
         public chainEvents: UnderlyingChainEvents,
         public eventFormatter: EventFormatter,
         public eventQueue: EventExecutionQueue,

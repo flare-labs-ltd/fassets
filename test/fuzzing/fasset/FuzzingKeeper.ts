@@ -7,7 +7,7 @@ import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingStateAgent } from "./FuzzingStateAgent";
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
-import { EvmEventArgs } from "./EvmEvents";
+import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 
 export class FuzzingKeeper extends FuzzingActor {

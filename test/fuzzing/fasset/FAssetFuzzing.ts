@@ -16,7 +16,7 @@ import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
-import { EvmEvents } from "./EvmEvents";
+import { InterceptorEvmEvents } from "./InterceptorEvmEvents";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
@@ -47,7 +47,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let chain: MockChain;
     let eventDecoder: Web3EventDecoder;
     let interceptor: TruffleTransactionInterceptor;
-    let truffleEvents: EvmEvents;
+    let truffleEvents: InterceptorEvmEvents;
     let eventQueue: EventExecutionQueue;
     let chainEvents: UnderlyingChainEvents;
     let fuzzingState: FuzzingState;
@@ -74,7 +74,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         });
         // uniform event handlers
         eventQueue = new EventExecutionQueue();
-        truffleEvents = new EvmEvents(interceptor, eventQueue);
+        truffleEvents = new InterceptorEvmEvents(interceptor, eventQueue);
         chainEvents = context.chainEvents = new UnderlyingChainEvents(context.chainEventsRaw, eventQueue);
         timeline = new FuzzingTimeline(chain, eventQueue);
         // state checker

@@ -28,6 +28,5 @@
     "files": [
         "./hardhat.config.ts",
         "./type-extensions.ts",
-        "lib/utils/events/common.ts"
     ]
 }
