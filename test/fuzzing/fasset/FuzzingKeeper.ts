@@ -41,6 +41,10 @@ export class FuzzingKeeper extends FuzzingActor {
     
     handleMintingExecuted(args: EvmEventArgs<MintingExecuted>) {
         const agent = this.state.getAgent(args.agentVault);
+        if (!agent) {
+            this.comment(`Invalid agent address ${args.agentVault}`);
+            return;
+        }
         this.runner.startThread(async (scope) => {
             await this.checkAgentForLiquidation(agent)
                 .catch(e => scope.exitOnExpectedError(e, []));

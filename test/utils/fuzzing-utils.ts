@@ -1,6 +1,6 @@
 import BN from "bn.js";
-import { readFileSync, writeFileSync } from "fs";
-import { BN_ZERO, toBN, toBNExp } from "../../lib/utils/helpers";
+import { BN_ZERO, toBN } from "../../lib/utils/helpers";
+import { stringifyJson } from "../../lib/utils/json-bn";
 
 export class Statistics {
     min?: number;
@@ -26,31 +26,6 @@ export class Statistics {
         const avg = this.average?.toFixed(decimals) ?? '---';
         return `n: ${this.count}  min: ${min}  avg: ${avg}  max: ${max}`;
     }
-}
-
-export function jsonBNserializer(this: any, key: any, serializedValue: any) {
-    const value = this[key];
-    return BN.isBN(value) ? value.toString(10) : serializedValue;
-}
-
-export function jsonBNDeserializer(bnKeys: string[]) {
-    return function (key: any, value: any) {
-        return bnKeys.includes(key) ? toBN(value) : value;
-    }
-}
-
-// JSON.stringify with correct BN hamdling
-export function stringifyJson(data: any, indent?: string | number) {
-    return JSON.stringify(data, jsonBNserializer, indent);
-}
-
-export function saveJson(file: string, data: any, indent?: string | number) {
-    writeFileSync(file, JSON.stringify(data, jsonBNserializer, indent));
-}
-
-export function loadJson(file: string, bnKeys: string[] = []) {
-    const buf = readFileSync(file);
-    return JSON.parse(buf.toString(), jsonBNDeserializer(bnKeys));
 }
 
 // start is inclusive, end is exclusive

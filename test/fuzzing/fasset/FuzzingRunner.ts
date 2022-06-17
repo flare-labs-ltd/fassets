@@ -1,14 +1,15 @@
 import { AvailableAgentInfo } from "../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerEvents } from "../../../lib/fasset/IAssetContext";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { ExtractedEventArgs } from "../../../lib/utils/events/common";
+import { IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
 import { ScopedRunner } from "../../../lib/utils/events/ScopedRunner";
-import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
+import { AssetContext } from "../../integration/utils/AssetContext";
 import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 
 export class FuzzingRunner extends ScopedRunner {

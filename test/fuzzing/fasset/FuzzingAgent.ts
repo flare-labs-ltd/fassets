@@ -9,8 +9,8 @@ import { coinFlip, randomBN, randomChoice, randomInt } from "../../utils/fuzzing
 import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { AgentStatus } from "./FuzzingStateAgent";
 import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
+import { AgentStatus } from "../../../lib/state/TrackedAgentState";
 
 export class FuzzingAgent extends FuzzingActor {
     constructor(
@@ -32,7 +32,8 @@ export class FuzzingAgent extends FuzzingActor {
     }
 
     agentState(agent: Agent) {
-        return this.state.getAgent(agent.agentVault.address);
+        const address = agent.agentVault.address;
+        return this.state.getAgent(address) ?? assert.fail(`Invalid agent address ${address}`);
     }
 
     static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string) {
@@ -214,12 +215,12 @@ export class FuzzingAgent extends FuzzingActor {
     destroying: boolean = false;
     
     async destroyAgent(scope: EventScope) {
+        const agentState = this.agentState(this.agent);
         if (this.destroying) return;
         if (this.avoidErrors) {
             this.destroying = true;
         }
         this.comment(`Destroying agent ${this.name(this.agent)}`);
-        const agentState = this.agentState(this.agent);
         if (agentState.publiclyAvailable) {
             await this.agent.exitAvailable()
                 .catch(e => scope.exitOnExpectedError(e, ['agent not available']));
@@ -233,13 +234,14 @@ export class FuzzingAgent extends FuzzingActor {
     }
     
     async destroyAndReenter(scope: EventScope) {
+        // save old agent's data
+        const name = this.name(this.agent);
+        const agentState = this.agentState(this.agent);
+        // start destroying
         if (this.destroying) return;
         if (this.avoidErrors) {
             this.destroying = true;
         }
-        // save old agent's data
-        const name = this.name(this.agent);
-        const agentState = this.agentState(this.agent);
         // const collateral = agentState.totalCollateralNATWei;
         const feeBIPS = agentState.feeBIPS;
         const agentMinCollateralRatioBIPS = agentState.agentMinCollateralRatioBIPS;

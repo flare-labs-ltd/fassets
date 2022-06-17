@@ -1,6 +1,5 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { StateConnectorMockInstance } from "../../../typechain-truffle";
-import { stringifyJson } from "../fuzzing-utils";
 import { sleep, toBN, toNumber } from "../../../lib/utils/helpers";
 import { LogFile } from "../../../lib/utils/logging";
 import { MerkleTree } from "../MerkleTree";
@@ -13,6 +12,7 @@ import { SourceId } from "../../../lib/verification/sources/sources";
 import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
 import { MockAttestationProver } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
+import { stringifyJson } from "../../../lib/utils/json-bn";
 
 interface DHProof {
     attestationType: AttestationType;

@@ -1,9 +1,9 @@
-import { stringifyJson } from "../fuzzing-utils";
 import { BNish, BN_ZERO, Dict, formatBN, systemTimestamp, toBN } from "../../../lib/utils/helpers";
 import { LogFile } from "../../../lib/utils/logging";
 import { IBlock, IBlockChain, IBlockId, ITransaction, TxInputOutput, TX_FAILED, TX_SUCCESS } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { BlockHandler, IBlockChainEvents, TransactionHandler } from "../../../lib/underlying-chain/interfaces/IBlockChainEvents";
 import { IBlockChainWallet, TransactionOptions, TransactionOptionsWithFee } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
+import { stringifyJson } from "../../../lib/utils/json-bn";
 
 export type MockTransactionOptions = TransactionOptions & { status?: number };
 export type MockTransactionOptionsWithFee = TransactionOptionsWithFee & { status?: number };

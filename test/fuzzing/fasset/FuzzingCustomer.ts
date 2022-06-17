@@ -9,7 +9,7 @@ import { foreachAsyncParallel, randomChoice, randomInt } from "../../utils/fuzzi
 import { expectErrors, formatBN, promiseValue } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { AgentStatus } from "./FuzzingStateAgent";
+import { AgentStatus } from "../../../lib/state/TrackedAgentState";
 
 // debug state
 let mintedLots = 0;

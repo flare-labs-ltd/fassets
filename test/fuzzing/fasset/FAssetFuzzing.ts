@@ -79,7 +79,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         chainEvents = context.chainEvents;
         timeline = new FuzzingTimeline(chain, eventQueue);
         // state checker
-        fuzzingState = new FuzzingState(context, timeline, truffleEvents, chainEvents, eventDecoder, eventQueue);
+        fuzzingState = new FuzzingState(context, truffleEvents, chainEvents, eventDecoder, eventQueue);
         await fuzzingState.initialize();
         // runner
         runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, fuzzingState, AVOID_ERRORS);
@@ -88,13 +88,13 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         chain.logFile = interceptor.logFile;
         timeline.logFile = interceptor.logFile;
         (context.stateConnectorClient as MockStateConnectorClient).logFile = interceptor.logFile;
-        fuzzingState.logFile = interceptor.logFile;
+        fuzzingState.logger = interceptor.logFile;
     });
     
     after(() => {
-        // fuzzingState.logAllAgentActions(interceptor.logFile);
-        fuzzingState.logAllAgentSummaries(interceptor.logFile);
-        fuzzingState.logExpectationFailures(interceptor.logFile);
+        // fuzzingState.logAllAgentActions();
+        fuzzingState.logAllAgentSummaries();
+        fuzzingState.logExpectationFailures();
         interceptor.logGasUsage();
         interceptor.closeLog();
     });

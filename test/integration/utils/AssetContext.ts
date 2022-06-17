@@ -1,22 +1,27 @@
 import { constants, time } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, 
-    FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance } from "../../../typechain-truffle";
-import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
+import { amgToNATWeiPrice, AMG_NATWEI_PRICE_SCALE } from "../../../lib/fasset/Conversions";
+import { newAssetManager } from "../../../lib/fasset/DeployAssetManager";
+import {
+    AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents, AssetManagerEvents, AttestationClientSCEvents, FAssetEvents,
+    FtsoManagerMockEvents, FtsoMockEvents, FtsoRegistryMockEvents, IAssetContext, StateConnectorMockEvents, WNatEvents
+} from "../../../lib/fasset/IAssetContext";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { IBlockChain } from "../../../lib/underlying-chain/interfaces/IBlockChain";
-import { IBlockChainEvents } from "../../../lib/underlying-chain/interfaces/IBlockChainEvents";
-import { newAssetManager } from "../../../lib/fasset/DeployAssetManager";
 import { IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
+import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
+import { EventScope } from "../../../lib/utils/events/ScopedEvents";
+import { ContractWithEvents } from "../../../lib/utils/events/truffle";
+import { BNish, DAYS, HOURS, toBN, toBNExp, toNumber, toWei, WEEKS } from "../../../lib/utils/helpers";
+import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
+import {
+    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance,
+    FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance
+} from "../../../typechain-truffle";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { EventScope } from "../../../lib/utils/events/ScopedEvents";
-import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
-import { BNish, DAYS, HOURS, toBN, toBNExp, toNumber, toWei, WEEKS } from "../../../lib/utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { TestChainInfo, TestNatInfo } from "./TestChainInfo";
-import { IAssetContext } from "../../../lib/fasset/IAssetContext";
 
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const AttestationClient = artifacts.require('AttestationClientSC');
@@ -27,21 +32,6 @@ const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const FtsoManagerMock = artifacts.require('FtsoManagerMock');
 const StateConnector = artifacts.require('StateConnectorMock');
-
-export const AMG_NATWEI_PRICE_SCALE = toBNExp(1, 9);
-export const NAT_WEI = toBNExp(1, 18);
-
-export type AddressUpdaterEvents = import('../../../typechain-truffle/AddressUpdater').AllEvents;
-export type AssetManagerControllerEvents = import('../../../typechain-truffle/AssetManagerController').AllEvents;
-export type WNatEvents = import('../../../typechain-truffle/WNat').AllEvents;
-export type StateConnectorMockEvents = import('../../../typechain-truffle/StateConnectorMock').AllEvents;
-export type AgentVaultFactoryEvents = import('../../../typechain-truffle/AgentVaultFactory').AllEvents;
-export type AttestationClientSCEvents = import('../../../typechain-truffle/AttestationClientSC').AllEvents;
-export type FtsoRegistryMockEvents = import('../../../typechain-truffle/FtsoRegistryMock').AllEvents;
-export type FtsoMockEvents = import('../../../typechain-truffle/FtsoMock').AllEvents;
-export type FtsoManagerMockEvents = import('../../../typechain-truffle/FtsoManagerMock').AllEvents;
-export type AssetManagerEvents = import('../../../typechain-truffle/AssetManager').AllEvents;
-export type FAssetEvents = import('../../../typechain-truffle/FAsset').AllEvents;
 
 // common context shared between several asset managers
 export class CommonContext {
@@ -149,10 +139,7 @@ export class AssetContext implements IAssetContext {
     }
 
     amgToNATWeiPrice(natPriceUSDDec5: BNish, assetPriceUSDDec5: BNish) {
-        // _natPriceUSDDec5 < 2^128 (in ftso) and assetUnitUBA, are both 64 bit, so there can be no overflow
-        return toBN(assetPriceUSDDec5)
-            .mul(toBN(this.settings.assetMintingGranularityUBA).mul(NAT_WEI).mul(AMG_NATWEI_PRICE_SCALE))
-            .div(toBN(natPriceUSDDec5).mul(toBN(this.settings.assetUnitUBA)));
+        return amgToNATWeiPrice(this.settings, natPriceUSDDec5, assetPriceUSDDec5);
     }
     
     convertAmgToUBA(valueAMG: BNish) {
