@@ -85,7 +85,8 @@ interface IAssetManagerEvents {
     event MintingPaymentDefault(
         address indexed agentVault,
         address indexed minter,
-        uint256 collateralReservationId);
+        uint256 collateralReservationId,
+        uint256 reservedAmountUBA);
 
     /**
      * Both minter and agent failed to present any proof within attestation time window, so
@@ -94,7 +95,8 @@ interface IAssetManagerEvents {
     event CollateralReservationDeleted(
         address indexed agentVault,
         address indexed minter,
-        uint256 collateralReservationId);
+        uint256 collateralReservationId,
+        uint256 reservedAmountUBA);
         
     /**
      * Redeemer started redemption process and provided fassets.
@@ -143,6 +145,7 @@ interface IAssetManagerEvents {
     event RedemptionDefault(
         address indexed agentVault,
         address indexed redeemer,
+        uint256 redemptionAmountUBA,
         uint256 redeemedCollateralWei,
         uint64 requestId);
 
@@ -155,6 +158,7 @@ interface IAssetManagerEvents {
     event RedemptionPaymentBlocked(
         address indexed agentVault,
         address indexed redeemer,
+        uint256 redemptionAmountUBA,
         uint64 requestId);
 
     /**
