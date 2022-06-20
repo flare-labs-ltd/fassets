@@ -1,16 +1,17 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { ChainInfo, testChainInfo } from "../../../integration/utils/ChainInfo";
-import { findRequiredEvent } from "../../../utils/events";
-import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
-import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
+import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
+import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../../utils/fasset/PaymentReference";
-import { getTestFile, randomAddress, toBNExp } from "../../../utils/helpers";
+import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
+import { randomAddress, toBNExp } from "../../../../lib/utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../utils/verification/sources/sources";
+import { SourceId } from "../../../../lib/verification/sources/sources";
 import { createTestSettings } from "../test-settings";
 
 const AgentVault = artifacts.require('AgentVault');
@@ -33,7 +34,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     let assetFtso: FtsoMockInstance;
     let settings: AssetManagerSettings;
     let chain: MockChain;
-    let chainInfo: ChainInfo;
+    let chainInfo: TestChainInfo;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
@@ -123,4 +124,3 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     });
 
 });
-

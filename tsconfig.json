@@ -4,6 +4,10 @@
         "module": "commonjs",
         "strict": true,
         "esModuleInterop": true,
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "forceConsistentCasingInFileNames": true,
         "outDir": "dist",
         "typeRoots": [
             "test/types",
@@ -15,6 +19,7 @@
         ]
     },
     "include": [
+        "./lib",
         "./test",
         "./typechain",
         "./typechain-truffle",
@@ -22,6 +27,6 @@
     ],
     "files": [
         "./hardhat.config.ts",
-        "./type-extensions.ts"
+        "./type-extensions.ts",
     ]
 }

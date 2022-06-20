@@ -1,9 +1,10 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AddressUpdaterInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { findRequiredEvent } from "../../../utils/events";
-import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
-import { getTestFile, toBN, toBNExp } from "../../../utils/helpers";
+import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
+import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
+import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
+import { toBN, toBNExp } from "../../../../lib/utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createTestSettings } from "../test-settings";

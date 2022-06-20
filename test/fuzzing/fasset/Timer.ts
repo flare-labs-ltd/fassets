@@ -1,4 +1,4 @@
-import { latestBlockTimestamp, runAsync, systemTimestamp } from "../../utils/helpers";
+import { latestBlockTimestamp, runAsync, systemTimestamp } from "../../../lib/utils/helpers";
 
 export interface ITimer<TIMER_ID> {
     currentTime(): Promise<number>;

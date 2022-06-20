@@ -1,15 +1,16 @@
 import BN from "bn.js";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Agent } from "../../integration/utils/Agent";
-import { EventArgs, requiredEventArgs } from "../../utils/events";
+import { requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { EventArgs } from "../../../lib/utils/events/common";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { PaymentReference } from "../../utils/fasset/PaymentReference";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { coinFlip, randomBN, randomChoice, randomInt } from "../../utils/fuzzing-utils";
-import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../utils/helpers";
+import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { AgentStatus } from "./FuzzingStateAgent";
-import { EventScope, EventSubscription } from "../../utils/fasset/ScopedEvents";
+import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
+import { AgentStatus } from "../../../lib/state/TrackedAgentState";
 
 export class FuzzingAgent extends FuzzingActor {
     constructor(
@@ -31,7 +32,8 @@ export class FuzzingAgent extends FuzzingActor {
     }
 
     agentState(agent: Agent) {
-        return this.state.getAgent(agent.agentVault.address);
+        const address = agent.agentVault.address;
+        return this.state.getAgent(address) ?? assert.fail(`Invalid agent address ${address}`);
     }
 
     static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string) {
@@ -91,7 +93,7 @@ export class FuzzingAgent extends FuzzingActor {
     async selfMint(scope: EventScope) {
         const agent = this.agent;   // save in case it is destroyed and re-created
         const agentInfo = await this.context.assetManager.getAgentInfo(agent.vaultAddress);
-        const lotSize = await this.context.lotsSize();
+        const lotSize = await this.context.lotSize();
         const lots = randomInt(Number(agentInfo.freeCollateralLots));
         if (this.avoidErrors && lots === 0) return;
         const miningUBA = toBN(lots).mul(lotSize);
@@ -213,12 +215,12 @@ export class FuzzingAgent extends FuzzingActor {
     destroying: boolean = false;
     
     async destroyAgent(scope: EventScope) {
+        const agentState = this.agentState(this.agent);
         if (this.destroying) return;
         if (this.avoidErrors) {
             this.destroying = true;
         }
         this.comment(`Destroying agent ${this.name(this.agent)}`);
-        const agentState = this.agentState(this.agent);
         if (agentState.publiclyAvailable) {
             await this.agent.exitAvailable()
                 .catch(e => scope.exitOnExpectedError(e, ['agent not available']));
@@ -232,13 +234,14 @@ export class FuzzingAgent extends FuzzingActor {
     }
     
     async destroyAndReenter(scope: EventScope) {
+        // save old agent's data
+        const name = this.name(this.agent);
+        const agentState = this.agentState(this.agent);
+        // start destroying
         if (this.destroying) return;
         if (this.avoidErrors) {
             this.destroying = true;
         }
-        // save old agent's data
-        const name = this.name(this.agent);
-        const agentState = this.agentState(this.agent);
         // const collateral = agentState.totalCollateralNATWei;
         const feeBIPS = agentState.feeBIPS;
         const agentMinCollateralRatioBIPS = agentState.agentMinCollateralRatioBIPS;

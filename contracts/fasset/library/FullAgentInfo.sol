@@ -36,6 +36,9 @@ library FullAgentInfo {
         // Current agent's status.
         AgentStatusInfo status;
         
+        // Agent vault owner's address.
+        address ownerAddress;
+        
         // Underlying address as string - to be used for minting payments.
         // For most other purpuses, you use underlyingAddressHash, which is `keccak256(underlyingAddressString)`.
         string underlyingAddressString;
@@ -113,6 +116,7 @@ library FullAgentInfo {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
         _agentState.status = _getAgentStatusInfo(_state, agent);
+        _agentState.ownerAddress = Agents.vaultOwner(_agentVault);
         _agentState.underlyingAddressString = agent.underlyingAddressString;
         _agentState.publiclyAvailable = agent.availableAgentsPos != 0;
         _agentState.feeBIPS = agent.feeBIPS;

@@ -1,15 +1,16 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { findRequiredEvent } from "../../../utils/events";
-import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
-import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
+import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../../utils/fasset/PaymentReference";
-import { getTestFile, toBN, toBNExp } from "../../../utils/helpers";
+import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
+import { toBN, toBNExp } from "../../../../lib/utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../utils/verification/sources/sources";
+import { SourceId } from "../../../../lib/verification/sources/sources";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createTestSettings } from "../test-settings";
 
@@ -133,7 +134,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
         // assert
-        expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, announcementId: toBN(1), spentUBA: toBN(500), underlyingBlock: toBN(blockId)});
+        expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, announcementId: toBN(1), spentUBA: toBN(500), transactionHash: txHash});
     });
 
     it("others can confirm underlying withdrawal after some time", async () => {
@@ -150,7 +151,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         await time.increase(settings.confirmationByOthersAfterSeconds);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
         // assert
-        expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, announcementId: toBN(1), spentUBA: toBN(500), underlyingBlock: toBN(blockId)});
+        expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, announcementId: toBN(1), spentUBA: toBN(500), transactionHash: txHash});
     });
 
     it("only owner can confirm underlying withdrawal immediatelly", async () => {

@@ -1,14 +1,14 @@
 import { time } from "@openzeppelin/test-helpers";
 import { MintingExecuted } from "../../../typechain-truffle/AssetManager";
-import { findRequiredEvent } from "../../utils/events";
-import { ITransaction } from "../../utils/fasset/ChainInterfaces";
-import { expectErrors } from "../../utils/helpers";
+import { findRequiredEvent } from "../../../lib/utils/events/truffle";
+import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { expectErrors } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingStateAgent } from "./FuzzingStateAgent";
-import { EventScope } from "../../utils/fasset/ScopedEvents";
-import { EvmEventArgs } from "./EvmEvents";
-import { PaymentReference } from "../../utils/fasset/PaymentReference";
+import { EventScope } from "../../../lib/utils/events/ScopedEvents";
+import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 
 export class FuzzingKeeper extends FuzzingActor {
     constructor(
@@ -41,6 +41,10 @@ export class FuzzingKeeper extends FuzzingActor {
     
     handleMintingExecuted(args: EvmEventArgs<MintingExecuted>) {
         const agent = this.state.getAgent(args.agentVault);
+        if (!agent) {
+            this.comment(`Invalid agent address ${args.agentVault}`);
+            return;
+        }
         this.runner.startThread(async (scope) => {
             await this.checkAgentForLiquidation(agent)
                 .catch(e => scope.exitOnExpectedError(e, []));

@@ -1,17 +1,16 @@
-import { ContractWithEventsBase, EventArgs, EventArgsForName, EventNamesFor, EventSelector, EvmEvent } from "../../utils/events";
-import { multimapAdd, multimapDelete } from "../../utils/helpers";
-import { ClearableSubscription, EventEmitter, EventExecutionQueue } from "../../utils/fasset/ScopedEvents";
+import { ContractWithEventsBase, EventArgsForName, EventNamesFor } from "../../../lib/utils/events/truffle";
+import { EvmEvent } from "../../../lib/utils/events/common";
+import { multimapAdd, multimapDelete } from "../../../lib/utils/helpers";
+import { ClearableSubscription, EventEmitter, EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { TransactionInterceptor } from "./TransactionInterceptor";
+import { EvmEventArgsForName, IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
 
-export type EvmEventArgs<E extends EventSelector> = EventArgs<E> & { $event: EvmEvent };
-export type EvmEventArgsForName<T, N extends EventNamesFor<T>> = EventArgsForName<T, N> & { $event: EvmEvent };
-
-export interface FilteredHandler {
+interface FilteredHandler {
     filter: Record<string, unknown> | undefined;
     handler: (eventArgs: any) => void;
 }
 
-export class EvmEvents {
+export class InterceptorEvmEvents implements IEvmEvents {
     constructor(
         public interceptor: TransactionInterceptor,
         public eventQueue: EventExecutionQueue | null,

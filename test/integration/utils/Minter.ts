@@ -1,8 +1,9 @@
 import { CollateralReserved } from "../../../typechain-truffle/AssetManager";
-import { EventArgs, requiredEventArgs } from "../../utils/events";
-import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
+import { requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { EventArgs } from "../../../lib/utils/events/common";
+import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
-import { BNish } from "../../utils/helpers";
+import { BNish } from "../../../lib/utils/helpers";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
 export class Minter extends AssetContextClient {
@@ -10,7 +11,7 @@ export class Minter extends AssetContextClient {
         context: AssetContext,
         public address: string,
         public underlyingAddress: string,
-        public wallet: IChainWallet,
+        public wallet: IBlockChainWallet,
     ) {
         super(context);
     }
@@ -22,7 +23,7 @@ export class Minter extends AssetContextClient {
         return Minter.create(ctx, address, underlyingAddress, wallet);
     }
     
-    static async create(ctx: AssetContext, address: string, underlyingAddress: string, wallet: IChainWallet) {
+    static async create(ctx: AssetContext, address: string, underlyingAddress: string, wallet: IBlockChainWallet) {
         return new Minter(ctx, address, underlyingAddress, wallet);
     }
     

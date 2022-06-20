@@ -1,15 +1,15 @@
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Minter } from "../../integration/utils/Minter";
 import { Redeemer } from "../../integration/utils/Redeemer";
-import { EventArgs } from "../../utils/events";
-import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
+import { EventArgs } from "../../../lib/utils/events/common";
+import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
-import { EventScope, QualifiedEvent, qualifiedEvent } from "../../utils/fasset/ScopedEvents";
+import { EventScope, QualifiedEvent, qualifiedEvent } from "../../../lib/utils/events/ScopedEvents";
 import { foreachAsyncParallel, randomChoice, randomInt } from "../../utils/fuzzing-utils";
-import { expectErrors, formatBN, promiseValue } from "../../utils/helpers";
+import { expectErrors, formatBN, promiseValue } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { AgentStatus } from "./FuzzingStateAgent";
+import { AgentStatus } from "../../../lib/state/TrackedAgentState";
 
 // debug state
 let mintedLots = 0;
@@ -22,7 +22,7 @@ export class FuzzingCustomer extends FuzzingActor {
         runner: FuzzingRunner,
         public address: string,
         public underlyingAddress: string,
-        public wallet: IChainWallet,
+        public wallet: IBlockChainWallet,
     ) {
         super(runner);
         this.minter = new Minter(runner.context, address, underlyingAddress, wallet);
@@ -59,12 +59,12 @@ export class FuzzingCustomer extends FuzzingActor {
         await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
         // execute
         await this.minter.executeMinting(crt, txHash)
-            .catch(e => scope.exitOnExpectedError(e, []));
+            .catch(e => scope.exitOnExpectedError(e, ['payment failed']));  // 'payment failed' can happen if there are several simultaneous payments and this one makes balance negative
         mintedLots += lots;
     }
     
     async redemption(scope: EventScope) {
-        const lotSize = await this.context.lotsSize();
+        const lotSize = await this.context.lotSize();
         // request redemption
         const holdingUBA = await this.fAssetBalance();
         const holdingLots = Number(holdingUBA.div(lotSize));
@@ -93,7 +93,7 @@ export class FuzzingCustomer extends FuzzingActor {
                 } else {
                     this.comment(`${this.name}, req=${ticket.requestId}: Invalid redemption, paid=${formatBN(amountPaid)} expected=${expectedAmount} target=${targetAddress}`);
                     await this.waitForPaymentTimeout(scope, ticket);    // still have to wait for timeout to be able to get non payment proof from SC
-                    if (redemptionDefault.value == null) {   // perhaps the agent has already submitted failed payment and defaulted
+                    if (!redemptionDefault.resolved) {   // do this only if the agent has not already submitted failed payment and defaulted
                         await this.redemptionDefault(scope, ticket);
                     }
                     const result = await redemptionDefaultPromise; // now it must be fulfiled, by agent or by customer's default call

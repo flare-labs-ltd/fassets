@@ -1,30 +1,26 @@
-export interface NatInfo {
+import { ChainInfo } from "../../../lib/fasset/ChainInfo";
+
+export interface TestNatInfo {
     name: string;
     symbol: string;
     startPrice: number;
 }
 
-export interface ChainInfo {
-    chainId: number;
-    name: string;
-    symbol: string;
-    decimals: number;
-    amgDecimals: number;
+export interface TestChainInfo extends ChainInfo {
     startPrice: number;
     blockTime: number;
     finalizationBlocks: number;
     underlyingBlocksForPayment: number;
     lotSize: number;
-    requireEOAProof: boolean;
 }
 
-export const testNatInfo: NatInfo = {
+export const testNatInfo: TestNatInfo = {
     name: "NetworkNative",
     symbol: "NAT",
     startPrice: 1.12,
 }
 
-export const testChainInfo: { [name: string]: ChainInfo } = {
+export const testChainInfo: { [name: string]: TestChainInfo } = {
     eth: {
         chainId: 1,
         name: "Ethereum",

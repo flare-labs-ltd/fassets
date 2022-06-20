@@ -1,15 +1,16 @@
-import { AssetContext, AssetManagerEvents } from "../../integration/utils/AssetContext";
-import { Web3EventDecoder } from "../../utils/EventDecoder";
-import { ExtractedEventArgs } from "../../utils/events";
-import { AvailableAgentInfo } from "../../utils/fasset/AssetManagerTypes";
+import { AvailableAgentInfo } from "../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerEvents } from "../../../lib/fasset/IAssetContext";
+import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
+import { ExtractedEventArgs } from "../../../lib/utils/events/common";
+import { IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
+import { ScopedRunner } from "../../../lib/utils/events/ScopedRunner";
+import { AssetContext } from "../../integration/utils/AssetContext";
+import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { ScopedRunner } from "../../utils/fasset/ScopedRunner";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
-import { EvmEvents } from "./EvmEvents";
-import { UnderlyingChainEvents } from "../../utils/fasset/UnderlyingChainEvents";
 
 export class FuzzingRunner extends ScopedRunner {
     constructor(
@@ -17,7 +18,7 @@ export class FuzzingRunner extends ScopedRunner {
         public eventDecoder: Web3EventDecoder,
         public interceptor: TruffleTransactionInterceptor,
         public timeline: FuzzingTimeline,
-        public truffleEvents: EvmEvents,
+        public truffleEvents: IEvmEvents,
         public chainEvents: UnderlyingChainEvents,
         public state: FuzzingState,
         public avoidErrors: boolean,

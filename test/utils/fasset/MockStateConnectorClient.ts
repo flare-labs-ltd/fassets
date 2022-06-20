@@ -1,18 +1,18 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { StateConnectorMockInstance } from "../../../typechain-truffle";
-import { stringifyJson } from "../fuzzing-utils";
-import { sleep, toBN, toNumber } from "../helpers";
-import { LogFile } from "../LogFile";
+import { sleep, toBN, toNumber } from "../../../lib/utils/helpers";
+import { LogFile } from "../../../lib/utils/logging";
 import { MerkleTree } from "../MerkleTree";
-import { DHType } from "../verification/generated/attestation-hash-types";
-import { dataHash } from "../verification/generated/attestation-hash-utils";
-import { parseRequest } from "../verification/generated/attestation-request-parse";
-import { ARBalanceDecreasingTransaction, ARConfirmedBlockHeightExists, ARPayment, ARReferencedPaymentNonexistence, ARType } from "../verification/generated/attestation-request-types";
-import { AttestationType } from "../verification/generated/attestation-types-enum";
-import { SourceId } from "../verification/sources/sources";
-import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "./IStateConnectorClient";
+import { DHType } from "../../../lib/verification/generated/attestation-hash-types";
+import { dataHash } from "../../../lib/verification/generated/attestation-hash-utils";
+import { parseRequest } from "../../../lib/verification/generated/attestation-request-parse";
+import { ARBalanceDecreasingTransaction, ARConfirmedBlockHeightExists, ARPayment, ARReferencedPaymentNonexistence, ARType } from "../../../lib/verification/generated/attestation-request-types";
+import { AttestationType } from "../../../lib/verification/generated/attestation-types-enum";
+import { SourceId } from "../../../lib/verification/sources/sources";
+import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
 import { MockAttestationProver } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
+import { stringifyJson } from "../../../lib/utils/json-bn";
 
 interface DHProof {
     attestationType: AttestationType;

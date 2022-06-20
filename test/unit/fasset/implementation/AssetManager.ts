@@ -1,14 +1,15 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
+import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
+import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { DAYS, HOURS, toBN, toBNExp, toNumber } from "../../../../lib/utils/helpers";
+import { SourceId } from "../../../../lib/verification/sources/sources";
 import { AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
-import { AssetManagerSettings } from "../../../utils/fasset/AssetManagerTypes";
-import { AttestationHelper } from "../../../utils/fasset/AttestationHelper";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../../utils/fasset/PaymentReference";
-import { DAYS, getTestFile, HOURS, toBN, toBNExp, toNumber } from "../../../utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../utils/verification/sources/sources";
 import { assertWeb3DeepEqual, web3ResultStruct } from "../../../utils/web3assertions";
 import { createTestSettings } from "../test-settings";
 

@@ -62,7 +62,7 @@ library UnderlyingWithdrawalAnnouncements {
         }
         // send event
         emit AMEvents.UnderlyingWithdrawalConfirmed(_agentVault, _payment.spentAmount, 
-            _payment.blockNumber, announcementId);
+            _payment.transactionHash, announcementId);
     }
 
     function cancelUnderlyingWithdrawal(

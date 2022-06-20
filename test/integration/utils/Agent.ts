@@ -2,11 +2,12 @@ import { time } from "@openzeppelin/test-helpers";
 import { AgentVaultInstance } from "../../../typechain-truffle";
 import { UnderlyingWithdrawalAnnounced, CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionFinished, RedemptionRequested, RedemptionPaymentFailed } from "../../../typechain-truffle/AssetManager";
 import { calcGasCost } from "../../utils/eth";
-import { checkEventNotEmited, eventArgs, EventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../utils/events";
-import { IChainWallet } from "../../utils/fasset/ChainInterfaces";
+import { checkEventNotEmited, eventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { EventArgs } from "../../../lib/utils/events/common";
+import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
-import { PaymentReference } from "../../utils/fasset/PaymentReference";
-import { BNish, BN_ZERO, MAX_BIPS, randomAddress, toBN } from "../../utils/helpers";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
+import { BNish, BN_ZERO, MAX_BIPS, randomAddress, toBN } from "../../../lib/utils/helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
@@ -19,7 +20,7 @@ export class Agent extends AssetContextClient {
         public ownerAddress: string,
         public agentVault: AgentVaultInstance,
         public underlyingAddress: string,
-        public wallet: IChainWallet,
+        public wallet: IBlockChainWallet,
     ) {
         super(context);
     }
@@ -39,7 +40,7 @@ export class Agent extends AssetContextClient {
         return await Agent.create(ctx, ownerAddress, underlyingAddress, wallet);
     }
     
-    static async create(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, wallet: IChainWallet) {
+    static async create(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, wallet: IBlockChainWallet) {
         // create and prove transaction from underlyingAddress if EOA required
         if (ctx.chainInfo.requireEOAProof) {
             const txHash = await wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(ownerAddress));

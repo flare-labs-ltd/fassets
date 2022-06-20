@@ -1,6 +1,7 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { FtsoMockInstance, FtsoRegistryMockInstance } from "../../../../typechain-truffle";
-import { getTestFile, toBNExp } from "../../../utils/helpers";
+import { toBNExp } from "../../../../lib/utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');

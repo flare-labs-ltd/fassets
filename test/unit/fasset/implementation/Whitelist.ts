@@ -1,6 +1,6 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { WhitelistInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 
 const Whitelist = artifacts.require('Whitelist');
 

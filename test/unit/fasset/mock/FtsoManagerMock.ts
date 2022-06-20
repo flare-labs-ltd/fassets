@@ -1,6 +1,6 @@
 import { expectEvent } from "@openzeppelin/test-helpers";
 import { FtsoManagerMockInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 
 const FtsoManagerMock = artifacts.require('FtsoManagerMock');
 

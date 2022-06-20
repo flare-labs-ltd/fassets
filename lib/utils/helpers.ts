@@ -1,7 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
-import { BigNumber } from "ethers";
-import { ethers } from "hardhat";
 import Web3 from "web3";
 
 export type BNish = BN | number | string;
@@ -11,8 +9,6 @@ export type Nullable<T> = T | null | undefined;
 export type Dict<T> = { [key: string]: T };
 
 export const BN_ZERO = new BN(0);
-
-export const BIG_NUMBER_ZERO = BigNumber.from(0);
 
 export const MAX_BIPS = 10_000;
 
@@ -44,15 +40,6 @@ export async function latestBlockTimestamp() {
 }
 
 /**
- * Returns truncated file path.
- * @param file module filename
- * @returns file path from `test/` on, separated by `'/'`
- */
-export function getTestFile(myFile: string) {
-    return myFile.slice(myFile.replace(/\\/g, '/').indexOf("test/"));
-};
-
-/**
  * Like Array.map but for JavaScript objects.
  */
 export function objectMap<T, R>(obj: { [key: string]: T }, func: (x: T) => R): { [key: string]: R } {
@@ -76,9 +63,8 @@ export function isNotNull<T>(x: T): x is NonNullable<T> {
  * @param x number expressed in any reasonable type
  * @returns same number as BN
  */
-export function toBN(x: BN | BigNumber | number | string): BN {
-    if (x instanceof BN) return x;
-    if (x instanceof BigNumber) return new BN(x.toHexString().slice(2), 16)
+export function toBN(x: BN | number | string): BN {
+    if (BN.isBN(x)) return x;
     return Web3.utils.toBN(x);
 }
 
@@ -87,27 +73,9 @@ export function toBN(x: BN | BigNumber | number | string): BN {
  * @param x number expressed in any reasonable type
  * @returns same number as Number
  */
-export function toNumber(x: BN | BigNumber | number | string) {
+export function toNumber(x: BN | number | string) {
     if (typeof x === 'number') return x;
-    return Number(x.toString());
-}
-
-/**
- * Helper wrapper to convert number to Ethers' BigNumber 
- * @param x number expressed in any reasonable type
- * @returns same number as BigNumber
- */
-export function toBigNumber(x: BN | BigNumber | number | string): BigNumber {
-    if (x instanceof BigNumber) return x;
-    if (x instanceof BN) return BigNumber.from(`0x${x.toString(16)}`);
-    return BigNumber.from(x);
-}
-
-/**
- * Check whether argument is either BN or BigNumber.
- */
-export function isBigNumber(x: any): x is BigNumber | BN {
-    return BN.isBN(x) || x instanceof BigNumber;
+    return Number(x);
 }
 
 // return String(Math.round(x * 10^exponent)), but sets places below float precision to zero instead of some random digits
@@ -134,11 +102,6 @@ export function toBNExp(x: number | string, exponent: number): BN {
     return toBN(toStringExp(x, exponent));
 }
 
-// return BigNumber(x * 10^exponent)
-export function toBigNumberExp(x: number | string, exponent: number): BigNumber {
-    return BigNumber.from(toStringExp(x, exponent));
-}
-
 // convert NAT amount to base units (wei)
 export function toWei(amount: number | string) {
     return toBNExp(amount, 18);
@@ -148,7 +111,7 @@ export function toWei(amount: number | string) {
  * Format large number in more readable format, using 'fixed-exponential' format, with 'e+18' suffix for very large numbers.
  * (This makes them easy to visually detect bigger/smaller numbers.)
  */
-export function formatBN(x: BigNumber | BN | string | number) {
+export function formatBN(x: BN | string | number) {
     const xs = x.toString();
     if (xs.length >= 18) {
         const dec = Math.max(0, 22 - xs.length);
@@ -179,10 +142,9 @@ export function toHex(x: string | number | BN, padToBytes?: number) {
     return Web3.utils.toHex(x);
 }
 
-export function encodeContractNames(names: string[]): string[] {
-    return names.map( name => ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [name])) );
-}
-
+/**
+ * Generate random EVM addresss.
+ */
 export function randomAddress() {
     return Web3.utils.toChecksumAddress(Web3.utils.randomHex(20))
 }
@@ -192,7 +154,7 @@ export function randomAddress() {
  */
 export function checkedCast<S, T extends S>(obj: S, cls: new (...args: any[]) => T): T {
     if (obj instanceof cls) return obj;
-    assert.fail(`object not instance of ${cls.name}`);
+    throw new Error(`object not instance of ${cls.name}`);
 }
 
 /**
@@ -272,29 +234,60 @@ export function reduce<T, R>(list: Iterable<T>, initialValue: R, operation: (a: 
 /**
  * Sum all values in an Array or Iterable of numbers.
  */
-export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number) {
+export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number): number;
+export function sum(list: Iterable<number>): number;
+export function sum<T>(list: Iterable<T>, elementValue: (x: T) => number = (x: any) => x) {
     return reduce(list, 0, (a, x) => a + elementValue(x));
 }
 
 /**
  * Sum all values in an Array or Iterable of BNs.
  */
-export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN) {
+export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN): BN;
+export function sumBN(list: Iterable<BN>): BN;
+export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN = (x: any) => x) {
     return reduce(list, BN_ZERO, (a, x) => a.add(elementValue(x)));
+}
+
+/**
+ * Return a copy of list, sorted by comparisonKey.
+ */
+export function sorted<T, K>(list: Iterable<T>, comparisonKey: (e: T) => K): T[];
+export function sorted<T>(list: Iterable<T>): T[];
+export function sorted<T, K>(list: Iterable<T>, comparisonKey: (e: T) => K = (x: any) => x) {
+    const array = Array.from(list);
+    array.sort((a, b) => {
+        const aKey = comparisonKey(a), bKey = comparisonKey(b);
+        return aKey < bKey ? -1 : (aKey > bKey ? 1 : 0);
+    });
+    return array;
+}
+
+export interface PromiseValue<T> {
+    resolved: boolean;
+    value?: T;
 }
 
 /**
  * Return a struct whose `value` field is set when promise id fullfiled.
  */
-export function promiseValue<T>(promise: Promise<T>): { value: T | undefined } {
-    const result = { value: undefined as T | undefined };
+export function promiseValue<T>(promise: Promise<T>): PromiseValue<T> {
+    const result: PromiseValue<T> = { resolved: false };
     void promise.then(value => { 
+        result.resolved = true;
         result.value = value;
     });
     return result;
 }
 
 // Error handling
+
+export function fail(messageOrError: string | Error): never {
+    if (typeof messageOrError === 'string') {
+        throw new Error(messageOrError);
+    }
+    throw messageOrError;
+}
 
 export function filterStackTrace(e: any) {
     const stack = String(e.stack || e);

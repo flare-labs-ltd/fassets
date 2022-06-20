@@ -1,22 +1,23 @@
 import { time } from "@openzeppelin/test-helpers";
 import { FtsoMockInstance } from "../../../typechain-truffle";
 import { AssetContext, CommonContext } from "../../integration/utils/AssetContext";
-import { ChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/ChainInfo";
-import { Web3EventDecoder } from "../../utils/EventDecoder";
+import { TestChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/TestChainInfo";
+import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { currentRealTime, getEnv, InclusionIterable, randomChoice, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
-import { expectErrors, formatBN, getTestFile, latestBlockTimestamp, MAX_BIPS, sleep, systemTimestamp, toBN, toWei } from "../../utils/helpers";
+import { expectErrors, formatBN, latestBlockTimestamp, MAX_BIPS, sleep, systemTimestamp, toBN, toWei } from "../../../lib/utils/helpers";
+import { getTestFile } from "../../utils/test-helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingKeeper } from "./FuzzingKeeper";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { EventExecutionQueue } from "../../utils/fasset/ScopedEvents";
+import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
-import { EvmEvents } from "./EvmEvents";
-import { UnderlyingChainEvents } from "../../utils/fasset/UnderlyingChainEvents";
+import { InterceptorEvmEvents } from "./InterceptorEvmEvents";
+import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
     const startTimestamp = systemTimestamp();
@@ -42,11 +43,11 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let agents: FuzzingAgent[] = [];
     let customers: FuzzingCustomer[] = [];
     let keepers: FuzzingKeeper[] = [];
-    let chainInfo: ChainInfo;
+    let chainInfo: TestChainInfo;
     let chain: MockChain;
     let eventDecoder: Web3EventDecoder;
     let interceptor: TruffleTransactionInterceptor;
-    let truffleEvents: EvmEvents;
+    let truffleEvents: InterceptorEvmEvents;
     let eventQueue: EventExecutionQueue;
     let chainEvents: UnderlyingChainEvents;
     let fuzzingState: FuzzingState;
@@ -73,11 +74,12 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         });
         // uniform event handlers
         eventQueue = new EventExecutionQueue();
-        truffleEvents = new EvmEvents(interceptor, eventQueue);
-        chainEvents = context.chainEvents = new UnderlyingChainEvents(context.chainEventsRaw, eventQueue);
+        context.chainEvents.executionQueue = eventQueue;
+        truffleEvents = new InterceptorEvmEvents(interceptor, eventQueue);
+        chainEvents = context.chainEvents;
         timeline = new FuzzingTimeline(chain, eventQueue);
         // state checker
-        fuzzingState = new FuzzingState(context, timeline, truffleEvents, chainEvents, eventDecoder, eventQueue);
+        fuzzingState = new FuzzingState(context, truffleEvents, chainEvents, eventDecoder, eventQueue);
         await fuzzingState.initialize();
         // runner
         runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, fuzzingState, AVOID_ERRORS);
@@ -86,13 +88,13 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         chain.logFile = interceptor.logFile;
         timeline.logFile = interceptor.logFile;
         (context.stateConnectorClient as MockStateConnectorClient).logFile = interceptor.logFile;
-        fuzzingState.logFile = interceptor.logFile;
+        fuzzingState.logger = interceptor.logFile;
     });
     
     after(() => {
-        // fuzzingState.logAllAgentActions(interceptor.logFile);
-        fuzzingState.logAllAgentSummaries(interceptor.logFile);
-        fuzzingState.logExpectationFailures(interceptor.logFile);
+        // fuzzingState.logAllAgentActions();
+        fuzzingState.logAllAgentSummaries();
+        fuzzingState.logExpectationFailures();
         interceptor.logGasUsage();
         interceptor.closeLog();
     });
@@ -107,7 +109,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             eventDecoder.addAddress(`OWNER_${i}`, fa.agent.ownerAddress);
             interceptor.captureEventsFrom(`AGENT_${i}`, fa.agent.agentVault, 'AgentVault');
             await fa.agent.agentVault.deposit({ from: fa.agent.ownerAddress, value: toWei(10_000_000) });
-            await fa.agent.makeAvailable(500, 2_5000);
+            const agentCR = toBN(context.settings.minCollateralRatioBIPS).muln(randomNum(1, 1.5));
+            await fa.agent.makeAvailable(500, agentCR);
             agents.push(fa);
         }
         // create customers
@@ -180,8 +183,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
                 await interceptor.allHandled();
             }
             // fail immediately on unexpected errors from threads
-            if (runner.uncaughtError != null) {
-                throw runner.uncaughtError;
+            if (runner.uncaughtErrors.length > 0) {
+                throw runner.uncaughtErrors[0];
             }
             // occassionally skip some time
             if (loop % 10 === 0) {

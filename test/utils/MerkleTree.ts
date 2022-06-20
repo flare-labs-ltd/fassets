@@ -1,6 +1,6 @@
 import BN from "bn.js";
 import Web3 from "web3";
-import { toBN, toHex } from "./helpers";
+import { toBN, toHex } from "../../lib/utils/helpers";
 
 /**
  * There are several variants for hashing sequences in Merkle trees in cases when there is odd number of hashes on some level.

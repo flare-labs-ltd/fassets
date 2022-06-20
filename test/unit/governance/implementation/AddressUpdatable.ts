@@ -1,9 +1,13 @@
 import { expectRevert } from '@openzeppelin/test-helpers';
+import { ethers } from 'ethers';
 import { AddressUpdatableMockInstance } from "../../../../typechain-truffle";
-import { encodeContractNames, getTestFile } from '../../../utils/helpers';
+import { getTestFile } from "../../../utils/test-helpers";
 
 const AddressUpdatableMock = artifacts.require("AddressUpdatableMock");
 
+export function encodeContractNames(names: string[]): string[] {
+  return names.map(name => ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [name])));
+}
 
 contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable contract unit tests`, async accounts => {
   let addressUpdatable: AddressUpdatableMockInstance;
@@ -63,5 +67,3 @@ contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable con
   });
   
 });
-
-

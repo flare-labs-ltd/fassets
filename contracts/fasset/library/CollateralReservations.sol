@@ -100,7 +100,7 @@ library CollateralReservations {
             "minting request too old");
         Agents.requireAgentVaultOwner(crt.agentVault);
         // send event
-        emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId);
+        emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, underlyingValueUBA);
         // transfer crt fee to the agent's vault
         IAgentVault(crt.agentVault).deposit{value: crt.reservationFeeNatWei}();
         // release agent's reserved collateral
@@ -129,7 +129,8 @@ library CollateralReservations {
         uint256 reservedCollateral = Conversion.convertAmgToNATWei(crt.valueAMG, amgToNATWeiPrice);
         Agents.burnCollateral(_state, crt.agentVault, reservedCollateral);
         // send event
-        emit AMEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId);
+        uint256 reservedValueUBA = Conversion.convertAmgToUBA(_state.settings, crt.valueAMG);
+        emit AMEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // release agent's reserved collateral
         releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this
     }

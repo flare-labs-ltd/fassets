@@ -1,5 +1,5 @@
 import { AttestationClientMockInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/helpers";
+import { getTestFile } from "../../../utils/test-helpers";
 import { MerkleTree } from "../../../utils/MerkleTree";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 

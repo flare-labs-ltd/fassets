@@ -196,10 +196,10 @@ library Redemption {
                 // notify
                 if (_payment.status == TransactionAttestation.PAYMENT_SUCCESS) {
                     emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
-                        _payment.receivedAmount, _payment.blockNumber, _redemptionRequestId);
+                        _payment.transactionHash, request.underlyingValueUBA, _redemptionRequestId);
                 } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
                     emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer, 
-                        _redemptionRequestId);
+                        _payment.transactionHash, request.underlyingValueUBA, _redemptionRequestId);
                 }
             } else {
                 // we only need failure reports from agent's underlying address, so disallow others to
@@ -210,7 +210,7 @@ library Redemption {
                 _executeDefaultPayment(_state, request, _redemptionRequestId);
                 // notify
                 emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer, 
-                    _redemptionRequestId, failureReason);
+                    _payment.transactionHash, _redemptionRequestId, failureReason);
             }
         }
         // agent has finished with redemption - account for used underlying balance and free the remainder
@@ -364,7 +364,8 @@ library Redemption {
         Agents.endRedeemingAssets(_state, _request.agentVault, _request.valueAMG);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment
         // it will be (or was already) updated in call to finishRedemptionWithoutPayment (or confirmRedemptionPayment)
-        emit AMEvents.RedemptionDefault(_request.agentVault, _request.redeemer, paidAmountWei, _redemptionRequestId);
+        emit AMEvents.RedemptionDefault(_request.agentVault, _request.redeemer, _request.underlyingValueUBA, 
+            paidAmountWei, _redemptionRequestId);
     }
     
     function _collateralAmountForRedemption(

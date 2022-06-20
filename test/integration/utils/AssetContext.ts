@@ -1,19 +1,27 @@
 import { constants, time } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance } from "../../../typechain-truffle";
-import { ContractWithEvents } from "../../utils/events";
-import { AssetManagerSettings } from "../../utils/fasset/AssetManagerTypes";
-import { AttestationHelper } from "../../utils/fasset/AttestationHelper";
-import { IBlockChain, IBlockChainEvents } from "../../utils/fasset/ChainInterfaces";
-import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
-import { IStateConnectorClient } from "../../utils/fasset/IStateConnectorClient";
+import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
+import { amgToNATWeiPrice, AMG_NATWEI_PRICE_SCALE } from "../../../lib/fasset/Conversions";
+import { newAssetManager } from "../../../lib/fasset/DeployAssetManager";
+import {
+    AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents, AssetManagerEvents, AttestationClientSCEvents, FAssetEvents,
+    FtsoManagerMockEvents, FtsoMockEvents, FtsoRegistryMockEvents, IAssetContext, StateConnectorMockEvents, WNatEvents
+} from "../../../lib/fasset/IAssetContext";
+import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
+import { IBlockChain } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
+import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
+import { EventScope } from "../../../lib/utils/events/ScopedEvents";
+import { ContractWithEvents } from "../../../lib/utils/events/truffle";
+import { BNish, DAYS, HOURS, toBN, toBNExp, toNumber, toWei, WEEKS } from "../../../lib/utils/helpers";
+import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
+import {
+    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance,
+    FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance
+} from "../../../typechain-truffle";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { EventScope } from "../../utils/fasset/ScopedEvents";
-import { UnderlyingChainEvents } from "../../utils/fasset/UnderlyingChainEvents";
-import { BNish, DAYS, HOURS, toBN, toBNExp, toNumber, toWei, WEEKS } from "../../utils/helpers";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { web3DeepNormalize } from "../../utils/web3assertions";
-import { ChainInfo, NatInfo } from "./ChainInfo";
+import { TestChainInfo, TestNatInfo } from "./TestChainInfo";
 
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const AttestationClient = artifacts.require('AttestationClientSC');
@@ -24,21 +32,6 @@ const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const FtsoManagerMock = artifacts.require('FtsoManagerMock');
 const StateConnector = artifacts.require('StateConnectorMock');
-
-export const AMG_NATWEI_PRICE_SCALE = toBNExp(1, 9);
-export const NAT_WEI = toBNExp(1, 18);
-
-export type AddressUpdaterEvents = import('../../../typechain-truffle/AddressUpdater').AllEvents;
-export type AssetManagerControllerEvents = import('../../../typechain-truffle/AssetManagerController').AllEvents;
-export type WNatEvents = import('../../../typechain-truffle/WNat').AllEvents;
-export type StateConnectorMockEvents = import('../../../typechain-truffle/StateConnectorMock').AllEvents;
-export type AgentVaultFactoryEvents = import('../../../typechain-truffle/AgentVaultFactory').AllEvents;
-export type AttestationClientSCEvents = import('../../../typechain-truffle/AttestationClientSC').AllEvents;
-export type FtsoRegistryMockEvents = import('../../../typechain-truffle/FtsoRegistryMock').AllEvents;
-export type FtsoMockEvents = import('../../../typechain-truffle/FtsoMock').AllEvents;
-export type FtsoManagerMockEvents = import('../../../typechain-truffle/FtsoManagerMock').AllEvents;
-export type AssetManagerEvents = import('../../../typechain-truffle/AssetManager').AllEvents;
-export type FAssetEvents = import('../../../typechain-truffle/FAsset').AllEvents;
 
 // common context shared between several asset managers
 export class CommonContext {
@@ -55,7 +48,7 @@ export class CommonContext {
         public natFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>,
     ) {}
 
-    static async createTest(governance: string, natInfo: NatInfo): Promise<CommonContext> {
+    static async createTest(governance: string, natInfo: TestNatInfo): Promise<CommonContext> {
         // create state connector
         const stateConnector = await StateConnector.new();
         // create agent vault factory
@@ -80,7 +73,7 @@ export class CommonContext {
 }
 
 // context, specific for each asset manager (includes common context vars)
-export class AssetContext {
+export class AssetContext implements IAssetContext {
     constructor(
         // common context
         public governance: string,
@@ -92,9 +85,9 @@ export class AssetContext {
         public wnat: ContractWithEvents<WNatInstance, WNatEvents>,
         public natFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>,
         // asset context
-        public chainInfo: ChainInfo,
+        public chainInfo: TestChainInfo,
         public chain: IBlockChain,
-        public chainEventsRaw: IBlockChainEvents,
+        public chainEvents: UnderlyingChainEvents,
         public stateConnectorClient: IStateConnectorClient,
         public attestationProvider: AttestationHelper,
         public settings: AssetManagerSettings,      // may not be fresh
@@ -104,8 +97,6 @@ export class AssetContext {
     ) {
     }
 
-    chainEvents = new UnderlyingChainEvents(this.chainEventsRaw, null);
-    
     get chainId() {
         return this.chainInfo.chainId;
     }
@@ -117,11 +108,7 @@ export class AssetContext {
         return toBNExp(value, this.chainInfo.decimals);
     }
     
-    async refreshSettings() {
-        this.settings = await this.assetManager.getSettings();
-    }
-    
-    async lotsSize() {
+    async lotSize() {
         const settings = await this.assetManager.getSettings();
         return toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
     }
@@ -152,10 +139,7 @@ export class AssetContext {
     }
 
     amgToNATWeiPrice(natPriceUSDDec5: BNish, assetPriceUSDDec5: BNish) {
-        // _natPriceUSDDec5 < 2^128 (in ftso) and assetUnitUBA, are both 64 bit, so there can be no overflow
-        return toBN(assetPriceUSDDec5)
-            .mul(toBN(this.settings.assetMintingGranularityUBA).mul(NAT_WEI).mul(AMG_NATWEI_PRICE_SCALE))
-            .div(toBN(natPriceUSDDec5).mul(toBN(this.settings.assetUnitUBA)));
+        return amgToNATWeiPrice(this.settings, natPriceUSDDec5, assetPriceUSDDec5);
     }
     
     convertAmgToUBA(valueAMG: BNish) {
@@ -167,11 +151,11 @@ export class AssetContext {
     }
 
     async convertUBAToLots(valueUBA: BNish) {
-        return toBN(valueUBA).div(await this.lotsSize());
+        return toBN(valueUBA).div(await this.lotSize());
     }
     
     async convertLotsToUBA(lots: BNish) {
-        return toBN(lots).mul(await this.lotsSize());
+        return toBN(lots).mul(await this.lotSize());
     }
 
     async convertLotsToAMG(lots: BNish) {
@@ -192,33 +176,19 @@ export class AssetContext {
     }
 
     async waitForUnderlyingTransaction(scope: EventScope | undefined, txHash: string, maxBlocksToWaitForTx?: number) {
-        const transaction = await this.chain.getTransaction(txHash);
-        if (transaction != null) return transaction;
-        const blockHeight = await this.chain.getBlockHeight();
-        const waitBlocks = maxBlocksToWaitForTx ?? Math.max(this.chain.finalizationBlocks, 1);
-        const event = await Promise.race([
-            this.chainEvents.transactionEvent({ hash: txHash }).qualified('found').wait(scope),
-            this.chainEvents.blockHeightReachedEvent(blockHeight + waitBlocks).qualified('timeout').wait(scope),
-        ]);
-        return event.name === 'found' ? event.args : null;
+        return this.chainEvents.waitForUnderlyingTransaction(scope, txHash, maxBlocksToWaitForTx);
     }
 
     async waitForUnderlyingTransactionFinalization(scope: EventScope | undefined, txHash: string, maxBlocksToWaitForTx?: number) {
-        const tx = await this.waitForUnderlyingTransaction(scope, txHash, maxBlocksToWaitForTx);
-        if (tx == null) return false;
-        // find transaction block
-        const block = await this.chain.getTransactionBlock(txHash);
-        if (block == null) return false;
-        // wait for finalization
-        await this.chainEvents.blockHeightReachedEvent(block.number + this.chain.finalizationBlocks).wait(scope);
-        return true;
+        return this.chainEvents.waitForUnderlyingTransactionFinalization(scope, txHash, maxBlocksToWaitForTx);
     }
     
-    static async createTest(common: CommonContext, chainInfo: ChainInfo): Promise<AssetContext> {
+    static async createTest(common: CommonContext, chainInfo: TestChainInfo): Promise<AssetContext> {
         // create mock chain attestation provider
         const chain = new MockChain(await time.latest());
         chain.secondsPerBlock = chainInfo.blockTime;
-        const chainEvents = chain;
+        const chainEventsRaw = chain;
+        const chainEvents = new UnderlyingChainEvents(chain, chainEventsRaw, null);
         const stateConnectorClient = new MockStateConnectorClient(common.stateConnector, { [chainInfo.chainId]: chain }, 'on_wait');
         const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId, 0);
         // create asset FTSO and set some price
@@ -235,7 +205,7 @@ export class AssetContext {
             chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider, settings, assetManager, fAsset, assetFtso);
     }
     
-    static async createTestSettings(ctx: CommonContext, ci: ChainInfo): Promise<AssetManagerSettings> {
+    static async createTestSettings(ctx: CommonContext, ci: TestChainInfo): Promise<AssetManagerSettings> {
         return {
             assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
             agentVaultFactory: ctx.agentVaultFactory.address,

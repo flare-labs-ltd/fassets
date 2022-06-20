@@ -3,8 +3,8 @@ import { encodeBalanceDecreasingTransaction, encodeConfirmedBlockHeightExists, e
 import { ARBalanceDecreasingTransaction, ARConfirmedBlockHeightExists, ARPayment, ARReferencedPaymentNonexistence } from "../verification/generated/attestation-request-types";
 import { AttestationType } from "../verification/generated/attestation-types-enum";
 import { SourceId } from "../verification/sources/sources";
-import { IBlockChain, TxInputOutput } from "./ChainInterfaces";
-import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "./IStateConnectorClient";
+import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
+import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "./interfaces/IStateConnectorClient";
 
 // Attestation provider data that is always proved (i.e. contains Merkle proof).
 export type ProvedDH<T extends DHType> = T & { merkleProof: string };

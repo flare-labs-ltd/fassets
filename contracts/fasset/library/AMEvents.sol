@@ -85,7 +85,8 @@ library AMEvents {
     event MintingPaymentDefault(
         address indexed agentVault,
         address indexed minter,
-        uint256 collateralReservationId);
+        uint256 collateralReservationId,
+        uint256 reservedAmountUBA);
 
     /**
      * Both minter and agent failed to present any proof within attestation time window, so
@@ -94,7 +95,8 @@ library AMEvents {
     event CollateralReservationDeleted(
         address indexed agentVault,
         address indexed minter,
-        uint256 collateralReservationId);
+        uint256 collateralReservationId,
+        uint256 reservedAmountUBA);
         
     /**
      * Redeemer started redemption process and provided fassets.
@@ -129,8 +131,8 @@ library AMEvents {
     event RedemptionPerformed(
         address indexed agentVault,
         address indexed redeemer,
-        int256 valueUBA,
-        uint64 underlyingBlock,
+        bytes32 transactionHash,
+        uint256 valueUBA,
         uint64 requestId);
 
     /**
@@ -143,6 +145,7 @@ library AMEvents {
     event RedemptionDefault(
         address indexed agentVault,
         address indexed redeemer,
+        uint256 redemptionAmountUBA,
         uint256 redeemedCollateralWei,
         uint64 requestId);
 
@@ -155,6 +158,8 @@ library AMEvents {
     event RedemptionPaymentBlocked(
         address indexed agentVault,
         address indexed redeemer,
+        bytes32 transactionHash,
+        uint256 redemptionAmountUBA,
         uint64 requestId);
 
     /**
@@ -164,6 +169,7 @@ library AMEvents {
     event RedemptionPaymentFailed(
         address indexed agentVault,
         address indexed redeemer,
+        bytes32 transactionHash,
         uint64 requestId,
         string failureReason);
 
@@ -260,13 +266,14 @@ library AMEvents {
         
     /**
      * After announcing legal underlying withdrawal and creating transaction,
-     * the agent must report the transaction details, otherwise it can be challenged as illegal payment.
-     * Reported data should be exactly correct, otherwise it can itself be challenged.
+     * the agent must confirm the transaction. This frees the announcement so the agent can create another one.
+     * If the agent doesn't confirm in time, anybody can confirm the transaction after everal hours.
+     * Failed payments must also be confirmed.
      */
     event UnderlyingWithdrawalConfirmed(
         address agentVault,
         int256 spentUBA,
-        uint64 underlyingBlock,
+        bytes32 transactionHash,
         uint64 announcementId);
 
     /**
