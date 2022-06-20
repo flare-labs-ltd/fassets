@@ -7,6 +7,7 @@ import { EvmEventArgs } from "../utils/events/IEvmEvents";
 import { EventScope } from "../utils/events/ScopedEvents";
 import { ScopedRunner } from "../utils/events/ScopedRunner";
 import { getOrCreate, toBN, sumBN } from "../utils/helpers";
+import { stringifyJson } from "../utils/json-bn";
 import { ActorBase } from "./ActorBase";
 
 const MAX_NEGATIVE_BALANCE_REPORT = 50;  // maximum number of transactions to report in freeBalanceNegativeChallenge to avoid breaking block gas limit
@@ -40,7 +41,7 @@ export class Challenger extends ActorBase {
             const agent = this.state.agentsByUnderlying.get(address);
             if (agent == null) continue;
             // add to list of transactions
-            this.addUnconfirmedTransaction(address, agent, transaction);
+            this.addUnconfirmedTransaction(agent, transaction);
             // illegal transaction challenge
             this.checkForIllegalTransaction(transaction, agent);
             // double payment challenge
@@ -50,18 +51,11 @@ export class Challenger extends ActorBase {
         }
     }
 
-    addUnconfirmedTransaction(address: string, agent: TrackedAgentState, transaction: ITransaction) {
-        getOrCreate(this.unconfirmedTransactions, address, () => new Map()).set(agent.address, transaction);
-    }
-
     handleTransactionConfirmed(agentVault: string, transactionHash: string): void {
-        const agentTransactions = this.unconfirmedTransactions.get(agentVault);
-        if (agentTransactions) {
-            agentTransactions.delete(transactionHash);
-            if (agentTransactions.size === 0) {
-                this.unconfirmedTransactions.delete(agentVault);
-            }
-        }
+        this.deleteUnconfirmedTransaction(agentVault, transactionHash);
+        // also re-check free balance
+        const agent = this.state.getAgent(agentVault);
+        if (agent) this.checkForNegativeFreeBalance(agent);
     }
     
     handleRedemptionRequested(args: EvmEventArgs<RedemptionRequested>): void {
@@ -78,11 +72,11 @@ export class Challenger extends ActorBase {
     // illegal transactions
     
     checkForIllegalTransaction(transaction: ITransaction, agent: TrackedAgentState) {
-        const transactionValid = PaymentReference.isValid(transaction.reference)
-            && this.activeRedemptions.get(transaction.reference)?.agentAddress === agent.address;
+        const transactionValid = PaymentReference.isValid(transaction.reference) 
+            && (this.isValidRedemptionReference(agent, transaction.reference) || this.isValidAnnouncedPaymentReference(agent, transaction.reference));
         // if the challenger starts tracking later, activeRedemptions might not hold all active redemeptions,
         // but that just means there will be a few unnecessary illegal transaction challenges, which is perfectly safe
-        if (transactionValid && agent.status !== AgentStatus.FULL_LIQUIDATION) {
+        if (!transactionValid && agent.status !== AgentStatus.FULL_LIQUIDATION) {
             this.runner.startThread((scope) => this.illegalTransactionChallenge(scope, transaction, agent));
         }
     }
@@ -128,11 +122,10 @@ export class Challenger extends ActorBase {
             if (!PaymentReference.isValid(transaction.reference)) continue;     // should be caught by illegal payment challenge
             const spentAmount = transaction.inputs.find(input => input[0] === agent.underlyingAddressString)?.[1];
             if (spentAmount == null) continue;
-            if (this.activeRedemptions.has(transaction.reference)) {
-                const { agentAddress, amount } = this.activeRedemptions.get(transaction.reference)!;
-                if (agentAddress !== agent.address) continue;                   // should be caught by illegal payment challenge
+            if (this.isValidRedemptionReference(agent, transaction.reference)) {
+                const { amount } = this.activeRedemptions.get(transaction.reference)!;
                 transactions.push({ txHash: transaction.hash, spent: spentAmount.sub(amount) });
-            } else if (!agent.announcedUnderlyingWithdrawalId.isZero() && transaction.reference === PaymentReference.announcedWithdrawal(agent.announcedUnderlyingWithdrawalId)) {
+            } else if (this.isValidAnnouncedPaymentReference(agent, transaction.reference)) {
                 transactions.push({ txHash: transaction.hash, spent: spentAmount });
             }
             // other options should be caught by illegal payment challenge
@@ -148,17 +141,39 @@ export class Challenger extends ActorBase {
             this.runner.startThread((scope) => this.freeBalanceNegativeChallenge(scope, transactionHashes, agent));
         }
     }
-    
+
     async freeBalanceNegativeChallenge(scope: EventScope, transactionHashes: string[], agent: TrackedAgentState) {
         const proofs = await Promise.all(transactionHashes.map(txHash => 
             this.waitForDecreasingBalanceProof(scope, txHash, agent.underlyingAddressString)));
         // due to async nature of challenging there may be some false challenges which will be rejected
         await this.context.assetManager.freeBalanceNegativeChallenge(proofs, agent.address, { from: this.address })
-            .catch(e => scope.exitOnExpectedError(e, ['chlg dbl: already liquidating', 'mult chlg: enough free balance', 'mult chlg: payment confirmed']));
+            .catch(e => scope.exitOnExpectedError(e, ['mult chlg: already liquidating', 'mult chlg: enough free balance', 'mult chlg: payment confirmed']));
     }
     
     // utils
     
+    isValidRedemptionReference(agent: TrackedAgentState, reference: string) {
+        const redemption = this.activeRedemptions.get(reference);
+        if (redemption == null) return false;
+        return agent.address === redemption.agentAddress;
+    }
+
+    isValidAnnouncedPaymentReference(agent: TrackedAgentState, reference: string) {
+        return !agent.announcedUnderlyingWithdrawalId.isZero() && reference === PaymentReference.announcedWithdrawal(agent.announcedUnderlyingWithdrawalId);
+    }
+
+    addUnconfirmedTransaction(agent: TrackedAgentState, transaction: ITransaction) {
+        getOrCreate(this.unconfirmedTransactions, agent.address, () => new Map()).set(transaction.hash, transaction);
+    }
+
+    deleteUnconfirmedTransaction(agentVault: string, transactionHash: string) {
+        const agentTransactions = this.unconfirmedTransactions.get(agentVault);
+        if (agentTransactions) {
+            agentTransactions.delete(transactionHash);
+            if (agentTransactions.size === 0) this.unconfirmedTransactions.delete(agentVault);
+        }
+    }
+
     async waitForDecreasingBalanceProof(scope: EventScope, txHash: string, underlyingAddressString: string) {
         await this.chainEvents.waitForUnderlyingTransactionFinalization(scope, txHash);
         return await this.context.attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAddressString)

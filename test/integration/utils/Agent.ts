@@ -333,4 +333,8 @@ export class Agent extends AssetContextClient {
 
         return info;
     }
+    
+    async getAgentInfo() {
+        return await this.context.assetManager.getAgentInfo(this.agentVault.address);
+    }
 }
