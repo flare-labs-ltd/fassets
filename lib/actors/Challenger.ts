@@ -6,8 +6,7 @@ import { ITransaction } from "../underlying-chain/interfaces/IBlockChain";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
 import { EventScope } from "../utils/events/ScopedEvents";
 import { ScopedRunner } from "../utils/events/ScopedRunner";
-import { getOrCreate, toBN, sumBN } from "../utils/helpers";
-import { stringifyJson } from "../utils/json-bn";
+import { getOrCreate, sleep, sumBN, toBN } from "../utils/helpers";
 import { ActorBase } from "./ActorBase";
 
 const MAX_NEGATIVE_BALANCE_REPORT = 50;  // maximum number of transactions to report in freeBalanceNegativeChallenge to avoid breaking block gas limit
@@ -25,6 +24,7 @@ export class Challenger extends ActorBase {
     activeRedemptions = new Map<string, { agentAddress: string, amount: BN }>();    // paymentReference => { agent vault address, requested redemption amount }
     transactionForPaymentReference = new Map<string, string>();                     // paymentReference => transaction hash
     unconfirmedTransactions = new Map<string, Map<string, ITransaction>>();         // agentVaultAddress => (txHash => transaction)
+    challengedAgents = new Set<string>();
 
     registerForEvents() {
         this.chainEvents.transactionEvent().subscribe(transaction => this.handleUnderlyingTransaction(transaction));
@@ -82,11 +82,13 @@ export class Challenger extends ActorBase {
     }
 
     async illegalTransactionChallenge(scope: EventScope, transaction: ITransaction, agent: TrackedAgentState) {
-        const proof = await this.waitForDecreasingBalanceProof(scope, transaction.hash, agent.underlyingAddressString);
-        // due to async nature of challenging (and the fact that challenger might start tracking agent later), there may be some false challenges which will be rejected
-        // this is perfectly safe for the system, but the errors must be caught
-        await this.context.assetManager.illegalPaymentChallenge(proof, agent.address, { from: this.address })
-            .catch(e => scope.exitOnExpectedError(e, ['chlg: already liquidating', 'chlg: transaction confirmed', 'matching redemption active', 'matching ongoing announced pmt']));
+        await this.singleChallengePerAgent(agent, async () => {
+            const proof = await this.waitForDecreasingBalanceProof(scope, transaction.hash, agent.underlyingAddressString);
+            // due to async nature of challenging (and the fact that challenger might start tracking agent later), there may be some false challenges which will be rejected
+            // this is perfectly safe for the system, but the errors must be caught
+            await this.context.assetManager.illegalPaymentChallenge(proof, agent.address, { from: this.address })
+                .catch(e => scope.exitOnExpectedError(e, ['chlg: already liquidating', 'chlg: transaction confirmed', 'matching redemption active', 'matching ongoing announced pmt']));
+        });
     }
     
     // double payments
@@ -102,13 +104,15 @@ export class Challenger extends ActorBase {
     }
 
     async doublePaymentChallenge(scope: EventScope, tx1hash: string, tx2hash: string, agent: TrackedAgentState) {
-        const [proof1, proof2] = await Promise.all([
-            this.waitForDecreasingBalanceProof(scope, tx1hash, agent.underlyingAddressString),
-            this.waitForDecreasingBalanceProof(scope, tx2hash, agent.underlyingAddressString),
-        ]);
-        // due to async nature of challenging there may be some false challenges which will be rejected
-        await this.context.assetManager.doublePaymentChallenge(proof1, proof2, agent.address, { from: this.address })
-            .catch(e => scope.exitOnExpectedError(e, ['chlg dbl: already liquidating']));
+        await this.singleChallengePerAgent(agent, async () => {
+            const [proof1, proof2] = await Promise.all([
+                this.waitForDecreasingBalanceProof(scope, tx1hash, agent.underlyingAddressString),
+                this.waitForDecreasingBalanceProof(scope, tx2hash, agent.underlyingAddressString),
+            ]);
+            // due to async nature of challenging there may be some false challenges which will be rejected
+            await this.context.assetManager.doublePaymentChallenge(proof1, proof2, agent.address, { from: this.address })
+                .catch(e => scope.exitOnExpectedError(e, ['chlg dbl: already liquidating']));
+        });
     }
     
     // free balance negative
@@ -143,11 +147,13 @@ export class Challenger extends ActorBase {
     }
 
     async freeBalanceNegativeChallenge(scope: EventScope, transactionHashes: string[], agent: TrackedAgentState) {
-        const proofs = await Promise.all(transactionHashes.map(txHash => 
-            this.waitForDecreasingBalanceProof(scope, txHash, agent.underlyingAddressString)));
-        // due to async nature of challenging there may be some false challenges which will be rejected
-        await this.context.assetManager.freeBalanceNegativeChallenge(proofs, agent.address, { from: this.address })
-            .catch(e => scope.exitOnExpectedError(e, ['mult chlg: already liquidating', 'mult chlg: enough free balance', 'mult chlg: payment confirmed']));
+        await this.singleChallengePerAgent(agent, async () => {
+            const proofs = await Promise.all(transactionHashes.map(txHash =>
+                this.waitForDecreasingBalanceProof(scope, txHash, agent.underlyingAddressString)));
+            // due to async nature of challenging there may be some false challenges which will be rejected
+            await this.context.assetManager.freeBalanceNegativeChallenge(proofs, agent.address, { from: this.address })
+                .catch(e => scope.exitOnExpectedError(e, ['mult chlg: already liquidating', 'mult chlg: enough free balance', 'mult chlg: payment confirmed']));
+        });
     }
     
     // utils
@@ -178,5 +184,18 @@ export class Challenger extends ActorBase {
         await this.chainEvents.waitForUnderlyingTransactionFinalization(scope, txHash);
         return await this.context.attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAddressString)
             .catch(e => scope.exitOnExpectedError(e, ['proveBalanceDecreasingTransaction: transaction not found']));
+    }
+    
+    async singleChallengePerAgent(agent: TrackedAgentState, body: () => Promise<void>) {
+        while (this.challengedAgents.has(agent.address)) {
+            await sleep(1);
+        }
+        try {
+            this.challengedAgents.add(agent.address);
+            if (agent.status === AgentStatus.FULL_LIQUIDATION) return;
+            await body();
+        } finally {
+            this.challengedAgents.delete(agent.address);
+        }
     }
 }
