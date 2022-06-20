@@ -3,7 +3,7 @@ import { MockChain } from "../../utils/fasset/MockChain";
 import { ITimer } from "./Timer";
 import { randomShuffle } from "../../utils/fuzzing-utils";
 import { latestBlockTimestamp, runAsync } from "../../../lib/utils/helpers";
-import { LogFile } from "../../../lib/utils/logging";
+import { ILogger } from "../../../lib/utils/logging";
 import { ClearableSubscription, EventEmitter, EventExecutionQueue, EventHandler, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
 
 type TimelineEventType = 'FlareTime' | 'UnderlyingBlock' | 'UnderlyingTime';
@@ -115,7 +115,7 @@ export class FuzzingTimeline {
     flareTimeTriggers = new TriggerList('FlareTime', this.eventQueue);
     underlyingTimeTriggers = new TriggerList('UnderlyingTime', this.eventQueue);
     underlyingBlockTriggers = new TriggerList('UnderlyingBlock', this.eventQueue);
-    logFile?: LogFile;
+    logger?: ILogger;
 
     async mineNextUnderlyingBlock() {
         const skip = this.chain.nextBlockTimestamp() - this.chain.currentTimestamp();
@@ -192,7 +192,7 @@ export class FuzzingTimeline {
         if (startUnderlyingTime + skippedTime > this.chain.currentTimestamp()) {
             this.chain.skipTimeTo(startUnderlyingTime + skippedTime);
         }
-        this.logFile?.log(`***** SKIPPED TIME  flare=${newFlareTime - startFlareTime}  chain=${this.chain.currentTimestamp() - startUnderlyingTime}`);
+        this.logger?.log(`***** SKIPPED TIME  flare=${newFlareTime - startFlareTime}  chain=${this.chain.currentTimestamp() - startUnderlyingTime}`);
     }
     
     async executeTriggers() {
@@ -204,7 +204,7 @@ export class FuzzingTimeline {
         ];
         randomShuffle(triggers);
         for (const trigger of triggers) {
-            this.logFile?.log(`TRIGGERED ${trigger.type}(${trigger.id} at=${trigger.at})`);
+            this.logger?.log(`TRIGGERED ${trigger.type}(${trigger.id} at=${trigger.at})`);
             trigger.handler({ type: trigger.type, at: trigger.at });
         }
         return triggers.length > 0; // so the caller can repeat until all triggers are exhausted

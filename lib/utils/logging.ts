@@ -5,6 +5,17 @@ export interface ILogger {
     log(text: string): void;
 }
 
+export class NullLog implements ILogger {
+    log(text: string): void {
+    }
+}
+
+export class ConsoleLog implements ILogger {
+    log(text: string): void {
+        console.log(text);
+    }
+}
+
 export class MemoryLog implements ILogger {
     public readonly logs: string[] = [];
     

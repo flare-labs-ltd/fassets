@@ -1,5 +1,5 @@
 import { expectErrors, filterStackTrace } from "../helpers";
-import { LogFile } from "../logging";
+import { ILogger } from "../logging";
 
 export type EventHandler<E> = (event: E) => void;
 
@@ -167,7 +167,7 @@ export class EventEmitter<E> {
 }
 
 export class EventExecutionQueue {
-    public logFile?: LogFile;
+    public logger?: ILogger;
     private queue: Array<() => void> = [];
     
     push(item: () => void) {
@@ -185,7 +185,7 @@ export class EventExecutionQueue {
             try {
                 item();
             } catch (e) {
-                this.logFile?.log(`!!! HANDLER ERROR ${filterStackTrace(e)}`);
+                this.logger?.log(`!!! HANDLER ERROR ${filterStackTrace(e)}`);
             }
         }
     }

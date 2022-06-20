@@ -1,23 +1,24 @@
 import { time } from "@openzeppelin/test-helpers";
+import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
+import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
+import { expectErrors, formatBN, latestBlockTimestamp, sleep, systemTimestamp, toBN, toWei } from "../../../lib/utils/helpers";
+import { LogFile } from "../../../lib/utils/logging";
 import { FtsoMockInstance } from "../../../typechain-truffle";
 import { AssetContext, CommonContext } from "../../integration/utils/AssetContext";
 import { TestChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/TestChainInfo";
-import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { currentRealTime, getEnv, InclusionIterable, randomChoice, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
-import { expectErrors, formatBN, latestBlockTimestamp, MAX_BIPS, sleep, systemTimestamp, toBN, toWei } from "../../../lib/utils/helpers";
 import { getTestFile } from "../../utils/test-helpers";
+import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingKeeper } from "./FuzzingKeeper";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
-import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
-import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 import { InterceptorEvmEvents } from "./InterceptorEvmEvents";
-import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
+import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
     const startTimestamp = systemTimestamp();
@@ -51,12 +52,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let eventQueue: EventExecutionQueue;
     let chainEvents: UnderlyingChainEvents;
     let fuzzingState: FuzzingState;
+    let logger: LogFile;
     let runner: FuzzingRunner;
 
     before(async () => {
-        // by default, hardhat test network starts with timestamp 2021-01-01, but for fuzzing we prefer to sync with real time
-        await time.increaseTo(systemTimestamp());
-        await time.advanceBlock();
         // create context
         commonContext = await CommonContext.createTest(governance, testNatInfo);
         chainInfo = testChainInfo[CHAIN] ?? assert.fail(`Invalid chain ${CHAIN}`);
@@ -84,11 +83,12 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         // runner
         runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, fuzzingState, AVOID_ERRORS);
         // logging
-        interceptor.openLog("test_logs/fasset-fuzzing.log");
-        chain.logFile = interceptor.logFile;
-        timeline.logFile = interceptor.logFile;
-        (context.stateConnectorClient as MockStateConnectorClient).logFile = interceptor.logFile;
-        fuzzingState.logger = interceptor.logFile;
+        logger = new LogFile("test_logs/fasset-fuzzing.log");
+        interceptor.logger = logger;
+        chain.logger = logger;
+        timeline.logger = logger;
+        (context.stateConnectorClient as MockStateConnectorClient).logger = logger;
+        fuzzingState.logger = logger;
     });
     
     after(() => {
@@ -96,7 +96,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         fuzzingState.logAllAgentSummaries();
         fuzzingState.logExpectationFailures();
         interceptor.logGasUsage();
-        interceptor.closeLog();
+        logger.close();
     });
 
     it("f-asset fuzzing test", async () => {

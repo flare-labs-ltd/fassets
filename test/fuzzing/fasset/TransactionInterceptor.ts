@@ -4,32 +4,21 @@ import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { EvmEvent } from "../../../lib/utils/events/common";
 import { currentRealTime, Statistics, truffleResultAsJson } from "../../utils/fuzzing-utils";
 import { filterStackTrace, getOrCreate, reportError, sorted, sum, tryCatch } from "../../../lib/utils/helpers";
-import { LogFile } from "../../../lib/utils/logging";
+import { ILogger } from "../../../lib/utils/logging";
 
 export type EventHandler = (event: EvmEvent) => void;
 
 export class TransactionInterceptor {
-    logFile?: LogFile;
+    logger?: ILogger;
     eventHandlers: Map<string, EventHandler> = new Map();
     gasUsage: Map<string, Statistics> = new Map();
     errorCounts: Map<String, number> = new Map();
     eventCounts: Map<String, number> = new Map();
     unexpectedErrorCount: number = 0;
 
-    openLog(path: string) {
-        this.logFile = new LogFile(path);
-    }
-
-    closeLog() {
-        if (this.logFile) {
-            this.logFile.close();
-            this.logFile = undefined;
-        }
-    }
-
     log(text: string) {
-        if (this.logFile) {
-            this.logFile.log(text);
+        if (this.logger) {
+            this.logger.log(text);
         }
     }
 
@@ -46,7 +35,7 @@ export class TransactionInterceptor {
     }
 
     logGasUsage() {
-        if (!this.logFile) return;
+        if (!this.logger) return;
         this.log('');
         this.log(`ERRORS: ${sum(this.errorCounts.values())}`);
         for (const [key, count] of this.errorCounts.entries()) {
@@ -214,7 +203,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
                     this.increaseErrorCount(e);
                 })
                 .finally(() => {
-                    if (this.logFile != null) {
+                    if (this.logger != null) {
                         this.log(txLog.join('\n'));
                     }
                 });
@@ -276,7 +265,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             // read events
             const events = this.eventDecoder.decodeEvents(receipt);
             // print events
-            if (this.logFile != null) {
+            if (this.logger != null) {
                 txLog.push(`    GAS: ${receipt.gasUsed},  BLOCK: ${receipt.blockNumber},  DURATION(rt): ${(callEndTime - callStartTime).toFixed(3)}`);
                 for (const event of events) {
                     txLog.push(`    ${this.eventDecoder.format(event)}`);
@@ -297,7 +286,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
     private handleViewMethodSuccess(contract: Truffle.ContractInstance, method: string, txLog: string[], callStartTime: number, result: any) {
         try {
             const callEndTime = currentRealTime();
-            if (this.logFile != null) {
+            if (this.logger != null) {
                 txLog.push(`    DURATION(rt): ${(callEndTime - callStartTime).toFixed(3)}`);
                 txLog.push(`    RESULT: ${truffleResultAsJson(result)}`);
             }

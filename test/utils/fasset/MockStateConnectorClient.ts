@@ -1,7 +1,7 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { StateConnectorMockInstance } from "../../../typechain-truffle";
 import { sleep, toBN, toNumber } from "../../../lib/utils/helpers";
-import { LogFile } from "../../../lib/utils/logging";
+import { ILogger } from "../../../lib/utils/logging";
 import { MerkleTree } from "../MerkleTree";
 import { DHType } from "../../../lib/verification/generated/attestation-hash-types";
 import { dataHash } from "../../../lib/verification/generated/attestation-hash-utils";
@@ -42,7 +42,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
     
     rounds: string[][] = [];
     finalizedRounds: FinalizedRound[] = [];
-    logFile?: LogFile;
+    logger?: ILogger;
     queryWindowSeconds = 86400;
     
     setTimedFinalization(timedRoundSeconds: number) {
@@ -79,7 +79,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         // add request
         const round = this.rounds.length - 1;
         this.rounds[round].push(data);
-        this.logFile?.log(`STATE CONNECTOR SUBMIT round=${round} data=${data}`);
+        this.logger?.log(`STATE CONNECTOR SUBMIT round=${round} data=${data}`);
         // auto finalize?
         if (this.finalizationType === 'auto') {
             await this.finalizeRound();
@@ -137,10 +137,10 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         // add new finalized round
         this.finalizedRounds.push({ proofs, tree });
         // log
-        if (this.logFile) {
-            this.logFile.log(`STATE CONNECTOR ROUND ${round} FINALIZED`);
+        if (this.logger) {
+            this.logger.log(`STATE CONNECTOR ROUND ${round} FINALIZED`);
             for (const [data, proof] of Object.entries(proofs)) {
-                this.logFile.log(`    ${data}  ${stringifyJson(proof)}`);
+                this.logger.log(`    ${data}  ${stringifyJson(proof)}`);
             }
         }
     }
