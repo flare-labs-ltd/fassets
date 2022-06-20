@@ -19,6 +19,7 @@ const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const MockContract = artifacts.require('MockContract');
 const StateConnector = artifacts.require('StateConnectorMock');
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
+const ERC20Mock = artifacts.require("ERC20Mock");
 
 contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, async accounts => {
     let wnat: WNatInstance;
@@ -275,11 +276,22 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     });
 
     it("should not transfer wnat tokens", async () => {
-        let res = agentVault.transferToOwner(wnat.address, 1);
-        await expectRevert(res, "only native token")
+        let res = agentVault.transferToOwner(wnat.address, 1, { from: owner });
+        await expectRevert(res, "not alowed from wnat");
     });
     
-    it("should transfer tokens", async () => {
-        await agentVault.transferToOwner(fAsset.address, 0);
+    it("should not transfer if not owner", async () => {
+        let res = agentVault.transferToOwner(wnat.address, 1);
+        await expectRevert(res, "only owner");
+    });
+
+    it("should transfer erc20 tokens", async () => {
+        const token = await ERC20Mock.new("XTOK", "XToken")
+        await token.mintAmount(agentVault.address, 10);
+        let balance = (await token.balanceOf(agentVault.address)).toString();
+        assert.equal(balance, "10");
+        await agentVault.transferToOwner(token.address, 3, { from: owner });
+        let balance2 = (await token.balanceOf(agentVault.address)).toString();
+        assert.equal(balance2, "7");
     });
 });

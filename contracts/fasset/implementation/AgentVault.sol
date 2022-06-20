@@ -126,8 +126,8 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         _transferNAT(_recipient, _amount);
     }
 
-    function transferToOwner(IERC20 _token, uint256 _amount) external {
-        require(assetManager.getWNat() != _token, "only native token");
+    function transferToOwner(IERC20 _token, uint256 _amount) external override onlyOwner {
+        require(assetManager.getWNat() != _token, "not alowed from wnat");
         _token.transfer(owner, _amount);
     }
 
