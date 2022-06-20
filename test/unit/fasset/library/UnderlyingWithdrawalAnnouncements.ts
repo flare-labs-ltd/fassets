@@ -134,7 +134,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
         // assert
-        expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, announcementId: toBN(1), spentUBA: toBN(500), underlyingBlock: toBN(blockId)});
+        expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, announcementId: toBN(1), spentUBA: toBN(500), transactionHash: txHash});
     });
 
     it("others can confirm underlying withdrawal after some time", async () => {
@@ -151,7 +151,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         await time.increase(settings.confirmationByOthersAfterSeconds);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
         // assert
-        expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, announcementId: toBN(1), spentUBA: toBN(500), underlyingBlock: toBN(blockId)});
+        expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, announcementId: toBN(1), spentUBA: toBN(500), transactionHash: txHash});
     });
 
     it("only owner can confirm underlying withdrawal immediatelly", async () => {

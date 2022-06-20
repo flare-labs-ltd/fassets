@@ -196,10 +196,10 @@ library Redemption {
                 // notify
                 if (_payment.status == TransactionAttestation.PAYMENT_SUCCESS) {
                     emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
-                        _payment.receivedAmount, _payment.blockNumber, _redemptionRequestId);
+                        _payment.transactionHash, request.underlyingValueUBA, _redemptionRequestId);
                 } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
                     emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer, 
-                        request.underlyingValueUBA, _redemptionRequestId);
+                        _payment.transactionHash, request.underlyingValueUBA, _redemptionRequestId);
                 }
             } else {
                 // we only need failure reports from agent's underlying address, so disallow others to
@@ -210,7 +210,7 @@ library Redemption {
                 _executeDefaultPayment(_state, request, _redemptionRequestId);
                 // notify
                 emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer, 
-                    _redemptionRequestId, failureReason);
+                    _payment.transactionHash, _redemptionRequestId, failureReason);
             }
         }
         // agent has finished with redemption - account for used underlying balance and free the remainder
