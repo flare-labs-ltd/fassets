@@ -7,7 +7,7 @@ export class ScopedRunner {
     scopes = new Set<EventScope>();
     runningThreads = 0;
 
-    uncaughtError: any = null;
+    uncaughtErrors: any[] = [];
 
     newScope(parentScope?: EventScope) {
         const scope = new EventScope(parentScope);
@@ -29,7 +29,7 @@ export class ScopedRunner {
                     if (e.scope == null || e.scope === scope) return;
                 }
                 this.logError(e);
-                this.uncaughtError = e;
+                this.uncaughtErrors.push(e);
             })
             .finally(() => {
                 --this.runningThreads;

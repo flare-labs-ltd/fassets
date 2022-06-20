@@ -36,7 +36,7 @@ export namespace PaymentReference {
         return toHex(toBN(address).or(ADDRESS_OWNERSHIP), 32);
     }
     
-    export function isValid(reference: string | null) {
+    export function isValid(reference: string | null): reference is string {
         return reference != null && /^0x464250526641[0-9a-zA-Z]{52}$/.test(reference);
     }
 }

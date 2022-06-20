@@ -183,8 +183,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
                 await interceptor.allHandled();
             }
             // fail immediately on unexpected errors from threads
-            if (runner.uncaughtError != null) {
-                throw runner.uncaughtError;
+            if (runner.uncaughtErrors.length > 0) {
+                throw runner.uncaughtErrors[0];
             }
             // occassionally skip some time
             if (loop % 10 === 0) {
