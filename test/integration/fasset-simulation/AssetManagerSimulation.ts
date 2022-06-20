@@ -1,20 +1,22 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { calcGasCost } from "../../utils/eth";
-import { findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { EventArgs } from "../../../lib/utils/events/common";
+import { findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { BN_ZERO, DAYS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { calcGasCost } from "../../utils/eth";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { BN_ZERO, DAYS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { getTestFile } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext, CommonContext } from "../utils/AssetContext";
-import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
 import { Challenger } from "../utils/Challenger";
 import { Liquidator } from "../utils/Liquidator";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
+import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -1707,6 +1709,63 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(agent.exitAndDestroy(fullAgentCollateral.sub(reward)), "agent still active");
         });
 
+        it("free balance negative challenge - multiple transactions", async () => {
+            const N = 10;
+            const lots = 1;
+            // actors
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            const challenger = await Challenger.create(context, challengerAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateral(fullAgentCollateral);
+            await agent.makeAvailable(500, 2_2000);
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            for (let i = 0; i < N; i++) {
+                const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+                const txHash = await minter.performMintingPayment(crt);
+                const minted = await minter.executeMinting(crt, txHash);
+                assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            }
+            // find free balance
+            const agentInfo = await context.assetManager.getAgentInfo(agent.agentVault.address);
+            const payGas = toBN(agentInfo.freeUnderlyingBalanceUBA).divn(N).addn(10);   // in total, pay just a bit more then there is free balance
+            // transfer f-assets to redeemer
+            const totalMinted = await context.fAsset.balanceOf(minter.address);
+            await context.fAsset.transfer(redeemer.address, totalMinted, { from: minter.address });
+            // make redemption requests
+            const requests: EventArgs<RedemptionRequested>[] = [];
+            for (let i = 0; i < N; i++) {
+                const [rrqs] = await redeemer.requestRedemption(lots);
+                requests.push(...rrqs);
+            }
+            assert.equal(requests.length, N);
+            // perform some payments
+            const txHashes: string[] = [];
+            for (const request of requests) {
+                const amount = (await context.convertLotsToUBA(lots)).add(payGas);
+                const txHash = await agent.performPayment(request.paymentAddress, amount, request.paymentReference);
+                txHashes.push(txHash);
+            }
+            // check that all payments are legal
+            for (const txHash of txHashes) {
+                await expectRevert(challenger.illegalPaymentChallenge(agent, txHash), "matching redemption active");
+            }
+            // check that N-1 payments doesn't make free underlying balance negative
+            await expectRevert(challenger.freeBalanceNegativeChallenge(agent, txHashes.slice(0, N - 1)), "mult chlg: enough free balance");
+            // check that N payments do make the transaction negative
+            const liquidationStarted = await challenger.freeBalanceNegativeChallenge(agent, txHashes);
+            // check that full liquidation started
+            const info = await context.assetManager.getAgentInfo(agent.agentVault.address);
+            assertWeb3Equal(info.ccbStartTimestamp, 0);
+            assertWeb3Equal(info.ccbStartTimestamp, 0);
+            assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
+            assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
+        });
+        
         it("full liquidation", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
