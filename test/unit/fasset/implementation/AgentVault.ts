@@ -272,4 +272,13 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const res = agentVault.payoutNAT(wnat.address, accounts[2], 100, { from: accounts[2] });
         await expectRevert(res, "only asset manager")
     });
+
+    it("should not transfer wnat tokens", async () => {
+        let res = agentVault.transferToOwner(wnat.address, 1);
+        await expectRevert(res, "only native token")
+    });
+    
+    it("should transfer tokens", async () => {
+        await agentVault.transferToOwner(fAsset.address, 0);
+    });
 });
