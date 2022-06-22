@@ -12,6 +12,7 @@ module.exports = {
         // 'eqeqeq': ['warn', 'always', { null: 'ignore' }],
         '@typescript-eslint/await-thenable': 'warn',
         '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
+        'no-fallthrough': 'error',
     },
     parserOptions: {
         ecmaVersion: 2020,

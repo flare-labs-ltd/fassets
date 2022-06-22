@@ -1,16 +1,17 @@
 import BN from "bn.js";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
+import { AgentStatus } from "../../../lib/state/TrackedAgentState";
+import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { EventArgs } from "../../../lib/utils/events/common";
+import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
+import { requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Agent } from "../../integration/utils/Agent";
-import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { EventArgs } from "../../../lib/utils/events/common";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { coinFlip, randomBN, randomChoice, randomInt } from "../../utils/fuzzing-utils";
-import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
-import { AgentStatus } from "../../../lib/state/TrackedAgentState";
 
 export class FuzzingAgent extends FuzzingActor {
     constructor(
@@ -78,8 +79,9 @@ export class FuzzingAgent extends FuzzingActor {
                 request = { ...request, feeUBA: request.feeUBA.muln(2) };   // pay less by taking some extra fee
             }
             const txHash = await agent.performRedemptionPayment(request);
-            await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
-            if (!cheatOnPayment) {
+            const transaction = await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
+            assert.isTrue(transaction == null || transaction.hash === txHash);
+            if (!cheatOnPayment && transaction && transaction.status !== TX_FAILED) {
                 await agent.confirmActiveRedemptionPayment(request, txHash)
                     .catch(e => scope.exitOnExpectedError(e, []));
             } else {

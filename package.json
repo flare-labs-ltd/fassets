@@ -39,6 +39,7 @@
     "slither-show-stderr": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json || true; node node_modules/flare-smart-contracts/scripts/slither-parse.js ./slither.json",
     "flatten-dependencies": "env bash scripts/flatten-dependencies.sh",
     "generate-attester-code": "env bash scripts/generate-attester-code.sh",
+    "eslint": "eslint \"lib/**/*.ts\" \"test/**/*.ts\"",
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",
     "gas-report": "ts-node node_modules/flare-smart-contracts/scripts/process-gas-report.ts && cat .gas-report.txt",
