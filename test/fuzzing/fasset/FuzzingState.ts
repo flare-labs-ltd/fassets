@@ -13,7 +13,7 @@ import { FuzzingStateComparator } from "./FuzzingStateComparator";
 
 export type FuzzingStateLogRecord = {
     text: string;
-    event: EvmEvent;
+    event: EvmEvent | string;
 };
 
 export class FuzzingState extends TrackedState {
@@ -47,6 +47,15 @@ export class FuzzingState extends TrackedState {
             if (args.to !== constants.ZERO_ADDRESS) {
                 this.fAssetBalance.addTo(args.to, args.value);
             }
+        });
+        // track underlying transactions
+        this.chainEvents.transactionEvent().subscribe(transaction => {
+            for (const [address, amount] of transaction.inputs) {
+                this.agentsByUnderlying.get(address)?.handleTransactionFromUnderlying(transaction);
+            }
+            // for (const [address, amount] of transaction.outputs) {
+            //     this.agentsByUnderlying.get(address)?.handleTransactionToUnderlying(transaction);
+            // }
         });
     }
     
@@ -102,7 +111,7 @@ export class FuzzingState extends TrackedState {
         if (!this.logger) return;
         this.logger.log(`\nEXPECTATION FAILURES: ${this.failedExpectations.length}`);
         for (const log of this.failedExpectations) {
-            this.logger.log(`        ${log.text}  ${this.eventInfo(log.event)}`);
+            this.logger.log(`        ${log.text}  ${typeof log.event === 'string' ? log.event : this.eventInfo(log.event)}`);
         }
     }
 
