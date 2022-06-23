@@ -128,9 +128,10 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
 
     // Allow transfering a token, airdropped to the agent vault, to the owner.
     // Doesn't work for wNat because this would allow withdrawing the locked collateral.
-    function transferToOwner(IERC20 _token, uint256 _amount) external override onlyOwner {
-        require(assetManager.getWNat() != _token, "not alowed from wnat");
-        _token.transfer(owner, _amount);
+    function transferExternalToken(IERC20 _token, uint256 _amount) external override onlyOwner {
+        require(assetManager.getWNat() != _token, "Transfer from wNat not allowed");
+        bool success = _token.transfer(owner, _amount);
+        assert(success);
     }
 
     function _transferNAT(address payable _recipient, uint256 _amount) private {

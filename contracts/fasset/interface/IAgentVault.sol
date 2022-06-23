@@ -50,5 +50,5 @@ interface IAgentVault {
 
     function owner() external view returns (address payable);
 
-    function transferToOwner(IERC20 _token, uint256 _amount) external;
+    function transferExternalToken(IERC20 _token, uint256 _amount) external;
 }
