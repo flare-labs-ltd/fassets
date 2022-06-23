@@ -337,4 +337,18 @@ export class Agent extends AssetContextClient {
     async getAgentInfo() {
         return await this.context.assetManager.getAgentInfo(this.agentVault.address);
     }
+    
+    async performFakeRedemptionPayment(request: EventArgs<RedemptionRequested>, options?:MockTransactionOptionsWithFee) {
+        const paymentAmount = request.valueUBA.sub(request.feeUBA);
+        let ref = request.paymentReference;
+        let newRef = "0xffffffffffffffff" + ref.substring(18, ref.length);
+        return await this.performPayment(request.paymentAddress, paymentAmount, newRef, options);
+    }
+    
+    async performFakeRedemptionPaymentID(request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
+        const paymentAmount = request.valueUBA.sub(request.feeUBA);
+        let ref = request.paymentReference;
+        let newRef = "0x4642505266410002aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" + ref.substring(50, ref.length);
+        return await this.performPayment(request.paymentAddress, paymentAmount, newRef, options);
+    }
 }

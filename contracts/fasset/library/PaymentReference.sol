@@ -4,6 +4,7 @@ pragma solidity 0.8.11;
 
 library PaymentReference {
     uint256 private constant TYPE_SHIFT = 192;
+    uint256 private constant TYPE_MASK = ((1 << 64) - 1) << TYPE_SHIFT;
     
     // common prefix 0x464250526641 = hex('FBPRfA' - Flare Bridge Payment Reference / fAsset)
     
@@ -43,7 +44,7 @@ library PaymentReference {
     // verify and decode payment references
             
     function isValid(bytes32 _reference, uint256 _type) internal pure returns (bool) {
-        uint256 refType = uint256(_reference) & _type;
+        uint256 refType = uint256(_reference) & TYPE_MASK;
         uint256 refLowBits = uint256(_reference) & ((1 << TYPE_SHIFT) - 1);
         // for valid reference, type must match and low bits may never be 0 (are either id or address)
         return refType == _type && refLowBits != 0;
