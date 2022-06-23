@@ -35,7 +35,7 @@ library AssetManagerState {
         RedemptionQueue.State redemptionQueue;
         
         // mapping redemptionRequest_id => request
-        mapping(uint64 => Redemption.RedemptionRequest) redemptionRequests;
+        mapping(uint256 => Redemption.RedemptionRequest) redemptionRequests;
         
         // verified payment hashes; expire in 5 days
         PaymentConfirmations.State paymentConfirmations;

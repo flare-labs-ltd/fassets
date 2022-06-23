@@ -41,7 +41,7 @@ library Challenges {
         // check that payment reference is invalid (paymentReference == 0 is always invalid payment)
         if (_payment.paymentReference != 0) {
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.REDEMPTION)) {
-                uint64 redemptionId = PaymentReference.decodeId(_payment.paymentReference);
+                uint256 redemptionId = PaymentReference.decodeId(_payment.paymentReference);
                 Redemption.RedemptionRequest storage redemption = _state.redemptionRequests[redemptionId];
                 // redemption must be for the correct agent and 
                 // only statuses ACTIVE and DEFAULTED mean that redemption is still missing a payment proof
@@ -117,7 +117,7 @@ library Challenges {
                 "mult chlg: payment confirmed");
             if (PaymentReference.isValid(pmi.paymentReference, PaymentReference.REDEMPTION)) {
                 // for redemption, we don't count the value that should be paid to free balance deduction
-                uint64 redemptionId = PaymentReference.decodeId(pmi.paymentReference);
+                uint256 redemptionId = PaymentReference.decodeId(pmi.paymentReference);
                 Redemption.RedemptionRequest storage request = _state.redemptionRequests[redemptionId];
                 total += pmi.spentAmount - SafeCast.toInt256(request.underlyingValueUBA);
             } else {

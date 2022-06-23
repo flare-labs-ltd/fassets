@@ -107,8 +107,6 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         // others cannot confirm redemption payment immediately or challenge it as illegal payment
         await expectRevert(challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent), "only agent vault owner");
         await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
-        await expectRevert(challenger.illegalPaymentChallenge(agent, fakeTxHash), "matching redemption active");
-        await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, fakeTxHash), "challenge: not duplicate")
-        console.log("Illegal payment or double payment should catch this and not revert");
+        await challenger.illegalPaymentChallenge(agent, fakeTxHash);
     });
 });
