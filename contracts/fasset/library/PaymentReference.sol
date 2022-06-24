@@ -6,6 +6,7 @@ library PaymentReference {
     uint256 private constant TYPE_SHIFT = 192;
     uint256 private constant TYPE_MASK = ((1 << 64) - 1) << TYPE_SHIFT;
     uint256 private constant LOW_BITS_MASK = (1 << TYPE_SHIFT) - 1;
+    uint256 private constant ID_RANDOMIZATION = 1000;
     
     // common prefix 0x464250526641 = hex('FBPRfA' - Flare Bridge Payment Reference / fAsset)
     
@@ -53,5 +54,12 @@ library PaymentReference {
     
     function decodeId(bytes32 _reference) internal pure returns (uint256) {
         return uint256(_reference) & LOW_BITS_MASK;
+    }
+    
+    function randomizedIdSkip() internal view returns (uint64) {
+        // This is rather weak randomization, but it's ok for the purpose of preventing speculative underlying 
+        // payments, since there is only one guess possible - the first mistake makes agent liquidated.
+        //slither-disable-next-line weak-prng
+        return uint64(block.number % ID_RANDOMIZATION + 1);
     }
 }

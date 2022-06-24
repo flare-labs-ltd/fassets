@@ -24,7 +24,8 @@ library UnderlyingWithdrawalAnnouncements {
         Agents.requireAgentVaultOwner(_agentVault);
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.announcedUnderlyingWithdrawalId == 0, "announced underlying withdrawal active");
-        uint64 announcementId = ++_state.newPaymentAnnouncementId;
+        _state.newPaymentAnnouncementId += PaymentReference.randomizedIdSkip();
+        uint64 announcementId = _state.newPaymentAnnouncementId;
         agent.announcedUnderlyingWithdrawalId = announcementId;
         agent.underlyingWithdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
         bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);

@@ -130,7 +130,8 @@ library Redemption {
         private 
     {
         uint128 redeemedValueUBA = SafeCast.toUint128(Conversion.convertAmgToUBA(_state.settings, _data.valueAMG));
-        uint64 requestId = ++_state.newRedemptionRequestId;
+        _state.newRedemptionRequestId += PaymentReference.randomizedIdSkip();
+        uint64 requestId = _state.newRedemptionRequestId;
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
         uint128 redemptionFeeUBA = SafeCast.toUint128(
             SafeBips.mulBips(redeemedValueUBA, _state.settings.redemptionFeeBIPS));

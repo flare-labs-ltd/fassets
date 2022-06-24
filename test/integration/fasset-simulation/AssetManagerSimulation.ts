@@ -1538,10 +1538,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // underlying withdrawal
             const underlyingWithdrawal1 = await agent1.announceUnderlyingWithdrawal();
             const info1 = await agent1.checkAgentInfo(fullAgentCollateral, amount, 0, 0);
-            assertWeb3Equal(info1.announcedUnderlyingWithdrawalId, 1);
+            assert.isAbove(Number(underlyingWithdrawal1.announcementId), 0);
+            assertWeb3Equal(info1.announcedUnderlyingWithdrawalId, underlyingWithdrawal1.announcementId);
             const underlyingWithdrawal2 = await agent2.announceUnderlyingWithdrawal();
             const info2 = await agent2.checkAgentInfo(fullAgentCollateral, amount, 0, 0);
-            assertWeb3Equal(info2.announcedUnderlyingWithdrawalId, 2);
+            assert.isAbove(Number(underlyingWithdrawal2.announcementId), Number(underlyingWithdrawal1.announcementId));
+            assertWeb3Equal(info2.announcedUnderlyingWithdrawalId, underlyingWithdrawal2.announcementId);
             const tx3Hash = await agent1.performUnderlyingWithdrawal(underlyingWithdrawal1, amount);
             const res1 = await agent1.confirmUnderlyingWithdrawal(underlyingWithdrawal1, tx3Hash);
             await agent1.checkAgentInfo(fullAgentCollateral, 0, 0, 0);
@@ -1573,7 +1575,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const underlyingWithdrawal = await agent.announceUnderlyingWithdrawal();
             const tx1Hash = await agent.performUnderlyingWithdrawal(underlyingWithdrawal, amount);
             const info = await agent.checkAgentInfo(fullAgentCollateral, amount, 0, 0);
-            assertWeb3Equal(info.announcedUnderlyingWithdrawalId, 1);
+            assert.isAbove(Number(underlyingWithdrawal.announcementId), 0);
+            assertWeb3Equal(info.announcedUnderlyingWithdrawalId, underlyingWithdrawal.announcementId);
             // others cannot confirm underlying withdrawal immediatelly or challenge it as illegal payment
             await expectRevert(challenger.confirmUnderlyingWithdrawal(underlyingWithdrawal, tx1Hash, agent), "only agent vault owner");
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching ongoing announced pmt");
