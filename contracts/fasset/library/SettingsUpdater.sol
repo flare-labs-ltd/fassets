@@ -78,6 +78,8 @@ library SettingsUpdater {
         keccak256("setLiquidationCollateralFactorBips(uint256[])");
     bytes32 internal constant SET_ATTESTATION_WINDOW_SECONDS =
         keccak256("setAttestationWindowSeconds(uint256)");
+    bytes32 internal constant SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS =
+        keccak256("setAnnouncedUnderlyingConfirmationMinSeconds(uint256)");
         
     function validateAndSet(
         AssetManagerState.State storage _state,
@@ -156,6 +158,9 @@ library SettingsUpdater {
         } else if (_method == SET_MAX_TRUSTED_PRICE_AGE_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setMaxTrustedPriceAgeSeconds(_state, _params);
+        } else if (_method == SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
+            _setAnnouncedUnderlyingConfirmationMinSeconds(_state, _params);
         }
         else {
             revert("update: invalid method");
@@ -559,6 +564,20 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("attestationWindowSeconds", value);
     }
 
+    function _setAnnouncedUnderlyingConfirmationMinSeconds(
+        AssetManagerState.State storage _state,
+        bytes calldata _params
+    ) 
+        private 
+    {
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= 1 hours, "confirmation time too big");
+        // update
+        _state.settings.announcedUnderlyingConfirmationMinSeconds = SafeCast.toUint64(value);
+        emit AMEvents.SettingChanged("announcedUnderlyingConfirmationMinSeconds", value);
+    }
+
     function _validateSettings(
         AssetManagerSettings.Settings memory _settings
     )
@@ -600,5 +619,6 @@ library SettingsUpdater {
         require(_settings.redemptionDefaultFactorBIPS > SafeBips.MAX_BIPS, "bips value too low");
         require(_settings.attestationWindowSeconds >= 1 days, "window too small");
         require(_settings.confirmationByOthersAfterSeconds >= 2 hours, "must be at least two hours");
+        require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, "confirmation time too big");
     }
 }

@@ -246,6 +246,7 @@ export class AssetContext implements IAssetContext {
             minUpdateRepeatTimeSeconds: 1 * DAYS,
             attestationWindowSeconds: 1 * DAYS,
             buybackCollateralFactorBIPS: 1_1000,                    // 1.1
+            announcedUnderlyingConfirmationMinSeconds: 0,           // should be higher in production (~ state connector response time, in tests sc response time is 0)
         };
     }
 }

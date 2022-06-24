@@ -282,6 +282,14 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_ATTESTATION_WINDOW_SECONDS, abi.encode(_value));
     }
 
+    function setAnnouncedUnderlyingConfirmationMinSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers, 
+            SettingsUpdater.SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS, abi.encode(_value));
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Upgrade (second phase)
 

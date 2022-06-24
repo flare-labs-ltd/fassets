@@ -309,6 +309,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings19.lotSizeAMG = 0;
             let res19 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings19);
             await expectRevert(res19, "cannot be zero");
+
+            let newSettings20 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry)
+            newSettings20.announcedUnderlyingConfirmationMinSeconds = 2 * HOURS;
+            let res20 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings19);
+            await expectRevert(res20, "confirmation time too big");
         });
 
         it("should validate settings - other validators", async () => {

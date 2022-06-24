@@ -175,6 +175,7 @@ export class FuzzingAgent extends FuzzingActor {
                 .catch(e => scope.exitOnExpectedError(e, []));
             // wait for finalization
             await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
+            // wait 
             // confirm
             await agent.confirmUnderlyingWithdrawal(announcement, txHash)
                 .catch(e => scope.exitOnExpectedError(e, []));

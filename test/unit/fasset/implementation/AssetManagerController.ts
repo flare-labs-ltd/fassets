@@ -423,6 +423,13 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(res_small, "window too small");
         });
 
+        it("should revert setting announced underlying confirmation delay when setting is more than an hour", async () => {
+            let announcedUnderlyingConfirmationMinSeconds_new = 2 * HOURS;
+            let res_small = assetManagerController.setAnnouncedUnderlyingConfirmationMinSeconds([assetManager.address], announcedUnderlyingConfirmationMinSeconds_new, { from: governance });
+
+            await expectRevert(res_small, "confirmation time too big");
+        });
+        
         it("should set attestation window", async () => {
             const currentSettings = await assetManager.getSettings();
             let attestationWindowSeconds_new = toBN(currentSettings.attestationWindowSeconds).muln(2);
@@ -430,6 +437,12 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(res, "SettingChanged", { name: "attestationWindowSeconds", value: toBN(attestationWindowSeconds_new) });
         });
 
+        it("should set announced underlying confirmation min seconds", async () => {
+            let announcedUnderlyingConfirmationMinSeconds_new = 100;
+            let res = await assetManagerController.setAnnouncedUnderlyingConfirmationMinSeconds([assetManager.address], announcedUnderlyingConfirmationMinSeconds_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "announcedUnderlyingConfirmationMinSeconds", value: toBN(announcedUnderlyingConfirmationMinSeconds_new) });
+        });
+        
         it("should revert redemption default factor bips", async () => {
             const currentSettings = await assetManager.getSettings();
             let redemptionDefaultFactorBIPS_big = toBN(currentSettings.redemptionDefaultFactorBIPS).muln(12001).divn(10_000);

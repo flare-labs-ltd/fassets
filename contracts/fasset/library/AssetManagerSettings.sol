@@ -193,6 +193,12 @@ library AssetManagerSettings {
         // Typically a bit more than 1 to incentivise agents to buy f-assets and self-close instead.
         // immutable
         uint64 buybackCollateralFactorBIPS;
+        
+        // Minimum time that has to pass between underlying withdrawal announcement and the confirmation.
+        // Any value is ok, but higher values give more security agains multiple announcement attack by a miner.
+        // Shouldn't be much bigger than state connector response time, so that payments can be confirmed without 
+        // extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
+        uint64 announcedUnderlyingConfirmationMinSeconds;
     }
 
 }
