@@ -319,9 +319,14 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await time.advanceBlock();
 
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, false);
-        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
-            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
+
+        // mine some blocks to create overflow block
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment + 1; i++) {
+            chain.mine();
         }
+        // skip the time until the proofs cannot be made anymore
+        chain.skipTime(stateConnectorClient.queryWindowSeconds);
+        chain.mine();
 
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res =  assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });

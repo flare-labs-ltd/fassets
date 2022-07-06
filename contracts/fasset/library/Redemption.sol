@@ -182,6 +182,10 @@ library Redemption {
         // payment reference must match
         require(_payment.paymentReference == PaymentReference.redemption(_redemptionRequestId), 
             "invalid redemption reference");
+        // we do not allow payments before the underlying block at requests, because the payer should have guessed
+        // the payment reference, which is good for nothing except attack attempts
+        require(_payment.blockNumber >= request.firstUnderlyingBlock,
+            "redemption payment too old");
         // When status is active, agent has either paid in time / was blocked and agent's collateral is released
         // or the payment failed and the default is called.
         // Otherwise, agent has already defaulted on payment and this method is only needed for proper 

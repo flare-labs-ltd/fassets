@@ -189,6 +189,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const fullAgentCollateral = toWei(3e8);
             await agent.depositCollateral(fullAgentCollateral);
             await agent.makeAvailable(500, 2_2000);
+            // mine a block to skip the agent creation time
+            (context.chain as MockChain).mine();
             // update block
             const blockNumber = await context.updateUnderlyingBlock();
             const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
@@ -234,6 +236,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const fullAgentCollateral = toWei(3e8);
             await agent.depositCollateral(fullAgentCollateral);
             await agent.makeAvailable(500, 2_2000);
+            // mine a block to skip the agent creation time
+            (context.chain as MockChain).mine();
             // update block
             const blockNumber = await context.updateUnderlyingBlock();
             const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
@@ -410,6 +414,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const fullAgentCollateral = toWei(3e8);
             await agent.depositCollateral(fullAgentCollateral);
             await agent.makeAvailable(500, 2_2000);
+            // mine a block to skip the agent creation time
+            (context.chain as MockChain).mine();
             // update block
             await context.updateUnderlyingBlock();
             // perform collateral

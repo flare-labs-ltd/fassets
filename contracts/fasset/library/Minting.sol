@@ -44,6 +44,10 @@ library Minting {
         uint256 receivedAmount = SafeCast.toUint256(_payment.receivedAmount);
         require(receivedAmount >= _mintValueUBA + crt.underlyingFeeUBA,
             "minting payment too small");
+        // we do not allow payments before the underlying block at requests, because the payer should have guessed
+        // the payment reference, which is good for nothing except attack attempts
+        require(_payment.blockNumber >= crt.firstUnderlyingBlock,
+            "minting payment too old");
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, crt.valueAMG);
         uint256 receivedFeeUBA = receivedAmount - _mintValueUBA;
         emit AMEvents.MintingExecuted(agentVault, _crtId, redemptionTicketId, _mintValueUBA, receivedFeeUBA);

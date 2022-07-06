@@ -277,9 +277,12 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const crt = await reserveCollateral(agentVault.address, 3);
         // mine some blocks to create overflow block
-        for (let i = 0; i <= 7200; i++) {
-            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment + 1; i++) {
+            chain.mine();
         }
+        // skip the time until the proofs cannot be made anymore
+        chain.skipTime(stateConnectorClient.queryWindowSeconds);
+        chain.mine();
         // act
         // wrong overflow block
         const proofOverflow = await attestationProvider.proveReferencedPaymentNonexistence(
