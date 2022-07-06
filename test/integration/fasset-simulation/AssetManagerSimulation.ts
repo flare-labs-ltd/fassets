@@ -40,10 +40,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     
     let commonContext: CommonContext;
     let context: AssetContext;
+    let mockChain: MockChain;
+    let mockStateConnectorClient: MockStateConnectorClient;
     
     beforeEach(async () => {
         commonContext = await CommonContext.createTest(governance, testNatInfo);
         context = await AssetContext.createTest(commonContext, testChainInfo.eth);
+        mockChain = context.chain as MockChain;
+        mockStateConnectorClient = context.stateConnectorClient as MockStateConnectorClient;
     });
     
     describe("simple scenarios", () => {
@@ -189,8 +193,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const fullAgentCollateral = toWei(3e8);
             await agent.depositCollateral(fullAgentCollateral);
             await agent.makeAvailable(500, 2_2000);
-            // mine a block to skip the agent creation time
-            (context.chain as MockChain).mine();
+            // mine some blocks to skip the agent creation time
+            mockChain.mine(5);
             // update block
             const blockNumber = await context.updateUnderlyingBlock();
             const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
@@ -237,7 +241,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.depositCollateral(fullAgentCollateral);
             await agent.makeAvailable(500, 2_2000);
             // mine a block to skip the agent creation time
-            (context.chain as MockChain).mine();
+            mockChain.mine();
             // update block
             const blockNumber = await context.updateUnderlyingBlock();
             const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
@@ -415,7 +419,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.depositCollateral(fullAgentCollateral);
             await agent.makeAvailable(500, 2_2000);
             // mine a block to skip the agent creation time
-            (context.chain as MockChain).mine();
+            mockChain.mine();
             // update block
             await context.updateUnderlyingBlock();
             // perform collateral
@@ -472,9 +476,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         });
         
         it("mint unstick - no underlying payment", async () => {
-            const mockChain = context.chain as MockChain;
-            const mockClient = context.stateConnectorClient as MockStateConnectorClient;
-            mockClient.queryWindowSeconds = 300;
+            mockStateConnectorClient.queryWindowSeconds = 300;
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
@@ -494,7 +496,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that calling unstickMinting after no payment will revert if called too soon
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
             await time.increase(DAYS);
-            for (let i = 0; i <= mockClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
+            for (let i = 0; i <= mockStateConnectorClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
                 mockChain.mine();
             }
             await agent.checkAgentInfo(fullAgentCollateral, 0, 0, 0, await context.convertLotsToUBA(lots));
@@ -521,9 +523,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("mint unstick - failed underlying payment", async () => {
-            const mockChain = context.chain as MockChain;
-            const mockClient = context.stateConnectorClient as MockStateConnectorClient;
-            mockClient.queryWindowSeconds = 300;
+            mockStateConnectorClient.queryWindowSeconds = 300;
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
@@ -545,7 +545,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that calling unstickMinting after failed minting payment will revert if called too soon
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
             await time.increase(DAYS);
-            for (let i = 0; i <= mockClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
+            for (let i = 0; i <= mockStateConnectorClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
                 mockChain.mine();
             }
             // test rewarding for unstick default
@@ -570,9 +570,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("mint unstick - unconfirmed underlying payment", async () => {
-            const mockChain = context.chain as MockChain;
-            const mockClient = context.stateConnectorClient as MockStateConnectorClient;
-            mockClient.queryWindowSeconds = 300;
+            mockStateConnectorClient.queryWindowSeconds = 300;
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
@@ -595,7 +593,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that calling unstickMinting after unconfirmed payment will revert if called too soon
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
             await time.increase(DAYS);
-            for (let i = 0; i <= mockClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
+            for (let i = 0; i <= mockStateConnectorClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
                 mockChain.mine();
             }
             // test rewarding for unstick default
@@ -876,9 +874,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("mint and redeem defaults (after a day) - no underlying payment (default not needed after a day)", async () => {
-            const mockChain = context.chain as MockChain;
-            const mockClient = context.stateConnectorClient as MockStateConnectorClient;
-            mockClient.queryWindowSeconds = 300;
+            mockStateConnectorClient.queryWindowSeconds = 300;
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
@@ -911,7 +907,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that calling finishRedemptionWithoutPayment after no redemption payment will revert if called too soon
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "should default first");
             await time.increase(DAYS);
-            for (let i = 0; i <= mockClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
+            for (let i = 0; i <= mockStateConnectorClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
                 mockChain.mine();
             }
             // test rewarding for redemption payment default
@@ -1438,7 +1434,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(agent.buybackAgentCollateral(), "f-asset not terminated");
             await expectRevert(context.assetManagerController.terminate([context.assetManager.address], {from: governance}), "asset manager not paused enough");
             await time.increase(30 * DAYS);
-            await (context.chain as MockChain).skipTime(30 * DAYS);
+            mockChain.skipTime(30 * DAYS);
             const [redemptionRequests2, remainingLots2, dustChanges2] = await redeemer.requestRedemption(1);
             assertWeb3Equal(remainingLots2, 0);
             assert.equal(dustChanges2.length, 0);
