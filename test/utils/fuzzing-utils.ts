@@ -157,6 +157,11 @@ export function currentRealTime() {
     return new Date().getTime() / 1000;
 }
 
+// nicely formated elapsed time since startRealTime
+export function elapsedTime(startRealTime: number) {
+    return (currentRealTime() - startRealTime).toFixed(3);
+}
+
 // truffle makes results of functions returning struct as an array with extra string keys
 // this method converts it to JS dict
 export function truffleResultAsDict(result: any): any {
