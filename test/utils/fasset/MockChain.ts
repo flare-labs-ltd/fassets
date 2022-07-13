@@ -152,6 +152,11 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
         return this.blocks.length - 1;
     }
     
+    blockWithHash(blockHash: string) {
+        const index = this.blockIndex[blockHash];
+        return index != null ? this.blocks[index] : null;
+    }
+    
     lastBlockTimestamp() {
         return this.blocks.length > 0 
             ? this.blocks[this.blocks.length - 1].timestamp 

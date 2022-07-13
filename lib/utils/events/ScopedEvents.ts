@@ -1,4 +1,4 @@
-import { expectErrors, filterStackTrace } from "../helpers";
+import { ErrorFilter, expectErrors, filterStackTrace } from "../helpers";
 import { ILogger } from "../logging";
 
 export type EventHandler<E> = (event: E) => void;
@@ -86,8 +86,8 @@ export class EventScope {
         throw new ExitScope(this);
     }
     
-    exitOnExpectedError(e: any, expectedMessages: string[]): never {
-        expectErrors(e, expectedMessages);
+    exitOnExpectedError(error: any, expectedErrors: ErrorFilter[]): never {
+        expectErrors(error, expectedErrors);
         throw new ExitScope(this);
     }
 }
