@@ -112,9 +112,11 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
         }
     }
     
-    mine() {
-        this.addBlock(this.nextBlockTransactions);
-        this.nextBlockTransactions = [];
+    mine(blocks: number = 1) {
+        for (let i = 0; i < blocks; i++) {
+            this.addBlock(this.nextBlockTransactions);
+            this.nextBlockTransactions = [];
+        }
     }
     
     createTransactionHash(inputs: TxInputOutput[], outputs: TxInputOutput[], reference: string | null): string {
@@ -134,10 +136,12 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
     
     skipTime(timeDelta: number) {
         this.timestampSkew += timeDelta;
+        this.mine();
     }
 
     skipTimeTo(timestamp: number) {
         this.timestampSkew = timestamp - systemTimestamp();
+        this.mine();
     }
     
     mint(address: string, value: BNish) {
@@ -146,6 +150,11 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
     
     blockHeight() {
         return this.blocks.length - 1;
+    }
+    
+    blockWithHash(blockHash: string) {
+        const index = this.blockIndex[blockHash];
+        return index != null ? this.blocks[index] : null;
     }
     
     lastBlockTimestamp() {

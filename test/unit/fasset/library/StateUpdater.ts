@@ -51,7 +51,7 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);

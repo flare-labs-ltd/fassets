@@ -190,7 +190,7 @@ export class AssetContext implements IAssetContext {
         const chainEventsRaw = chain;
         const chainEvents = new UnderlyingChainEvents(chain, chainEventsRaw, null);
         const stateConnectorClient = new MockStateConnectorClient(common.stateConnector, { [chainInfo.chainId]: chain }, 'on_wait');
-        const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId, 0);
+        const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId);
         // create asset FTSO and set some price
         const assetFtso = await FtsoMock.new(chainInfo.symbol);
         await assetFtso.setCurrentPrice(toBNExp(chainInfo.startPrice, 5), 0);
@@ -246,6 +246,7 @@ export class AssetContext implements IAssetContext {
             minUpdateRepeatTimeSeconds: 1 * DAYS,
             attestationWindowSeconds: 1 * DAYS,
             buybackCollateralFactorBIPS: 1_1000,                    // 1.1
+            announcedUnderlyingConfirmationMinSeconds: 0,           // should be higher in production (~ state connector response time, in tests sc response time is 0)
         };
     }
 }

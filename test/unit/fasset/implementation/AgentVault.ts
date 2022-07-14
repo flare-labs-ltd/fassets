@@ -276,12 +276,12 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     });
 
     it("should not transfer wnat tokens", async () => {
-        let res = agentVault.transferToOwner(wnat.address, 1, { from: owner });
-        await expectRevert(res, "not alowed from wnat");
+        let res = agentVault.transferExternalToken(wnat.address, 1, { from: owner });
+        await expectRevert(res, "Transfer from wNat not allowed");
     });
     
     it("should not transfer if not owner", async () => {
-        let res = agentVault.transferToOwner(wnat.address, 1);
+        let res = agentVault.transferExternalToken(wnat.address, 1);
         await expectRevert(res, "only owner");
     });
 
@@ -290,7 +290,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await token.mintAmount(agentVault.address, 10);
         let balance = (await token.balanceOf(agentVault.address)).toString();
         assert.equal(balance, "10");
-        await agentVault.transferToOwner(token.address, 3, { from: owner });
+        await agentVault.transferExternalToken(token.address, 3, { from: owner });
         let balance2 = (await token.balanceOf(agentVault.address)).toString();
         assert.equal(balance2, "7");
     });

@@ -85,7 +85,8 @@ export class FuzzingAgent extends FuzzingActor {
             assert.isTrue(transaction == null || transaction.hash === txHash);
             if (!cheatOnPayment && transaction && transaction.status !== TX_FAILED) {
                 await agent.confirmActiveRedemptionPayment(request, txHash)
-                    .catch(e => scope.exitOnExpectedError(e, []));
+                    .catch(e => scope.exitOnExpectedError(e, ['Missing event RedemptionPerformed']));
+                // Error 'Missing event RedemptionPerformed' happens when payment is too late or transaction is failed
             } else {
                 await agent.confirmFailedRedemptionPayment(request, txHash)
                     .catch(e => scope.exitOnExpectedError(e, ['Missing event RedemptionPaymentFailed']));
@@ -181,6 +182,7 @@ export class FuzzingAgent extends FuzzingActor {
                 .catch(e => scope.exitOnExpectedError(e, []));
             // wait for finalization
             await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
+            // wait 
             // confirm
             await agent.confirmUnderlyingWithdrawal(announcement, txHash)
                 .catch(e => scope.exitOnExpectedError(e, []));

@@ -129,6 +129,16 @@ library Agents {
     {
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         _state.underlyingAddressOwnership.claimWithProof(_payment, _state.paymentConfirmations, msg.sender);
+        // Make sure that current underlying block is at least as high as the EOA proof block.
+        // This ensures that any transaction done at or before EOA check cannot be used as payment proof for minting.
+        // It prevents the attack where an agent guesses the minting id, pays to the underlying address,
+        // then removes all in EOA proof transaction (or a transaction before EOA proof) and finally uses the
+        // proof of transaction for minting.
+        // Since we have a proof of the block N, current block is at least N+1.
+        uint64 leastCurrentBlock = _payment.blockNumber + 1;
+        if (leastCurrentBlock > _state.currentUnderlyingBlock) {
+            _state.currentUnderlyingBlock = leastCurrentBlock;
+        }
     }
     
     function createAgent(

@@ -74,7 +74,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         wallet = new MockChainWallet(chain);
         const chainId: SourceId = 1;
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
@@ -95,7 +95,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     it("should not verify payment - legal payment not proved", async () => {
         const chainId: SourceId = 2;
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         chain.mint(underlyingAgent1, 10001);
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingAgent1, 1, PaymentReference.addressOwnership(agentOwner1), { maxFee: 100 });
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingAgent1);
@@ -107,7 +107,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         let txHash = await wallet.addTransaction(underlyingAgent1, randomAddress(), 1, PaymentReference.redemption(0));
         const chainId: SourceId = 2;
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
         let res = assetManager.illegalPaymentChallenge(proof, agentVault.address);
         await expectRevert(res, 'transaction not proved');
@@ -117,7 +117,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         await createAgent(chain, agentOwner1, underlyingAgent1);
         const chainId: SourceId = 2;
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         const proof = await attestationProvider.proveConfirmedBlockHeightExists();
         let res = assetManager.updateCurrentBlock(proof);
         await expectRevert(res, "block height not proved")

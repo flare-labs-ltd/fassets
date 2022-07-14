@@ -7,7 +7,7 @@ import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
-import { toBNExp } from "../../../../lib/utils/helpers";
+import { DAYS, toBNExp } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../../lib/verification/sources/sources";
@@ -79,7 +79,7 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         wallet = new MockChainWallet(chain);
         chain.mint(underlyingRandomAddress, 1000);
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
@@ -101,26 +101,26 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         const proof1 = await agentTopup(agentVault);
         // make transaction in the "future" (chains timestamp may differ)
-        chain.skipTime(15 * 86400);
+        chain.skipTime(15 * DAYS);
         const proof2 = await agentTopup(agentVault);
         // it should revert confirming twice
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
         await expectRevert(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
         // after 15 days it should cleanup old payment verifications
-        await time.increase(15 * 86400);
+        await time.increase(15 * DAYS);
         await agentTopup(agentVault);
         await agentTopup(agentVault);
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
         await assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 });
         // skipping one more day
-        await time.increase(86400);
-        chain.skipTime(86400);
+        await time.increase(DAYS);
+        chain.skipTime(DAYS);
         await agentTopup(agentVault);
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
         await expectRevert(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
         // after 15 days it should cleanup old payment verifications
-        await time.increase(15 * 86400);
-        chain.skipTime(15 * 86400);
+        await time.increase(15 * DAYS);
+        chain.skipTime(15 * DAYS);
         await agentTopup(agentVault);
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
         await expectRevert(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "verified transaction too old");

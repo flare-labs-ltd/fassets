@@ -107,7 +107,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         chain.secondsPerBlock = chainInfo.blockTime;
         wallet = new MockChainWallet(chain);
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
@@ -138,10 +138,10 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const lotSize = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
         const args = requiredEventArgs(tx, "CollateralReserved");
         assertWeb3Equal(args.agentVault, agentVault.address);
-        assertWeb3Equal(args.collateralReservationId, 1);
+        assert.isAbove(Number(args.collateralReservationId), 0);
         assertWeb3Equal(args.minter, minterAddress1);
         assertWeb3Equal(args.paymentAddress, underlyingAgent1);
-        assertWeb3Equal(args.paymentReference, PaymentReference.minting(1));
+        assertWeb3Equal(args.paymentReference, PaymentReference.minting(args.collateralReservationId));
         assertWeb3Equal(args.valueUBA, lotSize.muln(lots));
         assertWeb3Equal(args.feeUBA, lotSize.muln(lots * feeBIPS).divn(10000));
     });
@@ -240,17 +240,16 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const proofAddress = await attestationProvider.proveReferencedPaymentNonexistence(
             underlyingMinter1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseAddress = assetManager.mintingPaymentDefault(proofAddress, crt.collateralReservationId, { from: agentOwner1 });
+        await expectRevert(promiseAddress, "minting non-payment mismatch");
         // wrong reference
         const proofReference = await attestationProvider.proveReferencedPaymentNonexistence(
             underlyingAgent1, PaymentReference.minting(crt.collateralReservationId.addn(1)), crt.valueUBA.add(crt.feeUBA), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseReference = assetManager.mintingPaymentDefault(proofReference, crt.collateralReservationId, { from: agentOwner1 });
+        await expectRevert(promiseReference, "minting non-payment mismatch");
         // wrong amount
         const proofAmount = await attestationProvider.proveReferencedPaymentNonexistence(
             underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA).addn(1), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseAmount = assetManager.mintingPaymentDefault(proofAmount, crt.collateralReservationId, { from: agentOwner1 });
-        // assert
-        await expectRevert(promiseAddress, "minting non-payment mismatch");
-        await expectRevert(promiseReference, "minting non-payment mismatch");
         await expectRevert(promiseAmount, "minting non-payment mismatch");
     });
 
@@ -278,9 +277,9 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const crt = await reserveCollateral(agentVault.address, 3);
         // mine some blocks to create overflow block
-        for (let i = 0; i <= 7200; i++) {
-            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
-        }
+        chain.mine(chainInfo.underlyingBlocksForPayment + 1);
+        // skip the time until the proofs cannot be made anymore
+        chain.skipTime(stateConnectorClient.queryWindowSeconds);
         // act
         // wrong overflow block
         const proofOverflow = await attestationProvider.proveReferencedPaymentNonexistence(

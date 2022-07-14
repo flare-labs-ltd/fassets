@@ -130,7 +130,8 @@ library Redemption {
         private 
     {
         uint128 redeemedValueUBA = SafeCast.toUint128(Conversion.convertAmgToUBA(_state.settings, _data.valueAMG));
-        uint64 requestId = ++_state.newRedemptionRequestId;
+        _state.newRedemptionRequestId += PaymentReference.randomizedIdSkip();
+        uint64 requestId = _state.newRedemptionRequestId;
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
         uint128 redemptionFeeUBA = SafeCast.toUint128(
             SafeBips.mulBips(redeemedValueUBA, _state.settings.redemptionFeeBIPS));
@@ -181,6 +182,10 @@ library Redemption {
         // payment reference must match
         require(_payment.paymentReference == PaymentReference.redemption(_redemptionRequestId), 
             "invalid redemption reference");
+        // we do not allow payments before the underlying block at requests, because the payer should have guessed
+        // the payment reference, which is good for nothing except attack attempts
+        require(_payment.blockNumber >= request.firstUnderlyingBlock,
+            "redemption payment too old");
         // When status is active, agent has either paid in time / was blocked and agent's collateral is released
         // or the payment failed and the default is called.
         // Otherwise, agent has already defaulted on payment and this method is only needed for proper 

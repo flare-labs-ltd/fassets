@@ -216,6 +216,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
                 await interceptor.allHandled();
             }
         }
+        // fail immediately on unexpected errors from threads
+        if (runner.uncaughtErrors.length > 0) {
+            throw runner.uncaughtErrors[0];
+        }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
         await fuzzingState.checkInvariants(true);  // all events are flushed, state must match
         assert.isTrue(fuzzingState.failedExpectations.length === 0, "fuzzing state has expectation failures");

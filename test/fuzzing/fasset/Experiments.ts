@@ -2,7 +2,7 @@ import { Signer } from "@ethersproject/abstract-signer";
 import { StaticJsonRpcProvider } from "@ethersproject/providers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { constants, time } from "@openzeppelin/test-helpers";
-import { BaseContract, Contract, ContractFactory, ContractReceipt, ContractTransaction, Wallet } from "ethers";
+import { BaseContract, BigNumber, Contract, ContractFactory, ContractReceipt, ContractTransaction, Wallet } from "ethers";
 import { ethers, network } from "hardhat";
 import { HardhatNetworkAccountUserConfig } from "hardhat/types";
 import hardhatConfig from "../../../hardhat.config";
@@ -10,8 +10,8 @@ import { VPContract__factory, VPToken, WNat, WNat__factory } from "../../../type
 import { WNatInstance } from "../../../typechain-truffle";
 import { EthersEventDecoder } from "../../utils/EthersEventDecoder";
 import { setDefaultVPContract, setDefaultVPContract_ethers } from "../../utils/token-test-helpers";
-import { currentRealTime, randomShuffled, range } from "../../utils/fuzzing-utils";
-import { sleep, toBN, formatBN, toStringExp, toBNExp } from "../../../lib/utils/helpers";
+import { currentRealTime, elapsedTime, randomShuffled, range } from "../../utils/fuzzing-utils";
+import { sleep, toBN, formatBN as formatBNOrig, toStringExp, toBNExp } from "../../../lib/utils/helpers";
 import { getTestFile } from "../../utils/test-helpers";
 
 const WNAT = artifacts.require("WNat");
@@ -31,6 +31,8 @@ interface TypedContract extends BaseContract {
     attach(addressOrName: string): this;
     deployed(): Promise<this>;
 }
+
+const formatBN = formatBNOrig as (x: BN | BigNumber | string | number) => string;
 
 async function timed<T>(call: () => Promise<T>): Promise<T> {
     const start = currentRealTime();
@@ -83,6 +85,29 @@ function runThread(body: () => Promise<void>): void {
     void body();
 }
 
+const usedNonces: Record<string, number> = {};
+
+// works fine on hardhat local but not on hardhat in-process
+async function waitNewNonce(address: string) {
+    const startTm = currentRealTime();
+    while (true) {
+        const nonce = await web3.eth.getTransactionCount(address, 'pending');
+        if ((usedNonces[address] ?? -1) < nonce) {
+            usedNonces[address] = nonce;
+            return [nonce, currentRealTime() - startTm];
+        }
+    }
+}
+
+class Future<T> {
+    resolve!: (value: T | PromiseLike<T>) => void;
+    reject!: (error: any) => void;
+    promise = new Promise<T>((resolve, reject) => {
+        this.resolve = resolve;
+        this.reject = reject;
+    });
+}
+
 contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
     describe("web3 hardhat experiments", () => {
         // a fresh contract for each test
@@ -111,75 +136,28 @@ contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
             }
         });
         
-        async function depositAndWaitNonce(i: number, address: string, value: BN) {
-            const nonce = await web3.eth.getTransactionCount(address, 'pending');
-            const startTm = currentRealTime();
-            void wNat.deposit({ from: address, value: value, gasPrice: 100 - i })
-                .then((receipt) => console.log("Minted 10_000", i, "block:", receipt.receipt.blockNumber, "startNonce:", nonce, 
-                    "waitSubmit:", (submitTm - startTm).toFixed(3), "wait:", (currentRealTime() - startTm).toFixed(3)));
-            while (await web3.eth.getTransactionCount(address, 'pending') === nonce) {
-                await sleep(1);
-            }
-            const submitTm = currentRealTime();
-        }
-        
-        const usedNonces: Record<string, number> = {};
-        
-        // works fine on hardhat local but not on hardhat in-process
-        async function waitNewNonce(address: string) {
-            const startTm = currentRealTime();
-            while (true) {
-                const nonce = await web3.eth.getTransactionCount(address, 'pending');
-                if ((usedNonces[address] ?? -1) < nonce) {
-                    usedNonces[address] = nonce;
-                    return [nonce, currentRealTime() - startTm];
-                }
-            }
-        }
-        
         it.only("try run network by manual mining", async () => {
-            console.log('defaultAccount', network.config.from);
+            // console.log('defaultAccount', network.config.from);
             
-            // for (let i = 0; i < 10; i++) {
-            //     void wNat.depositTo(accounts[1], { from: accounts[i + 2], value: toBN(10_000) })
-            //         .then((receipt) => console.log("Minted 10_000", i, "block:", receipt.receipt.blockNumber));
-            //     await sleep(10);
-            // }
-            runThread(async () => {
-                const arr = range(0, 50);
-                for (const i of arr) {
-                    // await depositAndWaitNonce(i, accounts[1], toBN(10_000));
-                    const startTm = currentRealTime();
-                    const account = accounts[i % 10];
-                    const [nonce, nonceWait] = await waitNewNonce(account);
-                    // console.log('Sending transaction with nonce', nonce);
-                    if (i !== 5) {
-                        void wNat.deposit({ from: account, value: toBN(10_000), gas: 500_000 })
-                            .then((receipt) => console.log("Minted 10_000", i, "block:", receipt.receipt.blockNumber, "startNonce:", nonce,
-                                "waitSubmit:", nonceWait.toFixed(3), "wait:", (currentRealTime() - startTm).toFixed(3)))
-                            .catch(e => console.error(e));
-                    } else {
-                        void wNat.withdraw(15_000_000, { from: accounts[1] })
-                            .then(() => console.log("Withdrawn 15_000"))
-                            .catch(e => {
-                                if (e.constructor?.name === 'StatusError') {
-                                    console.error("STATUS ERROR");
-                                    void wNat.withdraw.call(15_000_000, { from: accounts[1] })
-                                        .catch(e => console.error("STATUS ERROR FIX", e));
-                                } else {
-                                    console.error(e);
-                                }
-                            });
-                    }
-                }
-            });
-            console.log("Sleep");
-            await sleep(10_000);
-            console.log("Mine");
-            // void wNat.deposit({ from: accounts[1], value: toBN(20_000) })
-            //     .then(() => console.log("Minted 20_000"));
-            // await sleep(500);
             for (let i = 0; i < 50; i++) {
+                const txHashF = new Future<string>();
+                const receiptF = new Future<TransactionReceipt>();
+                const startTm = currentRealTime();
+                const account = accounts[i % 10 + 1];
+                void wNat.contract.methods.deposit().send({ from: account, value: toBN(10_000), gas: 500_000 })
+                    .once('transactionHash', (hash: string) => txHashF.resolve(hash))
+                    .once('receipt', (receipt: TransactionReceipt) => receiptF.resolve(receipt));
+                    // .on('confirmation', (confirmation: number, receipt: TransactionReceipt) => { console.log(`Confirmation ${confirmation} for tx ${receipt.transactionHash}`); });
+                void receiptF.promise.then((receipt) => console.log("Minted 10_000", i, "block:", receipt.blockNumber, "time:", elapsedTime(startTm)));
+                const txHash = await txHashF.promise;
+                const nonce = await web3.eth.getTransactionCount(account);
+                console.log("Sent deposit tx", txHash, "nonce:", nonce, "time:", elapsedTime(startTm));
+                
+                // void wNat.deposit({ from: accounts[i + 1], value: toBN(10_000), gas: 500_000 })
+                //     .then((receipt) => console.log("Minted 10_000", i, "block:", receipt.receipt.blockNumber));
+            }
+
+            for (let i = 0; i < 10; i++) {
                 await timed(() => network.provider.send('evm_mine'));
                 await sleep(1000);
                 console.log(`Balance: ${await wNat.balanceOf(accounts[1])}`);

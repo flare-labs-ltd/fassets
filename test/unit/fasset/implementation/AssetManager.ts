@@ -58,7 +58,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
@@ -309,6 +309,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings19.lotSizeAMG = 0;
             let res19 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings19);
             await expectRevert(res19, "cannot be zero");
+
+            let newSettings20 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry)
+            newSettings20.announcedUnderlyingConfirmationMinSeconds = 2 * HOURS;
+            let res20 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings20);
+            await expectRevert(res20, "confirmation time too big");
         });
 
         it("should validate settings - other validators", async () => {

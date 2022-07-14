@@ -53,7 +53,8 @@ library CollateralReservations {
         uint256 reservationFee = _reservationFee(_state, collateralData.amgToNATWeiPrice, valueAMG);
         require(msg.value == reservationFee, "inappropriate fee amount");
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
-        uint64 crtId = ++_state.newCrtId;   // pre-increment - id can never be 0
+        _state.newCrtId += PaymentReference.randomizedIdSkip();
+        uint64 crtId = _state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({
             valueAMG: valueAMG,
             underlyingFeeUBA: SafeCast.toUint128(underlyingFeeUBA),
