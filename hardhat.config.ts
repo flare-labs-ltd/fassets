@@ -10,6 +10,7 @@ import "hardhat-gas-reporter";
 import { extendEnvironment, task } from "hardhat/config";
 import 'solidity-coverage';
 import "./type-extensions";
+import { linkContracts } from "./deployment/scripts/link-contracts";
 
 // import config used for compilation
 import config from "./hardhatSetup.config";
@@ -40,6 +41,14 @@ function getChainConfigParameters(chainConfig: string | undefined): any {
         return undefined;
     }
 }
+
+task("link-contracts", "Link contracts with external libraries")
+    .addVariadicPositionalParam("contracts", "The contract names to link")
+    .addOptionalParam("mapfile", "Name for the map file with deployed library mapping addresses; if omitted, no map file is created")
+    .setAction(async ({ contracts, mapfile }, hre) => {
+        await linkContracts(hre, contracts, mapfile);
+    });
+
 
 extendEnvironment((hre) => {
     hre.getChainConfigParameters = getChainConfigParameters;
