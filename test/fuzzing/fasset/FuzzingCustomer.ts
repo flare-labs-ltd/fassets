@@ -82,7 +82,7 @@ export class FuzzingCustomer extends FuzzingActor {
             const redemptionDefault = promiseValue(redemptionDefaultPromise);
             // wait for payment or timeout
             const event = await Promise.race([
-                this.chainEvents.transactionEvent({ reference: ticket.paymentReference }).qualified('paid').wait(scope),
+                this.chainEvents.transactionEvent({ reference: ticket.paymentReference, to: this.underlyingAddress }).qualified('paid').wait(scope),
                 this.waitForPaymentTimeout(scope, ticket),
             ]);
             if (event.name === 'paid') {
