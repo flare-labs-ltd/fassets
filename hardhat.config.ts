@@ -10,7 +10,7 @@ import "hardhat-gas-reporter";
 import { extendEnvironment, task } from "hardhat/config";
 import 'solidity-coverage';
 import "./type-extensions";
-import { linkContracts } from "./deployment/scripts/link-contracts";
+import { linkContracts } from "./deployment/lib/link-contracts";
 
 // import config used for compilation
 import config from "./hardhatSetup.config";

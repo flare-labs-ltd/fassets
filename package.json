@@ -40,6 +40,7 @@
     "flatten-dependencies": "env bash scripts/flatten-dependencies.sh",
     "generate-attester-code": "env bash scripts/generate-attester-code.sh",
     "eslint": "eslint \"lib/**/*.ts\" \"test/**/*.ts\"",
+    "generate-parameter-schema": "typescript-json-schema deployment/lib/asset-manager-parameters.ts AssetManagerParameters -o deployment/config/asset-manager-parameters.schema.json --noExtraProps --required --strictNullChecks",
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",
     "gas-report": "ts-node node_modules/flare-smart-contracts/scripts/process-gas-report.ts && cat .gas-report.txt",
@@ -95,6 +96,7 @@
     "typechain": "7.0.0",
     "typescript": "4.5.5",
     "wait-on": "6.0.1",
-    "yarn-audit-fix": "9.0.10"
+    "yarn-audit-fix": "9.0.10",
+    "typescript-json-schema": "0.54.0"
   }
 }
