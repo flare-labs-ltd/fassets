@@ -1,10 +1,16 @@
-import { writeFileSync } from 'fs';
+import { constants } from '@openzeppelin/test-helpers';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { Artifact, HardhatRuntimeEnvironment } from 'hardhat/types';
 
 export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: string[], mapfile: string | null) {
     const web3 = hre.web3;
 
     const accounts = await web3.eth.getAccounts();
+
+    let existingDeployedLibs: Map<string, string> = new Map();
+    if (mapfile && existsSync(mapfile)) {
+        existingDeployedLibs = new Map(Object.entries(JSON.parse(readFileSync(mapfile).toString())));
+    }
 
     const deployedLibs: Map<string, string> = new Map();
 
@@ -25,6 +31,15 @@ export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: s
             settings: { ...defaults.settings, libraries: {} }
         };
     };
+
+    async function readDeployedCode(address: string | undefined) {
+        if (address == null) return null;
+        let code = await web3.eth.getCode(address);
+        return code.replace(new RegExp(address.slice(2), "gi"), constants.ZERO_ADDRESS.slice(2));
+    }
+
+    console.log(`Initial clean recompilation...`);
+    await hre.run("compile", { force: true });
 
     for (let loop = 1; ; loop++) {
         const contractInfos = new Map<string, { artifact: Artifact, dependencies: Set<string>, toplevel: boolean }>();
@@ -48,9 +63,17 @@ export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: s
         for (const [name, info] of contractInfos) {
             if (info.toplevel) continue;                // not a dependency - no need to deploy
             if (info.dependencies.size > 0) continue;   // has undeployed dependencies itself
-            const contract = new web3.eth.Contract(info.artifact.abi);
-            const instance = await contract.deploy({ data: info.artifact.bytecode }).send({ from: accounts[0] });
-            deployedLibs.set(name, instance.options.address);
+            const existingAddress = deployedLibs.get(name) ?? existingDeployedLibs.get(name);
+            const existingDeployedCode = await readDeployedCode(existingAddress);
+            if (existingAddress && existingDeployedCode && existingDeployedCode === info.artifact.deployedBytecode) {
+                console.log(`  using ${info.artifact.contractName} at ${existingAddress}`);
+                deployedLibs.set(name, existingAddress);
+            } else {
+                const contract = new web3.eth.Contract(info.artifact.abi);
+                const instance = await contract.deploy({ data: info.artifact.bytecode }).send({ from: accounts[0] });
+                console.log(`  deployed ${info.artifact.contractName} at ${instance.options.address}`);
+                deployedLibs.set(name, instance.options.address);
+            }
         }
 
         // add config for all libraries/contracts with only deployed dependencies
