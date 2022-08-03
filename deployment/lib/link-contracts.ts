@@ -1,4 +1,3 @@
-import { constants } from '@openzeppelin/test-helpers';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { Artifact, HardhatRuntimeEnvironment } from 'hardhat/types';
 
@@ -35,7 +34,7 @@ export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: s
     async function readDeployedCode(address: string | undefined) {
         if (address == null) return null;
         let code = await web3.eth.getCode(address);
-        return code.replace(new RegExp(address.slice(2), "gi"), constants.ZERO_ADDRESS.slice(2));
+        return code.replace(new RegExp(address.slice(2), "gi"), "0000000000000000000000000000000000000000");
     }
 
     console.log(`Initial clean recompilation...`);
