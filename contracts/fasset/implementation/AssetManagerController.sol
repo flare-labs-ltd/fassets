@@ -41,6 +41,10 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         if (assetManagerIndex[address(_assetManager)] != 0) return;
         assetManagers.push(_assetManager);
         assetManagerIndex[address(_assetManager)] = assetManagers.length;  // 1+index, so that 0 means empty
+        // have to check, otherwise it fails when the controller is replaced
+        if (_assetManager.assetManagerController() == address(this)) {
+            _assetManager.attachController(true);
+        }
     }
 
     function removeAssetManager(IAssetManager _assetManager) 
@@ -57,6 +61,10 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         }
         assetManagers.pop();
         assetManagerIndex[address(_assetManager)] = 0;
+        // have to check, otherwise it fails when the controller is replaced
+        if (_assetManager.assetManagerController() == address(this)) {
+            _assetManager.attachController(false);
+        }
     }
     
     function getAssetManagers()

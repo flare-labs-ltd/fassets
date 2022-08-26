@@ -8,12 +8,6 @@ export interface AssetManagerParameters {
     $schema?: string;
     
     /**
-     * Address of the address updater contract.
-     * All other contract addresses (including AssetManagerController) are obtained from the address updater.
-     */
-    addressUpdater: string;
-
-    /**
      * Symbol for the native currency (FLR/SGB/...).
      * Must match the FTSO contract symbol for native currency.
      * Immutable and same for all f-assets.

@@ -39,6 +39,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         require(msg.sender == state.settings.assetManagerController, "only asset manager controller");
         _;
     }
+
+    modifier onlyAttached {
+        require(state.attached, "not attached");
+        _;
+    }
     
     constructor(
         AssetManagerSettings.Settings memory _settings,
@@ -65,7 +70,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         SettingsUpdater.callUpdate(state, pendingUpdates, _method, _params);
     }
-
+    
     /**
      * In update, all settings must be set (and some must stay unchanged), so the updater must call
      * getSetings and then updateSettings with modified structure.
@@ -88,6 +93,30 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         return state.settings.assetManagerController;
     }
     
+    /**
+     * When `attached` is true, asset manager has been added to the asset manager controller.
+     * Even though the asset manager controller address is set at the construction time, the manager may not
+     * be able to be added to the controller immediatelly because the method addAssetMaanager must be called
+     * by the governance multisig (with timelock). During this time it is impossible to verify through the 
+     * controller that the asset manager is legit.
+     * Therefore creating agents and minting is disabled until the asset manager controller notifies 
+     * the asset manager that it has been added.
+     * The `attached` can be set to false when the retired asset manager is removed from the controller.
+     */
+    function attachController(bool attached) 
+        external override
+        onlyAssetManagerController
+    {
+        state.attached = attached;
+    }
+    
+    /**
+     * When `constrollerAttached` is true, asset manager has been added to the asset manager controller.
+     */
+    function controllerAttached() external view returns (bool) {
+        return state.attached;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Agent handling
     
@@ -122,6 +151,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         string memory _underlyingAddressString
     ) 
         external
+        onlyAttached
     {
         requireWhitelistedSender();
         Agents.createAgent(state, Agents.AgentType.AGENT_100, this, _underlyingAddressString);
@@ -383,6 +413,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         uint256 _maxMintingFeeBIPS
     ) 
         external payable 
+        onlyAttached
     {
         requireWhitelistedSender();
         CollateralReservations.reserveCollateral(state, msg.sender, _agentVault, 
@@ -476,6 +507,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         uint256 _lots
     ) 
         external
+        onlyAttached
         nonReentrant
     {
         uint256 mintedUBA = Minting.selfMint(state, _payment, _agentVault, SafeCast.toUint64(_lots));

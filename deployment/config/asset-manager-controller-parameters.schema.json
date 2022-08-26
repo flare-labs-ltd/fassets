@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
+    "properties": {
+        "attachAssetManagerAddresses": {
+            "description": "The list of asset manager addresses to be attached immediatelly.\nAfterwards, a governance call to AddressUpdater is required to actually set the new\ncontroller to these asset managers.",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "deployAssetManagerParameterFiles": {
+            "description": "The list of asset manager parameter files to be deployed immediatelly.",
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        }
+    },
+    "required": [
+        "attachAssetManagerAddresses",
+        "deployAssetManagerParameterFiles"
+    ],
+    "type": "object"
+}
+

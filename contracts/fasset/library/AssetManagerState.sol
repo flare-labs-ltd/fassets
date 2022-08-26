@@ -56,6 +56,15 @@ library AssetManagerState {
         // When asset manager is paused, no new mintings can be done.
         // It is an extreme measure, which can be used in case there is a dangerous hole in the system.
         uint64 pausedAt;
+        
+        // When true, asset manager has been added to the asset manager controller.
+        // Even though the asset manager controller address is set at the construction time, the manager may not
+        // be able to be added to the controller immediatelly because the method addAssetMaanager must be called
+        // by the governance multisig (with timelock).
+        // During this time it is impossible to verify through the controller that the asset manager is legit.
+        // Therefore creating agents and minting is disabled until the asset manager controller notifies 
+        // the asset manager that it has been added.
+        bool attached;
     }
     
 }

@@ -1,11 +1,13 @@
-export interface CommonParameters {
+export interface AssetManagerControllerParameters {
     /**
-     * The governance address used during deploy.
+     * The list of asset manager parameter files to be deployed immediatelly.
      */
-    initialGovernance: string;
-
+    deployAssetManagerParameterFiles: string[];
+    
     /**
-     * Address of the address updater contract.
+     * The list of asset manager addresses to be attached immediatelly.
+     * Afterwards, a governance call to AddressUpdater is required to actually set the new
+     * controller to these asset managers.
      */
-    addressUpdater: string;
+    attachAssetManagerAddresses: string[];
 }
