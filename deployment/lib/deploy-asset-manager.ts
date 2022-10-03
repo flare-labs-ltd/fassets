@@ -2,7 +2,8 @@ import BN from "bn.js";
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { AssetManagerSettings } from '../../lib/fasset/AssetManagerTypes';
 import { AssetManagerParameters } from './asset-manager-parameters';
-import { assetManagerControllerParameters, assetManagerParameters, ChainContracts, loadContracts, loadDeployAccounts, newContract, saveContracts, ZERO_ADDRESS } from './deploy-utils';
+import { loadContracts, newContract, saveContracts, ChainContracts } from "./contracts";
+import { assetManagerControllerParameters, assetManagerParameters, loadDeployAccounts, ZERO_ADDRESS } from './deploy-utils';
 
 export async function deployAttestationClient(hre: HardhatRuntimeEnvironment, contractsFile: string) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
