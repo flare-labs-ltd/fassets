@@ -137,7 +137,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     function _transferNAT(address payable _recipient, uint256 _amount) private {
         if (_amount > 0) {
             /* solhint-disable avoid-low-level-calls */
-            //slither-disable-next-line arbitrary-send
+            //slither-disable-next-line arbitrary-send-eth
             (bool success, ) = _recipient.call{value: _amount}("");
             /* solhint-enable avoid-low-level-calls */
             require(success, "transfer failed");
