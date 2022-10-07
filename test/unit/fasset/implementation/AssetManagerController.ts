@@ -58,7 +58,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
         // create asset manager
         settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController.address, "Ethereum", "ETH", 18, settings);
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
         await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance });
     });
@@ -82,7 +82,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let assetManager2: AssetManagerInstance;
             let fAsset2: FAssetInstance;
             const managers_current = await assetManagerController.getAssetManagers();
-            [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController.address, "Ethereum", "ETH", 18, settings);
+            [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
 
             await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
             const managers_add = await assetManagerController.getAssetManagers();
@@ -105,7 +105,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let assetManager2: AssetManagerInstance;
             let fAsset2: FAssetInstance;
             const managers_current = await assetManagerController.getAssetManagers();
-            [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController.address, "Ethereum", "ETH", 18, settings);
+            [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
 
             await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
             const managers_add = await assetManagerController.getAssetManagers();

@@ -17,6 +17,9 @@ export async function newAssetManager(
     const assetManager = await AssetManager.new(assetManagerSettings, fAsset.address);
     if (typeof assetManagerController !== 'string') {
         await assetManagerController.addAssetManager(assetManager.address, { from: governanceAddress });
+    } else {
+        // simulate attaching to asset manager controller (for unit tests, where controller is an eoa address)
+        await assetManager.attachController(true, { from: assetManagerController });
     }
     await fAsset.setAssetManager(assetManager.address, { from: governanceAddress });
     return [assetManager, fAsset];
