@@ -7,21 +7,27 @@ import "../interface/IWhitelist.sol";
 contract Whitelist is IWhitelist, Governed {
     mapping(address => bool) public whitelist;
 
-    constructor(address _governance) Governed(_governance) {}
+    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance) 
+        Governed(_governanceSettings, _initialGovernance)
+    {}
 
     function isWhitelisted(address _address) external view returns (bool) {
         return whitelist[_address];
     }
 
-    function addAddressToWhitelist(address _address) public onlyGovernance {
-        whitelist[_address] = true;
-        emit Whitelisted(_address);
+    function addAddressToWhitelist(address _address) external onlyImmediateGovernance {
+        _addAddressToWhitelist(_address);
     }
 
-    function addAddressesToWhitelist(address[] memory _addresses) public onlyGovernance {
+    function addAddressesToWhitelist(address[] memory _addresses) external onlyImmediateGovernance {
         for (uint256 i = 0; i < _addresses.length; i++) {
-            addAddressToWhitelist(_addresses[i]);
+            _addAddressToWhitelist(_addresses[i]);
         }
+    }
+
+    function _addAddressToWhitelist(address _address) private {
+        whitelist[_address] = true;
+        emit Whitelisted(_address);
     }
 
 }

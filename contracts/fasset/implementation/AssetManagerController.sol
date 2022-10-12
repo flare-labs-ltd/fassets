@@ -20,23 +20,20 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     mapping(address => uint256) private assetManagerIndex;
     IAssetManager[] private assetManagers;
     
-    address[] private updateExecutors;
-    mapping(address => bool) public isUpdateExecutor;
-
     modifier onlyUpdateExecutor {
-        require(isUpdateExecutor[msg.sender], "only update executor");
+        require(_isExecutor(msg.sender), "only update executor");
         _;
     }    
     
-    constructor(address _governance, address _addressUpdater)
-        Governed(_governance)
+    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, address _addressUpdater)
+        Governed(_governanceSettings, _initialGovernance)
         AddressUpdatable(_addressUpdater)
     {
     }
     
     function addAssetManager(IAssetManager _assetManager) 
         external 
-        onlyGovernance
+        onlyImmediateGovernance
     {
         if (assetManagerIndex[address(_assetManager)] != 0) return;
         assetManagers.push(_assetManager);
@@ -49,7 +46,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function removeAssetManager(IAssetManager _assetManager) 
         external 
-        onlyGovernance
+        onlyImmediateGovernance
     {
         uint256 position = assetManagerIndex[address(_assetManager)];
         if (position == 0) return;
@@ -84,23 +81,6 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Setters
     
-    function setUpdateExecutors(address[] memory _executors)
-        external 
-        onlyGovernance
-    {
-        require(_executors.length >= 1, "empty executors list");
-        // clear old
-        for (uint256 i = 0; i < updateExecutors.length; i++) {
-            isUpdateExecutor[updateExecutors[i]] = false;
-        }
-        delete updateExecutors;
-        // set new
-        for (uint256 i = 0; i < _executors.length; i++) {
-            updateExecutors.push(_executors[i]);
-            isUpdateExecutor[_executors[i]] = true;
-        }
-    }
-
     // this is a safe operation, executor can call without prior governance call
     function refreshFtsoIndexes(IAssetManager[] memory _assetManagers)
         external
@@ -112,7 +92,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setWhitelist(IAssetManager[] memory _assetManagers, address _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_WHITELIST, abi.encode(_value));
@@ -130,7 +110,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setLotSizeAmg(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_LOT_SIZE_AMG, abi.encode(_value));
@@ -143,7 +123,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         uint256 _safetyMinCollateralRatioBIPS
     )
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_COLLATERAL_RATIOS, 
@@ -166,7 +146,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         uint256 _underlyingSeconds
     )
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_TIME_FOR_PAYMENT, abi.encode(_underlyingBlocks, _underlyingSeconds));
@@ -188,7 +168,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         uint256 _rewardBIPS
     )
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_PAYMENT_CHALLENGE_REWARD, abi.encode(_rewardNATWei, _rewardBIPS));
@@ -196,7 +176,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setMaxTrustedPriceAgeSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_MAX_TRUSTED_PRICE_AGE_SECONDS, abi.encode(_value));
@@ -204,7 +184,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setCollateralReservationFeeBips(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_COLLATERAL_RESERVATION_FEE_BIPS, abi.encode(_value));
@@ -212,7 +192,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setRedemptionFeeBips(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_REDEMPTION_FEE_BIPS, abi.encode(_value));
@@ -220,7 +200,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setRedemptionDefaultFactorBips(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_REDEMPTION_DEFAULT_FACTOR_BIPS, abi.encode(_value));
@@ -228,7 +208,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setConfirmationByOthersAfterSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS, abi.encode(_value));
@@ -236,7 +216,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setConfirmationByOthersRewardNatWei(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_CONFIRMATION_BY_OTHERS_REWARD_NAT_WEI, abi.encode(_value));
@@ -244,7 +224,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setMaxRedeemedTickets(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_MAX_REDEEMED_TICKETS, abi.encode(_value));
@@ -252,7 +232,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setWithdrawalOrDestroyWaitMinSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_WITHDRAWAL_OR_DESTROY_WAIT_MIN_SECONDS, abi.encode(_value));
@@ -260,7 +240,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setCcbTimeSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_CCB_TIME_SECONDS, abi.encode(_value));
@@ -268,7 +248,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setLiquidationStepSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_LIQUIDATION_STEP_SECONDS, abi.encode(_value));
@@ -276,7 +256,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     
     function setLiquidationCollateralFactorBips(IAssetManager[] memory _assetManagers, uint256[] memory _values)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS, abi.encode(_values));
@@ -284,7 +264,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     
     function setAttestationWindowSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_ATTESTATION_WINDOW_SECONDS, abi.encode(_value));
@@ -292,7 +272,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setAnnouncedUnderlyingConfirmationMinSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS, abi.encode(_value));
@@ -307,7 +287,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
      */
     function pause(IAssetManager[] calldata _assetManagers)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
             _assetManagers[i].pause();
@@ -319,7 +299,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
      */
     function unpause(IAssetManager[] calldata _assetManagers)
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
             _assetManagers[i].unpause();
@@ -335,7 +315,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
      */
     function terminate(IAssetManager[] calldata _assetManagers) 
         external
-        onlyGovernance
+        onlyImmediateGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
             _assetManagers[i].terminate();

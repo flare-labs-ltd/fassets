@@ -11,7 +11,7 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { assertWeb3DeepEqual, web3ResultStruct } from "../../../utils/web3assertions";
-import { createTestSettings } from "../test-settings";
+import { createTestSettings, GENESIS_GOVERNANCE } from "../test-settings";
 
 const AttestationClient = artifacts.require('AttestationClientSC');
 const WNat = artifacts.require('WNat');
@@ -19,6 +19,7 @@ const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const Whitelist = artifacts.require('Whitelist');
 const StateConnector = artifacts.require('StateConnectorMock');
+const GovernanceSettings = artifacts.require('GovernanceSettings');
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic tests`, async accounts => {
@@ -111,7 +112,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
     describe("whitelisting", () => {
         it("should require whitelisting, when whitelist exists, to create agent", async () => {
-            whitelist = await Whitelist.new(governance);
+            // create governance settings
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE });
+            // create whitelist
+            whitelist = await Whitelist.new(governanceSettings.address, governance);
+            await whitelist.switchToProductionMode({ from: governance });
             await whitelist.addAddressToWhitelist(whitelistedAccount, {from: governance});
                                 
             await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")), 

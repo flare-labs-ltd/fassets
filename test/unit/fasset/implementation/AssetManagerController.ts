@@ -1,12 +1,12 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, GovernanceSettingsInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
 import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
 import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
 import { DAYS, HOURS, MAX_BIPS, randomAddress, toBN, toBNExp, toStringExp } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
-import { createTestSettings } from "../test-settings";
+import { createTestSettings, GENESIS_GOVERNANCE } from "../test-settings";
 
 const AttestationClient = artifacts.require('AttestationClientSC');
 const WNat = artifacts.require('WNat');
@@ -16,12 +16,14 @@ const AddressUpdater = artifacts.require('AddressUpdater');
 const AssetManagerController = artifacts.require('AssetManagerController');
 const Whitelist = artifacts.require('Whitelist');
 const StateConnector = artifacts.require('StateConnectorMock');
+const GovernanceSettings = artifacts.require('GovernanceSettings');
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager controller basic tests`, async accounts => {
     const governance = accounts[10];
     const updateExecutor = accounts[11];
     let attestationClient: AttestationClientSCInstance;
+    let governanceSettings: GovernanceSettingsInstance;
     let addressUpdater: AddressUpdaterInstance;
     let assetManagerController: AssetManagerControllerInstance;
     let assetManager: AssetManagerInstance;
@@ -33,6 +35,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     let whitelist: WhitelistInstance;
 
     beforeEach(async () => {
+        // create governance settings
+        governanceSettings = await GovernanceSettings.new();
+        await governanceSettings.initialise(governance, 60, [updateExecutor], { from: GENESIS_GOVERNANCE });
         // create state connector
         const stateConnector = await StateConnector.new();
         // create agent vault factory
@@ -52,15 +57,16 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         await ftsoRegistry.addFtso(natFtso.address);
         await ftsoRegistry.addFtso(assetFtso.address);
         // create whitelist
-        whitelist = await Whitelist.new(governance);
+        whitelist = await Whitelist.new(governanceSettings.address, governance);
+        await whitelist.switchToProductionMode({ from: governance });
         // create asset manager controller
-        addressUpdater = await AddressUpdater.new(governance);
-        assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
+        addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
+        assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
+        await assetManagerController.switchToProductionMode({ from: governance });
         // create asset manager
         settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
-        await assetManagerController.setUpdateExecutors([updateExecutor], { from: governance });
     });
 
     describe("set and update settings with controller", () => {
@@ -594,15 +600,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should re-set update executors", async () => {
             // re-set executor
-            await assetManagerController.setUpdateExecutors([accounts[1], accounts[2]], { from: governance });
-            assert.isFalse(await assetManagerController.isUpdateExecutor(updateExecutor));
-            assert.isTrue(await assetManagerController.isUpdateExecutor(accounts[1]));
-            assert.isTrue(await assetManagerController.isUpdateExecutor(accounts[2]));
-        });
-
-        it("shouldn't remove all update executors", async () => {
-            const promise = assetManagerController.setUpdateExecutors([], { from: governance });
-            await expectRevert(promise, "empty executors list");
+            await governanceSettings.setExecutors([accounts[1], accounts[2]], { from: governance });
+            assert.isFalse(await governanceSettings.isExecutor(updateExecutor));
+            assert.isTrue(await governanceSettings.isExecutor(accounts[1]));
+            assert.isTrue(await governanceSettings.isExecutor(accounts[2]));
         });
     });
 

@@ -3,6 +3,8 @@ import { AgentVaultFactoryInstance, AttestationClientSCInstance, FtsoRegistryMoc
 import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
 import { DAYS, HOURS, toStringExp, WEEKS } from "../../../lib/utils/helpers";
 
+export const GENESIS_GOVERNANCE = "0xfffEc6C83c8BF5c3F4AE0cCF8c45CE20E4560BD7";
+
 export function createTestSettings(agentVaultFactory: AgentVaultFactoryInstance, attestationClient: AttestationClientSCInstance, wNat: WNatInstance, ftsoRegistry: FtsoRegistryMockInstance, requireEOAAddressProof: boolean = true): AssetManagerSettings {
     return {
         assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)

@@ -62,7 +62,7 @@
     "hardhat": "2.9.1",
     "solhint": "3.3.7",
     "solidity-coverage": "0.7.20",
-    "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#master"
+    "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#fasset-support-fix"
   },
   "devDependencies": {
     "@gnosis.pm/mock-contract": "4.0.0",

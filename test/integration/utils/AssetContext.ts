@@ -23,6 +23,8 @@ import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorC
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { TestChainInfo, TestNatInfo } from "./TestChainInfo";
 
+const GENESIS_GOVERNANCE = "0xfffEc6C83c8BF5c3F4AE0cCF8c45CE20E4560BD7";
+
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const AttestationClient = artifacts.require('AttestationClientSC');
 const AssetManagerController = artifacts.require('AssetManagerController');
@@ -32,6 +34,7 @@ const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const FtsoManagerMock = artifacts.require('FtsoManagerMock');
 const StateConnector = artifacts.require('StateConnectorMock');
+const GovernanceSettings = artifacts.require('GovernanceSettings');
 
 // common context shared between several asset managers
 export class CommonContext {
@@ -49,6 +52,9 @@ export class CommonContext {
     ) {}
 
     static async createTest(governance: string, natInfo: TestNatInfo): Promise<CommonContext> {
+        // create governance settings
+        const governanceSettings = await GovernanceSettings.new();
+        await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE });
         // create state connector
         const stateConnector = await StateConnector.new();
         // create agent vault factory
@@ -56,8 +62,9 @@ export class CommonContext {
         // create attestation client
         const attestationClient = await AttestationClient.new(stateConnector.address);
         // create asset manager controller
-        const addressUpdater = await AddressUpdater.new(governance);
-        const assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
+        const addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
+        const assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
+        await assetManagerController.switchToProductionMode({ from: governance });
         // create WNat token
         const wnat = await WNat.new(governance, natInfo.name, natInfo.symbol);
         await setDefaultVPContract(wnat, governance);

@@ -46,7 +46,7 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
     const parameters = assetManagerControllerParameters.load(parametersFile);
     const contracts = loadContracts(contractsFile);
     
-    const assetManagerController = await AssetManagerController.new(deployer, contracts.AddressUpdater.address);
+    const assetManagerController = await AssetManagerController.new(contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address);
     
     contracts.AssetManagerController = newContract("AssetManagerController", "AssetManagerController.sol", assetManagerController.address);
     saveContracts(contractsFile, contracts);

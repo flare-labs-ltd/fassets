@@ -7,7 +7,7 @@ import { toBN, toBNExp } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { createTestSettings } from "../test-settings";
+import { createTestSettings, GENESIS_GOVERNANCE } from "../test-settings";
 
 const WNat = artifacts.require("WNat");
 const AgentVault = artifacts.require("AgentVault");
@@ -18,6 +18,7 @@ const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const MockContract = artifacts.require('MockContract');
 const StateConnector = artifacts.require('StateConnectorMock');
+const GovernanceSettings = artifacts.require('GovernanceSettings');
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const ERC20Mock = artifacts.require("ERC20Mock");
 
@@ -56,6 +57,9 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     }
 
     beforeEach(async () => {
+        // create governance settings
+        const governanceSettings = await GovernanceSettings.new();
+        await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE });
         // create state connector
         const stateConnector = await StateConnector.new();
         // create agent vault factory
@@ -75,8 +79,9 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await ftsoRegistry.addFtso(natFtso.address);
         await ftsoRegistry.addFtso(assetFtso.address);
         // create asset manager controller
-        addressUpdater = await AddressUpdater.new(governance);
-        assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
+        addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
+        assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
+        await assetManagerController.switchToProductionMode({ from: governance });
         // create asset manager
         settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry, false);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);

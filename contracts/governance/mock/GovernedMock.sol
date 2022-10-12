@@ -10,7 +10,9 @@ import "../implementation/Governed.sol";
  **/
 contract GovernedMock is Governed {
     
-    constructor(address _governance) Governed(_governance) {
+    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance) 
+        Governed(_governanceSettings, _initialGovernance) 
+    {
         /* empty block */
     }
 }
