@@ -123,13 +123,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")), 
                 web3.eth.abi.encodeParameters(['address'], [whitelist.address]), 
                 { from: assetManagerController });
-            const timeIncrease = toBN(settings.timelockSeconds).addn(1);
-            await time.increase(timeIncrease);
-            chain.skipTime(timeIncrease.toNumber());
-            await time.advanceBlock();
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("executeSetWhitelist()")), 
-                constants.ZERO_ADDRESS,
-                { from: assetManagerController });
             // assert
             await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agentOwner1 }),
                 "not whitelisted");
@@ -290,11 +283,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings13.maxTrustedPriceAgeSeconds = 0;
             let res13 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings13);
             await expectRevert(res13, "cannot be zero");
-
-            let newSettings14 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
-            newSettings14.timelockSeconds = 0;
-            let res14 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings14);
-            await expectRevert(res14, "cannot be zero");
 
             let newSettings15 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
             newSettings15.minUpdateRepeatTimeSeconds = 0;

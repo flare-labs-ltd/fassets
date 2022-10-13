@@ -19,10 +19,7 @@ abstract contract GovernedBase {
         bytes encodedCall;
     }
     
-    // solhint-disable-next-line const-name-snakecase
     IGovernanceSettings public governanceSettings;
-
-    address private initialGovernance;
 
     bool private initialised;
     
@@ -30,6 +27,8 @@ abstract contract GovernedBase {
     
     bool private executing;
     
+    address private initialGovernance;
+
     mapping(bytes4 => TimelockedCall) public timelockedCalls;
     
     event GovernanceCallTimelocked(bytes4 selector, uint256 allowedAfterTimestamp, bytes encodedCall);
@@ -62,7 +61,7 @@ abstract contract GovernedBase {
      * @param _selector The method selector (only one timelocked call per method is stored).
      */
     function executeGovernanceCall(bytes4 _selector) external {
-        require(governanceSettings.isExecutor(msg.sender), "only executor");
+        require(isExecutor(msg.sender), "only executor");
         TimelockedCall storage call = timelockedCalls[_selector];
         require(call.allowedAfterTimestamp != 0, "timelock: invalid selector");
         require(block.timestamp >= call.allowedAfterTimestamp, "timelock: not allowed yet");
@@ -123,9 +122,8 @@ abstract contract GovernedBase {
     /**
      * Internal function to check if an address is executor.
      */
-    function _isExecutor(address _address) internal view returns (bool) {
-        require(productionMode, "only in production mode");
-        return governanceSettings.isExecutor(_address);
+    function isExecutor(address _address) public view returns (bool) {
+        return initialised && governanceSettings.isExecutor(_address);
     }
     
     function _beforeExecute() private {
@@ -160,7 +158,7 @@ abstract contract GovernedBase {
     function _checkOnlyGovernance() private view {
         require(msg.sender == governance(), "only governance");
     }
-    
+
     function _passReturnOrRevert(bool _success) private pure {
         // pass exact return or revert data - needs to be done in assembly
         //solhint-disable-next-line no-inline-assembly

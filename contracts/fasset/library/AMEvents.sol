@@ -321,14 +321,6 @@ library AMEvents {
         int256 freeBalance);
         
     /**
-     * A setting will change after timelock at timestamp `validAt`.
-     */
-    event SettingChangeScheduled(
-        string name,
-        uint256 value,
-        uint256 validAt);
-        
-    /**
      * A setting has changed.
      */
     event SettingChanged(
@@ -348,13 +340,5 @@ library AMEvents {
     event ContractChanged(
         string name,
         address value);
-
-    /**
-     * A contract will change after timelock at timestamp `validAt`.
-     */
-    event ContractChangeScheduled(
-        string name,
-        address value,
-        uint256 validAt);
 
 }

@@ -313,10 +313,10 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
 
-        const timeIncrease = toBN(settings.timelockSeconds).addn(1);
-        await time.increase(timeIncrease);
-        chain.skipTime(timeIncrease.toNumber());
-        await time.advanceBlock();
+        // const timeIncrease = toBN(settings.timelockSeconds).addn(1);
+        // await time.increase(timeIncrease);
+        // chain.skipTime(timeIncrease.toNumber());
+        // await time.advanceBlock();
 
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, false);
 

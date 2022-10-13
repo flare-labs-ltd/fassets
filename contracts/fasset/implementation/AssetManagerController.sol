@@ -20,11 +20,6 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     mapping(address => uint256) private assetManagerIndex;
     IAssetManager[] private assetManagers;
     
-    modifier onlyUpdateExecutor {
-        require(_isExecutor(msg.sender), "only update executor");
-        _;
-    }    
-    
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, address _addressUpdater)
         Governed(_governanceSettings, _initialGovernance)
         AddressUpdatable(_addressUpdater)
@@ -33,7 +28,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     
     function addAssetManager(IAssetManager _assetManager) 
         external 
-        onlyImmediateGovernance
+        onlyGovernance
     {
         if (assetManagerIndex[address(_assetManager)] != 0) return;
         assetManagers.push(_assetManager);
@@ -46,7 +41,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function removeAssetManager(IAssetManager _assetManager) 
         external 
-        onlyImmediateGovernance
+        onlyGovernance
     {
         uint256 position = assetManagerIndex[address(_assetManager)];
         if (position == 0) return;
@@ -84,28 +79,18 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     // this is a safe operation, executor can call without prior governance call
     function refreshFtsoIndexes(IAssetManager[] memory _assetManagers)
         external
-        onlyUpdateExecutor
     {
+        _checkOnlyGovernanceOrExecutor();
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.REFRESH_FTSO_INDEXES, abi.encode());
     }
 
     function setWhitelist(IAssetManager[] memory _assetManagers, address _value)
         external
-        onlyImmediateGovernance
+        onlyGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_WHITELIST, abi.encode(_value));
-    }
-
-    function executeSetWhitelist(
-        IAssetManager[] memory _assetManagers
-    )
-        external
-        onlyUpdateExecutor
-    {
-        _setValueOnManagers(_assetManagers, 
-            SettingsUpdater.EXECUTE_SET_WHITELIST, abi.encode());
     }
 
     function setLotSizeAmg(IAssetManager[] memory _assetManagers, uint256 _value)
@@ -123,21 +108,11 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         uint256 _safetyMinCollateralRatioBIPS
     )
         external
-        onlyImmediateGovernance
+        onlyGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_COLLATERAL_RATIOS, 
             abi.encode(_minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS));
-    }
-
-    function executeSetCollateralRatios(
-        IAssetManager[] memory _assetManagers
-    )
-        external
-        onlyUpdateExecutor
-    {
-        _setValueOnManagers(_assetManagers, 
-            SettingsUpdater.EXECUTE_SET_COLLATERAL_RATIOS, abi.encode());
     }
 
     function setTimeForPayment(
@@ -146,20 +121,10 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         uint256 _underlyingSeconds
     )
         external
-        onlyImmediateGovernance
+        onlyGovernance
     {
         _setValueOnManagers(_assetManagers, 
             SettingsUpdater.SET_TIME_FOR_PAYMENT, abi.encode(_underlyingBlocks, _underlyingSeconds));
-    }
-
-    function executeSetTimeForPayment(
-        IAssetManager[] memory _assetManagers
-    )
-        external
-        onlyUpdateExecutor
-    {
-        _setValueOnManagers(_assetManagers, 
-            SettingsUpdater.EXECUTE_SET_TIME_FOR_PAYMENT, abi.encode());
     }
 
     function setPaymentChallengeReward(
@@ -368,5 +333,9 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             require(assetManagerIndex[address(assetManager)] != 0, "Asset manager not managed");
             assetManager.updateSettings(_method, _value);
         }
+    }
+
+    function _checkOnlyGovernanceOrExecutor() private view {
+        require(msg.sender == governance() || isExecutor(msg.sender), "only governance or executor");
     }
 }

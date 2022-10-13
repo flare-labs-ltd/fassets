@@ -140,7 +140,6 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         ccbTimeSeconds: parameters.ccbTimeSeconds,
         liquidationStepSeconds: parameters.liquidationStepSeconds,
         attestationWindowSeconds: parameters.attestationWindowSeconds,
-        timelockSeconds: parameters.timelockSeconds,
         minUpdateRepeatTimeSeconds: parameters.minUpdateRepeatTimeSeconds,
         buybackCollateralFactorBIPS: parameters.buybackCollateralFactorBIPS,
         announcedUnderlyingConfirmationMinSeconds: parameters.announcedUnderlyingConfirmationMinSeconds,

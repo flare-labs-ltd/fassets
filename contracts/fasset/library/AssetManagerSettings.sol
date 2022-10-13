@@ -181,10 +181,6 @@ library AssetManagerSettings {
         // rate-limited
         uint64 attestationWindowSeconds;
         
-        // The time to wait for critical settings to take effect.
-        // immutable
-        uint64 timelockSeconds;
-        
         // Minimum time after an update of a setting before the same setting can be updated again.
         // immutable
         uint64 minUpdateRepeatTimeSeconds;

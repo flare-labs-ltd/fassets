@@ -41,7 +41,6 @@ export function createTestSettings(agentVaultFactory: AgentVaultFactoryInstance,
         ccbTimeSeconds: 180,
         liquidationStepSeconds: 90,
         maxTrustedPriceAgeSeconds: 8 * 60,
-        timelockSeconds: 1 * WEEKS, // 1 week
         minUpdateRepeatTimeSeconds: 1 * DAYS,
         attestationWindowSeconds: 1 * DAYS,
         buybackCollateralFactorBIPS: 1_1000,                    // 1.1

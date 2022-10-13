@@ -22,7 +22,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
 
     beforeEach(async () => {
         governanceSettings = await GovernanceSettings.new();
-        governanceSettings.initialise(productionGovernance, 10, [productionGovernance, productionExecutor], { from: GENESIS_GOVERNANCE });
+        await governanceSettings.initialise(productionGovernance, 10, [productionGovernance, productionExecutor], { from: GENESIS_GOVERNANCE });
         governed = await Governed.new(governanceSettings.address, initialGovernance);
     });
 

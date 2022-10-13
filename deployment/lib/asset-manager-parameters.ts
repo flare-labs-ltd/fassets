@@ -222,12 +222,6 @@ export interface AssetManagerParameters {
     attestationWindowSeconds: integer;
 
     /**
-     * The time to wait for critical settings to take effect.
-     * immutable
-     */
-    timelockSeconds: integer;
-
-    /**
      * Minimum time after an update of a setting before the same setting can be updated again.
      * immutable
      */
