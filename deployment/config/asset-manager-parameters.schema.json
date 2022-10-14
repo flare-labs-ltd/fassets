@@ -131,10 +131,6 @@
             "description": "Minimum collateral ratio required to get agent out of liquidation.\nIf the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.\nWiil always be greater than minCollateralRatioBIPS.\ntimelocked",
             "type": "integer"
         },
-        "timelockSeconds": {
-            "description": "The time to wait for critical settings to take effect.\nimmutable",
-            "type": "integer"
-        },
         "underlyingBlocksForPayment": {
             "description": "Number of underlying blocks that the minter or agent is allowed to pay underlying value.\nIf payment not reported in that time, minting/redemption can be challenged and default action triggered.\nCAREFUL: Count starts from the current proved block height, so the minters and agents should \nmake sure that current block height is fresh, otherwise they might not have enough time for payment.\ntimelocked",
             "type": "integer"
@@ -179,7 +175,6 @@
         "redemptionFeeBIPS",
         "requireEOAAddressProof",
         "safetyMinCollateralRatioBIPS",
-        "timelockSeconds",
         "underlyingBlocksForPayment",
         "underlyingSecondsForPayment",
         "withdrawalWaitMinSeconds"

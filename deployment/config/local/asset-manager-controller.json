@@ -1,0 +1,8 @@
+{
+    "$schema": "../asset-manager-controller-parameters.schema.json",
+    "deployAssetManagerParameterFiles": [
+        "f-xrp.json",
+        "f-doge.json"
+    ],
+    "attachAssetManagerAddresses": []
+}

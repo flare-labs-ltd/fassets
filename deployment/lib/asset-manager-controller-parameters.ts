@@ -1,5 +1,10 @@
 export interface AssetManagerControllerParameters {
     /**
+    * JSON schema url
+    */
+    $schema?: string;
+
+   /**
      * The list of asset manager parameter files to be deployed immediatelly.
      */
     deployAssetManagerParameterFiles: string[];
