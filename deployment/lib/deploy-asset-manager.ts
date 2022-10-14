@@ -61,7 +61,7 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
         await assetManagerController.addAssetManager(assetManagerAddress, { from: deployer });
     }
     
-    // TODO: await assetManagerController.switchToProduction();
+    await assetManagerController.switchToProductionMode({ from: deployer });    
 
     // MUST do a multisig governance call to
     //      AddressUpdater.addOrUpdateContractNamesAndAddresses(["AssetManagerController"], [assetManagerController.address])
@@ -92,7 +92,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     contracts[`FAsset_${symbol}`] = newContract(`FAsset_${symbol}`, "FAsset.sol", fAsset.address);
     saveContracts(contractsFile, contracts);
 
-    // TODO: fAsset.switchToProduction({ from: deployer });
+    await fAsset.switchToProductionMode({ from: deployer });
 
     return assetManager;
 
