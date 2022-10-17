@@ -1,11 +1,14 @@
 import BN from "bn.js";
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
+import path from "path";
 import { AssetManagerSettings } from '../../lib/fasset/AssetManagerTypes';
 import { AssetManagerParameters } from './asset-manager-parameters';
-import { loadContracts, newContract, saveContracts, ChainContracts } from "./contracts";
+import { ChainContracts, loadContracts, newContract, saveContracts } from "./contracts";
 import { assetManagerControllerParameters, assetManagerParameters, loadDeployAccounts, ZERO_ADDRESS } from './deploy-utils';
 
 export async function deployAttestationClient(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    console.log(`Deploying AttestationClient`);
+    
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const AttestationClient = artifacts.require("AttestationClientSC");
@@ -22,6 +25,8 @@ export async function deployAttestationClient(hre: HardhatRuntimeEnvironment, co
 }
 
 export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    console.log(`Deploying AgentVaultFactory`);
+    
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const AgentVaultFactory = artifacts.require("AgentVaultFactory");
@@ -30,7 +35,7 @@ export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, co
 
     const agentVaultFactory = await AgentVaultFactory.new();
 
-    contracts.AttestationClient = newContract("AgentVaultFactory", "AgentVaultFactory.sol", agentVaultFactory.address);
+    contracts.AgentVaultFactory = newContract("AgentVaultFactory", "AgentVaultFactory.sol", agentVaultFactory.address);
     saveContracts(contractsFile, contracts);
     
     // MUST do a multisig governance call to
@@ -39,6 +44,8 @@ export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, co
 
 export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, parametersFile: string, contractsFile: string) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
+    
+    console.log(`Deploying AssetManagerController with config ${parametersFile}`);
 
     const AssetManagerController = artifacts.require("AssetManagerController");
     
@@ -53,7 +60,9 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
     
     // add asset managers before switching to production governance
     for (const mgrParamFile of parameters.deployAssetManagerParameterFiles) {
-        const assetManager = await deployAssetManager(hre, mgrParamFile, contractsFile);
+        console.log(`   deploying AssetManager with config ${mgrParamFile}`);
+        const mgrParamPath = path.join(path.dirname(parametersFile), mgrParamFile);
+        const assetManager = await deployAssetManager(hre, mgrParamPath, contractsFile);
         await assetManagerController.addAssetManager(assetManager.address, { from: deployer });
     }
     
@@ -100,6 +109,13 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     //      AssetManagerController.addAssetManager(assetManager.address)
 }
 
+function bnToString(x: BN | number | string) {
+    if (!BN.isBN(x)) {
+        x = new BN(x);  // convert to BN to remove spaces etc.
+    }
+    return x.toString(10);
+}
+
 function createAssetManagerSettings(contracts: ChainContracts, parameters: AssetManagerParameters): AssetManagerSettings {
     if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.AttestationClient) {
         throw new Error("Missing contracts");
@@ -116,32 +132,32 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         natFtsoSymbol: parameters.natSymbol,
         assetFtsoSymbol: parameters.assetSymbol,
         burnAddress: ZERO_ADDRESS,
-        chainId: parameters.chainId,
-        collateralReservationFeeBIPS: parameters.collateralReservationFeeBIPS,
-        assetUnitUBA: new BN(10).pow(new BN(parameters.assetDecimals)).toString(),
-        assetMintingGranularityUBA: parameters.assetMintingGranularityUBA,
-        lotSizeAMG: new BN(parameters.lotSize).div(new BN(parameters.assetMintingGranularityUBA)),
-        maxTrustedPriceAgeSeconds: parameters.maxTrustedPriceAgeSeconds,
+        chainId: bnToString(parameters.chainId),
+        collateralReservationFeeBIPS: bnToString(parameters.collateralReservationFeeBIPS),
+        assetUnitUBA: bnToString(new BN(10).pow(new BN(parameters.assetDecimals))),
+        assetMintingGranularityUBA: bnToString(parameters.assetMintingGranularityUBA),
+        lotSizeAMG: bnToString(new BN(parameters.lotSize).div(new BN(parameters.assetMintingGranularityUBA))),
+        maxTrustedPriceAgeSeconds: bnToString(parameters.maxTrustedPriceAgeSeconds),
         requireEOAAddressProof: parameters.requireEOAAddressProof,
-        minCollateralRatioBIPS: parameters.minCollateralRatioBIPS,
-        ccbMinCollateralRatioBIPS: parameters.ccbMinCollateralRatioBIPS,
-        safetyMinCollateralRatioBIPS: parameters.safetyMinCollateralRatioBIPS,
-        underlyingBlocksForPayment: parameters.underlyingBlocksForPayment,
-        underlyingSecondsForPayment: parameters.underlyingSecondsForPayment,
-        redemptionFeeBIPS: parameters.redemptionFeeBIPS,
-        redemptionDefaultFactorBIPS: parameters.redemptionDefaultFactorBIPS,
-        confirmationByOthersAfterSeconds: parameters.confirmationByOthersAfterSeconds,
-        confirmationByOthersRewardNATWei: parameters.confirmationByOthersRewardNATWei,
-        maxRedeemedTickets: parameters.maxRedeemedTickets,
-        paymentChallengeRewardBIPS: parameters.paymentChallengeRewardBIPS,
-        paymentChallengeRewardNATWei: parameters.paymentChallengeRewardNATWei,
-        withdrawalWaitMinSeconds: parameters.withdrawalWaitMinSeconds,
-        liquidationCollateralFactorBIPS: parameters.liquidationCollateralFactorBIPS,
-        ccbTimeSeconds: parameters.ccbTimeSeconds,
-        liquidationStepSeconds: parameters.liquidationStepSeconds,
-        attestationWindowSeconds: parameters.attestationWindowSeconds,
-        minUpdateRepeatTimeSeconds: parameters.minUpdateRepeatTimeSeconds,
-        buybackCollateralFactorBIPS: parameters.buybackCollateralFactorBIPS,
-        announcedUnderlyingConfirmationMinSeconds: parameters.announcedUnderlyingConfirmationMinSeconds,
+        minCollateralRatioBIPS: bnToString(parameters.minCollateralRatioBIPS),
+        ccbMinCollateralRatioBIPS: bnToString(parameters.ccbMinCollateralRatioBIPS),
+        safetyMinCollateralRatioBIPS: bnToString(parameters.safetyMinCollateralRatioBIPS),
+        underlyingBlocksForPayment: bnToString(parameters.underlyingBlocksForPayment),
+        underlyingSecondsForPayment: bnToString(parameters.underlyingSecondsForPayment),
+        redemptionFeeBIPS: bnToString(parameters.redemptionFeeBIPS),
+        redemptionDefaultFactorBIPS: bnToString(parameters.redemptionDefaultFactorBIPS),
+        confirmationByOthersAfterSeconds: bnToString(parameters.confirmationByOthersAfterSeconds),
+        confirmationByOthersRewardNATWei: bnToString(parameters.confirmationByOthersRewardNATWei),
+        maxRedeemedTickets: bnToString(parameters.maxRedeemedTickets),
+        paymentChallengeRewardBIPS: bnToString(parameters.paymentChallengeRewardBIPS),
+        paymentChallengeRewardNATWei: bnToString(parameters.paymentChallengeRewardNATWei),
+        withdrawalWaitMinSeconds: bnToString(parameters.withdrawalWaitMinSeconds),
+        liquidationCollateralFactorBIPS: parameters.liquidationCollateralFactorBIPS.map(bnToString),
+        ccbTimeSeconds: bnToString(parameters.ccbTimeSeconds),
+        liquidationStepSeconds: bnToString(parameters.liquidationStepSeconds),
+        attestationWindowSeconds: bnToString(parameters.attestationWindowSeconds),
+        minUpdateRepeatTimeSeconds: bnToString(parameters.minUpdateRepeatTimeSeconds),
+        buybackCollateralFactorBIPS: bnToString(parameters.buybackCollateralFactorBIPS),
+        announcedUnderlyingConfirmationMinSeconds: bnToString(parameters.announcedUnderlyingConfirmationMinSeconds),
     };
 }

@@ -51,9 +51,10 @@ task("link-contracts", "Link contracts with external libraries")
     });
 
 task("deploy-fasset-contracts", "Deploy attestation client, agent vault factory, asset manager controller and asset managers")
-    .addPositionalParam("parametersFile", "The file with asset manager controller deploy parameters")
-    .addPositionalParam("contractsFile", "The file with the list of deployed contracts")
-    .setAction(async ({ parametersFile, contractsFile }, hre) => {
+    .addPositionalParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
+    .setAction(async ({ networkConfig }, hre) => {
+        const parametersFile = `deployment/config/${networkConfig}/asset-manager-controller.json`;
+        const contractsFile = `deployment/deploys/${networkConfig}.json`;
         await deployAttestationClient(hre, contractsFile);
         await deployAgentVaultFactory(hre, contractsFile);
         await deployAssetManagerController(hre, parametersFile, contractsFile);
