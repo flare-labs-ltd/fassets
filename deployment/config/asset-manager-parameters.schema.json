@@ -30,6 +30,14 @@
             "description": "Maximum time for which it is possible to obtain payment or non-payment proofs.\nrate-limited",
             "type": "integer"
         },
+        "burnAddress": {
+            "description": "Address for burning native currency (e.g. for collateral reservation fee afetr successful minting).",
+            "type": "string"
+        },
+        "burnWithSelfDestruct": {
+            "description": "If true, the NAT burning is done indirectly via transfer to burner contract and then self-destruct.\nThis is necessary on Songbird, where the burn address is unpayable.",
+            "type": "boolean"
+        },
         "buybackCollateralFactorBIPS": {
             "description": "Ratio at which the agents can buy back their collateral when f-asset is terminated.\nTypically a bit more than 1 to incentivise agents to buy f-assets and self-close instead.\nimmutable",
             "type": "integer"
@@ -98,6 +106,10 @@
             "description": "Minimum time after an update of a setting before the same setting can be updated again.\nimmutable",
             "type": "integer"
         },
+        "natSymbol": {
+            "description": "Symbol for the native currency (FLR/SGB/...).\nMust match the FTSO contract symbol for native currency.",
+            "type": "string"
+        },
         "paymentChallengeRewardBIPS": {
             "description": "Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).\nThis is the proportional part (in BIPS).\nrate-limited",
             "type": "integer"
@@ -143,6 +155,8 @@
         "assetName",
         "assetSymbol",
         "attestationWindowSeconds",
+        "burnAddress",
+        "burnWithSelfDestruct",
         "buybackCollateralFactorBIPS",
         "ccbMinCollateralRatioBIPS",
         "ccbTimeSeconds",
@@ -159,6 +173,7 @@
         "maxTrustedPriceAgeSeconds",
         "minCollateralRatioBIPS",
         "minUpdateRepeatTimeSeconds",
+        "natSymbol",
         "paymentChallengeRewardBIPS",
         "paymentChallengeRewardNATWei",
         "redemptionDefaultFactorBIPS",

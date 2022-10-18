@@ -1,11 +1,9 @@
 import BN from "bn.js";
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import path from "path";
 import { AssetManagerSettings } from '../../lib/fasset/AssetManagerTypes';
-import { AssetManagerNetworkParameters } from "./asset-manager-controller-parameters";
 import { AssetManagerParameters } from './asset-manager-parameters';
 import { ChainContracts, loadContracts, newContract, saveContracts } from "./contracts";
-import { assetManagerControllerParameters, assetManagerParameters, loadDeployAccounts, ZERO_ADDRESS } from './deploy-utils';
+import { assetManagerParameters, loadDeployAccounts, ZERO_ADDRESS } from './deploy-utils';
 
 export async function deployAttestationClient(hre: HardhatRuntimeEnvironment, contractsFile: string) {
     console.log(`Deploying AttestationClient`);
@@ -41,15 +39,14 @@ export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, co
     console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AgentVaultFactory"], [${agentVaultFactory.address}])'`);
 }
 
-export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, parametersFile: string, contractsFile: string) {
+export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, contractsFile: string, managerParameterFiles: string[]) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
     
-    console.log(`Deploying AssetManagerController with config ${parametersFile}`);
+    console.log(`Deploying AssetManagerController`);
 
     const AssetManagerController = artifacts.require("AssetManagerController");
     
     const { deployer } = loadDeployAccounts(hre);
-    const parameters = assetManagerControllerParameters.load(parametersFile);
     const contracts = loadContracts(contractsFile);
     
     const assetManagerController = await AssetManagerController.new(contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address);
@@ -58,19 +55,10 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
     saveContracts(contractsFile, contracts);
     
     // add asset managers before switching to production governance
-    for (const mgrParamFile of parameters.deployAssetManagerParameterFiles) {
-        console.log(`   deploying AssetManager with config ${mgrParamFile}`);
-        const mgrParamPath = path.join(path.dirname(parametersFile), mgrParamFile);
-        const assetManager = await deployAssetManager(hre, parametersFile, mgrParamPath, contractsFile, false);
+    for (const parameterFile of managerParameterFiles) {
+        console.log(`   deploying AssetManager with config ${parameterFile}`);
+        const assetManager = await deployAssetManager(hre, parameterFile, contractsFile, false);
         await assetManagerController.addAssetManager(assetManager.address, { from: deployer });
-    }
-    
-    for (const contractName of parameters.attachAssetManagerContractNames) {
-        const assetManagerAddress = contracts[contractName];
-        if (assetManagerAddress == null) {
-            throw new Error(`Unknown asset manager contract ${contractName}`);
-        }
-        await assetManagerController.addAssetManager(assetManagerAddress.address, { from: deployer });
     }
     
     await assetManagerController.switchToProductionMode({ from: deployer });    
@@ -79,21 +67,20 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
 }
 
 // assumes AssetManager contract artifact has been linked already
-export async function deployAssetManager(hre: HardhatRuntimeEnvironment, controllerParametersFile: string, parametersFile: string, contractsFile: string, standalone: boolean) {
+export async function deployAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contractsFile: string, standalone: boolean) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const AssetManager = artifacts.require("AssetManager");
     const FAsset = artifacts.require('FAsset');
 
     const { deployer } = loadDeployAccounts(hre);
-    const controllerParameters = assetManagerControllerParameters.load(controllerParametersFile);
     const parameters = assetManagerParameters.load(parametersFile);
     
     const contracts = loadContracts(contractsFile);
     
     const fAsset = await FAsset.new(deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetDecimals);
 
-    const assetManagerSettings = createAssetManagerSettings(contracts, parameters, controllerParameters.networkParameters);
+    const assetManagerSettings = createAssetManagerSettings(contracts, parameters);
 
     const assetManager = await AssetManager.new(assetManagerSettings, fAsset.address);
 
@@ -120,7 +107,7 @@ function bnToString(x: BN | number | string) {
     return x.toString(10);
 }
 
-function createAssetManagerSettings(contracts: ChainContracts, parameters: AssetManagerParameters, networkParameters: AssetManagerNetworkParameters): AssetManagerSettings {
+function createAssetManagerSettings(contracts: ChainContracts, parameters: AssetManagerParameters): AssetManagerSettings {
     if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.AttestationClient) {
         throw new Error("Missing contracts");
     }
@@ -133,10 +120,10 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         ftsoRegistry: contracts.FtsoRegistry.address,
         natFtsoIndex: 0,        // set by contract constructor
         assetFtsoIndex: 0,      // set by contract constructor
-        natFtsoSymbol: networkParameters.natSymbol,
+        natFtsoSymbol: parameters.natSymbol,
         assetFtsoSymbol: parameters.assetSymbol,
-        burnAddress: networkParameters.burnAddress,
-        burnWithSelfDestruct: networkParameters.burnWithSelfDestruct,
+        burnAddress: parameters.burnAddress,
+        burnWithSelfDestruct: parameters.burnWithSelfDestruct,
         chainId: bnToString(parameters.chainId),
         collateralReservationFeeBIPS: bnToString(parameters.collateralReservationFeeBIPS),
         assetUnitUBA: bnToString(new BN(10).pow(new BN(parameters.assetDecimals))),

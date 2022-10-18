@@ -1,6 +1,5 @@
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync } from "fs";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { AssetManagerControllerParameters } from "./asset-manager-controller-parameters";
 import { AssetManagerParameters } from "./asset-manager-parameters";
 
 // same as in @openzeppelin/test-helpers, but including those in hadhat scripts breaks tests for some reason
@@ -30,8 +29,6 @@ class ParameterSchema<T> {
 }
 
 export const assetManagerParameters = new ParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
-
-export const assetManagerControllerParameters = new ParameterSchema<AssetManagerControllerParameters>(require('../config/asset-manager-controller-parameters.schema.json'));
 
 export interface DeployAccounts {
     deployer: string;

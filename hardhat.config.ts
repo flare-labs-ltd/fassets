@@ -9,6 +9,7 @@ import 'hardhat-deploy';
 import "hardhat-gas-reporter";
 import { extendEnvironment, task } from "hardhat/config";
 import path from "path";
+import fs from "fs/promises";
 import 'solidity-coverage';
 import { deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployAttestationClient } from "./deployment/lib/deploy-asset-manager";
 import { linkContracts } from "./deployment/lib/link-contracts";
@@ -51,34 +52,45 @@ task("link-contracts", "Link contracts with external libraries")
         await linkContracts(hre, contracts, mapfile);
     });
 
-task("deploy-asset-manager-controller", "Deploy attestation client, agent vault factory, asset manager controller and asset managers")
-    .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
+task("deploy-asset-managers", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
     .addFlag("link", "Link asset manager before")
-    .setAction(async ({ networkConfig, link }, hre) => {
+    .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and AttestationClient")
+    .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
+    .addFlag("all", "Deploy all asset managers (for all parameter files in the directory)")
+    .addVariadicPositionalParam("managers", "Asset manager file names (default extension is .json). Must be in the directory deployment/config/${networkConfig}. Alternatively, add -all flag to use all parameter files in the directory.", [])
+    .setAction(async ({ networkConfig, managers, link, deployController, all }, hre) => {
+        const configDir = `deployment/config/${networkConfig}`;
+        const contractsFile = `deployment/deploys/${networkConfig}.json`;
+        let managerParameterFiles: string[];
+        if (all) {
+            // get all files from the config dir
+            const managerFiles = await fs.readdir(configDir, { withFileTypes: true });
+            managerParameterFiles = managerFiles
+                .filter(f => f.isFile() && f.name.endsWith('.json'))
+                .map(f => path.join(configDir, f.name));
+        } else if (managers.length > 0) {
+            // use files provided on command line, optionally adding suffix '.json'
+            managerParameterFiles = managers.map((name: string) => {
+                const parts = path.parse(name);
+                return path.join(configDir, `${parts.name}${parts.ext || '.json'}`);
+            });
+        } else {
+            console.error('Provide a nonempty list of managers to deploy or --all to use all parameter files in the directory.')
+            process.exit(1);
+        }
+        // optionally link the AssetManager
         if (link) {
             await linkContracts(hre, ["AssetManager"], null);
         }
-        const parametersFile = `deployment/config/${networkConfig}/asset-manager-controller.json`;
-        const contractsFile = `deployment/deploys/${networkConfig}.json`;
-        await deployAttestationClient(hre, contractsFile);
-        await deployAgentVaultFactory(hre, contractsFile);
-        await deployAssetManagerController(hre, parametersFile, contractsFile);
-    });
-
-task("deploy-asset-manager", "Deploy a single asset manager. Asset manager controller must be already deployed.")
-    .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
-    .addVariadicPositionalParam("managers", "Asset manager file names (default extension is .json). Must be in the directory deployment/config/${networkConfig}.")
-    .addFlag("link", "Link asset manager before")
-    .setAction(async ({ networkConfig, managers, link }, hre) => {
-        if (link) {
-            await linkContracts(hre, ["AssetManager"], null);
-        }
-        const controllerParametersFile = `deployment/config/${networkConfig}/asset-manager-controller.json`;
-        const contractsFile = `deployment/deploys/${networkConfig}.json`;
-        for (const manager of managers as string[]) {
-            const parts = path.parse(manager);
-            const managerParametersFile = `deployment/config/${networkConfig}/${parts.name}${parts.ext || '.json'}`;
-            await deployAssetManager(hre, controllerParametersFile, managerParametersFile, contractsFile, true);
+        // optionally run the full deploy
+        if (deployController) {
+            await deployAttestationClient(hre, contractsFile);
+            await deployAgentVaultFactory(hre, contractsFile);
+            await deployAssetManagerController(hre, contractsFile, managerParameterFiles);
+        } else {
+            for (const paramFile of managerParameterFiles) {
+                await deployAssetManager(hre, paramFile, contractsFile, true);
+            }
         }
     });
 

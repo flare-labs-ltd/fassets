@@ -6,6 +6,29 @@ export interface AssetManagerParameters {
      * JSON schema url
      */
     $schema?: string;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Common parameters (for all f-assets in this network)
+    
+    /**
+     * Symbol for the native currency (FLR/SGB/...).
+     * Must match the FTSO contract symbol for native currency.
+     */
+    natSymbol: string;
+
+    /**
+     * Address for burning native currency (e.g. for collateral reservation fee afetr successful minting).
+     */
+    burnAddress: string;
+
+    /**
+     * If true, the NAT burning is done indirectly via transfer to burner contract and then self-destruct.
+     * This is necessary on Songbird, where the burn address is unpayable.
+     */
+    burnWithSelfDestruct: boolean;
+    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // F-asset (chain) specific parameters
     
     /**
      * Chain id as used in the state connector.
