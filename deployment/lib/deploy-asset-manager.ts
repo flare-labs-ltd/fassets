@@ -21,8 +21,7 @@ export async function deployAttestationClient(hre: HardhatRuntimeEnvironment, co
     contracts.AttestationClient = newContract("AttestationClient", "AttestationClientSC.sol", attestationClient.address);
     saveContracts(contractsFile, contracts);
 
-    // MUST do a multisig governance call to
-    //      AddressUpdater.addOrUpdateContractNamesAndAddresses(["AttestationClient"], [attestationClient.address])
+    console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AttestationClient"], [${attestationClient.address}])'`);
 }
 
 export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
@@ -39,8 +38,7 @@ export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, co
     contracts.AgentVaultFactory = newContract("AgentVaultFactory", "AgentVaultFactory.sol", agentVaultFactory.address);
     saveContracts(contractsFile, contracts);
     
-    // MUST do a multisig governance call to
-    //      AddressUpdater.addOrUpdateContractNamesAndAddresses(["AgentVaultFactory"], [agentVaultFactory.address])
+    console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AgentVaultFactory"], [${agentVaultFactory.address}])'`);
 }
 
 export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, parametersFile: string, contractsFile: string) {
@@ -63,7 +61,7 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
     for (const mgrParamFile of parameters.deployAssetManagerParameterFiles) {
         console.log(`   deploying AssetManager with config ${mgrParamFile}`);
         const mgrParamPath = path.join(path.dirname(parametersFile), mgrParamFile);
-        const assetManager = await deployAssetManager(hre, parametersFile, mgrParamPath, contractsFile);
+        const assetManager = await deployAssetManager(hre, parametersFile, mgrParamPath, contractsFile, false);
         await assetManagerController.addAssetManager(assetManager.address, { from: deployer });
     }
     
@@ -77,12 +75,11 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
     
     await assetManagerController.switchToProductionMode({ from: deployer });    
 
-    // MUST do a multisig governance call to
-    //      AddressUpdater.addOrUpdateContractNamesAndAddresses(["AssetManagerController"], [assetManagerController.address])
+    console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AssetManagerController"], [${assetManagerController.address}])'`);
 }
 
 // assumes AssetManager contract artifact has been linked already
-export async function deployAssetManager(hre: HardhatRuntimeEnvironment, controllerParametersFile: string, parametersFile: string, contractsFile: string) {
+export async function deployAssetManager(hre: HardhatRuntimeEnvironment, controllerParametersFile: string, parametersFile: string, contractsFile: string, standalone: boolean) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const AssetManager = artifacts.require("AssetManager");
@@ -109,10 +106,11 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, control
 
     await fAsset.switchToProductionMode({ from: deployer });
 
-    return assetManager;
+    if (standalone) {
+        console.log(`NOTE: perform governance call 'AssetManagerController(${contracts.AssetManagerController?.address}).addAssetManager(${assetManager.address})'`);
+    }
 
-    // If this this asset manager is not created immediatelly with new controller, MUST do a multisig governance call to
-    //      AssetManagerController.addAssetManager(assetManager.address)
+    return assetManager;
 }
 
 function bnToString(x: BN | number | string) {
