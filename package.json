@@ -44,6 +44,7 @@
     "generate-parameter-schema": "yarn generate-json-schema deployment/lib/asset-manager-parameters.ts AssetManagerParameters -o deployment/config/asset-manager-parameters.schema.json",
     "---------DEPLOY---SCRIPTS": "",
     "full-deploy-hardhat": "yarn hardhat --network local deploy-asset-managers --network-config hardhat --link --deploy-controller --all",
+    "test-deploy-hardhat": "env NETWORK_CONFIG=hardhat yarn hardhat --network local test deployment/test/test-deployed-contracts.ts",
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",
     "gas-report": "ts-node node_modules/flare-smart-contracts/scripts/process-gas-report.ts && cat .gas-report.txt",

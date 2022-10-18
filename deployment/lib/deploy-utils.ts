@@ -34,14 +34,14 @@ export interface DeployAccounts {
     deployer: string;
 }
 
-export function requireEnvironmentVariable(name: string): string {
+export function requiredEnvironmentVariable(name: string): string {
     const value = process.env[name];
     if (value) return value;
     throw new Error(`Missing environment variable ${name}`);
 }
 
 export function loadDeployAccounts(hre: HardhatRuntimeEnvironment): DeployAccounts {
-    const deployerPrivateKey = requireEnvironmentVariable('DEPLOYER_PRIVATE_KEY');
+    const deployerPrivateKey = requiredEnvironmentVariable('DEPLOYER_PRIVATE_KEY');
     const deployerAccount = hre.web3.eth.accounts.privateKeyToAccount(deployerPrivateKey);
     return {
         deployer: deployerAccount.address
