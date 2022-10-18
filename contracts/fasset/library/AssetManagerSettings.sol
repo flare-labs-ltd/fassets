@@ -51,6 +51,10 @@ library AssetManagerSettings {
         // immutable
         address payable burnAddress;
 
+        // If true, the NAT burning is done indirectly via transfer to burner contract and then self-destruct.
+        // This is necessary on Songbird, where the burn address is unpayable.
+        bool burnWithSelfDestruct;
+        
         // Must match attestation data chainId.
         // immutable
         uint32 chainId;

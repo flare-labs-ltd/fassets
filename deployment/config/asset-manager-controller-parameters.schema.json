@@ -1,29 +1,59 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "additionalProperties": false,
+    "definitions": {
+        "AssetManagerNetworkParameters": {
+            "additionalProperties": false,
+            "properties": {
+                "burnAddress": {
+                    "description": "Address for burning native currency (e.g. for collateral reservation fee afetr successful minting).",
+                    "type": "string"
+                },
+                "burnWithSelfDestruct": {
+                    "description": "If true, the NAT burning is done indirectly via transfer to burner contract and then self-destruct.\nThis is necessary on Songbird, where the burn address is unpayable.",
+                    "type": "boolean"
+                },
+                "natSymbol": {
+                    "description": "Symbol for the native currency (FLR/SGB/...).\nMust match the FTSO contract symbol for native currency.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "burnAddress",
+                "burnWithSelfDestruct",
+                "natSymbol"
+            ],
+            "type": "object"
+        }
+    },
     "properties": {
         "$schema": {
             "description": "JSON schema url",
             "type": "string"
         },
-        "attachAssetManagerAddresses": {
-            "description": "The list of asset manager addresses to be attached immediatelly.\nAfterwards, a governance call to AddressUpdater is required to actually set the new\ncontroller to these asset managers.",
+        "attachAssetManagerContractNames": {
+            "description": "The list of asset managers (addresses are obtained from contract file) to be attached immediatelly.\nThis only makes sense when asset manager controller is replaced.\nAfterwards, a governance call to AddressUpdater is required to actually set the new\ncontroller to these asset managers.",
             "items": {
                 "type": "string"
             },
             "type": "array"
         },
         "deployAssetManagerParameterFiles": {
-            "description": "The list of asset manager parameter files to be deployed immediatelly.",
+            "description": "The list of asset manager parameter files to be deployed immediatelly.\nFilenames are relative to this file's directory.",
             "items": {
                 "type": "string"
             },
             "type": "array"
+        },
+        "networkParameters": {
+            "$ref": "#/definitions/AssetManagerNetworkParameters",
+            "description": "Common parameters that will be used in deploy of all asset managers."
         }
     },
     "required": [
-        "attachAssetManagerAddresses",
-        "deployAssetManagerParameterFiles"
+        "attachAssetManagerContractNames",
+        "deployAssetManagerParameterFiles",
+        "networkParameters"
     ],
     "type": "object"
 }

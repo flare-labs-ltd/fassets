@@ -1,13 +1,11 @@
 {
     "$schema": "../asset-manager-parameters.schema.json",
-    "natSymbol": "NAT",
     "chainId": 2,
     "assetName": "DogeCoin",
     "assetSymbol": "DOGE",
     "assetDecimals": 8,
     "fAssetName": "F-DogeCoin",
     "fAssetSymbol": "FDOGE",
-    "burnAddress": "0x000000000000000000000000000000000000dEaD",
     "collateralReservationFeeBIPS": 200,
     "lotSize": "1000 000 000",
     "assetMintingGranularityUBA": "1",

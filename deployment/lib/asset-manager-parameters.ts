@@ -8,13 +8,6 @@ export interface AssetManagerParameters {
     $schema?: string;
     
     /**
-     * Symbol for the native currency (FLR/SGB/...).
-     * Must match the FTSO contract symbol for native currency.
-     * Immutable and same for all f-assets.
-     */
-    natSymbol: string;
-
-    /**
      * Chain id as used in the state connector.
      * immutable
      */
@@ -45,12 +38,6 @@ export interface AssetManagerParameters {
      * The symbol for the f-asset.
      */
     fAssetSymbol: string;
-
-    /**
-     * Collateral reservation fee is burned on successful minting.
-     * immutable
-     */
-    burnAddress: string;
 
     /**
      * Collateral reservation fee that must be paid by the minter.

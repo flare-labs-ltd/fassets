@@ -4,5 +4,10 @@
         "f-xrp.json",
         "f-doge.json"
     ],
-    "attachAssetManagerAddresses": []
+    "attachAssetManagerContractNames": [],
+    "networkParameters": {
+        "natSymbol": "NAT",
+        "burnAddress": "0x000000000000000000000000000000000000dEaD",
+        "burnWithSelfDestruct": false
+    }
 }

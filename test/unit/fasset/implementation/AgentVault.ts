@@ -83,7 +83,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
         await assetManagerController.switchToProductionMode({ from: governance });
         // create asset manager
-        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry, false);
+        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry, { requireEOAAddressProof: false });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
         // create agent vault

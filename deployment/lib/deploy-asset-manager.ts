@@ -2,6 +2,7 @@ import BN from "bn.js";
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import path from "path";
 import { AssetManagerSettings } from '../../lib/fasset/AssetManagerTypes';
+import { AssetManagerNetworkParameters } from "./asset-manager-controller-parameters";
 import { AssetManagerParameters } from './asset-manager-parameters';
 import { ChainContracts, loadContracts, newContract, saveContracts } from "./contracts";
 import { assetManagerControllerParameters, assetManagerParameters, loadDeployAccounts, ZERO_ADDRESS } from './deploy-utils';
@@ -62,12 +63,16 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
     for (const mgrParamFile of parameters.deployAssetManagerParameterFiles) {
         console.log(`   deploying AssetManager with config ${mgrParamFile}`);
         const mgrParamPath = path.join(path.dirname(parametersFile), mgrParamFile);
-        const assetManager = await deployAssetManager(hre, mgrParamPath, contractsFile);
+        const assetManager = await deployAssetManager(hre, parametersFile, mgrParamPath, contractsFile);
         await assetManagerController.addAssetManager(assetManager.address, { from: deployer });
     }
     
-    for (const assetManagerAddress of parameters.attachAssetManagerAddresses) {
-        await assetManagerController.addAssetManager(assetManagerAddress, { from: deployer });
+    for (const contractName of parameters.attachAssetManagerContractNames) {
+        const assetManagerAddress = contracts[contractName];
+        if (assetManagerAddress == null) {
+            throw new Error(`Unknown asset manager contract ${contractName}`);
+        }
+        await assetManagerController.addAssetManager(assetManagerAddress.address, { from: deployer });
     }
     
     await assetManagerController.switchToProductionMode({ from: deployer });    
@@ -76,21 +81,22 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
     //      AddressUpdater.addOrUpdateContractNamesAndAddresses(["AssetManagerController"], [assetManagerController.address])
 }
 
-// assumes AssetManager has been linked already
-export async function deployAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contractsFile: string) {
+// assumes AssetManager contract artifact has been linked already
+export async function deployAssetManager(hre: HardhatRuntimeEnvironment, controllerParametersFile: string, parametersFile: string, contractsFile: string) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const AssetManager = artifacts.require("AssetManager");
     const FAsset = artifacts.require('FAsset');
 
     const { deployer } = loadDeployAccounts(hre);
+    const controllerParameters = assetManagerControllerParameters.load(controllerParametersFile);
     const parameters = assetManagerParameters.load(parametersFile);
     
     const contracts = loadContracts(contractsFile);
     
     const fAsset = await FAsset.new(deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetDecimals);
 
-    const assetManagerSettings = createAssetManagerSettings(contracts, parameters);
+    const assetManagerSettings = createAssetManagerSettings(contracts, parameters, controllerParameters.networkParameters);
 
     const assetManager = await AssetManager.new(assetManagerSettings, fAsset.address);
 
@@ -116,7 +122,7 @@ function bnToString(x: BN | number | string) {
     return x.toString(10);
 }
 
-function createAssetManagerSettings(contracts: ChainContracts, parameters: AssetManagerParameters): AssetManagerSettings {
+function createAssetManagerSettings(contracts: ChainContracts, parameters: AssetManagerParameters, networkParameters: AssetManagerNetworkParameters): AssetManagerSettings {
     if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.AttestationClient) {
         throw new Error("Missing contracts");
     }
@@ -129,9 +135,10 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         ftsoRegistry: contracts.FtsoRegistry.address,
         natFtsoIndex: 0,        // set by contract constructor
         assetFtsoIndex: 0,      // set by contract constructor
-        natFtsoSymbol: parameters.natSymbol,
+        natFtsoSymbol: networkParameters.natSymbol,
         assetFtsoSymbol: parameters.assetSymbol,
-        burnAddress: ZERO_ADDRESS,
+        burnAddress: networkParameters.burnAddress,
+        burnWithSelfDestruct: networkParameters.burnWithSelfDestruct,
         chainId: bnToString(parameters.chainId),
         collateralReservationFeeBIPS: bnToString(parameters.collateralReservationFeeBIPS),
         assetUnitUBA: bnToString(new BN(10).pow(new BN(parameters.assetDecimals))),

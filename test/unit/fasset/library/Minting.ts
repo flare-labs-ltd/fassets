@@ -1,4 +1,4 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { balance, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { ethers } from "hardhat";
 import { AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
@@ -16,7 +16,7 @@ import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../../lib/verification/sources/sources";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { createTestSettings } from "../test-settings";
+import { createTestSettings, TestSettingOptions } from "../test-settings";
 
 const AgentVault = artifacts.require('AgentVault');
 const AttestationClient = artifacts.require('AttestationClientSC');
@@ -253,6 +253,36 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
         // assert
         await expectRevert(promise, "minting payment too small");
+    });
+
+    it("should execute minting and burn crf to protected address", async () => {
+        // create asset manager with special burn address
+        const options: TestSettingOptions = {
+            burnAddress: "0x0100000000000000000000000000000000000000",
+            burnWithSelfDestruct: true
+        };
+        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry, options);
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
+        // init
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const amount = toWei(3e8);
+        await agentVault.deposit({ from: agentOwner1, value: amount });
+        await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
+        // act
+        const crFee = await assetManager.collateralReservationFee(1);
+        const crt = await reserveCollateral(agentVault.address, 1);
+        const txHash = await performMintingPayment(crt);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        // assert
+        const event = requiredEventArgs(res, 'MintingExecuted');
+        const burned = await balance.current(options.burnAddress!);
+        assertWeb3Equal(event.agentVault, agentVault.address);
+        assertWeb3Equal(event.collateralReservationId, crt.collateralReservationId);
+        assertWeb3Equal(event.mintedAmountUBA, crt.valueUBA);
+        assertWeb3Equal(event.receivedFeeUBA, crt.feeUBA);
+        assertWeb3Equal(event.redemptionTicketId, 1);
+        assertWeb3Equal(burned, crFee);
     });
 
     it("should self-mint", async () => {
