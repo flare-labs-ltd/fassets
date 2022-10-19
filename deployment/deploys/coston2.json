@@ -203,5 +203,70 @@
     "name": "PollingAccept",
     "contractName": "PollingAccept.sol",
     "address": "0x0dC26E31aff8ac4B5e3D7B21bFcF8fDfD1C96d50"
+  },
+  {
+    "name": "AttestationClient",
+    "contractName": "AttestationClientSC.sol",
+    "address": "0xe1B3b8F6b298b52bCd15357ED29e65e66a4045fF"
+  },
+  {
+    "name": "AgentVaultFactory",
+    "contractName": "AgentVaultFactory.sol",
+    "address": "0x8731324a6C09a1745bD15009Dc8FcceF11c05F4a"
+  },
+  {
+    "name": "AssetManagerController",
+    "contractName": "AssetManagerController.sol",
+    "address": "0x00aD4926D7613c8e00cB6CFa61831D5668265724"
+  },
+  {
+    "name": "AssetManager_FtestALGO",
+    "contractName": "AssetManager.sol",
+    "address": "0xF0B4ACda6D679ea22AC5C4fD1973D0d58eA10ec1"
+  },
+  {
+    "name": "FAsset_FtestALGO",
+    "contractName": "FAsset.sol",
+    "address": "0x79dC3dA279A2ADc72210BD00e10951AB9dC70ABc"
+  },
+  {
+    "name": "AssetManager_FtestBTC",
+    "contractName": "AssetManager.sol",
+    "address": "0x57965788BD1a93639CE738a58176e1A3d6F4d04f"
+  },
+  {
+    "name": "FAsset_FtestBTC",
+    "contractName": "FAsset.sol",
+    "address": "0x93C1e99C8dD990D77232821f9476c308FBad47f5"
+  },
+  {
+    "name": "AssetManager_FtestDOGE",
+    "contractName": "AssetManager.sol",
+    "address": "0x053568617FFccEe2F75073975CC0e1549Ff9db71"
+  },
+  {
+    "name": "FAsset_FtestDOGE",
+    "contractName": "FAsset.sol",
+    "address": "0x0D8448C0fBB84c30395838C8b3fD64722ea94532"
+  },
+  {
+    "name": "AssetManager_FtestLTC",
+    "contractName": "AssetManager.sol",
+    "address": "0x78dC73Dab92F57DA506F3538A68A2f163dB8c3A0"
+  },
+  {
+    "name": "FAsset_FtestLTC",
+    "contractName": "FAsset.sol",
+    "address": "0xD036a8F254ef782cb93af4F829A1568E992c3864"
+  },
+  {
+    "name": "AssetManager_FtestXRP",
+    "contractName": "AssetManager.sol",
+    "address": "0xc85759553AEE2D4125aFa8a9421AAf5397b96E6b"
+  },
+  {
+    "name": "FAsset_FtestXRP",
+    "contractName": "FAsset.sol",
+    "address": "0x63870142f7D3030a5966bC031F0ae113F1CEB406"
   }
 ]
