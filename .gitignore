@@ -60,6 +60,8 @@ deployment/deploys/*
 !deployment/deploys/songbird.json
 !deployment/deploys/songbird_fix.json
 !deployment/deploys/songbird_ftso_v2.json
+!deployment/deploys/coston.json
+!deployment/deploys/coston2.json
 
 ## .env
 .env

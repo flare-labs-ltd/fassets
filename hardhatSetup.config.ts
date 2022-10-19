@@ -64,12 +64,22 @@ const config: HardhatUserConfig = {
             accounts: accounts.map((x: any) => x.privateKey)
         },
         songbird: {
-            url: process.env.SONGBIRD_RPC || "http://127.0.0.1:9650/ext/bc/C/rpc",
+            url: process.env.SONGBIRD_RPC || "https://songbird-api.flare.network/ext/C/rpc",
+            timeout: 40000,
+            accounts: accounts.map((x: any) => x.privateKey)
+        },
+        flare: {
+            url: process.env.FLARE_RPC || "https://flare-api.flare.network/ext/C/rpc",
             timeout: 40000,
             accounts: accounts.map((x: any) => x.privateKey)
         },
         coston: {
-            url: process.env.COSTON_RPC || "http://127.0.0.1:9650/ext/bc/C/rpc",
+            url: process.env.COSTON_RPC || "https://coston-api.flare.network/ext/C/rpc",
+            timeout: 40000,
+            accounts: accounts.map((x: any) => x.privateKey)
+        },
+        coston2: {
+            url: process.env.COSTON2_RPC || "https://coston2-api.flare.network/ext/C/rpc",
             timeout: 40000,
             accounts: accounts.map((x: any) => x.privateKey)
         },
