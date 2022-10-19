@@ -80,7 +80,8 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
         }
         // optionally link the AssetManager
         if (link) {
-            await linkContracts(hre, ["AssetManager"], null);
+            const mapfile = `deployment/deploys/${networkConfig}.libraries.json`
+            await linkContracts(hre, ["AssetManager"], mapfile);
         }
         // optionally run the full deploy
         if (deployController) {

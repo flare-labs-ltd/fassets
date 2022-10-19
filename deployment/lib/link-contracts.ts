@@ -1,17 +1,19 @@
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync } from 'fs';
 import { Artifact, HardhatRuntimeEnvironment } from 'hardhat/types';
+import { Contract, loadContractsList, saveContractsList } from './contracts';
 
 export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: string[], mapfile: string | null) {
     const web3 = hre.web3;
 
     const accounts = await web3.eth.getAccounts();
 
-    let existingDeployedLibs: Map<string, string> = new Map();
-    if (mapfile && existsSync(mapfile)) {
-        existingDeployedLibs = new Map(Object.entries(JSON.parse(readFileSync(mapfile).toString())));
-    }
-
     const deployedLibs: Map<string, string> = new Map();
+    const existingDeployedLibs: Map<string, string> = new Map();
+    
+    if (mapfile && existsSync(mapfile)) {
+        const contractsList = loadContractsList(mapfile);
+        contractsList.forEach(c => existingDeployedLibs.set(`${c.contractName}:${c.name}`, c.address));
+    }
 
     function getDependencies(contract: Artifact): Set<string> {
         const dependencies = new Set<string>();
@@ -106,6 +108,10 @@ export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: s
     }
 
     if (mapfile) {
-        writeFileSync(mapfile, JSON.stringify(Object.fromEntries(deployedLibs), null, 4));
+        const contractsList: Contract[] = Array.from(deployedLibs.entries()).map(([key, address]) => {
+            const [contractName, name] = key.split(':');
+            return { name, contractName, address };
+        });
+        saveContractsList(mapfile, contractsList);
     }
 }

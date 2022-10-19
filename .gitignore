@@ -57,11 +57,10 @@ flattened
 ## Test deploys info
 deployment/deploys/*
 !deployment/deploys/staging.json
-!deployment/deploys/songbird.json
-!deployment/deploys/songbird_fix.json
-!deployment/deploys/songbird_ftso_v2.json
 !deployment/deploys/coston.json
+!deployment/deploys/coston.libraries.json
 !deployment/deploys/coston2.json
+!deployment/deploys/coston2.libraries.json
 
 ## .env
 .env
