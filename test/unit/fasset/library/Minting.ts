@@ -7,7 +7,7 @@ import { EventArgs } from "../../../../lib/utils/events/common";
 import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { TX_BLOCKED, TX_FAILED } from "../../../../lib/underlying-chain/interfaces/IBlockChain";
-import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";

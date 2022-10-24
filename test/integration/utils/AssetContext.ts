@@ -1,7 +1,7 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
 import { amgToNATWeiPrice, AMG_NATWEI_PRICE_SCALE } from "../../../lib/fasset/Conversions";
-import { newAssetManager } from "../../../lib/fasset/DeployAssetManager";
+import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import {
     AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents, AssetManagerEvents, AttestationClientSCEvents, FAssetEvents,
     FtsoManagerMockEvents, FtsoMockEvents, FtsoRegistryMockEvents, IAssetContext, StateConnectorMockEvents, WNatEvents

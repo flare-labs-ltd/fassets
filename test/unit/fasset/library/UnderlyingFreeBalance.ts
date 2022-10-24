@@ -8,7 +8,7 @@ import { randomAddress, toBNExp } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../../lib/verification/sources/sources";
-import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { createTestSettings } from "../test-settings";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { expectRevert, time } from "@openzeppelin/test-helpers";

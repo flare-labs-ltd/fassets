@@ -3,7 +3,7 @@ import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, Ftso
 import { eventArgs, findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";

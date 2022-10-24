@@ -1,8 +1,8 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance } from "../../typechain-truffle";
-import { GovernanceCallTimelocked } from "../../typechain-truffle/AssetManagerController";
-import { findEvent, requiredEventArgs } from "../utils/events/truffle";
-import { AssetManagerSettings } from "./AssetManagerTypes";
+import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
+import { findEvent } from "../../../lib/utils/events/truffle";
+import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance } from "../../../typechain-truffle";
+import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
 
 export async function newAssetManager(
     governanceAddress: string,
