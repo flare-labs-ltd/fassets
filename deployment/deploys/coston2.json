@@ -225,7 +225,7 @@
     "address": "0x7d40dD74d3aE1a7e4A7dd08eaE899e85940563cd"
   },
   {
-    "name": "FAsset_FtestALGO",
+    "name": "FtestALGO",
     "contractName": "FAsset.sol",
     "address": "0xAb35dEf6f863FC1e91dE4c20A3596b388eB1CFb4"
   },
@@ -235,7 +235,7 @@
     "address": "0xA0AB1cB92A4AF81f84dCd258155B5c25D247b54E"
   },
   {
-    "name": "FAsset_FtestBTC",
+    "name": "FtestBTC",
     "contractName": "FAsset.sol",
     "address": "0x830bceA96E56DBC1F8578f75fBaC0AF16B32A07d"
   },
@@ -245,7 +245,7 @@
     "address": "0x32eF223A01fB55Fd862E6E30d5F4A3b2d44f9586"
   },
   {
-    "name": "FAsset_FtestDOGE",
+    "name": "FtestDOGE",
     "contractName": "FAsset.sol",
     "address": "0x4977FC58783ceBCC310311C800B786EcAf45F98f"
   },
@@ -255,7 +255,7 @@
     "address": "0x7997A4c8b8E97d289989431B996AB1C6a9975Ad9"
   },
   {
-    "name": "FAsset_FtestLTC",
+    "name": "FtestLTC",
     "contractName": "FAsset.sol",
     "address": "0xf45C720549136d5E2d6a5A2F12573A36E36C3411"
   },
@@ -265,7 +265,7 @@
     "address": "0x2dD8146Ad2138ac61F93E549f8F917927B47E28a"
   },
   {
-    "name": "FAsset_FtestXRP",
+    "name": "FtestXRP",
     "contractName": "FAsset.sol",
     "address": "0xc783bfC59158E888dA3E9c7768aaDC7a58ee7809"
   }

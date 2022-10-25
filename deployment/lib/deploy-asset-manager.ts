@@ -88,7 +88,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     
     const symbol = parameters.fAssetSymbol;
     contracts[`AssetManager_${symbol}`] = newContract(`AssetManager_${symbol}`, "AssetManager.sol", assetManager.address);
-    contracts[`FAsset_${symbol}`] = newContract(`FAsset_${symbol}`, "FAsset.sol", fAsset.address);
+    contracts[symbol] = newContract(symbol, "FAsset.sol", fAsset.address);
     saveContracts(contractsFile, contracts);
 
     await fAsset.switchToProductionMode({ from: deployer });

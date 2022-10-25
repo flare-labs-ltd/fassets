@@ -2,3 +2,4 @@ contracts/token/implementation/VPToken.sol
 contracts/token/implementation/WNat.sol
 contracts/addressUpdater/implementation/AddressUpdater.sol
 contracts/genesis/implementation/GovernanceSettings.sol
+contracts/inflation/mock/SuicidalMock.sol

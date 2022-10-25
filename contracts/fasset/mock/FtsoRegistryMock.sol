@@ -34,23 +34,34 @@ contract FtsoRegistryMock is IFtsoRegistry {
         return index - 1;
     }
     
+    function getSupportedIndices() external view returns(uint256[] memory _supportedIndices) {
+        _supportedIndices = new uint256[](ftsos.length);
+        for (uint256 i = 0; i < _supportedIndices.length; i++) {
+            _supportedIndices[i] = i + 1;
+        }
+    }
+    
+    function getSupportedSymbols() external view returns(string[] memory _supportedSymbols) {
+        _supportedSymbols = new string[](ftsos.length);
+        for (uint256 i = 0; i < _supportedSymbols.length; i++) {
+            _supportedSymbols[i] = ftsos[i].symbol();
+        }
+    }
+    
+    function getSupportedFtsos() external view returns(IIFtso[] memory _ftsos) {
+        return ftsos;
+    }
+    
     function getFtsoBySymbol(string memory _symbol) external view returns(IIFtso _activeFtsoAddress) {}
-    function getSupportedIndices() external view returns(uint256[] memory _supportedIndices) {}
-    function getSupportedSymbols() external view returns(string[] memory _supportedSymbols) {}
-    function getSupportedFtsos() external view returns(IIFtso[] memory _ftsos) {}
     function getFtsoSymbol(uint256 _ftsoIndex) external view returns (string memory _symbol) {}
     function getCurrentPrice(uint256 _ftsoIndex) external view returns(uint256 _price, uint256 _timestamp) {}
     function getCurrentPrice(string memory _symbol) external view returns(uint256 _price, uint256 _timestamp) {}
-
     function getSupportedIndicesAndFtsos() external view 
         returns(uint256[] memory _supportedIndices, IIFtso[] memory _ftsos) {}
-
     function getSupportedSymbolsAndFtsos() external view 
         returns(string[] memory _supportedSymbols, IIFtso[] memory _ftsos) {}
-
     function getSupportedIndicesAndSymbols() external view 
         returns(uint256[] memory _supportedIndices, string[] memory _supportedSymbols) {}
-
     function getSupportedIndicesSymbolsAndFtsos() external view 
         returns(uint256[] memory _supportedIndices, string[] memory _supportedSymbols, IIFtso[] memory _ftsos) {}
 }
