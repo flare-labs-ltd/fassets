@@ -52,10 +52,10 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
     const contracts: ChainContracts = {
         GovernanceSettings: newContract('GovernanceSettings', 'GovernanceSettings.sol', governanceSettings.address),
         AddressUpdater: newContract('AddressUpdater', 'AddressUpdater.sol', addressUpdater.address),
-        StateConnector: newContract('StateConnector', 'StateConnector.sol', stateConnector.address),
+        StateConnector: newContract('StateConnector', 'StateConnectorMock.sol', stateConnector.address),
         WNat: newContract('WNat', 'WNat.sol', wNat.address),
-        FtsoRegistry: newContract('FtsoRegistry', 'FtsoRegistry.sol', ftsoRegistry.address),
-        FtsoManager: newContract('FtsoManager', 'FtsoManager.sol', ftsoManager.address),
+        FtsoRegistry: newContract('FtsoRegistry', 'FtsoRegistryMock.sol', ftsoRegistry.address),
+        FtsoManager: newContract('FtsoManager', 'FtsoManagerMock.sol', ftsoManager.address),
     };
     
     // add FTSOs

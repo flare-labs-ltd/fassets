@@ -15,9 +15,13 @@ contract FtsoRegistryMock is IFtsoRegistry {
         return index;
     }
     
-    function getFtso(uint256 _ftsoIndex) external view returns(IIFtso _activeFtsoAddress) {
+    function getFtso(uint256 _ftsoIndex) public view returns(IIFtso _activeFtsoAddress) {
         require(_ftsoIndex < ftsos.length);
         return ftsos[_ftsoIndex];
+    }
+    
+    function getFtsoBySymbol(string memory _symbol) external view returns(IIFtso _activeFtsoAddress) {
+        return getFtso(getFtsoIndex(_symbol));
     }
     
     function getFtsos(uint256[] memory _indices) external view returns(IFtsoGenesis[] memory _ftsos) {
@@ -28,7 +32,7 @@ contract FtsoRegistryMock is IFtsoRegistry {
         }
     }
 
-    function getFtsoIndex(string memory _symbol) external view returns (uint256) {
+    function getFtsoIndex(string memory _symbol) public view returns (uint256) {
         uint256 index = symbolIndex[_symbol];
         require(index > 0, "unknown ftso symbol");
         return index - 1;
@@ -52,7 +56,6 @@ contract FtsoRegistryMock is IFtsoRegistry {
         return ftsos;
     }
     
-    function getFtsoBySymbol(string memory _symbol) external view returns(IIFtso _activeFtsoAddress) {}
     function getFtsoSymbol(uint256 _ftsoIndex) external view returns (string memory _symbol) {}
     function getCurrentPrice(uint256 _ftsoIndex) external view returns(uint256 _price, uint256 _timestamp) {}
     function getCurrentPrice(string memory _symbol) external view returns(uint256 _price, uint256 _timestamp) {}
