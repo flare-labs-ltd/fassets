@@ -174,7 +174,17 @@ export function tryCatch<T>(body: () => T, errorHandler?: (err: unknown) => T) {
  * Run `func` in parallel. Allows nicer code in case func is an async lambda.
  */
 export function runAsync(func: () => Promise<void>) {
-    void func();
+    void func()
+        .catch(e => { console.error(e); });
+}
+
+/**
+ * Run async main function and wait for exit.
+ */
+export function runAsyncMain(func: (args: string[]) => Promise<void>, errorExitCode: number = 123) {
+    void func(process.argv.slice(2))
+        .then(() => { process.exit(0); })
+        .catch(e => { console.error(e); process.exit(errorExitCode); });
 }
 
 /**
