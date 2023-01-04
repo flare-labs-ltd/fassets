@@ -2,12 +2,15 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interface/IWNat.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAgentVault.sol";
 
 
 contract AgentVault is ReentrancyGuard, IAgentVault {
+    using SafeERC20 for IERC20;
+    
     IAssetManager public immutable assetManager;
     address payable public immutable override owner;
 
@@ -128,10 +131,13 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
 
     // Allow transfering a token, airdropped to the agent vault, to the owner.
     // Doesn't work for wNat because this would allow withdrawing the locked collateral.
-    function transferExternalToken(IERC20 _token, uint256 _amount) external override onlyOwner {
+    function transferExternalToken(IERC20 _token, uint256 _amount) 
+        external override 
+        onlyOwner 
+        nonReentrant 
+    {
         require(assetManager.getWNat() != _token, "Transfer from wNat not allowed");
-        bool success = _token.transfer(owner, _amount);
-        assert(success);
+        _token.safeTransfer(owner, _amount);
     }
 
     function _transferNAT(address payable _recipient, uint256 _amount) private {
