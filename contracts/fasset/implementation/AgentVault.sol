@@ -24,17 +24,12 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         _;
     }
 
-    modifier onlyCollateral(IERC20 _token) {
-        require(assetManager.isCollateralToken(_token), "only collateral tokens");
-        _;
-    }
-    
     constructor(IAssetManager _assetManager, address payable _owner) {
         assetManager = _assetManager;
         owner = _owner;
     }
     
-    // needed to allow wNat.withdraw() to send back funds
+    // needed to allow wNat.withdraw() to send back funds, since there is no withdrawTo()
     receive() external payable {
         require(msg.sender == address(assetManager.getWNat()), "only wNat");
     }
@@ -48,7 +43,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         assetManager.updateCollateral(updatedTokens);
     }
     
-    // must call `_token.approve(vault, _amount)` before
+    // must call `token.approve(vault, amount)` before for each token in _tokens
     function depositCollateral(IERC20[] memory _tokens, uint256[] memory _amounts) 
         external override 
         onlyOwner
@@ -60,9 +55,48 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     }
 
     // update collateral after `transfer(vault, some amount)` was called (alternative to depositCollateral)
-    function updateCollateral(IERC20[] memory _tokens) external override 
+    function updateCollateral(IERC20[] memory _tokens) 
+        external override 
+        onlyOwner
     {
         assetManager.updateCollateral(_tokens);
+    }
+
+    function withdrawNat(uint256 _amount, address payable _recipient)
+        external override
+        onlyOwner
+        nonReentrant
+    {
+        IWNat wnat = assetManager.getWNat();
+        // check that enough was announced and reduce announcement
+        assetManager.withdrawCollateral(wnat, _amount);
+        // withdraw from wnat contract and transfer it to _recipient
+        wnat.withdraw(_amount);
+        _transferNAT(_recipient, _amount);
+    }
+
+    function withdrawCollateral(IERC20[] memory _tokens, uint256[] memory _amounts, address _recipient) 
+        external override 
+        onlyOwner
+        nonReentrant 
+    {
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            // check that enough was announced and reduce announcement
+            assetManager.withdrawCollateral(_tokens[i], _amounts[i]);
+            // transfer tokens to recipient
+            _tokens[i].safeTransfer(_recipient, _amounts[i]);
+        }
+    }
+
+    // Allow transfering a token, airdropped to the agent vault, to the owner.
+    // Doesn't work for wNat because this would allow withdrawing the locked collateral.
+    function transferExternalToken(IERC20 _token, uint256 _amount) 
+        external override 
+        onlyOwner 
+        nonReentrant 
+    {
+        require(!assetManager.isCollateralToken(_token), "Only non-collateral tokens");
+        _token.safeTransfer(owner, _amount);
     }
 
     // TODO: Should check that _token is a collateral token? There should be no need for that.
@@ -95,7 +129,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         return _ftsoRewardManager.claim(address(this), owner, _lastRewardEpoch, false);
     }
 
-    // Claim ftso rewards. Aletrnatively, you can set claim executor and then claim directly from FtsoRewardManager.
+    // Set executors and recipients that can then automatically claim rewards through FtsoRewardManager.
     function setFtsoAutoClaiming(
         IClaimSetupManager _claimSetupManager, 
         address[] memory _executors,
@@ -108,14 +142,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         _claimSetupManager.setAllowedClaimRecipients(_allowedRecipients);
     }
 
-    function optOutOfAirdrop(IDistributionToDelegators _distribution) external override onlyOwner {
-        _distribution.optOutOfAirdrop();
-    }
-
-    function claimAirdropDistribution(
-        IDistributionToDelegators _distribution,
-        uint256 _month
-    )
+    function claimAirdropDistribution(IDistributionToDelegators _distribution, uint256 _month)
         external override
         onlyOwner
         returns(uint256)
@@ -123,30 +150,8 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         return _distribution.claim(owner, _month);
     }
     
-    function withdrawNat(uint256 _amount, address payable _recipient)
-        external override
-        onlyOwner
-        nonReentrant
-    {
-        IWNat wnat = assetManager.getWNat();
-        // check that enough was announced and reduce announcement
-        assetManager.withdrawCollateral(wnat, _amount);
-        // withdraw from wnat contract and transfer it to _recipient
-        wnat.withdraw(_amount);
-        _transferNAT(_recipient, _amount);
-    }
-
-    function withdrawCollateral(IERC20[] memory _tokens, uint256[] memory _amounts, address _recipient) 
-        external override 
-        onlyOwner
-        nonReentrant 
-    {
-        for (uint256 i = 0; i < _tokens.length; i++) {
-            // check that enough was announced and reduce announcement
-            assetManager.withdrawCollateral(_tokens[i], _amounts[i]);
-            // transfer tokens to recipient
-            _tokens[i].safeTransfer(_recipient, _amounts[i]);
-        }
+    function optOutOfAirdrop(IDistributionToDelegators _distribution) external override onlyOwner {
+        _distribution.optOutOfAirdrop();
     }
 
     // Used by asset manager when destroying agent.
@@ -195,17 +200,6 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     {
         _wNat.withdraw(_amount);
         _transferNAT(_recipient, _amount);
-    }
-
-    // Allow transfering a token, airdropped to the agent vault, to the owner.
-    // Doesn't work for wNat because this would allow withdrawing the locked collateral.
-    function transferExternalToken(IERC20 _token, uint256 _amount) 
-        external override 
-        onlyOwner 
-        nonReentrant 
-    {
-        require(!assetManager.isCollateralToken(_token), "Only non-collateral tokens");
-        _token.safeTransfer(owner, _amount);
     }
 
     function _transferNAT(address payable _recipient, uint256 _amount) private {
