@@ -23,6 +23,11 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         require(msg.sender == address(assetManager), "only asset manager");
         _;
     }
+
+    modifier onlyCollateral(IERC20 _token) {
+        require(assetManager.isCollateralToken(_token), "only collateral tokens");
+        _;
+    }
     
     constructor(IAssetManager _assetManager, address payable _owner) {
         assetManager = _assetManager;
@@ -35,21 +40,34 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     }
 
     // without "onlyOwner" to allow owner to send funds from any source
-    function deposit() external payable override {
-        assetManager.getWNat().deposit{value: msg.value}();
-        assetManager.depositCollateral(msg.value);
+    function depositNat() external payable override {
+        IWNat wnat = assetManager.getWNat();
+        wnat.deposit{value: msg.value}();
+        assetManager.updateCollateral(wnat);    // implicitly checks wnat is collateral token
+    }
+    
+    // must call `_token.approve(vault, _amount)` before
+    function depositCollateral(IERC20 _token, uint256 _amount) external override {
+        _token.transferFrom(msg.sender, address(this), _amount);
+        assetManager.updateCollateral(_token);  // implicitly checks _token is collateral token
     }
 
-    function delegate(address _to, uint256 _bips) external override onlyOwner {
-        assetManager.getWNat().delegate(_to, _bips);
+    // update collateral after `transfer(vault, some amount)` was called (alternative to depositCollateral)
+    function updateCollateral(IERC20 _token) external override onlyCollateral(_token) {
+        assetManager.updateCollateral(_token);  // implicitly checks onlyCollateral(_token)
     }
 
-    function undelegateAll() external override onlyOwner {
-        assetManager.getWNat().undelegateAll();
+    // TODO: Should check that _token is a collateral token? There should be no need for that.
+    function delegate(IVPToken _token, address _to, uint256 _bips) external override onlyOwner {
+        _token.delegate(_to, _bips);
     }
 
-    function revokeDelegationAt(address _who, uint256 _blockNumber) external override onlyOwner {
-        assetManager.getWNat().revokeDelegationAt(_who, _blockNumber);
+    function undelegateAll(IVPToken _token) external override onlyOwner {
+        _token.undelegateAll();
+    }
+
+    function revokeDelegationAt(IVPToken _token, address _who, uint256 _blockNumber) external override onlyOwner {
+        _token.revokeDelegationAt(_who, _blockNumber);
     }
 
     function delegateGovernance(address _to) external override onlyOwner {
@@ -60,15 +78,26 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         assetManager.getWNat().governanceVotePower().undelegate();
     }
 
-    function claimFtsoRewards(
-        IFtsoRewardManager _ftsoRewardManager,
-        uint256[] memory _rewardEpochs
-    ) 
+    // Claim ftso rewards. Aletrnatively, you can set claim executor and then claim directly from FtsoRewardManager.
+    function claimFtsoRewards(IFtsoRewardManager _ftsoRewardManager, uint256 _lastRewardEpoch) 
         external override
         onlyOwner
         returns (uint256)
     {
-        return _ftsoRewardManager.claimReward(owner, _rewardEpochs);
+        return _ftsoRewardManager.claim(address(this), owner, _lastRewardEpoch, false);
+    }
+
+    // Claim ftso rewards. Aletrnatively, you can set claim executor and then claim directly from FtsoRewardManager.
+    function setFtsoAutoClaiming(
+        IClaimSetupManager _claimSetupManager, 
+        address[] memory _executors,
+        address[] memory _allowedRecipients
+    )
+        external payable override
+        onlyOwner
+    {
+        _claimSetupManager.setClaimExecutors{value: msg.value}(_executors);
+        _claimSetupManager.setAllowedClaimRecipients(_allowedRecipients);
     }
 
     function optOutOfAirdrop(IDistributionToDelegators _distribution) external override onlyOwner {
@@ -86,22 +115,50 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         return _distribution.claim(owner, _month);
     }
     
-    function withdraw(uint256 _amount) external override onlyOwner nonReentrant {
+    function withdrawNat(uint256 _amount, address payable _recipient)
+        external override
+        onlyOwner
+        nonReentrant
+    {
+        IWNat wnat = assetManager.getWNat();
         // check that enough was announced and reduce announcement
-        assetManager.withdrawCollateral(_amount);
+        assetManager.withdrawCollateral(wnat, _amount);
         // withdraw from wnat contract and transfer it to _recipient
-        assetManager.getWNat().withdraw(_amount);
-        _transferNAT(owner, _amount);
+        wnat.withdraw(_amount);
+        _transferNAT(_recipient, _amount);
+    }
+
+    function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient) 
+        external override 
+        onlyOwner
+        nonReentrant 
+    {
+        // check that enough was announced and reduce announcement
+        assetManager.withdrawCollateral(_token, _amount);
+        // transfer tokens to recipient
+        _token.safeTransfer(_recipient, _amount);
     }
 
     // Used by asset manager when destroying agent.
-    // Completely erases agent vault and deposits all funds to the _recipient.
-    function destroy(IWNat _wNat) external override onlyAssetManager {
-        if (address(_wNat.governanceVotePower()) != address(0)) {
-            _wNat.governanceVotePower().undelegate();
+    // Completely erases agent vault and transfers all funds to the owner.
+    function destroy(IERC20[] memory _tokens, TokenType[] memory _tokenTypes)
+        external override
+        onlyAssetManager
+    {
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            IERC20 token = _tokens[i];
+            TokenType tokenType = _tokenTypes[i];
+            if (tokenType == TokenType.WNAT) {
+                IWNat wnat = IWNat(address(token));
+                if (address(wnat.governanceVotePower()) != address(0)) {
+                    wnat.governanceVotePower().undelegate();
+                }
+                wnat.undelegateAll();
+            } else if (tokenType == TokenType.VP_TOKEN) {
+                IVPToken(address(token)).undelegateAll();
+            }
+            token.transfer(owner, token.balanceOf(address(this)));
         }
-        _wNat.undelegateAll();
-        _wNat.withdraw(_wNat.balanceOf(address(this)));
         selfdestruct(owner);
     }
 
@@ -109,13 +166,12 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     // Since _recipient is typically an unknown address, we do not directly send NAT,
     // but transfer WNAT (doesn't trigger any callbacks) which the recipient must withdraw.
     // Is nonReentrant to prevent reentrancy in case anybody ever adds receive hooks on wNat. 
-    function payout(IWNat _wNat, address _recipient, uint256 _amount)
+    function payout(IERC20 _token, address _recipient, uint256 _amount)
         external override
         onlyAssetManager
         nonReentrant
     {
-        bool success = _wNat.transfer(_recipient, _amount);
-        assert(success);
+        _token.safeTransfer(_recipient, _amount);
     }
     
     // Used by asset manager (only for burn for now).
@@ -136,7 +192,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         onlyOwner 
         nonReentrant 
     {
-        require(assetManager.getWNat() != _token, "Transfer from wNat not allowed");
+        require(!assetManager.isCollateralToken(_token), "Only non-collateral tokens");
         _token.safeTransfer(owner, _amount);
     }
 
