@@ -43,18 +43,26 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     function depositNat() external payable override {
         IWNat wnat = assetManager.getWNat();
         wnat.deposit{value: msg.value}();
-        assetManager.updateCollateral(wnat);    // implicitly checks wnat is collateral token
+        IERC20[] memory updatedTokens = new IERC20[](1);
+        updatedTokens[0] = wnat;
+        assetManager.updateCollateral(updatedTokens);
     }
     
     // must call `_token.approve(vault, _amount)` before
-    function depositCollateral(IERC20 _token, uint256 _amount) external override {
-        _token.transferFrom(msg.sender, address(this), _amount);
-        assetManager.updateCollateral(_token);  // implicitly checks _token is collateral token
+    function depositCollateral(IERC20[] memory _tokens, uint256[] memory _amounts) 
+        external override 
+        onlyOwner
+    {
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            _tokens[i].transferFrom(msg.sender, address(this), _amounts[i]);
+        }
+        assetManager.updateCollateral(_tokens);
     }
 
     // update collateral after `transfer(vault, some amount)` was called (alternative to depositCollateral)
-    function updateCollateral(IERC20 _token) external override onlyCollateral(_token) {
-        assetManager.updateCollateral(_token);  // implicitly checks onlyCollateral(_token)
+    function updateCollateral(IERC20[] memory _tokens) external override 
+    {
+        assetManager.updateCollateral(_tokens);
     }
 
     // TODO: Should check that _token is a collateral token? There should be no need for that.
@@ -128,15 +136,17 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         _transferNAT(_recipient, _amount);
     }
 
-    function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient) 
+    function withdrawCollateral(IERC20[] memory _tokens, uint256[] memory _amounts, address _recipient) 
         external override 
         onlyOwner
         nonReentrant 
     {
-        // check that enough was announced and reduce announcement
-        assetManager.withdrawCollateral(_token, _amount);
-        // transfer tokens to recipient
-        _token.safeTransfer(_recipient, _amount);
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            // check that enough was announced and reduce announcement
+            assetManager.withdrawCollateral(_tokens[i], _amounts[i]);
+            // transfer tokens to recipient
+            _tokens[i].safeTransfer(_recipient, _amounts[i]);
+        }
     }
 
     // Used by asset manager when destroying agent.
@@ -166,12 +176,14 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     // Since _recipient is typically an unknown address, we do not directly send NAT,
     // but transfer WNAT (doesn't trigger any callbacks) which the recipient must withdraw.
     // Is nonReentrant to prevent reentrancy in case anybody ever adds receive hooks on wNat. 
-    function payout(IERC20 _token, address _recipient, uint256 _amount)
+    function payout(IERC20[] memory _tokens, address _recipient, uint256[] memory _amounts)
         external override
         onlyAssetManager
         nonReentrant
     {
-        _token.safeTransfer(_recipient, _amount);
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            _tokens[i].safeTransfer(_recipient, _amounts[i]);
+        }
     }
     
     // Used by asset manager (only for burn for now).
