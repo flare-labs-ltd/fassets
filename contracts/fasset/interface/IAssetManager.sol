@@ -16,4 +16,5 @@ interface IAssetManager {
     function getWNat() external view returns (IWNat);
     function assetManagerController() external view returns (address);
     function controllerAttached() external view returns (bool);
+    function assetPriceNatWei() external view returns (uint256 _multiplier, uint256 _divisor);
 }
