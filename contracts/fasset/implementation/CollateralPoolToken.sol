@@ -31,6 +31,14 @@ contract CollateralPoolToken is ERC20 {
         _mint(_account, _amount);
     }
     
+    function burn(address _account, uint256 _amount) external onlyCollateralPool {
+        _burn(_account, _amount);
+    }
+    
+    function destroy() external onlyCollateralPool {
+        selfdestruct(collateralPool);
+    }
+
     function mintDelayed(address _account, uint256 _amount, uint256 _mintAt) external onlyCollateralPool {
         DelayedMinting[] storage accountMintings = delayedMintings[_account];
         require(accountMintings.length < MAX_DELAYED_MINTINGS, "too many delayed mintings");
@@ -57,13 +65,5 @@ contract CollateralPoolToken is ERC20 {
                 break;
             }
         }
-    }
-    
-    function burn(address _account, uint256 _amount) external onlyCollateralPool {
-        _burn(_account, _amount);
-    }
-    
-    function destroy() external onlyCollateralPool {
-        selfdestruct(collateralPool);
     }
 }
