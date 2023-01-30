@@ -1,0 +1,189 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
+    "properties": {
+        "$schema": {
+            "description": "JSON schema url",
+            "type": "string"
+        },
+        "announcedUnderlyingConfirmationMinSeconds": {
+            "description": "Minimum time that has to pass between underlying withdrawal announcement and the confirmation.\nAny value is ok, but higher values give more security agains multiple announcement attack by a miner.\nShouldn't be much bigger than state connector response time, so that payments can be confirmed without \nextra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).",
+            "type": "integer"
+        },
+        "assetDecimals": {
+            "description": "The number of decimals",
+            "type": "integer"
+        },
+        "assetMintingGranularityUBA": {
+            "description": "The value of AMG (asset minting granularity) in underlying base units (UBA).\nLot size and redemption ticket sizes will always be rounded down to a whole number of AMG\n(the same holds for the amounts in self-close and liquidate, which are not limited to whole number of lots).\nCan only be changed via redeploy of AssetManager.\nAMG is used internally instead of UBA so that minted quantities fit into 64bits to reduce storage.\nSo assetMintingGranularityUBA should be set so that the max supply in AMG of this currency\nin foreseeable time (say 100yr) cannot overflow 64 bits.\nWiil be 1 for most non-smart contract chains, but may be more for e.g. Ethereum, which has 18 decimals.",
+            "type": "string"
+        },
+        "assetName": {
+            "description": "Name of the original asset on the underlying chain.",
+            "type": "string"
+        },
+        "assetSymbol": {
+            "description": "Symbol for the original asset on the underlying chain.\nMust match the FTSO contract symbol for the asset.",
+            "type": "string"
+        },
+        "attestationWindowSeconds": {
+            "description": "Maximum time for which it is possible to obtain payment or non-payment proofs.\nrate-limited",
+            "type": "integer"
+        },
+        "burnAddress": {
+            "description": "Address for burning native currency (e.g. for collateral reservation fee afetr successful minting).",
+            "type": "string"
+        },
+        "burnWithSelfDestruct": {
+            "description": "If true, the NAT burning is done indirectly via transfer to burner contract and then self-destruct.\nThis is necessary on Songbird, where the burn address is unpayable.",
+            "type": "boolean"
+        },
+        "buybackCollateralFactorBIPS": {
+            "description": "Ratio at which the agents can buy back their collateral when f-asset is terminated.\nTypically a bit more than 1 to incentivise agents to buy f-assets and self-close instead.\nimmutable",
+            "type": "integer"
+        },
+        "ccbMinCollateralRatioBIPS": {
+            "description": "Minimum collateral ratio for agent in CCB (Collateral call band).\nA bit smaller than minCollateralRatioBIPS.\ntimelocked",
+            "type": "integer"
+        },
+        "ccbTimeSeconds": {
+            "description": "Agent can remain in CCB for this much time, after that liquidation starts automatically.\nrate-limited",
+            "type": "integer"
+        },
+        "chainId": {
+            "description": "Chain id as used in the state connector.\nimmutable",
+            "type": "integer"
+        },
+        "collateralReservationFeeBIPS": {
+            "description": "Collateral reservation fee that must be paid by the minter.\nPayment is in NAT, but is proportional to the value of assets to be minted.",
+            "type": "integer"
+        },
+        "confirmationByOthersAfterSeconds": {
+            "description": "If the agent or redeemer becomes unresponsive, we still need payment or non-payment confirmations\nto be presented eventually to properly track agent's underlying balance.\nTherefore we allow anybody to confirm payments/non-payments this many seconds after request was made.\nrate-limited",
+            "type": "integer"
+        },
+        "confirmationByOthersRewardNATWei": {
+            "description": "The user who makes abandoned redemption confirmations gets rewarded by the following amount.\nrate-limited",
+            "type": "string"
+        },
+        "fAssetName": {
+            "description": "The name of the f-asset.",
+            "type": "string"
+        },
+        "fAssetSymbol": {
+            "description": "The symbol for the f-asset.",
+            "type": "string"
+        },
+        "liquidationCollateralFactorBIPS": {
+            "description": "Factor with which to multiply the asset price in native currency to obtain the payment\nto the liquidator.\nExpressed in BIPS, e.g. [12000, 16000, 20000] means that the liquidator will be paid 1.2, 1.6 and 2.0\ntimes the market price of the liquidated assets.\nValues in array must increase and be greater than 100%.\nrate-limited",
+            "items": {
+                "type": "number"
+            },
+            "type": "array"
+        },
+        "liquidationStepSeconds": {
+            "description": "If there was no liquidator for the current liquidation offer, \ngo to the next step of liquidation after a certain period of time.\nrate-limited",
+            "type": "integer"
+        },
+        "lotSize": {
+            "description": "Lot size in base unit of underlying asset (e.g. wei or satoshi). \nMay change, which affects subsequent mintings and redemptions.\nrate-limited",
+            "type": "string"
+        },
+        "maxRedeemedTickets": {
+            "description": "To prevent unbounded work, the number of tickets redeemed in a single request is limited.\nrate-limited",
+            "minimum": 1,
+            "type": "integer"
+        },
+        "maxTrustedPriceAgeSeconds": {
+            "description": "Maximum age that trusted price feed is valid.\nOtherwise (if there were no trusted votes for that long) just use generic ftso price feed.\nrate-limited",
+            "type": "integer"
+        },
+        "minCollateralRatioBIPS": {
+            "description": "Minimum collateral ratio for healthy agents.\ntimelocked",
+            "type": "integer"
+        },
+        "minUpdateRepeatTimeSeconds": {
+            "description": "Minimum time after an update of a setting before the same setting can be updated again.\nimmutable",
+            "type": "integer"
+        },
+        "natSymbol": {
+            "description": "Symbol for the native currency (FLR/SGB/...).\nMust match the FTSO contract symbol for native currency.",
+            "type": "string"
+        },
+        "paymentChallengeRewardBIPS": {
+            "description": "Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).\nThis is the proportional part (in BIPS).\nrate-limited",
+            "type": "integer"
+        },
+        "paymentChallengeRewardNATWei": {
+            "description": "Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).\nThis is the fixed part (in underlying AMG, so that we can easily set it as some percent of lot size).\nrate-limited",
+            "type": "string"
+        },
+        "redemptionDefaultFactorBIPS": {
+            "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated in flare/sgb times redemption failure factor.\nExpressed in BIPS, e.g. 12000 for factor of 1.2.\nrate-limited",
+            "minimum": 10000,
+            "type": "integer"
+        },
+        "redemptionFeeBIPS": {
+            "description": "Redemption fee as percentage of the redemption amount.\nrate-limited",
+            "type": "integer"
+        },
+        "requireEOAAddressProof": {
+            "description": "For some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address.\nThis must be done by presenting a payment proof from that address.\nimmutable",
+            "type": "boolean"
+        },
+        "safetyMinCollateralRatioBIPS": {
+            "description": "Minimum collateral ratio required to get agent out of liquidation.\nIf the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.\nWiil always be greater than minCollateralRatioBIPS.\ntimelocked",
+            "type": "integer"
+        },
+        "underlyingBlocksForPayment": {
+            "description": "Number of underlying blocks that the minter or agent is allowed to pay underlying value.\nIf payment not reported in that time, minting/redemption can be challenged and default action triggered.\nCAREFUL: Count starts from the current proved block height, so the minters and agents should \nmake sure that current block height is fresh, otherwise they might not have enough time for payment.\ntimelocked",
+            "type": "integer"
+        },
+        "underlyingSecondsForPayment": {
+            "description": "Minimum time to allow agent to pay for redemption or minter to pay for minting.\nThis is useful for fast chains, when there can be more than one block per second.\nRedemption/minting payment failure can be called only after underlyingSecondsForPayment have elapsed\non underlying chain.\nCAREFUL: Count starts from the current proved block timestamp, so the minters and agents should \nmake sure that current block timestamp is fresh, otherwise they might not have enough time for payment.\nThis is partially mitigated by adding local duration since the last block height update to\nthe current underlying block timestamp.\ntimelocked",
+            "type": "integer"
+        },
+        "withdrawalWaitMinSeconds": {
+            "description": "Agent has to announce any collateral withdrawal ar vault destroy and then wait for at least \nwithdrawalWaitMinSeconds. This prevents challenged agent to remove all collateral before \nchallenge can be proved.\nrate-limited",
+            "type": "integer"
+        }
+    },
+    "required": [
+        "announcedUnderlyingConfirmationMinSeconds",
+        "assetDecimals",
+        "assetMintingGranularityUBA",
+        "assetName",
+        "assetSymbol",
+        "attestationWindowSeconds",
+        "burnAddress",
+        "burnWithSelfDestruct",
+        "buybackCollateralFactorBIPS",
+        "ccbMinCollateralRatioBIPS",
+        "ccbTimeSeconds",
+        "chainId",
+        "collateralReservationFeeBIPS",
+        "confirmationByOthersAfterSeconds",
+        "confirmationByOthersRewardNATWei",
+        "fAssetName",
+        "fAssetSymbol",
+        "liquidationCollateralFactorBIPS",
+        "liquidationStepSeconds",
+        "lotSize",
+        "maxRedeemedTickets",
+        "maxTrustedPriceAgeSeconds",
+        "minCollateralRatioBIPS",
+        "minUpdateRepeatTimeSeconds",
+        "natSymbol",
+        "paymentChallengeRewardBIPS",
+        "paymentChallengeRewardNATWei",
+        "redemptionDefaultFactorBIPS",
+        "redemptionFeeBIPS",
+        "requireEOAAddressProof",
+        "safetyMinCollateralRatioBIPS",
+        "underlyingBlocksForPayment",
+        "underlyingSecondsForPayment",
+        "withdrawalWaitMinSeconds"
+    ],
+    "type": "object"
+}
+

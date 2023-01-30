@@ -3,6 +3,7 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "../../utils/implementation/NativeTokenBurner.sol";
 import "../interface/IAssetManager.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
@@ -426,7 +427,15 @@ library Agents {
         internal
     {
         IAgentVault vault = IAgentVault(_agentVault);
-        vault.payoutNAT(_state.settings.wNat, _state.settings.burnAddress, _amountNATWei);
+        if (_state.settings.burnWithSelfDestruct) {
+            // burn by self-destructing a temporary burner contract
+            NativeTokenBurner burner = new NativeTokenBurner(_state.settings.burnAddress);
+            vault.payoutNAT(_state.settings.wNat, payable(address(burner)), _amountNATWei);
+            burner.die();
+        } else {
+            // burn directly to burn address
+            vault.payoutNAT(_state.settings.wNat, _state.settings.burnAddress, _amountNATWei);
+        }
     }
     
     function getAgent(

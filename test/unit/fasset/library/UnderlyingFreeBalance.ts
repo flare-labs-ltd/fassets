@@ -8,7 +8,7 @@ import { randomAddress, toBNExp } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../../lib/verification/sources/sources";
-import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { createTestSettings } from "../test-settings";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { expectRevert, time } from "@openzeppelin/test-helpers";
@@ -74,7 +74,7 @@ contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFree
         wallet = new MockChainWallet(chain);
         chain.mint(underlyingRandomAddress, 1000);
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);

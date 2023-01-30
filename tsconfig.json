@@ -21,6 +21,8 @@
     "include": [
         "./lib",
         "./test",
+        "deployment/lib",
+        "deployment/test",
         "./typechain",
         "./typechain-truffle",
         "node_modules/flare-smart-contracts/test/types"

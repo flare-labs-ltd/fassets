@@ -2,14 +2,15 @@
 pragma solidity 0.8.11;
 
 import { GovernedBase } from "./GovernedBase.sol";
+import { IGovernanceSettings } from "flare-smart-contracts/contracts/userInterfaces/IGovernanceSettings.sol";
 
 
 /**
  * @title Governed
- * @dev For deployed, governed contracts, enforce a non-zero address at create time.
+ * @dev For deployed, governed contracts, enforce non-zero addresses at create time.
  **/
 contract Governed is GovernedBase {
-    constructor(address _governance) GovernedBase(_governance) {
-        require(_governance != address(0), "_governance zero");
+    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance) {
+        initialise(_governanceSettings, _initialGovernance);
     }
 }

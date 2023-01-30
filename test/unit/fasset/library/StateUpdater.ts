@@ -2,7 +2,7 @@ import { time } from "@openzeppelin/test-helpers";
 import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
@@ -51,7 +51,7 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);

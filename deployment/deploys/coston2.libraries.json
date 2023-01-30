@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Agents",
+    "contractName": "contracts/fasset/library/Agents.sol",
+    "address": "0x8BFFF31B1757da579Bb5B118489568526F7fb6D4"
+  },
+  {
+    "name": "AvailableAgents",
+    "contractName": "contracts/fasset/library/AvailableAgents.sol",
+    "address": "0x0459c841b02Aee8730730C737582c53B20a27288"
+  },
+  {
+    "name": "Challenges",
+    "contractName": "contracts/fasset/library/Challenges.sol",
+    "address": "0x2530ce07D254eA185E8e0bCC37a39e2FbA3bE548"
+  },
+  {
+    "name": "CollateralReservations",
+    "contractName": "contracts/fasset/library/CollateralReservations.sol",
+    "address": "0x0Cf45557d25a4e4c0F1aC65EF6c48ae67c61a0E6"
+  },
+  {
+    "name": "FullAgentInfo",
+    "contractName": "contracts/fasset/library/FullAgentInfo.sol",
+    "address": "0x7fAeC7791277Ff512c41CA903c177B2Ed952dDAc"
+  },
+  {
+    "name": "Liquidation",
+    "contractName": "contracts/fasset/library/Liquidation.sol",
+    "address": "0x33958cC3535Fc328369EAC2B2Bebd120D67C7fa1"
+  },
+  {
+    "name": "Minting",
+    "contractName": "contracts/fasset/library/Minting.sol",
+    "address": "0x2cBbbBE1B75Ad7848F0844215816F551f429c64f"
+  },
+  {
+    "name": "Redemption",
+    "contractName": "contracts/fasset/library/Redemption.sol",
+    "address": "0xbAc762e2000b6815268587b081Fd17aC25519aD5"
+  },
+  {
+    "name": "SettingsUpdater",
+    "contractName": "contracts/fasset/library/SettingsUpdater.sol",
+    "address": "0xa43Ba00FCA75B805D17f67F9433b971E9a398690"
+  },
+  {
+    "name": "StateUpdater",
+    "contractName": "contracts/fasset/library/StateUpdater.sol",
+    "address": "0xAa7BC1924711B77A0F3Aaebdd550BfeDDDbaf3cd"
+  },
+  {
+    "name": "UnderlyingFreeBalance",
+    "contractName": "contracts/fasset/library/UnderlyingFreeBalance.sol",
+    "address": "0xadc8f433eA2371bE71D986d9B131892122969CA6"
+  },
+  {
+    "name": "UnderlyingWithdrawalAnnouncements",
+    "contractName": "contracts/fasset/library/UnderlyingWithdrawalAnnouncements.sol",
+    "address": "0xadcD6f616fCEEbEd731B2B3F01B8bd51A08b5CbD"
+  }
+]

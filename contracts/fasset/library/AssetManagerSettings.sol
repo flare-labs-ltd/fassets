@@ -51,6 +51,10 @@ library AssetManagerSettings {
         // immutable
         address payable burnAddress;
 
+        // If true, the NAT burning is done indirectly via transfer to burner contract and then self-destruct.
+        // This is necessary on Songbird, where the burn address is unpayable.
+        bool burnWithSelfDestruct;
+        
         // Must match attestation data chainId.
         // immutable
         uint32 chainId;
@@ -180,10 +184,6 @@ library AssetManagerSettings {
         // Maximum time for which it is possible to obtain payment or non-payment proofs.
         // rate-limited
         uint64 attestationWindowSeconds;
-        
-        // The time to wait for critical settings to take effect.
-        // immutable
-        uint64 timelockSeconds;
         
         // Minimum time after an update of a setting before the same setting can be updated again.
         // immutable

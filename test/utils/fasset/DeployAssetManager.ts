@@ -1,5 +1,8 @@
-import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance } from "../../typechain-truffle";
-import { AssetManagerSettings } from "./AssetManagerTypes";
+import { time } from "@openzeppelin/test-helpers";
+import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
+import { findEvent } from "../../../lib/utils/events/truffle";
+import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance } from "../../../typechain-truffle";
+import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
 
 export async function newAssetManager(
     governanceAddress: string,
@@ -7,7 +10,8 @@ export async function newAssetManager(
     name: string, 
     symbol: string, 
     decimals: number,
-    assetManagerSettings: AssetManagerSettings
+    assetManagerSettings: AssetManagerSettings,
+    updateExecutor: string = governanceAddress
 ): Promise<[AssetManagerInstance, FAssetInstance]> {
     const AssetManager = await linkAssetManager();
     const FAsset = artifacts.require('FAsset');
@@ -16,10 +20,25 @@ export async function newAssetManager(
     assetManagerSettings = { ...assetManagerSettings, assetManagerController: assetManagerControllerAddress };
     const assetManager = await AssetManager.new(assetManagerSettings, fAsset.address);
     if (typeof assetManagerController !== 'string') {
-        await assetManagerController.addAssetManager(assetManager.address, { from: governanceAddress });
+        const res = await assetManagerController.addAssetManager(assetManager.address, { from: governanceAddress });
+        await waitForTimelock(res, assetManagerController, updateExecutor);
+    } else {
+        // simulate attaching to asset manager controller (for unit tests, where controller is an eoa address)
+        await assetManager.attachController(true, { from: assetManagerController });
     }
     await fAsset.setAssetManager(assetManager.address, { from: governanceAddress });
     return [assetManager, fAsset];
+}
+
+// simulate waiting for governance timelock
+export async function waitForTimelock<C extends Truffle.ContractInstance>(response: Truffle.TransactionResponse<any> | Promise<Truffle.TransactionResponse<any>>, contract: C, executorAddress: string) {
+    const res = await response as Truffle.TransactionResponse<GovernanceCallTimelocked>;
+    const timelockEvent = findEvent(res, 'GovernanceCallTimelocked');
+    if (timelockEvent) {
+        const timelock = timelockEvent.args;
+        await time.increaseTo(Number(timelock.allowedAfterTimestamp) + 1);
+        await (contract as any).executeGovernanceCall(timelock.selector, { from: executorAddress });
+    }
 }
 
 export async function linkAssetManager() {

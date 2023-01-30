@@ -1,7 +1,7 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
 import { amgToNATWeiPrice, AMG_NATWEI_PRICE_SCALE } from "../../../lib/fasset/Conversions";
-import { newAssetManager } from "../../../lib/fasset/DeployAssetManager";
+import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import {
     AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents, AssetManagerEvents, AttestationClientSCEvents, FAssetEvents,
     FtsoManagerMockEvents, FtsoMockEvents, FtsoRegistryMockEvents, IAssetContext, StateConnectorMockEvents, WNatEvents
@@ -23,6 +23,8 @@ import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorC
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { TestChainInfo, TestNatInfo } from "./TestChainInfo";
 
+const GENESIS_GOVERNANCE = "0xfffEc6C83c8BF5c3F4AE0cCF8c45CE20E4560BD7";
+
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const AttestationClient = artifacts.require('AttestationClientSC');
 const AssetManagerController = artifacts.require('AssetManagerController');
@@ -32,6 +34,11 @@ const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const FtsoManagerMock = artifacts.require('FtsoManagerMock');
 const StateConnector = artifacts.require('StateConnectorMock');
+const GovernanceSettings = artifacts.require('GovernanceSettings');
+
+export interface SettingsOptions {
+    burnWithSelfDestruct?: boolean;
+}
 
 // common context shared between several asset managers
 export class CommonContext {
@@ -49,6 +56,9 @@ export class CommonContext {
     ) {}
 
     static async createTest(governance: string, natInfo: TestNatInfo): Promise<CommonContext> {
+        // create governance settings
+        const governanceSettings = await GovernanceSettings.new();
+        await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE });
         // create state connector
         const stateConnector = await StateConnector.new();
         // create agent vault factory
@@ -56,8 +66,9 @@ export class CommonContext {
         // create attestation client
         const attestationClient = await AttestationClient.new(stateConnector.address);
         // create asset manager controller
-        const addressUpdater = await AddressUpdater.new(governance);
-        const assetManagerController = await AssetManagerController.new(governance, addressUpdater.address);
+        const addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
+        const assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
+        await assetManagerController.switchToProductionMode({ from: governance });
         // create WNat token
         const wnat = await WNat.new(governance, natInfo.name, natInfo.symbol);
         await setDefaultVPContract(wnat, governance);
@@ -183,20 +194,20 @@ export class AssetContext implements IAssetContext {
         return this.chainEvents.waitForUnderlyingTransactionFinalization(scope, txHash, maxBlocksToWaitForTx);
     }
     
-    static async createTest(common: CommonContext, chainInfo: TestChainInfo): Promise<AssetContext> {
+    static async createTest(common: CommonContext, chainInfo: TestChainInfo, options: SettingsOptions = {}): Promise<AssetContext> {
         // create mock chain attestation provider
         const chain = new MockChain(await time.latest());
         chain.secondsPerBlock = chainInfo.blockTime;
         const chainEventsRaw = chain;
         const chainEvents = new UnderlyingChainEvents(chain, chainEventsRaw, null);
         const stateConnectorClient = new MockStateConnectorClient(common.stateConnector, { [chainInfo.chainId]: chain }, 'on_wait');
-        const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId, 0);
+        const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId);
         // create asset FTSO and set some price
         const assetFtso = await FtsoMock.new(chainInfo.symbol);
         await assetFtso.setCurrentPrice(toBNExp(chainInfo.startPrice, 5), 0);
         await common.ftsoRegistry.addFtso(assetFtso.address);
         // create asset manager
-        const settings = await AssetContext.createTestSettings(common, chainInfo);
+        const settings = await AssetContext.createTestSettings(common, chainInfo, options);
         // web3DeepNormalize is required when passing structs, otherwise BN is incorrectly serialized
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
             chainInfo.name, chainInfo.symbol, chainInfo.decimals, web3DeepNormalize(settings));
@@ -205,7 +216,7 @@ export class AssetContext implements IAssetContext {
             chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider, settings, assetManager, fAsset, assetFtso);
     }
     
-    static async createTestSettings(ctx: CommonContext, ci: TestChainInfo): Promise<AssetManagerSettings> {
+    static async createTestSettings(ctx: CommonContext, ci: TestChainInfo, options: SettingsOptions): Promise<AssetManagerSettings> {
         return {
             assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
             agentVaultFactory: ctx.agentVaultFactory.address,
@@ -226,6 +237,7 @@ export class AssetContext implements IAssetContext {
             underlyingSecondsForPayment: ci.underlyingBlocksForPayment * ci.blockTime,
             // settings that are more or less chain independent
             burnAddress: constants.ZERO_ADDRESS,            // burn address on local chain - same for all assets
+            burnWithSelfDestruct: options.burnWithSelfDestruct ?? false,
             collateralReservationFeeBIPS: 100,              // 1%
             minCollateralRatioBIPS: 2_1000,          // 2.1
             ccbMinCollateralRatioBIPS: 1_9000,   // 1.9
@@ -242,7 +254,6 @@ export class AssetContext implements IAssetContext {
             ccbTimeSeconds: 180,
             liquidationStepSeconds: 90,
             maxTrustedPriceAgeSeconds: 8 * 60,
-            timelockSeconds: 1 * WEEKS, // 1 week
             minUpdateRepeatTimeSeconds: 1 * DAYS,
             attestationWindowSeconds: 1 * DAYS,
             buybackCollateralFactorBIPS: 1_1000,                    // 1.1

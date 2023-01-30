@@ -1,0 +1,272 @@
+[
+  {
+    "name": "StateConnector",
+    "contractName": "StateConnector.sol",
+    "address": "0x1000000000000000000000000000000000000001"
+  },
+  {
+    "name": "FlareDaemon",
+    "contractName": "FlareDaemon.sol",
+    "address": "0x1000000000000000000000000000000000000002"
+  },
+  {
+    "name": "PriceSubmitter",
+    "contractName": "PriceSubmitter.sol",
+    "address": "0x1000000000000000000000000000000000000003"
+  },
+  {
+    "name": "DistributionTreasury",
+    "contractName": "DistributionTreasury.sol",
+    "address": "0x1000000000000000000000000000000000000004"
+  },
+  {
+    "name": "IncentivePoolTreasury",
+    "contractName": "IncentivePoolTreasury.sol",
+    "address": "0x1000000000000000000000000000000000000005"
+  },
+  {
+    "name": "InitialAirdrop",
+    "contractName": "InitialAirdrop.sol",
+    "address": "0x1000000000000000000000000000000000000006"
+  },
+  {
+    "name": "GovernanceSettings",
+    "contractName": "GovernanceSettings.sol",
+    "address": "0x1000000000000000000000000000000000000007"
+  },
+  {
+    "name": "AddressUpdater",
+    "contractName": "AddressUpdater.sol",
+    "address": "0x248a75c6a7EB5280c75599014f88a9539c9beE48"
+  },
+  {
+    "name": "InflationAllocation",
+    "contractName": "InflationAllocation.sol",
+    "address": "0xfa1903401A0cf7048A94C63D5dc5B4f36ff7b176"
+  },
+  {
+    "name": "Inflation",
+    "contractName": "Inflation.sol",
+    "address": "0x98B8e9B5830F04Fe3b8d56A2f8455E337037ba28"
+  },
+  {
+    "name": "Supply",
+    "contractName": "Supply.sol",
+    "address": "0x0496dcb45cDf498e3b797050f0469a0DE24F02e9"
+  },
+  {
+    "name": "FtsoRewardManager",
+    "contractName": "FtsoRewardManager.sol",
+    "address": "0xBbfff13a0EB1C032D5B66207c1aF971b6f393Cc8"
+  },
+  {
+    "name": "CleanupBlockNumberManager",
+    "contractName": "CleanupBlockNumberManager.sol",
+    "address": "0xEaA8968E9B70dd2559066E3e801Df1596a4CFA23"
+  },
+  {
+    "name": "Escrow",
+    "contractName": "Escrow.sol",
+    "address": "0x05ad5ABCA6738f94C7b6CdFd9Da7E47F34966F01"
+  },
+  {
+    "name": "ValidatorRewardManager",
+    "contractName": "ValidatorRewardManager.sol",
+    "address": "0x715608AD9a4F22613a2EB2BAAE7eeC0C7c7d2562"
+  },
+  {
+    "name": "FtsoRegistry",
+    "contractName": "FtsoRegistry.sol",
+    "address": "0x70e21aE7bf6Cb70931a26cA4584F141767E1Db9B"
+  },
+  {
+    "name": "VoterWhitelister",
+    "contractName": "VoterWhitelister.sol",
+    "address": "0xDFc2C5C636b73a9F2814B5AE821bE5a08cD25453"
+  },
+  {
+    "name": "DelegationAccountManager",
+    "contractName": "DelegationAccountManager.sol",
+    "address": "0xF151927A9ef1cCd797447b0e98c0CCc4E920B873"
+  },
+  {
+    "name": "DelegationAccountClonable",
+    "contractName": "DelegationAccountClonable.sol",
+    "address": "0xe261e45898AC1ab49f2D1A45BA655069CE73d07f"
+  },
+  {
+    "name": "Distribution",
+    "contractName": "Distribution.sol",
+    "address": "0x25Dae0114EF74aCc98022DE0299cA673E11D7426"
+  },
+  {
+    "name": "DistributionToDelegators",
+    "contractName": "DistributionToDelegators.sol",
+    "address": "0x965AC495BeB5bb3c91C70Aa5af132cD41058C16c"
+  },
+  {
+    "name": "IncentivePoolAllocation",
+    "contractName": "IncentivePoolAllocation.sol",
+    "address": "0xfaf3bDB0c455ef633A0B61E9424bcbC75FfaE29a"
+  },
+  {
+    "name": "IncentivePool",
+    "contractName": "IncentivePool.sol",
+    "address": "0x6892bDbBb14e1c9bD46Bf31E7BaC94d038fc82a6"
+  },
+  {
+    "name": "ValidatorRegistry",
+    "contractName": "ValidatorRegistry.sol",
+    "address": "0x4CDEBD06352B3eB6e3Eec31Be70aB8931De46Ffe"
+  },
+  {
+    "name": "FtsoManager",
+    "contractName": "FtsoManager.sol",
+    "address": "0xb45da782284084979330afD7a1b34919Fc07177E"
+  },
+  {
+    "name": "WNat",
+    "contractName": "WNat.sol",
+    "address": "0xC67DCE33D7A8efA5FfEB961899C73fe01bCe9273"
+  },
+  {
+    "name": "GovernanceVotePower",
+    "contractName": "GovernanceVotePower.sol",
+    "address": "0xa821fDf6E157fdf52dDe6a1B6dEDaE28dC35053C"
+  },
+  {
+    "name": "FtsoWnat",
+    "contractName": "Ftso.sol",
+    "address": "0xC714BE03b63F519E8D3A1A870E7ef3E0cDd90723"
+  },
+  {
+    "name": "FtsoTestXrp",
+    "contractName": "Ftso.sol",
+    "address": "0x9D43112D2F3B53b46535dBfFbC0B25cF76137BA6"
+  },
+  {
+    "name": "FtsoTestLtc",
+    "contractName": "Ftso.sol",
+    "address": "0x9be1d1034cd9d3B5Dd6Db338Ada9B249906f192B"
+  },
+  {
+    "name": "FtsoTestXlm",
+    "contractName": "Ftso.sol",
+    "address": "0xd43c5D06a48d7A597AA4a79Da943b173F132ae81"
+  },
+  {
+    "name": "FtsoTestDoge",
+    "contractName": "Ftso.sol",
+    "address": "0x9E4EF0C52728dE718b94922C3a1055A8F7AeDbFF"
+  },
+  {
+    "name": "FtsoTestAda",
+    "contractName": "Ftso.sol",
+    "address": "0x01ABA32e755A466903D892671033f318975fDFBf"
+  },
+  {
+    "name": "FtsoTestAlgo",
+    "contractName": "Ftso.sol",
+    "address": "0x9bf819214ad3CB98314A24236EC6d392a387c662"
+  },
+  {
+    "name": "FtsoTestBch",
+    "contractName": "Ftso.sol",
+    "address": "0x306F8A9F43771b4f4046BE22e2811D22BDCfb88a"
+  },
+  {
+    "name": "FtsoTestDgb",
+    "contractName": "Ftso.sol",
+    "address": "0xE2646F13A76e5Abc18983305186F8F4eB2AF4171"
+  },
+  {
+    "name": "FtsoTestBtc",
+    "contractName": "Ftso.sol",
+    "address": "0x3Ae4Db55B5d8E9CE9428473057251D87aeEE1CF9"
+  },
+  {
+    "name": "FtsoTestEth",
+    "contractName": "Ftso.sol",
+    "address": "0x4c54da071d3eE76e85b438E56c34c5c23AC71102"
+  },
+  {
+    "name": "FtsoTestFil",
+    "contractName": "Ftso.sol",
+    "address": "0x34EEc1C4962bd7903A4538b718EC16Ba20E4eC02"
+  },
+  {
+    "name": "PollingReject",
+    "contractName": "PollingReject.sol",
+    "address": "0x5c1b3D6dBd2D1C30B14CA20919A34Fe36eFECbCC"
+  },
+  {
+    "name": "PollingAccept",
+    "contractName": "PollingAccept.sol",
+    "address": "0x0dC26E31aff8ac4B5e3D7B21bFcF8fDfD1C96d50"
+  },
+  {
+    "name": "AttestationClient",
+    "contractName": "AttestationClientSC.sol",
+    "address": "0x70325F3D34D83391a3b6ffE77a9fB62c033e8e55"
+  },
+  {
+    "name": "AgentVaultFactory",
+    "contractName": "AgentVaultFactory.sol",
+    "address": "0xe5a5a5b78F165C875EE2264a8743570176eA39d9"
+  },
+  {
+    "name": "AssetManagerController",
+    "contractName": "AssetManagerController.sol",
+    "address": "0x828C9C41Fae6113C1DEA9056Dcd9C85A19002d52"
+  },
+  {
+    "name": "AssetManager_FtestALGO",
+    "contractName": "AssetManager.sol",
+    "address": "0x7d40dD74d3aE1a7e4A7dd08eaE899e85940563cd"
+  },
+  {
+    "name": "FtestALGO",
+    "contractName": "FAsset.sol",
+    "address": "0xAb35dEf6f863FC1e91dE4c20A3596b388eB1CFb4"
+  },
+  {
+    "name": "AssetManager_FtestBTC",
+    "contractName": "AssetManager.sol",
+    "address": "0xA0AB1cB92A4AF81f84dCd258155B5c25D247b54E"
+  },
+  {
+    "name": "FtestBTC",
+    "contractName": "FAsset.sol",
+    "address": "0x830bceA96E56DBC1F8578f75fBaC0AF16B32A07d"
+  },
+  {
+    "name": "AssetManager_FtestDOGE",
+    "contractName": "AssetManager.sol",
+    "address": "0x32eF223A01fB55Fd862E6E30d5F4A3b2d44f9586"
+  },
+  {
+    "name": "FtestDOGE",
+    "contractName": "FAsset.sol",
+    "address": "0x4977FC58783ceBCC310311C800B786EcAf45F98f"
+  },
+  {
+    "name": "AssetManager_FtestLTC",
+    "contractName": "AssetManager.sol",
+    "address": "0x7997A4c8b8E97d289989431B996AB1C6a9975Ad9"
+  },
+  {
+    "name": "FtestLTC",
+    "contractName": "FAsset.sol",
+    "address": "0xf45C720549136d5E2d6a5A2F12573A36E36C3411"
+  },
+  {
+    "name": "AssetManager_FtestXRP",
+    "contractName": "AssetManager.sol",
+    "address": "0x2dD8146Ad2138ac61F93E549f8F917927B47E28a"
+  },
+  {
+    "name": "FtestXRP",
+    "contractName": "FAsset.sol",
+    "address": "0xc783bfC59158E888dA3E9c7768aaDC7a58ee7809"
+  }
+]

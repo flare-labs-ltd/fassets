@@ -174,7 +174,17 @@ export function tryCatch<T>(body: () => T, errorHandler?: (err: unknown) => T) {
  * Run `func` in parallel. Allows nicer code in case func is an async lambda.
  */
 export function runAsync(func: () => Promise<void>) {
-    void func();
+    void func()
+        .catch(e => { console.error(e); });
+}
+
+/**
+ * Run async main function and wait for exit.
+ */
+export function runAsyncMain(func: (args: string[]) => Promise<void>, errorExitCode: number = 123) {
+    void func(process.argv.slice(2))
+        .then(() => { process.exit(0); })
+        .catch(e => { console.error(e); process.exit(errorExitCode); });
 }
 
 /**
@@ -289,26 +299,33 @@ export function fail(messageOrError: string | Error): never {
     throw messageOrError;
 }
 
-export function filterStackTrace(e: any) {
-    const stack = String(e.stack || e);
+export function filterStackTrace(error: any) {
+    const stack = String(error.stack || error);
     let lines = stack.split('\n');
     lines = lines.filter(l => !l.startsWith('    at') || /\.(sol|ts):/.test(l));
     return lines.join('\n');
 }
 
-export function reportError(e: any) {
-    console.error(filterStackTrace(e));
+export function reportError(error: any) {
+    console.error(filterStackTrace(error));
 }
 
-export function messageIncluded(message: unknown, expectedMessages: string[]) {
-    const messageStr = message == null ? '' : '' + message;
-    for (const msg of expectedMessages) {
-        if (messageStr.includes(msg)) return true;
+// either (part of) error message or an error constructor
+export type ErrorFilter = string | { new (...args: any[]): Error };
+
+export function errorIncluded(error: any, expectedErrors: ErrorFilter[]) {
+    const message = String(error?.message ?? '');
+    for (const expectedErr of expectedErrors) {
+        if (typeof expectedErr === 'string') {
+            if (message.includes(expectedErr)) return true;
+        } else {
+            if (error instanceof expectedErr) return true;
+        }
     }
     return false;
 }
 
-export function expectErrors(e: any, expectedMessages: string[]): undefined {
-    if (messageIncluded(e?.message, expectedMessages)) return;
-    throw e;    // unexpected error
+export function expectErrors(error: any, expectedErrors: ErrorFilter[]): undefined {
+    if (errorIncluded(error, expectedErrors)) return;
+    throw error;    // unexpected error
 }

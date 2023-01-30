@@ -1,4 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
+import { Challenger } from "../../../lib/actors/Challenger";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { expectErrors, formatBN, latestBlockTimestamp, sleep, systemTimestamp, toBN, toWei } from "../../../lib/utils/helpers";
@@ -44,6 +45,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let agents: FuzzingAgent[] = [];
     let customers: FuzzingCustomer[] = [];
     let keepers: FuzzingKeeper[] = [];
+    let challenger: Challenger;
     let chainInfo: TestChainInfo;
     let chain: MockChain;
     let eventDecoder: Web3EventDecoder;
@@ -129,6 +131,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             keepers.push(keeper);
             eventDecoder.addAddress(`KEEPER_${i}`, keeper.address);
         }
+        // create challenger
+        const challengerAddress = accounts[firstAgentAddress + N_AGENTS + N_CUSTOMERS + N_KEEPERS];
+        challenger = new Challenger(runner, fuzzingState, challengerAddress);
+        eventDecoder.addAddress(`CHALLENGER`, challenger.address);
         // await context.wnat.send("1000", { from: governance });
         await interceptor.allHandled();
         // init some state
@@ -209,6 +215,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
                 eventQueue.runAll();
                 await interceptor.allHandled();
             }
+        }
+        // fail immediately on unexpected errors from threads
+        if (runner.uncaughtErrors.length > 0) {
+            throw runner.uncaughtErrors[0];
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
         await fuzzingState.checkInvariants(true);  // all events are flushed, state must match

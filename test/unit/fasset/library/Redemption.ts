@@ -4,7 +4,7 @@ import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestCha
 import { filterEvents, findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
@@ -121,7 +121,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         chain.secondsPerBlock = chainInfo.blockTime;
         wallet = new MockChainWallet(chain);
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
@@ -313,10 +313,10 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
 
-        const timeIncrease = toBN(settings.timelockSeconds).addn(1);
-        await time.increase(timeIncrease);
-        chain.skipTime(timeIncrease.toNumber());
-        await time.advanceBlock();
+        // const timeIncrease = toBN(settings.timelockSeconds).addn(1);
+        // await time.increase(timeIncrease);
+        // chain.skipTime(timeIncrease.toNumber());
+        // await time.advanceBlock();
 
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, false);
 
@@ -394,7 +394,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
         const chainId: SourceId = 2;
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: agentOwner1 });
         await expectRevert(res, 'non-payment not proved');

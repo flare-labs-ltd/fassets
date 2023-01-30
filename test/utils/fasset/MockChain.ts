@@ -152,6 +152,11 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
         return this.blocks.length - 1;
     }
     
+    blockWithHash(blockHash: string) {
+        const index = this.blockIndex[blockHash];
+        return index != null ? this.blocks[index] : null;
+    }
+    
     lastBlockTimestamp() {
         return this.blocks.length > 0 
             ? this.blocks[this.blocks.length - 1].timestamp 
@@ -226,16 +231,28 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
     }
     
     private filterMatches(filter: Dict<string>, transaction: MockChainTransaction) {
-        if ('reference' in filter) {
-            if (transaction.reference !== filter.reference) return false;
-        }
-        if ('from' in filter) {
-            const match = transaction.inputs.some(([address, _]) => address === filter.from);
-            if (!match) return false;
-        }
-        if ('to' in filter) {
-            const match = transaction.outputs.some(([address, _]) => address === filter.to);
-            if (!match) return false;
+        for (const [key, value] of Object.entries(filter)) {
+            switch (key) {
+                case 'hash': {
+                    if (transaction.hash !== value) return false;
+                    break;
+                }
+                case 'reference': {
+                    if (transaction.reference !== value) return false;
+                    break;
+                }
+                case 'from': {
+                    const match = transaction.inputs.some(([address, _]) => address === value);
+                    if (!match) return false;
+                    break;
+                }
+                case 'to': {
+                    const match = transaction.outputs.some(([address, _]) => address === value);
+                    if (!match) return false;
+                    break;
+                }
+                default: throw new Error(`Invalid transaction filter ${key}`);
+            }
         }
         return true;
     }

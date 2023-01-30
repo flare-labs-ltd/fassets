@@ -40,16 +40,10 @@ library SettingsUpdater {
         keccak256("refreshFtsoIndexes()");
     bytes32 internal constant SET_COLLATERAL_RATIOS =
         keccak256("setCollateralRatios(uint256,uint256,uint256)");
-    bytes32 internal constant EXECUTE_SET_COLLATERAL_RATIOS =
-        keccak256("executeSetCollateralRatios()");
     bytes32 internal constant SET_TIME_FOR_PAYMENT =
         keccak256("setTimeForPayment(uint256,uint256)");
-    bytes32 internal constant EXECUTE_SET_TIME_FOR_PAYMENT =
-        keccak256("executeSetTimeForPayment()");
     bytes32 internal constant SET_WHITELIST =
         keccak256("setWhitelist(address)");
-    bytes32 internal constant EXECUTE_SET_WHITELIST =
-        keccak256("executeSetWhitelist()");
     bytes32 internal constant SET_LOT_SIZE_AMG =
         keccak256("setLotSizeAmg(uint256)");
     bytes32 internal constant SET_MAX_TRUSTED_PRICE_AGE_SECONDS =
@@ -105,20 +99,17 @@ library SettingsUpdater {
         } else if (_method == REFRESH_FTSO_INDEXES) {
             _refreshFtsoIndexes(_state);
         } else if (_method == SET_COLLATERAL_RATIOS) {
-            _setCollateralRatios(_state, _updates.collateralRatio, _params);
-        } else if (_method == EXECUTE_SET_COLLATERAL_RATIOS) {
-            _executeSetCollateralRatios(_state, _updates.collateralRatio);
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
+            _setCollateralRatios(_state, _params);
         } else if (_method == SET_TIME_FOR_PAYMENT) {
-            _setTimeForPayment(_state, _updates.paymentTime, _params);
-        } else if (_method == EXECUTE_SET_TIME_FOR_PAYMENT) {
-            _executeSetTimeForPayment(_state, _updates.paymentTime);
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
+            _setTimeForPayment(_state, _params);
         } else if (_method == SET_PAYMENT_CHALLENGE_REWARD) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setPaymentChallengeReward(_state, _params);
         } else if (_method == SET_WHITELIST) {
-            _setWhitelist(_state, _updates.whitelist, _params);
-        } else if (_method == EXECUTE_SET_WHITELIST) {
-            _executeSetWhitelist(_state, _updates.whitelist);
+            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
+            _setWhitelist(_state, _params);
         } else if (_method == SET_LOT_SIZE_AMG) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setLotSizeAmg(_state, _params);
@@ -151,7 +142,7 @@ library SettingsUpdater {
             _setLiquidationStepSeconds(_state, _params);
         } else if (_method == SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setLiquidationCollateralFactorBips(_state, _updates.collateralRatio, _params);
+            _setLiquidationCollateralFactorBips(_state, _params);
         } else if (_method == SET_ATTESTATION_WINDOW_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setAttestationWindowSeconds(_state, _params);
@@ -231,7 +222,6 @@ library SettingsUpdater {
 
     function _setCollateralRatios(
         AssetManagerState.State storage _state,
-        CollateralRatioUpdate storage _update,
         bytes calldata _params
     ) 
         private 
@@ -242,62 +232,28 @@ library SettingsUpdater {
         require(SafeBips.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
         uint32[] storage liquidationFactors = _state.settings.liquidationCollateralFactorBIPS;
         require(liquidationFactors[liquidationFactors.length - 1] <= safetyCR, "liquidation factor too high");
-        // create pending update
-        uint256 validAt = block.timestamp + _state.settings.timelockSeconds;
-        _update.validAt = SafeCast.toUint64(validAt);
-        _update.minCollateralRatioBIPS = SafeCast.toUint32(minCR);
-        _update.ccbMinCollateralRatioBIPS = SafeCast.toUint32(ccbCR);
-        _update.safetyMinCollateralRatioBIPS = SafeCast.toUint32(safetyCR);
-        emit AMEvents.SettingChangeScheduled("minCollateralRatioBIPS", minCR, validAt);
-        emit AMEvents.SettingChangeScheduled("ccbMinCollateralRatioBIPS", ccbCR, validAt);
-        emit AMEvents.SettingChangeScheduled("safetyMinCollateralRatioBIPS", safetyCR, validAt);
-    }
-
-    function _executeSetCollateralRatios(
-        AssetManagerState.State storage _state,
-        CollateralRatioUpdate storage _update
-    ) 
-        private 
-    {
-        require(_update.validAt != 0 && block.timestamp >= _update.validAt, "update not valid yet");
-        _update.validAt = 0;
-        _state.settings.minCollateralRatioBIPS = _update.minCollateralRatioBIPS;
-        _state.settings.ccbMinCollateralRatioBIPS = _update.ccbMinCollateralRatioBIPS;
-        _state.settings.safetyMinCollateralRatioBIPS = _update.safetyMinCollateralRatioBIPS;
-        emit AMEvents.SettingChanged("minCollateralRatioBIPS", _update.minCollateralRatioBIPS);
-        emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", _update.ccbMinCollateralRatioBIPS);
-        emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", _update.safetyMinCollateralRatioBIPS);
+        // update
+        _state.settings.minCollateralRatioBIPS = SafeCast.toUint32(minCR);
+        _state.settings.ccbMinCollateralRatioBIPS = SafeCast.toUint32(ccbCR);
+        _state.settings.safetyMinCollateralRatioBIPS = SafeCast.toUint32(safetyCR);
+        emit AMEvents.SettingChanged("minCollateralRatioBIPS", minCR);
+        emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", ccbCR);
+        emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", safetyCR);
     }
     
     function _setTimeForPayment(
         AssetManagerState.State storage _state,
-        PaymentTimeUpdate storage _update,
         bytes calldata _params
     ) 
         private 
     {
         (uint256 underlyingBlocks, uint256 underlyingSeconds) = 
             abi.decode(_params, (uint256, uint256));
-        uint256 validAt = block.timestamp + _state.settings.timelockSeconds;
-        _update.validAt = SafeCast.toUint64(validAt);
-        _update.underlyingBlocksForPayment = SafeCast.toUint64(underlyingBlocks);
-        _update.underlyingSecondsForPayment = SafeCast.toUint64(underlyingSeconds);
-        emit AMEvents.SettingChangeScheduled("underlyingBlocksForPayment", underlyingBlocks, validAt);
-        emit AMEvents.SettingChangeScheduled("underlyingSecondsForPayment", underlyingSeconds, validAt);
-    }
-    
-    function _executeSetTimeForPayment(
-        AssetManagerState.State storage _state,
-        PaymentTimeUpdate storage _update
-    ) 
-        private 
-    {
-        require(_update.validAt != 0 && block.timestamp >= _update.validAt, "update not valid yet");
-        _update.validAt = 0;
-        _state.settings.underlyingBlocksForPayment = _update.underlyingBlocksForPayment;
-        _state.settings.underlyingSecondsForPayment = _update.underlyingSecondsForPayment;
-        emit AMEvents.SettingChanged("underlyingBlocksForPayment", _update.underlyingBlocksForPayment);
-        emit AMEvents.SettingChanged("underlyingSecondsForPayment", _update.underlyingSecondsForPayment);
+        // update
+        _state.settings.underlyingBlocksForPayment = SafeCast.toUint64(underlyingBlocks);
+        _state.settings.underlyingSecondsForPayment = SafeCast.toUint64(underlyingSeconds);
+        emit AMEvents.SettingChanged("underlyingBlocksForPayment", underlyingBlocks);
+        emit AMEvents.SettingChanged("underlyingSecondsForPayment", underlyingSeconds);
     }
     
     function _setPaymentChallengeReward(
@@ -321,30 +277,15 @@ library SettingsUpdater {
 
     function _setWhitelist(
         AssetManagerState.State storage _state,
-        WhitelistUpdate storage _update,
         bytes calldata _params
     ) 
         private 
     {
         address value = abi.decode(_params, (address));
         // validate
-        // create pending update
-        uint256 validAt = block.timestamp + _state.settings.timelockSeconds;
-        _update.validAt = SafeCast.toUint64(validAt);
-        _update.whitelist = value;
-        emit AMEvents.ContractChangeScheduled("whitelist", value, validAt);
-    }
-
-    function _executeSetWhitelist(
-        AssetManagerState.State storage _state,
-        WhitelistUpdate storage _update
-    ) 
-        private 
-    {    
-        require(_update.validAt != 0 && block.timestamp >= _update.validAt, "update not valid yet");
-        _update.validAt = 0;
-        _state.settings.whitelist = IWhitelist(_update.whitelist);
-        emit AMEvents.ContractChanged("whitelist", _update.whitelist);
+        // update
+        _state.settings.whitelist = IWhitelist(value);
+        emit AMEvents.ContractChanged("whitelist", value);
 
     }
     
@@ -528,7 +469,6 @@ library SettingsUpdater {
 
     function _setLiquidationCollateralFactorBips(
         AssetManagerState.State storage _state,
-        CollateralRatioUpdate storage _update,
         bytes calldata _params
     ) 
         private 
@@ -538,8 +478,6 @@ library SettingsUpdater {
         require(value.length >= 1, "at least one factor required");
         require(value[value.length - 1] <= _state.settings.safetyMinCollateralRatioBIPS, 
             "liquidation factor too high");
-        require(_update.validAt == 0 || value[value.length - 1] <= _update.safetyMinCollateralRatioBIPS,
-            "liquidation factor too high - pending update");
         // update
         delete _state.settings.liquidationCollateralFactorBIPS;
         for (uint256 i = 0; i < value.length; i++) {
@@ -601,7 +539,6 @@ library SettingsUpdater {
         require(_settings.ccbTimeSeconds > 0, "cannot be zero");
         require(_settings.liquidationStepSeconds > 0, "cannot be zero");
         require(_settings.maxTrustedPriceAgeSeconds > 0, "cannot be zero");
-        require(_settings.timelockSeconds > 0, "cannot be zero");
         require(_settings.minUpdateRepeatTimeSeconds > 0, "cannot be zero");
         require(_settings.buybackCollateralFactorBIPS > 0, "cannot be zero");
         require(_settings.withdrawalWaitMinSeconds > 0, "cannot be zero");

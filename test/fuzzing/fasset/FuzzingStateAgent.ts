@@ -13,6 +13,7 @@ import {
 import { AgentStatus, TrackedAgentState } from "../../../lib/state/TrackedAgentState";
 import { FuzzingState, FuzzingStateLogRecord } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
+import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 
 export interface CollateralReservation {
     id: number;
@@ -223,6 +224,16 @@ export class FuzzingStateAgent extends TrackedAgentState {
         // close tickets, update free balance
         this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.valueUBA));
         this.addFreeUnderlyingBalanceChange(args.$event, 'self-close', toBN(args.valueUBA));
+    }
+    
+    // handlers: underlying transactions
+    
+    handleTransactionFromUnderlying(transaction: ITransaction) {
+        this.logAction(`underlying withdraw amount=${formatBN(transaction.outputs[0][1])} to=${transaction.outputs[0][0]}`, "UNDERLYING_TRANSACTION");
+    }
+
+    handleTransactionToUnderlying(transaction: ITransaction) {
+        this.logAction(`underlying deposit amount=${formatBN(transaction.outputs[0][1])} from=${transaction.inputs[0][0]}`, "UNDERLYING_TRANSACTION");
     }
     
     // agent state changing
@@ -450,14 +461,14 @@ export class FuzzingStateAgent extends TrackedAgentState {
         }
     }
     
-    logAction(text: string, event: EvmEvent) {
+    logAction(text: string, event: EvmEvent | string) {
         this.actionLog.push({ text, event });
     }
 
     writeActionLog(logger: ILogger) {
         logger.log(`    action log for ${this.name()}`);
         for (const log of this.actionLog) {
-            logger.log(`        ${log.text}  ${this.parent.eventInfo(log.event)}`);
+            logger.log(`        ${log.text}  ${typeof log.event === 'string' ? log.event : this.parent.eventInfo(log.event)}`);
         }
     }
 }

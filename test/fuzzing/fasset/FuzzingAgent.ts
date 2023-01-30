@@ -1,16 +1,17 @@
 import BN from "bn.js";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
+import { AgentStatus } from "../../../lib/state/TrackedAgentState";
+import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { EventArgs } from "../../../lib/utils/events/common";
+import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
+import { requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Agent } from "../../integration/utils/Agent";
-import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { EventArgs } from "../../../lib/utils/events/common";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { coinFlip, randomBN, randomChoice, randomInt } from "../../utils/fuzzing-utils";
-import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
-import { AgentStatus } from "../../../lib/state/TrackedAgentState";
 
 export class FuzzingAgent extends FuzzingActor {
     constructor(
@@ -74,14 +75,18 @@ export class FuzzingAgent extends FuzzingActor {
         this.runner.startThread(async (scope) => {
             const agent = this.agent;   // save in case it is destroyed and re-created
             const cheatOnPayment = coinFlip(0.2);
-            if (cheatOnPayment) {
-                request = { ...request, feeUBA: request.feeUBA.muln(2) };   // pay less by taking some extra fee
-            }
-            const txHash = await agent.performRedemptionPayment(request);
-            await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
-            if (!cheatOnPayment) {
+            const takeFee = cheatOnPayment ? request.feeUBA.muln(2) : request.feeUBA;   // cheat by taking more fee (so the payment should be considered failed)
+            const paymentAmount = request.valueUBA.sub(takeFee);
+            const amountToMyself = randomBN(takeFee.add(this.agentState(agent).freeUnderlyingBalanceUBA));  // abuse redemption to pay something to the owner via multi-transaction
+            const txHash = await agent.wallet.addMultiTransaction({ [agent.underlyingAddress]: paymentAmount.add(amountToMyself) },
+                { [request.paymentAddress]: paymentAmount, [this.ownerUnderlyingAddress]: amountToMyself },
+                request.paymentReference);
+            const transaction = await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
+            assert.isTrue(transaction == null || transaction.hash === txHash);
+            if (!cheatOnPayment && transaction && transaction.status !== TX_FAILED) {
                 await agent.confirmActiveRedemptionPayment(request, txHash)
-                    .catch(e => scope.exitOnExpectedError(e, []));
+                    .catch(e => scope.exitOnExpectedError(e, ['Missing event RedemptionPerformed']));
+                // Error 'Missing event RedemptionPerformed' happens when payment is too late or transaction is failed
             } else {
                 await agent.confirmFailedRedemptionPayment(request, txHash)
                     .catch(e => scope.exitOnExpectedError(e, ['Missing event RedemptionPaymentFailed']));
@@ -105,9 +110,11 @@ export class FuzzingAgent extends FuzzingActor {
         // execute
         const proof = await this.context.attestationProvider.provePayment(txHash, null, agent.underlyingAddress);
         const res = await this.context.assetManager.selfMint(proof, agent.vaultAddress, lots, { from: this.ownerAddress })
-            .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral', 'self-mint payment too small', 'self-mint invalid agent status', 'invalid self-mint reference']));
+            .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral', 'self-mint payment too small', 
+                'self-mint invalid agent status', 'invalid self-mint reference', 'self-mint payment too old']));
         // 'self-mint payment too small' can happen after lot size change
         // 'invalid self-mint reference' can happen if agent is destroyed and re-created
+        // 'self-mint payment too old' can happen when agent self-mints quickly after being created (typically when agent is re-created) and there is time skew
         const args = requiredEventArgs(res, 'MintingExecuted');
         // TODO: accounting?
     }

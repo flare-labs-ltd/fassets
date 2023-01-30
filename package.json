@@ -39,6 +39,15 @@
     "slither-show-stderr": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json || true; node node_modules/flare-smart-contracts/scripts/slither-parse.js ./slither.json",
     "flatten-dependencies": "env bash scripts/flatten-dependencies.sh",
     "generate-attester-code": "env bash scripts/generate-attester-code.sh",
+    "eslint": "eslint \"lib/**/*.ts\" \"test/**/*.ts\"",
+    "generate-json-schema": "typescript-json-schema --noExtraProps --required --strictNullChecks",
+    "generate-parameter-schema": "yarn generate-json-schema deployment/lib/asset-manager-parameters.ts AssetManagerParameters -o deployment/config/asset-manager-parameters.schema.json",
+    "---------DEPLOY---SCRIPTS": "",
+    "full-deploy-hardhat": "yarn hardhat --network local deploy-asset-managers --network-config hardhat --link --deploy-controller --all",
+    "full-deploy-hardhat-test": "env NETWORK_CONFIG=hardhat yarn hardhat --network local test --no-compile deployment/test/test-deployed-contracts.ts",
+    "mock-deploy-hardhat": "yarn hardhat --network local run test/scripts/mock-deploy-dependencies.ts && yarn full-deploy-hardhat && yarn hardhat --network local run --no-compile test/scripts/mock-deploy-fix-address-updater.ts && yarn full-deploy-hardhat-test",
+    "full-deploy-coston2": "yarn hardhat --network coston2 deploy-asset-managers --network-config coston2 --link --deploy-controller --all",
+    "full-deploy-coston2-test": "env NETWORK_CONFIG=coston2 yarn hardhat --network coston2 test --no-compile deployment/test/test-deployed-contracts.ts",
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",
     "gas-report": "ts-node node_modules/flare-smart-contracts/scripts/process-gas-report.ts && cat .gas-report.txt",
@@ -59,7 +68,7 @@
     "hardhat": "2.9.1",
     "solhint": "3.3.7",
     "solidity-coverage": "0.7.20",
-    "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#master"
+    "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#8a0822315cb9ce1f82f08487059165d8cbe27e92"
   },
   "devDependencies": {
     "@gnosis.pm/mock-contract": "4.0.0",
@@ -94,6 +103,7 @@
     "typechain": "7.0.0",
     "typescript": "4.5.5",
     "wait-on": "6.0.1",
-    "yarn-audit-fix": "9.0.10"
+    "yarn-audit-fix": "9.0.10",
+    "typescript-json-schema": "0.54.0"
   }
 }

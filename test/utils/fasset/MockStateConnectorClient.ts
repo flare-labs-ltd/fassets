@@ -1,18 +1,18 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { StateConnectorMockInstance } from "../../../typechain-truffle";
-import { sleep, toBN, toNumber } from "../../../lib/utils/helpers";
+import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
+import { filterStackTrace, sleep, toBN, toNumber } from "../../../lib/utils/helpers";
+import { stringifyJson } from "../../../lib/utils/json-bn";
 import { ILogger } from "../../../lib/utils/logging";
-import { MerkleTree } from "../MerkleTree";
 import { DHType } from "../../../lib/verification/generated/attestation-hash-types";
 import { dataHash } from "../../../lib/verification/generated/attestation-hash-utils";
 import { parseRequest } from "../../../lib/verification/generated/attestation-request-parse";
 import { ARBalanceDecreasingTransaction, ARConfirmedBlockHeightExists, ARPayment, ARReferencedPaymentNonexistence, ARType } from "../../../lib/verification/generated/attestation-request-types";
 import { AttestationType } from "../../../lib/verification/generated/attestation-types-enum";
 import { SourceId } from "../../../lib/verification/sources/sources";
-import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
-import { MockAttestationProver } from "./MockAttestationProver";
+import { StateConnectorMockInstance } from "../../../typechain-truffle";
+import { MerkleTree } from "../MerkleTree";
+import { MockAttestationProver, MockAttestationProverError } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
-import { stringifyJson } from "../../../lib/utils/json-bn";
 
 interface DHProof {
     attestationType: AttestationType;
@@ -24,6 +24,12 @@ interface DHProof {
 interface FinalizedRound {
     proofs: { [requestData: string]: DHProof };
     tree: MerkleTree;
+}
+
+export class StateConnectorClientError extends Error {
+    constructor(message: string) {
+        super(message);
+    }
 }
 
 // auto - create new round for every pushed request and finalize immediately - useful for unit tests
@@ -60,7 +66,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
     
     async waitForRoundFinalization(round: number): Promise<void> {
         if (round >= this.rounds.length) {
-            throw new Error("round doesn't exist yet");
+            throw new StateConnectorClientError(`StateConnectorClient: round doesn't exist yet (${round} >= ${this.rounds.length})`);
         }
         while (this.finalizedRounds.length <= round) {
             if (this.finalizationType == 'on_wait') {
@@ -146,25 +152,34 @@ export class MockStateConnectorClient implements IStateConnectorClient {
     }
     
     private proveRequest(requestData: string): DHProof | null {
-        const request = parseRequest(requestData);
-        const response = this.proveParsedRequest(request);
-        if (response == null) return null;
-        const hash = dataHash({ attestationType: request.attestationType, sourceId: request.sourceId } as ARType, response);
-        return { attestationType: request.attestationType, sourceId: request.sourceId, data: response, hash: hash };
+        try {
+            const request = parseRequest(requestData);
+            const response = this.proveParsedRequest(request);
+            const hash = dataHash({ attestationType: request.attestationType, sourceId: request.sourceId } as ARType, response);
+            return { attestationType: request.attestationType, sourceId: request.sourceId, data: response, hash: hash };
+        } catch (e) {
+            if (e instanceof MockAttestationProverError) {
+                const stack = filterStackTrace(e);
+                console.error(stack);
+                this.logger?.log("!!! " + stack);
+                return null;
+            }
+            throw e;    // other errors not allowed
+        }
     }
     
-    private proveParsedRequest(parsedRequest: ARType): DHType | null {
+    private proveParsedRequest(parsedRequest: ARType): DHType {
         const chain = this.supportedChains[parsedRequest.sourceId];
-        if (chain == null) throw new Error("unsupported chain");
+        if (chain == null) throw new StateConnectorClientError(`StateConnectorClient: unsupported chain ${parsedRequest.sourceId}`);
         const prover = new MockAttestationProver(chain, this.queryWindowSeconds);
         switch (parsedRequest.attestationType) {
             case AttestationType.Payment: {
                 const request = parsedRequest as ARPayment;
-                return prover.payment(request.id, toNumber(request.inUtxo), toNumber(request.utxo));
+                return prover.payment(request.id, toNumber(request.inUtxo), toNumber(request.utxo), request.upperBoundProof);
             }
             case AttestationType.BalanceDecreasingTransaction: {
                 const request = parsedRequest as ARBalanceDecreasingTransaction;
-                return prover.balanceDecreasingTransaction(request.id, toNumber(request.inUtxo));
+                return prover.balanceDecreasingTransaction(request.id, toNumber(request.inUtxo), request.upperBoundProof);
             }
             case AttestationType.ReferencedPaymentNonexistence: {
                 const request = parsedRequest as ARReferencedPaymentNonexistence;
@@ -175,8 +190,8 @@ export class MockStateConnectorClient implements IStateConnectorClient {
                 const request = parsedRequest as ARConfirmedBlockHeightExists;
                 return prover.confirmedBlockHeightExists(request.upperBoundProof);
             }
-            case AttestationType.TrustlineIssuance: {
-                throw new Error(`Unsupported attestation request ${AttestationType[parsedRequest.attestationType]}`);
+            default: {
+                throw new StateConnectorClientError(`StateConnectorClient: unsupported attestation request ${AttestationType[parsedRequest.attestationType]} (${parsedRequest.attestationType})`);
             }
         }
     }

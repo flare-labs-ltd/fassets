@@ -6,7 +6,7 @@ import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/even
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { newAssetManager } from "../../../../lib/fasset/DeployAssetManager";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
@@ -107,7 +107,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         chain.secondsPerBlock = chainInfo.blockTime;
         wallet = new MockChainWallet(chain);
         stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId, 0);
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         // create WNat token
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
