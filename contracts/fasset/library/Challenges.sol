@@ -141,10 +141,11 @@ library Challenges {
     ) 
         private
     {
+        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         // start full liquidation
         Liquidation.startFullLiquidation(_state, _agentVault);
         // calculate the reward
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
         uint256 rewardAMG = SafeBips.mulBips(_backingAMGAtChallenge, _state.settings.paymentChallengeRewardBIPS);
         uint256 rewardNATWei = Conversion.convertAmgToTokenWei(rewardAMG, collateralData.amgToTokenWeiPrice)
             + _state.settings.paymentChallengeRewardNATWei;

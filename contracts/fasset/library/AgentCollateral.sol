@@ -73,7 +73,7 @@ library AgentCollateral {
         uint256 agentPoolTokens = poolToken.balanceOf(_agentVault);
         uint256 totalPoolTokens = poolToken.totalBalance();
         uint256 poolWNats = _state.getWNat().balanceOf(_agent.collateralPool);
-        return agentPoolTokens.mulDiv(poolWNats, totalPoolTokens);
+        return agentPoolTokens != 0 ? agentPoolTokens.mulDiv(poolWNats, totalPoolTokens) : 0;
     }
     
     function freeCollateralLots(

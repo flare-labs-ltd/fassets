@@ -319,7 +319,7 @@ library Agents {
         Agent storage agent = getAgent(_state, _agentVault);
         requireAgentVaultOwner(_agentVault);
         require(agent.status == AgentStatus.NORMAL, "withdrawal ann: invalid status");
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
         if (_valueNATWei > agent.withdrawalAnnouncedNATWei) {
             // announcement increased - must check there is enough free collateral and then lock it
             // in this case the wait to withdrawal restarts from this moment

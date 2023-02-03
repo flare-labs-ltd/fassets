@@ -114,7 +114,7 @@ library FullAgentInfo {
         returns (AgentInfo memory _agentState)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
         _agentState.status = _getAgentStatusInfo(_state, agent);
         _agentState.ownerAddress = Agents.vaultOwner(_agentVault);
         _agentState.underlyingAddressString = agent.underlyingAddressString;

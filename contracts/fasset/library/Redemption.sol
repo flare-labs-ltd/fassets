@@ -382,7 +382,7 @@ library Redemption {
         returns (uint256)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
         // paid amount is  min(flr_amount * (1 + extra), total collateral share for the amount)
         uint256 amountWei = Conversion.convertAmgToTokenWei(_requestValueAMG, collateralData.amgToTokenWeiPrice)
             .mulBips(_state.settings.redemptionDefaultFactorBIPS);

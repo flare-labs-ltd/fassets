@@ -21,6 +21,7 @@ library AvailableAgents {
         address agentVault;
         uint256 feeBIPS;
         uint256 agentMinCollateralRatioBIPS;
+        uint256 agentPoolMinCollateralRatioBIPS;
         // Note: freeCollateralLots is only informative since it can can change at any time
         // due to price changes, reservation, minting, redemption, or even lot size change
         uint256 freeCollateralLots;
@@ -45,7 +46,7 @@ library AvailableAgents {
         // global min collateral ratio (otherwise he can quickly go to liquidation), so we always do it here
         Agents.setAgentMinCollateralRatioBIPS(_state, _agentVault, _agentMinCollateralRatioBIPS);
         // check that there is enough free collateral for at least one lot
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
         uint256 freeCollateralLots = collateralData.freeCollateralLots(agent, _state.settings);
         require(freeCollateralLots >= 1, "not enough free collateral");
         // add to queue
@@ -105,19 +106,19 @@ library AvailableAgents {
         _end = Math.min(_end, _totalLength);
         _start = Math.min(_start, _end);
         _agents = new AgentInfo[](_end - _start);
-        AgentCollateral.Data memory collateralData = AgentCollateral.Data({
-            fullCollateral: 0,  // filled later for each agent
-            amgToTokenWeiPrice: Conversion.currentAmgToNATWeiPrice(_state.settings)
-        });
         for (uint256 i = _start; i < _end; i++) {
             address agentVault = _state.availableAgents[i].agentVault;
             Agents.Agent storage agent = Agents.getAgentNoCheck(_state, agentVault);
-            collateralData.fullCollateral = Agents.fullCollateral(_state, agentVault);
-            uint256 agentCR = Math.max(agent.agentMinCollateralRatioBIPS, _state.settings.minCollateralRatioBIPS);
+            AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, agentVault);
+            (uint256 agentCR,) = AgentCollateral.mintingMinCollateralRatio(agent, _state.settings, 
+                agent.collateralClass);
+            (uint256 poolCR,) = AgentCollateral.mintingMinCollateralRatio(agent, _state.settings, 
+                AssetManagerSettings.POOL_COLLATERAL);
             _agents[i - _start] = AgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
                 agentMinCollateralRatioBIPS: agentCR,
+                agentPoolMinCollateralRatioBIPS: poolCR,
                 freeCollateralLots: collateralData.freeCollateralLots(agent, _state.settings)
             });
         }

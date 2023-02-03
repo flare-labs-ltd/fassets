@@ -39,7 +39,7 @@ library CollateralReservations {
         external
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
         require(_state.pausedAt == 0, "minting paused");
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 lots");
@@ -50,7 +50,8 @@ library CollateralReservations {
         agent.reservedAMG += valueAMG;
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
-        uint256 reservationFee = _reservationFee(_state, collateralData.amgToTokenWeiPrice, valueAMG);
+        // poolCollateral is WNat, so we can use its price
+        uint256 reservationFee = _reservationFee(_state, collateralData.poolCollateral.amgToTokenWeiPrice, valueAMG);
         require(msg.value == reservationFee, "inappropriate fee amount");
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
         _state.newCrtId += PaymentReference.randomizedIdSkip();
@@ -103,7 +104,7 @@ library CollateralReservations {
         // send event
         emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, underlyingValueUBA);
         // transfer crt fee to the agent's vault
-        IAgentVault(crt.agentVault).deposit{value: crt.reservationFeeNatWei}();
+        IAgentVault(crt.agentVault).depositNat{value: crt.reservationFeeNatWei}();
         // release agent's reserved collateral
         releaseCollateralReservation(_state, crt, _crtId);  // crt can't be used after this
     }
@@ -117,6 +118,7 @@ library CollateralReservations {
     {
         CollateralReservations.CollateralReservation storage crt = getCollateralReservation(_state, _crtId);
         Agents.requireAgentVaultOwner(crt.agentVault);
+        Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
         // verify proof
         TransactionAttestation.verifyConfirmedBlockHeightExists(_state.settings, _proof);
         // enough time must pass so that proofs are no longer available
@@ -126,7 +128,8 @@ library CollateralReservations {
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
         _state.settings.burnAddress.transfer(crt.reservationFeeNatWei);
         // burn reserved collateral at market price
-        uint256 amgToTokenWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        // TODO: should not burn stablecoins?
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(_state.settings, agent.collateralClass);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
         Agents.burnCollateral(_state, crt.agentVault, reservedCollateral);
         // send event
@@ -143,7 +146,8 @@ library CollateralReservations {
         external view
         returns (uint256)
     {
-        uint256 amgToTokenWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(_state.settings, 
+            AssetManagerSettings.POOL_COLLATERAL);
         return _reservationFee(_state, amgToTokenWeiPrice, _lots * _state.settings.lotSizeAMG);
     }
     

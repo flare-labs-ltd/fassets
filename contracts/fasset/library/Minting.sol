@@ -69,7 +69,7 @@ library Minting {
         returns (uint256 _mintValueUBA)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
+        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
         assert(agent.agentType == Agents.AgentType.AGENT_100); // AGENT_0 not supported yet
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);

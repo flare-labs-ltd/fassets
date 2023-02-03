@@ -16,6 +16,16 @@ library Conversion {
 
     function currentAmgPriceInTokenWei(
         AssetManagerSettings.Settings storage _settings,
+        uint256 _tokenType
+    ) 
+        internal view 
+        returns (uint256) 
+    {
+        return currentAmgPriceInTokenWei(_settings, _settings.collateralTypes[_tokenType]);
+    }
+
+    function currentAmgPriceInTokenWei(
+        AssetManagerSettings.Settings storage _settings,
         AssetManagerSettings.CollateralType storage _token
     ) 
         internal view 
