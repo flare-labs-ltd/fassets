@@ -18,8 +18,8 @@ interface IAssetManager {
     function assetManagerController() external view returns (address);
     function controllerAttached() external view returns (bool);
     function assetPriceNatWei() external view returns (uint256 _multiplier, uint256 _divisor);
-    function getSettings() external view returns (AssetManagerSettings.Settings memory);
-    
+    function getLotSizeAMG() external view returns (uint256);
+    // collateral pool redemptions
     function redeemChosenAgentUnderlying(
         address _agentVault, uint256 _amountUBA, string memory _redeemerUnderlyingAddressString) external;
     function redeemChosenAgentCollateral(

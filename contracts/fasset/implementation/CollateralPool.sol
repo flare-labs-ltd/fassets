@@ -11,9 +11,6 @@ import "../interface/IAssetManager.sol";
 import "../interface/IAgentVault.sol";
 import "./CollateralPoolToken.sol";
 
-import "../library/AssetManagerSettings.sol";
-
-
 contract CollateralPool is ReentrancyGuard {
     uint256 public constant CLAIM_FTSO_REWARDS_INTEREST_BIPS = 3;
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
@@ -22,10 +19,10 @@ contract CollateralPool is ReentrancyGuard {
     IERC20 public immutable fAsset;
     address public immutable agentVault;
     CollateralPoolToken public poolToken;
-    IFtsoRegistry public ftsoRegistry;
     uint16 public enterBuyAssetRateBIPS; // = 1 + premium
     uint64 public enterWithoutFAssetMintDelaySeconds;
     uint256 public exitCRBIPS;
+    uint256 public topupCRBIPS;
 
     modifier onlyAssetManager {
         require(msg.sender == address(assetManager), "only asset manager");
@@ -42,34 +39,31 @@ contract CollateralPool is ReentrancyGuard {
         wnat.deposit{value: msg.value}();
     }
 
-    function exit(uint256 _tokenShare) external nonReentrant {
+    function exit(uint256 _tokenShare) external {
         require(_tokenShare > 0, "token share is zero");
         IWNat wnat = assetManager.getWNat();
         uint256 poolBalanceNat = wnat.balanceOf(address(this));
         uint256 poolTokenSupply = poolToken.totalSupply();
         uint256 fassetBalance = fAsset.balanceOf(address(this));
         // poolTokenSupply >= _tokenShare > 0
-        uint256 natShare = SafePct.mulDiv(_tokenShare, poolBalanceNat, poolTokenSupply);
+        uint256 natShare = SafePct.mulDiv(_tokenShare, poolBalanceNat, poolTokenSupply); // can be 0?
         uint256 fassetShare = SafePct.mulDiv(_tokenShare, fassetBalance, poolTokenSupply);
-        // checking whether the new collateral ratio is above exitCR
-        uint256 fAssetIndex = 1; // GET fAsset index!
-        uint256 updatedPoolBalanceNat = SafeMath.sub(poolBalanceNat, natShare);
-        uint256 updatedFassetBalance = SafeMath.sub(fassetBalance, fassetShare);
-        IFtso fassetFtso = ftsoRegistry.getFtso(fAssetIndex);
-        (uint256 fassetPriceMul, uint256 fassetPriceDiv) = fassetFtso.getCurrentPrice();
+        // checking whether the new collateral ratio is above exitCR (TODO use SafeMath?)
+        uint256 updatedPoolBalanceNat = poolBalanceNat - natShare;
+        uint256 updatedFassetBalance = fassetBalance - fassetShare;
         (uint256 wnatPriceMul, uint256 wnatPriceDiv) = assetManager.assetPriceNatWei();
-        uint256 lhs = SafeMath.mul(updatedPoolBalanceNat, SafeMath.mul(wnatPriceMul, fassetPriceDiv));
-        uint256 rhs = SafeMath.mul(updatedFassetBalance, SafeMath.mul(fassetPriceMul, wnatPriceDiv));
-        require(lhs >= SafeBips.mulBips(rhs, exitCRBIPS), "collateral ratio below exitCR");
+        uint256 lhs = updatedPoolBalanceNat * wnatPriceDiv;
+        uint256 rhs = updatedFassetBalance * wnatPriceMul;
+        require(lhs >= SafeBips.mulBips(rhs, exitCRBIPS), "collateral ratio falls below exitCR");
         // execute transfers if the collateral ratio stays above exitCR
         wnat.transfer(msg.sender, natShare);
         if (fassetShare > 0) {
             fAsset.transfer(msg.sender, fassetShare);
         }
-        poolToken.burn(msg.sender, _tokenShare); // checks that balance >= _tokenShare
+        poolToken.burn(msg.sender, _tokenShare);
     }
 
-    // requires the amount of fassets that don't change the pool collateral ratio
+    // requires the amount of fassets that doesn't lower the pool CR
     function selfCloseExit(
         bool _getAgentCollateral, uint256 _tokenShare, 
         string memory _redeemerUnderlyingAddressString
@@ -82,21 +76,23 @@ contract CollateralPool is ReentrancyGuard {
         // poolTokenSupply >= _tokenShare > 0
         uint256 natShare = SafePct.mulDiv(_tokenShare, poolBalanceNat, poolTokenSupply); // can be 0?!
         uint256 fassetShare = SafePct.mulDiv(_tokenShare, fassetBalance, poolTokenSupply);
-        // calculate the msg.sender's additionally required fassets
-        uint256 updatedPoolBalanceNat = SafeMath.sub(poolBalanceNat, natShare);
-        uint256 requiredFassets = SafeMath.sub(
-            updatedPoolBalanceNat / poolBalanceNat, SafeMath.add(fassetBalance, fassetShare));
-        if (requiredFassets > 0) {
-            require(fAsset.allowance(msg.sender, address(this)) >= requiredFassets,
+        // calculate the msg.sender's additionally required fassets (TODO use SafeMath?)
+        uint256 updatedPoolBalanceNat = poolBalanceNat - natShare;
+        uint256 updatedFassetBalance = fassetBalance - fassetShare;
+        uint256 exemptionFassets = fassetBalance * updatedPoolBalanceNat / poolBalanceNat;
+        uint256 additionallyRequiredFassets = (exemptionFassets <= updatedFassetBalance) ? 
+            updatedFassetBalance - exemptionFassets : 0;
+        if (additionallyRequiredFassets > 0) {
+            require(fAsset.allowance(msg.sender, address(this)) >= additionallyRequiredFassets,
                 "f-asset allowance too small");
-            fAsset.transferFrom(msg.sender, address(this), requiredFassets);
+            fAsset.transferFrom(msg.sender, address(this), additionallyRequiredFassets);
         }
         wnat.transfer(msg.sender, natShare);
         poolToken.burn(msg.sender, _tokenShare);
-        uint256 redeemedFassets = fassetShare + requiredFassets;
+        uint256 redeemedFassets = fassetShare + additionallyRequiredFassets;
         if (redeemedFassets > 0) {
-            AssetManagerSettings.Settings memory settings = assetManager.getSettings();
-            uint256 lotsToRedeem = redeemedFassets / settings.lotSizeAMG;
+            uint256 lotSizeAMG = assetManager.getLotSizeAMG();
+            uint256 lotsToRedeem = redeemedFassets / lotSizeAMG;
             if (lotsToRedeem == 0 || _getAgentCollateral) {
                 assetManager.redeemChosenAgentCollateral(
                     agentVault, redeemedFassets, msg.sender);
@@ -107,8 +103,7 @@ contract CollateralPool is ReentrancyGuard {
         }
     }
 
-    // helper function for self-close exits that are paid 
-    // with agent's collateral
+    // helper function for self-close exits paid with agent's collateral
     function selfCloseExitPaidWithCollateral(uint256 _tokenShare) external {
         selfCloseExit(true, _tokenShare, "");
     }
