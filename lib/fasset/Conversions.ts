@@ -1,7 +1,7 @@
 import { BNish, toBN, toBNExp } from "../utils/helpers";
 import { AssetManagerSettings } from "./AssetManagerTypes";
 
-export const AMG_NATWEI_PRICE_SCALE = toBNExp(1, 9);
+export const AMG_TOKENWEI_PRICE_SCALE = toBNExp(1, 9);
 export const NAT_WEI = toBNExp(1, 18);
 
 export function lotSize(settings: AssetManagerSettings) {
@@ -11,7 +11,7 @@ export function lotSize(settings: AssetManagerSettings) {
 export function amgToNATWeiPrice(settings: AssetManagerSettings, natPriceUSDDec5: BNish, assetPriceUSDDec5: BNish) {
     // _natPriceUSDDec5 < 2^128 (in ftso) and assetUnitUBA, are both 64 bit, so there can be no overflow
     return toBN(assetPriceUSDDec5)
-        .mul(toBN(settings.assetMintingGranularityUBA).mul(NAT_WEI).mul(AMG_NATWEI_PRICE_SCALE))
+        .mul(toBN(settings.assetMintingGranularityUBA).mul(NAT_WEI).mul(AMG_TOKENWEI_PRICE_SCALE))
         .div(toBN(natPriceUSDDec5).mul(toBN(settings.assetUnitUBA)));
 }
 
@@ -36,11 +36,11 @@ export function convertLotsToAMG(settings: AssetManagerSettings, lots: BNish) {
 }
 
 export function convertAmgToNATWei(valueAMG: BNish, amgToNATWeiPrice: BNish) {
-    return toBN(valueAMG).mul(toBN(amgToNATWeiPrice)).div(AMG_NATWEI_PRICE_SCALE);
+    return toBN(valueAMG).mul(toBN(amgToNATWeiPrice)).div(AMG_TOKENWEI_PRICE_SCALE);
 }
 
 export function convertNATWeiToAMG(valueNATWei: BNish, amgToNATWeiPrice: BNish) {
-    return toBN(valueNATWei).mul(AMG_NATWEI_PRICE_SCALE).div(toBN(amgToNATWeiPrice));
+    return toBN(valueNATWei).mul(AMG_TOKENWEI_PRICE_SCALE).div(toBN(amgToNATWeiPrice));
 }
 
 export function convertUBAToNATWei(settings: AssetManagerSettings, valueUBA: BNish, amgToNATWeiPrice: BNish) {

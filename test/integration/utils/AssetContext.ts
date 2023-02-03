@@ -1,6 +1,6 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
-import { amgToNATWeiPrice, AMG_NATWEI_PRICE_SCALE } from "../../../lib/fasset/Conversions";
+import { amgToNATWeiPrice, AMG_TOKENWEI_PRICE_SCALE } from "../../../lib/fasset/Conversions";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import {
     AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents, AssetManagerEvents, AttestationClientSCEvents, FAssetEvents,
@@ -175,11 +175,11 @@ export class AssetContext implements IAssetContext {
     }
     
     convertAmgToNATWei(valueAMG: BNish, amgToNATWeiPrice: BNish) {
-        return toBN(valueAMG).mul(toBN(amgToNATWeiPrice)).div(AMG_NATWEI_PRICE_SCALE);
+        return toBN(valueAMG).mul(toBN(amgToNATWeiPrice)).div(AMG_TOKENWEI_PRICE_SCALE);
     }
 
     convertNATWeiToAMG(valueNATWei: BNish, amgToNATWeiPrice: BNish) {
-        return toBN(valueNATWei).mul(AMG_NATWEI_PRICE_SCALE).div(toBN(amgToNATWeiPrice));
+        return toBN(valueNATWei).mul(AMG_TOKENWEI_PRICE_SCALE).div(toBN(amgToNATWeiPrice));
     }
     
     convertUBAToNATWei(valueUBA: BNish, amgToNATWeiPrice: BNish) {

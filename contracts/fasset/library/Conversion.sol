@@ -10,56 +10,52 @@ import "./AssetManagerSettings.sol";
 library Conversion {
     using SafePct for uint256;
     
-    uint256 internal constant AMG_NATWEI_PRICE_SCALE = 1e9;
+    uint256 internal constant AMG_TOKENWEI_PRICE_SCALE_EXP = 9;
+    uint256 internal constant AMG_TOKENWEI_PRICE_SCALE = 10 ** AMG_TOKENWEI_PRICE_SCALE_EXP;
     uint256 internal constant NAT_WEI = 1e18;
 
-    function currentAmgToNATWeiPrice(
-        AssetManagerSettings.Settings storage _settings
+    function currentAmgPriceInTokenWei(
+        AssetManagerSettings.Settings storage _settings,
+        AssetManagerSettings.CollateralType storage _token
     ) 
         internal view 
         returns (uint256) 
     {
         IFtsoRegistry ftsoRegistry = _settings.ftsoRegistry;
-        IIFtso natFtso = ftsoRegistry.getFtso(_settings.natFtsoIndex);
         IIFtso assetFtso = ftsoRegistry.getFtso(_settings.assetFtsoIndex);
-        (uint256 natPrice, ) = natFtso.getCurrentPrice();
-        (uint256 assetPrice, ) = assetFtso.getCurrentPrice();
-        return amgToNATWeiPrice(_settings, natPrice, assetPrice);
+        IIFtso tokenFtso = ftsoRegistry.getFtso(_token.ftsoIndex);
+        (uint256 assetPrice,, uint256 assetFtsoDecimals) = assetFtso.getCurrentPriceWithDecimals();
+        (uint256 tokenPrice,, uint256 tokenFtsoDecimals) = tokenFtso.getCurrentPriceWithDecimals();
+        return _calcAmgToTokenWeiPrice(_settings, _token.decimals, tokenPrice, tokenFtsoDecimals, 
+            assetPrice, assetFtsoDecimals);
     }
 
-    function currentAmgToNATWeiPriceWithTrusted(
-        AssetManagerSettings.Settings storage _settings
+    function currentAmgPriceInTokenWeiWithTrusted(
+        AssetManagerSettings.Settings storage _settings,
+        AssetManagerSettings.CollateralType storage _token
     ) 
         internal view 
         returns (uint256 _ftsoPrice, uint256 _trustedPrice) 
     {
         IFtsoRegistry ftsoRegistry = _settings.ftsoRegistry;
-        IIFtso natFtso = ftsoRegistry.getFtso(_settings.natFtsoIndex);
         IIFtso assetFtso = ftsoRegistry.getFtso(_settings.assetFtsoIndex);
-        (uint256 natPrice, uint256 natTimestamp) = natFtso.getCurrentPrice();
-        (uint256 assetPrice, uint256 assetTimestamp) = assetFtso.getCurrentPrice();
-        (uint256 natPriceTrusted, uint256 natTimestampTrusted) = natFtso.getCurrentPriceFromTrustedProviders();
+        IIFtso tokenFtso = ftsoRegistry.getFtso(_token.ftsoIndex);
+        (uint256 assetPrice, uint256 assetTimestamp, uint256 assetFtsoDecimals) = 
+            assetFtso.getCurrentPriceWithDecimals();
+        (uint256 tokenPrice, uint256 tokenTimestamp, uint256 tokenFtsoDecimals) = 
+            tokenFtso.getCurrentPriceWithDecimals();
+        // wee only need decimals once
         (uint256 assetPriceTrusted, uint256 assetTimestampTrusted) = assetFtso.getCurrentPriceFromTrustedProviders();
-        _ftsoPrice = amgToNATWeiPrice(_settings, natPrice, assetPrice);
-        _trustedPrice = natTimestampTrusted + _settings.maxTrustedPriceAgeSeconds >= natTimestamp
+        (uint256 tokenPriceTrusted, uint256 tokenTimestampTrusted) = tokenFtso.getCurrentPriceFromTrustedProviders();
+        _ftsoPrice = _calcAmgToTokenWeiPrice(_settings, _token.decimals, tokenPrice, tokenFtsoDecimals, 
+            assetPrice, assetFtsoDecimals);
+        _trustedPrice = tokenTimestampTrusted + _settings.maxTrustedPriceAgeSeconds >= tokenTimestamp
                 && assetTimestampTrusted + _settings.maxTrustedPriceAgeSeconds >= assetTimestamp
-            ? amgToNATWeiPrice(_settings, natPriceTrusted, assetPriceTrusted)
+            ? _calcAmgToTokenWeiPrice(_settings, _token.decimals, tokenPriceTrusted, tokenFtsoDecimals, 
+                    assetPriceTrusted, assetFtsoDecimals)
             : _ftsoPrice;
     }
 
-    function amgToNATWeiPrice(
-        AssetManagerSettings.Settings storage _settings,
-        uint256 _natPriceUSDDec5, 
-        uint256 _assetPriceUSDDec5
-    ) 
-        internal view 
-        returns (uint256) 
-    {
-        // _natPriceUSDDec5 < 2^128 (in ftso) and assetUnitUBA, are both 64 bit, so there can be no overflow
-        return _assetPriceUSDDec5.mulDiv(_settings.assetMintingGranularityUBA * NAT_WEI * AMG_NATWEI_PRICE_SCALE,
-                _natPriceUSDDec5 * _settings.assetUnitUBA);
-    }
-    
     function convertAmgToUBA(
         AssetManagerSettings.Settings storage _settings, 
         uint64 _valueAMG
@@ -92,11 +88,31 @@ library Conversion {
         return uint256(_lots) * _settings.lotSizeAMG * _settings.assetMintingGranularityUBA;
     }
     
-    function convertAmgToNATWei(uint256 _valueAMG, uint256 _amgToNATWeiPrice) internal pure returns (uint256) {
-        return _valueAMG.mulDiv(_amgToNATWeiPrice, AMG_NATWEI_PRICE_SCALE);
+    function convertAmgToNATWei(uint256 _valueAMG, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
+        return _valueAMG.mulDiv(_amgToTokenWeiPrice, AMG_TOKENWEI_PRICE_SCALE);
     }
 
-    function convertNATWeiToAMG(uint256 _valueNATWei, uint256 _amgToNATWeiPrice) internal pure returns (uint256) {
-        return _valueNATWei.mulDiv(AMG_NATWEI_PRICE_SCALE, _amgToNATWeiPrice);
+    function convertNATWeiToAMG(uint256 _valueNATWei, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
+        return _valueNATWei.mulDiv(AMG_TOKENWEI_PRICE_SCALE, _amgToTokenWeiPrice);
+    }
+
+    function _calcAmgToTokenWeiPrice(
+        AssetManagerSettings.Settings storage _settings,
+        uint256 _tokenDecimals,
+        uint256 _tokenPrice, 
+        uint256 _tokenFtsoDecimals, 
+        uint256 _assetPrice,
+        uint256 _assetFtsoDecimals
+    ) 
+        private view 
+        returns (uint256) 
+    {
+        uint256 expPlus = _tokenDecimals + _tokenFtsoDecimals + AMG_TOKENWEI_PRICE_SCALE_EXP;
+        uint256 expMinus = _settings.assetMintingDecimals + _assetFtsoDecimals;
+        // If negative, price would probably always be 0 after division, so this is forbidden.
+        // Anyway, we should know about this before we add the token and/or asset, since
+        // token decimals and ftso decimals typically never change.
+        assert(expPlus >= expMinus);
+        return _assetPrice.mulDiv(10 ** (expPlus - expMinus), _tokenPrice);
     }
 }

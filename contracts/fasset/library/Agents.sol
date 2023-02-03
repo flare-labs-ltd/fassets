@@ -3,8 +3,9 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../../utils/implementation/NativeTokenBurner.sol";
+import "../interface/ICollateralPool.sol";
 import "../interface/IAssetManager.sol";
+import "../../utils/implementation/NativeTokenBurner.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
 import "./AMEvents.sol";
@@ -43,6 +44,8 @@ library Agents {
     }
     
     struct Agent {
+        ICollateralPool collateralPool;
+        
         // Current address for underlying agent's collateral.
         // Agent can change this address anytime and it affects future mintings.
         string underlyingAddressString;
@@ -67,6 +70,14 @@ library Agents {
         // Unlike redeemingAMG, dustAMG is still counted in the mintedAMG.
         uint64 dustAMG;
         
+        // Type of collateral class 1. Value of 0 means no class 1 collateral.
+        // The data is obtained as settings.collateralTypesClass1[collateralClass1 - 1].
+        uint16 collateralClass1;
+        
+        // Type of collateral class 2. Value of 0 means no class 2 collateral.
+        // The data is obtained as settings.collateralTypesClass2[collateralClass2 - 1].
+        uint16 collateralClass2;
+        
         // Position of this agent in the list of agents available for minting.
         // Value is actually `list index + 1`, so that 0 means 'not in list'.
         uint64 availableAgentsPos;
@@ -77,7 +88,17 @@ library Agents {
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio when entering the available agent list,
         // but it must always be greater than minimum collateral ratio.
-        uint32 agentMinCollateralRatioBIPS;
+        uint32 agentMinCollateralRatio1BIPS;
+
+        // Collateral ratio at which we calculate locked collateral and collateral available for minting.
+        // Agent may set own value for minting collateral ratio when entering the available agent list,
+        // but it must always be greater than minimum collateral ratio.
+        uint32 agentMinCollateralRatio2BIPS;
+
+        // Collateral ratio at which we calculate locked collateral and collateral available for minting.
+        // Agent may set own value for minting collateral ratio when entering the available agent list,
+        // but it must always be greater than minimum collateral ratio.
+        uint32 agentMinPoolCollateralRatioBIPS;
         
         // Timestamp of the startLiquidation call.
         // If the agent's CR is above ccbCR, agent is put into CCB state for a while.

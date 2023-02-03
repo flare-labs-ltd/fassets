@@ -9,6 +9,49 @@ import "../interface/IWhitelist.sol";
 
 
 library AssetManagerSettings {
+    enum TokenClass {
+        CLASS1, // usable as class 1 collateral
+        CLASS2, // usable as class collateral
+        OTHER   // pool collateral type
+    }
+    
+    struct CollateralType {
+        // Token symbol. Must match the FTSO symbol for this collateral.
+        string symbol;
+        
+        // The ERC20 token contract for this collateral type.
+        IERC20 token;
+        
+        TokenClass tokenClass;
+        
+        // Same as token.decimals().
+        uint8 decimals;
+        
+        // Index in the FtsoRegistry corresponding to ftsoSymbol, automatically calculated from ftsoSymbol.
+        uint16 ftsoIndex;
+        
+        // If some token should not be used anymore as collateral, it has to be announced in advance and it 
+        // is still valid until this timestamp. After that time, the corresponding collateral is considered as
+        // zero and the agents that haven't replaced it are liquidated.
+        // When the invalidation has not been announced, this value is 0.
+        uint64 validUntil;
+        
+        // Minimum collateral ratio for healthy agents.
+        // timelocked
+        uint32 minCollateralRatioBIPS;
+
+        // Minimum collateral ratio for agent in CCB (Collateral call band).
+        // A bit smaller than minCollateralRatioBIPS.
+        // timelocked
+        uint32 ccbMinCollateralRatioBIPS;
+        
+        // Minimum collateral ratio required to get agent out of liquidation.
+        // If the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.
+        // Wiil always be greater than minCollateralRatioBIPS.
+        // timelocked
+        uint32 safetyMinCollateralRatioBIPS;
+    }
+    
     struct Settings {
         // Required contracts.
         // Only used to verify that calls come from assetManagerController.
@@ -25,28 +68,37 @@ library AssetManagerSettings {
         // Attestation client verifies and decodes attestation proofs.
         IAttestationClient attestationClient;
         
-        // WNat contract interface. Agent vaults also read it from here.
-        IWNat wNat;
-        
         // FTSO registry from which the system obtains ftso's for nat and asset.
         IFtsoRegistry ftsoRegistry;
-
-        // FTSO contract for NAT currency (index).
-        // cannot be set directly - obtained from ftso registry for symbol natFtsoSymbol
-        uint32 natFtsoIndex;
         
         // FTSO contract for managed asset (index).
         // cannot be set directly - obtained from ftso registry for symbol assetFtsoSymbol
         uint32 assetFtsoIndex;
         
-        // FTSO contract for NAT currency (symbol).
+        // Same as assetToken.decimals()
         // immutable
-        string natFtsoSymbol;
+        uint8 assetDecimals;
+        
+        // Number of decimals of precision of minted amounts.
+        // assetMintingGranularityUBA = 10 ** (assetDecimals - assetMintingDecimals)
+        // immutable
+        uint8 assetMintingDecimals;
+        
+        bool collateral1Required;
+        
+        bool collateral2Required;
+        
+        uint32 mintingPoolTokensRequiredBIPS;
         
         // FTSO contract for managed asset (symbol).
         // immutable
         string assetFtsoSymbol;
         
+        // All collateral types, used for class 1, class 2 or pool.
+        // Pool collateral (always WNat) has index 0.
+        CollateralType[] collateralTypes;
+        
+        // WNat is always used as pool collateral.
         // Collateral reservation fee is burned on successful minting.
         // immutable
         address payable burnAddress;
@@ -88,21 +140,6 @@ library AssetManagerSettings {
         // this must be done by presenting a payment proof from that address
         // immutable
         bool requireEOAAddressProof;
-        
-        // Minimum collateral ratio for healthy agents.
-        // timelocked
-        uint32 minCollateralRatioBIPS;
-
-        // Minimum collateral ratio for agent in CCB (Collateral call band).
-        // A bit smaller than minCollateralRatioBIPS.
-        // timelocked
-        uint32 ccbMinCollateralRatioBIPS;
-        
-        // Minimum collateral ratio required to get agent out of liquidation.
-        // If the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.
-        // Wiil always be greater than minCollateralRatioBIPS.
-        // timelocked
-        uint32 safetyMinCollateralRatioBIPS;
         
         // Number of underlying blocks that the minter or agent is allowed to pay underlying value.
         // If payment not reported in that time, minting/redemption can be challenged and default action triggered.
