@@ -146,7 +146,7 @@ library Challenges {
         // calculate the reward
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, _agentVault);
         uint256 rewardAMG = SafeBips.mulBips(_backingAMGAtChallenge, _state.settings.paymentChallengeRewardBIPS);
-        uint256 rewardNATWei = Conversion.convertAmgToNATWei(rewardAMG, collateralData.amgToNATWeiPrice)
+        uint256 rewardNATWei = Conversion.convertAmgToTokenWei(rewardAMG, collateralData.amgToTokenWeiPrice)
             + _state.settings.paymentChallengeRewardNATWei;
         Agents.payout(_state, _agentVault, _challenger, rewardNATWei);
     }

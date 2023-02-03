@@ -9,11 +9,11 @@ import {Conversion} from "../Conversion.sol";
  **/
 contract ConversionMock {
 
-    function convertAmgToNATWei(uint256 _valueAMG, uint256 _amgToNATWeiPrice) external pure returns (uint256) {
-        return Conversion.convertAmgToNATWei(_valueAMG, _amgToNATWeiPrice);
+    function convertAmgToTokenWei(uint256 _valueAMG, uint256 _amgToNATWeiPrice) external pure returns (uint256) {
+        return Conversion.convertAmgToTokenWei(_valueAMG, _amgToNATWeiPrice);
     }
 
-    function convertNATWeiToAMG(uint256 _valueNATWei, uint256 _amgToNATWeiPrice) external pure returns (uint256) {
-        return Conversion.convertNATWeiToAMG(_valueNATWei, _amgToNATWeiPrice);
+    function convertTokenWeiToAMG(uint256 _valueNATWei, uint256 _amgToNATWeiPrice) external pure returns (uint256) {
+        return Conversion.convertTokenWeiToAMG(_valueNATWei, _amgToNATWeiPrice);
     }
 }

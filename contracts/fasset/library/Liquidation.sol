@@ -46,7 +46,7 @@ library Liquidation {
         returns (uint256 _liquidatedAmountUBA, uint256 _amountPaid)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        (uint256 collateralRatioBIPS, uint256 amgToNATWeiPrice,) = getCollateralRatioBIPS(_state, agent, _agentVault);
+        (uint256 collateralRatioBIPS, uint256 amgToTokenWeiPrice,) = getCollateralRatioBIPS(_state, agent, _agentVault);
         // allow one-step liquidation (without calling startLiquidation first)
         Agents.LiquidationPhase currentPhase =
             _upgradeLiquidationPhase(_state, agent, _agentVault, collateralRatioBIPS);
@@ -59,8 +59,8 @@ library Liquidation {
         // liquidate redemption tickets
         (uint64 liquidatedAmountAMG,) = Redemption.selfCloseOrLiquidate(_state, _agentVault, amountToLiquidateAMG);
         // pay the liquidator
-        uint256 rewardNATWei = Conversion.convertAmgToNATWei(liquidatedAmountAMG.mulBips(factorBIPS), 
-            amgToNATWeiPrice);
+        uint256 rewardNATWei = Conversion.convertAmgToTokenWei(liquidatedAmountAMG.mulBips(factorBIPS), 
+            amgToTokenWeiPrice);
         _amountPaid = Agents.payout(_state, _agentVault, msg.sender, rewardNATWei);
         // try to pull agent out of liquidation
         _endLiquidationIfHealthy(_state, agent, _agentVault);

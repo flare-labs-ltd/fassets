@@ -67,4 +67,9 @@ library AssetManagerState {
         bool attached;
     }
     
+    // state getters
+    
+    function getWNat(State storage _state) internal view returns (IWNat) {
+        return IWNat(address(_state.settings.collateraltypes[0].token));
+    }
 }

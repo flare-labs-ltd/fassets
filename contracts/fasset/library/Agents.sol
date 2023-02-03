@@ -70,13 +70,9 @@ library Agents {
         // Unlike redeemingAMG, dustAMG is still counted in the mintedAMG.
         uint64 dustAMG;
         
-        // Type of collateral class 1. Value of 0 means no class 1 collateral.
-        // The data is obtained as settings.collateralTypesClass1[collateralClass1 - 1].
-        uint16 collateralClass1;
-        
-        // Type of collateral class 2. Value of 0 means no class 2 collateral.
-        // The data is obtained as settings.collateralTypesClass2[collateralClass2 - 1].
-        uint16 collateralClass2;
+        // Type of collateral class 1.
+        // The data is obtained as settings.collateralTypes[collateralClass].
+        uint16 collateralClass;
         
         // Position of this agent in the list of agents available for minting.
         // Value is actually `list index + 1`, so that 0 means 'not in list'.
@@ -88,12 +84,7 @@ library Agents {
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio when entering the available agent list,
         // but it must always be greater than minimum collateral ratio.
-        uint32 agentMinCollateralRatio1BIPS;
-
-        // Collateral ratio at which we calculate locked collateral and collateral available for minting.
-        // Agent may set own value for minting collateral ratio when entering the available agent list,
-        // but it must always be greater than minimum collateral ratio.
-        uint32 agentMinCollateralRatio2BIPS;
+        uint32 agentMinCollateralRatioBIPS;
 
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio when entering the available agent list,
@@ -251,8 +242,8 @@ library Agents {
         //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
         // - mintedAMG must be burned and cleared
         uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
-        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
-        uint256 buybackCollateral = Conversion.convertAmgToNATWei(mintingAMG, amgToNATWeiPrice)
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
             .mulBips(_state.settings.buybackCollateralFactorBIPS);
         burnCollateral(_state, _agentVault, buybackCollateral);
         agent.mintedAMG = 0;

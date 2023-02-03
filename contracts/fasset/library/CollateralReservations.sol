@@ -50,7 +50,7 @@ library CollateralReservations {
         agent.reservedAMG += valueAMG;
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
-        uint256 reservationFee = _reservationFee(_state, collateralData.amgToNATWeiPrice, valueAMG);
+        uint256 reservationFee = _reservationFee(_state, collateralData.amgToTokenWeiPrice, valueAMG);
         require(msg.value == reservationFee, "inappropriate fee amount");
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
         _state.newCrtId += PaymentReference.randomizedIdSkip();
@@ -126,8 +126,8 @@ library CollateralReservations {
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
         _state.settings.burnAddress.transfer(crt.reservationFeeNatWei);
         // burn reserved collateral at market price
-        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
-        uint256 reservedCollateral = Conversion.convertAmgToNATWei(crt.valueAMG, amgToNATWeiPrice);
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
         Agents.burnCollateral(_state, crt.agentVault, reservedCollateral);
         // send event
         uint256 reservedValueUBA = Conversion.convertAmgToUBA(_state.settings, crt.valueAMG);
@@ -143,8 +143,8 @@ library CollateralReservations {
         external view
         returns (uint256)
     {
-        uint256 amgToNATWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
-        return _reservationFee(_state, amgToNATWeiPrice, _lots * _state.settings.lotSizeAMG);
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgToNATWeiPrice(_state.settings);
+        return _reservationFee(_state, amgToTokenWeiPrice, _lots * _state.settings.lotSizeAMG);
     }
     
     function releaseCollateralReservation(
@@ -185,13 +185,13 @@ library CollateralReservations {
 
     function _reservationFee(
         AssetManagerState.State storage _state,
-        uint256 amgToNATWeiPrice,
+        uint256 amgToTokenWeiPrice,
         uint64 _valueAMG
     )
         private view
         returns (uint256)
     {
-        uint256 valueNATWei = Conversion.convertAmgToNATWei(_valueAMG, amgToNATWeiPrice); 
+        uint256 valueNATWei = Conversion.convertAmgToTokenWei(_valueAMG, amgToTokenWeiPrice); 
         return SafeBips.mulBips(valueNATWei, _state.settings.collateralReservationFeeBIPS);
     }
 }

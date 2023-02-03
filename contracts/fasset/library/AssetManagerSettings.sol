@@ -9,10 +9,12 @@ import "../interface/IWhitelist.sol";
 
 
 library AssetManagerSettings {
+    uint256 internal constant POOL_COLLATERAL = 0;   // index of pool collateral (WNat) in collateralTypes
+    
     enum TokenClass {
+        NONE,   // unused
         CLASS1, // usable as class 1 collateral
-        CLASS2, // usable as class collateral
-        OTHER   // pool collateral type
+        POOL    // pool collateral type
     }
     
     struct CollateralType {
@@ -22,6 +24,7 @@ library AssetManagerSettings {
         // The ERC20 token contract for this collateral type.
         IERC20 token;
         
+        // The kind of collateral for this token.
         TokenClass tokenClass;
         
         // Same as token.decimals().
@@ -83,10 +86,6 @@ library AssetManagerSettings {
         // assetMintingGranularityUBA = 10 ** (assetDecimals - assetMintingDecimals)
         // immutable
         uint8 assetMintingDecimals;
-        
-        bool collateral1Required;
-        
-        bool collateral2Required;
         
         uint32 mintingPoolTokensRequiredBIPS;
         

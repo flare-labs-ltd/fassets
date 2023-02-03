@@ -88,11 +88,11 @@ library Conversion {
         return uint256(_lots) * _settings.lotSizeAMG * _settings.assetMintingGranularityUBA;
     }
     
-    function convertAmgToNATWei(uint256 _valueAMG, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
+    function convertAmgToTokenWei(uint256 _valueAMG, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
         return _valueAMG.mulDiv(_amgToTokenWeiPrice, AMG_TOKENWEI_PRICE_SCALE);
     }
 
-    function convertNATWeiToAMG(uint256 _valueNATWei, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
+    function convertTokenWeiToAMG(uint256 _valueNATWei, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
         return _valueNATWei.mulDiv(AMG_TOKENWEI_PRICE_SCALE, _amgToTokenWeiPrice);
     }
 

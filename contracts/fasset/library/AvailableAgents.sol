@@ -107,7 +107,7 @@ library AvailableAgents {
         _agents = new AgentInfo[](_end - _start);
         AgentCollateral.Data memory collateralData = AgentCollateral.Data({
             fullCollateral: 0,  // filled later for each agent
-            amgToNATWeiPrice: Conversion.currentAmgToNATWeiPrice(_state.settings)
+            amgToTokenWeiPrice: Conversion.currentAmgToNATWeiPrice(_state.settings)
         });
         for (uint256 i = _start; i < _end; i++) {
             address agentVault = _state.availableAgents[i].agentVault;
