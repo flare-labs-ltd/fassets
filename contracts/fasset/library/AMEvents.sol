@@ -146,7 +146,8 @@ library AMEvents {
         address indexed agentVault,
         address indexed redeemer,
         uint256 redemptionAmountUBA,
-        uint256 redeemedCollateralWei,
+        uint256 redeemedClass1CollateralWei,
+        uint256 redeemedPoolCollateralWei,
         uint64 requestId);
 
     /**

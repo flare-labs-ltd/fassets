@@ -170,7 +170,9 @@ library AssetManagerSettings {
         // Expressed in BIPS, e.g. 12000 for factor of 1.2.
         // rate-limited
         // > 1
-        uint32 redemptionDefaultFactorBIPS;
+        uint32 redemptionDefaultFactorAgentC1BIPS;
+        
+        uint32 redemptionDefaultFactorPoolBIPS;
         
         // If the agent or redeemer becomes unresponsive, we still need payment or non-payment confirmations
         // to be presented eventually to properly track agent's underlying balance.

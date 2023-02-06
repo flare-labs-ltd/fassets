@@ -23,6 +23,7 @@ library Agents {
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     using RedemptionQueue for RedemptionQueue.State;
     using AgentCollateral for AgentCollateral.Data;
+    using AssetManagerState for AssetManagerState.State;
     
     enum AgentType {
         NONE,
@@ -416,19 +417,38 @@ library Agents {
         // but it's not needed, since no withdrawal can be made anyway
     }
 
-    function payout(
+    function payoutClass1(
         AssetManagerState.State storage _state, 
+        Agent storage _agent,
         address _agentVault,
         address _receiver,
-        uint256 _amountNATWei
+        uint256 _amountWei
     )
         internal
         returns (uint256 _amountPaid)
     {
-        IAgentVault vault = IAgentVault(_agentVault);
+        AssetManagerSettings.CollateralToken storage collateral = 
+            _state.settings.collateralTokens[_agent.collateralTokenC1];
         // don't want the calling method to fail due to too small balance for payout
-        _amountPaid = Math.min(_amountNATWei, fullCollateral(_state, _agentVault));
-        vault.payout(_state.settings.wNat, _receiver, _amountPaid);
+        _amountPaid = Math.min(_amountWei, collateral.token.balanceOf(_agentVault));
+        IAgentVault vault = IAgentVault(_agentVault);
+        vault.payout(collateral.token, _receiver, _amountPaid);
+    }
+
+    function payoutFromPool(
+        AssetManagerState.State storage _state, 
+        Agent storage _agent,
+        address _receiver,
+        uint256 _amountWei,
+        uint256 _agentResponsibilityWei
+    )
+        internal
+        returns (uint256 _amountPaid)
+    {
+        // don't want the calling method to fail due to too small balance for payout
+        _amountPaid = Math.min(_amountWei, _state.getWNat().balanceOf(address(_agent.collateralPool)));
+        _agentResponsibilityWei = Math.min(_agentResponsibilityWei, _amountPaid);
+        _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
     }
     
     function burnCollateral(

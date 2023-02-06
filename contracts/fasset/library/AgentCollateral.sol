@@ -44,15 +44,15 @@ library AgentCollateral {
         internal view
         returns (AgentCollateral.Data memory)
     {
-        CollateralData memory poolCollateral = getPoolCollateralData(_state, _agent);
+        CollateralData memory poolCollateral = poolCollateralData(_state, _agent);
         return AgentCollateral.Data({
-            agentCollateral: getAgentClass1CollateralData(_state, _agent, _agentVault),
+            agentCollateral: agentClass1CollateralData(_state, _agent, _agentVault),
             poolCollateral: poolCollateral,
-            agentPoolTokens: getAgentPoolTokensCollateralData(poolCollateral, _agent, _agentVault)
+            agentPoolTokens: agentsPoolTokensCollateralData(poolCollateral, _agent, _agentVault)
         });
     }
     
-    function getAgentClass1CollateralData(
+    function agentClass1CollateralData(
         AssetManagerState.State storage _state,
         Agents.Agent storage _agent,
         address _agentVault
@@ -69,7 +69,7 @@ library AgentCollateral {
         });
     }
     
-    function getPoolCollateralData(
+    function poolCollateralData(
         AssetManagerState.State storage _state,
         Agents.Agent storage _agent
     )
@@ -85,7 +85,7 @@ library AgentCollateral {
         });
     }
     
-    function getAgentPoolTokensCollateralData(
+    function agentsPoolTokensCollateralData(
         CollateralData memory _poolCollateral,
         Agents.Agent storage _agent,
         address _agentVault

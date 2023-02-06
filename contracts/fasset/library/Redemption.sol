@@ -362,32 +362,53 @@ library Redemption {
     )
         private
     {
-        // pay redeemer in native currency
-        uint256 paidAmountWei = _collateralAmountForRedemption(_state, _request.agentVault, _request.valueAMG);
-        Agents.payout(_state, _request.agentVault, _request.redeemer, paidAmountWei);
+        Agents.Agent storage agent = Agents.getAgent(_state, _request.agentVault);
+        // pay redeemer in one or both collaterals
+        (uint256 paidC1Wei, uint256 paidPoolWei) = 
+            _collateralAmountForRedemption(_state, agent, _request.agentVault, _request.valueAMG);
+        Agents.payoutClass1(_state, agent, _request.agentVault, _request.redeemer, paidC1Wei);
+        if (paidPoolWei > 0) {
+            Agents.payoutFromPool(_state, agent, _request.redeemer, paidPoolWei, paidPoolWei);
+        }
         // release remaining agent collateral
         Agents.endRedeemingAssets(_state, _request.agentVault, _request.valueAMG);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment
         // it will be (or was already) updated in call to finishRedemptionWithoutPayment (or confirmRedemptionPayment)
         emit AMEvents.RedemptionDefault(_request.agentVault, _request.redeemer, _request.underlyingValueUBA, 
-            paidAmountWei, _redemptionRequestId);
+            paidC1Wei, paidPoolWei, _redemptionRequestId);
     }
     
+    // payment calculation: pay redemptionDefaultFactorAgentC1BIPS (>= 1) from agent vault class 1 collateral and 
+    // redemptionDefaultFactorPoolBIPS from pool; however, if there is not enough in agent's vault, pay more from pool
+    // assured: _agentC1Wei <= fullCollateralC1, _poolWei <= fullPoolCollateral
     function _collateralAmountForRedemption(
         AssetManagerState.State storage _state,
+        Agents.Agent storage _agent,
         address _agentVault,
         uint64 _requestValueAMG
     )
         internal view
-        returns (uint256)
+        returns (uint256 _agentC1Wei, uint256 _poolWei)
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
-        // paid amount is  min(flr_amount * (1 + extra), total collateral share for the amount)
-        uint256 amountWei = Conversion.convertAmgToTokenWei(_requestValueAMG, collateralData.amgToTokenWeiPrice)
-            .mulBips(_state.settings.redemptionDefaultFactorBIPS);
-        uint256 maxAmountWei = collateralData.maxRedemptionCollateral(agent, _requestValueAMG);
-        return amountWei <= maxAmountWei ? amountWei : maxAmountWei;
+        // calculate paid amount and max available amount from agent class1 collateral
+        AgentCollateral.Data memory cdAgent = AgentCollateral.agentClass1CollateralData(_state, _agent, _agentVault);
+        _agentC1Wei = Conversion.convertAmgToTokenWei(_requestValueAMG, cdAgent.amgToTokenWeiPrice)
+            .mulBips(_state.settings.redemptionDefaultFactorAgentC1BIPS);
+        uint256 maxAgentC1Wei = cdAgent.maxRedemptionCollateral(_agent, _requestValueAMG);
+        // calculate paid amount and max available amount from the pool
+        AgentCollateral.Data memory cdPool = AgentCollateral.poolCollateralData(_state, _agent);
+        _poolWei = Conversion.convertAmgToTokenWei(_requestValueAMG, cdPool.amgToTokenWeiPrice)
+            .mulBips(_state.settings.redemptionDefaultFactorPoolBIPS);
+        uint256 maxPoolWei = cdPool.maxRedemptionCollateral(_agent, _requestValueAMG);
+        // if there is not enough collateral held by agent, pay more from the pool
+        if (_agentC1Wei > maxAgentC1Wei) {
+            uint256 extraPoolAmg = _requestValueAMG.mulDiv(_agentC1Wei - maxAgentC1Wei, _agentC1Wei);
+            _poolWei += Conversion.convertAmgToTokenWei(extraPoolAmg, cdPool.amgToTokenWeiPrice);
+            _agentC1Wei = maxAgentC1Wei;
+        }
+        // if there is not enough collateral in the pool, just reduce the payment - however this is not likely, since
+        // redemptionDefaultFactorPoolBIPS is small or zero, while pool CR is much higher that agent CR
+        _poolWei = Math.min(_poolWei, maxPoolWei);
     }
 
     function selfClose(
