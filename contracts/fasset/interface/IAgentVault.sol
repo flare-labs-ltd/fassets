@@ -17,9 +17,9 @@ interface IAgentVault {
     
     function depositNat() external payable;
 
-    function depositCollateral(IERC20[] memory _tokens, uint256[] memory _amounts) external;
+    function depositCollateral(IERC20 _token, uint256 _amount) external;
     
-    function updateCollateral(IERC20[] memory _tokens) external;
+    function updateCollateral(IERC20 _token) external;
     
     function delegate(IVPToken _token, address _to, uint256 _bips) external;
 
@@ -49,7 +49,7 @@ interface IAgentVault {
     
     function withdrawNat(uint256 _amount, address payable _recipient) external;
     
-    function withdrawCollateral(IERC20[] memory _tokens, uint256[] memory _amounts, address _recipient) external;
+    function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient) external;
 
     // agent should make sure to claim rewards before calling destroy(), or they will be forfeit
     function destroy(IERC20[] memory _tokens, TokenType[] memory _tokenTypes) external;
@@ -58,7 +58,7 @@ interface IAgentVault {
     // Since _recipient is typically an unknown address, we do not directly send NAT,
     // but transfer WNAT (doesn't trigger any callbacks) which the recipient must withdraw.
     // Only asset manager can call this method.
-    function payout(IERC20[] memory _tokens, address _recipient, uint256[] memory _amounts) external;
+    function payout(IERC20 _token, address _recipient, uint256 _amount) external;
 
     // Used by asset manager (only for burn for now).
     // Is guarded against reentrancy.
