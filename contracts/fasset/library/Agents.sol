@@ -70,9 +70,9 @@ library Agents {
         // Unlike redeemingAMG, dustAMG is still counted in the mintedAMG.
         uint64 dustAMG;
         
-        // Type of collateral class 1.
-        // The data is obtained as settings.collateralTypes[collateralClass].
-        uint16 collateralClass;
+        // Index of collateral class 1 token.
+        // The data is obtained as settings.collateralTokens[collateralTokenC1].
+        uint16 collateralTokenC1;
         
         // Position of this agent in the list of agents available for minting.
         // Value is actually `list index + 1`, so that 0 means 'not in list'.

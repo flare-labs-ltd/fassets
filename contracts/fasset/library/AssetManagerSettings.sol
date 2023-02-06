@@ -9,7 +9,7 @@ import "../interface/IWhitelist.sol";
 
 
 library AssetManagerSettings {
-    uint256 internal constant POOL_COLLATERAL = 0;   // index of pool collateral (WNat) in collateralTypes
+    uint256 internal constant POOL_COLLATERAL = 0;   // index of pool collateral (WNat) in collateralTokens
     
     enum TokenClass {
         NONE,   // unused
@@ -17,7 +17,7 @@ library AssetManagerSettings {
         POOL    // pool collateral type
     }
     
-    struct CollateralType {
+    struct CollateralToken {
         // Token symbol. Must match the FTSO symbol for this collateral.
         string symbol;
         
@@ -87,7 +87,10 @@ library AssetManagerSettings {
         // immutable
         uint8 assetMintingDecimals;
         
-        uint32 mintingPoolTokensRequiredBIPS;
+        // The minimum amount of pool tokens the agent must hold to be able to mint.
+        // To be able to mint, the NAT value of all backed fassets together with new ones times this percentage
+        // must be smaller than the agent's pool tokens' amount converted to NAT.
+        uint32 mintingPoolHoldingsRequiredBIPS;
         
         // FTSO contract for managed asset (symbol).
         // immutable
@@ -95,7 +98,7 @@ library AssetManagerSettings {
         
         // All collateral types, used for class 1, class 2 or pool.
         // Pool collateral (always WNat) has index 0.
-        CollateralType[] collateralTypes;
+        CollateralToken[] collateralTokens;
         
         // WNat is always used as pool collateral.
         // Collateral reservation fee is burned on successful minting.

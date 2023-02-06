@@ -129,7 +129,7 @@ library CollateralReservations {
         _state.settings.burnAddress.transfer(crt.reservationFeeNatWei);
         // burn reserved collateral at market price
         // TODO: should not burn stablecoins?
-        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(_state.settings, agent.collateralClass);
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(_state.settings, agent.collateralTokenC1);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
         Agents.burnCollateral(_state, crt.agentVault, reservedCollateral);
         // send event

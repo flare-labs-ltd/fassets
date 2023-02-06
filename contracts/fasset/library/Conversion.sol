@@ -21,12 +21,12 @@ library Conversion {
         internal view 
         returns (uint256) 
     {
-        return currentAmgPriceInTokenWei(_settings, _settings.collateralTypes[_tokenType]);
+        return currentAmgPriceInTokenWei(_settings, _settings.collateralTokens[_tokenType]);
     }
 
     function currentAmgPriceInTokenWei(
         AssetManagerSettings.Settings storage _settings,
-        AssetManagerSettings.CollateralType storage _token
+        AssetManagerSettings.CollateralToken storage _token
     ) 
         internal view 
         returns (uint256) 
@@ -42,7 +42,7 @@ library Conversion {
 
     function currentAmgPriceInTokenWeiWithTrusted(
         AssetManagerSettings.Settings storage _settings,
-        AssetManagerSettings.CollateralType storage _token
+        AssetManagerSettings.CollateralToken storage _token
     ) 
         internal view 
         returns (uint256 _ftsoPrice, uint256 _trustedPrice) 

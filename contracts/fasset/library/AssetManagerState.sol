@@ -70,6 +70,6 @@ library AssetManagerState {
     // state getters
     
     function getWNat(State storage _state) internal view returns (IWNat) {
-        return IWNat(address(_state.settings.collateraltypes[0].token));
+        return IWNat(address(_state.settings.collateralTokens[AssetManagerSettings.POOL_COLLATERAL].token));
     }
 }
