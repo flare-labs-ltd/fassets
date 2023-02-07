@@ -23,6 +23,7 @@ contract CollateralPool is ReentrancyGuard {
     uint64 public enterWithoutFAssetMintDelaySeconds;
     uint256 public exitCRBIPS;
     uint256 public topupCRBIPS;
+    uint256 public topupTokenDiscountBIPS;
 
     modifier onlyAssetManager {
         require(msg.sender == address(assetManager), "only asset manager");
@@ -44,26 +45,26 @@ contract CollateralPool is ReentrancyGuard {
         IWNat wnat = assetManager.getWNat();
         uint256 poolBalanceNat = wnat.balanceOf(address(this));
         uint256 poolTokenSupply = poolToken.totalSupply();
-        uint256 fassetBalance = fAsset.balanceOf(address(this));
+        uint256 fassetSupply = fAsset.totalSupply();
         // poolTokenSupply >= _tokenShare > 0
         uint256 natShare = SafePct.mulDiv(_tokenShare, poolBalanceNat, poolTokenSupply); // can be 0?
-        uint256 fassetShare = SafePct.mulDiv(_tokenShare, fassetBalance, poolTokenSupply);
-        // checking whether the new collateral ratio is above exitCR (TODO use SafeMath?)
+        // checking whether the new collateral ratio is above exitCR
         uint256 updatedPoolBalanceNat = poolBalanceNat - natShare;
-        uint256 updatedFassetBalance = fassetBalance - fassetShare;
-        (uint256 wnatPriceMul, uint256 wnatPriceDiv) = assetManager.assetPriceNatWei();
-        uint256 lhs = updatedPoolBalanceNat * wnatPriceDiv;
-        uint256 rhs = updatedFassetBalance * wnatPriceMul;
+        (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
+        uint256 lhs = SafeMath.mul(updatedPoolBalanceNat, assetPriceDiv);
+        uint256 rhs = SafeMath.mul(fassetSupply, assetPriceMul);
         require(lhs >= SafeBips.mulBips(rhs, exitCRBIPS), "collateral ratio falls below exitCR");
-        // execute transfers if the collateral ratio stays above exitCR
+        // execute wnat and fasset transfer
         wnat.transfer(msg.sender, natShare);
+        uint256 fassetBalance = fAsset.balanceOf(address(this));
+        uint256 fassetShare = SafePct.mulDiv(_tokenShare, fassetBalance, poolTokenSupply);
         if (fassetShare > 0) {
             fAsset.transfer(msg.sender, fassetShare);
         }
         poolToken.burn(msg.sender, _tokenShare);
     }
 
-    // requires the amount of fassets that doesn't lower the pool CR
+    // requires the amount of fassets that doesn't lower pool CR
     function selfCloseExit(
         bool _getAgentCollateral, uint256 _tokenShare, 
         string memory _redeemerUnderlyingAddressString
@@ -72,16 +73,17 @@ contract CollateralPool is ReentrancyGuard {
         IWNat wnat = assetManager.getWNat();
         uint256 poolBalanceNat = wnat.balanceOf(address(this));
         uint256 poolTokenSupply = poolToken.totalSupply();
+        uint256 fassetSupply = fAsset.totalSupply();
         uint256 fassetBalance = fAsset.balanceOf(address(this));
         // poolTokenSupply >= _tokenShare > 0
         uint256 natShare = SafePct.mulDiv(_tokenShare, poolBalanceNat, poolTokenSupply); // can be 0?!
         uint256 fassetShare = SafePct.mulDiv(_tokenShare, fassetBalance, poolTokenSupply);
-        // calculate the msg.sender's additionally required fassets (TODO use SafeMath?)
+        // calculate msg.sender's additionally required fassets
         uint256 updatedPoolBalanceNat = poolBalanceNat - natShare;
-        uint256 updatedFassetBalance = fassetBalance - fassetShare;
-        uint256 exemptionFassets = fassetBalance * updatedPoolBalanceNat / poolBalanceNat;
-        uint256 additionallyRequiredFassets = (exemptionFassets <= updatedFassetBalance) ? 
-            updatedFassetBalance - exemptionFassets : 0;
+        uint256 updatedFassetSupply = fassetSupply - fassetShare;
+        uint256 exemptionFassets = SafePct.mulDiv(fassetBalance, updatedPoolBalanceNat, poolBalanceNat);
+        uint256 additionallyRequiredFassets = (exemptionFassets <= updatedFassetSupply) ? 
+            updatedFassetSupply - exemptionFassets : 0;
         if (additionallyRequiredFassets > 0) {
             require(fAsset.allowance(msg.sender, address(this)) >= additionallyRequiredFassets,
                 "f-asset allowance too small");
@@ -126,8 +128,7 @@ contract CollateralPool is ReentrancyGuard {
             fAsset.transferFrom(msg.sender, address(this), fassetShare);
         }
         // if poolBalanceNat=0 then also poolTokenSupply=0 due to require above and we use ratio 1
-        uint256 tokenShare = poolBalanceNat > 0 ? 
-            SafePct.mulDiv(poolTokenSupply, msg.value, poolBalanceNat) : msg.value;
+        uint256 tokenShare = _collateralToTokenShare(msg.value);
         poolToken.mint(msg.sender, tokenShare);
     }
     
@@ -151,6 +152,30 @@ contract CollateralPool is ReentrancyGuard {
         poolToken.mintDelayed(msg.sender, tokenShare, mintAt);
     }
 
+    function _collateralToTokenShare(uint256 _collateral) private view returns (uint256) {
+        IWNat wnat = assetManager.getWNat();
+        uint256 poolBalanceNat = wnat.balanceOf(address(this));
+        uint256 poolTokenSupply = poolToken.totalSupply();
+        uint256 fassetSupply = fAsset.totalSupply();
+        if (poolBalanceNat == 0) return _collateral;
+        (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
+        // calculate amount of nat at topup price and nat at normal price
+        uint256 lhs = assetPriceDiv * poolBalanceNat;
+        uint256 rhs = assetPriceMul * fassetSupply;
+        uint256 topupAssetPriceMul = SafeBips.mulBips(assetPriceMul, topupCRBIPS);
+        uint256 natRequiredToTopup = (lhs < SafeBips.mulBips(rhs, topupCRBIPS)) ? 
+            SafePct.mulDiv(fassetSupply, topupAssetPriceMul, assetPriceDiv) - poolBalanceNat : 0;
+        uint256 collateralAtTopupPrice = (_collateral < natRequiredToTopup) ? 
+            _collateral : natRequiredToTopup;
+        uint256 collateralAtNormalPrice = (collateralAtTopupPrice < _collateral) ? 
+            _collateral - collateralAtTopupPrice : 0;
+        uint256 tokenShareAtTopupPrice = SafePct.mulDiv(poolTokenSupply, collateralAtTopupPrice, 
+            SafeBips.mulBips(poolBalanceNat, topupTokenDiscountBIPS));
+        uint256 tokenShareAtNormalPrice = SafePct.mulDiv(poolTokenSupply, collateralAtNormalPrice, 
+            poolBalanceNat);
+        return tokenShareAtTopupPrice + tokenShareAtNormalPrice;
+    }
+
     // used by AssetManager to handle liquidation (only need access of the pool collateral)
     function payout(address _recipient, uint256 _amount)
         external
@@ -172,7 +197,6 @@ contract CollateralPool is ReentrancyGuard {
         wnat.batchDelegate(_to, _bips);
     }
 
-    // make non reentrant
     function claimFtsoRewards(
         IFtsoRewardManager _ftsoRewardManager, uint256 _lastRewardEpoch
     ) external nonReentrant {
