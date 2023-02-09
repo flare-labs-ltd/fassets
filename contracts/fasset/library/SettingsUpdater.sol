@@ -58,8 +58,8 @@ library SettingsUpdater {
         keccak256("setRedemptionDefaultFactorBips(uint256)");
     bytes32 internal constant SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS =
         keccak256("setConfirmationByOthersAfterSeconds(uint256)");
-    bytes32 internal constant SET_CONFIRMATION_BY_OTHERS_REWARD_NAT_WEI =
-        keccak256("setConfirmationByOthersRewardNatWei(uint256)");
+    bytes32 internal constant SET_CONFIRMATION_BY_OTHERS_REWARD_C1_WEI =
+        keccak256("setConfirmationByOthersRewardC1Wei(uint256)");
     bytes32 internal constant SET_MAX_REDEEMED_TICKETS =
         keccak256("setMaxRedeemedTickets(uint256)");
     bytes32 internal constant SET_WITHDRAWAL_OR_DESTROY_WAIT_MIN_SECONDS =
@@ -127,7 +127,7 @@ library SettingsUpdater {
             _setConfirmationByOthersAfterSeconds(_state, _params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_REWARD_NAT_WEI) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setConfirmationByOthersRewardNatWei(_state, _params);
+            _setConfirmationByOthersRewardC1Wei(_state, _params);
         } else if (_method == SET_MAX_REDEEMED_TICKETS) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setMaxRedeemedTickets(_state, _params);
@@ -264,14 +264,14 @@ library SettingsUpdater {
     {
         (uint256 rewardNATWei, uint256 rewardBIPS) = abi.decode(_params, (uint256, uint256));
         // validate
-        require(rewardNATWei <= (_state.settings.paymentChallengeRewardNATWei * 4) + 100 ether, "increase too big");
-        require(rewardNATWei >= (_state.settings.paymentChallengeRewardNATWei) / 4, "decrease too big");
+        require(rewardNATWei <= (_state.settings.paymentChallengeRewardC1Wei * 4) + 100 ether, "increase too big");
+        require(rewardNATWei >= (_state.settings.paymentChallengeRewardC1Wei) / 4, "decrease too big");
         require(rewardBIPS <= (_state.settings.paymentChallengeRewardBIPS * 4) + 100, "increase too big");
         require(rewardBIPS >= (_state.settings.paymentChallengeRewardBIPS) / 4, "decrease too big");
         // update
-        _state.settings.paymentChallengeRewardNATWei = SafeCast.toUint128(rewardNATWei);
+        _state.settings.paymentChallengeRewardC1Wei = SafeCast.toUint128(rewardNATWei);
         _state.settings.paymentChallengeRewardBIPS = SafeCast.toUint16(rewardBIPS);
-        emit AMEvents.SettingChanged("paymentChallengeRewardNATWei", rewardNATWei);
+        emit AMEvents.SettingChanged("paymentChallengeRewardC1Wei", rewardNATWei);
         emit AMEvents.SettingChanged("paymentChallengeRewardBIPS", rewardBIPS);
     }
 
@@ -387,7 +387,7 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("confirmationByOthersAfterSeconds", value);
     }
 
-    function _setConfirmationByOthersRewardNatWei(
+    function _setConfirmationByOthersRewardC1Wei(
         AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
@@ -396,11 +396,11 @@ library SettingsUpdater {
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
-        require(value <= _state.settings.confirmationByOthersRewardNATWei * 4, "fee increase too big");
-        require(value >= _state.settings.confirmationByOthersRewardNATWei / 4, "fee decrease too big");
+        require(value <= _state.settings.confirmationByOthersRewardC1Wei * 4, "fee increase too big");
+        require(value >= _state.settings.confirmationByOthersRewardC1Wei / 4, "fee decrease too big");
         // update
-        _state.settings.confirmationByOthersRewardNATWei = SafeCast.toUint128(value);
-        emit AMEvents.SettingChanged("confirmationByOthersRewardNATWei", value);
+        _state.settings.confirmationByOthersRewardC1Wei = SafeCast.toUint128(value);
+        emit AMEvents.SettingChanged("confirmationByOthersRewardC1Wei", value);
     }
 
     function _setMaxRedeemedTickets(
@@ -534,7 +534,7 @@ library SettingsUpdater {
         require(_settings.underlyingSecondsForPayment > 0, "cannot be zero");
         require(_settings.redemptionFeeBIPS > 0, "cannot be zero");
         require(_settings.collateralReservationFeeBIPS > 0, "cannot be zero");
-        require(_settings.confirmationByOthersRewardNATWei > 0, "cannot be zero");
+        require(_settings.confirmationByOthersRewardC1Wei > 0, "cannot be zero");
         require(_settings.maxRedeemedTickets > 0, "cannot be zero");
         require(_settings.ccbTimeSeconds > 0, "cannot be zero");
         require(_settings.liquidationStepSeconds > 0, "cannot be zero");

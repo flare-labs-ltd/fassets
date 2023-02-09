@@ -179,7 +179,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS, abi.encode(_value));
     }
 
-    function setConfirmationByOthersRewardNatWei(IAssetManager[] memory _assetManagers, uint256 _value)
+    function setConfirmationByOthersRewardC1Wei(IAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyImmediateGovernance
     {

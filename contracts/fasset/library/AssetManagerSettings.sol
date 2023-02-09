@@ -182,7 +182,7 @@ library AssetManagerSettings {
 
         // The user who makes abandoned redemption confirmations gets rewarded by the following amount.
         // rate-limited
-        uint128 confirmationByOthersRewardNATWei;
+        uint128 confirmationByOthersRewardC1Wei;
         
         // To prevent unbounded work, the number of tickets redeemed in a single request is limited.
         // rate-limited
@@ -195,9 +195,9 @@ library AssetManagerSettings {
         uint16 paymentChallengeRewardBIPS;
         
         // Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).
-        // This is the fixed part (in underlying AMG, so that we can easily set it as some percent of lot size).
+        // This is the fixed part (in class 1 collateral token wei).
         // rate-limited
-        uint128 paymentChallengeRewardNATWei;
+        uint128 paymentChallengeRewardC1Wei;
 
         // Agent has to announce any collateral withdrawal ar vault destroy and then wait for at least 
         // withdrawalWaitMinSeconds. This prevents challenged agent to remove all collateral before 
