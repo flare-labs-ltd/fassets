@@ -67,4 +67,11 @@ contract FtsoRegistryMock is IFtsoRegistry {
         returns(uint256[] memory _supportedIndices, string[] memory _supportedSymbols) {}
     function getSupportedIndicesSymbolsAndFtsos() external view 
         returns(uint256[] memory _supportedIndices, string[] memory _supportedSymbols, IIFtso[] memory _ftsos) {}
+    function getCurrentPriceWithDecimals(uint256 _assetIndex) external view
+        returns(uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals) {}
+    function getCurrentPriceWithDecimals(string memory _symbol) external view
+        returns(uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals) {}
+    function getAllCurrentPrices() external view returns (PriceInfo[] memory) {}
+    function getCurrentPricesByIndices(uint256[] memory _indices) external view returns (PriceInfo[] memory) {}
+    function getCurrentPricesBySymbols(string[] memory _symbols) external view returns (PriceInfo[] memory) {}
 }

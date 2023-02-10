@@ -163,12 +163,12 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_REDEMPTION_FEE_BIPS, abi.encode(_value));
     }
 
-    function setRedemptionDefaultFactorBips(IAssetManager[] memory _assetManagers, uint256 _value)
+    function setRedemptionDefaultFactorBips(IAssetManager[] memory _assetManagers, uint256 _class1, uint256 _pool)
         external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
-            SettingsUpdater.SET_REDEMPTION_DEFAULT_FACTOR_BIPS, abi.encode(_value));
+            SettingsUpdater.SET_REDEMPTION_DEFAULT_FACTOR_BIPS, abi.encode(_class1, _pool));
     }
 
     function setConfirmationByOthersAfterSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
@@ -184,7 +184,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers, 
-            SettingsUpdater.SET_CONFIRMATION_BY_OTHERS_REWARD_NAT_WEI, abi.encode(_value));
+            SettingsUpdater.SET_CONFIRMATION_BY_OTHERS_REWARD_C1_WEI, abi.encode(_value));
     }
 
     function setMaxRedeemedTickets(IAssetManager[] memory _assetManagers, uint256 _value)

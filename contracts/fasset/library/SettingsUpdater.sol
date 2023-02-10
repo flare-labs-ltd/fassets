@@ -55,7 +55,7 @@ library SettingsUpdater {
     bytes32 internal constant SET_REDEMPTION_FEE_BIPS =
         keccak256("setRedemptionFeeBips(uint256)");
     bytes32 internal constant SET_REDEMPTION_DEFAULT_FACTOR_BIPS =
-        keccak256("setRedemptionDefaultFactorBips(uint256)");
+        keccak256("setRedemptionDefaultFactorBips(uint256,uint256)");
     bytes32 internal constant SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS =
         keccak256("setConfirmationByOthersAfterSeconds(uint256)");
     bytes32 internal constant SET_CONFIRMATION_BY_OTHERS_REWARD_C1_WEI =
@@ -125,7 +125,7 @@ library SettingsUpdater {
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setConfirmationByOthersAfterSeconds(_state, _params);
-        } else if (_method == SET_CONFIRMATION_BY_OTHERS_REWARD_NAT_WEI) {
+        } else if (_method == SET_CONFIRMATION_BY_OTHERS_REWARD_C1_WEI) {
             _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
             _setConfirmationByOthersRewardC1Wei(_state, _params);
         } else if (_method == SET_MAX_REDEEMED_TICKETS) {
@@ -189,8 +189,11 @@ library SettingsUpdater {
             _state.settings.ftsoRegistry = ftsoRegistry;
             emit AMEvents.ContractChanged("ftsoRegistry", address(ftsoRegistry));
         }
-        if (_state.settings.wNat != wNat) {
-            _state.settings.wNat = wNat;
+        // TODO: what to do with the NATs in the pool - this will trigger liquidation
+        AssetManagerSettings.CollateralToken storage poolCollateral = 
+            _state.settings.collateralTokens[AssetManagerSettings.POOL_COLLATERAL];
+        if (poolCollateral.token != wNat) {
+            poolCollateral.token = wNat;
             emit AMEvents.ContractChanged("wNat", address(wNat));
         }
     }
@@ -200,12 +203,14 @@ library SettingsUpdater {
     )
         private
     {
-        _state.settings.natFtsoIndex = 
-            SafeCast.toUint32(_state.settings.ftsoRegistry.getFtsoIndex(_state.settings.natFtsoSymbol));
-        _state.settings.assetFtsoIndex = 
-            SafeCast.toUint32(_state.settings.ftsoRegistry.getFtsoIndex(_state.settings.assetFtsoSymbol));
+        uint256 length = _state.settings.collateralTokens.length;
+        for (uint256 i = 0; i < length; i++) {
+            AssetManagerSettings.CollateralToken storage collateral = _state.settings.collateralTokens[i];
+            // do not update invalidated tokens types
+            if (collateral.validUntil != 0 && collateral.validUntil < block.timestamp) continue;
+            collateral.ftsoIndex = SafeCast.toUint16(_state.settings.ftsoRegistry.getFtsoIndex(collateral.symbol));
+        }
     }
-    
     
     function _checkEnoughTimeSinceLastUpdate(
         AssetManagerState.State storage _state,
@@ -226,19 +231,20 @@ library SettingsUpdater {
     ) 
         private 
     {
-        (uint256 minCR, uint256 ccbCR, uint256 safetyCR) = 
-            abi.decode(_params, (uint256, uint256, uint256));
-        // validations
-        require(SafeBips.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
-        uint32[] storage liquidationFactors = _state.settings.liquidationCollateralFactorBIPS;
-        require(liquidationFactors[liquidationFactors.length - 1] <= safetyCR, "liquidation factor too high");
-        // update
-        _state.settings.minCollateralRatioBIPS = SafeCast.toUint32(minCR);
-        _state.settings.ccbMinCollateralRatioBIPS = SafeCast.toUint32(ccbCR);
-        _state.settings.safetyMinCollateralRatioBIPS = SafeCast.toUint32(safetyCR);
-        emit AMEvents.SettingChanged("minCollateralRatioBIPS", minCR);
-        emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", ccbCR);
-        emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", safetyCR);
+        // TODO: replace per collateral
+        // (uint256 minCR, uint256 ccbCR, uint256 safetyCR) = 
+        //     abi.decode(_params, (uint256, uint256, uint256));
+        // // validations
+        // require(SafeBips.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
+        // uint32[] storage liquidationFactors = _state.settings.liquidationCollateralFactorBIPS;
+        // require(liquidationFactors[liquidationFactors.length - 1] <= safetyCR, "liquidation factor too high");
+        // // update
+        // _state.settings.minCollateralRatioBIPS = SafeCast.toUint32(minCR);
+        // _state.settings.ccbMinCollateralRatioBIPS = SafeCast.toUint32(ccbCR);
+        // _state.settings.safetyMinCollateralRatioBIPS = SafeCast.toUint32(safetyCR);
+        // emit AMEvents.SettingChanged("minCollateralRatioBIPS", minCR);
+        // emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", ccbCR);
+        // emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", safetyCR);
     }
     
     function _setTimeForPayment(
@@ -363,14 +369,18 @@ library SettingsUpdater {
     ) 
         private 
     {
-        uint256 value = abi.decode(_params, (uint256));
+        (uint256 class1, uint256 pool) = abi.decode(_params, (uint256, uint256));
         // validate
-        require(value > SafeBips.MAX_BIPS, "bips value too low");
-        require(value <= _state.settings.redemptionDefaultFactorBIPS.mulBips(12000), "fee increase too big");
-        require(value >= _state.settings.redemptionDefaultFactorBIPS.mulBips(8333), "fee decrease too big");
+        require(class1 + pool > SafeBips.MAX_BIPS, "bips value too low");
+        require(class1 <= _state.settings.redemptionDefaultFactorAgentC1BIPS.mulBips(12000), "fee increase too big");
+        require(class1 >= _state.settings.redemptionDefaultFactorAgentC1BIPS.mulBips(8333), "fee decrease too big");
+        require(pool <= _state.settings.redemptionDefaultFactorPoolBIPS.mulBips(12000), "fee increase too big");
+        require(pool >= _state.settings.redemptionDefaultFactorPoolBIPS.mulBips(8333), "fee decrease too big");
         // update
-        _state.settings.redemptionDefaultFactorBIPS = SafeCast.toUint32(value);
-        emit AMEvents.SettingChanged("redemptionDefaultFactorBIPS", value);
+        _state.settings.redemptionDefaultFactorAgentC1BIPS = SafeCast.toUint32(class1);
+        emit AMEvents.SettingChanged("redemptionDefaultFactorAgentC1BIPS", class1);
+        _state.settings.redemptionDefaultFactorPoolBIPS = SafeCast.toUint32(pool);
+        emit AMEvents.SettingChanged("redemptionDefaultFactorPoolBIPS", pool);
     }
 
     function _setConfirmationByOthersAfterSeconds(
@@ -476,8 +486,6 @@ library SettingsUpdater {
         uint256[] memory value = abi.decode(_params, (uint256[]));
         // validate
         require(value.length >= 1, "at least one factor required");
-        require(value[value.length - 1] <= _state.settings.safetyMinCollateralRatioBIPS, 
-            "liquidation factor too high");
         // update
         delete _state.settings.liquidationCollateralFactorBIPS;
         for (uint256 i = 0; i < value.length; i++) {
@@ -521,15 +529,8 @@ library SettingsUpdater {
     )
         private pure
     {
-        uint32[] memory liqFactors = _settings.liquidationCollateralFactorBIPS;
-        uint256 minCR = _settings.minCollateralRatioBIPS;
-        uint256 ccbCR = _settings.ccbMinCollateralRatioBIPS;
-        uint256 safetyCR = _settings.safetyMinCollateralRatioBIPS;
-
         require(_settings.assetUnitUBA > 0, "cannot be zero");
         require(_settings.assetMintingGranularityUBA > 0, "cannot be zero");
-        require(_settings.minCollateralRatioBIPS > 0, "cannot be zero");
-        require(_settings.ccbMinCollateralRatioBIPS > 0, "cannot be zero");
         require(_settings.underlyingBlocksForPayment > 0, "cannot be zero");
         require(_settings.underlyingSecondsForPayment > 0, "cannot be zero");
         require(_settings.redemptionFeeBIPS > 0, "cannot be zero");
@@ -544,16 +545,24 @@ library SettingsUpdater {
         require(_settings.withdrawalWaitMinSeconds > 0, "cannot be zero");
         require(_settings.lotSizeAMG > 0, "cannot be zero");
 
-        require(SafeBips.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
+        // TODO: fix collateral ratios for multi collateral tokens
+        // uint256 minCR = _settings.minCollateralRatioBIPS;
+        // uint256 ccbCR = _settings.ccbMinCollateralRatioBIPS;
+        // uint256 safetyCR = _settings.safetyMinCollateralRatioBIPS;
+        // require(SafeBips.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
+
+        uint32[] memory liqFactors = _settings.liquidationCollateralFactorBIPS;
         require(liqFactors.length >= 1, "at least one factor required");
         for (uint256 i = 0; i < liqFactors.length; i++) {
             require(liqFactors[i] > SafeBips.MAX_BIPS, "factor not above 1");
             require(i == 0 || liqFactors[i] > liqFactors[i - 1], "factors not increasing");
         }
-        require(liqFactors[liqFactors.length - 1] <= safetyCR, "liquidation factor too high" );
+
         require(_settings.collateralReservationFeeBIPS <= SafeBips.MAX_BIPS, "bips value too high");
         require(_settings.redemptionFeeBIPS <= SafeBips.MAX_BIPS, "bips value too high");
-        require(_settings.redemptionDefaultFactorBIPS > SafeBips.MAX_BIPS, "bips value too low");
+        uint256 redemptionFactorBIPS = 
+            _settings.redemptionDefaultFactorAgentC1BIPS + _settings.redemptionDefaultFactorPoolBIPS;
+        require(redemptionFactorBIPS > SafeBips.MAX_BIPS, "bips value too low");
         require(_settings.attestationWindowSeconds >= 1 days, "window too small");
         require(_settings.confirmationByOthersAfterSeconds >= 2 hours, "must be at least two hours");
         require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, "confirmation time too big");

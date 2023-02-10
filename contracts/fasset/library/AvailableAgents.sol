@@ -111,9 +111,9 @@ library AvailableAgents {
             Agents.Agent storage agent = Agents.getAgentNoCheck(_state, agentVault);
             AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, agentVault);
             (uint256 agentCR,) = AgentCollateral.mintingMinCollateralRatio(agent, _state.settings, 
-                AgentCollateral.CollateralKind.AGENT_CLASS1);
+                AgentCollateral.Kind.AGENT_CLASS1);
             (uint256 poolCR,) = AgentCollateral.mintingMinCollateralRatio(agent, _state.settings, 
-                AgentCollateral.CollateralKind.POOL);
+                AgentCollateral.Kind.POOL);
             _agents[i - _start] = AgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,

@@ -18,6 +18,8 @@ library FullAgentInfo {
     using SafeBips for uint256;
     using SafeBips for uint64;
     using AgentCollateral for AgentCollateral.Data;
+    using AgentCollateral for AgentCollateral.CollateralData;
+    using AssetManagerState for AssetManagerState.State;
     
     enum AgentStatusInfo {
         // agent is operating normally
@@ -51,25 +53,48 @@ library FullAgentInfo {
         // Current fee the agent charges for minting (paid in underlying currency).
         uint256 feeBIPS;
         
+        // The token symbol of the agent's current class 1 collateral.
+        string class1CollateralSymbol;
+        
+        // The index in the collateralTokens list of the agent's current class 1 collateral.
+        uint256 class1CollateralIndex;
+        
         // Amount, set by agent, at which locked and free collateral are calculated for new mintings.
+        // For agent's class 1 collateral.
         uint256 agentMinCollateralRatioBIPS;
         
-        // Total amount in agent's vault.
-        uint256 totalCollateralNATWei;
+        // Amount, set by agent, at which locked and free collateral are calculated for new mintings.
+        // For pool collateral.
+        uint256 agentMinPoolCollateralRatioBIPS;
+        
+        // The maximum number of lots that the agent can mint.
+        // This can change any moment due to minting, redemption or price changes.
+        uint256 freeCollateralLots;
+        
+        // Total amount of class1 collateral in agent's vault.
+        uint256 totalClass1CollateralWei;
         
         // Free collateral, available for new mintings.
         // Note: this value doesn't tell you anything about agent being near liquidation, since it is 
         // calculated at agentMinCollateralRatio, not minCollateralRatio.
         // Use collateralRatioBIPS to see whether the agent is near liquidation.
-        uint256 freeCollateralNATWei;
-        
-        // Same as freeCollateralNATWei, but expressed in lots (rounded down) instead of NATWei.
-        uint256 freeCollateralLots;
-        
+        uint256 freeClass1CollateralWei;
+
         // The actual agent's collateral ratio, as it is used in liquidation.
         // For calculation, the system checks both FTSO prices and trusted provider's prices and uses
         // the ones that give higher ratio.
-        uint256 collateralRatioBIPS;
+        uint256 class1CollateralRatioBIPS;
+
+        // Total amount of NAT collateral in agent's pool.
+        uint256 totalPoolCollateralNATWei;
+        
+        // Free NAT pool collateral (see class1 for details).
+        uint256 freePoolCollateralNATWei;
+        
+        // The actual pool collateral ratio (see class1 for details).
+        uint256 poolCollateralRatioBIPS;
+        
+        // TODO: add info about agent's pool tokens
         
         // Total amount of minted f-assets.
         uint256 mintedUBA;
@@ -113,19 +138,33 @@ library FullAgentInfo {
         external view
         returns (AgentInfo memory _agentState)
     {
+        // TODO: add missing data
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
-        _agentState.status = _getAgentStatusInfo(_state, agent);
+        AssetManagerSettings.CollateralToken storage collateral = _state.getClass1Collateral(agent);
+        AssetManagerSettings.CollateralToken storage poolCollateral = _state.getPoolCollateral();
+        _agentState.status = _getAgentStatusInfo(_state, agent, _agentVault);
         _agentState.ownerAddress = Agents.vaultOwner(_agentVault);
         _agentState.underlyingAddressString = agent.underlyingAddressString;
         _agentState.publiclyAvailable = agent.availableAgentsPos != 0;
+        _agentState.class1CollateralSymbol = collateral.symbol;
+        _agentState.class1CollateralIndex = agent.collateralTokenC1;
         _agentState.feeBIPS = agent.feeBIPS;
         _agentState.agentMinCollateralRatioBIPS = 
-            Math.max(agent.agentMinCollateralRatioBIPS, _state.settings.minCollateralRatioBIPS);
-        _agentState.totalCollateralNATWei = Agents.fullCollateral(_state, _agentVault);
-        _agentState.freeCollateralNATWei = collateralData.freeCollateralWei(agent, _state.settings);
+            Math.max(agent.agentMinCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
+        _agentState.agentMinPoolCollateralRatioBIPS = 
+            Math.max(agent.agentMinPoolCollateralRatioBIPS, poolCollateral.minCollateralRatioBIPS);
         _agentState.freeCollateralLots = collateralData.freeCollateralLots(agent, _state.settings);
-        (_agentState.collateralRatioBIPS,,) = Liquidation.getCollateralRatioBIPS(_state, agent, _agentVault);
+        _agentState.totalClass1CollateralWei = collateralData.agentCollateral.fullCollateral;
+        _agentState.freeClass1CollateralWei = 
+            collateralData.agentCollateral.freeCollateralWei(agent, _state.settings);
+        (_agentState.class1CollateralRatioBIPS,) = 
+            Liquidation.getCollateralRatioBIPS(_state, agent, _agentVault, AgentCollateral.Kind.AGENT_CLASS1);
+        _agentState.totalPoolCollateralNATWei = collateralData.poolCollateral.fullCollateral;
+        _agentState.freePoolCollateralNATWei = 
+            collateralData.poolCollateral.freeCollateralWei(agent, _state.settings);
+        (_agentState.poolCollateralRatioBIPS,) = 
+            Liquidation.getCollateralRatioBIPS(_state, agent, _agentVault, AgentCollateral.Kind.POOL);
         _agentState.mintedUBA = Conversion.convertAmgToUBA(_state.settings, agent.mintedAMG);
         _agentState.reservedUBA = Conversion.convertAmgToUBA(_state.settings, agent.reservedAMG);
         _agentState.redeemingUBA = Conversion.convertAmgToUBA(_state.settings, agent.redeemingAMG);
@@ -139,7 +178,8 @@ library FullAgentInfo {
     
     function _getAgentStatusInfo(
         AssetManagerState.State storage _state,
-        Agents.Agent storage _agent
+        Agents.Agent storage _agent,
+        address _agentVault
     )
         private view
         returns (AgentStatusInfo)
@@ -148,7 +188,7 @@ library FullAgentInfo {
         if (status == Agents.AgentStatus.NORMAL) {
             return AgentStatusInfo.NORMAL;
         } else if (status == Agents.AgentStatus.LIQUIDATION) {
-            Agents.LiquidationPhase phase = Liquidation.currentLiquidationPhase(_state, _agent);
+            Agents.LiquidationPhase phase = Liquidation.currentLiquidationPhase(_state, _agent, _agentVault);
             return phase == Agents.LiquidationPhase.CCB ? AgentStatusInfo.CCB : AgentStatusInfo.LIQUIDATION;
         } else if (status == Agents.AgentStatus.FULL_LIQUIDATION) {
             return AgentStatusInfo.FULL_LIQUIDATION;

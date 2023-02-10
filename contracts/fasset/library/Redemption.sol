@@ -20,9 +20,10 @@ import "./Liquidation.sol";
 
 library Redemption {
     using SafeBips for uint256;
+    using SafePct for uint64;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentConfirmations for PaymentConfirmations.State;
-    using AgentCollateral for AgentCollateral.Data;
+    using AgentCollateral for AgentCollateral.CollateralData;
     
     enum RedemptionStatus {
         EMPTY,
@@ -225,7 +226,7 @@ library Redemption {
         _state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payoutClass1(_state, request.agentVault, msg.sender, 
+            Agents.payoutClass1(_state, agent, request.agentVault, msg.sender,
                 _state.settings.confirmationByOthersRewardC1Wei);
         }
         // redemption can make agent healthy, so check and pull out of liquidation
@@ -392,12 +393,13 @@ library Redemption {
         returns (uint256 _agentC1Wei, uint256 _poolWei)
     {
         // calculate paid amount and max available amount from agent class1 collateral
-        AgentCollateral.Data memory cdAgent = AgentCollateral.agentClass1CollateralData(_state, _agent, _agentVault);
+        AgentCollateral.CollateralData memory cdAgent = 
+            AgentCollateral.agentClass1CollateralData(_state, _agent, _agentVault);
         _agentC1Wei = Conversion.convertAmgToTokenWei(_requestValueAMG, cdAgent.amgToTokenWeiPrice)
             .mulBips(_state.settings.redemptionDefaultFactorAgentC1BIPS);
         uint256 maxAgentC1Wei = cdAgent.maxRedemptionCollateral(_agent, _requestValueAMG);
         // calculate paid amount and max available amount from the pool
-        AgentCollateral.Data memory cdPool = AgentCollateral.poolCollateralData(_state, _agent);
+        AgentCollateral.CollateralData memory cdPool = AgentCollateral.poolCollateralData(_state, _agent);
         _poolWei = Conversion.convertAmgToTokenWei(_requestValueAMG, cdPool.amgToTokenWeiPrice)
             .mulBips(_state.settings.redemptionDefaultFactorPoolBIPS);
         uint256 maxPoolWei = cdPool.maxRedemptionCollateral(_agent, _requestValueAMG);

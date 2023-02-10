@@ -150,6 +150,6 @@ library Challenges {
         uint256 rewardAMG = SafeBips.mulBips(_backingAMGAtChallenge, _state.settings.paymentChallengeRewardBIPS);
         uint256 rewardC1Wei = Conversion.convertAmgToTokenWei(rewardAMG, collateralData.amgToTokenWeiPrice)
             + _state.settings.paymentChallengeRewardC1Wei;
-        Agents.payoutClass1(_state, _agentVault, _challenger, rewardC1Wei);
+        Agents.payoutClass1(_state, agent, _agentVault, _challenger, rewardC1Wei);
     }
 }

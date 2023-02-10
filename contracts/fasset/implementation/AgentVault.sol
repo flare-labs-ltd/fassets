@@ -13,7 +13,14 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     
     IAssetManager public immutable assetManager;
     address payable public immutable override owner;
+    
+    IERC20[] private usedTokens;
+    mapping(IERC20 => uint256) private tokenUseFlags;
 
+    uint256 private constant TOKEN_DEPOSIT = 1;
+    uint256 private constant TOKEN_DELEGATE = 2;
+    uint256 private constant TOKEN_DELEGATE_GOVERNANCE = 4;
+    
     modifier onlyOwner {
         require(msg.sender == owner, "only owner");
         _;
@@ -38,7 +45,8 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     function depositNat() external payable override {
         IWNat wnat = assetManager.getWNat();
         wnat.deposit{value: msg.value}();
-        assetManager.updateCollateral(wnat);
+        assetManager.collateralDeposited(wnat);
+        _tokenUsed(wnat, TOKEN_DEPOSIT);
     }
     
     // must call `token.approve(vault, amount)` before for each token in _tokens
@@ -47,15 +55,17 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         onlyOwner
     {
         _token.transferFrom(msg.sender, address(this), _amount);
-        assetManager.updateCollateral(_token);
+        assetManager.collateralDeposited(_token);
+        _tokenUsed(_token, TOKEN_DEPOSIT);
     }
 
     // update collateral after `transfer(vault, some amount)` was called (alternative to depositCollateral)
-    function updateCollateral(IERC20 _token)
+    function collateralDeposited(IERC20 _token)
         external
         onlyOwner
     {
-        assetManager.updateCollateral(_token);
+        assetManager.collateralDeposited(_token);
+        _tokenUsed(_token, TOKEN_DEPOSIT);
     }
 
     function withdrawNat(uint256 _amount, address payable _recipient)
@@ -89,13 +99,14 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         onlyOwner 
         nonReentrant 
     {
-        require(!assetManager.isCollateralToken(_token), "Only non-collateral tokens");
+        require(!assetManager.isCollateralToken(address(this), _token), "Only non-collateral tokens");
         _token.safeTransfer(owner, _amount);
     }
 
     // TODO: Should check that _token is a collateral token? There should be no need for that.
     function delegate(IVPToken _token, address _to, uint256 _bips) external override onlyOwner {
         _token.delegate(_to, _bips);
+        _tokenUsed(_token, TOKEN_DELEGATE);
     }
 
     function undelegateAll(IVPToken _token) external override onlyOwner {
@@ -107,7 +118,9 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     }
 
     function delegateGovernance(address _to) external override onlyOwner {
-        assetManager.getWNat().governanceVotePower().delegate(_to);
+        IWNat wnat = assetManager.getWNat();
+        wnat.governanceVotePower().delegate(_to);
+        _tokenUsed(wnat, TOKEN_DELEGATE_GOVERNANCE);
     }
 
     function undelegateGovernance() external override onlyOwner {
@@ -150,23 +163,26 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
 
     // Used by asset manager when destroying agent.
     // Completely erases agent vault and transfers all funds to the owner.
-    function destroy(IERC20[] memory _tokens, TokenType[] memory _tokenTypes)
+    function destroy()
         external override
         onlyAssetManager
     {
-        for (uint256 i = 0; i < _tokens.length; i++) {
-            IERC20 token = _tokens[i];
-            TokenType tokenType = _tokenTypes[i];
-            if (tokenType == TokenType.WNAT) {
-                IWNat wnat = IWNat(address(token));
-                if (address(wnat.governanceVotePower()) != address(0)) {
-                    wnat.governanceVotePower().undelegate();
-                }
-                wnat.undelegateAll();
-            } else if (tokenType == TokenType.VP_TOKEN) {
+        uint256 length = usedTokens.length;
+        for (uint256 i = 0; i < length; i++) {
+            IERC20 token = usedTokens[i];
+            uint256 useFlags = tokenUseFlags[token];
+            // undelegate all governance delegation
+            if ((useFlags & TOKEN_DELEGATE_GOVERNANCE) != 0) {
+                IWNat(address(token)).governanceVotePower().undelegate();
+            }
+            // undelegate all FTSO delegation
+            if ((useFlags & TOKEN_DELEGATE) != 0) {
                 IVPToken(address(token)).undelegateAll();
             }
-            token.transfer(owner, token.balanceOf(address(this)));
+            // transfer balance to owner
+            if ((useFlags & TOKEN_DEPOSIT) != 0) {
+                token.transfer(owner, token.balanceOf(address(this)));
+            }
         }
         selfdestruct(owner);
     }
@@ -202,5 +218,12 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
             /* solhint-enable avoid-low-level-calls */
             require(success, "transfer failed");
         }
+    }
+    
+    function _tokenUsed(IERC20 _token, uint256 _flags) private {
+        if (tokenUseFlags[_token] == 0) {
+            usedTokens.push(_token);
+        }
+        tokenUseFlags[_token] |= _flags;
     }
 }

@@ -14,8 +14,11 @@ contract FtsoMock is IIFtso {
     uint256 private priceFromTrustedProviders;
     uint256 private priceTimestampFromTrustedProviders;
     
-    constructor(string memory _symbol) {
+    uint256 private immutable decimals;
+    
+    constructor(string memory _symbol, uint256 _decimals) {
         symbol = _symbol;
+        decimals = _decimals;
     }
     
     function setCurrentPrice(uint256 _price, uint256 _ageSeconds) external {
@@ -34,8 +37,22 @@ contract FtsoMock is IIFtso {
         return (price, priceTimestamp);
     }
     
+    function getCurrentPriceWithDecimals() 
+        external view 
+        returns (uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals) 
+    {
+        return (price, priceTimestamp, decimals);
+    }
+    
     function getCurrentPriceFromTrustedProviders() external view returns (uint256 _price, uint256 _timestamp) {
         return (priceFromTrustedProviders, priceTimestampFromTrustedProviders);
+    }
+    
+    function getCurrentPriceWithDecimalsFromTrustedProviders()
+        external view
+        returns (uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals)
+    {
+        return (priceFromTrustedProviders, priceTimestampFromTrustedProviders, decimals);
     }
 
     // unused

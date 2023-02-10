@@ -29,6 +29,8 @@ import "../library/FullAgentInfo.sol";
  * There is one instance of AssetManager per f-asset type.
  */
 contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
+    using AssetManagerState for AssetManagerState.State;
+    
     AssetManagerState.State private state;
     SettingsUpdater.PendingUpdates private pendingUpdates;
     IFAsset public immutable fAsset;
@@ -148,13 +150,14 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * @param _underlyingAddressString full address on the underlying chain (not hash)
      */
     function createAgent(
-        string memory _underlyingAddressString
+        string memory _underlyingAddressString,
+        uint256 _collateralTokenClass1
     ) 
         external
         onlyAttached
     {
         requireWhitelistedSender();
-        Agents.createAgent(state, Agents.AgentType.AGENT_100, this, _underlyingAddressString);
+        Agents.createAgent(state, Agents.AgentType.AGENT_100, this, _underlyingAddressString, _collateralTokenClass1);
     }
     
     /**
@@ -187,7 +190,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         Agents.destroyAgent(state, _agentVault);
-        IAgentVault(_agentVault).destroy(state.settings.wNat);
     }
     
     /**
@@ -243,27 +245,27 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * @param _valueNATWei the withdrawn amount
      */
     function withdrawCollateral(
+        IERC20 _token,
         uint256 _valueNATWei
     )
         external override
     {
         // Agents.withdrawalExecuted makes sure that only a registered agent vault can call
-        Agents.withdrawalExecuted(state, msg.sender, _valueNATWei);
+        Agents.withdrawalExecuted(state, _token, msg.sender, _valueNATWei);
     }
     
     /**
      * Called by AgentVault when there was a deposit.
      * May pull agent out of liquidation.
      * NOTE: may not be called directly from any EOA address (only through a registered agent vault).
-     * @param _valueNATWei the deposited amount
      */
-    function depositCollateral(
-        uint256 _valueNATWei
+    function collateralDeposited(
+        IERC20 _token
     )
         external override
     {
         // Agents.depositExecuted makes sure that only a registered agent vault can call
-        Agents.depositExecuted(state, msg.sender, _valueNATWei);
+        Agents.depositExecuted(state, _token, msg.sender);
     }
     
     /**
@@ -788,17 +790,19 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * @param _agentVault agent vault address
      * @param _amountUBA the amount of f-assets to liquidate
      * @return _liquidatedAmountUBA liquidated amount of f-asset
-     * @return _amountPaid amount paid to liquidator (in WNat)
+     * @return _amountPaidClass1 amount paid to liquidator (in agents class 1)
+     * @return _amountPaidPool amount paid to liquidator (in NAT from pool)
      */
     function liquidate(
         address _agentVault,
         uint256 _amountUBA
     )
         external
-        returns (uint256 _liquidatedAmountUBA, uint256 _amountPaid)
+        returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidClass1, uint256 _amountPaidPool)
     {
         requireWhitelistedSender();
-        (_liquidatedAmountUBA, _amountPaid) = Liquidation.liquidate(state, _agentVault, _amountUBA);
+        (_liquidatedAmountUBA, _amountPaidClass1, _amountPaidPool) = 
+            Liquidation.liquidate(state, _agentVault, _amountUBA);
         fAsset.burn(msg.sender, _liquidatedAmountUBA);
     }
     
@@ -901,7 +905,29 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view override
         returns (IWNat)
     {
-        return state.settings.wNat;
+        return state.getWNat();
+    }
+    
+    /**
+     * Check if `_token` is one of the collateral tokens for `_agentVault`.
+     */
+    function isCollateralToken(address _agentVault, IERC20 _token)
+        external view override
+        returns (bool)
+    {
+        return Agents.isCollateralToken(state, _agentVault, _token);
+    }
+    
+    /**
+     * Returns price of asset (UBA) in NAT Wei as a fraction.
+     */
+    function assetPriceNatWei()
+        external view override 
+        returns (uint256 _multiplier, uint256 _divisor)
+    {
+        _multiplier = Conversion.currentAmgPriceInTokenWei(state.settings,
+            state.settings.collateralTokens[AssetManagerSettings.POOL_COLLATERAL]);
+        _divisor = Conversion.AMG_TOKENWEI_PRICE_SCALE * state.settings.assetMintingGranularityUBA;
     }
     
     /**

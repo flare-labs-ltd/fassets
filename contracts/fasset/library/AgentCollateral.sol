@@ -91,11 +91,11 @@ library AgentCollateral {
         address _agentVault
     )
         internal view
-        returns (uint256)
+        returns (CollateralData memory)
     {
         IERC20 poolToken = _agent.collateralPool.poolToken();
         uint256 agentPoolTokens = poolToken.balanceOf(_agentVault);
-        uint256 totalPoolTokens = poolToken.totalBalance();
+        uint256 totalPoolTokens = poolToken.totalSupply();
         uint256 amgToPoolTokenWeiPrice = _poolCollateral.fullCollateral != 0 ?
             _poolCollateral.amgToTokenWeiPrice.mulDiv(totalPoolTokens, _poolCollateral.fullCollateral) : 0;
         return CollateralData({ 
@@ -128,14 +128,14 @@ library AgentCollateral {
         internal view 
         returns (uint256) 
     {
-        uint256 collateralWei = freeSingleCollateralWei(_data, _agent, _settings);
+        uint256 collateralWei = freeCollateralWei(_data, _agent, _settings);
         uint256 lotWei = mintingLotCollateralWei(_data, _agent, _settings);
         // lotWei=0 is possible only for agent's pool token collateral if pool balance in NAT is 0
         // so then we can safely return 0 here, since minting is impossible
         return lotWei != 0 ? collateralWei / lotWei : 0;
     }
     
-    function freeSingleCollateralWei(
+    function freeCollateralWei(
         AgentCollateral.CollateralData memory _data,
         Agents.Agent storage _agent, 
         AssetManagerSettings.Settings storage _settings
@@ -143,13 +143,13 @@ library AgentCollateral {
         internal view 
         returns (uint256) 
     {
-        uint256 lockedCollateral = lockedSingleCollateralWei(_data, _agent, _settings);
+        uint256 lockedCollateral = lockedCollateralWei(_data, _agent, _settings);
         (, uint256 freeCollateral) = _data.fullCollateral.trySub(lockedCollateral);
         return freeCollateral;
     }
     
     // Amount of collateral NOT available for new minting or withdrawal.
-    function lockedSingleCollateralWei(
+    function lockedCollateralWei(
         AgentCollateral.CollateralData memory _data,
         Agents.Agent storage _agent, 
         AssetManagerSettings.Settings storage _settings
@@ -209,7 +209,7 @@ library AgentCollateral {
     // Used for redemption default payment - calculate all types of collateral at the same rate, so that
     // future redemptions don't get less than this one (unless the price changes).
     // Ignores collateral announced for withdrawal (redemption has priority over withdrawal).
-    function maxRedemptionSingleCollateral(
+    function maxRedemptionCollateral(
         AgentCollateral.CollateralData memory _data,
         Agents.Agent storage _agent, 
         uint256 _valueAMG
@@ -232,12 +232,12 @@ library AgentCollateral {
         internal view
         returns (uint256 _fullCollateral, uint256 _amgToTokenWeiPrice, uint256 _amgToTokenWeiPriceTrusted)
     {
-        assert (kind != Kind.AGENT_POOL);   // does not make sense for liquidation
+        assert (_kind != Kind.AGENT_POOL);   // does not make sense for liquidation
         uint256 tokenIndex = 
             _kind == Kind.AGENT_CLASS1 ? _agent.collateralTokenC1 : AssetManagerSettings.POOL_COLLATERAL;
         AssetManagerSettings.CollateralToken storage collateral = _state.settings.collateralTokens[tokenIndex];
         address holderAddress = 
-            _kind == Kind.AGENT_CLASS1 ? _agentVault : _agent.collateralPool;
+            _kind == Kind.AGENT_CLASS1 ? _agentVault : address(_agent.collateralPool);
         _fullCollateral = collateral.token.balanceOf(holderAddress);
         (_amgToTokenWeiPrice, _amgToTokenWeiPriceTrusted) = 
             Conversion.currentAmgPriceInTokenWeiWithTrusted(_state.settings, collateral);

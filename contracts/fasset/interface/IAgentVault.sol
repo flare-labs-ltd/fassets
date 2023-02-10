@@ -9,17 +9,11 @@ import "./IWNat.sol";
 
 
 interface IAgentVault {
-    enum TokenType {
-        ERC20,
-        VP_TOKEN,
-        WNAT
-    }
-    
     function depositNat() external payable;
 
     function depositCollateral(IERC20 _token, uint256 _amount) external;
     
-    function updateCollateral(IERC20 _token) external;
+    function collateralDeposited(IERC20 _token) external;
     
     function delegate(IVPToken _token, address _to, uint256 _bips) external;
 
@@ -52,7 +46,7 @@ interface IAgentVault {
     function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient) external;
 
     // agent should make sure to claim rewards before calling destroy(), or they will be forfeit
-    function destroy(IERC20[] memory _tokens, TokenType[] memory _tokenTypes) external;
+    function destroy() external;
 
     // Used by asset manager for liquidation and failed redemption.
     // Since _recipient is typically an unknown address, we do not directly send NAT,
