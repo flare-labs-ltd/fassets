@@ -925,8 +925,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view override 
         returns (uint256 _multiplier, uint256 _divisor)
     {
-        _multiplier = Conversion.currentAmgPriceInTokenWei(state.settings,
-            state.settings.collateralTokens[AssetManagerSettings.POOL_COLLATERAL]);
+        _multiplier = Conversion.currentAmgPriceInTokenWei(state.settings, state.getPoolCollateral());
         _divisor = Conversion.AMG_TOKENWEI_PRICE_SCALE * state.settings.assetMintingGranularityUBA;
     }
     

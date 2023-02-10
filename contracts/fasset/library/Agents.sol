@@ -183,9 +183,8 @@ library Agents {
         // set collateral token type
         require(_collateralTokenClass1 >= 1 && _collateralTokenClass1 < _state.settings.collateralTokens.length,
             "invalid collateral token index");
-        AssetManagerSettings.CollateralToken storage collateral = 
-            _state.settings.collateralTokens[_collateralTokenClass1];
-        require(collateral.tokenClass == AssetManagerSettings.TokenClass.CLASS1,
+        CollateralToken.Token storage collateral = _state.settings.collateralTokens[_collateralTokenClass1];
+        require(collateral.tokenClass == CollateralToken.TokenClass.CLASS1,
             "invalid collateral token class");
         agent.collateralTokenC1 = _collateralTokenClass1.toUint16();
         // initially, agentMinCollateralRatioBIPS is the same as global min collateral ratio
@@ -263,7 +262,7 @@ library Agents {
         //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
         // - mintedAMG must be burned and cleared
         uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
-        AssetManagerSettings.CollateralToken storage collateral = _state.getClass1Collateral(agent);
+        CollateralToken.Token storage collateral = _state.getClass1Collateral(agent);
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(_state.settings, collateral);
         uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
             .mulBips(_state.settings.buybackCollateralFactorBIPS);
@@ -282,7 +281,7 @@ library Agents {
         // TODO: add min pool collateral
         Agent storage agent = Agents.getAgent(_state, _agentVault);
         requireAgentVaultOwner(_agentVault);
-        AssetManagerSettings.CollateralToken storage collateral = _state.getClass1Collateral(agent);
+        CollateralToken.Token storage collateral = _state.getClass1Collateral(agent);
         require(_agentMinCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
             "collateral ratio too small");
         agent.agentMinCollateralRatioBIPS = SafeCast.toUint32(_agentMinCollateralRatioBIPS);
@@ -456,8 +455,7 @@ library Agents {
         internal
         returns (uint256 _amountPaid)
     {
-        AssetManagerSettings.CollateralToken storage collateral = 
-            _state.settings.collateralTokens[_agent.collateralTokenC1];
+        CollateralToken.Token storage collateral = _state.getClass1Collateral(_agent);
         // don't want the calling method to fail due to too small balance for payout
         _amountPaid = Math.min(_amountWei, collateral.token.balanceOf(_agentVault));
         IAgentVault vault = IAgentVault(_agentVault);

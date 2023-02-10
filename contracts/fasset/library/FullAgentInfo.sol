@@ -141,8 +141,8 @@ library FullAgentInfo {
         // TODO: add missing data
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
-        AssetManagerSettings.CollateralToken storage collateral = _state.getClass1Collateral(agent);
-        AssetManagerSettings.CollateralToken storage poolCollateral = _state.getPoolCollateral();
+        CollateralToken.Token storage collateral = _state.getClass1Collateral(agent);
+        CollateralToken.Token storage poolCollateral = _state.getPoolCollateral();
         _agentState.status = _getAgentStatusInfo(_state, agent, _agentVault);
         _agentState.ownerAddress = Agents.vaultOwner(_agentVault);
         _agentState.underlyingAddressString = agent.underlyingAddressString;

@@ -66,7 +66,7 @@ library Liquidation {
             _currentLiquidationFactorBIPS(_state, agent, class1CR, poolCR);
         uint256 maxLiquidatedAMG = Math.max(
             _maxLiquidationAmountAMG(_state, agent, class1CR, class1FactorBIPS, agent.collateralTokenC1),
-            _maxLiquidationAmountAMG(_state, agent, poolCR, poolFactorBIPS, AssetManagerSettings.POOL_COLLATERAL));
+            _maxLiquidationAmountAMG(_state, agent, poolCR, poolFactorBIPS, CollateralToken.POOL));
         uint64 amountToLiquidateAMG = 
             Math.min(maxLiquidatedAMG, Conversion.convertUBAToAmg(_state.settings, _amountUBA)).toUint64();
         // liquidate redemption tickets
@@ -154,7 +154,7 @@ library Liquidation {
         Agents.LiquidationPhase newPhaseC1 = 
             _initialLiquidationPhaseForCollateral(_state, class1CR, _agent.collateralTokenC1);
         Agents.LiquidationPhase newPhasePool = 
-            _initialLiquidationPhaseForCollateral(_state, poolCR, AssetManagerSettings.POOL_COLLATERAL);
+            _initialLiquidationPhaseForCollateral(_state, poolCR, CollateralToken.POOL);
         Agents.LiquidationPhase newPhase = newPhaseC1 >= newPhasePool ? newPhaseC1 : newPhasePool;
         return newPhase > currentPhase ? newPhase : currentPhase;
     }
@@ -176,7 +176,7 @@ library Liquidation {
         Agents.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_state, _agent);
         uint256 targetRatioClass1BIPS = _targetRatioBIPS(_state, currentPhase, _agent.collateralTokenC1,
             (_agent.collateralsUnderwater & Agents.LF_CLASS1) != 0);
-        uint256 targetRatioPoolBIPS = _targetRatioBIPS(_state, currentPhase, AssetManagerSettings.POOL_COLLATERAL,
+        uint256 targetRatioPoolBIPS = _targetRatioBIPS(_state, currentPhase, CollateralToken.POOL,
             (_agent.collateralsUnderwater & Agents.LF_POOL) != 0);
         // if agent is safe, restore status to NORMAL
         if (class1CR >= targetRatioClass1BIPS && poolCR >= targetRatioPoolBIPS) {
@@ -197,7 +197,7 @@ library Liquidation {
         private view
         returns (uint256)
     {
-        AssetManagerSettings.CollateralToken storage collateral = _state.settings.collateralTokens[_collateralIndex];
+        CollateralToken.Token storage collateral = _state.settings.collateralTokens[_collateralIndex];
         if (_currentPhase == Agents.LiquidationPhase.CCB || !_collateralTypeUnderwater) {
             return collateral.minCollateralRatioBIPS;
         } else {
@@ -225,7 +225,7 @@ library Liquidation {
             _agent.collateralsUnderwater |= Agents.LF_CLASS1;
         }
         Agents.LiquidationPhase newPhasePool = 
-            _initialLiquidationPhaseForCollateral(_state, _poolCR, AssetManagerSettings.POOL_COLLATERAL);
+            _initialLiquidationPhaseForCollateral(_state, _poolCR, CollateralToken.POOL);
         if (newPhasePool == Agents.LiquidationPhase.LIQUIDATION) {
             _agent.collateralsUnderwater |= Agents.LF_POOL;
         }
@@ -256,7 +256,7 @@ library Liquidation {
         private view
         returns (Agents.LiquidationPhase)
     {
-        AssetManagerSettings.CollateralToken storage collateral = _state.settings.collateralTokens[_collateralIndex];
+        CollateralToken.Token storage collateral = _state.settings.collateralTokens[_collateralIndex];
         if (_collateralRatioBIPS >= collateral.minCollateralRatioBIPS) {
             return Agents.LiquidationPhase.NONE;
         } else if (_collateralRatioBIPS >= collateral.ccbMinCollateralRatioBIPS) {
@@ -352,7 +352,7 @@ library Liquidation {
             return _agent.mintedAMG;
         }
         // otherwise, liquidate just enough to get agent to safety
-        AssetManagerSettings.CollateralToken storage collateral = _state.settings.collateralTokens[_collateralIndex];
+        CollateralToken.Token storage collateral = _state.settings.collateralTokens[_collateralIndex];
         uint256 targetRatioBIPS = collateral.safetyMinCollateralRatioBIPS;
         if (targetRatioBIPS <= _collateralRatioBIPS) {
             return 0;               // agent already safe

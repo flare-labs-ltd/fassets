@@ -26,7 +26,7 @@ library Conversion {
 
     function currentAmgPriceInTokenWei(
         AssetManagerSettings.Settings storage _settings,
-        AssetManagerSettings.CollateralToken storage _token
+        CollateralToken.Token storage _token
     ) 
         internal view 
         returns (uint256) 
@@ -42,7 +42,7 @@ library Conversion {
 
     function currentAmgPriceInTokenWeiWithTrusted(
         AssetManagerSettings.Settings storage _settings,
-        AssetManagerSettings.CollateralToken storage _token
+        CollateralToken.Token storage _token
     ) 
         internal view 
         returns (uint256 _ftsoPrice, uint256 _trustedPrice) 

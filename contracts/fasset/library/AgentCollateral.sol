@@ -60,8 +60,7 @@ library AgentCollateral {
         internal view
         returns (CollateralData memory)
     {
-        AssetManagerSettings.CollateralToken storage collateral = 
-            _state.settings.collateralTokens[_agent.collateralTokenC1];
+        CollateralToken.Token storage collateral = _state.settings.collateralTokens[_agent.collateralTokenC1];
         return CollateralData({ 
             kind: Kind.AGENT_CLASS1,
             fullCollateral: collateral.token.balanceOf(_agentVault),
@@ -76,8 +75,7 @@ library AgentCollateral {
         internal view
         returns (CollateralData memory)
     {
-        AssetManagerSettings.CollateralToken storage collateral = 
-            _state.settings.collateralTokens[AssetManagerSettings.POOL_COLLATERAL];
+        CollateralToken.Token storage collateral = _state.settings.collateralTokens[CollateralToken.POOL];
         return CollateralData({ 
             kind: Kind.POOL,
             fullCollateral: collateral.token.balanceOf(address(_agent.collateralPool)),
@@ -193,7 +191,7 @@ library AgentCollateral {
             _mintingMinCollateralRatioBIPS = _systemMinCollateralRatioBIPS;
         } else if (_kind == Kind.POOL) {
             _systemMinCollateralRatioBIPS = 
-                _settings.collateralTokens[AssetManagerSettings.POOL_COLLATERAL].minCollateralRatioBIPS;
+                _settings.collateralTokens[CollateralToken.POOL].minCollateralRatioBIPS;
             _mintingMinCollateralRatioBIPS = 
                 Math.max(_agent.agentMinPoolCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         } else {
@@ -234,8 +232,8 @@ library AgentCollateral {
     {
         assert (_kind != Kind.AGENT_POOL);   // does not make sense for liquidation
         uint256 tokenIndex = 
-            _kind == Kind.AGENT_CLASS1 ? _agent.collateralTokenC1 : AssetManagerSettings.POOL_COLLATERAL;
-        AssetManagerSettings.CollateralToken storage collateral = _state.settings.collateralTokens[tokenIndex];
+            _kind == Kind.AGENT_CLASS1 ? _agent.collateralTokenC1 : CollateralToken.POOL;
+        CollateralToken.Token storage collateral = _state.settings.collateralTokens[tokenIndex];
         address holderAddress = 
             _kind == Kind.AGENT_CLASS1 ? _agentVault : address(_agent.collateralPool);
         _fullCollateral = collateral.token.balanceOf(holderAddress);

@@ -70,7 +70,7 @@ library AssetManagerState {
     // state getters
     
     function getWNat(State storage _state) internal view returns (IWNat) {
-        return IWNat(address(_state.settings.collateralTokens[AssetManagerSettings.POOL_COLLATERAL].token));
+        return IWNat(address(_state.settings.collateralTokens[CollateralToken.POOL].token));
     }
     
     function getClass1Token(State storage _state, Agents.Agent storage _agent) internal view returns (IERC20) {
@@ -79,14 +79,14 @@ library AssetManagerState {
     
     function getPoolCollateral(State storage _state) 
         internal view 
-        returns (AssetManagerSettings.CollateralToken storage)
+        returns (CollateralToken.Token storage)
     {
-        return _state.settings.collateralTokens[AssetManagerSettings.POOL_COLLATERAL];
+        return _state.settings.collateralTokens[CollateralToken.POOL];
     }
 
     function getClass1Collateral(State storage _state, Agents.Agent storage _agent)
         internal view 
-        returns (AssetManagerSettings.CollateralToken storage)
+        returns (CollateralToken.Token storage)
     {
         return _state.settings.collateralTokens[_agent.collateralTokenC1];
     }
