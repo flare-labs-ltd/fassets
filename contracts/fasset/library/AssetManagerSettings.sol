@@ -212,6 +212,10 @@ library AssetManagerSettings {
         // CAREFUL: values in array must increase and be greater than 100%.
         // rate-limited
         uint32[] liquidationCollateralFactorBIPS;
+        
+        // How much of the liquidation is paid in class1 token.
+        // The rest will be paid in pool tokens.
+        uint32 liquidationFactorClass1BIPS;
 
         // Agent can remain in CCB for this much time, after that liquidation starts automatically.
         // rate-limited

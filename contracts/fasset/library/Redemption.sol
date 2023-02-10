@@ -403,7 +403,7 @@ library Redemption {
         uint256 maxPoolWei = cdPool.maxRedemptionCollateral(_agent, _requestValueAMG);
         // if there is not enough collateral held by agent, pay more from the pool
         if (_agentC1Wei > maxAgentC1Wei) {
-            uint256 extraPoolAmg = _requestValueAMG.mulDiv(_agentC1Wei - maxAgentC1Wei, _agentC1Wei);
+            uint256 extraPoolAmg = _requestValueAMG.mulDivRoundUp(_agentC1Wei - maxAgentC1Wei, _agentC1Wei);
             _poolWei += Conversion.convertAmgToTokenWei(extraPoolAmg, cdPool.amgToTokenWeiPrice);
             _agentC1Wei = maxAgentC1Wei;
         }

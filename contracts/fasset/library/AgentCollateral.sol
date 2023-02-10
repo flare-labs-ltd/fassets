@@ -18,14 +18,14 @@ library AgentCollateral {
     using SafePct for uint256;
     using AssetManagerState for AssetManagerState.State;
     
-    enum CollateralKind {
+    enum Kind {
         AGENT_CLASS1,   // class 1 collateral (stablecoins in agent vault)
         POOL,           // pool collateral (NAT)
         AGENT_POOL      // agent's pool tokens (expressed in NAT) - only important for minting
     }
     
     struct CollateralData {
-        CollateralKind kind;
+        Kind kind;
         uint256 fullCollateral;
         uint256 amgToTokenWeiPrice;
     }
@@ -63,7 +63,7 @@ library AgentCollateral {
         AssetManagerSettings.CollateralToken storage collateral = 
             _state.settings.collateralTokens[_agent.collateralTokenC1];
         return CollateralData({ 
-            kind: CollateralKind.AGENT_CLASS1,
+            kind: Kind.AGENT_CLASS1,
             fullCollateral: collateral.token.balanceOf(_agentVault),
             amgToTokenWeiPrice: Conversion.currentAmgPriceInTokenWei(_state.settings, collateral)
         });
@@ -79,7 +79,7 @@ library AgentCollateral {
         AssetManagerSettings.CollateralToken storage collateral = 
             _state.settings.collateralTokens[AssetManagerSettings.POOL_COLLATERAL];
         return CollateralData({ 
-            kind: CollateralKind.POOL,
+            kind: Kind.POOL,
             fullCollateral: collateral.token.balanceOf(address(_agent.collateralPool)),
             amgToTokenWeiPrice: Conversion.currentAmgPriceInTokenWei(_state.settings, collateral)
         });
@@ -99,7 +99,7 @@ library AgentCollateral {
         uint256 amgToPoolTokenWeiPrice = _poolCollateral.fullCollateral != 0 ?
             _poolCollateral.amgToTokenWeiPrice.mulDiv(totalPoolTokens, _poolCollateral.fullCollateral) : 0;
         return CollateralData({ 
-            kind: CollateralKind.AGENT_POOL,
+            kind: Kind.AGENT_POOL,
             fullCollateral: agentPoolTokens,
             amgToTokenWeiPrice: amgToPoolTokenWeiPrice
         });
@@ -158,7 +158,7 @@ library AgentCollateral {
         returns (uint256) 
     {
         (uint256 mintingMinCollateralRatioBIPS, uint256 systemMinCollateralRatioBIPS) = 
-            mintingMinCollateralRatio(_agent, _settings, _data.collateralKind);
+            mintingMinCollateralRatio(_agent, _settings, _data.kind);
         uint256 backedAMG = uint256(_agent.reservedAMG) + uint256(_agent.mintedAMG);
         uint256 mintingCollateral = Conversion.convertAmgToTokenWei(backedAMG, _data.amgToTokenWeiPrice)
             .mulBips(mintingMinCollateralRatioBIPS);
@@ -175,7 +175,7 @@ library AgentCollateral {
         internal view 
         returns (uint256) 
     {
-        (uint256 minCollateralRatio,) = mintingMinCollateralRatio(_agent, _settings, _data.collateralKind);
+        (uint256 minCollateralRatio,) = mintingMinCollateralRatio(_agent, _settings, _data.kind);
         return Conversion.convertAmgToTokenWei(_settings.lotSizeAMG, _data.amgToTokenWeiPrice)
             .mulBips(minCollateralRatio);
     }
@@ -183,15 +183,15 @@ library AgentCollateral {
     function mintingMinCollateralRatio(
         Agents.Agent storage _agent, 
         AssetManagerSettings.Settings storage _settings,
-        CollateralKind _kind
+        Kind _kind
     )
         internal view
         returns (uint256 _mintingMinCollateralRatioBIPS, uint256 _systemMinCollateralRatioBIPS)
     {
-        if (_kind == CollateralKind.AGENT_POOL) {
+        if (_kind == Kind.AGENT_POOL) {
             _systemMinCollateralRatioBIPS = _settings.mintingPoolHoldingsRequiredBIPS;
             _mintingMinCollateralRatioBIPS = _systemMinCollateralRatioBIPS;
-        } else if (_kind == CollateralKind.POOL) {
+        } else if (_kind == Kind.POOL) {
             _systemMinCollateralRatioBIPS = 
                 _settings.collateralTokens[AssetManagerSettings.POOL_COLLATERAL].minCollateralRatioBIPS;
             _mintingMinCollateralRatioBIPS = 
@@ -222,6 +222,27 @@ library AgentCollateral {
         return _data.fullCollateral.mulDiv(_valueAMG, totalAMG); // totalAMG > 0 (guarded by assert)
     }
     
+    // Used for calculating collateral ration in liquidation.
+    function collateralDataWithTrusted(
+        AssetManagerState.State storage _state,
+        Agents.Agent storage _agent,
+        address _agentVault,
+        Kind _kind
+    )
+        internal view
+        returns (uint256 _fullCollateral, uint256 _amgToTokenWeiPrice, uint256 _amgToTokenWeiPriceTrusted)
+    {
+        assert (kind != Kind.AGENT_POOL);   // does not make sense for liquidation
+        uint256 tokenIndex = 
+            _kind == Kind.AGENT_CLASS1 ? _agent.collateralTokenC1 : AssetManagerSettings.POOL_COLLATERAL;
+        AssetManagerSettings.CollateralToken storage collateral = _state.settings.collateralTokens[tokenIndex];
+        address holderAddress = 
+            _kind == Kind.AGENT_CLASS1 ? _agentVault : _agent.collateralPool;
+        _fullCollateral = collateral.token.balanceOf(holderAddress);
+        (_amgToTokenWeiPrice, _amgToTokenWeiPriceTrusted) = 
+            Conversion.currentAmgPriceInTokenWeiWithTrusted(_state.settings, collateral);
+    }
+    
     // Agent's collateral ratio for single collateral type (BIPS) - used in liquidation.
     // Ignores collateral announced for withdrawal (withdrawals are forbidden during liquidation).
     function collateralRatioBIPS(
@@ -233,8 +254,8 @@ library AgentCollateral {
         returns (uint256) 
     {
         uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG);
-        if (totalAMG == 0) return type(uint256).max;    // nothing minted - ~infinite collateral ratio
-        uint256 backingNATWei = Conversion.convertAmgToTokenWei(totalAMG, _amgToTokenWeiPrice);
-        return _fullCollateral.mulDiv(SafeBips.MAX_BIPS, backingNATWei);
+        if (totalAMG == 0) return 1e10;    // nothing minted - ~infinite collateral ratio (but avoid overflows)
+        uint256 backingTokenWei = Conversion.convertAmgToTokenWei(totalAMG, _amgToTokenWeiPrice);
+        return _fullCollateral.mulDiv(SafeBips.MAX_BIPS, backingTokenWei);
     }
 }

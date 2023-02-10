@@ -108,6 +108,9 @@ library Agents {
         // Liquidation phase at the time when liquidation started.
         LiquidationPhase initialLiquidationPhase;
         
+        // Bitmap signifying which collateral type(s) triggered liquidation (LF_CLASS1 | LF_POOL).
+        uint8 collateralsUnderwater;
+        
         // The amount of underlying funds that may be withdrawn by the agent
         // (fees, self-close, and amount released by liquidation).
         // May become negative (due to high underlying gas costs), in which case topup is required.
@@ -134,6 +137,9 @@ library Agents {
         // and topups are only valid after this block (both inclusive).
         uint64 underlyingBlockAtCreation;
     }
+    
+    uint8 internal constant LF_CLASS1 = 1 << 0;
+    uint8 internal constant LF_POOL = 1 << 1;
     
     function claimAddressWithEOAProof(
         AssetManagerState.State storage _state,
