@@ -894,6 +894,9 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     ////////////////////////////////////////////////////////////////////////////////////
     // Other
     
+    /**
+     * Get the f-asset contract managed by this asset manager instance.
+     */
     function fAsset()
         external view
         returns (IFAsset)
@@ -910,6 +913,16 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         returns (IWNat)
     {
         return state.getWNat();
+    }
+    
+    /**
+     * Get the list of all available and deprecated tokens used for collateral.
+     */
+    function getCollateralTokens()
+        external view
+        returns (CollateralToken.Token[] memory)
+    {
+        return state.collateralTokens;
     }
     
     /**
