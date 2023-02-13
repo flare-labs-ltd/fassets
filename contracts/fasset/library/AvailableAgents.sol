@@ -47,7 +47,7 @@ library AvailableAgents {
         Agents.setAgentMinCollateralRatioBIPS(_state, _agentVault, _agentMinCollateralRatioBIPS);
         // check that there is enough free collateral for at least one lot
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
-        uint256 freeCollateralLots = collateralData.freeCollateralLots(agent, _state.settings);
+        uint256 freeCollateralLots = collateralData.freeCollateralLots(_state, agent);
         require(freeCollateralLots >= 1, "not enough free collateral");
         // add to queue
         _state.availableAgents.push(AvailableAgent({
@@ -110,16 +110,16 @@ library AvailableAgents {
             address agentVault = _state.availableAgents[i].agentVault;
             Agents.Agent storage agent = Agents.getAgentNoCheck(_state, agentVault);
             AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, agentVault);
-            (uint256 agentCR,) = AgentCollateral.mintingMinCollateralRatio(agent, _state.settings, 
+            (uint256 agentCR,) = AgentCollateral.mintingMinCollateralRatio(_state, agent,
                 AgentCollateral.Kind.AGENT_CLASS1);
-            (uint256 poolCR,) = AgentCollateral.mintingMinCollateralRatio(agent, _state.settings, 
+            (uint256 poolCR,) = AgentCollateral.mintingMinCollateralRatio(_state, agent,
                 AgentCollateral.Kind.POOL);
             _agents[i - _start] = AgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
                 agentMinCollateralRatioBIPS: agentCR,
                 agentPoolMinCollateralRatioBIPS: poolCR,
-                freeCollateralLots: collateralData.freeCollateralLots(agent, _state.settings)
+                freeCollateralLots: collateralData.freeCollateralLots(_state, agent)
             });
         }
     }

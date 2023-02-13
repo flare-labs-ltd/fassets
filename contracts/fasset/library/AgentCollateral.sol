@@ -60,7 +60,7 @@ library AgentCollateral {
         internal view
         returns (CollateralData memory)
     {
-        CollateralToken.Token storage collateral = _state.settings.collateralTokens[_agent.collateralTokenC1];
+        CollateralToken.Token storage collateral = _state.collateralTokens[_agent.collateralTokenC1];
         return CollateralData({ 
             kind: Kind.AGENT_CLASS1,
             fullCollateral: collateral.token.balanceOf(_agentVault),
@@ -75,7 +75,7 @@ library AgentCollateral {
         internal view
         returns (CollateralData memory)
     {
-        CollateralToken.Token storage collateral = _state.settings.collateralTokens[CollateralToken.POOL];
+        CollateralToken.Token storage collateral = _state.collateralTokens[CollateralToken.POOL];
         return CollateralData({ 
             kind: Kind.POOL,
             fullCollateral: collateral.token.balanceOf(address(_agent.collateralPool)),
@@ -106,28 +106,28 @@ library AgentCollateral {
     // The max number of lots the agent can mint
     function freeCollateralLots(
         AgentCollateral.Data memory _data,
-        Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings
+        AssetManagerState.State storage _state,
+        Agents.Agent storage _agent
     )
         internal view 
         returns (uint256 _lots) 
     {
-        uint256 agentLots = freeSingleCollateralLots(_data.agentCollateral, _agent, _settings);
-        uint256 poolLots = freeSingleCollateralLots(_data.poolCollateral, _agent, _settings);
-        uint256 agentPoolTokenLots = freeSingleCollateralLots(_data.agentPoolTokens, _agent, _settings);
+        uint256 agentLots = freeSingleCollateralLots(_data.agentCollateral, _state, _agent);
+        uint256 poolLots = freeSingleCollateralLots(_data.poolCollateral, _state, _agent);
+        uint256 agentPoolTokenLots = freeSingleCollateralLots(_data.agentPoolTokens, _state, _agent);
         return Math.min(agentLots, Math.min(poolLots, agentPoolTokenLots));
     }
 
     function freeSingleCollateralLots(
         AgentCollateral.CollateralData memory _data,
-        Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings
+        AssetManagerState.State storage _state,
+        Agents.Agent storage _agent
     )
         internal view 
         returns (uint256) 
     {
-        uint256 collateralWei = freeCollateralWei(_data, _agent, _settings);
-        uint256 lotWei = mintingLotCollateralWei(_data, _agent, _settings);
+        uint256 collateralWei = freeCollateralWei(_data, _state, _agent);
+        uint256 lotWei = mintingLotCollateralWei(_data, _state, _agent);
         // lotWei=0 is possible only for agent's pool token collateral if pool balance in NAT is 0
         // so then we can safely return 0 here, since minting is impossible
         return lotWei != 0 ? collateralWei / lotWei : 0;
@@ -135,13 +135,13 @@ library AgentCollateral {
     
     function freeCollateralWei(
         AgentCollateral.CollateralData memory _data,
-        Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings
+        AssetManagerState.State storage _state,
+        Agents.Agent storage _agent
     )
         internal view 
         returns (uint256) 
     {
-        uint256 lockedCollateral = lockedCollateralWei(_data, _agent, _settings);
+        uint256 lockedCollateral = lockedCollateralWei(_data, _state, _agent);
         (, uint256 freeCollateral) = _data.fullCollateral.trySub(lockedCollateral);
         return freeCollateral;
     }
@@ -149,14 +149,14 @@ library AgentCollateral {
     // Amount of collateral NOT available for new minting or withdrawal.
     function lockedCollateralWei(
         AgentCollateral.CollateralData memory _data,
-        Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings
+        AssetManagerState.State storage _state,
+        Agents.Agent storage _agent
     )
         internal view 
         returns (uint256) 
     {
         (uint256 mintingMinCollateralRatioBIPS, uint256 systemMinCollateralRatioBIPS) = 
-            mintingMinCollateralRatio(_agent, _settings, _data.kind);
+            mintingMinCollateralRatio(_state, _agent, _data.kind);
         uint256 backedAMG = uint256(_agent.reservedAMG) + uint256(_agent.mintedAMG);
         uint256 mintingCollateral = Conversion.convertAmgToTokenWei(backedAMG, _data.amgToTokenWeiPrice)
             .mulBips(mintingMinCollateralRatioBIPS);
@@ -167,36 +167,36 @@ library AgentCollateral {
 
     function mintingLotCollateralWei(
         AgentCollateral.CollateralData memory _data,
-        Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings
+        AssetManagerState.State storage _state,
+        Agents.Agent storage _agent
     ) 
         internal view 
         returns (uint256) 
     {
-        (uint256 minCollateralRatio,) = mintingMinCollateralRatio(_agent, _settings, _data.kind);
-        return Conversion.convertAmgToTokenWei(_settings.lotSizeAMG, _data.amgToTokenWeiPrice)
+        (uint256 minCollateralRatio,) = mintingMinCollateralRatio(_state, _agent, _data.kind);
+        return Conversion.convertAmgToTokenWei(_state.settings.lotSizeAMG, _data.amgToTokenWeiPrice)
             .mulBips(minCollateralRatio);
     }
     
     function mintingMinCollateralRatio(
+        AssetManagerState.State storage _state,
         Agents.Agent storage _agent, 
-        AssetManagerSettings.Settings storage _settings,
         Kind _kind
     )
         internal view
         returns (uint256 _mintingMinCollateralRatioBIPS, uint256 _systemMinCollateralRatioBIPS)
     {
         if (_kind == Kind.AGENT_POOL) {
-            _systemMinCollateralRatioBIPS = _settings.mintingPoolHoldingsRequiredBIPS;
+            _systemMinCollateralRatioBIPS = _state.settings.mintingPoolHoldingsRequiredBIPS;
             _mintingMinCollateralRatioBIPS = _systemMinCollateralRatioBIPS;
         } else if (_kind == Kind.POOL) {
             _systemMinCollateralRatioBIPS = 
-                _settings.collateralTokens[CollateralToken.POOL].minCollateralRatioBIPS;
+                _state.collateralTokens[CollateralToken.POOL].minCollateralRatioBIPS;
             _mintingMinCollateralRatioBIPS = 
                 Math.max(_agent.agentMinPoolCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         } else {
             _systemMinCollateralRatioBIPS = 
-                _settings.collateralTokens[_agent.collateralTokenC1].minCollateralRatioBIPS;
+                _state.collateralTokens[_agent.collateralTokenC1].minCollateralRatioBIPS;
             // agentMinCollateralRatioBIPS must be greater than minCollateralRatioBIPS when set, but
             // minCollateralRatioBIPS can change later so we always use the max of both
             _mintingMinCollateralRatioBIPS = 
@@ -233,7 +233,7 @@ library AgentCollateral {
         assert (_kind != Kind.AGENT_POOL);   // does not make sense for liquidation
         uint256 tokenIndex = 
             _kind == Kind.AGENT_CLASS1 ? _agent.collateralTokenC1 : CollateralToken.POOL;
-        CollateralToken.Token storage collateral = _state.settings.collateralTokens[tokenIndex];
+        CollateralToken.Token storage collateral = _state.collateralTokens[tokenIndex];
         address holderAddress = 
             _kind == Kind.AGENT_CLASS1 ? _agentVault : address(_agent.collateralPool);
         _fullCollateral = collateral.token.balanceOf(holderAddress);

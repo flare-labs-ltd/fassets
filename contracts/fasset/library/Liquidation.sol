@@ -197,7 +197,7 @@ library Liquidation {
         private view
         returns (uint256)
     {
-        CollateralToken.Token storage collateral = _state.settings.collateralTokens[_collateralIndex];
+        CollateralToken.Token storage collateral = _state.collateralTokens[_collateralIndex];
         if (_currentPhase == Agents.LiquidationPhase.CCB || !_collateralTypeUnderwater) {
             return collateral.minCollateralRatioBIPS;
         } else {
@@ -256,7 +256,7 @@ library Liquidation {
         private view
         returns (Agents.LiquidationPhase)
     {
-        CollateralToken.Token storage collateral = _state.settings.collateralTokens[_collateralIndex];
+        CollateralToken.Token storage collateral = _state.collateralTokens[_collateralIndex];
         if (_collateralRatioBIPS >= collateral.minCollateralRatioBIPS) {
             return Agents.LiquidationPhase.NONE;
         } else if (_collateralRatioBIPS >= collateral.ccbMinCollateralRatioBIPS) {
@@ -352,7 +352,7 @@ library Liquidation {
             return _agent.mintedAMG;
         }
         // otherwise, liquidate just enough to get agent to safety
-        CollateralToken.Token storage collateral = _state.settings.collateralTokens[_collateralIndex];
+        CollateralToken.Token storage collateral = _state.collateralTokens[_collateralIndex];
         uint256 targetRatioBIPS = collateral.safetyMinCollateralRatioBIPS;
         if (targetRatioBIPS <= _collateralRatioBIPS) {
             return 0;               // agent already safe

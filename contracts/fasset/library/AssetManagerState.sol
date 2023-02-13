@@ -9,11 +9,16 @@ import "./Agents.sol";
 import "./AvailableAgents.sol";
 import "./CollateralReservations.sol";
 import "./Redemption.sol";
+import "./CollateralToken.sol";
 
 
 library AssetManagerState {
     struct State {
         AssetManagerSettings.Settings settings;
+        
+        // All collateral types, used for class 1 or pool.
+        // Pool collateral (always WNat) has index 0.
+        CollateralToken.Token[] collateralTokens;
         
         // Agent in this system is always identified by theagent vault address.
         // Therefore we keep a mapping from agent vault addressed to data about the agents.
@@ -73,24 +78,24 @@ library AssetManagerState {
     // state getters
     
     function getWNat(State storage _state) internal view returns (IWNat) {
-        return IWNat(address(_state.settings.collateralTokens[CollateralToken.POOL].token));
+        return IWNat(address(_state.collateralTokens[CollateralToken.POOL].token));
     }
     
     function getClass1Token(State storage _state, Agents.Agent storage _agent) internal view returns (IERC20) {
-        return _state.settings.collateralTokens[_agent.collateralTokenC1].token;
+        return _state.collateralTokens[_agent.collateralTokenC1].token;
     }
     
     function getPoolCollateral(State storage _state) 
         internal view 
         returns (CollateralToken.Token storage)
     {
-        return _state.settings.collateralTokens[CollateralToken.POOL];
+        return _state.collateralTokens[CollateralToken.POOL];
     }
 
     function getClass1Collateral(State storage _state, Agents.Agent storage _agent)
         internal view 
         returns (CollateralToken.Token storage)
     {
-        return _state.settings.collateralTokens[_agent.collateralTokenC1];
+        return _state.collateralTokens[_agent.collateralTokenC1];
     }
 }

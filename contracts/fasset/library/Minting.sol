@@ -75,7 +75,7 @@ library Minting {
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         require(_state.pausedAt == 0, "minting paused");
         require(agent.status == Agents.AgentStatus.NORMAL, "self-mint invalid agent status");
-        require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
+        require(collateralData.freeCollateralLots(_state, agent) >= _lots, "not enough free collateral");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
         checkMintingCap(_state, valueAMG);
         _mintValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);

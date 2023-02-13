@@ -190,8 +190,7 @@ library SettingsUpdater {
             emit AMEvents.ContractChanged("ftsoRegistry", address(ftsoRegistry));
         }
         // TODO: what to do with the NATs in the pool - this will trigger liquidation
-        CollateralToken.Token storage poolCollateral = 
-            _state.settings.collateralTokens[CollateralToken.POOL];
+        CollateralToken.Token storage poolCollateral = _state.collateralTokens[CollateralToken.POOL];
         if (poolCollateral.token != wNat) {
             poolCollateral.token = wNat;
             emit AMEvents.ContractChanged("wNat", address(wNat));
@@ -203,9 +202,9 @@ library SettingsUpdater {
     )
         private
     {
-        uint256 length = _state.settings.collateralTokens.length;
+        uint256 length = _state.collateralTokens.length;
         for (uint256 i = 0; i < length; i++) {
-            CollateralToken.Token storage collateral = _state.settings.collateralTokens[i];
+            CollateralToken.Token storage collateral = _state.collateralTokens[i];
             // do not update invalidated tokens types
             if (collateral.validUntil != 0 && collateral.validUntil < block.timestamp) continue;
             collateral.ftsoIndex = SafeCast.toUint16(_state.settings.ftsoRegistry.getFtsoIndex(collateral.symbol));

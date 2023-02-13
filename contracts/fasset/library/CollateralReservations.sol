@@ -45,7 +45,7 @@ library CollateralReservations {
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 lots");
         require(agent.status == Agents.AgentStatus.NORMAL, "rc: invalid agent status");
-        require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
+        require(collateralData.freeCollateralLots(_state, agent) >= _lots, "not enough free collateral");
         require(_maxMintingFeeBIPS >= agent.feeBIPS, "agent's fee too high");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
         Minting.checkMintingCap(_state, valueAMG);
@@ -132,7 +132,7 @@ library CollateralReservations {
         _state.settings.burnAddress.transfer(crt.reservationFeeNatWei);
         // burn reserved collateral at market price
         // TODO: should not burn stablecoins?
-        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(_state.settings, agent.collateralTokenC1);
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(_state, agent.collateralTokenC1);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
         Agents.burnCollateral(_state, crt.agentVault, reservedCollateral);
         // send event
@@ -149,7 +149,7 @@ library CollateralReservations {
         external view
         returns (uint256)
     {
-        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(_state.settings, CollateralToken.POOL);
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(_state, CollateralToken.POOL);
         return _reservationFee(_state, amgToTokenWeiPrice, _lots * _state.settings.lotSizeAMG);
     }
     

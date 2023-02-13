@@ -74,7 +74,7 @@ library Agents {
         uint64 dustAMG;
         
         // Index of collateral class 1 token.
-        // The data is obtained as settings.collateralTokens[collateralTokenC1].
+        // The data is obtained as state.collateralTokens[collateralTokenC1].
         uint16 collateralTokenC1;
         
         // Position of this agent in the list of agents available for minting.
@@ -181,9 +181,9 @@ library Agents {
         agent.agentType = _agentType;
         agent.status = AgentStatus.NORMAL;
         // set collateral token type
-        require(_collateralTokenClass1 >= 1 && _collateralTokenClass1 < _state.settings.collateralTokens.length,
+        require(_collateralTokenClass1 >= 1 && _collateralTokenClass1 < _state.collateralTokens.length,
             "invalid collateral token index");
-        CollateralToken.Token storage collateral = _state.settings.collateralTokens[_collateralTokenClass1];
+        CollateralToken.Token storage collateral = _state.collateralTokens[_collateralTokenClass1];
         require(collateral.tokenClass == CollateralToken.TokenClass.CLASS1,
             "invalid collateral token class");
         agent.collateralTokenC1 = _collateralTokenClass1.toUint16();
@@ -349,7 +349,7 @@ library Agents {
             // announcement increased - must check there is enough free collateral and then lock it
             // in this case the wait to withdrawal restarts from this moment
             uint256 increase = _valueNATWei - agent.withdrawalAnnouncedNATWei;
-            require(increase <= collateralData.freeCollateralWei(agent, _state.settings),
+            require(increase <= collateralData.freeCollateralWei(_state, agent),
                 "withdrawal: value too high");
             agent.withdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
         } else {

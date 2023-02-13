@@ -154,15 +154,15 @@ library FullAgentInfo {
             Math.max(agent.agentMinCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
         _agentState.agentMinPoolCollateralRatioBIPS = 
             Math.max(agent.agentMinPoolCollateralRatioBIPS, poolCollateral.minCollateralRatioBIPS);
-        _agentState.freeCollateralLots = collateralData.freeCollateralLots(agent, _state.settings);
+        _agentState.freeCollateralLots = collateralData.freeCollateralLots(_state, agent);
         _agentState.totalClass1CollateralWei = collateralData.agentCollateral.fullCollateral;
         _agentState.freeClass1CollateralWei = 
-            collateralData.agentCollateral.freeCollateralWei(agent, _state.settings);
+            collateralData.agentCollateral.freeCollateralWei(_state, agent);
         (_agentState.class1CollateralRatioBIPS,) = 
             Liquidation.getCollateralRatioBIPS(_state, agent, _agentVault, AgentCollateral.Kind.AGENT_CLASS1);
         _agentState.totalPoolCollateralNATWei = collateralData.poolCollateral.fullCollateral;
         _agentState.freePoolCollateralNATWei = 
-            collateralData.poolCollateral.freeCollateralWei(agent, _state.settings);
+            collateralData.poolCollateral.freeCollateralWei(_state, agent);
         (_agentState.poolCollateralRatioBIPS,) = 
             Liquidation.getCollateralRatioBIPS(_state, agent, _agentVault, AgentCollateral.Kind.POOL);
         _agentState.mintedUBA = Conversion.convertAmgToUBA(_state.settings, agent.mintedAMG);

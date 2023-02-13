@@ -7,7 +7,6 @@ import "../interface/IFAsset.sol";
 import "../interface/IAgentVaultFactory.sol";
 import "../interface/IWNat.sol";
 import "../interface/IWhitelist.sol";
-import "./CollateralToken.sol";
 
 
 library AssetManagerSettings {
@@ -55,10 +54,6 @@ library AssetManagerSettings {
         // FTSO contract for managed asset (symbol).
         // immutable
         string assetFtsoSymbol;
-        
-        // All collateral types, used for class 1, class 2 or pool.
-        // Pool collateral (always WNat) has index 0.
-        CollateralToken.Token[] collateralTokens;
         
         // WNat is always used as pool collateral.
         // Collateral reservation fee is burned on successful minting.

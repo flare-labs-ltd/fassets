@@ -5,7 +5,8 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "../../utils/lib/SafePct.sol";
 import "./AssetManagerSettings.sol";
-
+import "./AssetManagerState.sol";
+import "./CollateralToken.sol";
 
 library Conversion {
     using SafePct for uint256;
@@ -15,13 +16,13 @@ library Conversion {
     uint256 internal constant NAT_WEI = 1e18;
 
     function currentAmgPriceInTokenWei(
-        AssetManagerSettings.Settings storage _settings,
+        AssetManagerState.State storage _state,
         uint256 _tokenType
     ) 
         internal view 
         returns (uint256) 
     {
-        return currentAmgPriceInTokenWei(_settings, _settings.collateralTokens[_tokenType]);
+        return currentAmgPriceInTokenWei(_state.settings, _state.collateralTokens[_tokenType]);
     }
 
     function currentAmgPriceInTokenWei(
