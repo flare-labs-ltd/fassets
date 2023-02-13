@@ -3,6 +3,7 @@ pragma solidity 0.8.11;
 
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "../../generated/interface/IAttestationClient.sol";
+import "../interface/IFAsset.sol";
 import "../interface/IAgentVaultFactory.sol";
 import "../interface/IWNat.sol";
 import "../interface/IWhitelist.sol";
@@ -15,6 +16,10 @@ library AssetManagerSettings {
         // Only used to verify that calls come from assetManagerController.
         address assetManagerController;
 
+        // The f-asset contract managed by this asset manager.
+        // immutable
+        IFAsset fAsset;
+        
         // Factory for creating new agent vaults.
         IAgentVaultFactory agentVaultFactory;
         

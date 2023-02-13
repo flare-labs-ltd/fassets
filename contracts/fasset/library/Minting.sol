@@ -17,7 +17,7 @@ library Minting {
     using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for AgentCollateral.Data;
     
-    function mintingExecuted(
+    function executeMinting(
         AssetManagerState.State storage _state,
         IAttestationClient.Payment calldata _payment,
         uint64 _crtId

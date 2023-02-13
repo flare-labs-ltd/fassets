@@ -33,7 +33,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     
     AssetManagerState.State private state;
     SettingsUpdater.PendingUpdates private pendingUpdates;
-    IFAsset public immutable fAsset;
     
     uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
 
@@ -48,10 +47,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
     
     constructor(
-        AssetManagerSettings.Settings memory _settings,
-        IFAsset _fAsset
+        AssetManagerSettings.Settings memory _settings
     ) {
-        fAsset = _fAsset;
         SettingsUpdater.validateAndSet(state, _settings);
     }
 
@@ -452,9 +449,9 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external 
         nonReentrant
     {
-        (address minter, uint256 mintedUBA) = Minting.mintingExecuted(state, _payment, 
-            SafeCast.toUint64(_collateralReservationId));
-        fAsset.mint(minter, mintedUBA);
+        (address minter, uint256 mintedUBA) = 
+            Minting.executeMinting(state, _payment, SafeCast.toUint64(_collateralReservationId));
+        state.settings.fAsset.mint(minter, mintedUBA);
     }
 
     /**
@@ -513,7 +510,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         nonReentrant
     {
         uint256 mintedUBA = Minting.selfMint(state, _payment, _agentVault, SafeCast.toUint64(_lots));
-        fAsset.mint(msg.sender, mintedUBA);
+        state.settings.fAsset.mint(msg.sender, mintedUBA);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -540,9 +537,9 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         requireWhitelistedSender();
-        uint256 redeemedUBA = Redemption.redeem(state, msg.sender, SafeCast.toUint64(_lots), 
-            _redeemerUnderlyingAddressString);
-        fAsset.burn(msg.sender, redeemedUBA);
+        uint256 redeemedUBA = 
+            Redemption.redeem(state, msg.sender, SafeCast.toUint64(_lots), _redeemerUnderlyingAddressString);
+        state.settings.fAsset.burn(msg.sender, redeemedUBA);
     }
     
     /**
@@ -626,7 +623,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         // in Redemption.selfClose we check that only agent can do this
         uint256 closedUBA = Redemption.selfClose(state, _agentVault, _amountUBA);
-        fAsset.burn(msg.sender, closedUBA);
+        state.settings.fAsset.burn(msg.sender, closedUBA);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -803,7 +800,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         requireWhitelistedSender();
         (_liquidatedAmountUBA, _amountPaidClass1, _amountPaidPool) = 
             Liquidation.liquidate(state, _agentVault, _amountUBA);
-        fAsset.burn(msg.sender, _liquidatedAmountUBA);
+        state.settings.fAsset.burn(msg.sender, _liquidatedAmountUBA);
     }
     
     /**
@@ -847,7 +844,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external override
         onlyAssetManagerController
     {
-        require(!fAsset.terminated(), "f-asset terminated");
+        require(!state.settings.fAsset.terminated(), "f-asset terminated");
         state.pausedAt = 0;
     }
     
@@ -865,7 +862,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         require(state.pausedAt != 0 && block.timestamp > state.pausedAt + MINIMUM_PAUSE_BEFORE_STOP,
             "asset manager not paused enough");
-        fAsset.terminate();
+        state.settings.fAsset.terminate();
     }
     
     /**
@@ -880,7 +877,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        require(fAsset.terminated(), "f-asset not terminated");
+        require(state.settings.fAsset.terminated(), "f-asset not terminated");
         Agents.buybackAgentCollateral(state, _agentVault);
     }
 
@@ -896,6 +893,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Other
+    
+    function fAsset()
+        external view
+        returns (IFAsset)
+    {
+        return state.settings.fAsset;
+    }
 
     /**
      * Get WNat contract. Used by AgentVault.

@@ -45,6 +45,9 @@ library AssetManagerState {
         uint64 newRedemptionRequestId;
         uint64 newPaymentAnnouncementId;
         
+        // Total collateral reservations, used by minting cap.
+        uint64 totalReservedAmg;
+        
         // Current block number and timestamp on the underlying chain
         uint64 currentUnderlyingBlock;
         uint64 currentUnderlyingBlockTimestamp;

@@ -529,6 +529,8 @@ library SettingsUpdater {
     )
         private pure
     {
+        require(address(_settings.fAsset) != address(0), "zero fAsset address");
+        
         require(_settings.assetUnitUBA > 0, "cannot be zero");
         require(_settings.assetMintingGranularityUBA > 0, "cannot be zero");
         require(_settings.underlyingBlocksForPayment > 0, "cannot be zero");
