@@ -420,7 +420,9 @@ library Agents {
     {
         // TODO: buy pool tokens if NATs are deposited?
         // for now, only try to pull agent out of liquidation
-        Liquidation.endLiquidationIfHealthy(_state, _agentVault);
+        if (isCollateralToken(_state, _agentVault, _token)) {
+            Liquidation.endLiquidationIfHealthy(_state, _agentVault);
+        }
     }
     
     function withdrawalExecuted(
