@@ -8,6 +8,7 @@ import "./Conversion.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
 import "./AssetManagerState.sol";
+import "./Minting.sol";
 import "../interface/IAgentVault.sol";
 import "./AgentCollateral.sol";
 import "./PaymentReference.sol";
@@ -47,7 +48,9 @@ library CollateralReservations {
         require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
         require(_maxMintingFeeBIPS >= agent.feeBIPS, "agent's fee too high");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
+        Minting.checkMintingCap(_state, valueAMG);
         agent.reservedAMG += valueAMG;
+        _state.totalReservedCollateralAMG += valueAMG;
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
         // poolCollateral is WNat, so we can use its price
@@ -159,6 +162,7 @@ library CollateralReservations {
     {
         Agents.Agent storage agent = Agents.getAgent(_state, crt.agentVault);
         agent.reservedAMG = SafeMath64.sub64(agent.reservedAMG, crt.valueAMG, "invalid reservation");
+        _state.totalReservedCollateralAMG -= crt.valueAMG;
         delete _state.crts[_crtId];
     }
 

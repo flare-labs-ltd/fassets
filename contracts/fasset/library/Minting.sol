@@ -77,6 +77,7 @@ library Minting {
         require(agent.status == Agents.AgentStatus.NORMAL, "self-mint invalid agent status");
         require(collateralData.freeCollateralLots(agent, _state.settings) >= _lots, "not enough free collateral");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
+        checkMintingCap(_state, valueAMG);
         _mintValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         require(_payment.paymentReference == PaymentReference.selfMint(_agentVault), 
             "invalid self-mint reference");
@@ -99,5 +100,17 @@ library Minting {
         if (receivedFeeUBA > 0) {
             UnderlyingFreeBalance.increaseFreeBalance(_state, _agentVault, receivedFeeUBA);
         }
+    }
+
+    function checkMintingCap(
+        AssetManagerState.State storage _state, 
+        uint64 _increaseAMG
+    )
+        internal view
+    {
+        uint256 totalMintedUBA = IERC20(address(_state.settings.fAsset)).totalSupply();
+        uint256 totalAMG = _state.totalReservedCollateralAMG + 
+            Conversion.convertUBAToAmg(_state.settings, totalMintedUBA);
+        require(totalAMG + _increaseAMG <= _state.settings.mintingCapAMG, "minting cap exceeded");
     }
 }

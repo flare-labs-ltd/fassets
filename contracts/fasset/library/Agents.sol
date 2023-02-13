@@ -268,6 +268,7 @@ library Agents {
             .mulBips(_state.settings.buybackCollateralFactorBIPS);
         burnCollateral(_state, _agentVault, buybackCollateral);
         agent.mintedAMG = 0;
+        _state.totalReservedCollateralAMG -= agent.reservedAMG;
         agent.reservedAMG = 0;
     }
     

@@ -93,6 +93,10 @@ library AssetManagerSettings {
         // rate-limited
         uint64 lotSizeAMG;
         
+        // Maximum minted amount of the f-asset.
+        // rate-limited
+        uint64 mintingCapAMG;
+        
         // Maximum age that trusted price feed is valid.
         // Otherwise (if there were no trusted votes for that long) just use generic ftso price feed.
         // rate-limited
