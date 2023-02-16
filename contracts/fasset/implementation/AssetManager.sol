@@ -449,9 +449,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external 
         nonReentrant
     {
-        (address minter, uint256 mintedUBA) = 
-            Minting.executeMinting(state, _payment, SafeCast.toUint64(_collateralReservationId));
-        state.settings.fAsset.mint(minter, mintedUBA);
+        Minting.executeMinting(state, _payment, SafeCast.toUint64(_collateralReservationId));
     }
 
     /**
@@ -509,8 +507,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         onlyAttached
         nonReentrant
     {
-        uint256 mintedUBA = Minting.selfMint(state, _payment, _agentVault, SafeCast.toUint64(_lots));
-        state.settings.fAsset.mint(msg.sender, mintedUBA);
+        Minting.selfMint(state, _payment, _agentVault, SafeCast.toUint64(_lots));
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -537,9 +534,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         requireWhitelistedSender();
-        uint256 redeemedUBA = 
-            Redemption.redeem(state, msg.sender, SafeCast.toUint64(_lots), _redeemerUnderlyingAddressString);
-        state.settings.fAsset.burn(msg.sender, redeemedUBA);
+        Redemption.redeem(state, msg.sender, SafeCast.toUint64(_lots), _redeemerUnderlyingAddressString);
     }
     
     /**
@@ -622,8 +617,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         // in Redemption.selfClose we check that only agent can do this
-        uint256 closedUBA = Redemption.selfClose(state, _agentVault, _amountUBA);
-        state.settings.fAsset.burn(msg.sender, closedUBA);
+        Redemption.selfClose(state, _agentVault, _amountUBA);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -800,7 +794,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         requireWhitelistedSender();
         (_liquidatedAmountUBA, _amountPaidClass1, _amountPaidPool) = 
             Liquidation.liquidate(state, _agentVault, _amountUBA);
-        state.settings.fAsset.burn(msg.sender, _liquidatedAmountUBA);
     }
     
     /**

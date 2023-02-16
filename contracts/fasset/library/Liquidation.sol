@@ -86,8 +86,10 @@ library Liquidation {
         }
         // try to pull agent out of liquidation
         _endLiquidationIfHealthy(_state, agent, _agentVault);
-        // notify about liquidation
+        // burn liquidated fassets
         _liquidatedAmountUBA = Conversion.convertAmgToUBA(_state.settings, liquidatedAmountAMG);
+        _state.settings.fAsset.burn(msg.sender, _liquidatedAmountUBA);
+        // notify about liquidation
         emit AMEvents.LiquidationPerformed(_agentVault, msg.sender, _liquidatedAmountUBA);
     }
     

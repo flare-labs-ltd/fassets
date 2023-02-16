@@ -62,7 +62,6 @@ library Redemption {
         string memory _redeemerUnderlyingAddress
     )
         external
-        returns (uint256)
     {
         uint256 maxRedeemedTickets = _state.settings.maxRedeemedTickets;
         AgentRedemptionList memory redemptionList = AgentRedemptionList({ 
@@ -86,8 +85,9 @@ library Redemption {
         if (redeemedLots < _lots) {
             emit AMEvents.RedemptionRequestIncomplete(_redeemer, _lots - redeemedLots);
         }
-        // return complete redeemed value
-        return Conversion.convertLotsToUBA(_state.settings, redeemedLots);
+        // burn the redeemed value of fassets
+        uint256 redeemedUBA = Conversion.convertLotsToUBA(_state.settings, redeemedLots);
+        _state.settings.fAsset.burn(_redeemer, redeemedUBA);
     }
 
     function _redeemFirstTicket(
@@ -420,16 +420,17 @@ library Redemption {
         uint256 _amountUBA
     ) 
         external 
-        returns (uint256 _closedUBA)
     {
         Agents.requireAgentVaultOwner(_agentVault);
         require(_amountUBA != 0, "self close of 0");
         uint64 amountAMG = Conversion.convertUBAToAmg(_state.settings, _amountUBA);
-        (, _closedUBA) = selfCloseOrLiquidate(_state, _agentVault, amountAMG);
+        (, uint256 closedUBA) = selfCloseOrLiquidate(_state, _agentVault, amountAMG);
+        // burn the self-closed assets
+        _state.settings.fAsset.burn(msg.sender, closedUBA);
         // try to pull agent out of liquidation
         Liquidation.endLiquidationIfHealthy(_state, _agentVault);
         // send event
-        emit AMEvents.SelfClose(_agentVault, _closedUBA);
+        emit AMEvents.SelfClose(_agentVault, closedUBA);
     }
 
     function selfCloseOrLiquidate(

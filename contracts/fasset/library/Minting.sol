@@ -23,12 +23,10 @@ library Minting {
         uint64 _crtId
     )
         external
-        returns (address _minter, uint256 _mintValueUBA)
     {
         CollateralReservations.CollateralReservation storage crt = 
             CollateralReservations.getCollateralReservation(_state, _crtId);
-        _minter = crt.minter;
-        _mintValueUBA = Conversion.convertAmgToUBA(_state.settings, crt.valueAMG);
+        uint256 mintValueUBA = Conversion.convertAmgToUBA(_state.settings, crt.valueAMG);
         address agentVault = crt.agentVault;
         Agents.Agent storage agent = Agents.getAgent(_state, agentVault);
         // verify transaction
@@ -42,17 +40,19 @@ library Minting {
         require(_payment.receivingAddressHash == agent.underlyingAddressHash, 
             "not minting agent's address");
         uint256 receivedAmount = SafeCast.toUint256(_payment.receivedAmount);
-        require(receivedAmount >= _mintValueUBA + crt.underlyingFeeUBA,
+        require(receivedAmount >= mintValueUBA + crt.underlyingFeeUBA,
             "minting payment too small");
         // we do not allow payments before the underlying block at requests, because the payer should have guessed
         // the payment reference, which is good for nothing except attack attempts
         require(_payment.blockNumber >= crt.firstUnderlyingBlock,
             "minting payment too old");
         uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, crt.valueAMG);
-        uint256 receivedFeeUBA = receivedAmount - _mintValueUBA;
-        emit AMEvents.MintingExecuted(agentVault, _crtId, redemptionTicketId, _mintValueUBA, receivedFeeUBA);
+        uint256 receivedFeeUBA = receivedAmount - mintValueUBA;
+        emit AMEvents.MintingExecuted(agentVault, _crtId, redemptionTicketId, mintValueUBA, receivedFeeUBA);
         Agents.allocateMintedAssets(_state, agentVault, crt.valueAMG);
         UnderlyingFreeBalance.increaseFreeBalance(_state, agentVault, receivedFeeUBA);
+        // perform minting
+        _state.settings.fAsset.mint(crt.minter, mintValueUBA);
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
         _state.settings.burnAddress.transfer(crt.reservationFeeNatWei);
         // cleanup
@@ -66,7 +66,6 @@ library Minting {
         uint64 _lots
     )
         external
-        returns (uint256 _mintValueUBA)
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
         AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
@@ -78,12 +77,12 @@ library Minting {
         require(collateralData.freeCollateralLots(_state, agent) >= _lots, "not enough free collateral");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
         checkMintingCap(_state, valueAMG);
-        _mintValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
+        uint256 mintValueUBA = Conversion.convertAmgToUBA(_state.settings, valueAMG);
         require(_payment.paymentReference == PaymentReference.selfMint(_agentVault), 
             "invalid self-mint reference");
         require(_payment.receivingAddressHash == agent.underlyingAddressHash, 
             "self-mint not agent's address");
-        require(_payment.receivedAmount >= 0 && uint256(_payment.receivedAmount) >= _mintValueUBA,
+        require(_payment.receivedAmount >= 0 && uint256(_payment.receivedAmount) >= mintValueUBA,
             "self-mint payment too small");
         require(_payment.blockNumber >= agent.underlyingBlockAtCreation,
             "self-mint payment too old");
@@ -94,12 +93,13 @@ library Minting {
         if (_lots > 0) {
             redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(_agentVault, valueAMG);
         }
-        uint256 receivedFeeUBA = uint256(_payment.receivedAmount) - _mintValueUBA;  // guarded by require
-        emit AMEvents.MintingExecuted(_agentVault, 0, redemptionTicketId, _mintValueUBA, receivedFeeUBA);
+        uint256 receivedFeeUBA = uint256(_payment.receivedAmount) - mintValueUBA;  // guarded by require
+        emit AMEvents.MintingExecuted(_agentVault, 0, redemptionTicketId, mintValueUBA, receivedFeeUBA);
         Agents.allocateMintedAssets(_state, _agentVault, valueAMG);
         if (receivedFeeUBA > 0) {
             UnderlyingFreeBalance.increaseFreeBalance(_state, _agentVault, receivedFeeUBA);
         }
+        _state.settings.fAsset.mint(msg.sender, mintValueUBA);
     }
 
     function checkMintingCap(
