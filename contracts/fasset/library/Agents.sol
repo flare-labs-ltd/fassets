@@ -84,6 +84,9 @@ library Agents {
         // Minting fee in BIPS (collected in underlying currency).
         uint16 feeBIPS;
         
+        // Share of the minting fee that goes to the pool as percentage of the minting fee.
+        uint16 poolFeeShareBIPS;
+        
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio when entering the available agent list,
         // but it must always be greater than minimum collateral ratio.
@@ -362,6 +365,19 @@ library Agents {
         }
         agent.withdrawalAnnouncedNATWei = _valueNATWei.toUint128();
         emit AMEvents.CollateralWithdrawalAnnounced(_agentVault, _valueNATWei, agent.withdrawalAnnouncedAt);
+    }
+
+    function changeDust(
+        AssetManagerState.State storage _state,
+        address _agentVault,
+        uint64 _newDustAMG
+    )
+        internal
+    {
+        Agent storage agent = getAgent(_state, _agentVault);
+        agent.dustAMG = _newDustAMG;
+        uint256 dustUBA = Conversion.convertAmgToUBA(_state.settings, _newDustAMG);
+        emit AMEvents.DustChanged(_agentVault, dustUBA);
     }
 
     function increaseDust(

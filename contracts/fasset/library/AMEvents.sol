@@ -76,7 +76,8 @@ library AMEvents {
         uint256 collateralReservationId,
         uint256 redemptionTicketId,
         uint256 mintedAmountUBA,
-        uint256 receivedFeeUBA);
+        uint256 agentFeeUBA,
+        uint256 poolFeeUBA);
 
     /**
      * Minter failed to pay underlying funds in time. Collateral reservation fee was paid to the agent.

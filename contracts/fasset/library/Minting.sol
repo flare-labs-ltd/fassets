@@ -26,7 +26,6 @@ library Minting {
     {
         CollateralReservations.CollateralReservation storage crt = 
             CollateralReservations.getCollateralReservation(_state, _crtId);
-        uint256 mintValueUBA = Conversion.convertAmgToUBA(_state.settings, crt.valueAMG);
         address agentVault = crt.agentVault;
         Agents.Agent storage agent = Agents.getAgent(_state, agentVault);
         // verify transaction
@@ -40,25 +39,22 @@ library Minting {
         require(_payment.receivingAddressHash == agent.underlyingAddressHash, 
             "not minting agent's address");
         uint256 receivedAmount = SafeCast.toUint256(_payment.receivedAmount);
+        uint256 mintValueUBA = Conversion.convertAmgToUBA(_state.settings, crt.valueAMG);
         require(receivedAmount >= mintValueUBA + crt.underlyingFeeUBA,
             "minting payment too small");
         // we do not allow payments before the underlying block at requests, because the payer should have guessed
         // the payment reference, which is good for nothing except attack attempts
         require(_payment.blockNumber >= crt.firstUnderlyingBlock,
             "minting payment too old");
-        uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(agentVault, crt.valueAMG);
-        uint256 receivedFeeUBA = receivedAmount - mintValueUBA;
-        emit AMEvents.MintingExecuted(agentVault, _crtId, redemptionTicketId, mintValueUBA, receivedFeeUBA);
-        Agents.allocateMintedAssets(_state, agentVault, crt.valueAMG);
-        UnderlyingFreeBalance.increaseFreeBalance(_state, agentVault, receivedFeeUBA);
-        // perform minting
-        _state.settings.fAsset.mint(crt.minter, mintValueUBA);
+        // execute minting
+        _performMinting(_state, agent, _crtId, agentVault, crt.minter, crt.valueAMG, 
+            receivedAmount, crt.underlyingFeeUBA);
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
         _state.settings.burnAddress.transfer(crt.reservationFeeNatWei);
         // cleanup
         CollateralReservations.releaseCollateralReservation(_state, crt, _crtId);   // crt can't be used after this
     }
-
+    
     function selfMint(
         AssetManagerState.State storage _state,
         IAttestationClient.Payment calldata _payment,
@@ -89,17 +85,14 @@ library Minting {
         _state.paymentConfirmations.confirmIncomingPayment(_payment);
         // case _lots==0 is allowed for self minting because if lot size increases between the underlying payment
         // and selfMint call, the paid assets would otherwise be stuck; in this way they are converted to free balance
-        uint64 redemptionTicketId = 0;
+        uint256 receivedAmount = uint256(_payment.receivedAmount);  // guarded by reuquire
         if (_lots > 0) {
-            redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(_agentVault, valueAMG);
+            uint256 standardFee = SafeBips.mulBips(valueAMG, agent.feeBIPS);
+            _performMinting(_state, agent, 0, _agentVault, msg.sender, valueAMG, receivedAmount, standardFee);
+        } else {
+            UnderlyingFreeBalance.increaseFreeBalance(_state, _agentVault, receivedAmount);
+            emit AMEvents.MintingExecuted(_agentVault, 0, 0, 0, receivedAmount, 0);
         }
-        uint256 receivedFeeUBA = uint256(_payment.receivedAmount) - mintValueUBA;  // guarded by require
-        emit AMEvents.MintingExecuted(_agentVault, 0, redemptionTicketId, mintValueUBA, receivedFeeUBA);
-        Agents.allocateMintedAssets(_state, _agentVault, valueAMG);
-        if (receivedFeeUBA > 0) {
-            UnderlyingFreeBalance.increaseFreeBalance(_state, _agentVault, receivedFeeUBA);
-        }
-        _state.settings.fAsset.mint(msg.sender, mintValueUBA);
     }
 
     function checkMintingCap(
@@ -112,5 +105,44 @@ library Minting {
         uint256 totalAMG = _state.totalReservedCollateralAMG + 
             Conversion.convertUBAToAmg(_state.settings, totalMintedUBA);
         require(totalAMG + _increaseAMG <= _state.settings.mintingCapAMG, "minting cap exceeded");
+    }
+
+    function _performMinting(
+        AssetManagerState.State storage _state,
+        Agents.Agent storage _agent,
+        uint64 _crtId,
+        address _agentVault,
+        address _minter,
+        uint64 _mintValueAMG,
+        uint256 _receivedAmountUBA,
+        uint256 _feeUBA
+    ) 
+        private
+    {
+        // Add pool fee to dust (usually less than 1 lot), but if dust exceeds 1 lot, add as much as possible 
+        // to the created ticket. At the end, there will always be less than 1 lot of dust left.
+        uint64 poolFeeAMG = Conversion.convertUBAToAmg(_state.settings, 
+            SafeBips.mulBips(_feeUBA, _agent.poolFeeShareBIPS));
+        uint64 newDustAMG = _agent.dustAMG + poolFeeAMG;
+        uint64 ticketValueAMG = _mintValueAMG;
+        if (newDustAMG >= _state.settings.lotSizeAMG) {
+            uint64 remainder = newDustAMG % _state.settings.lotSizeAMG;
+            ticketValueAMG += newDustAMG - remainder;
+            newDustAMG = remainder;
+        }
+        // create ticket and change dust
+        Agents.allocateMintedAssets(_state, _agentVault, _mintValueAMG + poolFeeAMG);
+        uint64 redemptionTicketId = _state.redemptionQueue.createRedemptionTicket(_agentVault, ticketValueAMG);
+        Agents.changeDust(_state, _agentVault, newDustAMG);
+        // update agent free balance with agent's fee
+        uint256 mintValueUBA = Conversion.convertAmgToUBA(_state.settings, _mintValueAMG);
+        uint256 poolFeeUBA = Conversion.convertAmgToUBA(_state.settings, poolFeeAMG);
+        uint256 agentFeeUBA = _receivedAmountUBA - mintValueUBA - poolFeeUBA;
+        UnderlyingFreeBalance.increaseFreeBalance(_state, _agentVault, agentFeeUBA);
+        // perform minting
+        _state.settings.fAsset.mint(_minter, mintValueUBA);
+        _state.settings.fAsset.mint(address(_agent.collateralPool), poolFeeUBA);
+        // notify
+        emit AMEvents.MintingExecuted(_agentVault, _crtId, redemptionTicketId, mintValueUBA, agentFeeUBA, poolFeeUBA);
     }
 }
