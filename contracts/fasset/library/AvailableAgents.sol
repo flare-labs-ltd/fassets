@@ -10,6 +10,7 @@ import "./Conversion.sol";
 import "./AgentCollateral.sol";
 
 library AvailableAgents {
+    using SafeCast for uint256;
     using AgentCollateral for AgentCollateral.Data;
 
     struct AvailableAgent {
@@ -41,7 +42,7 @@ library AvailableAgents {
         require(agent.status == Agents.AgentStatus.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
         // set parameters
-        agent.feeBIPS = SafeCast.toUint16(_feeBIPS); 
+        agent.feeBIPS = _feeBIPS.toUint16(); 
         // when agent becomes available, it is a good idea to set agent's min collateral ratio higher than
         // global min collateral ratio (otherwise he can quickly go to liquidation), so we always do it here
         Agents.setAgentMinCollateralRatioBIPS(_state, _agentVault, _agentMinCollateralRatioBIPS);

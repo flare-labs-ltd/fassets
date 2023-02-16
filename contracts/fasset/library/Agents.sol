@@ -217,7 +217,7 @@ library Agents {
         // if not destroying yet, start timing
         if (agent.status != AgentStatus.DESTROYING) {
             agent.status = AgentStatus.DESTROYING;
-            agent.withdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
+            agent.withdrawalAnnouncedAt = block.timestamp.toUint64();
             emit AMEvents.AgentDestroyAnnounced(_agentVault, block.timestamp);
         }
     }
@@ -285,7 +285,7 @@ library Agents {
         CollateralToken.Token storage collateral = _state.getClass1Collateral(agent);
         require(_agentMinCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
             "collateral ratio too small");
-        agent.agentMinCollateralRatioBIPS = SafeCast.toUint32(_agentMinCollateralRatioBIPS);
+        agent.agentMinCollateralRatioBIPS = _agentMinCollateralRatioBIPS.toUint32();
     }
     
     function allocateMintedAssets(
@@ -351,7 +351,7 @@ library Agents {
             uint256 increase = _valueNATWei - agent.withdrawalAnnouncedNATWei;
             require(increase <= collateralData.freeCollateralWei(_state, agent),
                 "withdrawal: value too high");
-            agent.withdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
+            agent.withdrawalAnnouncedAt = block.timestamp.toUint64();
         } else {
             // announcement decreased or cancelled
             // if value is 0, we cancel announcement completely (i.e. set announcement time to 0)
@@ -360,7 +360,7 @@ library Agents {
                 agent.withdrawalAnnouncedAt = 0;
             }
         }
-        agent.withdrawalAnnouncedNATWei = SafeCast.toUint128(_valueNATWei);
+        agent.withdrawalAnnouncedNATWei = _valueNATWei.toUint128();
         emit AMEvents.CollateralWithdrawalAnnounced(_agentVault, _valueNATWei, agent.withdrawalAnnouncedAt);
     }
 

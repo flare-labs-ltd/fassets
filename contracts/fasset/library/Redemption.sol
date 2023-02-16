@@ -21,6 +21,7 @@ import "./Liquidation.sol";
 library Redemption {
     using SafeBips for uint256;
     using SafePct for uint64;
+    using SafeCast for uint256;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for AgentCollateral.CollateralData;
@@ -130,19 +131,18 @@ library Redemption {
     )
         private 
     {
-        uint128 redeemedValueUBA = SafeCast.toUint128(Conversion.convertAmgToUBA(_state.settings, _data.valueAMG));
+        uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_state.settings, _data.valueAMG).toUint128();
         _state.newRedemptionRequestId += PaymentReference.randomizedIdSkip();
         uint64 requestId = _state.newRedemptionRequestId;
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
-        uint128 redemptionFeeUBA = SafeCast.toUint128(
-            SafeBips.mulBips(redeemedValueUBA, _state.settings.redemptionFeeBIPS));
+        uint128 redemptionFeeUBA = SafeBips.mulBips(redeemedValueUBA, _state.settings.redemptionFeeBIPS).toUint128();
         _state.redemptionRequests[requestId] = RedemptionRequest({
             redeemerUnderlyingAddressHash: keccak256(bytes(_redeemerUnderlyingAddressString)),
             underlyingValueUBA: redeemedValueUBA,
             firstUnderlyingBlock: _state.currentUnderlyingBlock,
             lastUnderlyingBlock: lastUnderlyingBlock,
             lastUnderlyingTimestamp: lastUnderlyingTimestamp,
-            timestamp: SafeCast.toUint64(block.timestamp),
+            timestamp: block.timestamp.toUint64(),
             underlyingFeeUBA: redemptionFeeUBA,
             redeemer: _redeemer,
             agentVault: _data.agentVault,
@@ -492,8 +492,7 @@ library Redemption {
         returns (uint64 _lastUnderlyingBlock, uint64 _lastUnderlyingTimestamp)
     {
         // timeshift amortizes for the time that passed from the last underlying block update
-        uint64 timeshift = 
-            SafeCast.toUint64(block.timestamp) - _state.currentUnderlyingBlockUpdatedAt;
+        uint64 timeshift = block.timestamp.toUint64() - _state.currentUnderlyingBlockUpdatedAt;
         _lastUnderlyingBlock =
             _state.currentUnderlyingBlock + _state.settings.underlyingBlocksForPayment;
         _lastUnderlyingTimestamp = 

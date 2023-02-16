@@ -15,6 +15,8 @@ import "./TransactionAttestation.sol";
 
 library UnderlyingFreeBalance {
     using SignedSafeMath for int256;
+    using SafeCast for uint256;
+    using SafeCast for int256;
     using PaymentConfirmations for PaymentConfirmations.State;
 
     function updateFreeBalance(
@@ -30,7 +32,7 @@ library UnderlyingFreeBalance {
             emit AMEvents.UnderlyingFreeBalanceNegative(_agentVault, newBalance);
             Liquidation.startFullLiquidation(_state, _agentVault);
         }
-        agent.freeUnderlyingBalanceUBA = SafeCast.toInt128(newBalance);
+        agent.freeUnderlyingBalanceUBA = newBalance.toInt128();
     }
 
     // Like updateFreeBalance, but it can never make balance negative and trigger liquidation.
@@ -43,8 +45,8 @@ library UnderlyingFreeBalance {
         internal
     {
         Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        int256 newBalance = agent.freeUnderlyingBalanceUBA + SafeCast.toInt256(_balanceIncrease);
-        agent.freeUnderlyingBalanceUBA = SafeCast.toInt128(newBalance);
+        int256 newBalance = agent.freeUnderlyingBalanceUBA + _balanceIncrease.toInt256();
+        agent.freeUnderlyingBalanceUBA = newBalance.toInt128();
     }
 
     function confirmTopupPayment(

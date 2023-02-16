@@ -17,6 +17,7 @@ import "./TransactionAttestation.sol";
 
 
 library Challenges {
+    using SafeCast for uint256;
     using AgentCollateral for AgentCollateral.Data;
     using PaymentConfirmations for PaymentConfirmations.State;
 

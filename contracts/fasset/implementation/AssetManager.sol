@@ -29,6 +29,7 @@ import "../library/FullAgentInfo.sol";
  * There is one instance of AssetManager per f-asset type.
  */
 contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
+    using SafeCast for uint256;
     using AssetManagerState for AssetManagerState.State;
     
     AssetManagerState.State private state;
@@ -416,7 +417,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         requireWhitelistedSender();
         CollateralReservations.reserveCollateral(state, msg.sender, _agentVault, 
-            SafeCast.toUint64(_lots), SafeCast.toUint64(_maxMintingFeeBIPS));
+            _lots.toUint64(), _maxMintingFeeBIPS.toUint64());
     }
 
     /**
@@ -430,7 +431,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view
         returns (uint256 _reservationFeeNATWei)
     {
-        return CollateralReservations.calculateReservationFee(state, SafeCast.toUint64(_lots));
+        return CollateralReservations.calculateReservationFee(state, _lots.toUint64());
     }
     
     /**
@@ -449,7 +450,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external 
         nonReentrant
     {
-        Minting.executeMinting(state, _payment, SafeCast.toUint64(_collateralReservationId));
+        Minting.executeMinting(state, _payment, _collateralReservationId.toUint64());
     }
 
     /**
@@ -466,7 +467,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        CollateralReservations.mintingPaymentDefault(state, _proof, SafeCast.toUint64(_collateralReservationId));
+        CollateralReservations.mintingPaymentDefault(state, _proof, _collateralReservationId.toUint64());
     }
     
     /**
@@ -485,7 +486,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external 
         nonReentrant
     {
-        CollateralReservations.unstickMinting(state, _proof, SafeCast.toUint64(_collateralReservationId));
+        CollateralReservations.unstickMinting(state, _proof, _collateralReservationId.toUint64());
     }
     
     /**
@@ -507,7 +508,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         onlyAttached
         nonReentrant
     {
-        Minting.selfMint(state, _payment, _agentVault, SafeCast.toUint64(_lots));
+        Minting.selfMint(state, _payment, _agentVault, _lots.toUint64());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -534,7 +535,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         requireWhitelistedSender();
-        Redemption.redeem(state, msg.sender, SafeCast.toUint64(_lots), _redeemerUnderlyingAddressString);
+        Redemption.redeem(state, msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
     }
     
     /**
@@ -558,7 +559,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemption.confirmRedemptionPayment(state, _payment, SafeCast.toUint64(_redemptionRequestId));
+        Redemption.confirmRedemptionPayment(state, _payment, _redemptionRequestId.toUint64());
     }
 
     /**
@@ -577,7 +578,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemption.redemptionPaymentDefault(state, _proof, SafeCast.toUint64(_redemptionRequestId));
+        Redemption.redemptionPaymentDefault(state, _proof, _redemptionRequestId.toUint64());
     }
     
     /**
@@ -596,7 +597,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemption.finishRedemptionWithoutPayment(state, _proof, SafeCast.toUint64(_redemptionRequestId));
+        Redemption.finishRedemptionWithoutPayment(state, _proof, _redemptionRequestId.toUint64());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -825,7 +826,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         onlyAssetManagerController
     {
         if (state.pausedAt == 0) {
-            state.pausedAt = SafeCast.toUint64(block.timestamp);
+            state.pausedAt = block.timestamp.toUint64();
         }
     }
 

@@ -17,6 +17,7 @@ import "./TransactionAttestation.sol";
 
 library CollateralReservations {
     using SafeBips for uint256;
+    using SafeCast for uint256;
     using AgentCollateral for AgentCollateral.Data;
     
     struct CollateralReservation {
@@ -61,8 +62,8 @@ library CollateralReservations {
         uint64 crtId = _state.newCrtId;   // pre-increment - id can never be 0
         _state.crts[crtId] = CollateralReservation({
             valueAMG: valueAMG,
-            underlyingFeeUBA: SafeCast.toUint128(underlyingFeeUBA),
-            reservationFeeNatWei: SafeCast.toUint128(reservationFee),
+            underlyingFeeUBA: underlyingFeeUBA.toUint128(),
+            reservationFeeNatWei: reservationFee.toUint128(),
             agentVault: _agentVault,
             minter: _minter,
             firstUnderlyingBlock: _state.currentUnderlyingBlock,
@@ -182,8 +183,7 @@ library CollateralReservations {
         returns (uint64 _lastUnderlyingBlock, uint64 _lastUnderlyingTimestamp)
     {
         // timeshift amortizes for the time that passed from the last underlying block update
-        uint64 timeshift = 
-            SafeCast.toUint64(block.timestamp) - _state.currentUnderlyingBlockUpdatedAt;
+        uint64 timeshift = block.timestamp.toUint64() - _state.currentUnderlyingBlockUpdatedAt;
         _lastUnderlyingBlock =
             _state.currentUnderlyingBlock + _state.settings.underlyingBlocksForPayment;
         _lastUnderlyingTimestamp = 

@@ -119,7 +119,7 @@ library Liquidation {
         // if current phase is not LIQUIDATION, restart in LIQUIDATION phase
         Agents.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_state, agent);
         if (currentPhase != Agents.LiquidationPhase.LIQUIDATION) {
-            agent.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
+            agent.liquidationStartedAt = block.timestamp.toUint64();
             agent.initialLiquidationPhase = Agents.LiquidationPhase.LIQUIDATION;
         }
         agent.status = Agents.AgentStatus.FULL_LIQUIDATION;
@@ -235,7 +235,7 @@ library Liquidation {
         Agents.LiquidationPhase newPhase = newPhaseC1 >= newPhasePool ? newPhaseC1 : newPhasePool;
         if (newPhase > currentPhase) {
             _agent.status = Agents.AgentStatus.LIQUIDATION;
-            _agent.liquidationStartedAt = SafeCast.toUint64(block.timestamp);
+            _agent.liquidationStartedAt = block.timestamp.toUint64();
             _agent.initialLiquidationPhase = newPhase;
             _agent.collateralsUnderwater =
                 (newPhase == newPhaseC1 ? Agents.LF_CLASS1 : 0) | (newPhase == newPhasePool ? Agents.LF_POOL : 0);

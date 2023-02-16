@@ -13,6 +13,7 @@ import "./TransactionAttestation.sol";
 
 
 library UnderlyingWithdrawalAnnouncements {
+    using SafeCast for uint256;
     using PaymentConfirmations for PaymentConfirmations.State;
     
     function announceUnderlyingWithdrawal(
@@ -27,7 +28,7 @@ library UnderlyingWithdrawalAnnouncements {
         _state.newPaymentAnnouncementId += PaymentReference.randomizedIdSkip();
         uint64 announcementId = _state.newPaymentAnnouncementId;
         agent.announcedUnderlyingWithdrawalId = announcementId;
-        agent.underlyingWithdrawalAnnouncedAt = SafeCast.toUint64(block.timestamp);
+        agent.underlyingWithdrawalAnnouncedAt = block.timestamp.toUint64();
         bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);
         emit AMEvents.UnderlyingWithdrawalAnnounced(_agentVault, announcementId, paymentReference);
     }
