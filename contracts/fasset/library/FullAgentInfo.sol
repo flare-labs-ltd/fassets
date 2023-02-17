@@ -132,18 +132,18 @@ library FullAgentInfo {
     }
     
     function getAgentInfo(
-        AssetManagerState.State storage _state,
         address _agentVault
     )
         external view
         returns (AgentInfo memory _agentState)
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         // TODO: add missing data
-        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
-        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(_state, agent, _agentVault);
-        CollateralToken.Data storage collateral = _state.getClass1Collateral(agent);
-        CollateralToken.Data storage poolCollateral = _state.getPoolCollateral();
-        _agentState.status = _getAgentStatusInfo(_state, agent, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent, _agentVault);
+        CollateralToken.Data storage collateral = state.getClass1Collateral(agent);
+        CollateralToken.Data storage poolCollateral = state.getPoolCollateral();
+        _agentState.status = _getAgentStatusInfo(agent, _agentVault);
         _agentState.ownerAddress = Agents.vaultOwner(_agentVault);
         _agentState.underlyingAddressString = agent.underlyingAddressString;
         _agentState.publiclyAvailable = agent.availableAgentsPos != 0;
@@ -154,30 +154,29 @@ library FullAgentInfo {
             Math.max(agent.agentMinCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
         _agentState.agentMinPoolCollateralRatioBIPS = 
             Math.max(agent.agentMinPoolCollateralRatioBIPS, poolCollateral.minCollateralRatioBIPS);
-        _agentState.freeCollateralLots = collateralData.freeCollateralLots(_state, agent);
+        _agentState.freeCollateralLots = collateralData.freeCollateralLots(agent);
         _agentState.totalClass1CollateralWei = collateralData.agentCollateral.fullCollateral;
         _agentState.freeClass1CollateralWei = 
-            collateralData.agentCollateral.freeCollateralWei(_state, agent);
+            collateralData.agentCollateral.freeCollateralWei(agent);
         (_agentState.class1CollateralRatioBIPS,) = 
-            Liquidation.getCollateralRatioBIPS(_state, agent, _agentVault, Collateral.Kind.AGENT_CLASS1);
+            Liquidation.getCollateralRatioBIPS(agent, _agentVault, Collateral.Kind.AGENT_CLASS1);
         _agentState.totalPoolCollateralNATWei = collateralData.poolCollateral.fullCollateral;
         _agentState.freePoolCollateralNATWei = 
-            collateralData.poolCollateral.freeCollateralWei(_state, agent);
+            collateralData.poolCollateral.freeCollateralWei(agent);
         (_agentState.poolCollateralRatioBIPS,) = 
-            Liquidation.getCollateralRatioBIPS(_state, agent, _agentVault, Collateral.Kind.POOL);
-        _agentState.mintedUBA = Conversion.convertAmgToUBA(_state.settings, agent.mintedAMG);
-        _agentState.reservedUBA = Conversion.convertAmgToUBA(_state.settings, agent.reservedAMG);
-        _agentState.redeemingUBA = Conversion.convertAmgToUBA(_state.settings, agent.redeemingAMG);
-        _agentState.dustUBA = Conversion.convertAmgToUBA(_state.settings, agent.dustAMG);
+            Liquidation.getCollateralRatioBIPS(agent, _agentVault, Collateral.Kind.POOL);
+        _agentState.mintedUBA = Conversion.convertAmgToUBA(agent.mintedAMG);
+        _agentState.reservedUBA = Conversion.convertAmgToUBA(agent.reservedAMG);
+        _agentState.redeemingUBA = Conversion.convertAmgToUBA(agent.redeemingAMG);
+        _agentState.dustUBA = Conversion.convertAmgToUBA(agent.dustAMG);
         _agentState.ccbStartTimestamp = _getCCBStartTime(agent);
-        _agentState.liquidationStartTimestamp = _getLiquidationStartTime(_state, agent);
+        _agentState.liquidationStartTimestamp = _getLiquidationStartTime(agent);
         _agentState.lockedUnderlyingBalanceUBA = _agentState.mintedUBA;
         _agentState.freeUnderlyingBalanceUBA = agent.freeUnderlyingBalanceUBA;
         _agentState.announcedUnderlyingWithdrawalId = agent.announcedUnderlyingWithdrawalId;
     }
     
     function _getAgentStatusInfo(
-        AssetManagerState.State storage _state,
         Agent.State storage _agent,
         address _agentVault
     )
@@ -188,7 +187,7 @@ library FullAgentInfo {
         if (status == Agent.Status.NORMAL) {
             return AgentStatusInfo.NORMAL;
         } else if (status == Agent.Status.LIQUIDATION) {
-            Agent.LiquidationPhase phase = Liquidation.currentLiquidationPhase(_state, _agent, _agentVault);
+            Agent.LiquidationPhase phase = Liquidation.currentLiquidationPhase(_agent, _agentVault);
             return phase == Agent.LiquidationPhase.CCB ? AgentStatusInfo.CCB : AgentStatusInfo.LIQUIDATION;
         } else if (status == Agent.Status.FULL_LIQUIDATION) {
             return AgentStatusInfo.FULL_LIQUIDATION;
@@ -209,15 +208,15 @@ library FullAgentInfo {
     }
 
     function _getLiquidationStartTime(
-        AssetManagerState.State storage _state,
         Agent.State storage _agent
     )
         private view
         returns (uint256)
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         if (_agent.status == Agent.Status.LIQUIDATION) {
             return _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB
-                ? _agent.liquidationStartedAt + _state.settings.ccbTimeSeconds
+                ? _agent.liquidationStartedAt + settings.ccbTimeSeconds
                 : _agent.liquidationStartedAt;
         } else if (_agent.status == Agent.Status.FULL_LIQUIDATION) {
             return _agent.liquidationStartedAt;

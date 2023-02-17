@@ -15,16 +15,16 @@ library UnderlyingWithdrawalAnnouncements {
     using PaymentConfirmations for PaymentConfirmations.State;
     
     function announceUnderlyingWithdrawal(
-        AssetManagerState.State storage _state,
         address _agentVault
     )
         external
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         Agents.requireAgentVaultOwner(_agentVault);
-        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_agentVault);
         require(agent.announcedUnderlyingWithdrawalId == 0, "announced underlying withdrawal active");
-        _state.newPaymentAnnouncementId += PaymentReference.randomizedIdSkip();
-        uint64 announcementId = _state.newPaymentAnnouncementId;
+        state.newPaymentAnnouncementId += PaymentReference.randomizedIdSkip();
+        uint64 announcementId = state.newPaymentAnnouncementId;
         agent.announcedUnderlyingWithdrawalId = announcementId;
         agent.underlyingWithdrawalAnnouncedAt = block.timestamp.toUint64();
         bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);
@@ -32,14 +32,14 @@ library UnderlyingWithdrawalAnnouncements {
     }
     
     function confirmUnderlyingWithdrawal(
-        AssetManagerState.State storage _state,
         IAttestationClient.Payment calldata _payment,
         address _agentVault
     )
         external
     {
-        TransactionAttestation.verifyPayment(_state.settings, _payment);
-        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        TransactionAttestation.verifyPayment(_payment);
+        Agent.State storage agent = Agents.getAgent(_agentVault);
         bool isAgent = msg.sender == Agents.vaultOwner(_agentVault);
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
         require(announcementId != 0, "no active announcement");
@@ -48,21 +48,20 @@ library UnderlyingWithdrawalAnnouncements {
         require(_payment.sourceAddressHash == agent.underlyingAddressHash,
             "wrong announced pmt source");
         require(isAgent || block.timestamp > 
-                agent.underlyingWithdrawalAnnouncedAt + _state.settings.confirmationByOthersAfterSeconds,
+                agent.underlyingWithdrawalAnnouncedAt + state.settings.confirmationByOthersAfterSeconds,
             "only agent vault owner");
         require(block.timestamp > 
-            agent.underlyingWithdrawalAnnouncedAt + _state.settings.announcedUnderlyingConfirmationMinSeconds,
+            agent.underlyingWithdrawalAnnouncedAt + state.settings.announcedUnderlyingConfirmationMinSeconds,
             "confirmation too soon");
         // make sure withdrawal cannot be challenged as invalid
-        _state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
+        state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // clear active withdrawal announcement
         agent.announcedUnderlyingWithdrawalId = 0;
         // update free underlying balance and trigger liquidation if negative
-        UnderlyingFreeBalance.updateFreeBalance(_state, _agentVault, -_payment.spentAmount);
+        UnderlyingFreeBalance.updateFreeBalance(_agentVault, -_payment.spentAmount);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payoutClass1(_state, agent, _agentVault, msg.sender, 
-                _state.settings.confirmationByOthersRewardC1Wei);
+            Agents.payoutClass1(agent, _agentVault, msg.sender, state.settings.confirmationByOthersRewardC1Wei);
         }
         // send event
         emit AMEvents.UnderlyingWithdrawalConfirmed(_agentVault, _payment.spentAmount, 
@@ -70,17 +69,17 @@ library UnderlyingWithdrawalAnnouncements {
     }
 
     function cancelUnderlyingWithdrawal(
-        AssetManagerState.State storage _state,
         address _agentVault
     )
         external
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         Agents.requireAgentVaultOwner(_agentVault);
-        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_agentVault);
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
         require(announcementId != 0, "no active announcement");
         require(block.timestamp > 
-            agent.underlyingWithdrawalAnnouncedAt + _state.settings.announcedUnderlyingConfirmationMinSeconds,
+            agent.underlyingWithdrawalAnnouncedAt + state.settings.announcedUnderlyingConfirmationMinSeconds,
             "cancel too soon");
         // clear active withdrawal announcement
         agent.announcedUnderlyingWithdrawalId = 0;

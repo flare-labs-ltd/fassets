@@ -78,18 +78,17 @@ library SettingsUpdater {
         keccak256("setAnnouncedUnderlyingConfirmationMinSeconds(uint256)");
         
     function validateAndSet(
-        AssetManagerState.State storage _state,
         AssetManagerSettings.Data memory _settings
     )
         external
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         _validateSettings(_settings);
-        _state.settings = _settings;
-        _refreshFtsoIndexes(_state);
+        state.settings = _settings;
+        _refreshFtsoIndexes();
     }
     
     function callUpdate(
-        AssetManagerState.State storage _state,
         PendingUpdates storage _updates,
         bytes32 _method,
         bytes calldata _params
@@ -97,63 +96,63 @@ library SettingsUpdater {
         external
     {
         if (_method == UPDATE_CONTRACTS) {
-            _updateContracts(_state, _params);
+            _updateContracts(_params);
         } else if (_method == REFRESH_FTSO_INDEXES) {
-            _refreshFtsoIndexes(_state);
+            _refreshFtsoIndexes();
         } else if (_method == SET_COLLATERAL_RATIOS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setCollateralRatios(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setCollateralRatios(_params);
         } else if (_method == SET_TIME_FOR_PAYMENT) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setTimeForPayment(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setTimeForPayment(_params);
         } else if (_method == SET_PAYMENT_CHALLENGE_REWARD) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setPaymentChallengeReward(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setPaymentChallengeReward(_params);
         } else if (_method == SET_WHITELIST) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setWhitelist(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setWhitelist(_params);
         } else if (_method == SET_LOT_SIZE_AMG) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setLotSizeAmg(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setLotSizeAmg(_params);
         } else if (_method == SET_COLLATERAL_RESERVATION_FEE_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setCollateralReservationFeeBips(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setCollateralReservationFeeBips(_params);
         } else if (_method == SET_REDEMPTION_FEE_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setRedemptionFeeBips(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setRedemptionFeeBips(_params);
         } else if (_method == SET_REDEMPTION_DEFAULT_FACTOR_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setRedemptionDefaultFactorBips(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setRedemptionDefaultFactorBips(_params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setConfirmationByOthersAfterSeconds(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setConfirmationByOthersAfterSeconds(_params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_REWARD_C1_WEI) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setConfirmationByOthersRewardC1Wei(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setConfirmationByOthersRewardC1Wei(_params);
         } else if (_method == SET_MAX_REDEEMED_TICKETS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setMaxRedeemedTickets(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setMaxRedeemedTickets(_params);
         } else if (_method == SET_WITHDRAWAL_OR_DESTROY_WAIT_MIN_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setWithdrawalOrDestroyWaitMinSeconds(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setWithdrawalOrDestroyWaitMinSeconds(_params);
         } else if (_method == SET_CCB_TIME_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setCcbTimeSeconds(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setCcbTimeSeconds(_params);
         } else if (_method == SET_LIQUIDATION_STEP_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setLiquidationStepSeconds(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setLiquidationStepSeconds(_params);
         } else if (_method == SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setLiquidationCollateralFactorBips(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setLiquidationCollateralFactorBips(_params);
         } else if (_method == SET_ATTESTATION_WINDOW_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setAttestationWindowSeconds(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setAttestationWindowSeconds(_params);
         } else if (_method == SET_MAX_TRUSTED_PRICE_AGE_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setMaxTrustedPriceAgeSeconds(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setMaxTrustedPriceAgeSeconds(_params);
         } else if (_method == SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_state, _updates, _method);
-            _setAnnouncedUnderlyingConfirmationMinSeconds(_state, _params);
+            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _setAnnouncedUnderlyingConfirmationMinSeconds(_params);
         }
         else {
             revert("update: invalid method");
@@ -161,11 +160,11 @@ library SettingsUpdater {
     }
 
     function _updateContracts(
-        AssetManagerState.State storage _state,
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         (
             address controller,
             IAgentVaultFactory agentVaultFactory,
@@ -175,59 +174,56 @@ library SettingsUpdater {
         )
             = abi.decode(_params, (address, IAgentVaultFactory, IAttestationClient, IFtsoRegistry, IWNat));
 
-        if (_state.settings.assetManagerController != controller) {
-            _state.settings.assetManagerController = controller;
+        if (state.settings.assetManagerController != controller) {
+            state.settings.assetManagerController = controller;
             emit AMEvents.ContractChanged("assetManagerController", address(controller));
         }
-        if (_state.settings.agentVaultFactory != agentVaultFactory) {
-            _state.settings.agentVaultFactory = agentVaultFactory;
+        if (state.settings.agentVaultFactory != agentVaultFactory) {
+            state.settings.agentVaultFactory = agentVaultFactory;
             emit AMEvents.ContractChanged("agentVaultFactory", address(agentVaultFactory));
         }
-        if (_state.settings.attestationClient != attestationClient) {
-            _state.settings.attestationClient = attestationClient;
+        if (state.settings.attestationClient != attestationClient) {
+            state.settings.attestationClient = attestationClient;
             emit AMEvents.ContractChanged("attestationClient", address(attestationClient));
         }
-        if (_state.settings.ftsoRegistry != ftsoRegistry) {
-            _state.settings.ftsoRegistry = ftsoRegistry;
+        if (state.settings.ftsoRegistry != ftsoRegistry) {
+            state.settings.ftsoRegistry = ftsoRegistry;
             emit AMEvents.ContractChanged("ftsoRegistry", address(ftsoRegistry));
         }
         // TODO: what to do with the NATs in the pool - this will trigger liquidation
-        CollateralToken.Data storage poolCollateral = _state.collateralTokens[CollateralToken.POOL];
+        CollateralToken.Data storage poolCollateral = state.collateralTokens[CollateralToken.POOL];
         if (poolCollateral.token != wNat) {
             poolCollateral.token = wNat;
             emit AMEvents.ContractChanged("wNat", address(wNat));
         }
     }
     
-    function _refreshFtsoIndexes(
-        AssetManagerState.State storage _state
-    )
-        private
+    function _refreshFtsoIndexes() private
     {
-        uint256 length = _state.collateralTokens.length;
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint256 length = state.collateralTokens.length;
         for (uint256 i = 0; i < length; i++) {
-            CollateralToken.Data storage collateral = _state.collateralTokens[i];
+            CollateralToken.Data storage collateral = state.collateralTokens[i];
             // do not update invalidated tokens types
             if (collateral.validUntil != 0 && collateral.validUntil < block.timestamp) continue;
-            collateral.ftsoIndex = _state.settings.ftsoRegistry.getFtsoIndex(collateral.symbol).toUint16();
+            collateral.ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(collateral.symbol).toUint16();
         }
     }
     
     function _checkEnoughTimeSinceLastUpdate(
-        AssetManagerState.State storage _state,
         PendingUpdates storage _updates,
         bytes32 _method
     )
         private
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 lastUpdate = _updates.lastUpdate[_method];
-        require(lastUpdate == 0 || block.timestamp >= lastUpdate + _state.settings.minUpdateRepeatTimeSeconds,
+        require(lastUpdate == 0 || block.timestamp >= lastUpdate + settings.minUpdateRepeatTimeSeconds,
             "too close to previous update");
         _updates.lastUpdate[_method] = block.timestamp;
     }
 
     function _setCollateralRatios(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
@@ -237,291 +233,291 @@ library SettingsUpdater {
         //     abi.decode(_params, (uint256, uint256, uint256));
         // // validations
         // require(SafeBips.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
-        // uint32[] storage liquidationFactors = _state.settings.liquidationCollateralFactorBIPS;
+        // uint32[] storage liquidationFactors = state.settings.liquidationCollateralFactorBIPS;
         // require(liquidationFactors[liquidationFactors.length - 1] <= safetyCR, "liquidation factor too high");
         // // update
-        // _state.settings.minCollateralRatioBIPS = minCR.toUint32();
-        // _state.settings.ccbMinCollateralRatioBIPS = ccbCR.toUint32();
-        // _state.settings.safetyMinCollateralRatioBIPS = safetyCR.toUint32();
+        // state.settings.minCollateralRatioBIPS = minCR.toUint32();
+        // state.settings.ccbMinCollateralRatioBIPS = ccbCR.toUint32();
+        // state.settings.safetyMinCollateralRatioBIPS = safetyCR.toUint32();
         // emit AMEvents.SettingChanged("minCollateralRatioBIPS", minCR);
         // emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", ccbCR);
         // emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", safetyCR);
     }
     
     function _setTimeForPayment(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         (uint256 underlyingBlocks, uint256 underlyingSeconds) = 
             abi.decode(_params, (uint256, uint256));
         // update
-        _state.settings.underlyingBlocksForPayment = underlyingBlocks.toUint64();
-        _state.settings.underlyingSecondsForPayment = underlyingSeconds.toUint64();
+        settings.underlyingBlocksForPayment = underlyingBlocks.toUint64();
+        settings.underlyingSecondsForPayment = underlyingSeconds.toUint64();
         emit AMEvents.SettingChanged("underlyingBlocksForPayment", underlyingBlocks);
         emit AMEvents.SettingChanged("underlyingSecondsForPayment", underlyingSeconds);
     }
     
     function _setPaymentChallengeReward(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         (uint256 rewardNATWei, uint256 rewardBIPS) = abi.decode(_params, (uint256, uint256));
         // validate
-        require(rewardNATWei <= (_state.settings.paymentChallengeRewardC1Wei * 4) + 100 ether, "increase too big");
-        require(rewardNATWei >= (_state.settings.paymentChallengeRewardC1Wei) / 4, "decrease too big");
-        require(rewardBIPS <= (_state.settings.paymentChallengeRewardBIPS * 4) + 100, "increase too big");
-        require(rewardBIPS >= (_state.settings.paymentChallengeRewardBIPS) / 4, "decrease too big");
+        require(rewardNATWei <= (settings.paymentChallengeRewardC1Wei * 4) + 100 ether, "increase too big");
+        require(rewardNATWei >= (settings.paymentChallengeRewardC1Wei) / 4, "decrease too big");
+        require(rewardBIPS <= (settings.paymentChallengeRewardBIPS * 4) + 100, "increase too big");
+        require(rewardBIPS >= (settings.paymentChallengeRewardBIPS) / 4, "decrease too big");
         // update
-        _state.settings.paymentChallengeRewardC1Wei = rewardNATWei.toUint128();
-        _state.settings.paymentChallengeRewardBIPS = rewardBIPS.toUint16();
+        settings.paymentChallengeRewardC1Wei = rewardNATWei.toUint128();
+        settings.paymentChallengeRewardBIPS = rewardBIPS.toUint16();
         emit AMEvents.SettingChanged("paymentChallengeRewardC1Wei", rewardNATWei);
         emit AMEvents.SettingChanged("paymentChallengeRewardBIPS", rewardBIPS);
     }
 
     function _setWhitelist(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         address value = abi.decode(_params, (address));
         // validate
         // update
-        _state.settings.whitelist = IWhitelist(value);
+        settings.whitelist = IWhitelist(value);
         emit AMEvents.ContractChanged("whitelist", value);
 
     }
     
     function _setLotSizeAmg(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         // huge lot size increase is very dangerous, because it breaks redemption
         // (converts all tickets to dust)
         require(value > 0, "cannot be zero");
-        require(value <= _state.settings.lotSizeAMG * 2, "lot size increase too big");
-        require(value >= _state.settings.lotSizeAMG / 4, "lot size decrease too big");
+        require(value <= settings.lotSizeAMG * 2, "lot size increase too big");
+        require(value >= settings.lotSizeAMG / 4, "lot size decrease too big");
         // update
-        _state.settings.lotSizeAMG = value.toUint64();
+        settings.lotSizeAMG = value.toUint64();
         emit AMEvents.SettingChanged("lotSizeAMG", value);
     }
     
     function _setMaxTrustedPriceAgeSeconds(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
-        require(value <= _state.settings.maxTrustedPriceAgeSeconds * 2, "fee increase too big");
-        require(value >= _state.settings.maxTrustedPriceAgeSeconds / 2, "fee decrease too big");
+        require(value <= settings.maxTrustedPriceAgeSeconds * 2, "fee increase too big");
+        require(value >= settings.maxTrustedPriceAgeSeconds / 2, "fee decrease too big");
         // update
-        _state.settings.maxTrustedPriceAgeSeconds = value.toUint64();
+        settings.maxTrustedPriceAgeSeconds = value.toUint64();
         emit AMEvents.SettingChanged("maxTrustedPriceAgeSeconds", value);
     }
 
     function _setCollateralReservationFeeBips(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
         require(value <= SafeBips.MAX_BIPS, "bips value too high");
-        require(value <= _state.settings.collateralReservationFeeBIPS * 4, "fee increase too big");
-        require(value >= _state.settings.collateralReservationFeeBIPS / 4, "fee decrease too big");
+        require(value <= settings.collateralReservationFeeBIPS * 4, "fee increase too big");
+        require(value >= settings.collateralReservationFeeBIPS / 4, "fee decrease too big");
         // update
-        _state.settings.collateralReservationFeeBIPS = value.toUint16();
+        settings.collateralReservationFeeBIPS = value.toUint16();
         emit AMEvents.SettingChanged("collateralReservationFeeBIPS", value);
     }
 
     function _setRedemptionFeeBips(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
         require(value <= SafeBips.MAX_BIPS, "bips value too high");
-        require(value <= _state.settings.redemptionFeeBIPS * 4, "fee increase too big");
-        require(value >= _state.settings.redemptionFeeBIPS / 4, "fee decrease too big");
+        require(value <= settings.redemptionFeeBIPS * 4, "fee increase too big");
+        require(value >= settings.redemptionFeeBIPS / 4, "fee decrease too big");
         // update
-        _state.settings.redemptionFeeBIPS = value.toUint16();
+        settings.redemptionFeeBIPS = value.toUint16();
         emit AMEvents.SettingChanged("redemptionFeeBIPS", value);
     }
 
     function _setRedemptionDefaultFactorBips(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         (uint256 class1, uint256 pool) = abi.decode(_params, (uint256, uint256));
         // validate
         require(class1 + pool > SafeBips.MAX_BIPS, "bips value too low");
-        require(class1 <= _state.settings.redemptionDefaultFactorAgentC1BIPS.mulBips(12000), "fee increase too big");
-        require(class1 >= _state.settings.redemptionDefaultFactorAgentC1BIPS.mulBips(8333), "fee decrease too big");
-        require(pool <= _state.settings.redemptionDefaultFactorPoolBIPS.mulBips(12000), "fee increase too big");
-        require(pool >= _state.settings.redemptionDefaultFactorPoolBIPS.mulBips(8333), "fee decrease too big");
+        require(class1 <= settings.redemptionDefaultFactorAgentC1BIPS.mulBips(12000), "fee increase too big");
+        require(class1 >= settings.redemptionDefaultFactorAgentC1BIPS.mulBips(8333), "fee decrease too big");
+        require(pool <= settings.redemptionDefaultFactorPoolBIPS.mulBips(12000), "fee increase too big");
+        require(pool >= settings.redemptionDefaultFactorPoolBIPS.mulBips(8333), "fee decrease too big");
         // update
-        _state.settings.redemptionDefaultFactorAgentC1BIPS = class1.toUint32();
+        settings.redemptionDefaultFactorAgentC1BIPS = class1.toUint32();
         emit AMEvents.SettingChanged("redemptionDefaultFactorAgentC1BIPS", class1);
-        _state.settings.redemptionDefaultFactorPoolBIPS = pool.toUint32();
+        settings.redemptionDefaultFactorPoolBIPS = pool.toUint32();
         emit AMEvents.SettingChanged("redemptionDefaultFactorPoolBIPS", pool);
     }
 
     function _setConfirmationByOthersAfterSeconds(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value >= 2 hours, "must be at least two hours");
         // update
-        _state.settings.confirmationByOthersAfterSeconds = value.toUint64();
+        settings.confirmationByOthersAfterSeconds = value.toUint64();
         emit AMEvents.SettingChanged("confirmationByOthersAfterSeconds", value);
     }
 
     function _setConfirmationByOthersRewardC1Wei(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
-        require(value <= _state.settings.confirmationByOthersRewardC1Wei * 4, "fee increase too big");
-        require(value >= _state.settings.confirmationByOthersRewardC1Wei / 4, "fee decrease too big");
+        require(value <= settings.confirmationByOthersRewardC1Wei * 4, "fee increase too big");
+        require(value >= settings.confirmationByOthersRewardC1Wei / 4, "fee decrease too big");
         // update
-        _state.settings.confirmationByOthersRewardC1Wei = value.toUint128();
+        settings.confirmationByOthersRewardC1Wei = value.toUint128();
         emit AMEvents.SettingChanged("confirmationByOthersRewardC1Wei", value);
     }
 
     function _setMaxRedeemedTickets(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
-        require(value <= _state.settings.maxRedeemedTickets * 2, "increase too big");
-        require(value >= _state.settings.maxRedeemedTickets / 4, "decrease too big");
+        require(value <= settings.maxRedeemedTickets * 2, "increase too big");
+        require(value >= settings.maxRedeemedTickets / 4, "decrease too big");
         // update
-        _state.settings.maxRedeemedTickets = value.toUint16();
+        settings.maxRedeemedTickets = value.toUint16();
         emit AMEvents.SettingChanged("maxRedeemedTickets", value);
     }
 
     function _setWithdrawalOrDestroyWaitMinSeconds(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         // making this value small doesn't present huge danger, so we don't limit decrease
         require(value > 0, "cannot be zero");
-        require(value <= _state.settings.withdrawalWaitMinSeconds + 10 minutes, "increase too big");
+        require(value <= settings.withdrawalWaitMinSeconds + 10 minutes, "increase too big");
         // update
-        _state.settings.withdrawalWaitMinSeconds = value.toUint64();
+        settings.withdrawalWaitMinSeconds = value.toUint64();
         emit AMEvents.SettingChanged("withdrawalWaitMinSeconds", value);
     }
 
     function _setCcbTimeSeconds(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
-        require(value <= _state.settings.ccbTimeSeconds * 2, "increase too big");
-        require(value >= _state.settings.ccbTimeSeconds / 2, "decrease too big");
+        require(value <= settings.ccbTimeSeconds * 2, "increase too big");
+        require(value >= settings.ccbTimeSeconds / 2, "decrease too big");
         // update
-        _state.settings.ccbTimeSeconds = value.toUint64();
+        settings.ccbTimeSeconds = value.toUint64();
         emit AMEvents.SettingChanged("ccbTimeSeconds", value);
     }
 
     function _setLiquidationStepSeconds(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
-        require(value <= _state.settings.liquidationStepSeconds * 2, "increase too big");
-        require(value >= _state.settings.liquidationStepSeconds / 2, "decrease too big");
+        require(value <= settings.liquidationStepSeconds * 2, "increase too big");
+        require(value >= settings.liquidationStepSeconds / 2, "decrease too big");
         // update
-        _state.settings.liquidationStepSeconds = value.toUint64();
+        settings.liquidationStepSeconds = value.toUint64();
         emit AMEvents.SettingChanged("liquidationStepSeconds", value);
     }
 
     function _setLiquidationCollateralFactorBips(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256[] memory value = abi.decode(_params, (uint256[]));
         // validate
         require(value.length >= 1, "at least one factor required");
         // update
-        delete _state.settings.liquidationCollateralFactorBIPS;
+        delete settings.liquidationCollateralFactorBIPS;
         for (uint256 i = 0; i < value.length; i++) {
             require(value[i] > SafeBips.MAX_BIPS, "factor not above 1");
             require(i == 0 || value[i] > value[i - 1], "factors not increasing");
-            _state.settings.liquidationCollateralFactorBIPS.push(value[i].toUint32());
+            settings.liquidationCollateralFactorBIPS.push(value[i].toUint32());
         }
         emit AMEvents.SettingArrayChanged("liquidationCollateralFactorBIPS", value);
     }
     
     function _setAttestationWindowSeconds(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value >= 1 days, "window too small");
         // update
-        _state.settings.attestationWindowSeconds = value.toUint64();
+        settings.attestationWindowSeconds = value.toUint64();
         emit AMEvents.SettingChanged("attestationWindowSeconds", value);
     }
 
     function _setAnnouncedUnderlyingConfirmationMinSeconds(
-        AssetManagerState.State storage _state,
         bytes calldata _params
     ) 
         private 
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value <= 1 hours, "confirmation time too big");
         // update
-        _state.settings.announcedUnderlyingConfirmationMinSeconds = value.toUint64();
+        settings.announcedUnderlyingConfirmationMinSeconds = value.toUint64();
         emit AMEvents.SettingChanged("announcedUnderlyingConfirmationMinSeconds", value);
     }
 

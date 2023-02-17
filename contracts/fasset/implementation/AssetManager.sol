@@ -32,25 +32,25 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     using SafeCast for uint256;
     using AssetManagerState for AssetManagerState.State;
     
-    AssetManagerState.State private state;
     SettingsUpdater.PendingUpdates private pendingUpdates;
     
     uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
 
     modifier onlyAssetManagerController {
-        require(msg.sender == state.settings.assetManagerController, "only asset manager controller");
+        require(msg.sender == AssetManagerState.getSettings().assetManagerController,
+            "only asset manager controller");
         _;
     }
 
     modifier onlyAttached {
-        require(state.attached, "not attached");
+        require(AssetManagerState.get().attached, "not attached");
         _;
     }
     
     constructor(
         AssetManagerSettings.Data memory _settings
     ) {
-        SettingsUpdater.validateAndSet(state, _settings);
+        SettingsUpdater.validateAndSet(_settings);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +68,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external override
         onlyAssetManagerController
     {
-        SettingsUpdater.callUpdate(state, pendingUpdates, _method, _params);
+        SettingsUpdater.callUpdate(pendingUpdates, _method, _params);
     }
     
     /**
@@ -80,7 +80,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view
         returns (AssetManagerSettings.Data memory)
     {
-        return state.settings;
+        return AssetManagerState.getSettings();
     }
     
     /**
@@ -90,7 +90,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view
         returns (address)
     {
-        return state.settings.assetManagerController;
+        return AssetManagerState.getSettings().assetManagerController;
     }
     
     /**
@@ -107,6 +107,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external override
         onlyAssetManagerController
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         state.attached = attached;
     }
     
@@ -114,6 +115,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * When `constrollerAttached` is true, asset manager has been added to the asset manager controller.
      */
     function controllerAttached() external view returns (bool) {
+        AssetManagerState.State storage state = AssetManagerState.get();
         return state.attached;
     }
 
@@ -136,7 +138,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         requireWhitelistedSender();
-        Agents.claimAddressWithEOAProof(state, _payment);
+        Agents.claimAddressWithEOAProof(_payment);
     }
     
     /**
@@ -155,7 +157,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         onlyAttached
     {
         requireWhitelistedSender();
-        Agents.createAgent(state, Agent.Type.AGENT_100, this, _underlyingAddressString, _collateralTokenClass1);
+        Agents.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString, _collateralTokenClass1);
     }
     
     /**
@@ -168,7 +170,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.announceDestroy(state, _agentVault);
+        Agents.announceDestroy(_agentVault);
     }
     
     /**
@@ -187,7 +189,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.destroyAgent(state, _agentVault);
+        Agents.destroyAgent(_agentVault);
     }
     
     /**
@@ -202,7 +204,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.setAgentMinCollateralRatioBIPS(state, _agentVault, _agentMinCollateralRatioBIPS);
+        Agents.setAgentMinCollateralRatioBIPS(_agentVault, _agentMinCollateralRatioBIPS);
     }
     
     /**
@@ -217,7 +219,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view
         returns (FullAgentInfo.AgentInfo memory)
     {
-        return FullAgentInfo.getAgentInfo(state, _agentVault);
+        return FullAgentInfo.getAgentInfo(_agentVault);
     }
 
     /**
@@ -234,7 +236,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.announceWithdrawal(state, _agentVault, _valueNATWei);
+        Agents.announceWithdrawal(_agentVault, _valueNATWei);
     }
 
     /**
@@ -249,7 +251,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external override
     {
         // Agents.withdrawalExecuted makes sure that only a registered agent vault can call
-        Agents.withdrawalExecuted(state, _token, msg.sender, _valueNATWei);
+        Agents.withdrawalExecuted(_token, msg.sender, _valueNATWei);
     }
     
     /**
@@ -263,7 +265,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external override
     {
         // Agents.depositExecuted makes sure that only a registered agent vault can call
-        Agents.depositExecuted(state, _token, msg.sender);
+        Agents.depositExecuted(_token, msg.sender);
     }
     
     /**
@@ -281,7 +283,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.convertDustToTicket(state, _agentVault);
+        Agents.convertDustToTicket(_agentVault);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -305,7 +307,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        AvailableAgents.makeAvailable(state, _agentVault, _feeBIPS, _agentMinCollateralRatioBIPS);
+        AvailableAgents.makeAvailable(_agentVault, _feeBIPS, _agentMinCollateralRatioBIPS);
     }
     
     /**
@@ -318,7 +320,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        AvailableAgents.exit(state, _agentVault);
+        AvailableAgents.exit(_agentVault);
     }
     
     /**
@@ -334,7 +336,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view 
         returns (address[] memory _agents, uint256 _totalLength)
     {
-        return AvailableAgents.getList(state, _start, _end);
+        return AvailableAgents.getList(_start, _end);
     }
 
     /**
@@ -353,7 +355,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view 
         returns (AvailableAgents.AgentInfo[] memory _agents, uint256 _totalLength)
     {
-        return AvailableAgents.getListWithInfo(state, _start, _end);
+        return AvailableAgents.getListWithInfo(_start, _end);
     }
     
     ////////////////////////////////////////////////////////////////////////////////////
@@ -373,7 +375,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        StateUpdater.updateCurrentBlock(state, _proof);
+        StateUpdater.updateCurrentBlock(_proof);
     }
     
     /**
@@ -385,6 +387,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view
         returns (uint256 _blockNumber, uint256 _blockTimestamp)
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         return (state.currentUnderlyingBlock, state.currentUnderlyingBlockTimestamp);
     }
         
@@ -416,7 +419,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         onlyAttached
     {
         requireWhitelistedSender();
-        CollateralReservations.reserveCollateral(state, msg.sender, _agentVault, 
+        CollateralReservations.reserveCollateral(msg.sender, _agentVault, 
             _lots.toUint64(), _maxMintingFeeBIPS.toUint64());
     }
 
@@ -431,7 +434,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view
         returns (uint256 _reservationFeeNATWei)
     {
-        return CollateralReservations.calculateReservationFee(state, _lots.toUint64());
+        return CollateralReservations.calculateReservationFee(_lots.toUint64());
     }
     
     /**
@@ -450,7 +453,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external 
         nonReentrant
     {
-        Minting.executeMinting(state, _payment, _collateralReservationId.toUint64());
+        Minting.executeMinting(_payment, _collateralReservationId.toUint64());
     }
 
     /**
@@ -467,7 +470,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        CollateralReservations.mintingPaymentDefault(state, _proof, _collateralReservationId.toUint64());
+        CollateralReservations.mintingPaymentDefault(_proof, _collateralReservationId.toUint64());
     }
     
     /**
@@ -486,7 +489,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external 
         nonReentrant
     {
-        CollateralReservations.unstickMinting(state, _proof, _collateralReservationId.toUint64());
+        CollateralReservations.unstickMinting(_proof, _collateralReservationId.toUint64());
     }
     
     /**
@@ -508,7 +511,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         onlyAttached
         nonReentrant
     {
-        Minting.selfMint(state, _payment, _agentVault, _lots.toUint64());
+        Minting.selfMint(_payment, _agentVault, _lots.toUint64());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -535,7 +538,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         requireWhitelistedSender();
-        Redemptions.redeem(state, msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
+        Redemptions.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
     }
     
     /**
@@ -559,7 +562,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemptions.confirmRedemptionPayment(state, _payment, _redemptionRequestId.toUint64());
+        Redemptions.confirmRedemptionPayment(_payment, _redemptionRequestId.toUint64());
     }
 
     /**
@@ -578,7 +581,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemptions.redemptionPaymentDefault(state, _proof, _redemptionRequestId.toUint64());
+        Redemptions.redemptionPaymentDefault(_proof, _redemptionRequestId.toUint64());
     }
     
     /**
@@ -597,7 +600,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemptions.finishRedemptionWithoutPayment(state, _proof, _redemptionRequestId.toUint64());
+        Redemptions.finishRedemptionWithoutPayment(_proof, _redemptionRequestId.toUint64());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -618,7 +621,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         // in Redemptions.selfClose we check that only agent can do this
-        Redemptions.selfClose(state, _agentVault, _amountUBA);
+        Redemptions.selfClose(_agentVault, _amountUBA);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -637,7 +640,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        UnderlyingWithdrawalAnnouncements.announceUnderlyingWithdrawal(state, _agentVault);
+        UnderlyingWithdrawalAnnouncements.announceUnderlyingWithdrawal(_agentVault);
     }
     
     /**
@@ -655,7 +658,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        UnderlyingWithdrawalAnnouncements.confirmUnderlyingWithdrawal(state, _payment, _agentVault);
+        UnderlyingWithdrawalAnnouncements.confirmUnderlyingWithdrawal(_payment, _agentVault);
     }
 
     /**
@@ -671,7 +674,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        UnderlyingWithdrawalAnnouncements.cancelUnderlyingWithdrawal(state, _agentVault);
+        UnderlyingWithdrawalAnnouncements.cancelUnderlyingWithdrawal(_agentVault);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -691,7 +694,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        UnderlyingFreeBalance.confirmTopupPayment(state, _payment, _agentVault);
+        UnderlyingFreeBalance.confirmTopupPayment(_payment, _agentVault);
     }
     
     ////////////////////////////////////////////////////////////////////////////////////
@@ -713,7 +716,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         requireWhitelistedSender();
-        Challenges.illegalPaymentChallenge(state, _transaction, _agentVault);
+        Challenges.illegalPaymentChallenge(_transaction, _agentVault);
     }
 
     /**
@@ -733,7 +736,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         requireWhitelistedSender();
-        Challenges.doublePaymentChallenge(state, _payment1, _payment2, _agentVault);
+        Challenges.doublePaymentChallenge(_payment1, _payment2, _agentVault);
     }
     
     /**
@@ -752,7 +755,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         requireWhitelistedSender();
-        Challenges.paymentsMakeFreeBalanceNegative(state, _payments, _agentVault);
+        Challenges.paymentsMakeFreeBalanceNegative(_payments, _agentVault);
     }
     
     ////////////////////////////////////////////////////////////////////////////////////
@@ -769,7 +772,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         requireWhitelistedSender();
-        Liquidation.startLiquidation(state, _agentVault);
+        Liquidation.startLiquidation(_agentVault);
     }
     
     /**
@@ -794,7 +797,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         requireWhitelistedSender();
         (_liquidatedAmountUBA, _amountPaidClass1, _amountPaidPool) = 
-            Liquidation.liquidate(state, _agentVault, _amountUBA);
+            Liquidation.liquidate(_agentVault, _amountUBA);
     }
     
     /**
@@ -810,7 +813,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Liquidation.endLiquidation(state, _agentVault);
+        Liquidation.endLiquidation(_agentVault);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -825,6 +828,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external override
         onlyAssetManagerController
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         if (state.pausedAt == 0) {
             state.pausedAt = block.timestamp.toUint64();
         }
@@ -838,6 +842,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external override
         onlyAssetManagerController
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         require(!state.settings.fAsset.terminated(), "f-asset terminated");
         state.pausedAt = 0;
     }
@@ -854,6 +859,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external override
         onlyAssetManagerController
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         require(state.pausedAt != 0 && block.timestamp > state.pausedAt + MINIMUM_PAUSE_BEFORE_STOP,
             "asset manager not paused enough");
         state.settings.fAsset.terminate();
@@ -871,8 +877,9 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         require(state.settings.fAsset.terminated(), "f-asset not terminated");
-        Agents.buybackAgentCollateral(state, _agentVault);
+        Agents.buybackAgentCollateral(_agentVault);
     }
 
     /**
@@ -882,6 +889,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view
         returns (bool)
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         return state.pausedAt != 0;
     }
 
@@ -895,6 +903,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view
         returns (IFAsset)
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         return state.settings.fAsset;
     }
 
@@ -906,6 +915,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view override
         returns (IWNat)
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         return state.getWNat();
     }
     
@@ -916,6 +926,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view
         returns (CollateralToken.Data[] memory)
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         return state.collateralTokens;
     }
     
@@ -926,7 +937,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view override
         returns (bool)
     {
-        return Agents.isCollateralToken(state, _agentVault, _token);
+        return Agents.isCollateralToken(_agentVault, _token);
     }
     
     /**
@@ -936,7 +947,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view override 
         returns (uint256 _multiplier, uint256 _divisor)
     {
-        _multiplier = Conversion.currentAmgPriceInTokenWei(state.settings, state.getPoolCollateral());
+        AssetManagerState.State storage state = AssetManagerState.get();
+        _multiplier = Conversion.currentAmgPriceInTokenWei(state.getPoolCollateral());
         _divisor = Conversion.AMG_TOKENWEI_PRICE_SCALE * state.settings.assetMintingGranularityUBA;
     }
     
@@ -946,6 +958,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     function requireWhitelistedSender()
         internal view
     {
+        AssetManagerState.State storage state = AssetManagerState.get();
         if (address(state.settings.whitelist) != address(0)) {
             require(state.settings.whitelist.isWhitelisted(msg.sender), "not whitelisted");
         }

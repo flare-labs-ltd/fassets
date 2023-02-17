@@ -206,5 +206,4 @@ library AssetManagerSettings {
         // extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
         uint64 announcedUnderlyingConfirmationMinSeconds;
     }
-
 }
