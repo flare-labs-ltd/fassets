@@ -16,7 +16,7 @@ import "../library/AvailableAgents.sol";
 import "../library/Agents.sol";
 import "../library/CollateralReservations.sol";
 import "../library/Minting.sol";
-import "../library/Redemption.sol";
+import "../library/Redemptions.sol";
 import "../library/Challenges.sol";
 import "../library/Liquidation.sol";
 import "../library/UnderlyingWithdrawalAnnouncements.sol";
@@ -48,13 +48,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
     
     constructor(
-        AssetManagerSettings.Settings memory _settings
+        AssetManagerSettings.Data memory _settings
     ) {
         SettingsUpdater.validateAndSet(state, _settings);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Settings update
+    // Data update
 
     /**
      * Update all settings with validation.
@@ -78,7 +78,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */
     function getSettings() 
         external view
-        returns (AssetManagerSettings.Settings memory)
+        returns (AssetManagerSettings.Data memory)
     {
         return state.settings;
     }
@@ -155,7 +155,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         onlyAttached
     {
         requireWhitelistedSender();
-        Agents.createAgent(state, Agents.AgentType.AGENT_100, this, _underlyingAddressString, _collateralTokenClass1);
+        Agents.createAgent(state, Agent.Type.AGENT_100, this, _underlyingAddressString, _collateralTokenClass1);
     }
     
     /**
@@ -535,7 +535,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         requireWhitelistedSender();
-        Redemption.redeem(state, msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
+        Redemptions.redeem(state, msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
     }
     
     /**
@@ -559,7 +559,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemption.confirmRedemptionPayment(state, _payment, _redemptionRequestId.toUint64());
+        Redemptions.confirmRedemptionPayment(state, _payment, _redemptionRequestId.toUint64());
     }
 
     /**
@@ -578,7 +578,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemption.redemptionPaymentDefault(state, _proof, _redemptionRequestId.toUint64());
+        Redemptions.redemptionPaymentDefault(state, _proof, _redemptionRequestId.toUint64());
     }
     
     /**
@@ -597,7 +597,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemption.finishRedemptionWithoutPayment(state, _proof, _redemptionRequestId.toUint64());
+        Redemptions.finishRedemptionWithoutPayment(state, _proof, _redemptionRequestId.toUint64());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -617,8 +617,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        // in Redemption.selfClose we check that only agent can do this
-        Redemption.selfClose(state, _agentVault, _amountUBA);
+        // in Redemptions.selfClose we check that only agent can do this
+        Redemptions.selfClose(state, _agentVault, _amountUBA);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -914,7 +914,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */
     function getCollateralTokens()
         external view
-        returns (CollateralToken.Token[] memory)
+        returns (CollateralToken.Data[] memory)
     {
         return state.collateralTokens;
     }

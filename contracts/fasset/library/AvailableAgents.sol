@@ -11,11 +11,7 @@ import "./AgentCollateral.sol";
 
 library AvailableAgents {
     using SafeCast for uint256;
-    using AgentCollateral for AgentCollateral.Data;
-
-    struct AvailableAgent {
-        address agentVault;
-    }
+    using AgentCollateral for AgentCollateral.MintingData;
 
     // only used in memory - no packing
     struct AgentInfo {
@@ -36,10 +32,10 @@ library AvailableAgents {
     ) 
         external 
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
-        assert(agent.agentType == Agents.AgentType.AGENT_100); // AGENT_0 not supported yet
-        require(agent.status == Agents.AgentStatus.NORMAL, "invalid agent status");
+        assert(agent.agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
+        require(agent.status == Agent.Status.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
         // set parameters
         agent.feeBIPS = _feeBIPS.toUint16(); 
@@ -47,13 +43,11 @@ library AvailableAgents {
         // global min collateral ratio (otherwise he can quickly go to liquidation), so we always do it here
         Agents.setAgentMinCollateralRatioBIPS(_state, _agentVault, _agentMinCollateralRatioBIPS);
         // check that there is enough free collateral for at least one lot
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
+        AgentCollateral.MintingData memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
         uint256 freeCollateralLots = collateralData.freeCollateralLots(_state, agent);
         require(freeCollateralLots >= 1, "not enough free collateral");
         // add to queue
-        _state.availableAgents.push(AvailableAgent({
-            agentVault: _agentVault
-        }));
+        _state.availableAgents.push(_agentVault);
         agent.availableAgentsPos = uint64(_state.availableAgents.length);     // index+1 (0=not in list)
         emit AMEvents.AgentAvailable(_agentVault, _feeBIPS, _agentMinCollateralRatioBIPS, freeCollateralLots);
     }
@@ -64,13 +58,13 @@ library AvailableAgents {
     )
         external
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
         uint256 ind = agent.availableAgentsPos - 1;
         if (ind + 1 < _state.availableAgents.length) {
             _state.availableAgents[ind] = _state.availableAgents[_state.availableAgents.length - 1];
-            Agents.Agent storage movedAgent = Agents.getAgent(_state, _state.availableAgents[ind].agentVault);
+            Agent.State storage movedAgent = Agents.getAgent(_state, _state.availableAgents[ind]);
             movedAgent.availableAgentsPos = uint64(ind + 1);
         }
         agent.availableAgentsPos = 0;
@@ -91,7 +85,7 @@ library AvailableAgents {
         _start = Math.min(_start, _end);
         _agents = new address[](_end - _start);
         for (uint256 i = _start; i < _end; i++) {
-            _agents[i - _start] = _state.availableAgents[i].agentVault;
+            _agents[i - _start] = _state.availableAgents[i];
         }
     }
 
@@ -108,9 +102,9 @@ library AvailableAgents {
         _start = Math.min(_start, _end);
         _agents = new AgentInfo[](_end - _start);
         for (uint256 i = _start; i < _end; i++) {
-            address agentVault = _state.availableAgents[i].agentVault;
-            Agents.Agent storage agent = Agents.getAgentNoCheck(_state, agentVault);
-            AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, agentVault);
+            address agentVault = _state.availableAgents[i];
+            Agent.State storage agent = Agents.getAgentNoCheck(_state, agentVault);
+            AgentCollateral.MintingData memory collateralData = AgentCollateral.currentData(_state, agent, agentVault);
             (uint256 agentCR,) = AgentCollateral.mintingMinCollateralRatio(_state, agent,
                 AgentCollateral.Kind.AGENT_CLASS1);
             (uint256 poolCR,) = AgentCollateral.mintingMinCollateralRatio(_state, agent,

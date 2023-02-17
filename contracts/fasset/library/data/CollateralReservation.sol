@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.11;
+
+
+library CollateralReservation {
+    struct Data {
+        uint64 valueAMG;
+        uint64 firstUnderlyingBlock;
+        uint64 lastUnderlyingBlock;
+        uint64 lastUnderlyingTimestamp;
+        uint128 underlyingFeeUBA;
+        uint128 reservationFeeNatWei;
+        address agentVault;
+        address minter;
+    }
+}

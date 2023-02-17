@@ -8,14 +8,14 @@ import "./UnderlyingFreeBalance.sol";
 import "./CollateralReservations.sol";
 import "./data/AssetManagerState.sol";
 import "./AgentCollateral.sol";
-import "./PaymentReference.sol";
+import "./data/PaymentReference.sol";
 import "./TransactionAttestation.sol";
 
 
 library Minting {
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentConfirmations for PaymentConfirmations.State;
-    using AgentCollateral for AgentCollateral.Data;
+    using AgentCollateral for AgentCollateral.MintingData;
     
     function executeMinting(
         AssetManagerState.State storage _state,
@@ -24,10 +24,10 @@ library Minting {
     )
         external
     {
-        CollateralReservations.CollateralReservation storage crt = 
+        CollateralReservation.Data storage crt = 
             CollateralReservations.getCollateralReservation(_state, _crtId);
         address agentVault = crt.agentVault;
-        Agents.Agent storage agent = Agents.getAgent(_state, agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, agentVault);
         // verify transaction
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         // minter or agent can present the proof - agent may do it to unlock the collateral if minter
@@ -63,13 +63,13 @@ library Minting {
     )
         external
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
+        AgentCollateral.MintingData memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
-        assert(agent.agentType == Agents.AgentType.AGENT_100); // AGENT_0 not supported yet
+        assert(agent.agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         require(_state.pausedAt == 0, "minting paused");
-        require(agent.status == Agents.AgentStatus.NORMAL, "self-mint invalid agent status");
+        require(agent.status == Agent.Status.NORMAL, "self-mint invalid agent status");
         require(collateralData.freeCollateralLots(_state, agent) >= _lots, "not enough free collateral");
         uint64 valueAMG = _lots * _state.settings.lotSizeAMG;
         checkMintingCap(_state, valueAMG);
@@ -109,7 +109,7 @@ library Minting {
 
     function _performMinting(
         AssetManagerState.State storage _state,
-        Agents.Agent storage _agent,
+        Agent.State storage _agent,
         uint64 _crtId,
         address _agentVault,
         address _minter,

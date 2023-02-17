@@ -3,7 +3,7 @@ pragma solidity 0.8.11;
 
 import "../../generated/interface/IAttestationClient.sol";
 import "./data/AssetManagerSettings.sol";
-import "./PaymentConfirmations.sol";
+import "./data/PaymentConfirmations.sol";
 
 
 library TransactionAttestation {
@@ -14,7 +14,7 @@ library TransactionAttestation {
     uint8 internal constant PAYMENT_BLOCKED = 2;
 
     function verifyPaymentSuccess(
-        AssetManagerSettings.Settings storage _settings,
+        AssetManagerSettings.Data storage _settings,
         IAttestationClient.Payment calldata _attestationData
     ) 
         internal view
@@ -24,7 +24,7 @@ library TransactionAttestation {
     }
     
     function verifyPayment(
-        AssetManagerSettings.Settings storage _settings,
+        AssetManagerSettings.Data storage _settings,
         IAttestationClient.Payment calldata _attestationData
     ) 
         internal view
@@ -35,7 +35,7 @@ library TransactionAttestation {
     }
     
     function verifyBalanceDecreasingTransaction(
-        AssetManagerSettings.Settings storage _settings,
+        AssetManagerSettings.Data storage _settings,
         IAttestationClient.BalanceDecreasingTransaction calldata _attestationData
     ) 
         internal view
@@ -46,7 +46,7 @@ library TransactionAttestation {
     }
     
     function verifyConfirmedBlockHeightExists(
-        AssetManagerSettings.Settings storage _settings,
+        AssetManagerSettings.Data storage _settings,
         IAttestationClient.ConfirmedBlockHeightExists calldata _attestationData
     ) 
         internal view
@@ -56,7 +56,7 @@ library TransactionAttestation {
     }
     
     function verifyReferencedPaymentNonexistence(
-        AssetManagerSettings.Settings storage _settings,
+        AssetManagerSettings.Data storage _settings,
         IAttestationClient.ReferencedPaymentNonexistence calldata _attestationData
     ) 
         internal view

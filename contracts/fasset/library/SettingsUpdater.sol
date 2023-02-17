@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../../utils/lib/SafeBips.sol";
 import "./AMEvents.sol";
 import "./data/AssetManagerState.sol";
 
@@ -78,7 +79,7 @@ library SettingsUpdater {
         
     function validateAndSet(
         AssetManagerState.State storage _state,
-        AssetManagerSettings.Settings memory _settings
+        AssetManagerSettings.Data memory _settings
     )
         external
     {
@@ -191,7 +192,7 @@ library SettingsUpdater {
             emit AMEvents.ContractChanged("ftsoRegistry", address(ftsoRegistry));
         }
         // TODO: what to do with the NATs in the pool - this will trigger liquidation
-        CollateralToken.Token storage poolCollateral = _state.collateralTokens[CollateralToken.POOL];
+        CollateralToken.Data storage poolCollateral = _state.collateralTokens[CollateralToken.POOL];
         if (poolCollateral.token != wNat) {
             poolCollateral.token = wNat;
             emit AMEvents.ContractChanged("wNat", address(wNat));
@@ -205,7 +206,7 @@ library SettingsUpdater {
     {
         uint256 length = _state.collateralTokens.length;
         for (uint256 i = 0; i < length; i++) {
-            CollateralToken.Token storage collateral = _state.collateralTokens[i];
+            CollateralToken.Data storage collateral = _state.collateralTokens[i];
             // do not update invalidated tokens types
             if (collateral.validUntil != 0 && collateral.validUntil < block.timestamp) continue;
             collateral.ftsoIndex = _state.settings.ftsoRegistry.getFtsoIndex(collateral.symbol).toUint16();
@@ -525,7 +526,7 @@ library SettingsUpdater {
     }
 
     function _validateSettings(
-        AssetManagerSettings.Settings memory _settings
+        AssetManagerSettings.Data memory _settings
     )
         private pure
     {

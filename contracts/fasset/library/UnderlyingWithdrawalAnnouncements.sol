@@ -3,8 +3,8 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../generated/interface/IAttestationClient.sol";
-import "./PaymentConfirmations.sol";
-import "./PaymentReference.sol";
+import "./data/PaymentConfirmations.sol";
+import "./data/PaymentReference.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
 import "./UnderlyingFreeBalance.sol";
@@ -23,7 +23,7 @@ library UnderlyingWithdrawalAnnouncements {
         external
     {
         Agents.requireAgentVaultOwner(_agentVault);
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         require(agent.announcedUnderlyingWithdrawalId == 0, "announced underlying withdrawal active");
         _state.newPaymentAnnouncementId += PaymentReference.randomizedIdSkip();
         uint64 announcementId = _state.newPaymentAnnouncementId;
@@ -41,7 +41,7 @@ library UnderlyingWithdrawalAnnouncements {
         external
     {
         TransactionAttestation.verifyPayment(_state.settings, _payment);
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         bool isAgent = msg.sender == Agents.vaultOwner(_agentVault);
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
         require(announcementId != 0, "no active announcement");
@@ -78,7 +78,7 @@ library UnderlyingWithdrawalAnnouncements {
         external
     {
         Agents.requireAgentVaultOwner(_agentVault);
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
         require(announcementId != 0, "no active announcement");
         require(block.timestamp > 

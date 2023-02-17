@@ -10,7 +10,7 @@ import "../../interface/IWhitelist.sol";
 
 
 library AssetManagerSettings {
-    struct Settings {
+    struct Data {
         // Required contracts.
         // Only used to verify that calls come from assetManagerController.
         address assetManagerController;

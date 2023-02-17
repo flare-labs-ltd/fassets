@@ -2,49 +2,30 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
-import "./RedemptionQueue.sol";
-import "./PaymentConfirmations.sol";
+import "./data/RedemptionQueue.sol";
+import "./data/PaymentConfirmations.sol";
 import "./Agents.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./data/AssetManagerState.sol";
 import "./AgentCollateral.sol";
-import "./PaymentReference.sol";
+import "./data/PaymentReference.sol";
 import "./TransactionAttestation.sol";
 import "./Liquidation.sol";
 
 
-library Redemption {
+library Redemptions {
     using SafeBips for uint256;
     using SafePct for uint64;
     using SafeCast for uint256;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for AgentCollateral.CollateralData;
-    
-    enum RedemptionStatus {
-        EMPTY,
-        ACTIVE,
-        DEFAULTED
-    }
-    
-    struct RedemptionRequest {
-        bytes32 redeemerUnderlyingAddressHash;
-        uint128 underlyingValueUBA;
-        uint128 underlyingFeeUBA;
-        uint64 firstUnderlyingBlock;
-        uint64 lastUnderlyingBlock;
-        uint64 lastUnderlyingTimestamp;
-        uint64 valueAMG;
-        address redeemer;
-        uint64 timestamp;
-        address agentVault;
-        RedemptionStatus status;
-    }
     
     struct AgentRedemptionData {
         address agentVault;
@@ -136,7 +117,7 @@ library Redemption {
         uint64 requestId = _state.newRedemptionRequestId;
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock(_state);
         uint128 redemptionFeeUBA = SafeBips.mulBips(redeemedValueUBA, _state.settings.redemptionFeeBIPS).toUint128();
-        _state.redemptionRequests[requestId] = RedemptionRequest({
+        _state.redemptionRequests[requestId] = Redemption.Request({
             redeemerUnderlyingAddressHash: keccak256(bytes(_redeemerUnderlyingAddressString)),
             underlyingValueUBA: redeemedValueUBA,
             firstUnderlyingBlock: _state.currentUnderlyingBlock,
@@ -147,7 +128,7 @@ library Redemption {
             redeemer: _redeemer,
             agentVault: _data.agentVault,
             valueAMG: _data.valueAMG,
-            status: RedemptionStatus.ACTIVE
+            status: Redemption.Status.ACTIVE
         });
         // decrease mintedAMG and mark it to redeemingAMG
         // do not add it to freeBalance yet (only after failed redemption payment)
@@ -170,8 +151,8 @@ library Redemption {
     )
         external
     {
-        RedemptionRequest storage request = _getRedemptionRequest(_state, _redemptionRequestId);
-        Agents.Agent storage agent = Agents.getAgent(_state, request.agentVault);
+        Redemption.Request storage request = _getRedemptionRequest(_state, _redemptionRequestId);
+        Agent.State storage agent = Agents.getAgent(_state, request.agentVault);
         // Usually, we require the agent to trigger confirmation.
         // But if the agent doesn't respond for long enough, 
         // we allow anybody and that user gets rewarded from agent's vault.
@@ -192,7 +173,7 @@ library Redemption {
         // Otherwise, agent has already defaulted on payment and this method is only needed for proper 
         // accounting of underlying balance. It still has to be called in time, otherwise it can be
         // called by 3rd party and in this case, the caller gets some reward from agent's vault.
-        if (request.status == RedemptionStatus.ACTIVE) {
+        if (request.status == Redemption.Status.ACTIVE) {
             // Valid payments are to correct destination ands must have value at least the request payment value.
             // If payment is valid, agent's collateral is released, otherwise the collateral payment is done.
             (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
@@ -237,8 +218,8 @@ library Redemption {
     
     function _othersCanConfirmPayment(
         AssetManagerState.State storage _state,
-        Agents.Agent storage _agent,
-        RedemptionRequest storage _request,
+        Agent.State storage _agent,
+        Redemption.Request storage _request,
         IAttestationClient.Payment calldata _payment
     )
         private view
@@ -257,7 +238,7 @@ library Redemption {
     }
     
     function _validatePayment(
-        RedemptionRequest storage request,
+        Redemption.Request storage request,
         IAttestationClient.Payment calldata _payment
     )
         private view
@@ -279,9 +260,9 @@ library Redemption {
     
     function _updateFreeBalanceAfterPayment(
         AssetManagerState.State storage _state,
-        Agents.Agent storage _agent,
+        Agent.State storage _agent,
         IAttestationClient.Payment calldata _payment,
-        RedemptionRequest storage _request
+        Redemption.Request storage _request
     )
         private
         returns (int256 _freeBalanceChangeUBA)
@@ -300,8 +281,8 @@ library Redemption {
     )
         external
     {
-        RedemptionRequest storage request = _getRedemptionRequest(_state, _redemptionRequestId);
-        require(request.status == RedemptionStatus.ACTIVE, "invalid redemption status");
+        Redemption.Request storage request = _getRedemptionRequest(_state, _redemptionRequestId);
+        require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
         // verify transaction
         TransactionAttestation.verifyReferencedPaymentNonexistence(_state.settings, _nonPayment);
         // check non-payment proof
@@ -323,7 +304,7 @@ library Redemption {
         // pay redeemer in native currency and mark as defaulted
         _executeDefaultPayment(_state, request, _redemptionRequestId);
         // don't delete redemption request at end - the agent might still confirm failed payment
-        request.status = RedemptionStatus.DEFAULTED;
+        request.status = Redemption.Status.DEFAULTED;
     }
     
     function finishRedemptionWithoutPayment(
@@ -333,12 +314,12 @@ library Redemption {
     )
         external
     {
-        RedemptionRequest storage request = _getRedemptionRequest(_state, _redemptionRequestId);
+        Redemption.Request storage request = _getRedemptionRequest(_state, _redemptionRequestId);
         Agents.requireAgentVaultOwner(request.agentVault);
         // the request should have been defaulted by providing a non-payment proof to redemptionPaymentDefault(),
         // except in very rare case when both agent and redeemer cannot perform confirmation while the attestation
         // is still available (~ 1 day) - in this case the agent can perform default without proof
-        if (request.status == RedemptionStatus.ACTIVE) {
+        if (request.status == Redemption.Status.ACTIVE) {
             // verify proof
             TransactionAttestation.verifyConfirmedBlockHeightExists(_state.settings, _proof);
             // if non-payment proof is stil available, should use redemptionPaymentDefault() instead
@@ -359,12 +340,12 @@ library Redemption {
     
     function _executeDefaultPayment(
         AssetManagerState.State storage _state,
-        RedemptionRequest storage _request,
+        Redemption.Request storage _request,
         uint64 _redemptionRequestId
     )
         private
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _request.agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _request.agentVault);
         // pay redeemer in one or both collaterals
         (uint256 paidC1Wei, uint256 paidPoolWei) = 
             _collateralAmountForRedemption(_state, agent, _request.agentVault, _request.valueAMG);
@@ -385,7 +366,7 @@ library Redemption {
     // assured: _agentC1Wei <= fullCollateralC1, _poolWei <= fullPoolCollateral
     function _collateralAmountForRedemption(
         AssetManagerState.State storage _state,
-        Agents.Agent storage _agent,
+        Agent.State storage _agent,
         address _agentVault,
         uint64 _requestValueAMG
     )
@@ -442,7 +423,7 @@ library Redemption {
         returns (uint64 _valueAMG, uint256 _valueUBA)
     {
         // dust first
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         _valueAMG = SafeMath64.min64(_amountAMG, agent.dustAMG);
         if (_valueAMG > 0) {
             Agents.decreaseDust(_state, _agentVault, _valueAMG);
@@ -504,10 +485,10 @@ library Redemption {
         uint64 _redemptionRequestId
     )
         private view
-        returns (RedemptionRequest storage _request)
+        returns (Redemption.Request storage _request)
     {
         require(_redemptionRequestId != 0, "invalid request id");
         _request = _state.redemptionRequests[_redemptionRequestId];
-        require(_request.status != RedemptionStatus.EMPTY, "invalid request id");
+        require(_request.status != Redemption.Status.EMPTY, "invalid request id");
     }
 }

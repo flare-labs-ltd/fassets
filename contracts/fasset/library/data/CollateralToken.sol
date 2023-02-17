@@ -13,7 +13,7 @@ library CollateralToken {
         POOL    // pool collateral type
     }
     
-    struct Token {
+    struct Data {
         // Token symbol. Must match the FTSO symbol for this collateral.
         string symbol;
         

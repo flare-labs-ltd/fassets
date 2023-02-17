@@ -17,7 +17,7 @@ library FullAgentInfo {
     using SafePct for uint256;
     using SafeBips for uint256;
     using SafeBips for uint64;
-    using AgentCollateral for AgentCollateral.Data;
+    using AgentCollateral for AgentCollateral.MintingData;
     using AgentCollateral for AgentCollateral.CollateralData;
     using AssetManagerState for AssetManagerState.State;
     
@@ -139,10 +139,10 @@ library FullAgentInfo {
         returns (AgentInfo memory _agentState)
     {
         // TODO: add missing data
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.Data memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
-        CollateralToken.Token storage collateral = _state.getClass1Collateral(agent);
-        CollateralToken.Token storage poolCollateral = _state.getPoolCollateral();
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
+        AgentCollateral.MintingData memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
+        CollateralToken.Data storage collateral = _state.getClass1Collateral(agent);
+        CollateralToken.Data storage poolCollateral = _state.getPoolCollateral();
         _agentState.status = _getAgentStatusInfo(_state, agent, _agentVault);
         _agentState.ownerAddress = Agents.vaultOwner(_agentVault);
         _agentState.underlyingAddressString = agent.underlyingAddressString;
@@ -178,48 +178,48 @@ library FullAgentInfo {
     
     function _getAgentStatusInfo(
         AssetManagerState.State storage _state,
-        Agents.Agent storage _agent,
+        Agent.State storage _agent,
         address _agentVault
     )
         private view
         returns (AgentStatusInfo)
     {
-        Agents.AgentStatus status = _agent.status;
-        if (status == Agents.AgentStatus.NORMAL) {
+        Agent.Status status = _agent.status;
+        if (status == Agent.Status.NORMAL) {
             return AgentStatusInfo.NORMAL;
-        } else if (status == Agents.AgentStatus.LIQUIDATION) {
-            Agents.LiquidationPhase phase = Liquidation.currentLiquidationPhase(_state, _agent, _agentVault);
-            return phase == Agents.LiquidationPhase.CCB ? AgentStatusInfo.CCB : AgentStatusInfo.LIQUIDATION;
-        } else if (status == Agents.AgentStatus.FULL_LIQUIDATION) {
+        } else if (status == Agent.Status.LIQUIDATION) {
+            Agent.LiquidationPhase phase = Liquidation.currentLiquidationPhase(_state, _agent, _agentVault);
+            return phase == Agent.LiquidationPhase.CCB ? AgentStatusInfo.CCB : AgentStatusInfo.LIQUIDATION;
+        } else if (status == Agent.Status.FULL_LIQUIDATION) {
             return AgentStatusInfo.FULL_LIQUIDATION;
         } else {
-            assert (status == Agents.AgentStatus.DESTROYING);
+            assert (status == Agent.Status.DESTROYING);
             return AgentStatusInfo.DESTROYING;
         }
     }
     
     function _getCCBStartTime(
-        Agents.Agent storage _agent
+        Agent.State storage _agent
     )
         private view
         returns (uint256)
     {
-        if (_agent.status != Agents.AgentStatus.LIQUIDATION) return 0;
-        return _agent.initialLiquidationPhase == Agents.LiquidationPhase.CCB ? _agent.liquidationStartedAt : 0;
+        if (_agent.status != Agent.Status.LIQUIDATION) return 0;
+        return _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB ? _agent.liquidationStartedAt : 0;
     }
 
     function _getLiquidationStartTime(
         AssetManagerState.State storage _state,
-        Agents.Agent storage _agent
+        Agent.State storage _agent
     )
         private view
         returns (uint256)
     {
-        if (_agent.status == Agents.AgentStatus.LIQUIDATION) {
-            return _agent.initialLiquidationPhase == Agents.LiquidationPhase.CCB
+        if (_agent.status == Agent.Status.LIQUIDATION) {
+            return _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB
                 ? _agent.liquidationStartedAt + _state.settings.ccbTimeSeconds
                 : _agent.liquidationStartedAt;
-        } else if (_agent.status == Agents.AgentStatus.FULL_LIQUIDATION) {
+        } else if (_agent.status == Agent.Status.FULL_LIQUIDATION) {
             return _agent.liquidationStartedAt;
         } else {
             return 0;

@@ -6,10 +6,10 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
-import "./PaymentConfirmations.sol";
+import "./data/PaymentConfirmations.sol";
 import "./data/AssetManagerState.sol";
 import "./Liquidation.sol";
-import "./PaymentReference.sol";
+import "./data/PaymentReference.sol";
 import "./TransactionAttestation.sol";
 
 
@@ -26,7 +26,7 @@ library UnderlyingFreeBalance {
     ) 
         internal
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         int256 newBalance = agent.freeUnderlyingBalanceUBA + _balanceChange;
         if (newBalance < 0) {
             emit AMEvents.UnderlyingFreeBalanceNegative(_agentVault, newBalance);
@@ -44,7 +44,7 @@ library UnderlyingFreeBalance {
     ) 
         internal
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         int256 newBalance = agent.freeUnderlyingBalanceUBA + _balanceIncrease.toInt256();
         agent.freeUnderlyingBalanceUBA = newBalance.toInt128();
     }
@@ -57,7 +57,7 @@ library UnderlyingFreeBalance {
         external
     {
         Agents.requireAgentVaultOwner(_agentVault);
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);
         require(_payment.receivingAddressHash == agent.underlyingAddressHash, 
             "not underlying address");

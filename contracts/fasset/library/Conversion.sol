@@ -26,8 +26,8 @@ library Conversion {
     }
 
     function currentAmgPriceInTokenWei(
-        AssetManagerSettings.Settings storage _settings,
-        CollateralToken.Token storage _token
+        AssetManagerSettings.Data storage _settings,
+        CollateralToken.Data storage _token
     ) 
         internal view 
         returns (uint256) 
@@ -42,8 +42,8 @@ library Conversion {
     }
 
     function currentAmgPriceInTokenWeiWithTrusted(
-        AssetManagerSettings.Settings storage _settings,
-        CollateralToken.Token storage _token
+        AssetManagerSettings.Data storage _settings,
+        CollateralToken.Data storage _token
     ) 
         internal view 
         returns (uint256 _ftsoPrice, uint256 _trustedPrice) 
@@ -68,7 +68,7 @@ library Conversion {
     }
 
     function convertAmgToUBA(
-        AssetManagerSettings.Settings storage _settings, 
+        AssetManagerSettings.Data storage _settings, 
         uint64 _valueAMG
     )
         internal view
@@ -79,7 +79,7 @@ library Conversion {
     }
 
     function convertUBAToAmg(
-        AssetManagerSettings.Settings storage _settings, 
+        AssetManagerSettings.Data storage _settings, 
         uint256 _valueUBA
     )
         internal view
@@ -89,7 +89,7 @@ library Conversion {
     }
     
     function convertLotsToUBA(
-        AssetManagerSettings.Settings storage _settings, 
+        AssetManagerSettings.Data storage _settings, 
         uint64 _lots
     )
         internal view
@@ -108,7 +108,7 @@ library Conversion {
     }
 
     function _calcAmgToTokenWeiPrice(
-        AssetManagerSettings.Settings storage _settings,
+        AssetManagerSettings.Data storage _settings,
         uint256 _tokenDecimals,
         uint256 _tokenPrice, 
         uint256 _tokenFtsoDecimals, 

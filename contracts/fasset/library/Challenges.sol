@@ -8,9 +8,9 @@ import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./Agents.sol";
 import "./Liquidation.sol";
-import "./PaymentReference.sol";
-import "./PaymentConfirmations.sol";
-import "./Redemption.sol";
+import "./data/PaymentReference.sol";
+import "./data/PaymentConfirmations.sol";
+import "./Redemptions.sol";
 import "./data/AssetManagerState.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
@@ -18,7 +18,7 @@ import "./TransactionAttestation.sol";
 
 library Challenges {
     using SafeCast for uint256;
-    using AgentCollateral for AgentCollateral.Data;
+    using AgentCollateral for AgentCollateral.MintingData;
     using PaymentConfirmations for PaymentConfirmations.State;
 
     function illegalPaymentChallenge(
@@ -28,10 +28,10 @@ library Challenges {
     )
         external
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
         // this also prevents double challenges
-        require(agent.status != Agents.AgentStatus.FULL_LIQUIDATION, "chlg: already liquidating");
+        require(agent.status != Agent.Status.FULL_LIQUIDATION, "chlg: already liquidating");
         // verify transaction
         TransactionAttestation.verifyBalanceDecreasingTransaction(_state.settings, _payment);
         // check the payment originates from agent's address
@@ -43,12 +43,12 @@ library Challenges {
         if (_payment.paymentReference != 0) {
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.REDEMPTION)) {
                 uint256 redemptionId = PaymentReference.decodeId(_payment.paymentReference);
-                Redemption.RedemptionRequest storage redemption = _state.redemptionRequests[redemptionId];
+                Redemption.Request storage redemption = _state.redemptionRequests[redemptionId];
                 // redemption must be for the correct agent and 
                 // only statuses ACTIVE and DEFAULTED mean that redemption is still missing a payment proof
                 bool redemptionActive = redemption.agentVault == _agentVault
-                    && (redemption.status == Redemption.RedemptionStatus.ACTIVE || 
-                        redemption.status == Redemption.RedemptionStatus.DEFAULTED);
+                    && (redemption.status == Redemption.Status.ACTIVE || 
+                        redemption.status == Redemption.Status.DEFAULTED);
                 require(!redemptionActive, "matching redemption active");
             }
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
@@ -72,10 +72,10 @@ library Challenges {
     )
         external
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
         // this also prevents double challenges
-        require(agent.status != Agents.AgentStatus.FULL_LIQUIDATION, "chlg dbl: already liquidating");
+        require(agent.status != Agent.Status.FULL_LIQUIDATION, "chlg dbl: already liquidating");
         // verify transactions
         TransactionAttestation.verifyBalanceDecreasingTransaction(_state.settings, _payment1);
         TransactionAttestation.verifyBalanceDecreasingTransaction(_state.settings, _payment2);
@@ -99,10 +99,10 @@ library Challenges {
     )
         external
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
         // this also prevents double challenges
-        require(agent.status != Agents.AgentStatus.FULL_LIQUIDATION, "mult chlg: already liquidating");
+        require(agent.status != Agent.Status.FULL_LIQUIDATION, "mult chlg: already liquidating");
         // check the payments originates from agent's address, are not confirmed already and calculate total
         int256 total = 0;
         for (uint256 i = 0; i < _payments.length; i++) {
@@ -119,7 +119,7 @@ library Challenges {
             if (PaymentReference.isValid(pmi.paymentReference, PaymentReference.REDEMPTION)) {
                 // for redemption, we don't count the value that should be paid to free balance deduction
                 uint256 redemptionId = PaymentReference.decodeId(pmi.paymentReference);
-                Redemption.RedemptionRequest storage request = _state.redemptionRequests[redemptionId];
+                Redemption.Request storage request = _state.redemptionRequests[redemptionId];
                 total += pmi.spentAmount - SafeCast.toInt256(request.underlyingValueUBA);
             } else {
                 // for other payment types (annouced withdrawal), everything is paid from free balance
@@ -142,7 +142,7 @@ library Challenges {
     ) 
         private
     {
-        Agents.Agent storage agent = Agents.getAgent(_state, _agentVault);
+        Agent.State storage agent = Agents.getAgent(_state, _agentVault);
         // start full liquidation
         Liquidation.startFullLiquidation(_state, _agentVault);
         // calculate the reward
