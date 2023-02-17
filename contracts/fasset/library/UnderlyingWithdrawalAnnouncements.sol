@@ -21,7 +21,7 @@ library UnderlyingWithdrawalAnnouncements {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agents.requireAgentVaultOwner(_agentVault);
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         require(agent.announcedUnderlyingWithdrawalId == 0, "announced underlying withdrawal active");
         state.newPaymentAnnouncementId += PaymentReference.randomizedIdSkip();
         uint64 announcementId = state.newPaymentAnnouncementId;
@@ -39,7 +39,7 @@ library UnderlyingWithdrawalAnnouncements {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         TransactionAttestation.verifyPayment(_payment);
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         bool isAgent = msg.sender == Agents.vaultOwner(_agentVault);
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
         require(announcementId != 0, "no active announcement");
@@ -75,7 +75,7 @@ library UnderlyingWithdrawalAnnouncements {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agents.requireAgentVaultOwner(_agentVault);
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
         require(announcementId != 0, "no active announcement");
         require(block.timestamp > 

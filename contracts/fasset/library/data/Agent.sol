@@ -124,4 +124,37 @@ library Agent {
     // underwater collateral classes
     uint8 internal constant LF_CLASS1 = 1 << 0;
     uint8 internal constant LF_POOL = 1 << 1;
+    
+    // diamond state accessors
+    
+    bytes32 internal constant AGENTS_POSITION = keccak256("AssetManager.Agents");
+
+    function get(address _address)
+        internal view
+        returns (Agent.State storage _agent)
+    {
+        bytes32 position = bytes32(uint256(AGENTS_POSITION) ^ (uint256(uint160(_address)) << 64));
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            _agent.slot := position
+        }
+        require(_agent.agentType != Agent.Type.NONE, "invalid agent vault address");
+    }
+
+    function getWithoutCheck(address _address) internal pure returns (Agent.State storage _agent) {
+        bytes32 position = bytes32(uint256(AGENTS_POSITION) ^ (uint256(uint160(_address)) << 64));
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            _agent.slot := position
+        }
+    }
+
+    function vaultAddress(Agent.State storage _agent) internal pure returns (address) {
+        bytes32 position;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            position := _agent.slot
+        }
+        return address(uint160((uint256(position) ^ uint256(AGENTS_POSITION)) >> 64));
+    }
 }

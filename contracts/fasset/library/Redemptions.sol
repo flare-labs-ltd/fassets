@@ -148,7 +148,7 @@ library Redemptions {
         external
     {
         Redemption.Request storage request = _getRedemptionRequest(_redemptionRequestId);
-        Agent.State storage agent = Agents.getAgent(request.agentVault);
+        Agent.State storage agent = Agent.get(request.agentVault);
         // Usually, we require the agent to trigger confirmation.
         // But if the agent doesn't respond for long enough, 
         // we allow anybody and that user gets rewarded from agent's vault.
@@ -339,7 +339,7 @@ library Redemptions {
     )
         private
     {
-        Agent.State storage agent = Agents.getAgent(_request.agentVault);
+        Agent.State storage agent = Agent.get(_request.agentVault);
         // pay redeemer in one or both collaterals
         (uint256 paidC1Wei, uint256 paidPoolWei) = 
             _collateralAmountForRedemption(agent, _request.agentVault, _request.valueAMG);
@@ -416,7 +416,7 @@ library Redemptions {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         // dust first
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         _valueAMG = SafeMath64.min64(_amountAMG, agent.dustAMG);
         if (_valueAMG > 0) {
             Agents.decreaseDust(_agentVault, _valueAMG);

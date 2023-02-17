@@ -55,7 +55,7 @@ library Agents {
         AssetManagerState.State storage state = AssetManagerState.get();
         IAgentVaultFactory agentVaultFactory = state.settings.agentVaultFactory;
         IAgentVault agentVault = agentVaultFactory.create(_assetManager, payable(msg.sender));
-        Agent.State storage agent = state.agents[address(agentVault)];
+        Agent.State storage agent = Agent.getWithoutCheck(address(agentVault));
         assert(agent.agentType == Agent.Type.NONE);
         assert(_agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         require(bytes(_underlyingAddressString).length != 0, "empty underlying address");
@@ -89,7 +89,7 @@ library Agents {
     )
         external
     {
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         requireAgentVaultOwner(_agentVault);
         // all minting must stop and all minted assets must have been cleared
         require(agent.availableAgentsPos == 0, "agent still available");
@@ -108,7 +108,7 @@ library Agents {
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         requireAgentVaultOwner(_agentVault);
         // destroy must have been announced enough time before
         require(agent.status == Agent.Status.DESTROYING, "destroy not announced");
@@ -117,7 +117,7 @@ library Agents {
         // cannot have any minting when in destroying status
         assert(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0);
         // delete agent data
-        delete state.agents[_agentVault];
+        delete agent;
         // destroy agent vault
         IAgentVault(_agentVault).destroy();
         // notify
@@ -131,7 +131,7 @@ library Agents {
     {
         // check that fAsset is terminated is in AssetManager
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         requireAgentVaultOwner(_agentVault);
         // Types of various collateral types:
         // - reservedAMG should be 0, since asset manager had to be paused for a month, so all collateral 
@@ -160,7 +160,7 @@ library Agents {
     {
         // TODO: add min pool collateral
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         requireAgentVaultOwner(_agentVault);
         CollateralToken.Data storage collateral = state.getClass1Collateral(agent);
         require(_agentMinCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
@@ -174,7 +174,7 @@ library Agents {
     )
         internal
     {
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         agent.mintedAMG = agent.mintedAMG + _valueAMG;
     }
 
@@ -184,7 +184,7 @@ library Agents {
     )
         internal
     {
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "not enough minted");
     }
 
@@ -194,7 +194,7 @@ library Agents {
     )
         internal
     {
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         agent.redeemingAMG = agent.redeemingAMG + _valueAMG;
         agent.mintedAMG = SafeMath64.sub64(agent.mintedAMG, _valueAMG, "not enough minted");
     }
@@ -205,7 +205,7 @@ library Agents {
     )
         internal
     {
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         agent.redeemingAMG = SafeMath64.sub64(agent.redeemingAMG, _valueAMG, "not enough redeeming");
     }
     
@@ -215,7 +215,7 @@ library Agents {
     )
         external
     {
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         requireAgentVaultOwner(_agentVault);
         require(agent.status == Agent.Status.NORMAL, "withdrawal ann: invalid status");
         if (_valueNATWei > agent.withdrawalAnnouncedNATWei) {
@@ -245,7 +245,7 @@ library Agents {
     )
         internal
     {
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         agent.dustAMG = _newDustAMG;
         uint256 dustUBA = Conversion.convertAmgToUBA(_newDustAMG);
         emit AMEvents.DustChanged(_agentVault, dustUBA);
@@ -257,7 +257,7 @@ library Agents {
     )
         internal
     {
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         uint64 newDustAMG = agent.dustAMG + _dustIncreaseAMG;
         agent.dustAMG = newDustAMG;
         uint256 dustUBA = Conversion.convertAmgToUBA(newDustAMG);
@@ -270,7 +270,7 @@ library Agents {
     )
         internal
     {
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         uint64 newDustAMG = SafeMath64.sub64(agent.dustAMG, _dustDecreaseAMG, "not enough dust");
         agent.dustAMG = newDustAMG;
         uint256 dustUBA = Conversion.convertAmgToUBA(newDustAMG);
@@ -283,7 +283,7 @@ library Agents {
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         // if dust is more than 1 lot, create a new redemption ticket
         if (agent.dustAMG >= state.settings.lotSizeAMG) {
             uint64 remainingDustAMG = agent.dustAMG % state.settings.lotSizeAMG;
@@ -318,7 +318,7 @@ library Agents {
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         require (_token != agent.collateralPool.poolToken(), "cannot withdraw pool tokens");
         // we only care about agent's collateral class1 tokens and pool tokens
         if (_token != state.getClass1Token(agent)) return;
@@ -384,28 +384,6 @@ library Agents {
         }
     }
     
-    function getAgent(
-        address _agentVault
-    ) 
-        internal view 
-        returns (Agent.State storage _agent) 
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        _agent = state.agents[_agentVault];
-        require(_agent.agentType != Agent.Type.NONE, "invalid agent vault address");
-    }
-
-    function getAgentNoCheck(
-        address _agentVault
-    ) 
-        internal view 
-        returns (Agent.State storage _agent) 
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        _agent = state.agents[_agentVault];
-        require(_agent.agentType != Agent.Type.NONE, "invalid agent vault address");
-    }
-
     function vaultOwner(address _agentVault) internal view returns (address) {
         return IAgentVault(_agentVault).owner();
     }
@@ -423,7 +401,7 @@ library Agents {
         returns (bool)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         return _token == state.getWNat() || _token == state.getClass1Token(agent);
     }
 }

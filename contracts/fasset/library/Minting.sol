@@ -24,7 +24,7 @@ library Minting {
     {
         CollateralReservation.Data storage crt = CollateralReservations.getCollateralReservation(_crtId);
         address agentVault = crt.agentVault;
-        Agent.State storage agent = Agents.getAgent(agentVault);
+        Agent.State storage agent = Agent.get(agentVault);
         // verify transaction
         TransactionAttestation.verifyPaymentSuccess(_payment);
         // minter or agent can present the proof - agent may do it to unlock the collateral if minter
@@ -59,7 +59,7 @@ library Minting {
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent, _agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
         assert(agent.agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet

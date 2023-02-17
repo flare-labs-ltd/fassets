@@ -23,7 +23,7 @@ library UnderlyingFreeBalance {
     ) 
         internal
     {
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         int256 newBalance = agent.freeUnderlyingBalanceUBA + _balanceChange;
         if (newBalance < 0) {
             emit AMEvents.UnderlyingFreeBalanceNegative(_agentVault, newBalance);
@@ -40,7 +40,7 @@ library UnderlyingFreeBalance {
     ) 
         internal
     {
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         int256 newBalance = agent.freeUnderlyingBalanceUBA + _balanceIncrease.toInt256();
         agent.freeUnderlyingBalanceUBA = newBalance.toInt128();
     }
@@ -52,7 +52,7 @@ library UnderlyingFreeBalance {
         external
     {
         Agents.requireAgentVaultOwner(_agentVault);
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         AssetManagerState.State storage state = AssetManagerState.get();
         TransactionAttestation.verifyPaymentSuccess(_payment);
         require(_payment.receivingAddressHash == agent.underlyingAddressHash, 

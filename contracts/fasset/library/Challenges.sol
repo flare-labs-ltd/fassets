@@ -24,7 +24,7 @@ library Challenges {
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
         // this also prevents double challenges
         require(agent.status != Agent.Status.FULL_LIQUIDATION, "chlg: already liquidating");
@@ -67,7 +67,7 @@ library Challenges {
     )
         external
     {
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
         // this also prevents double challenges
         require(agent.status != Agent.Status.FULL_LIQUIDATION, "chlg dbl: already liquidating");
@@ -94,7 +94,7 @@ library Challenges {
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
         // this also prevents double challenges
         require(agent.status != Agent.Status.FULL_LIQUIDATION, "mult chlg: already liquidating");
@@ -137,7 +137,7 @@ library Challenges {
         private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         // start full liquidation
         Liquidation.startFullLiquidation(_agentVault);
         // calculate the reward

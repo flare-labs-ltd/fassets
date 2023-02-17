@@ -31,7 +31,7 @@ library AvailableAgents {
         external 
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
         assert(agent.agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         require(agent.status == Agent.Status.NORMAL, "invalid agent status");
@@ -57,13 +57,13 @@ library AvailableAgents {
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
         uint256 ind = agent.availableAgentsPos - 1;
         if (ind + 1 < state.availableAgents.length) {
             state.availableAgents[ind] = state.availableAgents[state.availableAgents.length - 1];
-            Agent.State storage movedAgent = Agents.getAgent(state.availableAgents[ind]);
+            Agent.State storage movedAgent = Agent.get(state.availableAgents[ind]);
             movedAgent.availableAgentsPos = uint64(ind + 1);
         }
         agent.availableAgentsPos = 0;
@@ -102,7 +102,7 @@ library AvailableAgents {
         _agents = new AgentInfo[](_end - _start);
         for (uint256 i = _start; i < _end; i++) {
             address agentVault = state.availableAgents[i];
-            Agent.State storage agent = Agents.getAgentNoCheck(agentVault);
+            Agent.State storage agent = Agent.getWithoutCheck(agentVault);
             Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent, agentVault);
             (uint256 agentCR,) = AgentCollateral.mintingMinCollateralRatio(agent,
                 Collateral.Kind.AGENT_CLASS1);

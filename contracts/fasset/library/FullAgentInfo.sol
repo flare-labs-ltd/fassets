@@ -139,7 +139,7 @@ library FullAgentInfo {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         // TODO: add missing data
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent, _agentVault);
         CollateralToken.Data storage collateral = state.getClass1Collateral(agent);
         CollateralToken.Data storage poolCollateral = state.getPoolCollateral();

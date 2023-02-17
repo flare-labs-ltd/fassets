@@ -29,7 +29,7 @@ library Liquidation {
     )
         external
     {
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         // if already in full liquidation or destroying, do nothing
         if (agent.status == Agent.Status.FULL_LIQUIDATION
             || agent.status == Agent.Status.DESTROYING) return;
@@ -47,7 +47,7 @@ library Liquidation {
         external
         returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidC1, uint256 _amountPaidPool)
     {
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         // agent in status DESTROYING cannot be backing anything, so there can be no liquidation
         if (agent.status == Agent.Status.DESTROYING) return (0, 0, 0);
         // calculate both CRs
@@ -97,7 +97,7 @@ library Liquidation {
     )
         external
     {
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         _endLiquidationIfHealthy(agent, _agentVault);
         require(agent.status == Agent.Status.NORMAL, "cannot stop liquidation");
     }
@@ -108,7 +108,7 @@ library Liquidation {
     )
         internal
     {
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         // if already in full liquidation or destroying, do nothing
         if (agent.status == Agent.Status.FULL_LIQUIDATION
             || agent.status == Agent.Status.DESTROYING) return;
@@ -128,7 +128,7 @@ library Liquidation {
     )
         internal
     {
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         _endLiquidationIfHealthy(agent, _agentVault);
     }
     

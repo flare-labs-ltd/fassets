@@ -28,7 +28,7 @@ library CollateralReservations {
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = Agents.getAgent(_agentVault);
+        Agent.State storage agent = Agent.get(_agentVault);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent, _agentVault);
         require(state.pausedAt == 0, "minting paused");
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
@@ -78,7 +78,7 @@ library CollateralReservations {
         external
     {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
-        Agent.State storage agent = Agents.getAgent(crt.agentVault);
+        Agent.State storage agent = Agent.get(crt.agentVault);
         // check requirements
         TransactionAttestation.verifyReferencedPaymentNonexistence(_nonPayment);
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
@@ -109,7 +109,7 @@ library CollateralReservations {
         AssetManagerState.State storage state = AssetManagerState.get();
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         Agents.requireAgentVaultOwner(crt.agentVault);
-        Agent.State storage agent = Agents.getAgent(crt.agentVault);
+        Agent.State storage agent = Agent.get(crt.agentVault);
         // verify proof
         TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
         // enough time must pass so that proofs are no longer available
@@ -147,7 +147,7 @@ library CollateralReservations {
         internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = Agents.getAgent(crt.agentVault);
+        Agent.State storage agent = Agent.get(crt.agentVault);
         agent.reservedAMG = SafeMath64.sub64(agent.reservedAMG, crt.valueAMG, "invalid reservation");
         state.totalReservedCollateralAMG -= crt.valueAMG;
         delete state.crts[_crtId];

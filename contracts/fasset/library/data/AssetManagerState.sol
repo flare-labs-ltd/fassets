@@ -19,11 +19,6 @@ library AssetManagerState {
         // Pool collateral (always WNat) has index 0.
         CollateralToken.Data[] collateralTokens;
         
-        // Agent in this system is always identified by theagent vault address.
-        // Therefore we keep a mapping from agent vault addressed to data about the agents.
-        // Type: mapping agentVaultAddress => agent
-        mapping(address => Agent.State) agents;
-        
         // A list of all agents that are available for minting.
         // Type: array of agent vault addresses; when one is deleted, its position is filled with last
         address[] availableAgents;
