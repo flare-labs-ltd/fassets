@@ -3,10 +3,9 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
-import "./data/AssetManagerState.sol";
-import "./Conversion.sol";
 import "./AgentCollateral.sol";
 
 library AvailableAgents {

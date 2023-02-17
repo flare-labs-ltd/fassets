@@ -6,15 +6,12 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafeBips.sol";
+import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
-import "./data/RedemptionQueue.sol";
-import "./data/PaymentConfirmations.sol";
 import "./Agents.sol";
 import "./UnderlyingFreeBalance.sol";
-import "./data/AssetManagerState.sol";
 import "./AgentCollateral.sol";
-import "./data/PaymentReference.sol";
 import "./TransactionAttestation.sol";
 import "./Liquidation.sol";
 

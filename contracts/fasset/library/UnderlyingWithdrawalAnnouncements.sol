@@ -3,12 +3,10 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../generated/interface/IAttestationClient.sol";
-import "./data/PaymentConfirmations.sol";
-import "./data/PaymentReference.sol";
+import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
 import "./UnderlyingFreeBalance.sol";
-import "./data/AssetManagerState.sol";
 import "./TransactionAttestation.sol";
 
 

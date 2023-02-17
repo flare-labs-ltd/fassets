@@ -2,13 +2,12 @@
 pragma solidity 0.8.11;
 
 import "../../generated/interface/IAttestationClient.sol";
+import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./CollateralReservations.sol";
-import "./data/AssetManagerState.sol";
 import "./AgentCollateral.sol";
-import "./data/PaymentReference.sol";
 import "./TransactionAttestation.sol";
 
 

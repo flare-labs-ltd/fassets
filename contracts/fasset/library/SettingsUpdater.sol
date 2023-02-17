@@ -3,8 +3,8 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafeBips.sol";
-import "./AMEvents.sol";
 import "./data/AssetManagerState.sol";
+import "./AMEvents.sol";
 
 library SettingsUpdater {
     using SafeCast for uint256;

@@ -4,11 +4,11 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../utils/lib/SafeBips.sol";
+import "./data/AssetManagerState.sol";
 import "./Conversion.sol";
 import "./Agents.sol";
 import "./AgentCollateral.sol";
 import "./Liquidation.sol";
-import "./data/AssetManagerState.sol";
 
 library FullAgentInfo {
     using SafeMath for uint256;
