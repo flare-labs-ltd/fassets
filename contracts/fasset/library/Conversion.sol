@@ -4,9 +4,9 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "../../utils/lib/SafePct.sol";
-import "./AssetManagerSettings.sol";
-import "./AssetManagerState.sol";
-import "./CollateralToken.sol";
+import "./data/AssetManagerSettings.sol";
+import "./data/AssetManagerState.sol";
+import "./data/CollateralToken.sol";
 
 library Conversion {
     using SafePct for uint256;

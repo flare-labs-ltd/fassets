@@ -2,7 +2,7 @@
 pragma solidity 0.8.11;
 
 import "../../generated/interface/IAttestationClient.sol";
-import "./AssetManagerSettings.sol";
+import "./data/AssetManagerSettings.sol";
 import "./PaymentConfirmations.sol";
 
 

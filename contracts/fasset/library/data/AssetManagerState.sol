@@ -2,13 +2,13 @@
 pragma solidity 0.8.11;
 
 import "./AssetManagerSettings.sol";
-import "./RedemptionQueue.sol";
-import "./PaymentConfirmations.sol";
-import "./UnderlyingAddressOwnership.sol";
-import "./Agents.sol";
-import "./AvailableAgents.sol";
-import "./CollateralReservations.sol";
-import "./Redemption.sol";
+import "../RedemptionQueue.sol";
+import "../PaymentConfirmations.sol";
+import "../UnderlyingAddressOwnership.sol";
+import "../Agents.sol";
+import "../AvailableAgents.sol";
+import "../CollateralReservations.sol";
+import "../Redemption.sol";
 import "./CollateralToken.sol";
 
 

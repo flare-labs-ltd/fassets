@@ -12,7 +12,7 @@ import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./RedemptionQueue.sol";
 import "./UnderlyingAddressOwnership.sol";
-import "./AssetManagerState.sol";
+import "./data/AssetManagerState.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
 import "./Liquidation.sol";

@@ -9,7 +9,7 @@ import "../../utils/lib/SafeBips.sol";
 import "../../utils/lib/MathUtils.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
-import "./AssetManagerState.sol";
+import "./data/AssetManagerState.sol";
 import "./Conversion.sol";
 import "./Redemption.sol";
 import "./AgentCollateral.sol";

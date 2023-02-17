@@ -6,7 +6,7 @@ import "./AMEvents.sol";
 import "./Agents.sol";
 import "./UnderlyingFreeBalance.sol";
 import "./CollateralReservations.sol";
-import "./AssetManagerState.sol";
+import "./data/AssetManagerState.sol";
 import "./AgentCollateral.sol";
 import "./PaymentReference.sol";
 import "./TransactionAttestation.sol";

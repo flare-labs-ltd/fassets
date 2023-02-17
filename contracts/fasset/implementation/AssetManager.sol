@@ -7,8 +7,8 @@ import "../interface/IAssetManager.sol";
 import "../interface/IAssetManagerEvents.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../interface/IFAsset.sol";
-import "../library/AssetManagerState.sol";
-import "../library/AssetManagerSettings.sol";
+import "../library/data/AssetManagerState.sol";
+import "../library/data/AssetManagerSettings.sol";
 // external
 import "../library/SettingsUpdater.sol";
 import "../library/StateUpdater.sol";

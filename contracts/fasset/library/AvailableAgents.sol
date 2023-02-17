@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
-import "./AssetManagerState.sol";
+import "./data/AssetManagerState.sol";
 import "./Conversion.sol";
 import "./AgentCollateral.sol";
 

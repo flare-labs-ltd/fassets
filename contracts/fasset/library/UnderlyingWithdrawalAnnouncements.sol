@@ -8,7 +8,7 @@ import "./PaymentReference.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
 import "./UnderlyingFreeBalance.sol";
-import "./AssetManagerState.sol";
+import "./data/AssetManagerState.sol";
 import "./TransactionAttestation.sol";
 
 

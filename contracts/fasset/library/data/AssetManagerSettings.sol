@@ -2,11 +2,11 @@
 pragma solidity 0.8.11;
 
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
-import "../../generated/interface/IAttestationClient.sol";
-import "../interface/IFAsset.sol";
-import "../interface/IAgentVaultFactory.sol";
-import "../interface/IWNat.sol";
-import "../interface/IWhitelist.sol";
+import "../../../generated/interface/IAttestationClient.sol";
+import "../../interface/IFAsset.sol";
+import "../../interface/IAgentVaultFactory.sol";
+import "../../interface/IWNat.sol";
+import "../../interface/IWhitelist.sol";
 
 
 library AssetManagerSettings {

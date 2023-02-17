@@ -8,7 +8,7 @@ import "./Conversion.sol";
 import "./Agents.sol";
 import "./AgentCollateral.sol";
 import "./Liquidation.sol";
-import "./AssetManagerState.sol";
+import "./data/AssetManagerState.sol";
 
 library FullAgentInfo {
     using SafeMath for uint256;

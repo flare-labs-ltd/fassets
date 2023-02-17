@@ -7,7 +7,7 @@ import "../../generated/interface/IAttestationClient.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
 import "./PaymentConfirmations.sol";
-import "./AssetManagerState.sol";
+import "./data/AssetManagerState.sol";
 import "./Liquidation.sol";
 import "./PaymentReference.sol";
 import "./TransactionAttestation.sol";

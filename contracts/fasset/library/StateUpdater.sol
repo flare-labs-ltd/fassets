@@ -2,7 +2,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "./AssetManagerState.sol";
+import "./data/AssetManagerState.sol";
 import "./TransactionAttestation.sol";
 
 

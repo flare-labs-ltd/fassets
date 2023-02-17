@@ -8,8 +8,8 @@ import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeBips.sol";
 import "./Agents.sol";
 import "./Conversion.sol";
-import "./AssetManagerState.sol";
-import "./AssetManagerSettings.sol";
+import "./data/AssetManagerState.sol";
+import "./data/AssetManagerSettings.sol";
 
 
 library AgentCollateral {

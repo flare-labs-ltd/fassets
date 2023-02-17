@@ -11,7 +11,7 @@ import "./Liquidation.sol";
 import "./PaymentReference.sol";
 import "./PaymentConfirmations.sol";
 import "./Redemption.sol";
-import "./AssetManagerState.sol";
+import "./data/AssetManagerState.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
 

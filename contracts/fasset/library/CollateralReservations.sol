@@ -7,7 +7,7 @@ import "../../utils/lib/SafeBips.sol";
 import "./Conversion.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
-import "./AssetManagerState.sol";
+import "./data/AssetManagerState.sol";
 import "./Minting.sol";
 import "../interface/IAgentVault.sol";
 import "./AgentCollateral.sol";

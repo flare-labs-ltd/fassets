@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "./AssetManagerState.sol";
+import "./data/AssetManagerState.sol";
 
 library StateOperations {
     
