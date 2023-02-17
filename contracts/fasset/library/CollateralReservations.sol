@@ -17,7 +17,7 @@ import "./TransactionAttestation.sol";
 library CollateralReservations {
     using SafeBips for uint256;
     using SafeCast for uint256;
-    using AgentCollateral for AgentCollateral.MintingData;
+    using AgentCollateral for Collateral.CombinedData;
     
     function reserveCollateral(
         AssetManagerState.State storage _state, 
@@ -29,7 +29,7 @@ library CollateralReservations {
         external
     {
         Agent.State storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.MintingData memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(_state, agent, _agentVault);
         require(_state.pausedAt == 0, "minting paused");
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 lots");

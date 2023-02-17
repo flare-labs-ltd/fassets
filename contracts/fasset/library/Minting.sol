@@ -14,7 +14,7 @@ import "./TransactionAttestation.sol";
 library Minting {
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentConfirmations for PaymentConfirmations.State;
-    using AgentCollateral for AgentCollateral.MintingData;
+    using AgentCollateral for Collateral.CombinedData;
     
     function executeMinting(
         AssetManagerState.State storage _state,
@@ -63,7 +63,7 @@ library Minting {
         external
     {
         Agent.State storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.MintingData memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(_state, agent, _agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
         assert(agent.agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         TransactionAttestation.verifyPaymentSuccess(_state.settings, _payment);

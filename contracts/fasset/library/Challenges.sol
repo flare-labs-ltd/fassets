@@ -15,7 +15,6 @@ import "./TransactionAttestation.sol";
 
 library Challenges {
     using SafeCast for uint256;
-    using AgentCollateral for AgentCollateral.MintingData;
     using PaymentConfirmations for PaymentConfirmations.State;
 
     function illegalPaymentChallenge(
@@ -143,7 +142,7 @@ library Challenges {
         // start full liquidation
         Liquidation.startFullLiquidation(_state, _agentVault);
         // calculate the reward
-        AgentCollateral.CollateralData memory collateralData = 
+        Collateral.Data memory collateralData = 
             AgentCollateral.agentClass1CollateralData(_state, agent, _agentVault);
         uint256 rewardAMG = SafeBips.mulBips(_backingAMGAtChallenge, _state.settings.paymentChallengeRewardBIPS);
         uint256 rewardC1Wei = Conversion.convertAmgToTokenWei(rewardAMG, collateralData.amgToTokenWeiPrice)

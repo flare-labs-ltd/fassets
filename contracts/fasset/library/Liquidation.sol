@@ -34,8 +34,8 @@ library Liquidation {
         // if already in full liquidation or destroying, do nothing
         if (agent.status == Agent.Status.FULL_LIQUIDATION
             || agent.status == Agent.Status.DESTROYING) return;
-        (uint256 class1CR,) = getCollateralRatioBIPS(_state, agent, _agentVault, AgentCollateral.Kind.AGENT_CLASS1);
-        (uint256 poolCR,) = getCollateralRatioBIPS(_state, agent, _agentVault, AgentCollateral.Kind.POOL);
+        (uint256 class1CR,) = getCollateralRatioBIPS(_state, agent, _agentVault, Collateral.Kind.AGENT_CLASS1);
+        (uint256 poolCR,) = getCollateralRatioBIPS(_state, agent, _agentVault, Collateral.Kind.POOL);
         _upgradeLiquidationPhase(_state, agent, _agentVault, class1CR, poolCR);
     }
 
@@ -54,9 +54,9 @@ library Liquidation {
         if (agent.status == Agent.Status.DESTROYING) return (0, 0, 0);
         // calculate both CRs
         (uint256 class1CR, uint256 amgToC1WeiPrice) = 
-            getCollateralRatioBIPS(_state, agent, _agentVault, AgentCollateral.Kind.AGENT_CLASS1);
+            getCollateralRatioBIPS(_state, agent, _agentVault, Collateral.Kind.AGENT_CLASS1);
         (uint256 poolCR, uint256 amgToPoolWeiPrice) = 
-            getCollateralRatioBIPS(_state, agent, _agentVault, AgentCollateral.Kind.POOL);
+            getCollateralRatioBIPS(_state, agent, _agentVault, Collateral.Kind.POOL);
         // allow one-step liquidation (without calling startLiquidation first)
         Agent.LiquidationPhase currentPhase =
             _upgradeLiquidationPhase(_state, agent, _agentVault, class1CR, poolCR);
@@ -151,8 +151,8 @@ library Liquidation {
         // For CCB we must also check if the CR has dropped below CCB-CR.
         // Note that we don't need to check this for phase=NORMAL, because in that case the liquidation must
         // still be triggered via startLiquidation() or liquidate().
-        (uint256 class1CR,) = getCollateralRatioBIPS(_state, _agent, _agentVault, AgentCollateral.Kind.AGENT_CLASS1);
-        (uint256 poolCR,) = getCollateralRatioBIPS(_state, _agent, _agentVault, AgentCollateral.Kind.POOL);
+        (uint256 class1CR,) = getCollateralRatioBIPS(_state, _agent, _agentVault, Collateral.Kind.AGENT_CLASS1);
+        (uint256 poolCR,) = getCollateralRatioBIPS(_state, _agent, _agentVault, Collateral.Kind.POOL);
         Agent.LiquidationPhase newPhaseC1 = 
             _initialLiquidationPhaseForCollateral(_state, class1CR, _agent.collateralTokenC1);
         Agent.LiquidationPhase newPhasePool = 
@@ -172,8 +172,8 @@ library Liquidation {
         // can only stop plain liquidation (full liquidation can only stop when there are no more minted assets)
         if (_agent.status != Agent.Status.LIQUIDATION) return;
         // agent's current collateral ratio
-        (uint256 class1CR,) = getCollateralRatioBIPS(_state, _agent, _agentVault, AgentCollateral.Kind.AGENT_CLASS1);
-        (uint256 poolCR,) = getCollateralRatioBIPS(_state, _agent, _agentVault, AgentCollateral.Kind.POOL);
+        (uint256 class1CR,) = getCollateralRatioBIPS(_state, _agent, _agentVault, Collateral.Kind.AGENT_CLASS1);
+        (uint256 poolCR,) = getCollateralRatioBIPS(_state, _agent, _agentVault, Collateral.Kind.POOL);
         // target collateral ratio is minCollateralRatioBIPS for CCB and safetyMinCollateralRatioBIPS for LIQUIDATION
         Agent.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_state, _agent);
         uint256 targetRatioClass1BIPS = _targetRatioBIPS(_state, currentPhase, _agent.collateralTokenC1,
@@ -388,7 +388,7 @@ library Liquidation {
         AssetManagerState.State storage _state,
         Agent.State storage _agent,
         address _agentVault,
-        AgentCollateral.Kind _collateralKind
+        Collateral.Kind _collateralKind
     )
         internal view
         returns (uint256 _collateralRatioBIPS, uint256 _amgToTokenWeiPrice)

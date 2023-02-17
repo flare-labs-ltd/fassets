@@ -10,7 +10,7 @@ import "./AgentCollateral.sol";
 
 library AvailableAgents {
     using SafeCast for uint256;
-    using AgentCollateral for AgentCollateral.MintingData;
+    using AgentCollateral for Collateral.CombinedData;
 
     // only used in memory - no packing
     struct AgentInfo {
@@ -42,7 +42,7 @@ library AvailableAgents {
         // global min collateral ratio (otherwise he can quickly go to liquidation), so we always do it here
         Agents.setAgentMinCollateralRatioBIPS(_state, _agentVault, _agentMinCollateralRatioBIPS);
         // check that there is enough free collateral for at least one lot
-        AgentCollateral.MintingData memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(_state, agent, _agentVault);
         uint256 freeCollateralLots = collateralData.freeCollateralLots(_state, agent);
         require(freeCollateralLots >= 1, "not enough free collateral");
         // add to queue
@@ -103,11 +103,11 @@ library AvailableAgents {
         for (uint256 i = _start; i < _end; i++) {
             address agentVault = _state.availableAgents[i];
             Agent.State storage agent = Agents.getAgentNoCheck(_state, agentVault);
-            AgentCollateral.MintingData memory collateralData = AgentCollateral.currentData(_state, agent, agentVault);
+            Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(_state, agent, agentVault);
             (uint256 agentCR,) = AgentCollateral.mintingMinCollateralRatio(_state, agent,
-                AgentCollateral.Kind.AGENT_CLASS1);
+                Collateral.Kind.AGENT_CLASS1);
             (uint256 poolCR,) = AgentCollateral.mintingMinCollateralRatio(_state, agent,
-                AgentCollateral.Kind.POOL);
+                Collateral.Kind.POOL);
             _agents[i - _start] = AgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,

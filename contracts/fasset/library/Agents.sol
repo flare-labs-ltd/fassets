@@ -20,7 +20,7 @@ library Agents {
     using SafeCast for uint256;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     using RedemptionQueue for RedemptionQueue.State;
-    using AgentCollateral for AgentCollateral.CollateralData;
+    using AgentCollateral for Collateral.Data;
     using AssetManagerState for AssetManagerState.State;
     
     
@@ -225,7 +225,7 @@ library Agents {
         requireAgentVaultOwner(_agentVault);
         require(agent.status == Agent.Status.NORMAL, "withdrawal ann: invalid status");
         if (_valueNATWei > agent.withdrawalAnnouncedNATWei) {
-            AgentCollateral.CollateralData memory collateralData = 
+            Collateral.Data memory collateralData = 
                 AgentCollateral.agentClass1CollateralData(_state, agent, _agentVault);
             // announcement increased - must check there is enough free collateral and then lock it
             // in this case the wait to withdrawal restarts from this moment

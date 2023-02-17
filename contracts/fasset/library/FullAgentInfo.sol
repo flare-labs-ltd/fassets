@@ -17,8 +17,8 @@ library FullAgentInfo {
     using SafePct for uint256;
     using SafeBips for uint256;
     using SafeBips for uint64;
-    using AgentCollateral for AgentCollateral.MintingData;
-    using AgentCollateral for AgentCollateral.CollateralData;
+    using AgentCollateral for Collateral.CombinedData;
+    using AgentCollateral for Collateral.Data;
     using AssetManagerState for AssetManagerState.State;
     
     enum AgentStatusInfo {
@@ -140,7 +140,7 @@ library FullAgentInfo {
     {
         // TODO: add missing data
         Agent.State storage agent = Agents.getAgent(_state, _agentVault);
-        AgentCollateral.MintingData memory collateralData = AgentCollateral.currentData(_state, agent, _agentVault);
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(_state, agent, _agentVault);
         CollateralToken.Data storage collateral = _state.getClass1Collateral(agent);
         CollateralToken.Data storage poolCollateral = _state.getPoolCollateral();
         _agentState.status = _getAgentStatusInfo(_state, agent, _agentVault);
@@ -159,12 +159,12 @@ library FullAgentInfo {
         _agentState.freeClass1CollateralWei = 
             collateralData.agentCollateral.freeCollateralWei(_state, agent);
         (_agentState.class1CollateralRatioBIPS,) = 
-            Liquidation.getCollateralRatioBIPS(_state, agent, _agentVault, AgentCollateral.Kind.AGENT_CLASS1);
+            Liquidation.getCollateralRatioBIPS(_state, agent, _agentVault, Collateral.Kind.AGENT_CLASS1);
         _agentState.totalPoolCollateralNATWei = collateralData.poolCollateral.fullCollateral;
         _agentState.freePoolCollateralNATWei = 
             collateralData.poolCollateral.freeCollateralWei(_state, agent);
         (_agentState.poolCollateralRatioBIPS,) = 
-            Liquidation.getCollateralRatioBIPS(_state, agent, _agentVault, AgentCollateral.Kind.POOL);
+            Liquidation.getCollateralRatioBIPS(_state, agent, _agentVault, Collateral.Kind.POOL);
         _agentState.mintedUBA = Conversion.convertAmgToUBA(_state.settings, agent.mintedAMG);
         _agentState.reservedUBA = Conversion.convertAmgToUBA(_state.settings, agent.reservedAMG);
         _agentState.redeemingUBA = Conversion.convertAmgToUBA(_state.settings, agent.redeemingAMG);

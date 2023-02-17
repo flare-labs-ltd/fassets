@@ -22,7 +22,7 @@ library Redemptions {
     using SafeCast for uint256;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentConfirmations for PaymentConfirmations.State;
-    using AgentCollateral for AgentCollateral.CollateralData;
+    using AgentCollateral for Collateral.Data;
     
     struct AgentRedemptionData {
         address agentVault;
@@ -371,13 +371,13 @@ library Redemptions {
         returns (uint256 _agentC1Wei, uint256 _poolWei)
     {
         // calculate paid amount and max available amount from agent class1 collateral
-        AgentCollateral.CollateralData memory cdAgent = 
+        Collateral.Data memory cdAgent = 
             AgentCollateral.agentClass1CollateralData(_state, _agent, _agentVault);
         _agentC1Wei = Conversion.convertAmgToTokenWei(_requestValueAMG, cdAgent.amgToTokenWeiPrice)
             .mulBips(_state.settings.redemptionDefaultFactorAgentC1BIPS);
         uint256 maxAgentC1Wei = cdAgent.maxRedemptionCollateral(_agent, _requestValueAMG);
         // calculate paid amount and max available amount from the pool
-        AgentCollateral.CollateralData memory cdPool = AgentCollateral.poolCollateralData(_state, _agent);
+        Collateral.Data memory cdPool = AgentCollateral.poolCollateralData(_state, _agent);
         _poolWei = Conversion.convertAmgToTokenWei(_requestValueAMG, cdPool.amgToTokenWeiPrice)
             .mulBips(_state.settings.redemptionDefaultFactorPoolBIPS);
         uint256 maxPoolWei = cdPool.maxRedemptionCollateral(_agent, _requestValueAMG);
