@@ -6,8 +6,9 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract CollateralPoolToken is ERC20 {
     uint256 private constant MAX_DELAYED_MINTINGS = 10;
-    
     address payable public immutable collateralPool;
+
+    mapping(address => uint256) public lockedBalance;
     
     struct DelayedMinting {
         uint128 amount;
@@ -33,6 +34,14 @@ contract CollateralPoolToken is ERC20 {
     
     function burn(address _account, uint256 _amount) external onlyCollateralPool {
         _burn(_account, _amount);
+    }
+
+    function lock(address _account, uint256 _amount) external onlyCollateralPool {
+        lockedBalance[_account] += _amount;
+    }
+
+    function unlock(address _account, uint256 _amount) external onlyCollateralPool {
+        lockedBalance[_account] -= _amount;
     }
     
     function destroy() external onlyCollateralPool {
