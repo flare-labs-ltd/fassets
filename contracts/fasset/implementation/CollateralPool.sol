@@ -13,9 +13,9 @@ import "./CollateralPoolToken.sol";
 contract CollateralPool {
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
 
-    IAssetManager public immutable assetManager;
-    IERC20 public immutable fAsset;
-    address public immutable agentVault;
+    IAssetManager public assetManager;
+    IERC20 public fAsset;
+    address public agentVault;
     CollateralPoolToken public poolToken;
     uint16 public enterBuyAssetRateBIPS; // = 1 + premium
     uint64 public enterWithoutFAssetMintDelaySeconds;

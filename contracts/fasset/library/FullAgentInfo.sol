@@ -140,6 +140,7 @@ library FullAgentInfo {
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         CollateralToken.Data storage collateral = agent.getClass1Collateral();
         CollateralToken.Data storage poolCollateral = Agents.getPoolCollateral();
+        Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
         _agentState.status = _getAgentStatusInfo(agent);
         _agentState.ownerAddress = Agents.vaultOwner(agent);
         _agentState.underlyingAddressString = agent.underlyingAddressString;
@@ -153,15 +154,11 @@ library FullAgentInfo {
             Math.max(agent.agentMinPoolCollateralRatioBIPS, poolCollateral.minCollateralRatioBIPS);
         _agentState.freeCollateralLots = collateralData.freeCollateralLots(agent);
         _agentState.totalClass1CollateralWei = collateralData.agentCollateral.fullCollateral;
-        _agentState.freeClass1CollateralWei =
-            collateralData.agentCollateral.freeCollateralWei(agent);
-        (_agentState.class1CollateralRatioBIPS,) =
-            Liquidation.getCollateralRatioBIPS(agent, Collateral.Kind.AGENT_CLASS1);
+        _agentState.freeClass1CollateralWei = collateralData.agentCollateral.freeCollateralWei(agent);
+        _agentState.class1CollateralRatioBIPS = cr.class1CR;
         _agentState.totalPoolCollateralNATWei = collateralData.poolCollateral.fullCollateral;
-        _agentState.freePoolCollateralNATWei =
-            collateralData.poolCollateral.freeCollateralWei(agent);
-        (_agentState.poolCollateralRatioBIPS,) =
-            Liquidation.getCollateralRatioBIPS(agent, Collateral.Kind.POOL);
+        _agentState.freePoolCollateralNATWei = collateralData.poolCollateral.freeCollateralWei(agent);
+        _agentState.poolCollateralRatioBIPS = cr.poolCR;
         _agentState.mintedUBA = Conversion.convertAmgToUBA(agent.mintedAMG);
         _agentState.reservedUBA = Conversion.convertAmgToUBA(agent.reservedAMG);
         _agentState.redeemingUBA = Conversion.convertAmgToUBA(agent.redeemingAMG);
