@@ -58,10 +58,10 @@ library UnderlyingWithdrawalAnnouncements {
         // clear active withdrawal announcement
         agent.announcedUnderlyingWithdrawalId = 0;
         // update free underlying balance and trigger liquidation if negative
-        UnderlyingFreeBalance.updateFreeBalance(_agentVault, -_payment.spentAmount);
+        UnderlyingFreeBalance.updateFreeBalance(agent, -_payment.spentAmount);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payoutClass1(agent, _agentVault, msg.sender, state.settings.confirmationByOthersRewardC1Wei);
+            Agents.payoutClass1(agent, msg.sender, state.settings.confirmationByOthersRewardC1Wei);
         }
         // send event
         emit AMEvents.UnderlyingWithdrawalConfirmed(_agentVault, _payment.spentAmount, 

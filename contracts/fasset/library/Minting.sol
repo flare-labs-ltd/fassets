@@ -15,6 +15,7 @@ library Minting {
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for Collateral.CombinedData;
+    using Agent for Agent.State;
     
     function executeMinting(
         IAttestationClient.Payment calldata _payment,
@@ -23,13 +24,12 @@ library Minting {
         external
     {
         CollateralReservation.Data storage crt = CollateralReservations.getCollateralReservation(_crtId);
-        address agentVault = crt.agentVault;
-        Agent.State storage agent = Agent.get(agentVault);
+        Agent.State storage agent = Agent.get(crt.agentVault);
         // verify transaction
         TransactionAttestation.verifyPaymentSuccess(_payment);
         // minter or agent can present the proof - agent may do it to unlock the collateral if minter
         // becomes unresponsive
-        require(msg.sender == crt.minter || msg.sender == Agents.vaultOwner(agentVault), 
+        require(msg.sender == crt.minter || msg.sender == Agents.vaultOwner(agent), 
             "only minter or agent");
         require(_payment.paymentReference == PaymentReference.minting(_crtId),
             "invalid minting reference");
@@ -44,7 +44,7 @@ library Minting {
         require(_payment.blockNumber >= crt.firstUnderlyingBlock,
             "minting payment too old");
         // execute minting
-        _performMinting(agent, _crtId, agentVault, crt.minter, crt.valueAMG, receivedAmount, crt.underlyingFeeUBA);
+        _performMinting(agent, _crtId, crt.minter, crt.valueAMG, receivedAmount, crt.underlyingFeeUBA);
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
         AssetManagerState.getSettings().burnAddress.transfer(crt.reservationFeeNatWei);
         // cleanup
@@ -60,7 +60,7 @@ library Minting {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
-        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent, _agentVault);
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         Agents.requireAgentVaultOwner(_agentVault);
         assert(agent.agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         TransactionAttestation.verifyPaymentSuccess(_payment);
@@ -84,9 +84,9 @@ library Minting {
         uint256 receivedAmount = uint256(_payment.receivedAmount);  // guarded by reuquire
         if (_lots > 0) {
             uint256 standardFee = SafeBips.mulBips(valueAMG, agent.feeBIPS);
-            _performMinting(agent, 0, _agentVault, msg.sender, valueAMG, receivedAmount, standardFee);
+            _performMinting(agent, 0, msg.sender, valueAMG, receivedAmount, standardFee);
         } else {
-            UnderlyingFreeBalance.increaseFreeBalance(_agentVault, receivedAmount);
+            UnderlyingFreeBalance.increaseFreeBalance(agent, receivedAmount);
             emit AMEvents.MintingExecuted(_agentVault, 0, 0, 0, receivedAmount, 0);
         }
     }
@@ -105,7 +105,6 @@ library Minting {
     function _performMinting(
         Agent.State storage _agent,
         uint64 _crtId,
-        address _agentVault,
         address _minter,
         uint64 _mintValueAMG,
         uint256 _receivedAmountUBA,
@@ -125,18 +124,20 @@ library Minting {
             newDustAMG = remainder;
         }
         // create ticket and change dust
-        Agents.allocateMintedAssets(_agentVault, _mintValueAMG + poolFeeAMG);
-        uint64 redemptionTicketId = state.redemptionQueue.createRedemptionTicket(_agentVault, ticketValueAMG);
-        Agents.changeDust(_agentVault, newDustAMG);
+        Agents.allocateMintedAssets(_agent, _mintValueAMG + poolFeeAMG);
+        uint64 redemptionTicketId = 
+            state.redemptionQueue.createRedemptionTicket(_agent.vaultAddress(), ticketValueAMG);
+        Agents.changeDust(_agent, newDustAMG);
         // update agent free balance with agent's fee
         uint256 mintValueUBA = Conversion.convertAmgToUBA(_mintValueAMG);
         uint256 poolFeeUBA = Conversion.convertAmgToUBA(poolFeeAMG);
         uint256 agentFeeUBA = _receivedAmountUBA - mintValueUBA - poolFeeUBA;
-        UnderlyingFreeBalance.increaseFreeBalance(_agentVault, agentFeeUBA);
+        UnderlyingFreeBalance.increaseFreeBalance(_agent, agentFeeUBA);
         // perform minting
         state.settings.fAsset.mint(_minter, mintValueUBA);
         state.settings.fAsset.mint(address(_agent.collateralPool), poolFeeUBA);
         // notify
-        emit AMEvents.MintingExecuted(_agentVault, _crtId, redemptionTicketId, mintValueUBA, agentFeeUBA, poolFeeUBA);
+        emit AMEvents.MintingExecuted(_agent.vaultAddress(), _crtId, redemptionTicketId, 
+            mintValueUBA, agentFeeUBA, poolFeeUBA);
     }
 }

@@ -23,6 +23,7 @@ library Redemptions {
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for Collateral.Data;
+    using Agent for Agent.State;
     
     struct AgentRedemptionData {
         address agentVault;
@@ -129,7 +130,7 @@ library Redemptions {
         });
         // decrease mintedAMG and mark it to redeemingAMG
         // do not add it to freeBalance yet (only after failed redemption payment)
-        Agents.startRedeemingAssets(_data.agentVault, _data.valueAMG);
+        Agents.startRedeemingAssets(Agent.get(_data.agentVault), _data.valueAMG);
         // emit event to remind agent to pay
         emit AMEvents.RedemptionRequested(_data.agentVault,
             requestId,
@@ -152,7 +153,7 @@ library Redemptions {
         // Usually, we require the agent to trigger confirmation.
         // But if the agent doesn't respond for long enough, 
         // we allow anybody and that user gets rewarded from agent's vault.
-        bool isAgent = msg.sender == Agents.vaultOwner(request.agentVault);
+        bool isAgent = msg.sender == Agents.vaultOwner(agent);
         require(isAgent || _othersCanConfirmPayment(agent, request, _payment),
             "only agent vault owner");
         // verify transaction
@@ -175,7 +176,7 @@ library Redemptions {
             (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
             if (paymentValid) {
                 // release agent collateral
-                Agents.endRedeemingAssets(request.agentVault, request.valueAMG);
+                Agents.endRedeemingAssets(agent, request.valueAMG);
                 // notify
                 if (_payment.status == TransactionAttestation.PAYMENT_SUCCESS) {
                     emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
@@ -204,11 +205,10 @@ library Redemptions {
         state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payoutClass1(agent, request.agentVault, msg.sender,
-                state.settings.confirmationByOthersRewardC1Wei);
+            Agents.payoutClass1(agent, msg.sender, state.settings.confirmationByOthersRewardC1Wei);
         }
         // redemption can make agent healthy, so check and pull out of liquidation
-        Liquidation.endLiquidationIfHealthy(request.agentVault);
+        Liquidation.endLiquidationIfHealthy(agent);
         // delete redemption request at end
         delete state.redemptionRequests[_redemptionRequestId];
     }
@@ -267,7 +267,7 @@ library Redemptions {
         if (_payment.sourceAddressHash == _agent.underlyingAddressHash) {
             _freeBalanceChangeUBA -= _payment.spentAmount;
         }
-        UnderlyingFreeBalance.updateFreeBalance(_request.agentVault, _freeBalanceChangeUBA);
+        UnderlyingFreeBalance.updateFreeBalance(_agent, _freeBalanceChangeUBA);
     }
     
     function redemptionPaymentDefault(
@@ -309,6 +309,7 @@ library Redemptions {
         external
     {
         Redemption.Request storage request = _getRedemptionRequest(_redemptionRequestId);
+        Agent.State storage agent = Agent.get(request.agentVault);
         Agents.requireAgentVaultOwner(request.agentVault);
         // the request should have been defaulted by providing a non-payment proof to redemptionPaymentDefault(),
         // except in very rare case when both agent and redeemer cannot perform confirmation while the attestation
@@ -326,7 +327,7 @@ library Redemptions {
         // still waiting for the agent to possibly present late or failed payment
         // with this method, the agent asserts there was no payment and frees underlying balance
         int256 freeBalanceChangeUBA = SafeCast.toInt256(request.underlyingValueUBA);
-        UnderlyingFreeBalance.updateFreeBalance(request.agentVault, freeBalanceChangeUBA);
+        UnderlyingFreeBalance.updateFreeBalance(agent, freeBalanceChangeUBA);
         emit AMEvents.RedemptionFinished(request.agentVault, freeBalanceChangeUBA, _redemptionRequestId);
         // delete redemption request - not needed any more
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -341,17 +342,16 @@ library Redemptions {
     {
         Agent.State storage agent = Agent.get(_request.agentVault);
         // pay redeemer in one or both collaterals
-        (uint256 paidC1Wei, uint256 paidPoolWei) = 
-            _collateralAmountForRedemption(agent, _request.agentVault, _request.valueAMG);
-        Agents.payoutClass1(agent, _request.agentVault, _request.redeemer, paidC1Wei);
+        (uint256 paidC1Wei, uint256 paidPoolWei) = _collateralAmountForRedemption(agent, _request.valueAMG);
+        Agents.payoutClass1(agent, _request.redeemer, paidC1Wei);
         if (paidPoolWei > 0) {
             Agents.payoutFromPool(agent, _request.redeemer, paidPoolWei, paidPoolWei);
         }
         // release remaining agent collateral
-        Agents.endRedeemingAssets(_request.agentVault, _request.valueAMG);
+        Agents.endRedeemingAssets(agent, _request.valueAMG);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment
         // it will be (or was already) updated in call to finishRedemptionWithoutPayment (or confirmRedemptionPayment)
-        emit AMEvents.RedemptionDefault(_request.agentVault, _request.redeemer, _request.underlyingValueUBA, 
+        emit AMEvents.RedemptionDefault(agent.vaultAddress(), _request.redeemer, _request.underlyingValueUBA, 
             paidC1Wei, paidPoolWei, _redemptionRequestId);
     }
     
@@ -360,7 +360,6 @@ library Redemptions {
     // assured: _agentC1Wei <= fullCollateralC1, _poolWei <= fullPoolCollateral
     function _collateralAmountForRedemption(
         Agent.State storage _agent,
-        address _agentVault,
         uint64 _requestValueAMG
     )
         internal view
@@ -368,8 +367,7 @@ library Redemptions {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         // calculate paid amount and max available amount from agent class1 collateral
-        Collateral.Data memory cdAgent = 
-            AgentCollateral.agentClass1CollateralData(_agent, _agentVault);
+        Collateral.Data memory cdAgent = AgentCollateral.agentClass1CollateralData(_agent);
         _agentC1Wei = Conversion.convertAmgToTokenWei(_requestValueAMG, cdAgent.amgToTokenWeiPrice)
             .mulBips(settings.redemptionDefaultFactorAgentC1BIPS);
         uint256 maxAgentC1Wei = cdAgent.maxRedemptionCollateral(_agent, _requestValueAMG);
@@ -395,20 +393,21 @@ library Redemptions {
     ) 
         external 
     {
+        Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
         require(_amountUBA != 0, "self close of 0");
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (, uint256 closedUBA) = selfCloseOrLiquidate(_agentVault, amountAMG);
+        (, uint256 closedUBA) = selfCloseOrLiquidate(agent, amountAMG);
         // burn the self-closed assets
         AssetManagerState.getSettings().fAsset.burn(msg.sender, closedUBA);
         // try to pull agent out of liquidation
-        Liquidation.endLiquidationIfHealthy(_agentVault);
+        Liquidation.endLiquidationIfHealthy(agent);
         // send event
         emit AMEvents.SelfClose(_agentVault, closedUBA);
     }
 
     function selfCloseOrLiquidate(
-        address _agentVault,
+        Agent.State storage _agent,
         uint64 _amountAMG
     )
         internal
@@ -416,16 +415,15 @@ library Redemptions {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         // dust first
-        Agent.State storage agent = Agent.get(_agentVault);
-        _valueAMG = SafeMath64.min64(_amountAMG, agent.dustAMG);
+        _valueAMG = SafeMath64.min64(_amountAMG, _agent.dustAMG);
         if (_valueAMG > 0) {
-            Agents.decreaseDust(_agentVault, _valueAMG);
+            Agents.decreaseDust(_agent, _valueAMG);
         }
         // redemption tickets
         uint256 maxRedeemedTickets = state.settings.maxRedeemedTickets;
         for (uint256 i = 0; i < maxRedeemedTickets && _valueAMG < _amountAMG; i++) {
             // each loop, firstTicketId will change since we delete the first ticket
-            uint64 ticketId = state.redemptionQueue.agents[_agentVault].firstTicketId;
+            uint64 ticketId = state.redemptionQueue.agents[_agent.vaultAddress()].firstTicketId;
             if (ticketId == 0) {
                 break;  // no more tickets for this agent
             }
@@ -436,10 +434,10 @@ library Redemptions {
             _valueAMG += ticketValueAMG;
         }
         // self-close or liquidation is one step, so we can release minted assets without redeeming step
-        Agents.releaseMintedAssets(_agentVault, _valueAMG);
+        Agents.releaseMintedAssets(_agent, _valueAMG);
         // all the redeemed amount is added to free balance
         _valueUBA = Conversion.convertAmgToUBA(_valueAMG);
-        UnderlyingFreeBalance.increaseFreeBalance(_agentVault, _valueUBA);
+        UnderlyingFreeBalance.increaseFreeBalance(_agent, _valueUBA);
     }
     
     function _removeFromTicket(
@@ -454,7 +452,8 @@ library Redemptions {
         if (remainingAMG == 0) {
             state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
         } else if (remainingAMG < state.settings.lotSizeAMG) {   // dust created
-            Agents.increaseDust(ticket.agentVault, remainingAMG);
+            Agent.State storage agent = Agent.get(ticket.agentVault);
+            Agents.increaseDust(agent, remainingAMG);
             state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
         } else {
             ticket.valueAMG = remainingAMG;

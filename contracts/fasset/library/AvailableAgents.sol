@@ -42,7 +42,7 @@ library AvailableAgents {
         // global min collateral ratio (otherwise he can quickly go to liquidation), so we always do it here
         Agents.setAgentMinCollateralRatioBIPS(_agentVault, _agentMinCollateralRatioBIPS);
         // check that there is enough free collateral for at least one lot
-        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent, _agentVault);
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         uint256 freeCollateralLots = collateralData.freeCollateralLots(agent);
         require(freeCollateralLots >= 1, "not enough free collateral");
         // add to queue
@@ -103,7 +103,7 @@ library AvailableAgents {
         for (uint256 i = _start; i < _end; i++) {
             address agentVault = state.availableAgents[i];
             Agent.State storage agent = Agent.getWithoutCheck(agentVault);
-            Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent, agentVault);
+            Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
             (uint256 agentCR,) = AgentCollateral.mintingMinCollateralRatio(agent,
                 Collateral.Kind.AGENT_CLASS1);
             (uint256 poolCR,) = AgentCollateral.mintingMinCollateralRatio(agent,

@@ -55,7 +55,7 @@ library Challenges {
             }
         }
         // start liquidation and reward challengers
-        _liquidateAndRewardChallenger(_agentVault, msg.sender, agent.mintedAMG);
+        _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events
         emit AMEvents.IllegalPaymentConfirmed(_agentVault, _payment.transactionHash);
     }
@@ -82,7 +82,7 @@ library Challenges {
         require(_payment1.paymentReference == _payment2.paymentReference, "challenge: not duplicate");
         // ! no need to check that transaction wasn't confirmed - this is always illegal
         // start liquidation and reward challengers
-        _liquidateAndRewardChallenger(_agentVault, msg.sender, agent.mintedAMG);
+        _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events
         emit AMEvents.DuplicatePaymentConfirmed(_agentVault, _payment1.transactionHash, _payment2.transactionHash);
     }
@@ -124,28 +124,27 @@ library Challenges {
         // check that total spent free balance is more than actual free underlying balance
         require(total > agent.freeUnderlyingBalanceUBA, "mult chlg: enough free balance");
         // start liquidation and reward challengers
-        _liquidateAndRewardChallenger(_agentVault, msg.sender, agent.mintedAMG);
+        _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events
         emit AMEvents.UnderlyingFreeBalanceNegative(_agentVault, total - agent.freeUnderlyingBalanceUBA);
     }
 
     function _liquidateAndRewardChallenger(
-        address _agentVault,
+        Agent.State storage _agent,
         address _challenger, 
         uint64 _backingAMGAtChallenge
     ) 
         private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        Agent.State storage agent = Agent.get(_agentVault);
         // start full liquidation
-        Liquidation.startFullLiquidation(_agentVault);
+        Liquidation.startFullLiquidation(_agent);
         // calculate the reward
         Collateral.Data memory collateralData = 
-            AgentCollateral.agentClass1CollateralData(agent, _agentVault);
+            AgentCollateral.agentClass1CollateralData(_agent);
         uint256 rewardAMG = SafeBips.mulBips(_backingAMGAtChallenge, settings.paymentChallengeRewardBIPS);
         uint256 rewardC1Wei = Conversion.convertAmgToTokenWei(rewardAMG, collateralData.amgToTokenWeiPrice)
             + settings.paymentChallengeRewardC1Wei;
-        Agents.payoutClass1(agent, _agentVault, _challenger, rewardC1Wei);
+        Agents.payoutClass1(_agent, _challenger, rewardC1Wei);
     }
 }

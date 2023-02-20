@@ -29,7 +29,7 @@ library CollateralReservations {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
-        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent, _agentVault);
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         require(state.pausedAt == 0, "minting paused");
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 lots");
@@ -122,7 +122,7 @@ library CollateralReservations {
         // TODO: should not burn stablecoins?
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.collateralTokenC1);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
-        Agents.burnCollateral(crt.agentVault, reservedCollateral);
+        Agents.burnCollateral(agent, reservedCollateral);
         // send event
         uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
         emit AMEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);

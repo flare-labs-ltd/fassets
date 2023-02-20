@@ -15,25 +15,24 @@ library AgentCollateral {
     using SafeBips for uint256;
     using SafePct for uint256;
     using AssetManagerState for AssetManagerState.State;
+    using Agent for Agent.State;
     
     function combinedData(
-        Agent.State storage _agent,
-        address _agentVault
+        Agent.State storage _agent
     )
         internal view
         returns (Collateral.CombinedData memory)
     {
         Collateral.Data memory poolCollateral = poolCollateralData(_agent);
         return Collateral.CombinedData({
-            agentCollateral: agentClass1CollateralData(_agent, _agentVault),
+            agentCollateral: agentClass1CollateralData(_agent),
             poolCollateral: poolCollateral,
-            agentPoolTokens: agentsPoolTokensCollateralData(_agent, _agentVault, poolCollateral)
+            agentPoolTokens: agentsPoolTokensCollateralData(_agent, poolCollateral)
         });
     }
     
     function agentClass1CollateralData(
-        Agent.State storage _agent,
-        address _agentVault
+        Agent.State storage _agent
     )
         internal view
         returns (Collateral.Data memory)
@@ -42,7 +41,7 @@ library AgentCollateral {
         CollateralToken.Data storage collateral = state.collateralTokens[_agent.collateralTokenC1];
         return Collateral.Data({ 
             kind: Collateral.Kind.AGENT_CLASS1,
-            fullCollateral: collateral.token.balanceOf(_agentVault),
+            fullCollateral: collateral.token.balanceOf(_agent.vaultAddress()),
             amgToTokenWeiPrice: Conversion.currentAmgPriceInTokenWei(collateral)
         });
     }
@@ -64,14 +63,13 @@ library AgentCollateral {
     
     function agentsPoolTokensCollateralData(
         Agent.State storage _agent,
-        address _agentVault,
         Collateral.Data memory _poolCollateral
     )
         internal view
         returns (Collateral.Data memory)
     {
         IERC20 poolToken = _agent.collateralPool.poolToken();
-        uint256 agentPoolTokens = poolToken.balanceOf(_agentVault);
+        uint256 agentPoolTokens = poolToken.balanceOf(_agent.vaultAddress());
         uint256 totalPoolTokens = poolToken.totalSupply();
         uint256 amgToPoolTokenWeiPrice = _poolCollateral.fullCollateral != 0 ?
             _poolCollateral.amgToTokenWeiPrice.mulDiv(totalPoolTokens, _poolCollateral.fullCollateral) : 0;
@@ -198,7 +196,6 @@ library AgentCollateral {
     // Used for calculating collateral ration in liquidation.
     function collateralDataWithTrusted(
         Agent.State storage _agent,
-        address _agentVault,
         Collateral.Kind _kind
     )
         internal view
@@ -210,7 +207,7 @@ library AgentCollateral {
             _kind == Collateral.Kind.AGENT_CLASS1 ? _agent.collateralTokenC1 : CollateralToken.POOL;
         CollateralToken.Data storage collateral = state.collateralTokens[tokenIndex];
         address holderAddress = 
-            _kind == Collateral.Kind.AGENT_CLASS1 ? _agentVault : address(_agent.collateralPool);
+            _kind == Collateral.Kind.AGENT_CLASS1 ? _agent.vaultAddress() : address(_agent.collateralPool);
         _fullCollateral = collateral.token.balanceOf(holderAddress);
         (_amgToTokenWeiPrice, _amgToTokenWeiPriceTrusted) = 
             Conversion.currentAmgPriceInTokenWeiWithTrusted(collateral);

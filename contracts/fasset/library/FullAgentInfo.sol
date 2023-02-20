@@ -140,10 +140,10 @@ library FullAgentInfo {
         AssetManagerState.State storage state = AssetManagerState.get();
         // TODO: add missing data
         Agent.State storage agent = Agent.get(_agentVault);
-        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent, _agentVault);
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         CollateralToken.Data storage collateral = state.getClass1Collateral(agent);
         CollateralToken.Data storage poolCollateral = state.getPoolCollateral();
-        _agentState.status = _getAgentStatusInfo(agent, _agentVault);
+        _agentState.status = _getAgentStatusInfo(agent);
         _agentState.ownerAddress = Agents.vaultOwner(_agentVault);
         _agentState.underlyingAddressString = agent.underlyingAddressString;
         _agentState.publiclyAvailable = agent.availableAgentsPos != 0;
@@ -159,12 +159,12 @@ library FullAgentInfo {
         _agentState.freeClass1CollateralWei = 
             collateralData.agentCollateral.freeCollateralWei(agent);
         (_agentState.class1CollateralRatioBIPS,) = 
-            Liquidation.getCollateralRatioBIPS(agent, _agentVault, Collateral.Kind.AGENT_CLASS1);
+            Liquidation.getCollateralRatioBIPS(agent, Collateral.Kind.AGENT_CLASS1);
         _agentState.totalPoolCollateralNATWei = collateralData.poolCollateral.fullCollateral;
         _agentState.freePoolCollateralNATWei = 
             collateralData.poolCollateral.freeCollateralWei(agent);
         (_agentState.poolCollateralRatioBIPS,) = 
-            Liquidation.getCollateralRatioBIPS(agent, _agentVault, Collateral.Kind.POOL);
+            Liquidation.getCollateralRatioBIPS(agent, Collateral.Kind.POOL);
         _agentState.mintedUBA = Conversion.convertAmgToUBA(agent.mintedAMG);
         _agentState.reservedUBA = Conversion.convertAmgToUBA(agent.reservedAMG);
         _agentState.redeemingUBA = Conversion.convertAmgToUBA(agent.redeemingAMG);
@@ -177,8 +177,7 @@ library FullAgentInfo {
     }
     
     function _getAgentStatusInfo(
-        Agent.State storage _agent,
-        address _agentVault
+        Agent.State storage _agent
     )
         private view
         returns (AgentStatusInfo)
@@ -187,7 +186,7 @@ library FullAgentInfo {
         if (status == Agent.Status.NORMAL) {
             return AgentStatusInfo.NORMAL;
         } else if (status == Agent.Status.LIQUIDATION) {
-            Agent.LiquidationPhase phase = Liquidation.currentLiquidationPhase(_agent, _agentVault);
+            Agent.LiquidationPhase phase = Liquidation.currentLiquidationPhase(_agent);
             return phase == Agent.LiquidationPhase.CCB ? AgentStatusInfo.CCB : AgentStatusInfo.LIQUIDATION;
         } else if (status == Agent.Status.FULL_LIQUIDATION) {
             return AgentStatusInfo.FULL_LIQUIDATION;

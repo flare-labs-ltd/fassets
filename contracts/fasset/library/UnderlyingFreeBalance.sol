@@ -16,33 +16,32 @@ library UnderlyingFreeBalance {
     using SafeCast for uint256;
     using SafeCast for int256;
     using PaymentConfirmations for PaymentConfirmations.State;
+    using Agent for Agent.State;
 
     function updateFreeBalance(
-        address _agentVault,
+        Agent.State storage _agent,
         int256 _balanceChange
     ) 
         internal
     {
-        Agent.State storage agent = Agent.get(_agentVault);
-        int256 newBalance = agent.freeUnderlyingBalanceUBA + _balanceChange;
+        int256 newBalance = _agent.freeUnderlyingBalanceUBA + _balanceChange;
         if (newBalance < 0) {
-            emit AMEvents.UnderlyingFreeBalanceNegative(_agentVault, newBalance);
-            Liquidation.startFullLiquidation(_agentVault);
+            emit AMEvents.UnderlyingFreeBalanceNegative(_agent.vaultAddress(), newBalance);
+            Liquidation.startFullLiquidation(_agent);
         }
-        agent.freeUnderlyingBalanceUBA = newBalance.toInt128();
+        _agent.freeUnderlyingBalanceUBA = newBalance.toInt128();
     }
 
     // Like updateFreeBalance, but it can never make balance negative and trigger liquidation.
     // Separate implementation to avoid circular dependency in liquidation releasing underlying funds.
     function increaseFreeBalance(
-        address _agentVault,
+        Agent.State storage _agent,
         uint256 _balanceIncrease
     ) 
         internal
     {
-        Agent.State storage agent = Agent.get(_agentVault);
-        int256 newBalance = agent.freeUnderlyingBalanceUBA + _balanceIncrease.toInt256();
-        agent.freeUnderlyingBalanceUBA = newBalance.toInt128();
+        int256 newBalance = _agent.freeUnderlyingBalanceUBA + _balanceIncrease.toInt256();
+        _agent.freeUnderlyingBalanceUBA = newBalance.toInt128();
     }
 
     function confirmTopupPayment(
@@ -63,7 +62,7 @@ library UnderlyingFreeBalance {
             "topup before agent created");
         state.paymentConfirmations.confirmIncomingPayment(_payment);
         uint256 amountUBA = SafeCast.toUint256(_payment.receivedAmount);
-        increaseFreeBalance(_agentVault, amountUBA);
+        increaseFreeBalance(agent, amountUBA);
         emit AMEvents.UnderlyingBalanceToppedUp(_agentVault, amountUBA);
     }
 }
