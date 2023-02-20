@@ -7,7 +7,7 @@ contract AttestationClientMock is AttestationClientBase {
     mapping (uint256 => bytes32) private _merkleRoots;
 
     function setMerkleRootForStateConnectorRound(
-        bytes32 _merkleRoot, 
+        bytes32 _merkleRoot,
         uint256 _stateConnectorRound
     ) external {
         _merkleRoots[_stateConnectorRound] = _merkleRoot;

@@ -15,11 +15,11 @@ interface IStateConnector {
     );
 
     function requestAttestations(bytes calldata _data) external;
-    
+
     function lastFinalizedRoundId() external view returns (uint256 _roundId);
-    
+
     function merkleRoot(uint256 _roundId) external view returns (bytes32);
-    
+
     /**
      * The first buffer timestamp
      * (start time in seconds for converting the timestamp into a round number).

@@ -6,7 +6,7 @@
 pragma solidity 0.8.11;
 
 import "../interface/IAttestationClient.sol";
-import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol"; 
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 abstract contract AttestationClientBase is IAttestationClient {
     using MerkleProof for bytes32[];
@@ -18,64 +18,64 @@ abstract contract AttestationClientBase is IAttestationClient {
     uint16 public constant REFERENCED_PAYMENT_NONEXISTENCE = 4;
     uint16 public constant TRUSTLINE_ISSUANCE = 5;
 
-    function verifyPayment(uint32 _chainId, Payment calldata _data) 
+    function verifyPayment(uint32 _chainId, Payment calldata _data)
         external view override
         returns (bool _proved)
     {
         return _verifyMerkleProof(
-            _data.merkleProof,         
+            _data.merkleProof,
             merkleRootForRound(_data.stateConnectorRound),
-            _hashPayment(_chainId, _data)            
+            _hashPayment(_chainId, _data)
         );
     }
-    
-    function verifyBalanceDecreasingTransaction(uint32 _chainId, BalanceDecreasingTransaction calldata _data) 
+
+    function verifyBalanceDecreasingTransaction(uint32 _chainId, BalanceDecreasingTransaction calldata _data)
         external view override
         returns (bool _proved)
     {
         return _verifyMerkleProof(
-            _data.merkleProof,         
+            _data.merkleProof,
             merkleRootForRound(_data.stateConnectorRound),
-            _hashBalanceDecreasingTransaction(_chainId, _data)            
+            _hashBalanceDecreasingTransaction(_chainId, _data)
         );
     }
-    
-    function verifyConfirmedBlockHeightExists(uint32 _chainId, ConfirmedBlockHeightExists calldata _data) 
+
+    function verifyConfirmedBlockHeightExists(uint32 _chainId, ConfirmedBlockHeightExists calldata _data)
         external view override
         returns (bool _proved)
     {
         return _verifyMerkleProof(
-            _data.merkleProof,         
+            _data.merkleProof,
             merkleRootForRound(_data.stateConnectorRound),
-            _hashConfirmedBlockHeightExists(_chainId, _data)            
+            _hashConfirmedBlockHeightExists(_chainId, _data)
         );
     }
-    
-    function verifyReferencedPaymentNonexistence(uint32 _chainId, ReferencedPaymentNonexistence calldata _data) 
+
+    function verifyReferencedPaymentNonexistence(uint32 _chainId, ReferencedPaymentNonexistence calldata _data)
         external view override
         returns (bool _proved)
     {
         return _verifyMerkleProof(
-            _data.merkleProof,         
+            _data.merkleProof,
             merkleRootForRound(_data.stateConnectorRound),
-            _hashReferencedPaymentNonexistence(_chainId, _data)            
+            _hashReferencedPaymentNonexistence(_chainId, _data)
         );
     }
-    
-    function verifyTrustlineIssuance(uint32 _chainId, TrustlineIssuance calldata _data) 
+
+    function verifyTrustlineIssuance(uint32 _chainId, TrustlineIssuance calldata _data)
         external view override
         returns (bool _proved)
     {
         return _verifyMerkleProof(
-            _data.merkleProof,         
+            _data.merkleProof,
             merkleRootForRound(_data.stateConnectorRound),
-            _hashTrustlineIssuance(_chainId, _data)            
+            _hashTrustlineIssuance(_chainId, _data)
         );
     }
 
     function merkleRootForRound(uint256 _stateConnectorRound) public view virtual returns (bytes32 _merkleRoot);
 
-    function _hashPayment(uint32 _chainId, Payment calldata _data) 
+    function _hashPayment(uint32 _chainId, Payment calldata _data)
         private pure
         returns (bytes32)
     {
@@ -101,8 +101,8 @@ abstract contract AttestationClientBase is IAttestationClient {
             )
         ));
     }
-    
-    function _hashBalanceDecreasingTransaction(uint32 _chainId, BalanceDecreasingTransaction calldata _data) 
+
+    function _hashBalanceDecreasingTransaction(uint32 _chainId, BalanceDecreasingTransaction calldata _data)
         private pure
         returns (bytes32)
     {
@@ -118,8 +118,8 @@ abstract contract AttestationClientBase is IAttestationClient {
             _data.paymentReference
         ));
     }
-    
-    function _hashConfirmedBlockHeightExists(uint32 _chainId, ConfirmedBlockHeightExists calldata _data) 
+
+    function _hashConfirmedBlockHeightExists(uint32 _chainId, ConfirmedBlockHeightExists calldata _data)
         private pure
         returns (bytes32)
     {
@@ -134,8 +134,8 @@ abstract contract AttestationClientBase is IAttestationClient {
             _data.lowestQueryWindowBlockTimestamp
         ));
     }
-    
-    function _hashReferencedPaymentNonexistence(uint32 _chainId, ReferencedPaymentNonexistence calldata _data) 
+
+    function _hashReferencedPaymentNonexistence(uint32 _chainId, ReferencedPaymentNonexistence calldata _data)
         private pure
         returns (bytes32)
     {
@@ -158,8 +158,8 @@ abstract contract AttestationClientBase is IAttestationClient {
             )
         ));
     }
-    
-    function _hashTrustlineIssuance(uint32 _chainId, TrustlineIssuance calldata _data) 
+
+    function _hashTrustlineIssuance(uint32 _chainId, TrustlineIssuance calldata _data)
         private pure
         returns (bytes32)
     {

@@ -14,11 +14,10 @@ pragma solidity 0.8.11;
  */
 library SafePct {
     uint256 internal constant MAX_BIPS = 10_000;
-    
+
     /**
-     * Requirements:
-     *
-     * - intermediate operations must revert on overflow
+     * Calculates `floor(x * y / z)`, reverting on overflow, but only if the result overflows.
+     * Requirement: intermediate operations must revert on overflow.
      */
     function mulDiv(uint256 x, uint256 y, uint256 z) internal pure returns (uint256) {
         require(z > 0, "Division by zero");
@@ -41,7 +40,10 @@ library SafePct {
 
         return (a * c * z) + (a * d) + (b * c) + (b * d / z);
     }
-    
+
+    /**
+     * Calculates `ceiling(x * y / z)`.
+     */
     function mulDivRoundUp(uint256 x, uint256 y, uint256 z) internal pure returns (uint256) {
         uint256 resultRoundDown = mulDiv(x, y, z);
         unchecked {
@@ -52,6 +54,9 @@ library SafePct {
         }
     }
 
+    /**
+     * Multiply `x` by `y` BIPS.
+     */
     function mulBips(uint256 x, uint256 y) internal pure returns (uint256) {
         return mulDiv(x, y, MAX_BIPS);
     }

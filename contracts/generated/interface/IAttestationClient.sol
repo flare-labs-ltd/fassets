@@ -53,7 +53,7 @@ interface IAttestationClient {
         // Standardized payment reference, if it exists, 0 otherwise.
         bytes32 paymentReference;
 
-        // 'true' if the transaction has exactly one source address and 
+        // 'true' if the transaction has exactly one source address and
         // exactly one receiving address (different from source).
         bool oneToOne;
 
@@ -83,7 +83,7 @@ interface IAttestationClient {
         // Index of the transaction input indicating source address on UTXO chains, 0 on non-UTXO chains.
         uint8 inUtxo;
 
-        // Hash of the source address as a string. For UTXO transactions with multiple input addresses 
+        // Hash of the source address as a string. For UTXO transactions with multiple input addresses
         // this is the address that is on the input indicated by 'inUtxo' parameter.
         bytes32 sourceAddressHash;
 
@@ -154,7 +154,7 @@ interface IAttestationClient {
         // Timestamp of the lowerBoundaryBlockNumber.
         uint64 lowerBoundaryBlockTimestamp;
 
-        // The first (lowest) confirmed block with 'timestamp > deadlineTimestamp' 
+        // The first (lowest) confirmed block with 'timestamp > deadlineTimestamp'
         // and 'blockNumber  > deadlineBlockNumber'.
         uint64 firstOverflowBlockNumber;
 
@@ -169,7 +169,7 @@ interface IAttestationClient {
         // Merkle proof needed to verify the existence of transaction with the below fields.
         bytes32[] merkleProof;
 
-        // 3 letter code or 160-bit hexadecimal string known as 
+        // 3 letter code or 160-bit hexadecimal string known as
         // [Currency code](https://xrpl.org/currency-formats.html#currency-codes).
         // The first byte indicates whether it is a 3 letter encoded ascii string "0x00..."
         // or 160 bit hex string "0x01...".
