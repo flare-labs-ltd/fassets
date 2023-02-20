@@ -60,8 +60,8 @@ library Minting {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
+        Agents.requireAgentVaultOwner(agent);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
-        Agents.requireAgentVaultOwner(_agentVault);
         assert(agent.agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         TransactionAttestation.verifyPaymentSuccess(_payment);
         require(state.pausedAt == 0, "minting paused");

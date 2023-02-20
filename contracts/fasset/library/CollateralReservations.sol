@@ -79,6 +79,7 @@ library CollateralReservations {
     {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
+        Agents.requireAgentVaultOwner(agent);
         // check requirements
         TransactionAttestation.verifyReferencedPaymentNonexistence(_nonPayment);
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
@@ -91,7 +92,6 @@ library CollateralReservations {
             "minting default too early");
         require(_nonPayment.lowerBoundaryBlockNumber <= crt.firstUnderlyingBlock,
             "minting request too old");
-        Agents.requireAgentVaultOwner(crt.agentVault);
         // send event
         emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, underlyingValueUBA);
         // transfer crt fee to the agent's vault
@@ -108,8 +108,8 @@ library CollateralReservations {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
-        Agents.requireAgentVaultOwner(crt.agentVault);
         Agent.State storage agent = Agent.get(crt.agentVault);
+        Agents.requireAgentVaultOwner(agent);
         // verify proof
         TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
         // enough time must pass so that proofs are no longer available

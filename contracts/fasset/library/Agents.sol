@@ -111,8 +111,8 @@ library Agents {
         AssetManagerState.State storage state = AssetManagerState.get();
         CollateralToken.Data storage collateral = state.getClass1Collateral(_agent);
         // don't want the calling method to fail due to too small balance for payout
-        _amountPaid = Math.min(_amountWei, collateral.token.balanceOf(_agent.vaultAddress()));
         IAgentVault vault = IAgentVault(_agent.vaultAddress());
+        _amountPaid = Math.min(_amountWei, collateral.token.balanceOf(address(vault)));
         vault.payout(collateral.token, _receiver, _amountPaid);
     }
 
@@ -160,22 +160,21 @@ library Agents {
         return IAgentVault(_agent.vaultAddress()).owner();
     }
 
-    function vaultOwner(
-        address _agentVault
-    )
-        internal view
-        returns (address)
-    {
-        return IAgentVault(_agentVault).owner();
-    }
-    
-    
     function requireAgentVaultOwner(
         address _agentVault
     )
         internal view
     {
         address owner = IAgentVault(_agentVault).owner();
+        require(msg.sender == owner, "only agent vault owner");
+    }
+    
+    function requireAgentVaultOwner(
+        Agent.State storage _agent
+    )
+        internal view
+    {
+        address owner = IAgentVault(_agent.vaultAddress()).owner();
         require(msg.sender == owner, "only agent vault owner");
     }
     

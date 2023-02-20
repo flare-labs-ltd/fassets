@@ -144,7 +144,7 @@ library FullAgentInfo {
         CollateralToken.Data storage collateral = state.getClass1Collateral(agent);
         CollateralToken.Data storage poolCollateral = state.getPoolCollateral();
         _agentState.status = _getAgentStatusInfo(agent);
-        _agentState.ownerAddress = Agents.vaultOwner(_agentVault);
+        _agentState.ownerAddress = Agents.vaultOwner(agent);
         _agentState.underlyingAddressString = agent.underlyingAddressString;
         _agentState.publiclyAvailable = agent.availableAgentsPos != 0;
         _agentState.class1CollateralSymbol = collateral.symbol;

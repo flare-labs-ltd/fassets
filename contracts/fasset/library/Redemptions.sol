@@ -191,7 +191,7 @@ library Redemptions {
                 require(_payment.sourceAddressHash == agent.underlyingAddressHash,
                     "confirm failed payment only from agent's address");
                 // we do not allow retrying failed payments, so just default here
-                _executeDefaultPayment(request, _redemptionRequestId);
+                _executeDefaultPayment(agent, request, _redemptionRequestId);
                 // notify
                 emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer, 
                     _payment.transactionHash, _redemptionRequestId, failureReason);
@@ -277,6 +277,7 @@ library Redemptions {
         external
     {
         Redemption.Request storage request = _getRedemptionRequest(_redemptionRequestId);
+        Agent.State storage agent = Agent.get(request.agentVault);
         require(request.status == Redemption.Status.ACTIVE, "invalid redemption status");
         // verify transaction
         TransactionAttestation.verifyReferencedPaymentNonexistence(_nonPayment);
@@ -293,11 +294,10 @@ library Redemptions {
         // We allow only redeemers or agents to trigger redemption default, since they may want
         // to do it at some particular time. (Agent might want to call default to unstick redemption when 
         // the redeemer is unresponsive.)
-        address agentOwner = Agents.vaultOwner(request.agentVault);
-        require(msg.sender == request.redeemer || msg.sender == agentOwner,
+        require(msg.sender == request.redeemer || msg.sender == Agents.vaultOwner(agent),
             "only redeemer or agent");
         // pay redeemer in native currency and mark as defaulted
-        _executeDefaultPayment(request, _redemptionRequestId);
+        _executeDefaultPayment(agent, request, _redemptionRequestId);
         // don't delete redemption request at end - the agent might still confirm failed payment
         request.status = Redemption.Status.DEFAULTED;
     }
@@ -310,7 +310,7 @@ library Redemptions {
     {
         Redemption.Request storage request = _getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
-        Agents.requireAgentVaultOwner(request.agentVault);
+        Agents.requireAgentVaultOwner(agent);
         // the request should have been defaulted by providing a non-payment proof to redemptionPaymentDefault(),
         // except in very rare case when both agent and redeemer cannot perform confirmation while the attestation
         // is still available (~ 1 day) - in this case the agent can perform default without proof
@@ -321,7 +321,7 @@ library Redemptions {
             require(_proof.lowestQueryWindowBlockNumber > request.lastUnderlyingBlock
                 && _proof.lowestQueryWindowBlockTimestamp > request.lastUnderlyingTimestamp,
                 "should default first");
-            _executeDefaultPayment(request, _redemptionRequestId);
+            _executeDefaultPayment(agent, request, _redemptionRequestId);
         }
         // request is in defaulted state, but underlying balance is not freed, since we are
         // still waiting for the agent to possibly present late or failed payment
@@ -335,23 +335,23 @@ library Redemptions {
     }
     
     function _executeDefaultPayment(
+        Agent.State storage _agent,
         Redemption.Request storage _request,
         uint64 _redemptionRequestId
     )
         private
     {
-        Agent.State storage agent = Agent.get(_request.agentVault);
         // pay redeemer in one or both collaterals
-        (uint256 paidC1Wei, uint256 paidPoolWei) = _collateralAmountForRedemption(agent, _request.valueAMG);
-        Agents.payoutClass1(agent, _request.redeemer, paidC1Wei);
+        (uint256 paidC1Wei, uint256 paidPoolWei) = _collateralAmountForRedemption(_agent, _request.valueAMG);
+        Agents.payoutClass1(_agent, _request.redeemer, paidC1Wei);
         if (paidPoolWei > 0) {
-            Agents.payoutFromPool(agent, _request.redeemer, paidPoolWei, paidPoolWei);
+            Agents.payoutFromPool(_agent, _request.redeemer, paidPoolWei, paidPoolWei);
         }
         // release remaining agent collateral
-        Agents.endRedeemingAssets(agent, _request.valueAMG);
+        Agents.endRedeemingAssets(_agent, _request.valueAMG);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment
         // it will be (or was already) updated in call to finishRedemptionWithoutPayment (or confirmRedemptionPayment)
-        emit AMEvents.RedemptionDefault(agent.vaultAddress(), _request.redeemer, _request.underlyingValueUBA, 
+        emit AMEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _request.underlyingValueUBA, 
             paidC1Wei, paidPoolWei, _redemptionRequestId);
     }
     
