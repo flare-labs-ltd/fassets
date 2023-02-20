@@ -13,7 +13,7 @@ import "../library/data/AssetManagerSettings.sol";
 import "../library/SettingsUpdater.sol";
 import "../library/StateUpdater.sol";
 import "../library/AvailableAgents.sol";
-import "../library/Agents.sol";
+import "../library/AgentsExternal.sol";
 import "../library/CollateralReservations.sol";
 import "../library/Minting.sol";
 import "../library/Redemptions.sol";
@@ -138,7 +138,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         requireWhitelistedSender();
-        Agents.claimAddressWithEOAProof(_payment);
+        AgentsExternal.claimAddressWithEOAProof(_payment);
     }
     
     /**
@@ -157,7 +157,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         onlyAttached
     {
         requireWhitelistedSender();
-        Agents.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString, _collateralTokenClass1);
+        AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString, _collateralTokenClass1);
     }
     
     /**
@@ -170,7 +170,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.announceDestroy(_agentVault);
+        AgentsExternal.announceDestroy(_agentVault);
     }
     
     /**
@@ -189,7 +189,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.destroyAgent(_agentVault);
+        AgentsExternal.destroyAgent(_agentVault);
     }
     
     /**
@@ -204,7 +204,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.setAgentMinCollateralRatioBIPS(_agentVault, _agentMinCollateralRatioBIPS);
+        AgentsExternal.setAgentMinCollateralRatioBIPS(_agentVault, _agentMinCollateralRatioBIPS);
     }
     
     /**
@@ -236,7 +236,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.announceWithdrawal(_agentVault, _valueNATWei);
+        AgentsExternal.announceWithdrawal(_agentVault, _valueNATWei);
     }
 
     /**
@@ -250,8 +250,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external override
     {
-        // Agents.withdrawalExecuted makes sure that only a registered agent vault can call
-        Agents.withdrawalExecuted(_token, msg.sender, _valueNATWei);
+        // AgentsExternal.withdrawalExecuted makes sure that only a registered agent vault can call
+        AgentsExternal.withdrawalExecuted(_token, msg.sender, _valueNATWei);
     }
     
     /**
@@ -264,8 +264,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external override
     {
-        // Agents.depositExecuted makes sure that only a registered agent vault can call
-        Agents.depositExecuted(_token, msg.sender);
+        // AgentsExternal.depositExecuted makes sure that only a registered agent vault can call
+        AgentsExternal.depositExecuted(_token, msg.sender);
     }
     
     /**
@@ -283,7 +283,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Agents.convertDustToTicket(_agentVault);
+        AgentsExternal.convertDustToTicket(_agentVault);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -879,7 +879,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         require(state.settings.fAsset.terminated(), "f-asset not terminated");
-        Agents.buybackAgentCollateral(_agentVault);
+        AgentsExternal.buybackAgentCollateral(_agentVault);
     }
 
     /**
@@ -937,7 +937,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view override
         returns (bool)
     {
-        return Agents.isCollateralToken(_agentVault, _token);
+        return AgentsExternal.isCollateralToken(_agentVault, _token);
     }
     
     /**

@@ -40,7 +40,7 @@ library AvailableAgents {
         agent.feeBIPS = _feeBIPS.toUint16(); 
         // when agent becomes available, it is a good idea to set agent's min collateral ratio higher than
         // global min collateral ratio (otherwise he can quickly go to liquidation), so we always do it here
-        Agents.setAgentMinCollateralRatioBIPS(_agentVault, _agentMinCollateralRatioBIPS);
+        Agents.setAgentMinCollateralRatioBIPS(agent, _agentMinCollateralRatioBIPS);
         // check that there is enough free collateral for at least one lot
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         uint256 freeCollateralLots = collateralData.freeCollateralLots(agent);
