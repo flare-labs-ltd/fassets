@@ -117,7 +117,7 @@ library Agents {
         // cannot have any minting when in destroying status
         assert(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0);
         // delete agent data
-        delete agent;
+        Agent.deleteStorage(agent);
         // destroy agent vault
         IAgentVault(_agentVault).destroy();
         // notify

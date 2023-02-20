@@ -119,8 +119,11 @@ library Agent {
         // Challenger's should track underlying address activity since this block
         // and topups are only valid after this block (both inclusive).
         uint64 underlyingBlockAtCreation;
+        
+        // Only used for calculating Agent.State size. See deleteStorage() below.
+        uint256[1] _endMarker;        
     }
-
+    
     // underwater collateral classes
     uint8 internal constant LF_CLASS1 = 1 << 0;
     uint8 internal constant LF_POOL = 1 << 1;
@@ -156,5 +159,21 @@ library Agent {
             position := _agent.slot
         }
         return address(uint160((uint256(position) ^ uint256(AGENTS_POSITION)) >> 64));
+    }
+
+    // Using `delete` doesn't work for storage pointers, so this is a workaround for
+    // clearing agent storage at calculated location. The last member of the agent struct
+    // must always be empty `_endMarker` for calculating the size to delete.
+    // TODO: test
+    function deleteStorage(Agent.State storage _agent) internal {
+        uint256[1] storage endMarker = _agent._endMarker;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            let pos := _agent.slot
+            let end := endMarker.slot
+            for { } lt(pos, end) { pos := add(pos, 1) } {
+                sstore(pos, 0)
+            }
+        }
     }
 }
