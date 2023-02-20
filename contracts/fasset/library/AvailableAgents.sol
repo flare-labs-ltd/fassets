@@ -21,14 +21,14 @@ library AvailableAgents {
         // Note: freeCollateralLots is only informative since it can can change at any time
         // due to price changes, reservation, minting, redemption, or even lot size change
         uint256 freeCollateralLots;
-    }   
-     
+    }
+
     function makeAvailable(
         address _agentVault,
         uint256 _feeBIPS,
         uint256 _agentMinCollateralRatioBIPS
-    ) 
-        external 
+    )
+        external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
@@ -37,7 +37,7 @@ library AvailableAgents {
         require(agent.status == Agent.Status.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
         // set parameters
-        agent.feeBIPS = _feeBIPS.toUint16(); 
+        agent.feeBIPS = _feeBIPS.toUint16();
         // when agent becomes available, it is a good idea to set agent's min collateral ratio higher than
         // global min collateral ratio (otherwise he can quickly go to liquidation), so we always do it here
         Agents.setAgentMinCollateralRatioBIPS(agent, _agentMinCollateralRatioBIPS);
@@ -70,12 +70,12 @@ library AvailableAgents {
         state.availableAgents.pop();
         emit AMEvents.AvailableAgentExited(_agentVault);
     }
-    
+
     function getList(
-        uint256 _start, 
+        uint256 _start,
         uint256 _end
-    ) 
-        external view 
+    )
+        external view
         returns (address[] memory _agents, uint256 _totalLength)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -89,10 +89,10 @@ library AvailableAgents {
     }
 
     function getListWithInfo(
-        uint256 _start, 
+        uint256 _start,
         uint256 _end
-    ) 
-        external view 
+    )
+        external view
         returns (AgentInfo[] memory _agents, uint256 _totalLength)
     {
         AssetManagerState.State storage state = AssetManagerState.get();

@@ -24,7 +24,7 @@ interface IWNat is IVPToken {
      * @notice Withdraw Native and burn WNAT ERC20.
      * @param amount The amount to withdraw.
      */
-    function withdraw(uint256 amount) external;    
+    function withdraw(uint256 amount) external;
 
     /**
      * @notice Withdraw WNAT from an owner and send native tokens to msg.sender given an allowance.

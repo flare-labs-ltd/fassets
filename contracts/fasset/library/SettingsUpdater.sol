@@ -9,20 +9,20 @@ import "./AMEvents.sol";
 library SettingsUpdater {
     using SafeCast for uint256;
     using SafePct for *;
-    
+
     struct CollateralRatioUpdate {
         uint64 validAt;
         uint32 minCollateralRatioBIPS;
         uint32 ccbMinCollateralRatioBIPS;
         uint32 safetyMinCollateralRatioBIPS;
     }
-    
+
     struct PaymentTimeUpdate {
         uint64 validAt;
         uint64 underlyingBlocksForPayment;
         uint64 underlyingSecondsForPayment;
     }
-    
+
     struct WhitelistUpdate {
         uint64 validAt;
         address whitelist;
@@ -35,10 +35,10 @@ library SettingsUpdater {
         // last update time
         mapping (bytes32 => uint256) lastUpdate;
     }
-    
-    bytes32 internal constant UPDATE_CONTRACTS = 
+
+    bytes32 internal constant UPDATE_CONTRACTS =
         keccak256("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)");
-    bytes32 internal constant REFRESH_FTSO_INDEXES = 
+    bytes32 internal constant REFRESH_FTSO_INDEXES =
         keccak256("refreshFtsoIndexes()");
     bytes32 internal constant SET_COLLATERAL_RATIOS =
         keccak256("setCollateralRatios(uint256,uint256,uint256)");
@@ -76,7 +76,7 @@ library SettingsUpdater {
         keccak256("setAttestationWindowSeconds(uint256)");
     bytes32 internal constant SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS =
         keccak256("setAnnouncedUnderlyingConfirmationMinSeconds(uint256)");
-        
+
     function validateAndSet(
         AssetManagerSettings.Data memory _settings
     )
@@ -87,7 +87,7 @@ library SettingsUpdater {
         state.settings = _settings;
         _refreshFtsoIndexes();
     }
-    
+
     function callUpdate(
         PendingUpdates storage _updates,
         bytes32 _method,
@@ -197,7 +197,7 @@ library SettingsUpdater {
             emit AMEvents.ContractChanged("wNat", address(wNat));
         }
     }
-    
+
     function _refreshFtsoIndexes() private
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -209,7 +209,7 @@ library SettingsUpdater {
             collateral.ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(collateral.symbol).toUint16();
         }
     }
-    
+
     function _checkEnoughTimeSinceLastUpdate(
         PendingUpdates storage _updates,
         bytes32 _method
@@ -225,11 +225,11 @@ library SettingsUpdater {
 
     function _setCollateralRatios(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         // TODO: replace per collateral
-        // (uint256 minCR, uint256 ccbCR, uint256 safetyCR) = 
+        // (uint256 minCR, uint256 ccbCR, uint256 safetyCR) =
         //     abi.decode(_params, (uint256, uint256, uint256));
         // // validations
         // require(SafePct.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
@@ -243,14 +243,14 @@ library SettingsUpdater {
         // emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", ccbCR);
         // emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", safetyCR);
     }
-    
+
     function _setTimeForPayment(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        (uint256 underlyingBlocks, uint256 underlyingSeconds) = 
+        (uint256 underlyingBlocks, uint256 underlyingSeconds) =
             abi.decode(_params, (uint256, uint256));
         // update
         settings.underlyingBlocksForPayment = underlyingBlocks.toUint64();
@@ -258,11 +258,11 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("underlyingBlocksForPayment", underlyingBlocks);
         emit AMEvents.SettingChanged("underlyingSecondsForPayment", underlyingSeconds);
     }
-    
+
     function _setPaymentChallengeReward(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         (uint256 rewardNATWei, uint256 rewardBIPS) = abi.decode(_params, (uint256, uint256));
@@ -280,8 +280,8 @@ library SettingsUpdater {
 
     function _setWhitelist(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         address value = abi.decode(_params, (address));
@@ -291,11 +291,11 @@ library SettingsUpdater {
         emit AMEvents.ContractChanged("whitelist", value);
 
     }
-    
+
     function _setLotSizeAmg(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
@@ -309,11 +309,11 @@ library SettingsUpdater {
         settings.lotSizeAMG = value.toUint64();
         emit AMEvents.SettingChanged("lotSizeAMG", value);
     }
-    
+
     function _setMaxTrustedPriceAgeSeconds(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
@@ -328,8 +328,8 @@ library SettingsUpdater {
 
     function _setCollateralReservationFeeBips(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
@@ -345,8 +345,8 @@ library SettingsUpdater {
 
     function _setRedemptionFeeBips(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
@@ -362,8 +362,8 @@ library SettingsUpdater {
 
     function _setRedemptionDefaultFactorBips(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         (uint256 class1, uint256 pool) = abi.decode(_params, (uint256, uint256));
@@ -382,8 +382,8 @@ library SettingsUpdater {
 
     function _setConfirmationByOthersAfterSeconds(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
@@ -396,8 +396,8 @@ library SettingsUpdater {
 
     function _setConfirmationByOthersRewardC1Wei(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
@@ -412,8 +412,8 @@ library SettingsUpdater {
 
     function _setMaxRedeemedTickets(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
@@ -428,8 +428,8 @@ library SettingsUpdater {
 
     function _setWithdrawalOrDestroyWaitMinSeconds(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
@@ -444,8 +444,8 @@ library SettingsUpdater {
 
     function _setCcbTimeSeconds(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
@@ -460,8 +460,8 @@ library SettingsUpdater {
 
     function _setLiquidationStepSeconds(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
@@ -476,8 +476,8 @@ library SettingsUpdater {
 
     function _setLiquidationCollateralFactorBips(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256[] memory value = abi.decode(_params, (uint256[]));
@@ -492,11 +492,11 @@ library SettingsUpdater {
         }
         emit AMEvents.SettingArrayChanged("liquidationCollateralFactorBIPS", value);
     }
-    
+
     function _setAttestationWindowSeconds(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
@@ -509,8 +509,8 @@ library SettingsUpdater {
 
     function _setAnnouncedUnderlyingConfirmationMinSeconds(
         bytes calldata _params
-    ) 
-        private 
+    )
+        private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
@@ -527,7 +527,7 @@ library SettingsUpdater {
         private pure
     {
         require(address(_settings.fAsset) != address(0), "zero fAsset address");
-        
+
         require(_settings.assetUnitUBA > 0, "cannot be zero");
         require(_settings.assetMintingGranularityUBA > 0, "cannot be zero");
         require(_settings.underlyingBlocksForPayment > 0, "cannot be zero");
@@ -559,7 +559,7 @@ library SettingsUpdater {
 
         require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
-        uint256 redemptionFactorBIPS = 
+        uint256 redemptionFactorBIPS =
             _settings.redemptionDefaultFactorAgentC1BIPS + _settings.redemptionDefaultFactorPoolBIPS;
         require(redemptionFactorBIPS > SafePct.MAX_BIPS, "bips value too low");
         require(_settings.attestationWindowSeconds >= 1 days, "window too small");

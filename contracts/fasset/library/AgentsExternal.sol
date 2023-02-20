@@ -22,12 +22,12 @@ library AgentsExternal {
     using AgentCollateral for Collateral.Data;
     using Agent for Agent.State;
     using Agents for Agent.State;
-    
+
     modifier onlyAgentVaultOwner(address _agentVault) {
         Agents.requireAgentVaultOwner(_agentVault);
         _;
     }
-    
+
     function claimAddressWithEOAProof(
         IAttestationClient.Payment calldata _payment
     )
@@ -47,13 +47,13 @@ library AgentsExternal {
             state.currentUnderlyingBlock = leastCurrentBlock;
         }
     }
-    
+
     function createAgent(
         Agent.Type _agentType,
         IAssetManager _assetManager,
         string memory _underlyingAddressString,
         uint256 _collateralTokenClass1
-    ) 
+    )
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -79,7 +79,7 @@ library AgentsExternal {
         // claim the address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
         bytes32 underlyingAddressHash = keccak256(bytes(_underlyingAddressString));
-        state.underlyingAddressOwnership.claim(msg.sender, underlyingAddressHash, 
+        state.underlyingAddressOwnership.claim(msg.sender, underlyingAddressHash,
             state.settings.requireEOAAddressProof);
         agent.underlyingAddressString = _underlyingAddressString;
         agent.underlyingAddressHash = underlyingAddressHash;
@@ -87,7 +87,7 @@ library AgentsExternal {
         agent.underlyingBlockAtCreation = SafeMath64.max64(state.currentUnderlyingBlock, eoaProofBlock + 1);
         emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), address(agentVault), _underlyingAddressString);
     }
-    
+
     function announceDestroy(
         address _agentVault
     )
@@ -127,7 +127,7 @@ library AgentsExternal {
         // notify
         emit AMEvents.AgentDestroyed(_agentVault);
     }
-    
+
     function buybackAgentCollateral(
         address _agentVault
     )
@@ -138,7 +138,7 @@ library AgentsExternal {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
         // Types of various collateral types:
-        // - reservedAMG should be 0, since asset manager had to be paused for a month, so all collateral 
+        // - reservedAMG should be 0, since asset manager had to be paused for a month, so all collateral
         //   reservation requests must have been minted or defaulted by now.
         //   However, it may be nonzero due to some forgotten payment proof, so we burn and clear it.
         // - redeemingAMG corresponds to redemptions where f-assets were already burned, so the redemption can
@@ -155,7 +155,7 @@ library AgentsExternal {
         state.totalReservedCollateralAMG -= agent.reservedAMG;
         agent.reservedAMG = 0;
     }
-    
+
     function setAgentMinCollateralRatioBIPS(
         address _agentVault,
         uint256 _agentMinCollateralRatioBIPS
@@ -165,7 +165,7 @@ library AgentsExternal {
     {
         Agents.setAgentMinCollateralRatioBIPS(Agent.get(_agentVault), _agentMinCollateralRatioBIPS);
     }
-    
+
     // TODO: support multicollateral
     function announceWithdrawal(
         address _agentVault,
@@ -214,7 +214,7 @@ library AgentsExternal {
             emit AMEvents.DustChanged(_agentVault, dustUBA);
         }
     }
-    
+
     function depositExecuted(
         IERC20 _token,
         address _agentVault
@@ -228,7 +228,7 @@ library AgentsExternal {
             Liquidation.endLiquidationIfHealthy(agent);
         }
     }
-    
+
     function withdrawalExecuted(
         IERC20 _token,
         address _agentVault,
@@ -247,15 +247,15 @@ library AgentsExternal {
         require(block.timestamp > agent.withdrawalAnnouncedAt + settings.withdrawalWaitMinSeconds,
             "withdrawal: not allowed yet");
         agent.withdrawalAnnouncedNATWei -= uint128(_valueNATWei);    // guarded by above require
-        // could reset agent.withdrawalAnnouncedAt if agent.withdrawalAnnouncedNATWei == 0, 
+        // could reset agent.withdrawalAnnouncedAt if agent.withdrawalAnnouncedNATWei == 0,
         // but it's not needed, since no withdrawal can be made anyway
     }
 
     function isCollateralToken(
         address _agentVault,
         IERC20 _token
-    ) 
-        external view 
+    )
+        external view
         returns (bool)
     {
         Agent.State storage agent = Agent.get(_agentVault);

@@ -14,7 +14,7 @@ library AgentCollateral {
     using SafeMath for uint256;
     using SafePct for uint256;
     using Agent for Agent.State;
-    
+
     function combinedData(
         Agent.State storage _agent
     )
@@ -28,7 +28,7 @@ library AgentCollateral {
             agentPoolTokens: agentsPoolTokensCollateralData(_agent, poolCollateral)
         });
     }
-    
+
     function agentClass1CollateralData(
         Agent.State storage _agent
     )
@@ -37,13 +37,13 @@ library AgentCollateral {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         CollateralToken.Data storage collateral = state.collateralTokens[_agent.collateralTokenC1];
-        return Collateral.Data({ 
+        return Collateral.Data({
             kind: Collateral.Kind.AGENT_CLASS1,
             fullCollateral: collateral.token.balanceOf(_agent.vaultAddress()),
             amgToTokenWeiPrice: Conversion.currentAmgPriceInTokenWei(collateral)
         });
     }
-    
+
     function poolCollateralData(
         Agent.State storage _agent
     )
@@ -52,13 +52,13 @@ library AgentCollateral {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         CollateralToken.Data storage collateral = state.collateralTokens[CollateralToken.POOL];
-        return Collateral.Data({ 
+        return Collateral.Data({
             kind: Collateral.Kind.POOL,
             fullCollateral: collateral.token.balanceOf(address(_agent.collateralPool)),
             amgToTokenWeiPrice: Conversion.currentAmgPriceInTokenWei(collateral)
         });
     }
-    
+
     function agentsPoolTokensCollateralData(
         Agent.State storage _agent,
         Collateral.Data memory _poolCollateral
@@ -71,20 +71,20 @@ library AgentCollateral {
         uint256 totalPoolTokens = poolToken.totalSupply();
         uint256 amgToPoolTokenWeiPrice = _poolCollateral.fullCollateral != 0 ?
             _poolCollateral.amgToTokenWeiPrice.mulDiv(totalPoolTokens, _poolCollateral.fullCollateral) : 0;
-        return Collateral.Data({ 
+        return Collateral.Data({
             kind: Collateral.Kind.AGENT_POOL,
             fullCollateral: agentPoolTokens,
             amgToTokenWeiPrice: amgToPoolTokenWeiPrice
         });
     }
-    
+
     // The max number of lots the agent can mint
     function freeCollateralLots(
         Collateral.CombinedData memory _data,
         Agent.State storage _agent
     )
-        internal view 
-        returns (uint256 _lots) 
+        internal view
+        returns (uint256 _lots)
     {
         uint256 agentLots = freeSingleCollateralLots(_data.agentCollateral, _agent);
         uint256 poolLots = freeSingleCollateralLots(_data.poolCollateral, _agent);
@@ -96,8 +96,8 @@ library AgentCollateral {
         Collateral.Data memory _data,
         Agent.State storage _agent
     )
-        internal view 
-        returns (uint256) 
+        internal view
+        returns (uint256)
     {
         uint256 collateralWei = freeCollateralWei(_data, _agent);
         uint256 lotWei = mintingLotCollateralWei(_data, _agent);
@@ -105,28 +105,28 @@ library AgentCollateral {
         // so then we can safely return 0 here, since minting is impossible
         return lotWei != 0 ? collateralWei / lotWei : 0;
     }
-    
+
     function freeCollateralWei(
         Collateral.Data memory _data,
         Agent.State storage _agent
     )
-        internal view 
-        returns (uint256) 
+        internal view
+        returns (uint256)
     {
         uint256 lockedCollateral = lockedCollateralWei(_data, _agent);
         (, uint256 freeCollateral) = _data.fullCollateral.trySub(lockedCollateral);
         return freeCollateral;
     }
-    
+
     // Amount of collateral NOT available for new minting or withdrawal.
     function lockedCollateralWei(
         Collateral.Data memory _data,
         Agent.State storage _agent
     )
-        internal view 
-        returns (uint256) 
+        internal view
+        returns (uint256)
     {
-        (uint256 mintingMinCollateralRatioBIPS, uint256 systemMinCollateralRatioBIPS) = 
+        (uint256 mintingMinCollateralRatioBIPS, uint256 systemMinCollateralRatioBIPS) =
             mintingMinCollateralRatio(_agent, _data.kind);
         uint256 backedAMG = uint256(_agent.reservedAMG) + uint256(_agent.mintedAMG);
         uint256 mintingCollateral = Conversion.convertAmgToTokenWei(backedAMG, _data.amgToTokenWeiPrice)
@@ -139,18 +139,18 @@ library AgentCollateral {
     function mintingLotCollateralWei(
         Collateral.Data memory _data,
         Agent.State storage _agent
-    ) 
-        internal view 
-        returns (uint256) 
+    )
+        internal view
+        returns (uint256)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         (uint256 minCollateralRatio,) = mintingMinCollateralRatio(_agent, _data.kind);
         return Conversion.convertAmgToTokenWei(state.settings.lotSizeAMG, _data.amgToTokenWeiPrice)
             .mulBips(minCollateralRatio);
     }
-    
+
     function mintingMinCollateralRatio(
-        Agent.State storage _agent, 
+        Agent.State storage _agent,
         Collateral.Kind _kind
     )
         internal view
@@ -161,36 +161,36 @@ library AgentCollateral {
             _systemMinCollateralRatioBIPS = state.settings.mintingPoolHoldingsRequiredBIPS;
             _mintingMinCollateralRatioBIPS = _systemMinCollateralRatioBIPS;
         } else if (_kind == Collateral.Kind.POOL) {
-            _systemMinCollateralRatioBIPS = 
+            _systemMinCollateralRatioBIPS =
                 state.collateralTokens[CollateralToken.POOL].minCollateralRatioBIPS;
-            _mintingMinCollateralRatioBIPS = 
+            _mintingMinCollateralRatioBIPS =
                 Math.max(_agent.agentMinPoolCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         } else {
-            _systemMinCollateralRatioBIPS = 
+            _systemMinCollateralRatioBIPS =
                 state.collateralTokens[_agent.collateralTokenC1].minCollateralRatioBIPS;
             // agentMinCollateralRatioBIPS must be greater than minCollateralRatioBIPS when set, but
             // minCollateralRatioBIPS can change later so we always use the max of both
-            _mintingMinCollateralRatioBIPS = 
+            _mintingMinCollateralRatioBIPS =
                 Math.max(_agent.agentMinCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         }
     }
-    
+
     // Used for redemption default payment - calculate all types of collateral at the same rate, so that
     // future redemptions don't get less than this one (unless the price changes).
     // Ignores collateral announced for withdrawal (redemption has priority over withdrawal).
     function maxRedemptionCollateral(
         Collateral.Data memory _data,
-        Agent.State storage _agent, 
+        Agent.State storage _agent,
         uint256 _valueAMG
     )
-        internal view 
-        returns (uint256) 
+        internal view
+        returns (uint256)
     {
         assert(_agent.redeemingAMG > 0 && _valueAMG <= _agent.redeemingAMG);
         uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG);
         return _data.fullCollateral.mulDiv(_valueAMG, totalAMG); // totalAMG > 0 (guarded by assert)
     }
-    
+
     // Used for calculating collateral ration in liquidation.
     function collateralDataWithTrusted(
         Agent.State storage _agent,
@@ -201,25 +201,25 @@ library AgentCollateral {
     {
         assert (_kind != Collateral.Kind.AGENT_POOL);   // does not make sense for liquidation
         AssetManagerState.State storage state = AssetManagerState.get();
-        uint256 tokenIndex = 
+        uint256 tokenIndex =
             _kind == Collateral.Kind.AGENT_CLASS1 ? _agent.collateralTokenC1 : CollateralToken.POOL;
         CollateralToken.Data storage collateral = state.collateralTokens[tokenIndex];
-        address holderAddress = 
+        address holderAddress =
             _kind == Collateral.Kind.AGENT_CLASS1 ? _agent.vaultAddress() : address(_agent.collateralPool);
         _fullCollateral = collateral.token.balanceOf(holderAddress);
-        (_amgToTokenWeiPrice, _amgToTokenWeiPriceTrusted) = 
+        (_amgToTokenWeiPrice, _amgToTokenWeiPriceTrusted) =
             Conversion.currentAmgPriceInTokenWeiWithTrusted(collateral);
     }
-    
+
     // Agent's collateral ratio for single collateral type (BIPS) - used in liquidation.
     // Ignores collateral announced for withdrawal (withdrawals are forbidden during liquidation).
     function collateralRatioBIPS(
-        Agent.State storage _agent, 
+        Agent.State storage _agent,
         uint256 _fullCollateral,
         uint256 _amgToTokenWeiPrice
     )
         internal view
-        returns (uint256) 
+        returns (uint256)
     {
         uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG);
         if (totalAMG == 0) return 1e10;    // nothing minted - ~infinite collateral ratio (but avoid overflows)

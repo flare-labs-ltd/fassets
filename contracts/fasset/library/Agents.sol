@@ -13,7 +13,7 @@ import "./Conversion.sol";
 library Agents {
     using SafeCast for uint256;
     using Agent for Agent.State;
-    
+
     function setAgentMinCollateralRatioBIPS(
         Agent.State storage _agent,
         uint256 _agentMinCollateralRatioBIPS
@@ -26,7 +26,7 @@ library Agents {
             "collateral ratio too small");
         _agent.agentMinCollateralRatioBIPS = _agentMinCollateralRatioBIPS.toUint32();
     }
-    
+
     function allocateMintedAssets(
         Agent.State storage _agent,
         uint64 _valueAMG
@@ -63,7 +63,7 @@ library Agents {
     {
         _agent.redeemingAMG = SafeMath64.sub64(_agent.redeemingAMG, _valueAMG, "not enough redeeming");
     }
-    
+
     function changeDust(
         Agent.State storage _agent,
         uint64 _newDustAMG
@@ -98,7 +98,7 @@ library Agents {
         uint256 dustUBA = Conversion.convertAmgToUBA(newDustAMG);
         emit AMEvents.DustChanged(_agent.vaultAddress(), dustUBA);
     }
-    
+
     function payoutClass1(
         Agent.State storage _agent,
         address _receiver,
@@ -129,7 +129,7 @@ library Agents {
         _agentResponsibilityWei = Math.min(_agentResponsibilityWei, _amountPaid);
         _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
     }
-    
+
     function burnCollateral(
         Agent.State storage _agent,
         uint256 _amountNATWei
@@ -148,7 +148,7 @@ library Agents {
             vault.payoutNAT(Globals.getWNat(), settings.burnAddress, _amountNATWei);
         }
     }
-    
+
     function vaultOwner(
         Agent.State storage _agent
     )
@@ -166,7 +166,7 @@ library Agents {
         address owner = IAgentVault(_agentVault).owner();
         require(msg.sender == owner, "only agent vault owner");
     }
-    
+
     function requireAgentVaultOwner(
         Agent.State storage _agent
     )
@@ -175,17 +175,17 @@ library Agents {
         address owner = IAgentVault(_agent.vaultAddress()).owner();
         require(msg.sender == owner, "only agent vault owner");
     }
-    
+
     function isCollateralToken(
         Agent.State storage _agent,
         IERC20 _token
-    ) 
-        internal view 
+    )
+        internal view
         returns (bool)
     {
         return _token == Globals.getWNat() || _token == getClass1Token(_agent);
     }
-    
+
     function getClass1Token(Agent.State storage _agent)
         internal view
         returns (IERC20)
@@ -195,15 +195,15 @@ library Agents {
     }
 
     function getClass1Collateral(Agent.State storage _agent)
-        internal view 
+        internal view
         returns (CollateralToken.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         return state.collateralTokens[_agent.collateralTokenC1];
     }
-    
-    function getPoolCollateral() 
-        internal view 
+
+    function getPoolCollateral()
+        internal view
         returns (CollateralToken.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();

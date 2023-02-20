@@ -11,7 +11,7 @@ library RedemptionQueue {
         uint64 prevForAgent;
         uint64 nextForAgent;
     }
-    
+
     struct AgentQueue {
         uint64 firstTicketId;
         uint64 lastTicketId;
@@ -26,11 +26,11 @@ library RedemptionQueue {
     }
 
     function createRedemptionTicket(
-        State storage _state, 
+        State storage _state,
         address _agentVault,
         uint64 _valueAMG
-    ) 
-        internal 
+    )
+        internal
         returns (uint64)
     {
         AgentQueue storage agent = _state.agents[_agentVault];
@@ -65,9 +65,9 @@ library RedemptionQueue {
         // return the new redemption ticket's id
         return ticketId;
     }
-    
+
     function deleteRedemptionTicket(
-        State storage _state, 
+        State storage _state,
         uint64 _ticketId
     )
         internal
@@ -108,7 +108,7 @@ library RedemptionQueue {
         // delete storage
         delete _state.tickets[_ticketId];
     }
-    
+
     function getTicket(State storage _state, uint64 _id) internal view returns (Ticket storage) {
         return _state.tickets[_id];
     }

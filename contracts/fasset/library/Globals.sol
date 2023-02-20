@@ -6,17 +6,17 @@ import "./data/AssetManagerState.sol";
 
 // global state helpers
 library Globals {
-    function getWNat() 
-        internal view 
-        returns (IWNat) 
+    function getWNat()
+        internal view
+        returns (IWNat)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         return IWNat(address(state.collateralTokens[CollateralToken.POOL].token));
     }
 
-    function getFAsset() 
-        internal view 
-        returns (IFAsset) 
+    function getFAsset()
+        internal view
+        returns (IFAsset)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         return settings.fAsset;

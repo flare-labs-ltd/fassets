@@ -12,9 +12,9 @@ interface IAgentVault {
     function depositNat() external payable;
 
     function depositCollateral(IERC20 _token, uint256 _amount) external;
-    
+
     function collateralDeposited(IERC20 _token) external;
-    
+
     function delegate(IVPToken _token, address _to, uint256 _bips) external;
 
     function undelegateAll(IVPToken _token) external;
@@ -25,11 +25,11 @@ interface IAgentVault {
 
     function undelegateGovernance() external;
 
-    function claimFtsoRewards(IFtsoRewardManager _ftsoRewardManager, uint256 _lastRewardEpoch) external 
+    function claimFtsoRewards(IFtsoRewardManager _ftsoRewardManager, uint256 _lastRewardEpoch) external
         returns (uint256);
-        
+
     function setFtsoAutoClaiming(
-        IClaimSetupManager _claimSetupManager, 
+        IClaimSetupManager _claimSetupManager,
         address[] memory _executors,
         address[] memory _allowedRecipients
     ) external payable;
@@ -40,9 +40,9 @@ interface IAgentVault {
         IDistributionToDelegators _distribution,
         uint256 _month
     ) external returns(uint256);
-    
+
     function withdrawNat(uint256 _amount, address payable _recipient) external;
-    
+
     function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient) external;
 
     // agent should make sure to claim rewards before calling destroy(), or they will be forfeit

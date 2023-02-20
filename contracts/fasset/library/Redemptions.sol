@@ -23,7 +23,7 @@ library Redemptions {
     using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for Collateral.Data;
     using Agent for Agent.State;
-    
+
     struct AgentRedemptionData {
         address agentVault;
         uint64 valueAMG;
@@ -43,8 +43,8 @@ library Redemptions {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 maxRedeemedTickets = settings.maxRedeemedTickets;
-        AgentRedemptionList memory redemptionList = AgentRedemptionList({ 
-            length: 0, 
+        AgentRedemptionList memory redemptionList = AgentRedemptionList({
+            length: 0,
             items: new AgentRedemptionData[](maxRedeemedTickets)
         });
         uint64 redeemedLots = 0;
@@ -100,13 +100,13 @@ library Redemptions {
         // _removeFromTicket may delete ticket data, so we call it at end
         _removeFromTicket(ticketId, redeemedAMG);
     }
-    
+
     function _createRemptionRequest(
         AgentRedemptionData memory _data,
         address _redeemer,
         string memory _redeemerUnderlyingAddressString
     )
-        private 
+        private
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
@@ -133,10 +133,10 @@ library Redemptions {
         // emit event to remind agent to pay
         emit AMEvents.RedemptionRequested(_data.agentVault,
             requestId,
-            _redeemerUnderlyingAddressString, 
+            _redeemerUnderlyingAddressString,
             redeemedValueUBA,
             redemptionFeeUBA,
-            lastUnderlyingBlock, 
+            lastUnderlyingBlock,
             lastUnderlyingTimestamp,
             PaymentReference.redemption(requestId));
     }
@@ -150,7 +150,7 @@ library Redemptions {
         Redemption.Request storage request = _getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
         // Usually, we require the agent to trigger confirmation.
-        // But if the agent doesn't respond for long enough, 
+        // But if the agent doesn't respond for long enough,
         // we allow anybody and that user gets rewarded from agent's vault.
         bool isAgent = msg.sender == Agents.vaultOwner(agent);
         require(isAgent || _othersCanConfirmPayment(agent, request, _payment),
@@ -158,7 +158,7 @@ library Redemptions {
         // verify transaction
         TransactionAttestation.verifyPayment(_payment);
         // payment reference must match
-        require(_payment.paymentReference == PaymentReference.redemption(_redemptionRequestId), 
+        require(_payment.paymentReference == PaymentReference.redemption(_redemptionRequestId),
             "invalid redemption reference");
         // we do not allow payments before the underlying block at requests, because the payer should have guessed
         // the payment reference, which is good for nothing except attack attempts
@@ -166,7 +166,7 @@ library Redemptions {
             "redemption payment too old");
         // When status is active, agent has either paid in time / was blocked and agent's collateral is released
         // or the payment failed and the default is called.
-        // Otherwise, agent has already defaulted on payment and this method is only needed for proper 
+        // Otherwise, agent has already defaulted on payment and this method is only needed for proper
         // accounting of underlying balance. It still has to be called in time, otherwise it can be
         // called by 3rd party and in this case, the caller gets some reward from agent's vault.
         if (request.status == Redemption.Status.ACTIVE) {
@@ -181,7 +181,7 @@ library Redemptions {
                     emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
                         _payment.transactionHash, request.underlyingValueUBA, _redemptionRequestId);
                 } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
-                    emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer, 
+                    emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,
                         _payment.transactionHash, request.underlyingValueUBA, _redemptionRequestId);
                 }
             } else {
@@ -192,7 +192,7 @@ library Redemptions {
                 // we do not allow retrying failed payments, so just default here
                 _executeDefaultPayment(agent, request, _redemptionRequestId);
                 // notify
-                emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer, 
+                emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer,
                     _payment.transactionHash, _redemptionRequestId, failureReason);
             }
         }
@@ -211,7 +211,7 @@ library Redemptions {
         // delete redemption request at end
         delete state.redemptionRequests[_redemptionRequestId];
     }
-    
+
     function _othersCanConfirmPayment(
         Agent.State storage _agent,
         Redemption.Request storage _request,
@@ -232,7 +232,7 @@ library Redemptions {
         //   unlocked, but that only benefits the agent, so the agent should take care of that)
         return _payment.sourceAddressHash == _agent.underlyingAddressHash;
     }
-    
+
     function _validatePayment(
         Redemption.Request storage request,
         IAttestationClient.Payment calldata _payment
@@ -253,7 +253,7 @@ library Redemptions {
         }
         return (true, "");
     }
-    
+
     function _updateFreeBalanceAfterPayment(
         Agent.State storage _agent,
         IAttestationClient.Payment calldata _payment,
@@ -268,7 +268,7 @@ library Redemptions {
         }
         UnderlyingFreeBalance.updateFreeBalance(_agent, _freeBalanceChangeUBA);
     }
-    
+
     function redemptionPaymentDefault(
         IAttestationClient.ReferencedPaymentNonexistence calldata _nonPayment,
         uint64 _redemptionRequestId
@@ -285,13 +285,13 @@ library Redemptions {
             _nonPayment.destinationAddressHash == request.redeemerUnderlyingAddressHash &&
             _nonPayment.amount == request.underlyingValueUBA - request.underlyingFeeUBA,
             "redemption non-payment mismatch");
-        require(_nonPayment.firstOverflowBlockNumber > request.lastUnderlyingBlock && 
-            _nonPayment.firstOverflowBlockTimestamp > request.lastUnderlyingTimestamp, 
+        require(_nonPayment.firstOverflowBlockNumber > request.lastUnderlyingBlock &&
+            _nonPayment.firstOverflowBlockTimestamp > request.lastUnderlyingTimestamp,
             "redemption default too early");
         require(_nonPayment.lowerBoundaryBlockNumber <= request.firstUnderlyingBlock,
             "redemption request too old");
         // We allow only redeemers or agents to trigger redemption default, since they may want
-        // to do it at some particular time. (Agent might want to call default to unstick redemption when 
+        // to do it at some particular time. (Agent might want to call default to unstick redemption when
         // the redeemer is unresponsive.)
         require(msg.sender == request.redeemer || msg.sender == Agents.vaultOwner(agent),
             "only redeemer or agent");
@@ -300,7 +300,7 @@ library Redemptions {
         // don't delete redemption request at end - the agent might still confirm failed payment
         request.status = Redemption.Status.DEFAULTED;
     }
-    
+
     function finishRedemptionWithoutPayment(
         IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
         uint64 _redemptionRequestId
@@ -332,7 +332,7 @@ library Redemptions {
         AssetManagerState.State storage state = AssetManagerState.get();
         delete state.redemptionRequests[_redemptionRequestId];
     }
-    
+
     function _executeDefaultPayment(
         Agent.State storage _agent,
         Redemption.Request storage _request,
@@ -350,11 +350,11 @@ library Redemptions {
         Agents.endRedeemingAssets(_agent, _request.valueAMG);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment
         // it will be (or was already) updated in call to finishRedemptionWithoutPayment (or confirmRedemptionPayment)
-        emit AMEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _request.underlyingValueUBA, 
+        emit AMEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _request.underlyingValueUBA,
             paidC1Wei, paidPoolWei, _redemptionRequestId);
     }
-    
-    // payment calculation: pay redemptionDefaultFactorAgentC1BIPS (>= 1) from agent vault class 1 collateral and 
+
+    // payment calculation: pay redemptionDefaultFactorAgentC1BIPS (>= 1) from agent vault class 1 collateral and
     // redemptionDefaultFactorPoolBIPS from pool; however, if there is not enough in agent's vault, pay more from pool
     // assured: _agentC1Wei <= fullCollateralC1, _poolWei <= fullPoolCollateral
     function _collateralAmountForRedemption(
@@ -389,8 +389,8 @@ library Redemptions {
     function selfClose(
         address _agentVault,
         uint256 _amountUBA
-    ) 
-        external 
+    )
+        external
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
@@ -438,11 +438,11 @@ library Redemptions {
         _valueUBA = Conversion.convertAmgToUBA(_valueAMG);
         UnderlyingFreeBalance.increaseFreeBalance(_agent, _valueUBA);
     }
-    
+
     function _removeFromTicket(
         uint64 _redemptionTicketId,
         uint64 _redeemedAMG
-    ) 
+    )
         private
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -468,7 +468,7 @@ library Redemptions {
         uint64 timeshift = block.timestamp.toUint64() - state.currentUnderlyingBlockUpdatedAt;
         _lastUnderlyingBlock =
             state.currentUnderlyingBlock + state.settings.underlyingBlocksForPayment;
-        _lastUnderlyingTimestamp = 
+        _lastUnderlyingTimestamp =
             state.currentUnderlyingBlockTimestamp + timeshift + state.settings.underlyingSecondsForPayment;
     }
 

@@ -11,12 +11,12 @@ contract RedemptionQueueMock {
     using RedemptionQueue for RedemptionQueue.State;
 
     RedemptionQueue.State private redemptionQueue;
-    
+
     function createRedemptionTicket(
         address _agentVault,
         uint64 _valueAMG
-    ) 
-        external 
+    )
+        external
         returns (uint64)
     {
         return redemptionQueue.createRedemptionTicket(_agentVault, _valueAMG);

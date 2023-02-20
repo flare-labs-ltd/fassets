@@ -16,18 +16,18 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     // all calls to AssetManager's updateSettings/pause/terminate will fail anyway
     // since they will arrive from wrong controller address.
     address public replacedBy;
-    
+
     mapping(address => uint256) private assetManagerIndex;
     IAssetManager[] private assetManagers;
-    
+
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, address _addressUpdater)
         Governed(_governanceSettings, _initialGovernance)
         AddressUpdatable(_addressUpdater)
     {
     }
-    
-    function addAssetManager(IAssetManager _assetManager) 
-        external 
+
+    function addAssetManager(IAssetManager _assetManager)
+        external
         onlyGovernance
     {
         if (assetManagerIndex[address(_assetManager)] != 0) return;
@@ -39,8 +39,8 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         }
     }
 
-    function removeAssetManager(IAssetManager _assetManager) 
-        external 
+    function removeAssetManager(IAssetManager _assetManager)
+        external
         onlyGovernance
     {
         uint256 position = assetManagerIndex[address(_assetManager)];
@@ -58,7 +58,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             _assetManager.attachController(false);
         }
     }
-    
+
     function getAssetManagers()
         external view
         returns (IAssetManager[] memory)
@@ -72,16 +72,16 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     {
         return assetManagerIndex[_assetManager] != 0;
     }
-    
+
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Setters
-    
+
     // this is a safe operation, executor can call without prior governance call
     function refreshFtsoIndexes(IAssetManager[] memory _assetManagers)
         external
     {
         _checkOnlyGovernanceOrExecutor();
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.REFRESH_FTSO_INDEXES, abi.encode());
     }
 
@@ -89,7 +89,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_WHITELIST, abi.encode(_value));
     }
 
@@ -97,12 +97,12 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_LOT_SIZE_AMG, abi.encode(_value));
     }
 
     function setCollateralRatios(
-        IAssetManager[] memory _assetManagers, 
+        IAssetManager[] memory _assetManagers,
         uint256 _minCollateralRatioBIPS,
         uint256 _ccbMinCollateralRatioBIPS,
         uint256 _safetyMinCollateralRatioBIPS
@@ -110,32 +110,32 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyGovernance
     {
-        _setValueOnManagers(_assetManagers, 
-            SettingsUpdater.SET_COLLATERAL_RATIOS, 
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_COLLATERAL_RATIOS,
             abi.encode(_minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS));
     }
 
     function setTimeForPayment(
-        IAssetManager[] memory _assetManagers, 
+        IAssetManager[] memory _assetManagers,
         uint256 _underlyingBlocks,
         uint256 _underlyingSeconds
     )
         external
         onlyGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_TIME_FOR_PAYMENT, abi.encode(_underlyingBlocks, _underlyingSeconds));
     }
 
     function setPaymentChallengeReward(
-        IAssetManager[] memory _assetManagers, 
+        IAssetManager[] memory _assetManagers,
         uint256 _rewardNATWei,
         uint256 _rewardBIPS
     )
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_PAYMENT_CHALLENGE_REWARD, abi.encode(_rewardNATWei, _rewardBIPS));
     }
 
@@ -143,7 +143,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_MAX_TRUSTED_PRICE_AGE_SECONDS, abi.encode(_value));
     }
 
@@ -151,7 +151,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_COLLATERAL_RESERVATION_FEE_BIPS, abi.encode(_value));
     }
 
@@ -159,7 +159,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_REDEMPTION_FEE_BIPS, abi.encode(_value));
     }
 
@@ -167,7 +167,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_REDEMPTION_DEFAULT_FACTOR_BIPS, abi.encode(_class1, _pool));
     }
 
@@ -175,7 +175,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS, abi.encode(_value));
     }
 
@@ -183,7 +183,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_CONFIRMATION_BY_OTHERS_REWARD_C1_WEI, abi.encode(_value));
     }
 
@@ -191,7 +191,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_MAX_REDEEMED_TICKETS, abi.encode(_value));
     }
 
@@ -199,7 +199,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_WITHDRAWAL_OR_DESTROY_WAIT_MIN_SECONDS, abi.encode(_value));
     }
 
@@ -207,7 +207,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_CCB_TIME_SECONDS, abi.encode(_value));
     }
 
@@ -215,23 +215,23 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_LIQUIDATION_STEP_SECONDS, abi.encode(_value));
     }
-    
+
     function setLiquidationCollateralFactorBips(IAssetManager[] memory _assetManagers, uint256[] memory _values)
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS, abi.encode(_values));
     }
-    
+
     function setAttestationWindowSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_ATTESTATION_WINDOW_SECONDS, abi.encode(_value));
     }
 
@@ -239,7 +239,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         external
         onlyImmediateGovernance
     {
-        _setValueOnManagers(_assetManagers, 
+        _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS, abi.encode(_value));
     }
 
@@ -270,7 +270,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             _assetManagers[i].unpause();
         }
     }
-    
+
     /**
      * When f-asset is terminated, no transfers can be made anymore.
      * This is an extreme measure to be used only when the asset manager minting has been already paused
@@ -278,7 +278,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
      * terminated and then agents can buy back the collateral at market rate (i.e. they burn market value
      * of backed f-assets in collateral to release the rest of the collateral).
      */
-    function terminate(IAssetManager[] calldata _assetManagers) 
+    function terminate(IAssetManager[] calldata _assetManagers)
         external
         onlyImmediateGovernance
     {
@@ -286,30 +286,30 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             _assetManagers[i].terminate();
         }
     }
-    
+
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Update contracts
 
     function _updateContractAddresses(
         bytes32[] memory _contractNameHashes,
         address[] memory _contractAddresses
-    ) 
+    )
         internal override
     {
         address assetManagerController =
             _getContractAddress(_contractNameHashes, _contractAddresses, "AssetManagerController");
         IAgentVaultFactory agentVaultFactory =
             IAgentVaultFactory(_getContractAddress(_contractNameHashes, _contractAddresses, "AgentVaultFactory"));
-        IAttestationClient attestationClient = 
+        IAttestationClient attestationClient =
             IAttestationClient(_getContractAddress(_contractNameHashes, _contractAddresses, "AttestationClient"));
         IFtsoRegistry ftsoRegistry =
             IFtsoRegistry(_getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry"));
-        IWNat wNat = 
+        IWNat wNat =
             IWNat(_getContractAddress(_contractNameHashes, _contractAddresses, "WNat"));
         for (uint256 i = 0; i < assetManagers.length; i++) {
             IAssetManager assetManager = assetManagers[i];
             assetManager.updateSettings(
-                SettingsUpdater.UPDATE_CONTRACTS, 
+                SettingsUpdater.UPDATE_CONTRACTS,
                 abi.encode(assetManagerController, agentVaultFactory, attestationClient, ftsoRegistry, wNat));
         }
         // if this controller was replaced, set forwarding address

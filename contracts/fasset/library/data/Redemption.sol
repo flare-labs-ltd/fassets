@@ -7,7 +7,7 @@ library Redemption {
         ACTIVE,
         DEFAULTED
     }
-    
+
     struct Request {
         bytes32 redeemerUnderlyingAddressHash;
         uint128 underlyingValueUBA;

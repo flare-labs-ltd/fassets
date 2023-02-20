@@ -10,17 +10,17 @@ import "../interface/IAgentVault.sol";
 
 contract AgentVault is ReentrancyGuard, IAgentVault {
     using SafeERC20 for IERC20;
-    
+
     IAssetManager public immutable assetManager;
     address payable public immutable override owner;
-    
+
     IERC20[] private usedTokens;
     mapping(IERC20 => uint256) private tokenUseFlags;
 
     uint256 private constant TOKEN_DEPOSIT = 1;
     uint256 private constant TOKEN_DELEGATE = 2;
     uint256 private constant TOKEN_DELEGATE_GOVERNANCE = 4;
-    
+
     modifier onlyOwner {
         require(msg.sender == owner, "only owner");
         _;
@@ -35,7 +35,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         assetManager = _assetManager;
         owner = _owner;
     }
-    
+
     // needed to allow wNat.withdraw() to send back funds, since there is no withdrawTo()
     receive() external payable {
         require(msg.sender == address(assetManager.getWNat()), "only wNat");
@@ -48,10 +48,10 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         assetManager.collateralDeposited(wnat);
         _tokenUsed(wnat, TOKEN_DEPOSIT);
     }
-    
+
     // must call `token.approve(vault, amount)` before for each token in _tokens
     function depositCollateral(IERC20 _token, uint256 _amount)
-        external override 
+        external override
         onlyOwner
     {
         _token.transferFrom(msg.sender, address(this), _amount);
@@ -82,9 +82,9 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     }
 
     function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient)
-        external override 
+        external override
         onlyOwner
-        nonReentrant 
+        nonReentrant
     {
         // check that enough was announced and reduce announcement
         assetManager.withdrawCollateral(_token, _amount);
@@ -94,10 +94,10 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
 
     // Allow transfering a token, airdropped to the agent vault, to the owner.
     // Doesn't work for wNat because this would allow withdrawing the locked collateral.
-    function transferExternalToken(IERC20 _token, uint256 _amount) 
-        external override 
-        onlyOwner 
-        nonReentrant 
+    function transferExternalToken(IERC20 _token, uint256 _amount)
+        external override
+        onlyOwner
+        nonReentrant
     {
         require(!assetManager.isCollateralToken(address(this), _token), "Only non-collateral tokens");
         _token.safeTransfer(owner, _amount);
@@ -128,7 +128,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     }
 
     // Claim ftso rewards. Aletrnatively, you can set claim executor and then claim directly from FtsoRewardManager.
-    function claimFtsoRewards(IFtsoRewardManager _ftsoRewardManager, uint256 _lastRewardEpoch) 
+    function claimFtsoRewards(IFtsoRewardManager _ftsoRewardManager, uint256 _lastRewardEpoch)
         external override
         onlyOwner
         returns (uint256)
@@ -138,7 +138,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
 
     // Set executors and recipients that can then automatically claim rewards through FtsoRewardManager.
     function setFtsoAutoClaiming(
-        IClaimSetupManager _claimSetupManager, 
+        IClaimSetupManager _claimSetupManager,
         address[] memory _executors,
         address[] memory _allowedRecipients
     )
@@ -156,7 +156,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     {
         return _distribution.claim(owner, _month);
     }
-    
+
     function optOutOfAirdrop(IDistributionToDelegators _distribution) external override onlyOwner {
         _distribution.optOutOfAirdrop();
     }
@@ -190,7 +190,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     // Used by asset manager for liquidation and failed redemption.
     // Since _recipient is typically an unknown address, we do not directly send NAT,
     // but transfer WNAT (doesn't trigger any callbacks) which the recipient must withdraw.
-    // Is nonReentrant to prevent reentrancy in case anybody ever adds receive hooks on wNat. 
+    // Is nonReentrant to prevent reentrancy in case anybody ever adds receive hooks on wNat.
     function payout(IERC20 _token, address _recipient, uint256 _amount)
         external override
         onlyAssetManager
@@ -198,7 +198,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     {
         _token.safeTransfer(_recipient, _amount);
     }
-    
+
     // Used by asset manager (only for burn for now).
     // Is nonReentrant to prevent reentrancy, in case this is not the last metod called.
     function payoutNAT(IWNat _wNat, address payable _recipient, uint256 _amount)
@@ -219,7 +219,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
             require(success, "transfer failed");
         }
     }
-    
+
     function _tokenUsed(IERC20 _token, uint256 _flags) private {
         if (tokenUseFlags[_token] == 0) {
             usedTokens.push(_token);

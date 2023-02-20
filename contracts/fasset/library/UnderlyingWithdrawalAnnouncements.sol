@@ -13,7 +13,7 @@ import "./TransactionAttestation.sol";
 library UnderlyingWithdrawalAnnouncements {
     using SafeCast for uint256;
     using PaymentConfirmations for PaymentConfirmations.State;
-    
+
     function announceUnderlyingWithdrawal(
         address _agentVault
     )
@@ -30,7 +30,7 @@ library UnderlyingWithdrawalAnnouncements {
         bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);
         emit AMEvents.UnderlyingWithdrawalAnnounced(_agentVault, announcementId, paymentReference);
     }
-    
+
     function confirmUnderlyingWithdrawal(
         IAttestationClient.Payment calldata _payment,
         address _agentVault
@@ -47,10 +47,10 @@ library UnderlyingWithdrawalAnnouncements {
         require(_payment.paymentReference == paymentReference, "wrong announced pmt reference");
         require(_payment.sourceAddressHash == agent.underlyingAddressHash,
             "wrong announced pmt source");
-        require(isAgent || block.timestamp > 
+        require(isAgent || block.timestamp >
                 agent.underlyingWithdrawalAnnouncedAt + state.settings.confirmationByOthersAfterSeconds,
             "only agent vault owner");
-        require(block.timestamp > 
+        require(block.timestamp >
             agent.underlyingWithdrawalAnnouncedAt + state.settings.announcedUnderlyingConfirmationMinSeconds,
             "confirmation too soon");
         // make sure withdrawal cannot be challenged as invalid
@@ -64,7 +64,7 @@ library UnderlyingWithdrawalAnnouncements {
             Agents.payoutClass1(agent, msg.sender, state.settings.confirmationByOthersRewardC1Wei);
         }
         // send event
-        emit AMEvents.UnderlyingWithdrawalConfirmed(_agentVault, _payment.spentAmount, 
+        emit AMEvents.UnderlyingWithdrawalConfirmed(_agentVault, _payment.spentAmount,
             _payment.transactionHash, announcementId);
     }
 
@@ -78,7 +78,7 @@ library UnderlyingWithdrawalAnnouncements {
         Agent.State storage agent = Agent.get(_agentVault);
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
         require(announcementId != 0, "no active announcement");
-        require(block.timestamp > 
+        require(block.timestamp >
             agent.underlyingWithdrawalAnnouncedAt + state.settings.announcedUnderlyingConfirmationMinSeconds,
             "cancel too soon");
         // clear active withdrawal announcement

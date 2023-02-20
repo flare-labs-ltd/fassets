@@ -18,7 +18,7 @@ library Minting {
     using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for Collateral.CombinedData;
     using Agent for Agent.State;
-    
+
     function executeMinting(
         IAttestationClient.Payment calldata _payment,
         uint64 _crtId
@@ -31,11 +31,11 @@ library Minting {
         TransactionAttestation.verifyPaymentSuccess(_payment);
         // minter or agent can present the proof - agent may do it to unlock the collateral if minter
         // becomes unresponsive
-        require(msg.sender == crt.minter || msg.sender == Agents.vaultOwner(agent), 
+        require(msg.sender == crt.minter || msg.sender == Agents.vaultOwner(agent),
             "only minter or agent");
         require(_payment.paymentReference == PaymentReference.minting(_crtId),
             "invalid minting reference");
-        require(_payment.receivingAddressHash == agent.underlyingAddressHash, 
+        require(_payment.receivingAddressHash == agent.underlyingAddressHash,
             "not minting agent's address");
         uint256 receivedAmount = SafeCast.toUint256(_payment.receivedAmount);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
@@ -52,7 +52,7 @@ library Minting {
         // cleanup
         CollateralReservations.releaseCollateralReservation(crt, _crtId);   // crt can't be used after this
     }
-    
+
     function selfMint(
         IAttestationClient.Payment calldata _payment,
         address _agentVault,
@@ -72,9 +72,9 @@ library Minting {
         uint64 valueAMG = _lots * state.settings.lotSizeAMG;
         checkMintingCap(valueAMG);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
-        require(_payment.paymentReference == PaymentReference.selfMint(_agentVault), 
+        require(_payment.paymentReference == PaymentReference.selfMint(_agentVault),
             "invalid self-mint reference");
-        require(_payment.receivingAddressHash == agent.underlyingAddressHash, 
+        require(_payment.receivingAddressHash == agent.underlyingAddressHash,
             "self-mint not agent's address");
         require(_payment.receivedAmount >= 0 && uint256(_payment.receivedAmount) >= mintValueUBA,
             "self-mint payment too small");
@@ -111,11 +111,11 @@ library Minting {
         uint64 _mintValueAMG,
         uint256 _receivedAmountUBA,
         uint256 _feeUBA
-    ) 
+    )
         private
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        // Add pool fee to dust (usually less than 1 lot), but if dust exceeds 1 lot, add as much as possible 
+        // Add pool fee to dust (usually less than 1 lot), but if dust exceeds 1 lot, add as much as possible
         // to the created ticket. At the end, there will always be less than 1 lot of dust left.
         uint64 poolFeeAMG = Conversion.convertUBAToAmg(_feeUBA.mulBips(_agent.poolFeeShareBIPS));
         uint64 newDustAMG = _agent.dustAMG + poolFeeAMG;
@@ -127,7 +127,7 @@ library Minting {
         }
         // create ticket and change dust
         Agents.allocateMintedAssets(_agent, _mintValueAMG + poolFeeAMG);
-        uint64 redemptionTicketId = 
+        uint64 redemptionTicketId =
             state.redemptionQueue.createRedemptionTicket(_agent.vaultAddress(), ticketValueAMG);
         Agents.changeDust(_agent, newDustAMG);
         // update agent free balance with agent's fee
@@ -139,7 +139,7 @@ library Minting {
         state.settings.fAsset.mint(_minter, mintValueUBA);
         state.settings.fAsset.mint(address(_agent.collateralPool), poolFeeUBA);
         // notify
-        emit AMEvents.MintingExecuted(_agent.vaultAddress(), _crtId, redemptionTicketId, 
+        emit AMEvents.MintingExecuted(_agent.vaultAddress(), _crtId, redemptionTicketId,
             mintValueUBA, agentFeeUBA, poolFeeUBA);
     }
 }

@@ -11,7 +11,7 @@ interface IFAsset {
      * Only the assetManager corresponding to this fAsset may call `mint()`.
      */
     function mint(address _owner, uint256 _amount) external;
-    
+
     /**
      * Burns `_amount` od fAsset.
      * Only the assetManager corresponding to this fAsset may call `burn()`.
@@ -22,9 +22,9 @@ interface IFAsset {
     /**
      * Stops all transfers by setting `terminated` flag to true.
      * Only the assetManager corresponding to this fAsset may call `terminate()`.
-     */    
+     */
     function terminate() external;
-    
+
     /**
      * Get the asset manager, corresponding to this fAsset.
      * fAssets and asset managers are in 1:1 correspondence.
@@ -36,8 +36,8 @@ interface IFAsset {
      *
      * When f-asset is terminated, no transfers can be made anymore.
      * This is an extreme measure to be used as an optional last phase of asset manager upgrade,
-     * when the asset manager minting has already been paused for a long time but there still exist 
-     * unredeemable f-assets, which at this point are considered unrecoverable (lost wallet keys etc.). 
+     * when the asset manager minting has already been paused for a long time but there still exist
+     * unredeemable f-assets, which at this point are considered unrecoverable (lost wallet keys etc.).
      * In such case, the f-asset contract is terminated and then agents can buy back their collateral at market rate
      * (i.e. they burn market value of backed f-assets in collateral to release the rest of the collateral).
      */

@@ -31,9 +31,9 @@ import "../library/FullAgentInfo.sol";
  */
 contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     using SafeCast for uint256;
-    
+
     SettingsUpdater.PendingUpdates private pendingUpdates;
-    
+
     uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
 
     modifier onlyAssetManagerController {
@@ -46,7 +46,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         require(AssetManagerState.get().attached, "not attached");
         _;
     }
-    
+
     constructor(
         AssetManagerSettings.Data memory _settings
     ) {
@@ -60,29 +60,29 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Update all settings with validation.
      * This method cannot be called directly, it has to be called through assetManagerController.
      * NOTE: may not be called directly - only through asset manager controller by governance.
-     */    
+     */
     function updateSettings(
         bytes32 _method,
         bytes calldata _params
-    ) 
+    )
         external override
         onlyAssetManagerController
     {
         SettingsUpdater.callUpdate(pendingUpdates, _method, _params);
     }
-    
+
     /**
      * In update, all settings must be set (and some must stay unchanged), so the updater must call
      * getSetings and then updateSettings with modified structure.
      * @return the current settings
      */
-    function getSettings() 
+    function getSettings()
         external view
         returns (AssetManagerSettings.Data memory)
     {
         return AssetManagerState.getSettings();
     }
-    
+
     /**
      * Get the asset manager controller, the only address that can change settings.
      */
@@ -92,25 +92,25 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         return AssetManagerState.getSettings().assetManagerController;
     }
-    
+
     /**
      * When `attached` is true, asset manager has been added to the asset manager controller.
      * Even though the asset manager controller address is set at the construction time, the manager may not
      * be able to be added to the controller immediatelly because the method addAssetMaanager must be called
-     * by the governance multisig (with timelock). During this time it is impossible to verify through the 
+     * by the governance multisig (with timelock). During this time it is impossible to verify through the
      * controller that the asset manager is legit.
-     * Therefore creating agents and minting is disabled until the asset manager controller notifies 
+     * Therefore creating agents and minting is disabled until the asset manager controller notifies
      * the asset manager that it has been added.
      * The `attached` can be set to false when the retired asset manager is removed from the controller.
      */
-    function attachController(bool attached) 
+    function attachController(bool attached)
         external override
         onlyAssetManagerController
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         state.attached = attached;
     }
-    
+
     /**
      * When `constrollerAttached` is true, asset manager has been added to the asset manager controller.
      */
@@ -121,7 +121,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Agent handling
-    
+
     /**
      * This method fixes the underlying address to be used by given agent owner.
      * A proof of payment (can be minimal or to itself) from this address must be provided,
@@ -140,11 +140,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         requireWhitelistedSender();
         AgentsExternal.claimAddressWithEOAProof(_payment);
     }
-    
+
     /**
      * Create an agent.
      * Agent will always be identified by `_agentVault` address.
-     * (Externally, same account may own several agent vaults, 
+     * (Externally, same account may own several agent vaults,
      *  but in fasset system, each agent vault acts as an independent agent.)
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _underlyingAddressString full address on the underlying chain (not hash)
@@ -152,14 +152,14 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     function createAgent(
         string memory _underlyingAddressString,
         uint256 _collateralTokenClass1
-    ) 
+    )
         external
         onlyAttached
     {
         requireWhitelistedSender();
         AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString, _collateralTokenClass1);
     }
-    
+
     /**
      * Announce that the agent is going to be destroyed. At this time, agent must not have any mintings
      * or collateral reservations and must not be on the available agents list.
@@ -172,7 +172,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         AgentsExternal.announceDestroy(_agentVault);
     }
-    
+
     /**
      * Delete all agent data, selfdestruct agent vault and send remaining collateral to the `_recipient`.
      * Procedure for destroying agent:
@@ -191,7 +191,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         AgentsExternal.destroyAgent(_agentVault);
     }
-    
+
     /**
      * Set the ratio at which free collateral for the minting will be accounted.
      * NOTE: may only be called by the agent vault owner.
@@ -206,7 +206,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         AgentsExternal.setAgentMinCollateralRatioBIPS(_agentVault, _agentMinCollateralRatioBIPS);
     }
-    
+
     /**
      * Return basic info about an agent, typically needed by a minter.
      * @param _agentVault agent vault address
@@ -253,7 +253,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         // AgentsExternal.withdrawalExecuted makes sure that only a registered agent vault can call
         AgentsExternal.withdrawalExecuted(_token, msg.sender, _valueNATWei);
     }
-    
+
     /**
      * Called by AgentVault when there was a deposit.
      * May pull agent out of liquidation.
@@ -267,7 +267,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         // AgentsExternal.depositExecuted makes sure that only a registered agent vault can call
         AgentsExternal.depositExecuted(_token, msg.sender);
     }
-    
+
     /**
      * After a lot size change by the governance, it may happen that after a redemption
      * there remains less than one lot on a redemption ticket. This is named "dust" and
@@ -299,7 +299,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      *  global min collateral ratio; for public agents this can very quickly lead to liquidation,
      *  therefore it is required for agent to set it when becoming available.
      *  Note that agentMinCollateralRatioBIPS can also be set separately by setAgentMinCollateralRatioBIPS method.
-     */    
+     */
     function makeAgentAvailable(
         address _agentVault,
         uint256 _feeBIPS,
@@ -309,7 +309,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         AvailableAgents.makeAvailable(_agentVault, _feeBIPS, _agentMinCollateralRatioBIPS);
     }
-    
+
     /**
      * Exit the publicly available agents list.
      * NOTE: may only be called by the agent vault owner.
@@ -322,7 +322,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         AvailableAgents.exit(_agentVault);
     }
-    
+
     /**
      * Get (a part of) the list of available agents.
      * The list must be retrieved in parts since retrieving the whole list can consume too much gas for one block.
@@ -330,10 +330,10 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * @param _end end index (one above last) to return from the available agent's list
      */
     function getAvailableAgentsList(
-        uint256 _start, 
+        uint256 _start,
         uint256 _end
-    ) 
-        external view 
+    )
+        external view
         returns (address[] memory _agents, uint256 _totalLength)
     {
         return AvailableAgents.getList(_start, _end);
@@ -343,24 +343,24 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Get (a part of) the list of available agents with extra information about agents' fee, min collateral ratio
      * and available collateral (in lots).
      * The list must be retrieved in parts since retrieving the whole list can consume too much gas for one block.
-     * NOTE: agent's available collateral can change anytime due to price changes, minting, or changes 
+     * NOTE: agent's available collateral can change anytime due to price changes, minting, or changes
      * in agent's min collateral ratio, so it is only to be used as estimate.
      * @param _start first index to return from the available agent's list
      * @param _end end index (one above last) to return from the available agent's list
      */
     function getAvailableAgentsDetailedList(
-        uint256 _start, 
+        uint256 _start,
         uint256 _end
-    ) 
-        external view 
+    )
+        external view
         returns (AvailableAgents.AgentInfo[] memory _agents, uint256 _totalLength)
     {
         return AvailableAgents.getListWithInfo(_start, _end);
     }
-    
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Timekeeping
-    
+
     /**
      * Prove that a block with given number and timestamp exists and
      * update the current underlying block info if the provided data higher.
@@ -377,7 +377,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         StateUpdater.updateCurrentBlock(_proof);
     }
-    
+
     /**
      * Get block number and timestamp of the current underlying block.
      * @return _blockNumber current underlying block number tracked by asset manager
@@ -390,15 +390,15 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         AssetManagerState.State storage state = AssetManagerState.get();
         return (state.currentUnderlyingBlock, state.currentUnderlyingBlockTimestamp);
     }
-        
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Minting
-    
+
     /**
      * Before paying underlying assets for minting, minter has to reserve collateral and
      * pay collateral reservation fee. Collateral is reserved at ratio of agent's agentMinCollateralRatio
      * to requested lots NAT market price.
-     * On success the minter receives instructions for underlying payment (value, fee and payment reference) 
+     * On success the minter receives instructions for underlying payment (value, fee and payment reference)
      * in event CollateralReserved. Then the minter has to pay `value + fee` on the underlying chain.
      * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains
      * f-assets. Otherwise the agent collects the collateral reservation fee.
@@ -411,15 +411,15 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      *      collateral reservation fee)
      */
     function reserveCollateral(
-        address _agentVault, 
+        address _agentVault,
         uint256 _lots,
         uint256 _maxMintingFeeBIPS
-    ) 
-        external payable 
+    )
+        external payable
         onlyAttached
     {
         requireWhitelistedSender();
-        CollateralReservations.reserveCollateral(msg.sender, _agentVault, 
+        CollateralReservations.reserveCollateral(msg.sender, _agentVault,
             _lots.toUint64(), _maxMintingFeeBIPS.toUint64());
     }
 
@@ -436,21 +436,21 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         return CollateralReservations.calculateReservationFee(_lots.toUint64());
     }
-    
+
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
-     * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request) 
+     * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request)
      *   or the agent owner (= owner of the agent vault in CR).
-     * @param _payment proof of the underlying payment (must contain exact `value + fee` amount and correct 
+     * @param _payment proof of the underlying payment (must contain exact `value + fee` amount and correct
      *      payment reference)
      * @param _collateralReservationId collateral reservation id
      */
     function executeMinting(
         IAttestationClient.Payment calldata _payment,
         uint256 _collateralReservationId
-    ) 
-        external 
+    )
+        external
         nonReentrant
     {
         Minting.executeMinting(_payment, _collateralReservationId.toUint64());
@@ -458,7 +458,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     /**
      * When the time for minter to pay underlying amount is over (i.e. the last underlying block has passed),
-     * the agent can declare payment default. Then the agent collects collateral reservation fee 
+     * the agent can declare payment default. Then the agent collects collateral reservation fee
      * (it goes directly to the vault), and the reseved collateral is unlocked.
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * @param _proof proof that the minter didn't pay with correct payment reference on the underlying chain
@@ -472,26 +472,26 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         CollateralReservations.mintingPaymentDefault(_proof, _collateralReservationId.toUint64());
     }
-    
+
     /**
      * If collateral reservation request exists for more than 24 hours, payment or non-payment proof are no longer
      * available. In this case agent can call this method, which burns reserved collateral at market price
      * and releases the remaining collateral (CRF is also burned).
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
-     * @param _proof proof that the attestation query window can not not contain 
+     * @param _proof proof that the attestation query window can not not contain
      *      the payment/non-payment proof anymore
      * @param _collateralReservationId collateral reservation id
      */
     function unstickMinting(
         IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
         uint256 _collateralReservationId
-    ) 
-        external 
+    )
+        external
         nonReentrant
     {
         CollateralReservations.unstickMinting(_proof, _collateralReservationId.toUint64());
     }
-    
+
     /**
      * Agent can mint against himself. In that case, this is a one-step process, skipping collateral reservation
      * and no collateral reservation fee payment.
@@ -506,7 +506,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         IAttestationClient.Payment calldata _payment,
         address _agentVault,
         uint256 _lots
-    ) 
+    )
         external
         onlyAttached
         nonReentrant
@@ -516,7 +516,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Redemption
-    
+
     /**
      * Redeem (up to) `_lots` lots of f-assets. The corresponding amount of the f-assets belonging
      * to the redeemer will be burned and the redeemer will get paid by the agent in underlying currency
@@ -525,7 +525,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
      * are burned and redeemed and the redeemer can execute this method again for the remaining lots.
      * In such case `RedemptionRequestIncomplete` event will be emitted, indicating the number of remaining lots.
-     * Agent receives redemption request id and instructions for underlying payment in 
+     * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _lots number of lots to redeem
@@ -540,7 +540,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         requireWhitelistedSender();
         Redemptions.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
     }
-    
+
     /**
      * After paying to the redeemer, the agent must call this method to unlock the collateral
      * and to make sure that the redeemer cannot demand payment in collateral on timeout.
@@ -552,10 +552,10 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * anybody can do it and get rewarded from agent's vault.
      * NOTE: may only be called by the owner of the agent vault in the redemption request
      *   except if enough time has passed without confirmation - then it can be called by anybody
-     * @param _payment proof of the underlying payment (must contain exact `value - fee` amount and correct 
+     * @param _payment proof of the underlying payment (must contain exact `value - fee` amount and correct
      *      payment reference)
      * @param _redemptionRequestId id of an existing redemption request
-     */    
+     */
     function confirmRedemptionPayment(
         IAttestationClient.Payment calldata _payment,
         uint256 _redemptionRequestId
@@ -574,7 +574,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      *   or the agent owner (= owner of the agent vault in the redemption request)
      * @param _proof proof that the agent didn't pay with correct payment reference on the underlying chain
      * @param _redemptionRequestId id of an existing redemption request
-     */    
+     */
     function redemptionPaymentDefault(
         IAttestationClient.ReferencedPaymentNonexistence calldata _proof,
         uint256 _redemptionRequestId
@@ -583,14 +583,14 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         Redemptions.redemptionPaymentDefault(_proof, _redemptionRequestId.toUint64());
     }
-    
+
     /**
      * If the agent hasn't performed the payment, the agent can close the redemption request to free underlying funds.
      * It can be done immediatelly after the redeemer or agent calls redemptionPaymentDefault,
-     * or this method can trigger the default payment without proof, but only after enough time has passed so that 
+     * or this method can trigger the default payment without proof, but only after enough time has passed so that
      * attestation proof of non-payment is not available any more.
      * NOTE: may only be called by the owner of the agent vault in the redemption request.
-     * @param _proof proof that the attestation query window can not not contain 
+     * @param _proof proof that the attestation query window can not not contain
      *      the payment/non-payment proof anymore
      * @param _redemptionRequestId id of an existing, but already defaulted, redemption request
      */
@@ -605,7 +605,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Self-close
-    
+
     /**
      * Agent can "redeem against himself" by calling selfClose, which burns agent's own f-assets
      * and unlocks agent's collateral. The underlying funds backing the f-assets are released
@@ -626,7 +626,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Underlying withdrawal announcements
-    
+
     /**
      * Announce withdrawal of underlying currency.
      * In the event UnderlyingWithdrawalAnnounced the agent receives payment reference, which must be
@@ -642,7 +642,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         UnderlyingWithdrawalAnnouncements.announceUnderlyingWithdrawal(_agentVault);
     }
-    
+
     /**
      * Agent must provide confirmation of performed underlying withdrawal, which updates free balance with used gas
      * and releases announcement so that a new one can be made.
@@ -696,10 +696,10 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         UnderlyingFreeBalance.confirmTopupPayment(_payment, _agentVault);
     }
-    
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Illegal payment and wrong payment report challenges
-    
+
     /**
      * Called with a proof of payment made from agent's underlying address, for which
      * no valid payment reference exists (valid payment references are from redemption and
@@ -738,9 +738,9 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         requireWhitelistedSender();
         Challenges.doublePaymentChallenge(_payment1, _payment2, _agentVault);
     }
-    
+
     /**
-     * Called with proofs of several (otherwise legal) payments, which together make agent's 
+     * Called with proofs of several (otherwise legal) payments, which together make agent's
      * underlying free balance negative (i.e. the underlying address balance is less than
      * the total amount of backed f-assets).
      * On success, immediatelly triggers full agent liquidation and rewards the caller.
@@ -757,7 +757,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         requireWhitelistedSender();
         Challenges.paymentsMakeFreeBalanceNegative(_payments, _agentVault);
     }
-    
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Liquidation
 
@@ -774,7 +774,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         requireWhitelistedSender();
         Liquidation.startLiquidation(_agentVault);
     }
-    
+
     /**
      * Burns up to `_amountUBA` f-assets owned by the caller and pays
      * the caller the corresponding amount of native currency with premium
@@ -796,10 +796,10 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidClass1, uint256 _amountPaidPool)
     {
         requireWhitelistedSender();
-        (_liquidatedAmountUBA, _amountPaidClass1, _amountPaidPool) = 
+        (_liquidatedAmountUBA, _amountPaidClass1, _amountPaidPool) =
             Liquidation.liquidate(_agentVault, _amountUBA);
     }
-    
+
     /**
      * When agent's colateral reaches safe level during liquidation, the liquidation
      * process can be stopped by calling this method.
@@ -846,7 +846,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         require(!state.settings.fAsset.terminated(), "f-asset terminated");
         state.pausedAt = 0;
     }
-    
+
     /**
      * When f-asset is terminated, no transfers can be made anymore.
      * This is an extreme measure to be used only when the asset manager minting has been already paused
@@ -864,7 +864,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
             "asset manager not paused enough");
         state.settings.fAsset.terminate();
     }
-    
+
     /**
      * When f-asset is terminated, agent can burn the market price of backed f-assets with his collateral,
      * to release the remaining collateral (and, formally, underlying assets).
@@ -884,7 +884,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     /**
      * True if asset manager is paused.
-     */    
+     */
     function paused()
         external view
         returns (bool)
@@ -895,7 +895,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Other
-    
+
     /**
      * Get the f-asset contract managed by this asset manager instance.
      */
@@ -909,14 +909,14 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     /**
      * Get WNat contract. Used by AgentVault.
      * @return WNat contract
-     */    
-    function getWNat() 
+     */
+    function getWNat()
         external view override
         returns (IWNat)
     {
         return Globals.getWNat();
     }
-    
+
     /**
      * Get the list of all available and deprecated tokens used for collateral.
      */
@@ -927,7 +927,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         AssetManagerState.State storage state = AssetManagerState.get();
         return state.collateralTokens;
     }
-    
+
     /**
      * Check if `_token` is one of the collateral tokens for `_agentVault`.
      */
@@ -937,19 +937,19 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     {
         return AgentsExternal.isCollateralToken(_agentVault, _token);
     }
-    
+
     /**
      * Returns price of asset (UBA) in NAT Wei as a fraction.
      */
     function assetPriceNatWei()
-        external view override 
+        external view override
         returns (uint256 _multiplier, uint256 _divisor)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         _multiplier = Conversion.currentAmgPriceInTokenWei(Agents.getPoolCollateral());
         _divisor = Conversion.AMG_TOKENWEI_PRICE_SCALE * settings.assetMintingGranularityUBA;
     }
-    
+
     /**
      * Optional check that `msg.sender` is whitelisted.
      */

@@ -7,7 +7,7 @@ import "../interface/IWhitelist.sol";
 contract Whitelist is IWhitelist, Governed {
     mapping(address => bool) public whitelist;
 
-    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance) 
+    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance)
         Governed(_governanceSettings, _initialGovernance)
     {}
 

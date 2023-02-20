@@ -14,19 +14,19 @@ library PaymentConfirmations {
         // first day number for which we are tracking verifications
         uint256 verifiedPaymentsForDayStart;
     }
-    
+
     uint256 internal constant DAY = 1 days;
     uint256 internal constant VERIFICATION_CLEANUP_DAYS = 14;
-    
+
     /**
-     * For payment transaction with non-unique payment reference (generated from address, not id), 
+     * For payment transaction with non-unique payment reference (generated from address, not id),
      * we record `tx hash`, so that the same transaction can only be used once for payment.
      */
     function confirmIncomingPayment(
         State storage _state,
         IAttestationClient.Payment calldata _payment
-    ) 
-        internal 
+    )
+        internal
     {
         _recordPaymentVerification(_state, _payment.transactionHash);
     }
@@ -38,8 +38,8 @@ library PaymentConfirmations {
     function confirmSourceDecreasingTransaction(
         State storage _state,
         IAttestationClient.Payment calldata _payment
-    ) 
-        internal 
+    )
+        internal
     {
         _recordPaymentVerification(_state, transactionKey(_payment.sourceAddressHash, _payment.transactionHash));
     }
@@ -48,11 +48,11 @@ library PaymentConfirmations {
      * Check if source decreasing transaction was already confirmed.
      */
     function transactionConfirmed(
-        State storage _state, 
+        State storage _state,
         IAttestationClient.BalanceDecreasingTransaction calldata _transaction
-    ) 
-        internal view 
-        returns (bool) 
+    )
+        internal view
+        returns (bool)
     {
         bytes32 txKey = transactionKey(_transaction.sourceAddressHash, _transaction.transactionHash);
         return _state.verifiedPayments[txKey] != 0;
@@ -62,17 +62,17 @@ library PaymentConfirmations {
     // for now this is illegal, but might change for some smart contract chains
     // therefore the mapping key for transaction is always the combination of
     // underlying address (from which funds were removed) and transaction hash
-    function transactionKey(bytes32 _underlyingSourceAddressHash, bytes32 _transactionHash) 
-        internal pure 
-        returns (bytes32) 
+    function transactionKey(bytes32 _underlyingSourceAddressHash, bytes32 _transactionHash)
+        internal pure
+        returns (bytes32)
     {
         return keccak256(abi.encode(_underlyingSourceAddressHash, _transactionHash));
     }
-    
+
     function _recordPaymentVerification(
         State storage _state,
         bytes32 _txKey
-    ) 
+    )
         private
     {
         require(_state.verifiedPayments[_txKey] == 0, "payment already confirmed");
@@ -89,7 +89,7 @@ library PaymentConfirmations {
         // cleanup one old payment hash (> 14 days) for each new payment hash
         _cleanupPaymentVerification(_state);
     }
-    
+
     function _cleanupPaymentVerification(State storage _state) private {
         uint256 startDay = _state.verifiedPaymentsForDayStart;
         if (startDay == 0 || startDay >= block.timestamp / DAY - VERIFICATION_CLEANUP_DAYS) return;

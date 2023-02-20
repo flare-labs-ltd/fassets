@@ -21,7 +21,7 @@ library UnderlyingFreeBalance {
     function updateFreeBalance(
         Agent.State storage _agent,
         int256 _balanceChange
-    ) 
+    )
         internal
     {
         int256 newBalance = _agent.freeUnderlyingBalanceUBA + _balanceChange;
@@ -37,7 +37,7 @@ library UnderlyingFreeBalance {
     function increaseFreeBalance(
         Agent.State storage _agent,
         uint256 _balanceIncrease
-    ) 
+    )
         internal
     {
         int256 newBalance = _agent.freeUnderlyingBalanceUBA + _balanceIncrease.toInt256();
@@ -54,7 +54,7 @@ library UnderlyingFreeBalance {
         Agents.requireAgentVaultOwner(_agentVault);
         AssetManagerState.State storage state = AssetManagerState.get();
         TransactionAttestation.verifyPaymentSuccess(_payment);
-        require(_payment.receivingAddressHash == agent.underlyingAddressHash, 
+        require(_payment.receivingAddressHash == agent.underlyingAddressHash,
             "not underlying address");
         require(_payment.paymentReference == PaymentReference.topup(_agentVault),
             "not a topup payment");

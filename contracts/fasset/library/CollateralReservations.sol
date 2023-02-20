@@ -18,7 +18,7 @@ library CollateralReservations {
     using SafePct for uint256;
     using SafeCast for uint256;
     using AgentCollateral for Collateral.CombinedData;
-    
+
     function reserveCollateral(
         address _minter,
         address _agentVault,
@@ -64,13 +64,13 @@ library CollateralReservations {
             _minter,
             crtId,
             underlyingValueUBA,
-            underlyingFeeUBA, 
+            underlyingFeeUBA,
             lastUnderlyingBlock,
             lastUnderlyingTimestamp,
             paymentAddress,
             PaymentReference.minting(crtId));
     }
-    
+
     function mintingPaymentDefault(
         IAttestationClient.ReferencedPaymentNonexistence calldata _nonPayment,
         uint64 _crtId
@@ -87,8 +87,8 @@ library CollateralReservations {
             _nonPayment.destinationAddressHash == agent.underlyingAddressHash &&
             _nonPayment.amount == underlyingValueUBA + crt.underlyingFeeUBA,
             "minting non-payment mismatch");
-        require(_nonPayment.firstOverflowBlockNumber > crt.lastUnderlyingBlock && 
-            _nonPayment.firstOverflowBlockTimestamp > crt.lastUnderlyingTimestamp, 
+        require(_nonPayment.firstOverflowBlockNumber > crt.lastUnderlyingBlock &&
+            _nonPayment.firstOverflowBlockTimestamp > crt.lastUnderlyingTimestamp,
             "minting default too early");
         require(_nonPayment.lowerBoundaryBlockNumber <= crt.firstUnderlyingBlock,
             "minting request too old");
@@ -99,7 +99,7 @@ library CollateralReservations {
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
     }
-    
+
     function unstickMinting(
         IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
         uint64 _crtId
@@ -129,7 +129,7 @@ library CollateralReservations {
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
     }
-    
+
     function calculateReservationFee(
         uint64 _lots
     )
@@ -139,7 +139,7 @@ library CollateralReservations {
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(CollateralToken.POOL);
         return _reservationFee(amgToTokenWeiPrice, _lots * AssetManagerState.getSettings().lotSizeAMG);
     }
-    
+
     function releaseCollateralReservation(
         CollateralReservation.Data storage crt,
         uint64 _crtId
@@ -155,15 +155,15 @@ library CollateralReservations {
 
     function getCollateralReservation(
         uint64 _crtId
-    ) 
+    )
         internal view
-        returns (CollateralReservation.Data storage) 
+        returns (CollateralReservation.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         require(_crtId > 0 && state.crts[_crtId].valueAMG != 0, "invalid crt id");
         return state.crts[_crtId];
     }
-    
+
     function _lastPaymentBlock()
         private view
         returns (uint64 _lastUnderlyingBlock, uint64 _lastUnderlyingTimestamp)
@@ -173,7 +173,7 @@ library CollateralReservations {
         uint64 timeshift = block.timestamp.toUint64() - state.currentUnderlyingBlockUpdatedAt;
         _lastUnderlyingBlock =
             state.currentUnderlyingBlock + state.settings.underlyingBlocksForPayment;
-        _lastUnderlyingTimestamp = 
+        _lastUnderlyingTimestamp =
             state.currentUnderlyingBlockTimestamp + timeshift + state.settings.underlyingSecondsForPayment;
     }
 
@@ -184,7 +184,7 @@ library CollateralReservations {
         private view
         returns (uint256)
     {
-        uint256 valueNATWei = Conversion.convertAmgToTokenWei(_valueAMG, amgToTokenWeiPrice); 
+        uint256 valueNATWei = Conversion.convertAmgToTokenWei(_valueAMG, amgToTokenWeiPrice);
         return valueNATWei.mulBips(AssetManagerState.getSettings().collateralReservationFeeBIPS);
     }
 }

@@ -33,7 +33,7 @@ library Challenges {
         TransactionAttestation.verifyBalanceDecreasingTransaction(_payment);
         // check the payment originates from agent's address
         require(_payment.sourceAddressHash == agent.underlyingAddressHash, "chlg: not agent's address");
-        // check that proof of this tx wasn't used before - otherwise we could 
+        // check that proof of this tx wasn't used before - otherwise we could
         // trigger liquidation for already proved redemption payments
         require(!state.paymentConfirmations.transactionConfirmed(_payment), "chlg: transaction confirmed");
         // check that payment reference is invalid (paymentReference == 0 is always invalid payment)
@@ -41,17 +41,17 @@ library Challenges {
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.REDEMPTION)) {
                 uint256 redemptionId = PaymentReference.decodeId(_payment.paymentReference);
                 Redemption.Request storage redemption = state.redemptionRequests[redemptionId];
-                // redemption must be for the correct agent and 
+                // redemption must be for the correct agent and
                 // only statuses ACTIVE and DEFAULTED mean that redemption is still missing a payment proof
                 bool redemptionActive = redemption.agentVault == _agentVault
-                    && (redemption.status == Redemption.Status.ACTIVE || 
+                    && (redemption.status == Redemption.Status.ACTIVE ||
                         redemption.status == Redemption.Status.DEFAULTED);
                 require(!redemptionActive, "matching redemption active");
             }
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
                 uint256 announcementId = PaymentReference.decodeId(_payment.paymentReference);
                 // valid announced withdrawal cannot have announcementId == 0 and must match the agent's announced id
-                require(announcementId == 0 || announcementId != agent.announcedUnderlyingWithdrawalId, 
+                require(announcementId == 0 || announcementId != agent.announcedUnderlyingWithdrawalId,
                     "matching ongoing announced pmt");
             }
         }
@@ -60,7 +60,7 @@ library Challenges {
         // emit events
         emit AMEvents.IllegalPaymentConfirmed(_agentVault, _payment.transactionHash);
     }
-    
+
     function doublePaymentChallenge(
         IAttestationClient.BalanceDecreasingTransaction calldata _payment1,
         IAttestationClient.BalanceDecreasingTransaction calldata _payment2,
@@ -87,7 +87,7 @@ library Challenges {
         // emit events
         emit AMEvents.DuplicatePaymentConfirmed(_agentVault, _payment1.transactionHash, _payment2.transactionHash);
     }
-    
+
     function paymentsMakeFreeBalanceNegative(
         IAttestationClient.BalanceDecreasingTransaction[] calldata _payments,
         address _agentVault
@@ -132,16 +132,16 @@ library Challenges {
 
     function _liquidateAndRewardChallenger(
         Agent.State storage _agent,
-        address _challenger, 
+        address _challenger,
         uint64 _backingAMGAtChallenge
-    ) 
+    )
         private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         // start full liquidation
         Liquidation.startFullLiquidation(_agent);
         // calculate the reward
-        Collateral.Data memory collateralData = 
+        Collateral.Data memory collateralData =
             AgentCollateral.agentClass1CollateralData(_agent);
         uint256 rewardAMG = _backingAMGAtChallenge.mulBips(settings.paymentChallengeRewardBIPS);
         uint256 rewardC1Wei = Conversion.convertAmgToTokenWei(rewardAMG, collateralData.amgToTokenWeiPrice)
