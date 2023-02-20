@@ -2,13 +2,13 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../utils/lib/SafeBips.sol";
+import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 
 library SettingsUpdater {
     using SafeCast for uint256;
-    using SafeBips for *;
+    using SafePct for *;
     
     struct CollateralRatioUpdate {
         uint64 validAt;
@@ -232,7 +232,7 @@ library SettingsUpdater {
         // (uint256 minCR, uint256 ccbCR, uint256 safetyCR) = 
         //     abi.decode(_params, (uint256, uint256, uint256));
         // // validations
-        // require(SafeBips.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
+        // require(SafePct.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
         // uint32[] storage liquidationFactors = state.settings.liquidationCollateralFactorBIPS;
         // require(liquidationFactors[liquidationFactors.length - 1] <= safetyCR, "liquidation factor too high");
         // // update
@@ -335,7 +335,7 @@ library SettingsUpdater {
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
-        require(value <= SafeBips.MAX_BIPS, "bips value too high");
+        require(value <= SafePct.MAX_BIPS, "bips value too high");
         require(value <= settings.collateralReservationFeeBIPS * 4, "fee increase too big");
         require(value >= settings.collateralReservationFeeBIPS / 4, "fee decrease too big");
         // update
@@ -352,7 +352,7 @@ library SettingsUpdater {
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
-        require(value <= SafeBips.MAX_BIPS, "bips value too high");
+        require(value <= SafePct.MAX_BIPS, "bips value too high");
         require(value <= settings.redemptionFeeBIPS * 4, "fee increase too big");
         require(value >= settings.redemptionFeeBIPS / 4, "fee decrease too big");
         // update
@@ -368,7 +368,7 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         (uint256 class1, uint256 pool) = abi.decode(_params, (uint256, uint256));
         // validate
-        require(class1 + pool > SafeBips.MAX_BIPS, "bips value too low");
+        require(class1 + pool > SafePct.MAX_BIPS, "bips value too low");
         require(class1 <= settings.redemptionDefaultFactorAgentC1BIPS.mulBips(12000), "fee increase too big");
         require(class1 >= settings.redemptionDefaultFactorAgentC1BIPS.mulBips(8333), "fee decrease too big");
         require(pool <= settings.redemptionDefaultFactorPoolBIPS.mulBips(12000), "fee increase too big");
@@ -486,7 +486,7 @@ library SettingsUpdater {
         // update
         delete settings.liquidationCollateralFactorBIPS;
         for (uint256 i = 0; i < value.length; i++) {
-            require(value[i] > SafeBips.MAX_BIPS, "factor not above 1");
+            require(value[i] > SafePct.MAX_BIPS, "factor not above 1");
             require(i == 0 || value[i] > value[i - 1], "factors not increasing");
             settings.liquidationCollateralFactorBIPS.push(value[i].toUint32());
         }
@@ -548,20 +548,20 @@ library SettingsUpdater {
         // uint256 minCR = _settings.minCollateralRatioBIPS;
         // uint256 ccbCR = _settings.ccbMinCollateralRatioBIPS;
         // uint256 safetyCR = _settings.safetyMinCollateralRatioBIPS;
-        // require(SafeBips.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
+        // require(SafePct.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
 
         uint32[] memory liqFactors = _settings.liquidationCollateralFactorBIPS;
         require(liqFactors.length >= 1, "at least one factor required");
         for (uint256 i = 0; i < liqFactors.length; i++) {
-            require(liqFactors[i] > SafeBips.MAX_BIPS, "factor not above 1");
+            require(liqFactors[i] > SafePct.MAX_BIPS, "factor not above 1");
             require(i == 0 || liqFactors[i] > liqFactors[i - 1], "factors not increasing");
         }
 
-        require(_settings.collateralReservationFeeBIPS <= SafeBips.MAX_BIPS, "bips value too high");
-        require(_settings.redemptionFeeBIPS <= SafeBips.MAX_BIPS, "bips value too high");
+        require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
+        require(_settings.redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         uint256 redemptionFactorBIPS = 
             _settings.redemptionDefaultFactorAgentC1BIPS + _settings.redemptionDefaultFactorPoolBIPS;
-        require(redemptionFactorBIPS > SafeBips.MAX_BIPS, "bips value too low");
+        require(redemptionFactorBIPS > SafePct.MAX_BIPS, "bips value too low");
         require(_settings.attestationWindowSeconds >= 1 days, "window too small");
         require(_settings.confirmationByOthersAfterSeconds >= 2 hours, "must be at least two hours");
         require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, "confirmation time too big");

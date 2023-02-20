@@ -4,7 +4,7 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IAgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";
-import "../../utils/lib/SafeBips.sol";
+import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
@@ -15,7 +15,7 @@ import "./TransactionAttestation.sol";
 
 
 library CollateralReservations {
-    using SafeBips for uint256;
+    using SafePct for uint256;
     using SafeCast for uint256;
     using AgentCollateral for Collateral.CombinedData;
     
@@ -185,6 +185,6 @@ library CollateralReservations {
         returns (uint256)
     {
         uint256 valueNATWei = Conversion.convertAmgToTokenWei(_valueAMG, amgToTokenWeiPrice); 
-        return SafeBips.mulBips(valueNATWei, AssetManagerState.getSettings().collateralReservationFeeBIPS);
+        return valueNATWei.mulBips(AssetManagerState.getSettings().collateralReservationFeeBIPS);
     }
 }

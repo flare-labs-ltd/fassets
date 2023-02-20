@@ -4,7 +4,7 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../utils/lib/SafeBips.sol";
+import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./data/Collateral.sol";
 import "./Conversion.sol";
@@ -12,7 +12,6 @@ import "./Conversion.sol";
 
 library AgentCollateral {
     using SafeMath for uint256;
-    using SafeBips for uint256;
     using SafePct for uint256;
     using Agent for Agent.State;
     
@@ -225,6 +224,6 @@ library AgentCollateral {
         uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG);
         if (totalAMG == 0) return 1e10;    // nothing minted - ~infinite collateral ratio (but avoid overflows)
         uint256 backingTokenWei = Conversion.convertAmgToTokenWei(totalAMG, _amgToTokenWeiPrice);
-        return _fullCollateral.mulDiv(SafeBips.MAX_BIPS, backingTokenWei);
+        return _fullCollateral.mulDiv(SafePct.MAX_BIPS, backingTokenWei);
     }
 }

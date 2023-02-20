@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../../utils/lib/SafeMath64.sol";
-import "../../utils/lib/SafeBips.sol";
+import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
@@ -17,8 +17,7 @@ import "./Liquidation.sol";
 
 
 library Redemptions {
-    using SafeBips for uint256;
-    using SafePct for uint64;
+    using SafePct for *;
     using SafeCast for uint256;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentConfirmations for PaymentConfirmations.State;
@@ -114,7 +113,7 @@ library Redemptions {
         state.newRedemptionRequestId += PaymentReference.randomizedIdSkip();
         uint64 requestId = state.newRedemptionRequestId;
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
-        uint128 redemptionFeeUBA = SafeBips.mulBips(redeemedValueUBA, state.settings.redemptionFeeBIPS).toUint128();
+        uint128 redemptionFeeUBA = redeemedValueUBA.mulBips(state.settings.redemptionFeeBIPS).toUint128();
         state.redemptionRequests[requestId] = Redemption.Request({
             redeemerUnderlyingAddressHash: keccak256(bytes(_redeemerUnderlyingAddressString)),
             underlyingValueUBA: redeemedValueUBA,

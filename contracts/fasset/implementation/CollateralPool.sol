@@ -4,7 +4,6 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/lib/SafePct.sol";
-import "../../utils/lib/SafeBips.sol";
 import "../interface/IWNat.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAgentVault.sol";
@@ -59,7 +58,7 @@ contract CollateralPool {
         uint256 fassetBalance = fAsset.balanceOf(address(this));
         require(poolTokenSuply <= poolBalanceNat * MAX_NAT_TO_POOL_TOKEN_RATIO, "nat balance too low");
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
-        uint256 pricePremiumMul = SafeBips.mulBips(assetPriceMul, enterBuyAssetRateBIPS);
+        uint256 pricePremiumMul = SafePct.mulBips(assetPriceMul, enterBuyAssetRateBIPS);
         uint256 poolBalanceNatWithAssets = poolBalanceNat + 
             SafePct.mulDiv(fassetBalance, pricePremiumMul, assetPriceDiv);
         // This condition prevents division by 0, since poolBalanceNatWithAssets >= poolBalanceNat.

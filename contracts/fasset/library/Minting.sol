@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import "../../generated/interface/IAttestationClient.sol";
+import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
@@ -12,6 +13,7 @@ import "./TransactionAttestation.sol";
 
 
 library Minting {
+    using SafePct for *;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for Collateral.CombinedData;
@@ -83,7 +85,7 @@ library Minting {
         // and selfMint call, the paid assets would otherwise be stuck; in this way they are converted to free balance
         uint256 receivedAmount = uint256(_payment.receivedAmount);  // guarded by reuquire
         if (_lots > 0) {
-            uint256 standardFee = SafeBips.mulBips(valueAMG, agent.feeBIPS);
+            uint256 standardFee = valueAMG.mulBips(agent.feeBIPS);
             _performMinting(agent, 0, msg.sender, valueAMG, receivedAmount, standardFee);
         } else {
             UnderlyingFreeBalance.increaseFreeBalance(agent, receivedAmount);
@@ -115,7 +117,7 @@ library Minting {
         AssetManagerState.State storage state = AssetManagerState.get();
         // Add pool fee to dust (usually less than 1 lot), but if dust exceeds 1 lot, add as much as possible 
         // to the created ticket. At the end, there will always be less than 1 lot of dust left.
-        uint64 poolFeeAMG = Conversion.convertUBAToAmg(SafeBips.mulBips(_feeUBA, _agent.poolFeeShareBIPS));
+        uint64 poolFeeAMG = Conversion.convertUBAToAmg(_feeUBA.mulBips(_agent.poolFeeShareBIPS));
         uint64 newDustAMG = _agent.dustAMG + poolFeeAMG;
         uint64 ticketValueAMG = _mintValueAMG;
         if (newDustAMG >= state.settings.lotSizeAMG) {

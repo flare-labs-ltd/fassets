@@ -3,7 +3,7 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../generated/interface/IAttestationClient.sol";
-import "../../utils/lib/SafeBips.sol";
+import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
@@ -15,6 +15,7 @@ import "./TransactionAttestation.sol";
 
 library Challenges {
     using SafeCast for uint256;
+    using SafePct for *;
     using PaymentConfirmations for PaymentConfirmations.State;
 
     function illegalPaymentChallenge(
@@ -142,7 +143,7 @@ library Challenges {
         // calculate the reward
         Collateral.Data memory collateralData = 
             AgentCollateral.agentClass1CollateralData(_agent);
-        uint256 rewardAMG = SafeBips.mulBips(_backingAMGAtChallenge, settings.paymentChallengeRewardBIPS);
+        uint256 rewardAMG = _backingAMGAtChallenge.mulBips(settings.paymentChallengeRewardBIPS);
         uint256 rewardC1Wei = Conversion.convertAmgToTokenWei(rewardAMG, collateralData.amgToTokenWeiPrice)
             + settings.paymentChallengeRewardC1Wei;
         Agents.payoutClass1(_agent, _challenger, rewardC1Wei);

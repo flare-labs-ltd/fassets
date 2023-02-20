@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../interface/IAssetManager.sol";
 import "../../utils/implementation/NativeTokenBurner.sol";
 import "../../utils/lib/SafeMath64.sol";
-import "../../utils/lib/SafeBips.sol";
+import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
@@ -15,7 +15,7 @@ import "./TransactionAttestation.sol";
 import "./Liquidation.sol";
 
 library AgentsExternal {
-    using SafeBips for uint256;
+    using SafePct for uint256;
     using SafeCast for uint256;
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     using RedemptionQueue for RedemptionQueue.State;

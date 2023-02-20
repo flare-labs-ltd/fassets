@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
-import "../../utils/lib/SafeBips.sol";
 import "../../utils/lib/MathUtils.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
@@ -19,9 +18,7 @@ library Liquidation {
     using SafeMath for uint256;
     using SafeCast for uint256;
     using MathUtils for uint256;
-    using SafePct for uint256;
-    using SafeBips for uint256;
-    using SafeBips for uint64;
+    using SafePct for *;
     using Agent for Agent.State;
     
     // Start collateral ratio based agent's liquidation (Agent.Status.LIQUIDATION)

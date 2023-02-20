@@ -13,6 +13,8 @@ pragma solidity 0.8.11;
  * class of bugs, so it's recommended to use it always.
  */
 library SafePct {
+    uint256 internal constant MAX_BIPS = 10_000;
+    
     /**
      * Requirements:
      *
@@ -48,5 +50,9 @@ library SafePct {
             // safe - overflow only possible if z == 1, but then remainder == 0
             return remainder == 0 ? resultRoundDown : resultRoundDown + 1;
         }
+    }
+
+    function mulBips(uint256 x, uint256 y) internal pure returns (uint256) {
+        return mulDiv(x, y, MAX_BIPS);
     }
 }
