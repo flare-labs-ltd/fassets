@@ -20,8 +20,8 @@ library AgentsExternal {
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     using RedemptionQueue for RedemptionQueue.State;
     using AgentCollateral for Collateral.Data;
-    using AssetManagerState for AssetManagerState.State;
     using Agent for Agent.State;
+    using Agents for Agent.State;
     
     modifier onlyAgentVaultOwner(address _agentVault) {
         Agents.requireAgentVaultOwner(_agentVault);
@@ -146,7 +146,7 @@ library AgentsExternal {
         //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
         // - mintedAMG must be burned and cleared
         uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
-        CollateralToken.Data storage collateral = state.getClass1Collateral(agent);
+        CollateralToken.Data storage collateral = agent.getClass1Collateral();
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
         uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
             .mulBips(state.settings.buybackCollateralFactorBIPS);
@@ -236,15 +236,15 @@ library AgentsExternal {
     )
         external
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         require (_token != agent.collateralPool.poolToken(), "cannot withdraw pool tokens");
         // we only care about agent's collateral class1 tokens and pool tokens
-        if (_token != state.getClass1Token(agent)) return;
+        if (_token != agent.getClass1Token()) return;
         require(agent.status == Agent.Status.NORMAL, "withdrawal: invalid status");
         require(agent.withdrawalAnnouncedAt != 0, "withdrawal: not announced");
         require(_valueNATWei <= agent.withdrawalAnnouncedNATWei, "withdrawal: more than announced");
-        require(block.timestamp > agent.withdrawalAnnouncedAt + state.settings.withdrawalWaitMinSeconds,
+        require(block.timestamp > agent.withdrawalAnnouncedAt + settings.withdrawalWaitMinSeconds,
             "withdrawal: not allowed yet");
         agent.withdrawalAnnouncedNATWei -= uint128(_valueNATWei);    // guarded by above require
         // could reset agent.withdrawalAnnouncedAt if agent.withdrawalAnnouncedNATWei == 0, 

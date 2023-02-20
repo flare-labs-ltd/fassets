@@ -7,11 +7,11 @@ import "../../utils/implementation/NativeTokenBurner.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
+import "./Globals.sol";
 import "./Conversion.sol";
 
 library Agents {
     using SafeCast for uint256;
-    using AssetManagerState for AssetManagerState.State;
     using Agent for Agent.State;
     
     function setAgentMinCollateralRatioBIPS(
@@ -21,8 +21,7 @@ library Agents {
         internal
     {
         // TODO: add min pool collateral
-        AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralToken.Data storage collateral = state.getClass1Collateral(_agent);
+        CollateralToken.Data storage collateral = getClass1Collateral(_agent);
         require(_agentMinCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
             "collateral ratio too small");
         _agent.agentMinCollateralRatioBIPS = _agentMinCollateralRatioBIPS.toUint32();
@@ -108,8 +107,7 @@ library Agents {
         internal
         returns (uint256 _amountPaid)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralToken.Data storage collateral = state.getClass1Collateral(_agent);
+        CollateralToken.Data storage collateral = getClass1Collateral(_agent);
         // don't want the calling method to fail due to too small balance for payout
         IAgentVault vault = IAgentVault(_agent.vaultAddress());
         _amountPaid = Math.min(_amountWei, collateral.token.balanceOf(address(vault)));
@@ -125,9 +123,9 @@ library Agents {
         internal
         returns (uint256 _amountPaid)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
         // don't want the calling method to fail due to too small balance for payout
-        _amountPaid = Math.min(_amountWei, state.getWNat().balanceOf(address(_agent.collateralPool)));
+        uint256 poolBalance = Globals.getWNat().balanceOf(address(_agent.collateralPool));
+        _amountPaid = Math.min(_amountWei, poolBalance);
         _agentResponsibilityWei = Math.min(_agentResponsibilityWei, _amountPaid);
         _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
     }
@@ -138,16 +136,16 @@ library Agents {
     )
         internal
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         IAgentVault vault = IAgentVault(_agent.vaultAddress());
-        if (state.settings.burnWithSelfDestruct) {
+        if (settings.burnWithSelfDestruct) {
             // burn by self-destructing a temporary burner contract
-            NativeTokenBurner burner = new NativeTokenBurner(state.settings.burnAddress);
-            vault.payoutNAT(state.getWNat(), payable(address(burner)), _amountNATWei);
+            NativeTokenBurner burner = new NativeTokenBurner(settings.burnAddress);
+            vault.payoutNAT(Globals.getWNat(), payable(address(burner)), _amountNATWei);
             burner.die();
         } else {
             // burn directly to burn address
-            vault.payoutNAT(state.getWNat(), state.settings.burnAddress, _amountNATWei);
+            vault.payoutNAT(Globals.getWNat(), settings.burnAddress, _amountNATWei);
         }
     }
     
@@ -185,7 +183,30 @@ library Agents {
         internal view 
         returns (bool)
     {
+        return _token == Globals.getWNat() || _token == getClass1Token(_agent);
+    }
+    
+    function getClass1Token(Agent.State storage _agent)
+        internal view
+        returns (IERC20)
+    {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return _token == state.getWNat() || _token == state.getClass1Token(_agent);
+        return state.collateralTokens[_agent.collateralTokenC1].token;
+    }
+
+    function getClass1Collateral(Agent.State storage _agent)
+        internal view 
+        returns (CollateralToken.Data storage)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        return state.collateralTokens[_agent.collateralTokenC1];
+    }
+    
+    function getPoolCollateral() 
+        internal view 
+        returns (CollateralToken.Data storage)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        return state.collateralTokens[CollateralToken.POOL];
     }
 }

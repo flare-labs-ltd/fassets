@@ -9,6 +9,7 @@ import "../../generated/interface/IAttestationClient.sol";
 import "../interface/IFAsset.sol";
 import "../library/data/AssetManagerState.sol";
 import "../library/data/AssetManagerSettings.sol";
+import "../library/Globals.sol";
 // external
 import "../library/SettingsUpdater.sol";
 import "../library/StateUpdater.sol";
@@ -30,7 +31,6 @@ import "../library/FullAgentInfo.sol";
  */
 contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     using SafeCast for uint256;
-    using AssetManagerState for AssetManagerState.State;
     
     SettingsUpdater.PendingUpdates private pendingUpdates;
     
@@ -903,8 +903,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view
         returns (IFAsset)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        return state.settings.fAsset;
+        return Globals.getFAsset();
     }
 
     /**
@@ -915,8 +914,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view override
         returns (IWNat)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        return state.getWNat();
+        return Globals.getWNat();
     }
     
     /**
@@ -947,9 +945,9 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external view override 
         returns (uint256 _multiplier, uint256 _divisor)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        _multiplier = Conversion.currentAmgPriceInTokenWei(state.getPoolCollateral());
-        _divisor = Conversion.AMG_TOKENWEI_PRICE_SCALE * state.settings.assetMintingGranularityUBA;
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        _multiplier = Conversion.currentAmgPriceInTokenWei(Agents.getPoolCollateral());
+        _divisor = Conversion.AMG_TOKENWEI_PRICE_SCALE * settings.assetMintingGranularityUBA;
     }
     
     /**
@@ -958,9 +956,9 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     function requireWhitelistedSender()
         internal view
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        if (address(state.settings.whitelist) != address(0)) {
-            require(state.settings.whitelist.isWhitelisted(msg.sender), "not whitelisted");
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        if (address(settings.whitelist) != address(0)) {
+            require(settings.whitelist.isWhitelisted(msg.sender), "not whitelisted");
         }
     }
 }

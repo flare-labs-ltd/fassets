@@ -14,7 +14,6 @@ library AgentCollateral {
     using SafeMath for uint256;
     using SafeBips for uint256;
     using SafePct for uint256;
-    using AssetManagerState for AssetManagerState.State;
     using Agent for Agent.State;
     
     function combinedData(

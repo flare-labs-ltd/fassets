@@ -130,7 +130,7 @@ library Agent {
     
     // diamond state accessors
     
-    bytes32 internal constant AGENTS_POSITION = keccak256("AssetManager.Agents");
+    bytes32 internal constant AGENTS_POSITION = keccak256("fasset.AssetManager.Agent");
 
     function get(address _address)
         internal view

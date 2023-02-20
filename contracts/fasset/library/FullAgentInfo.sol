@@ -19,7 +19,7 @@ library FullAgentInfo {
     using SafeBips for uint64;
     using AgentCollateral for Collateral.CombinedData;
     using AgentCollateral for Collateral.Data;
-    using AssetManagerState for AssetManagerState.State;
+    using Agents for Agent.State;
     
     enum AgentStatusInfo {
         // agent is operating normally
@@ -137,12 +137,11 @@ library FullAgentInfo {
         external view
         returns (AgentInfo memory _agentState)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
         // TODO: add missing data
         Agent.State storage agent = Agent.get(_agentVault);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
-        CollateralToken.Data storage collateral = state.getClass1Collateral(agent);
-        CollateralToken.Data storage poolCollateral = state.getPoolCollateral();
+        CollateralToken.Data storage collateral = agent.getClass1Collateral();
+        CollateralToken.Data storage poolCollateral = Agents.getPoolCollateral();
         _agentState.status = _getAgentStatusInfo(agent);
         _agentState.ownerAddress = Agents.vaultOwner(agent);
         _agentState.underlyingAddressString = agent.underlyingAddressString;

@@ -68,12 +68,12 @@ library AssetManagerState {
         // the asset manager that it has been added.
         bool attached;
     }
+
+    // diamond state access to state and settings
     
-    // diamond state access
+    bytes32 internal constant STATE_POSITION = keccak256("fasset.AssetManager.State");
     
-    bytes32 internal constant STATE_POSITION = keccak256("AssetManager.State");
-    
-    function get() internal pure returns (State storage _state) {
+    function get() internal pure returns (AssetManagerState.State storage _state) {
         // Only direct constants are allowed in inline assembly, so we assign it here
         bytes32 position = STATE_POSITION;
         // solhint-disable-next-line no-inline-assembly
@@ -85,41 +85,11 @@ library AssetManagerState {
     function getSettings() internal view returns (AssetManagerSettings.Data storage) {
         // Only direct constants are allowed in inline assembly, so we assign it here
         bytes32 position = STATE_POSITION;
-        State storage state;
+        AssetManagerState.State storage state;
         // solhint-disable-next-line no-inline-assembly
         assembly {
             state.slot := position
         }
         return state.settings;
-    }
-    
-    // state getters
-    
-    function getWNat(State storage _state) 
-        internal view 
-        returns (IWNat) 
-    {
-        return IWNat(address(_state.collateralTokens[CollateralToken.POOL].token));
-    }
-    
-    function getClass1Token(State storage _state, Agent.State storage _agent)
-        internal view
-        returns (IERC20)
-    {
-        return _state.collateralTokens[_agent.collateralTokenC1].token;
-    }
-    
-    function getPoolCollateral(State storage _state) 
-        internal view 
-        returns (CollateralToken.Data storage)
-    {
-        return _state.collateralTokens[CollateralToken.POOL];
-    }
-
-    function getClass1Collateral(State storage _state, Agent.State storage _agent)
-        internal view 
-        returns (CollateralToken.Data storage)
-    {
-        return _state.collateralTokens[_agent.collateralTokenC1];
     }
 }
