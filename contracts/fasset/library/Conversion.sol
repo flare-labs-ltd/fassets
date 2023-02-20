@@ -27,15 +27,9 @@ library Conversion {
         CollateralToken.Data storage _token
     )
         internal view
-        returns (uint256)
+        returns (uint256 _price)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        IFtsoRegistry ftsoRegistry = settings.ftsoRegistry;
-        IIFtso assetFtso = ftsoRegistry.getFtso(settings.assetFtsoIndex);
-        IIFtso tokenFtso = ftsoRegistry.getFtso(_token.ftsoIndex);
-        (uint256 assetPrice,, uint256 assetFtsoDecimals) = assetFtso.getCurrentPriceWithDecimals();
-        (uint256 tokenPrice,, uint256 tokenFtsoDecimals) = tokenFtso.getCurrentPriceWithDecimals();
-        return _calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDecimals, assetPrice, assetFtsoDecimals);
+        (_price,,) = _currentAmgPriceInTokenWeiWithTs(_token);
     }
 
     function currentAmgPriceInTokenWeiWithTrusted(
@@ -44,24 +38,15 @@ library Conversion {
         internal view
         returns (uint256 _ftsoPrice, uint256 _trustedPrice)
     {
+        (uint256 ftsoPrice, uint256 assetTimestamp, uint256 tokenTimestamp) =
+            _currentAmgPriceInTokenWeiWithTs(_token);
+        (uint256 trustedPrice, uint256 assetTimestampTrusted, uint256 tokenTimestampTrusted) =
+            _currentTrustedAmgPriceInTokenWeiWithTs(_token);
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        IFtsoRegistry ftsoRegistry = settings.ftsoRegistry;
-        IIFtso assetFtso = ftsoRegistry.getFtso(settings.assetFtsoIndex);
-        IIFtso tokenFtso = ftsoRegistry.getFtso(_token.ftsoIndex);
-        (uint256 assetPrice, uint256 assetTimestamp, uint256 assetFtsoDecimals) =
-            assetFtso.getCurrentPriceWithDecimals();
-        (uint256 tokenPrice, uint256 tokenTimestamp, uint256 tokenFtsoDecimals) =
-            tokenFtso.getCurrentPriceWithDecimals();
-        // wee only need decimals once
-        (uint256 assetPriceTrusted, uint256 assetTimestampTrusted) = assetFtso.getCurrentPriceFromTrustedProviders();
-        (uint256 tokenPriceTrusted, uint256 tokenTimestampTrusted) = tokenFtso.getCurrentPriceFromTrustedProviders();
-        _ftsoPrice = _calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDecimals,
-            assetPrice, assetFtsoDecimals);
-        _trustedPrice = tokenTimestampTrusted + settings.maxTrustedPriceAgeSeconds >= tokenTimestamp
-                && assetTimestampTrusted + settings.maxTrustedPriceAgeSeconds >= assetTimestamp
-            ? _calcAmgToTokenWeiPrice(_token.decimals, tokenPriceTrusted, tokenFtsoDecimals,
-                    assetPriceTrusted, assetFtsoDecimals)
-            : _ftsoPrice;
+        bool trustedPriceFresh = tokenTimestampTrusted + settings.maxTrustedPriceAgeSeconds >= tokenTimestamp
+                && assetTimestampTrusted + settings.maxTrustedPriceAgeSeconds >= assetTimestamp;
+        _ftsoPrice = ftsoPrice;
+        _trustedPrice = trustedPriceFresh ? trustedPrice : ftsoPrice;
     }
 
     function convertAmgToUBA(
@@ -102,6 +87,36 @@ library Conversion {
 
     function convertTokenWeiToAMG(uint256 _valueNATWei, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
         return _valueNATWei.mulDiv(AMG_TOKENWEI_PRICE_SCALE, _amgToTokenWeiPrice);
+    }
+
+    function _currentAmgPriceInTokenWeiWithTs(CollateralToken.Data storage _token)
+        private view
+        returns (uint256 /*_price*/, uint256 /*_assetTs*/, uint256 /*_tokenTs*/)
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        IFtsoRegistry ftsoRegistry = settings.ftsoRegistry;
+        IIFtso assetFtso = ftsoRegistry.getFtso(settings.assetFtsoIndex);
+        IIFtso tokenFtso = ftsoRegistry.getFtso(_token.ftsoIndex);
+        (uint256 assetPrice, uint256 assetTs, uint256 assetFtsoDec) = assetFtso.getCurrentPriceWithDecimals();
+        (uint256 tokenPrice, uint256 tokenTs, uint256 tokenFtsoDec) = tokenFtso.getCurrentPriceWithDecimals();
+        uint256 price = _calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDec, assetPrice, assetFtsoDec);
+        return (price, assetTs, tokenTs);
+    }
+
+    function _currentTrustedAmgPriceInTokenWeiWithTs(CollateralToken.Data storage _token)
+        private view
+        returns (uint256 /*_price*/, uint256 /*_assetTs*/, uint256 /*_tokenTs*/)
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        IFtsoRegistry ftsoRegistry = settings.ftsoRegistry;
+        IIFtso assetFtso = ftsoRegistry.getFtso(settings.assetFtsoIndex);
+        IIFtso tokenFtso = ftsoRegistry.getFtso(_token.ftsoIndex);
+        (uint256 assetPrice, uint256 assetTs, uint256 assetFtsoDec) =
+            assetFtso.getCurrentPriceWithDecimalsFromTrustedProviders();
+        (uint256 tokenPrice, uint256 tokenTs, uint256 tokenFtsoDec) =
+            tokenFtso.getCurrentPriceWithDecimalsFromTrustedProviders();
+        uint256 price = _calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDec, assetPrice, assetFtsoDec);
+        return (price, assetTs, tokenTs);
     }
 
     function _calcAmgToTokenWeiPrice(
