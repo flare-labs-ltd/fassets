@@ -17,7 +17,10 @@ import "../library/AvailableAgents.sol";
 import "../library/AgentsExternal.sol";
 import "../library/CollateralReservations.sol";
 import "../library/Minting.sol";
-import "../library/Redemptions.sol";
+import "../library/RedemptionRequests.sol";
+import "../library/RedemptionConfirmations.sol";
+import "../library/RedemptionFailures.sol";
+import "../library/SelfClosing.sol";
 import "../library/Challenges.sol";
 import "../library/Liquidation.sol";
 import "../library/UnderlyingWithdrawalAnnouncements.sol";
@@ -564,7 +567,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
         onlyWhitelistedSender
     {
-        Redemptions.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
+        RedemptionRequests.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
     }
 
     /**
@@ -588,7 +591,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemptions.confirmRedemptionPayment(_payment, _redemptionRequestId.toUint64());
+        RedemptionConfirmations.confirmRedemptionPayment(_payment, _redemptionRequestId.toUint64());
     }
 
     /**
@@ -607,7 +610,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemptions.redemptionPaymentDefault(_proof, _redemptionRequestId.toUint64());
+        RedemptionFailures.redemptionPaymentDefault(_proof, _redemptionRequestId.toUint64());
     }
 
     /**
@@ -626,7 +629,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemptions.finishRedemptionWithoutPayment(_proof, _redemptionRequestId.toUint64());
+        RedemptionFailures.finishRedemptionWithoutPayment(_proof, _redemptionRequestId.toUint64());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -646,8 +649,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        // in Redemptions.selfClose we check that only agent can do this
-        Redemptions.selfClose(_agentVault, _amountUBA);
+        // in SelfClose.selfClose we check that only agent can do this
+        SelfClosing.selfClose(_agentVault, _amountUBA);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

@@ -10,7 +10,7 @@ import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
 import "./Conversion.sol";
-import "./Redemptions.sol";
+import "./SelfClosing.sol";
 import "./AgentCollateral.sol";
 import "./liquidationStrategy/LiquidationStrategyWrapper.sol";
 
@@ -246,7 +246,7 @@ library Liquidation {
             _maxLiquidationAmountAMG(_agent, _cr.poolCR, poolFactor, _agent.poolCollateralToken));
         uint64 amountToLiquidateAMG = Math.min(maxLiquidatedAMG, _amountAMG).toUint64();
         // liquidate redemption tickets
-        (_liquidatedAMG,) = Redemptions.selfCloseOrLiquidate(_agent, amountToLiquidateAMG);
+        (_liquidatedAMG,) = SelfClosing.selfCloseOrLiquidate(_agent, amountToLiquidateAMG);
         // calculate payouts to liquidator
         _payoutC1Wei = Conversion.convertAmgToTokenWei(_liquidatedAMG.mulBips(class1Factor), _cr.amgToC1WeiPrice);
         _payoutPoolWei = Conversion.convertAmgToTokenWei(_liquidatedAMG.mulBips(poolFactor), _cr.amgToPoolWeiPrice);
