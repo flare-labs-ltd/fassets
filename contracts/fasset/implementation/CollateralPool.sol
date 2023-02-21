@@ -18,9 +18,9 @@ contract CollateralPool is ReentrancyGuard {
     uint256 public constant CLAIM_FTSO_REWARDS_INTEREST_BIPS = 3;
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
 
+    address payable public immutable agentVault;
     IAssetManager public immutable assetManager;
     IERC20 public immutable fAsset;
-    address public immutable agentVault;
     CollateralPoolToken public poolToken;
     uint256 public exitCRBIPS;
     uint256 public topupCRBIPS;
@@ -34,7 +34,30 @@ contract CollateralPool is ReentrancyGuard {
         _;
     }
 
-    function enter(uint256 _fassets, bool _enterWithFullFassets) external {
+    modifier onlyAgent {
+        require(msg.sender == address(agentVault));
+        _;
+    }
+
+    constructor (
+        address payable _agentVault, address _assetManager, address _fAsset,
+        uint256 _exitCRBIPS, uint256 _topupCRBIPS, uint256 _topupTokenDiscountBIPS
+    ) {
+        agentVault = _agentVault;
+        assetManager = IAssetManager(_assetManager);
+        fAsset = IERC20(_fAsset);
+        exitCRBIPS = _exitCRBIPS;
+        topupCRBIPS = _topupCRBIPS;
+        topupTokenDiscountBIPS = _topupTokenDiscountBIPS;
+    }
+
+    function setPoolToken(address _poolToken) external onlyAgent {
+        if (address(poolToken) == address(0)) {
+            poolToken = CollateralPoolToken(_poolToken);
+        }
+    }
+
+    function enter(uint256 _fassets, bool _enterWithFullFassets) external payable {
         IWNat wnat = assetManager.getWNat();
         uint256 poolTokenSupply = poolToken.totalSupply();
         uint256 poolBalanceNat = wnat.balanceOf(address(this));
@@ -79,8 +102,7 @@ contract CollateralPool is ReentrancyGuard {
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
         uint256 lhs = updatedPoolBalanceNat * assetPriceDiv;
         uint256 rhs = fassetSupply * assetPriceMul;
-        require(lhs >= rhs.mulBips(exitCRBIPS),
-            "collateral ratio falls below exitCR");
+        require(lhs >= rhs.mulBips(exitCRBIPS), "collateral ratio falls below exitCR");
         // execute wnat transfer
         wnat.transfer(msg.sender, natShare);
         // execute fasset transfer
@@ -190,7 +212,17 @@ contract CollateralPool is ReentrancyGuard {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Methods to allow for liquidation of the pool by AssetManager
+    // Methods to allow for liquidation/destruction of the pool by AssetManager or agent
+
+    function destroy() external onlyAgent {
+        IWNat wnat = assetManager.getWNat();
+        uint256 poolBalanceNat = wnat.balanceOf(address(this));
+        uint256 poolFassetBalance = fAsset.balanceOf(address(this));
+        if (poolBalanceNat == 0 && poolFassetBalance == 0) {
+            poolToken.destroy();
+            selfdestruct(agentVault);
+        }
+    }
 
     // used by AssetManager to handle liquidation
     function payout(address _recipient, uint256 _amount)
@@ -205,10 +237,9 @@ contract CollateralPool is ReentrancyGuard {
     ////////////////////////////////////////////////////////////////////////////////////
     // Delegation of the pool's collateral
 
-    // implement onlyAdmin modifier
     function delegateCollateral(
         address[] memory _to, uint256[] memory _bips
-    ) external {
+    ) external onlyAgent {
         IVPToken wnat = IVPToken(assetManager.getWNat());
         wnat.batchDelegate(_to, _bips);
     }
@@ -227,6 +258,19 @@ contract CollateralPool is ReentrancyGuard {
             /* solhint-enable avoid-low-level-calls */
             require(success, "transfer failed");
         }
+    }
+
+    // Set executors and recipients that can then automatically claim rewards through FtsoRewardManager.
+    function setFtsoAutoClaiming(
+        IClaimSetupManager _claimSetupManager, 
+        address[] memory _executors,
+        address[] memory _allowedRecipients
+    )
+        external payable
+        onlyAgent
+    {
+        _claimSetupManager.setClaimExecutors{value: msg.value}(_executors);
+        _claimSetupManager.setAllowedClaimRecipients(_allowedRecipients);
     }
 
     function min(uint256 a, uint256 b) private pure returns (uint256) {

@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./CollateralPool.sol";
 
 contract CollateralPoolToken is ERC20 {
-    uint256 private constant MAX_DELAYED_MINTINGS = 10;
     address payable public immutable collateralPool;
 
     modifier onlyCollateralPool {
