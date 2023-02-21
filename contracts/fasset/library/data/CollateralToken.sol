@@ -40,12 +40,12 @@ library CollateralToken {
         uint32 minCollateralRatioBIPS;
 
         // Minimum collateral ratio for agent in CCB (Collateral call band).
+        // If the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.
         // A bit smaller than minCollateralRatioBIPS.
         // timelocked
         uint32 ccbMinCollateralRatioBIPS;
 
         // Minimum collateral ratio required to get agent out of liquidation.
-        // If the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.
         // Wiil always be greater than minCollateralRatioBIPS.
         // timelocked
         uint32 safetyMinCollateralRatioBIPS;
