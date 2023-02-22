@@ -2,12 +2,12 @@
 
 set -e
 
-rm -rf artifacts/flattened
-mkdir -p artifacts/flattened
-cp artifacts/cache/flattened/**/*.json artifacts/flattened
+rm -rf artifacts/flare-sc
+mkdir -p artifacts/flare-sc
+cp artifacts/flattened/**/*.json artifacts/flare-sc
 
 # remove interfaces
-rm artifacts/flattened/I[A-Z]*.json
+rm artifacts/flare-sc/I[A-Z]*.json
 # remove some contracts
-rm artifacts/flattened/Governed*.json
-rm artifacts/flattened/ERC20*.json
+rm artifacts/flare-sc/Governed*.json
+rm artifacts/flare-sc/ERC20*.json

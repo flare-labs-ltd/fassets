@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import { VPToken } from "../../../cache/flattened/FlareSmartContracts.sol";
+import { VPToken } from "../../../flattened/FlareSmartContracts.sol";
 import "../interface/IFAsset.sol";
 
 contract FAsset is IFAsset, VPToken {
