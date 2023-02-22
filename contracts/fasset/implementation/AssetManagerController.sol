@@ -211,20 +211,27 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_CCB_TIME_SECONDS, abi.encode(_value));
     }
 
-    function setLiquidationStepSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
+    function setLiquidationStrategy(
+        IAssetManager[] memory _assetManagers,
+        address _liquidationStrategy,
+        bytes memory _encodedInitialSettings
+    )
         external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_LIQUIDATION_STEP_SECONDS, abi.encode(_value));
+            SettingsUpdater.SET_LIQUIDATION_STRATEGY, abi.encode(_liquidationStrategy, _encodedInitialSettings));
     }
 
-    function setLiquidationCollateralFactorBips(IAssetManager[] memory _assetManagers, uint256[] memory _values)
+    function setLiquidationStrategySettings(
+        IAssetManager[] memory _assetManagers,
+        bytes memory _encodedSettings
+    )
         external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS, abi.encode(_values));
+            SettingsUpdater.SET_LIQUIDATION_STRATEGY_SETTINGS, abi.encode(_encodedSettings));
     }
 
     function setAttestationWindowSeconds(IAssetManager[] memory _assetManagers, uint256 _value)

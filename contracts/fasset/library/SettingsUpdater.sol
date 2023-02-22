@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
+import ".//liquidationStrategy/LiquidationStrategyWrapper.sol";
 
 library SettingsUpdater {
     using SafeCast for uint256;
@@ -68,10 +69,10 @@ library SettingsUpdater {
         keccak256("setWithdrawalOrDestroyWaitMinSeconds(uint256)");
     bytes32 internal constant SET_CCB_TIME_SECONDS =
         keccak256("setCcbTimeSeconds(uint256)");
-    bytes32 internal constant SET_LIQUIDATION_STEP_SECONDS =
-        keccak256("setLiquidationStepSeconds(uint256)");
-    bytes32 internal constant SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS =
-        keccak256("setLiquidationCollateralFactorBips(uint256[])");
+    bytes32 internal constant SET_LIQUIDATION_STRATEGY =
+        keccak256("setLiquidationStrategy(address,bytes)");
+    bytes32 internal constant SET_LIQUIDATION_STRATEGY_SETTINGS =
+        keccak256("setLiquidationStrategySettings(bytes)");
     bytes32 internal constant SET_ATTESTATION_WINDOW_SECONDS =
         keccak256("setAttestationWindowSeconds(uint256)");
     bytes32 internal constant SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS =
@@ -138,12 +139,12 @@ library SettingsUpdater {
         } else if (_method == SET_CCB_TIME_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_updates, _method);
             _setCcbTimeSeconds(_params);
-        } else if (_method == SET_LIQUIDATION_STEP_SECONDS) {
+        } else if (_method == SET_LIQUIDATION_STRATEGY) {
             _checkEnoughTimeSinceLastUpdate(_updates, _method);
-            _setLiquidationStepSeconds(_params);
-        } else if (_method == SET_LIQUIDATION_COLLATERAL_FACTOR_BIPS) {
+            _setLiquidationStrategy(_params);
+        } else if (_method == SET_LIQUIDATION_STRATEGY_SETTINGS) {
             _checkEnoughTimeSinceLastUpdate(_updates, _method);
-            _setLiquidationCollateralFactorBips(_params);
+            _setLiquidationStrategySettings(_params);
         } else if (_method == SET_ATTESTATION_WINDOW_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_updates, _method);
             _setAttestationWindowSeconds(_params);
@@ -458,41 +459,6 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("ccbTimeSeconds", value);
     }
 
-    function _setLiquidationStepSeconds(
-        bytes calldata _params
-    )
-        private
-    {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        uint256 value = abi.decode(_params, (uint256));
-        // validate
-        require(value > 0, "cannot be zero");
-        require(value <= settings.liquidationStepSeconds * 2, "increase too big");
-        require(value >= settings.liquidationStepSeconds / 2, "decrease too big");
-        // update
-        settings.liquidationStepSeconds = value.toUint64();
-        emit AMEvents.SettingChanged("liquidationStepSeconds", value);
-    }
-
-    function _setLiquidationCollateralFactorBips(
-        bytes calldata _params
-    )
-        private
-    {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        uint256[] memory value = abi.decode(_params, (uint256[]));
-        // validate
-        require(value.length >= 1, "at least one factor required");
-        // update
-        delete settings.liquidationCollateralFactorBIPS;
-        for (uint256 i = 0; i < value.length; i++) {
-            require(value[i] > SafePct.MAX_BIPS, "factor not above 1");
-            require(i == 0 || value[i] > value[i - 1], "factors not increasing");
-            settings.liquidationCollateralFactorBIPS.push(value[i].toUint32());
-        }
-        emit AMEvents.SettingArrayChanged("liquidationCollateralFactorBIPS", value);
-    }
-
     function _setAttestationWindowSeconds(
         bytes calldata _params
     )
@@ -521,6 +487,30 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("announcedUnderlyingConfirmationMinSeconds", value);
     }
 
+    function _setLiquidationStrategy(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        (address liquidationStrategy, bytes memory initialSettings) = abi.decode(_params, (address, bytes));
+        // validate
+        require(liquidationStrategy != address(0), "address zero");
+        // update and initialize
+        settings.liquidationStrategy = liquidationStrategy;
+        LiquidationStrategyWrapper.initialize(initialSettings);
+        emit AMEvents.SettingChanged("liquidationStrategy", uint160(liquidationStrategy));
+    }
+
+    function _setLiquidationStrategySettings(
+        bytes calldata _params
+    )
+        private
+    {
+        // just pass to LiquidationStrategy.updateSettings, it will do the decoding and validation
+        LiquidationStrategyWrapper.updateSettings(_params);
+    }
+
     function _validateSettings(
         AssetManagerSettings.Data memory _settings
     )
@@ -537,7 +527,6 @@ library SettingsUpdater {
         require(_settings.confirmationByOthersRewardC1Wei > 0, "cannot be zero");
         require(_settings.maxRedeemedTickets > 0, "cannot be zero");
         require(_settings.ccbTimeSeconds > 0, "cannot be zero");
-        require(_settings.liquidationStepSeconds > 0, "cannot be zero");
         require(_settings.maxTrustedPriceAgeSeconds > 0, "cannot be zero");
         require(_settings.minUpdateRepeatTimeSeconds > 0, "cannot be zero");
         require(_settings.buybackCollateralFactorBIPS > 0, "cannot be zero");
@@ -549,13 +538,6 @@ library SettingsUpdater {
         // uint256 ccbCR = _settings.ccbMinCollateralRatioBIPS;
         // uint256 safetyCR = _settings.safetyMinCollateralRatioBIPS;
         // require(SafePct.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
-
-        uint32[] memory liqFactors = _settings.liquidationCollateralFactorBIPS;
-        require(liqFactors.length >= 1, "at least one factor required");
-        for (uint256 i = 0; i < liqFactors.length; i++) {
-            require(liqFactors[i] > SafePct.MAX_BIPS, "factor not above 1");
-            require(i == 0 || liqFactors[i] > liqFactors[i - 1], "factors not increasing");
-        }
 
         require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");

@@ -30,6 +30,9 @@ library AssetManagerSettings {
         // Attestation client verifies and decodes attestation proofs.
         IAttestationClient attestationClient;
 
+        // External (dynamically loaded) library for calculation liquidation factors.
+        address liquidationStrategy;
+
         // FTSO registry from which the system obtains ftso's for nat and asset.
         IFtsoRegistry ftsoRegistry;
 
@@ -166,26 +169,9 @@ library AssetManagerSettings {
         // rate-limited
         uint64 withdrawalWaitMinSeconds;
 
-        // Factor with which to multiply the asset price in native currency to obtain the payment
-        // to the liquidator.
-        // Expressed in BIPS, e.g. [12000, 16000, 20000] means that the liquidator will be paid 1.2, 1.6 and 2.0
-        // times the market price of the liquidated assets.
-        // CAREFUL: values in array must increase and be greater than 100%.
-        // rate-limited
-        uint32[] liquidationCollateralFactorBIPS;
-
-        // How much of the liquidation is paid in class1 token.
-        // The rest will be paid in pool tokens.
-        uint32 liquidationFactorClass1BIPS;
-
         // Agent can remain in CCB for this much time, after that liquidation starts automatically.
         // rate-limited
         uint64 ccbTimeSeconds;
-
-        // If there was no liquidator for the current liquidation offer,
-        // go to the next step of liquidation after a certain period of time.
-        // rate-limited
-        uint64 liquidationStepSeconds;
 
         // Maximum time for which it is possible to obtain payment or non-payment proofs.
         // rate-limited
