@@ -4,7 +4,6 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/lib/SafePct.sol";
-import "../../utils/lib/SafeBips.sol";
 import "../interface/IWNat.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAgentVault.sol";
@@ -13,7 +12,6 @@ import "./CollateralPoolToken.sol";
 contract CollateralPool is ReentrancyGuard {
 
     using SafePct for uint256;
-    using SafeBips for uint256;
 
     uint256 public constant CLAIM_FTSO_REWARDS_INTEREST_BIPS = 3;
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
@@ -150,8 +148,8 @@ contract CollateralPool is ReentrancyGuard {
         poolToken.burn(msg.sender, _tokenShare);
         uint256 redeemedFassets = fassetShare + additionallyRequiredFassets;
         if (redeemedFassets > 0) {
-            uint256 lotSizeAMG = assetManager.getLotSizeAMG();
-            uint256 lotsToRedeem = redeemedFassets / lotSizeAMG;
+            uint256 lotSizeUBA = assetManager.getLotSize();
+            uint256 lotsToRedeem = redeemedFassets / lotSizeUBA;
             if (lotsToRedeem == 0 || _getAgentCollateral) {
                 assetManager.redeemChosenAgentCollateral(
                     agentVault, redeemedFassets, msg.sender);

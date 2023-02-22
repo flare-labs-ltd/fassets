@@ -894,6 +894,29 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
+    // Collateral pool redemptions
+
+    function redeemChosenAgentUnderlying(
+        address _agentVault,
+        uint256 _amountUBA,
+        string memory _redeemerUnderlyingAddressString
+    )
+        external override
+    {
+        // TODO: implement
+    }
+
+    function redeemChosenAgentCollateral(
+        address _agentVault,
+        uint256 _amountUBA,
+        address _redeemerAddress
+    )
+        external override
+    {
+        // TODO: implement
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
     // Other
 
     /**
@@ -936,6 +959,17 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         returns (bool)
     {
         return AgentsExternal.isCollateralToken(_agentVault, _token);
+    }
+
+    /**
+     * return lot size in UBA.
+     */
+    function getLotSize()
+        external view
+        returns (uint256 _lotSizeUBA)
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        return settings.lotSizeAMG * settings.assetMintingGranularityUBA;
     }
 
     /**
