@@ -61,7 +61,7 @@ contract CollateralPool is ReentrancyGuard {
         IWNat wnat = assetManager.getWNat();
         uint256 poolTokenSupply = poolToken.totalSupply();
         uint256 poolBalanceNat = wnat.balanceOf(address(this));
-        require(poolTokenSupply <= poolBalanceNat * MAX_NAT_TO_POOL_TOKEN_RATIO, "nat balance too low");
+        require(poolTokenSupply <= poolBalanceNat * MAX_NAT_TO_POOL_TOKEN_RATIO, "nat balance too small");
         uint256 poolFassetBalance = fAsset.balanceOf(address(this));
         uint256 poolVirtualFassetBalance = poolFassetBalance + poolFassetDebt;
         // calculate obtained pool tokens and liquid fassets
@@ -96,7 +96,7 @@ contract CollateralPool is ReentrancyGuard {
         uint256 fassetSupply = fAsset.totalSupply();
         // poolTokenSupply >= _tokenShare > 0
         uint256 natShare = _tokenShare.mulDiv(poolBalanceNat, poolTokenSupply);
-        require(natShare > 0, "amount of supplied tokens is too low");
+        require(natShare > 0, "amount of supplied tokens is too small");
         // check whether the new collateral ratio is above exitCR
         uint256 updatedPoolBalanceNat = poolBalanceNat - natShare;
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
@@ -132,7 +132,7 @@ contract CollateralPool is ReentrancyGuard {
         uint256 poolFassetBalance = fAsset.balanceOf(address(this));
         // poolTokenSupply >= _tokenShare > 0
         uint256 natShare = poolBalanceNat.mulDiv(_tokenShare, poolTokenSupply);
-        require(natShare > 0, "amount of supplied tokens is too low");
+        require(natShare > 0, "amount of supplied tokens is too small");
         uint256 fassetShare = poolFassetBalance.mulDiv(_tokenShare, poolTokenSupply);
         // calculate msg.sender's additionally required fassets
         uint256 updatedPoolBalanceNat = poolBalanceNat - natShare;
@@ -235,7 +235,19 @@ contract CollateralPool is ReentrancyGuard {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Delegation of the pool's collateral
+    // Delegation of the pool's collateral and airdrop claimage (same as in AgentVault)
+
+    function claimAirdropDistribution(IDistributionToDelegators _distribution, uint256 _month)
+        external
+        onlyAgent
+        returns(uint256)
+    {
+        return _distribution.claim(agentVault, _month);
+    }
+
+    function optOutOfAirdrop(IDistributionToDelegators _distribution) external onlyAgent {
+        _distribution.optOutOfAirdrop();
+    }
 
     function delegateCollateral(
         address[] memory _to, uint256[] memory _bips
@@ -262,7 +274,7 @@ contract CollateralPool is ReentrancyGuard {
 
     // Set executors and recipients that can then automatically claim rewards through FtsoRewardManager.
     function setFtsoAutoClaiming(
-        IClaimSetupManager _claimSetupManager, 
+        IClaimSetupManager _claimSetupManager,
         address[] memory _executors,
         address[] memory _allowedRecipients
     )
@@ -272,6 +284,9 @@ contract CollateralPool is ReentrancyGuard {
         _claimSetupManager.setClaimExecutors{value: msg.value}(_executors);
         _claimSetupManager.setAllowedClaimRecipients(_allowedRecipients);
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // auxiliary
 
     function min(uint256 a, uint256 b) private pure returns (uint256) {
         return a <= b ? a : b;
