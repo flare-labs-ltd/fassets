@@ -13,6 +13,14 @@ contract CollateralPool is ReentrancyGuard {
 
     using SafePct for uint256;
 
+    struct AssetData {
+        uint256 poolTokenSupply;
+        uint256 fassetSupply;
+        uint256 poolNatBalance;
+        uint256 poolFassetBalance;
+        uint256 poolVirtualFassetBalance;
+    }
+
     uint256 public constant CLAIM_FTSO_REWARDS_INTEREST_BIPS = 3;
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
 
@@ -56,18 +64,14 @@ contract CollateralPool is ReentrancyGuard {
     }
 
     function enter(uint256 _fassets, bool _enterWithFullFassets) external payable {
-        IWNat wnat = assetManager.getWNat();
-        uint256 poolTokenSupply = poolToken.totalSupply();
-        uint256 poolBalanceNat = wnat.balanceOf(address(this));
-        require(poolTokenSupply <= poolBalanceNat * MAX_NAT_TO_POOL_TOKEN_RATIO, "nat balance too small");
-        uint256 poolFassetBalance = fAsset.balanceOf(address(this));
-        uint256 poolVirtualFassetBalance = poolFassetBalance + poolFassetDebt;
+        AssetData memory assetData = getAssetData();
+        require(assetData.poolTokenSupply <= assetData.poolNatBalance * MAX_NAT_TO_POOL_TOKEN_RATIO,
+            "nat balance too small");
         // calculate obtained pool tokens and liquid fassets
         uint256 tokens = _collateralToTokenShare(msg.value);
-        uint256 fassets = poolBalanceNat == 0 ?
-            0 : poolVirtualFassetBalance.mulDiv(msg.value, poolBalanceNat);
-        uint256 liquidFassets = _enterWithFullFassets ?
-            fassets : min(_fassets, fassets);
+        uint256 fassets = assetData.poolNatBalance == 0 ?
+            0 : assetData.poolVirtualFassetBalance.mulDiv(msg.value, assetData.poolNatBalance);
+        uint256 liquidFassets = _enterWithFullFassets ? fassets : min(_fassets, fassets);
         // log msg.sender fasset debt
         uint256 debtFassets = fassets - liquidFassets;
         fassetDebtOf[msg.sender] += debtFassets;
@@ -78,7 +82,7 @@ contract CollateralPool is ReentrancyGuard {
                 "f-asset allowance too small");
             fAsset.transferFrom(msg.sender, address(this), liquidFassets);
         }
-        wnat.deposit{value: msg.value}();
+        assetManager.getWNat().deposit{value: msg.value}();
         poolToken.mint(msg.sender, tokens);
     }
 
@@ -88,25 +92,19 @@ contract CollateralPool is ReentrancyGuard {
 
     function exit(uint256 _tokenShare) public {
         require(_tokenShare > 0, "token share is zero");
-        IWNat wnat = assetManager.getWNat();
-        uint256 poolTokenSupply = poolToken.totalSupply();
-        uint256 poolBalanceNat = wnat.balanceOf(address(this));
-        uint256 fassetSupply = fAsset.totalSupply();
+        AssetData memory assetData = getAssetData();
         // poolTokenSupply >= _tokenShare > 0
-        uint256 natShare = _tokenShare.mulDiv(poolBalanceNat, poolTokenSupply);
+        uint256 natShare = _tokenShare.mulDiv(assetData.poolNatBalance, assetData.poolTokenSupply);
         require(natShare > 0, "amount of supplied tokens is too small");
         // check whether the new collateral ratio is above exitCR
-        uint256 updatedPoolBalanceNat = poolBalanceNat - natShare;
+        uint256 updatedPoolBalanceNat = assetData.poolNatBalance - natShare;
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
-        uint256 lhs = updatedPoolBalanceNat * assetPriceDiv;
-        uint256 rhs = fassetSupply * assetPriceMul;
-        require(lhs >= rhs.mulBips(exitCRBIPS), "collateral ratio falls below exitCR");
+        require(updatedPoolBalanceNat * assetPriceDiv >= (assetData.fassetSupply * assetPriceMul).mulBips(exitCRBIPS),
+            "collateral ratio falls below exitCR");
         // execute wnat transfer
-        wnat.transfer(msg.sender, natShare);
+        assetManager.getWNat().transfer(msg.sender, natShare);
         // execute fasset transfer
-        uint256 poolFassetBalance = fAsset.balanceOf(address(this));
-        uint256 poolVirtualFassetBalance = poolFassetBalance + poolFassetDebt;
-        uint256 fassetShare = poolVirtualFassetBalance.mulDiv(_tokenShare, poolTokenSupply);
+        uint256 fassetShare = assetData.poolVirtualFassetBalance.mulDiv(_tokenShare, assetData.poolTokenSupply);
         if (fassetShare > 0) {
             fAsset.transfer(msg.sender, fassetShare);
         }
@@ -123,19 +121,17 @@ contract CollateralPool is ReentrancyGuard {
         string memory _redeemerUnderlyingAddressString
     ) public {
         require(_tokenShare > 0, "token share is zero");
-        IWNat wnat = assetManager.getWNat();
-        uint256 poolBalanceNat = wnat.balanceOf(address(this));
-        uint256 poolTokenSupply = poolToken.totalSupply();
-        uint256 fassetSupply = fAsset.totalSupply();
-        uint256 poolFassetBalance = fAsset.balanceOf(address(this));
+        AssetData memory assetData = getAssetData();
         // poolTokenSupply >= _tokenShare > 0
-        uint256 natShare = poolBalanceNat.mulDiv(_tokenShare, poolTokenSupply);
+        uint256 natShare = assetData.poolNatBalance.mulDiv(_tokenShare, assetData.poolTokenSupply);
         require(natShare > 0, "amount of supplied tokens is too small");
-        uint256 fassetShare = poolFassetBalance.mulDiv(_tokenShare, poolTokenSupply);
+        uint256 fassetShare = assetData.poolFassetBalance.mulDiv(
+            _tokenShare, assetData.poolTokenSupply);
         // calculate msg.sender's additionally required fassets
-        uint256 updatedPoolBalanceNat = poolBalanceNat - natShare;
-        uint256 updatedFassetSupply = fassetSupply - fassetShare;
-        uint256 exemptionFassets = poolFassetBalance.mulDiv(updatedPoolBalanceNat, poolBalanceNat);
+        uint256 updatedPoolBalanceNat = assetData.poolNatBalance - natShare;
+        uint256 updatedFassetSupply = assetData.fassetSupply - fassetShare;
+        uint256 exemptionFassets = assetData.poolFassetBalance.mulDiv(
+            updatedPoolBalanceNat, assetData.poolNatBalance);
         uint256 additionallyRequiredFassets = exemptionFassets <= updatedFassetSupply ?
             updatedFassetSupply - exemptionFassets : 0;
         if (additionallyRequiredFassets > 0) {
@@ -144,7 +140,7 @@ contract CollateralPool is ReentrancyGuard {
             fAsset.transferFrom(msg.sender, address(this), additionallyRequiredFassets);
         }
         // execute asset transfer/burn
-        wnat.transfer(msg.sender, natShare);
+        assetManager.getWNat().transfer(msg.sender, natShare);
         poolToken.burn(msg.sender, _tokenShare);
         uint256 redeemedFassets = fassetShare + additionallyRequiredFassets;
         if (redeemedFassets > 0) {
@@ -167,28 +163,35 @@ contract CollateralPool is ReentrancyGuard {
 
     // function that calculates the amount of token bought with collateral
     // note: this is complicated due to the topup discount
-    function _collateralToTokenShare(uint256 _collateral) private view returns (uint256) {
-        IWNat wnat = assetManager.getWNat();
-        uint256 poolBalanceNat = wnat.balanceOf(address(this));
-        if (poolBalanceNat == 0) return _collateral;
-        uint256 poolTokenSupply = poolToken.totalSupply();
-        uint256 fassetSupply = fAsset.totalSupply();
+    function _collateralToTokenShare(uint256 _collateral) internal view returns (uint256) {
+        AssetData memory assetData = getAssetData();
+        if (assetData.poolNatBalance == 0) return _collateral;
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
         // calculate amount of nat at topup price and nat at normal price
-        uint256 lhs = assetPriceDiv * poolBalanceNat;
-        uint256 rhs = assetPriceMul * fassetSupply;
         uint256 topupAssetPriceMul = assetPriceMul.mulBips(topupCRBIPS);
-        uint256 natRequiredToTopup = lhs < rhs.mulBips(topupCRBIPS) ?
-            fassetSupply.mulDiv(topupAssetPriceMul, assetPriceDiv) - poolBalanceNat : 0;
+        uint256 natRequiredToTopup = assetPriceDiv * assetData.poolNatBalance <
+            (assetPriceMul * assetData.fassetSupply).mulBips(topupCRBIPS) ?
+            assetData.fassetSupply.mulDiv(topupAssetPriceMul, assetPriceDiv) - assetData.poolNatBalance : 0;
         uint256 collateralAtTopupPrice = _collateral < natRequiredToTopup ?
             _collateral : natRequiredToTopup;
         uint256 collateralAtNormalPrice = collateralAtTopupPrice < _collateral ?
             _collateral - collateralAtTopupPrice : 0;
-        uint256 tokenShareAtTopupPrice = poolTokenSupply.mulDiv(
-            collateralAtTopupPrice, poolBalanceNat.mulBips(topupTokenDiscountBIPS));
-        uint256 tokenShareAtNormalPrice = poolTokenSupply.mulDiv(
-            collateralAtNormalPrice, poolBalanceNat);
+        uint256 tokenShareAtTopupPrice = assetData.poolTokenSupply.mulDiv(
+            collateralAtTopupPrice, assetData.poolNatBalance.mulBips(topupTokenDiscountBIPS));
+        uint256 tokenShareAtNormalPrice = assetData.poolTokenSupply.mulDiv(
+            collateralAtNormalPrice, assetData.poolNatBalance);
         return tokenShareAtTopupPrice + tokenShareAtNormalPrice;
+    }
+
+    function getAssetData() internal view returns (AssetData memory) {
+        uint256 poolFassetBalance = fAsset.balanceOf(address(this));
+        return AssetData({
+            poolTokenSupply: poolToken.totalSupply(),
+            fassetSupply: fAsset.totalSupply(),
+            poolNatBalance: assetManager.getWNat().balanceOf(address(this)),
+            poolFassetBalance: poolFassetBalance,
+            poolVirtualFassetBalance: poolFassetBalance + poolFassetDebt
+        });
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -198,14 +201,14 @@ contract CollateralPool is ReentrancyGuard {
     // so the user can get slightly less tokens than those he owns mathematically
     // (we could also calculate liquid tokens as tokens - debtTokens)
     function liquidTokensOf(address _account) public view returns (uint256) {
-        uint256 poolTokenSupply = poolToken.totalSupply();
-        uint256 poolFassetBalance = fAsset.balanceOf(address(this));
-        uint256 poolVirtualFassetBalance = poolFassetBalance + poolFassetDebt;
+        AssetData memory assetData = getAssetData();
         uint256 tokens = poolToken.balanceOf(_account);
-        uint256 fassets = poolVirtualFassetBalance.mulDiv(tokens, poolTokenSupply);
+        uint256 fassets = assetData.poolVirtualFassetBalance.mulDiv(
+            tokens, assetData.poolTokenSupply);
         uint256 debtFassets = fassetDebtOf[_account];
         uint256 liquidFassets = fassets - debtFassets;
-        uint256 liquidTokens = poolTokenSupply.mulDiv(liquidFassets, poolVirtualFassetBalance);
+        uint256 liquidTokens = assetData.poolTokenSupply.mulDiv(
+            liquidFassets, assetData.poolVirtualFassetBalance);
         return liquidTokens;
     }
 
