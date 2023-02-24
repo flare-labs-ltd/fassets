@@ -928,6 +928,23 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         CollateralTokens.deprecate(_tokenIdentifier, _timeout);
     }
 
+    function setCurrentPoolCollateralToken(
+        string memory _tokenIdentifier
+    )
+        external
+        onlyAssetManagerController
+    {
+        CollateralTokens.setCurrentPoolCollateralToken(_tokenIdentifier);
+    }
+
+    function upgradePoolCollateralToken(
+        address _agentVault
+    )
+        external
+    {
+        AgentsExternal.upgradePoolCollateralToken(_agentVault);
+    }
+
     function getCollateralToken(
         string memory _tokenIdentifier
     )
@@ -1023,7 +1040,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         returns (uint256 _multiplier, uint256 _divisor)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        _multiplier = Conversion.currentAmgPriceInTokenWei(Agents.getPoolCollateral());
+        _multiplier = Conversion.currentAmgPriceInTokenWei(Globals.getCurrentPoolCollateral());
         _divisor = Conversion.AMG_TOKENWEI_PRICE_SCALE * settings.assetMintingGranularityUBA;
     }
 

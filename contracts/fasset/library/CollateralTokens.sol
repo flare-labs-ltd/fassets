@@ -50,6 +50,7 @@ library CollateralTokens {
             _data.minCollateralRatioBIPS <= _data.safetyMinCollateralRatioBIPS;
         require(ratiosValid, "invalid collateral ratios");
         uint256 ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(_data.ftsoSymbol);
+        uint256 newTokenIndex = state.collateralTokens.length;
         state.collateralTokens.push(CollateralToken.Data({
             identifier: _data.identifier,
             token: _data.token,
@@ -62,7 +63,7 @@ library CollateralTokens {
             ccbMinCollateralRatioBIPS: _data.ccbMinCollateralRatioBIPS.toUint32(),
             safetyMinCollateralRatioBIPS: _data.safetyMinCollateralRatioBIPS.toUint32()
         }));
-        state.collateralTokenIndex[_data.identifier] = state.collateralTokens.length;   // = index + 1
+        state.collateralTokenIndex[_data.identifier] = newTokenIndex + 1;   // 0 means empty
         emit AMEvents.CollateralTokenAdded(_data.identifier,
             address(_data.token), uint8(_data.tokenClass), _data.ftsoSymbol,
             _data.minCollateralRatioBIPS, _data.ccbMinCollateralRatioBIPS, _data.safetyMinCollateralRatioBIPS);
@@ -94,13 +95,21 @@ library CollateralTokens {
     )
         external
     {
-        CollateralToken.Data storage token = CollateralTokens.get(_identifier);
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        CollateralToken.Data storage token = CollateralTokens.get(_identifier);
         require(isValid(token), "token not valid");
         require(_timeout >= settings.tokenDeprecationTimeoutMinSeconds, "deprecation time to short");
         uint256 validUntil = block.timestamp + _timeout;
         token.validUntil = validUntil.toUint64();
         emit AMEvents.CollateralTokenDeprecated(_identifier, validUntil);
+    }
+
+    function setCurrentPoolCollateralToken(string memory _identifier) external {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint256 index = CollateralTokens.getIndex(_identifier);
+        CollateralToken.Data storage token = state.collateralTokens[index];
+        require(token.tokenClass == CollateralToken.TokenClass.POOL, "not a pool collateral token");
+        state.currentPoolCollateralToken = index.toUint16();
     }
 
     function getInfo(string memory _identifier)
@@ -131,6 +140,16 @@ library CollateralTokens {
         uint256 index = state.collateralTokenIndex[_identifier];
         require(index > 0, "unknown token");
         return state.collateralTokens[index - 1];
+    }
+
+    function getIndex(string memory _identifier)
+        internal view
+        returns (uint256)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint256 index = state.collateralTokenIndex[_identifier];
+        require(index > 0, "unknown token");
+        return index - 1;
     }
 
     function isValid(CollateralToken.Data storage _token)

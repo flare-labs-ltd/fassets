@@ -136,8 +136,9 @@ library CollateralReservations {
         external view
         returns (uint256)
     {
-        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(CollateralToken.POOL);
-        return _reservationFee(amgToTokenWeiPrice, _lots * AssetManagerState.getSettings().lotSizeAMG);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(state.currentPoolCollateralToken);
+        return _reservationFee(amgToTokenWeiPrice, _lots * state.settings.lotSizeAMG);
     }
 
     function releaseCollateralReservation(

@@ -311,13 +311,11 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             IAttestationClient(_getContractAddress(_contractNameHashes, _contractAddresses, "AttestationClient"));
         IFtsoRegistry ftsoRegistry =
             IFtsoRegistry(_getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry"));
-        IWNat wNat =
-            IWNat(_getContractAddress(_contractNameHashes, _contractAddresses, "WNat"));
         for (uint256 i = 0; i < assetManagers.length; i++) {
             IAssetManager assetManager = assetManagers[i];
             assetManager.updateSettings(
                 SettingsUpdater.UPDATE_CONTRACTS,
-                abi.encode(assetManagerController, agentVaultFactory, attestationClient, ftsoRegistry, wNat));
+                abi.encode(assetManagerController, agentVaultFactory, attestationClient, ftsoRegistry));
         }
         // if this controller was replaced, set forwarding address
         if (assetManagerController != address(this)) {

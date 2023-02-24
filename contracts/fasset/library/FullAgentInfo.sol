@@ -137,7 +137,7 @@ library FullAgentInfo {
         Agent.State storage agent = Agent.get(_agentVault);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         CollateralToken.Data storage collateral = agent.getClass1Collateral();
-        CollateralToken.Data storage poolCollateral = Agents.getPoolCollateral();
+        CollateralToken.Data storage poolCollateral = agent.getPoolCollateral();
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
         _agentState.status = _getAgentStatusInfo(agent);
         _agentState.ownerAddress = Agents.vaultOwner(agent);

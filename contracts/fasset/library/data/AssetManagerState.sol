@@ -50,6 +50,10 @@ library AssetManagerState {
         // Total collateral reservations (in underlying AMG units). Used by minting cap.
         uint64 totalReservedCollateralAMG;
 
+        // Pool collateral is always wrapped NAT, but the wrapping contract may change.
+        // In this case, new pool collateral token must be added and set as current.
+        uint16 currentPoolCollateralToken;
+
         // Current block number and timestamp on the underlying chain
         uint64 currentUnderlyingBlock;
         uint64 currentUnderlyingBlockTimestamp;

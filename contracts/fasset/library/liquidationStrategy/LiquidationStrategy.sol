@@ -45,7 +45,7 @@ library LiquidationStrategy {
         // prevent paying with invalid token (if there is enough of the other tokens)
         // TODO: should we remove this - is it better to pay with invalidated class1 then with pool?
         CollateralToken.Data storage class1Collateral = agent.getClass1Collateral();
-        CollateralToken.Data storage poolCollateral = Agents.getPoolCollateral();
+        CollateralToken.Data storage poolCollateral = agent.getPoolCollateral();
         if (!class1Collateral.isValid() && poolCollateral.isValid()) {
             // class1 collateral invalid - pay everything with pool collateral
             _c1FactorBIPS = 0;

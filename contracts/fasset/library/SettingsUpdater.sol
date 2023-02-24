@@ -165,37 +165,27 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        (
-            address controller,
-            IAgentVaultFactory agentVaultFactory,
-            IAttestationClient attestationClient,
-            IFtsoRegistry ftsoRegistry,
-            IWNat wNat
-        )
-            = abi.decode(_params, (address, IAgentVaultFactory, IAttestationClient, IFtsoRegistry, IWNat));
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
 
-        if (state.settings.assetManagerController != controller) {
-            state.settings.assetManagerController = controller;
+        (address controller, IAgentVaultFactory agentVaultFactory,
+            IAttestationClient attestationClient, IFtsoRegistry ftsoRegistry) =
+            abi.decode(_params, (address, IAgentVaultFactory, IAttestationClient, IFtsoRegistry));
+
+        if (settings.assetManagerController != controller) {
+            settings.assetManagerController = controller;
             emit AMEvents.ContractChanged("assetManagerController", address(controller));
         }
-        if (state.settings.agentVaultFactory != agentVaultFactory) {
-            state.settings.agentVaultFactory = agentVaultFactory;
+        if (settings.agentVaultFactory != agentVaultFactory) {
+            settings.agentVaultFactory = agentVaultFactory;
             emit AMEvents.ContractChanged("agentVaultFactory", address(agentVaultFactory));
         }
-        if (state.settings.attestationClient != attestationClient) {
-            state.settings.attestationClient = attestationClient;
+        if (settings.attestationClient != attestationClient) {
+            settings.attestationClient = attestationClient;
             emit AMEvents.ContractChanged("attestationClient", address(attestationClient));
         }
-        if (state.settings.ftsoRegistry != ftsoRegistry) {
-            state.settings.ftsoRegistry = ftsoRegistry;
+        if (settings.ftsoRegistry != ftsoRegistry) {
+            settings.ftsoRegistry = ftsoRegistry;
             emit AMEvents.ContractChanged("ftsoRegistry", address(ftsoRegistry));
-        }
-        // TODO: what to do with the NATs in the pool - this will trigger liquidation
-        CollateralToken.Data storage poolCollateral = state.collateralTokens[CollateralToken.POOL];
-        if (poolCollateral.token != wNat) {
-            poolCollateral.token = wNat;
-            emit AMEvents.ContractChanged("wNat", address(wNat));
         }
     }
 

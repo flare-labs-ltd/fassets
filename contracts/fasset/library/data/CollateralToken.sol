@@ -5,8 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 library CollateralToken {
-    uint256 internal constant POOL = 0;   // index of pool collateral (WNat) in AssetManagerState.collateralTokens
-
     enum TokenClass {
         NONE,   // unused
         CLASS1, // usable as class 1 collateral

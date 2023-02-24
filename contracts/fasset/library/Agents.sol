@@ -202,11 +202,25 @@ library Agents {
         return state.collateralTokens[_agent.collateralTokenC1];
     }
 
-    function getPoolCollateral()
+    function getPoolCollateral(Agent.State storage _agent)
         internal view
         returns (CollateralToken.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[CollateralToken.POOL];
+        return state.collateralTokens[_agent.poolCollateralToken];
+    }
+
+    function class1CollateralUnderwater(Agent.State storage _agent)
+        internal view
+        returns (bool)
+    {
+        return (_agent.collateralsUnderwater & Agent.LF_CLASS1) != 0;
+    }
+
+    function poolCollateralUnderwater(Agent.State storage _agent)
+        internal view
+        returns (bool)
+    {
+        return (_agent.collateralsUnderwater & Agent.LF_POOL) != 0;
     }
 }

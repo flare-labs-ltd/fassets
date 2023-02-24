@@ -72,6 +72,7 @@ library AgentsExternal {
         require(collateral.tokenClass == CollateralToken.TokenClass.CLASS1,
             "invalid collateral token class");
         agent.collateralTokenC1 = _collateralTokenClass1.toUint16();
+        agent.poolCollateralToken = state.currentPoolCollateralToken;
         // initially, agentMinCollateralRatioBIPS is the same as global min collateral ratio
         // this setting is ok for self-minting, but not for public minting since it quickly leads to liquidation
         // it can be changed with setAgentMinCollateralRatioBIPS or when agent becomes available
@@ -249,6 +250,22 @@ library AgentsExternal {
         agent.withdrawalAnnouncedNATWei -= uint128(_valueNATWei);    // guarded by above require
         // could reset agent.withdrawalAnnouncedAt if agent.withdrawalAnnouncedNATWei == 0,
         // but it's not needed, since no withdrawal can be made anyway
+    }
+
+    function upgradePoolCollateralToken(
+        address _agentVault
+    )
+        external
+        onlyAgentVaultOwner(_agentVault)
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        if (agent.poolCollateralToken != state.currentPoolCollateralToken) {
+            IWNat oldWNat = IWNat(address(state.collateralTokens[agent.poolCollateralToken].token));
+            IWNat wNat = IWNat(address(state.collateralTokens[state.currentPoolCollateralToken].token));
+            agent.poolCollateralToken = state.currentPoolCollateralToken;
+            agent.collateralPool.upgradeWNatContract(oldWNat, wNat);
+        }
     }
 
     function isCollateralToken(
