@@ -184,7 +184,7 @@ library Liquidation {
         returns (uint256 _collateralRatioBIPS, uint256 _amgToTokenWeiPrice)
     {
         (uint256 fullCollateral, uint256 amgToTokenWeiPrice, uint256 amgToTokenWeiPriceTrusted) =
-            AgentCollateral.collateralDataWithTrusted(_agent, _collateralKind);
+            _collateralDataWithTrusted(_agent, _collateralKind);
         uint256 ratio = AgentCollateral.collateralRatioBIPS(_agent, fullCollateral, amgToTokenWeiPrice);
         uint256 ratioTrusted = AgentCollateral.collateralRatioBIPS(_agent, fullCollateral, amgToTokenWeiPriceTrusted);
         _amgToTokenWeiPrice = amgToTokenWeiPrice;
@@ -368,5 +368,24 @@ library Liquidation {
         } else {    // both collaterals were underwater - only half responisibility assigned to agent
             return _amount / 2;
         }
+    }
+
+    // Used for calculating liquidation collateral ratio.
+    function _collateralDataWithTrusted(
+        Agent.State storage _agent,
+        Collateral.Kind _kind
+    )
+        private view
+        returns (uint256 _fullCollateral, uint256 _amgToTokenWeiPrice, uint256 _amgToTokenWeiPriceTrusted)
+    {
+        CollateralToken.Data storage collateral = AgentCollateral.collateralTokenOfKind(_agent, _kind);
+        address holder = AgentCollateral.collateralHolderOfKind(_agent, _kind);
+        // A simple way to force agents still holding expired collateral tokens into liquidation is just to
+        // set fullCollateral for expired types to 0.
+        // This will also make all liquidation payments in the other collateral type.
+        // TODO: 1) is this ok?  2) test if it works.
+        _fullCollateral = CollateralTokens.isValid(collateral) ? collateral.token.balanceOf(holder) : 0;
+        (_amgToTokenWeiPrice, _amgToTokenWeiPriceTrusted) =
+            Conversion.currentAmgPriceInTokenWeiWithTrusted(collateral);
     }
 }
