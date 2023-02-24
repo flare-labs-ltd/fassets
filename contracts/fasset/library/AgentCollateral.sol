@@ -36,7 +36,7 @@ library AgentCollateral {
         returns (Collateral.Data memory)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralToken.Data storage collateral = state.collateralTokens[_agent.collateralTokenC1];
+        CollateralToken.Data storage collateral = state.collateralTokens[_agent.class1CollateralToken];
         return Collateral.Data({
             kind: Collateral.Kind.AGENT_CLASS1,
             fullCollateral: collateral.token.balanceOf(_agent.vaultAddress()),
@@ -164,14 +164,14 @@ library AgentCollateral {
             _systemMinCollateralRatioBIPS =
                 state.collateralTokens[_agent.poolCollateralToken].minCollateralRatioBIPS;
             _mintingMinCollateralRatioBIPS =
-                Math.max(_agent.agentMinPoolCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
+                Math.max(_agent.minPoolCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         } else {
             _systemMinCollateralRatioBIPS =
-                state.collateralTokens[_agent.collateralTokenC1].minCollateralRatioBIPS;
-            // agentMinCollateralRatioBIPS must be greater than minCollateralRatioBIPS when set, but
+                state.collateralTokens[_agent.class1CollateralToken].minCollateralRatioBIPS;
+            // agent's minCollateralRatioBIPS must be greater than minCollateralRatioBIPS when set, but
             // minCollateralRatioBIPS can change later so we always use the max of both
             _mintingMinCollateralRatioBIPS =
-                Math.max(_agent.agentMinCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
+                Math.max(_agent.minClass1CollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         }
     }
 
@@ -202,7 +202,7 @@ library AgentCollateral {
         assert (_kind != Collateral.Kind.AGENT_POOL);   // does not make sense for liquidation
         AssetManagerState.State storage state = AssetManagerState.get();
         uint256 tokenIndex =
-            _kind == Collateral.Kind.AGENT_CLASS1 ? _agent.collateralTokenC1 : _agent.poolCollateralToken;
+            _kind == Collateral.Kind.AGENT_CLASS1 ? _agent.class1CollateralToken : _agent.poolCollateralToken;
         CollateralToken.Data storage collateral = state.collateralTokens[tokenIndex];
         address holderAddress =
             _kind == Collateral.Kind.AGENT_CLASS1 ? _agent.vaultAddress() : address(_agent.collateralPool);

@@ -151,13 +151,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */
     function createAgent(
         string memory _underlyingAddressString,
-        uint256 _collateralTokenClass1
+        string memory _class1CollateralTokenId
     )
         external
         onlyAttached
     {
         requireWhitelistedSender();
-        AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString, _collateralTokenClass1);
+        AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString, _class1CollateralTokenId);
     }
 
     /**
@@ -196,15 +196,17 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Set the ratio at which free collateral for the minting will be accounted.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
-     * @param _agentMinCollateralRatioBIPS the new ratio in BIPS
+     * @param _minClass1CollateralRatioBIPS the new ratio in BIPS
      */
     function setAgentMinCollateralRatioBIPS(
         address _agentVault,
-        uint256 _agentMinCollateralRatioBIPS
+        uint256 _minClass1CollateralRatioBIPS,
+        uint256 _minPoolCollateralRatioBIPS
     )
         external
     {
-        AgentsExternal.setAgentMinCollateralRatioBIPS(_agentVault, _agentMinCollateralRatioBIPS);
+        AgentsExternal.setAgentMinCollateralRatioBIPS(_agentVault, _minClass1CollateralRatioBIPS,
+            _minPoolCollateralRatioBIPS);
     }
 
     /**
@@ -295,19 +297,21 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _feeBIPS fee charged to minters (paid in underlying currency along with backing assets)
-     * @param _agentMinCollateralRatioBIPS when agent is created, free colateral is accounted at the
+     * @param _minClass1CollateralRatioBIPS when agent is created, free colateral is accounted at the
      *  global min collateral ratio; for public agents this can very quickly lead to liquidation,
      *  therefore it is required for agent to set it when becoming available.
-     *  Note that agentMinCollateralRatioBIPS can also be set separately by setAgentMinCollateralRatioBIPS method.
+     *  Note that agent's minCollateralRatioBIPS can also be set separately by setAgentMinCollateralRatioBIPS method.
      */
     function makeAgentAvailable(
         address _agentVault,
         uint256 _feeBIPS,
-        uint256 _agentMinCollateralRatioBIPS
+        uint256 _minClass1CollateralRatioBIPS,
+        uint256 _minPoolCollateralRatioBIPS
     )
         external
     {
-        AvailableAgents.makeAvailable(_agentVault, _feeBIPS, _agentMinCollateralRatioBIPS);
+        AvailableAgents.makeAvailable(_agentVault,
+            _feeBIPS, _minClass1CollateralRatioBIPS, _minPoolCollateralRatioBIPS);
     }
 
     /**

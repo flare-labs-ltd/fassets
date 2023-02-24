@@ -57,11 +57,11 @@ library FullAgentInfo {
 
         // Amount, set by agent, at which locked and free collateral are calculated for new mintings.
         // For agent's class 1 collateral.
-        uint256 agentMinCollateralRatioBIPS;
+        uint256 minClass1CollateralRatioBIPS;
 
         // Amount, set by agent, at which locked and free collateral are calculated for new mintings.
         // For pool collateral.
-        uint256 agentMinPoolCollateralRatioBIPS;
+        uint256 minPoolCollateralRatioBIPS;
 
         // The maximum number of lots that the agent can mint.
         // This can change any moment due to minting, redemption or price changes.
@@ -145,10 +145,10 @@ library FullAgentInfo {
         _agentState.publiclyAvailable = agent.availableAgentsPos != 0;
         _agentState.class1CollateralTokenId = collateral.identifier;
         _agentState.feeBIPS = agent.feeBIPS;
-        _agentState.agentMinCollateralRatioBIPS =
-            Math.max(agent.agentMinCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
-        _agentState.agentMinPoolCollateralRatioBIPS =
-            Math.max(agent.agentMinPoolCollateralRatioBIPS, poolCollateral.minCollateralRatioBIPS);
+        _agentState.minClass1CollateralRatioBIPS =
+            Math.max(agent.minClass1CollateralRatioBIPS, collateral.minCollateralRatioBIPS);
+        _agentState.minPoolCollateralRatioBIPS =
+            Math.max(agent.minPoolCollateralRatioBIPS, poolCollateral.minCollateralRatioBIPS);
         _agentState.freeCollateralLots = collateralData.freeCollateralLots(agent);
         _agentState.totalClass1CollateralWei = collateralData.agentCollateral.fullCollateral;
         _agentState.freeClass1CollateralWei = collateralData.agentCollateral.freeCollateralWei(agent);

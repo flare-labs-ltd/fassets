@@ -9,22 +9,34 @@ import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Globals.sol";
 import "./Conversion.sol";
+import "./CollateralTokens.sol";
 
 library Agents {
     using SafeCast for uint256;
     using Agent for Agent.State;
 
-    function setAgentMinCollateralRatioBIPS(
+    function setAgentMinClass1CollateralRatioBIPS(
         Agent.State storage _agent,
-        uint256 _agentMinCollateralRatioBIPS
+        uint256 _minClass1CollateralRatioBIPS
     )
         internal
     {
-        // TODO: add min pool collateral
         CollateralToken.Data storage collateral = getClass1Collateral(_agent);
-        require(_agentMinCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
+        require(_minClass1CollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
             "collateral ratio too small");
-        _agent.agentMinCollateralRatioBIPS = _agentMinCollateralRatioBIPS.toUint32();
+        _agent.minClass1CollateralRatioBIPS = _minClass1CollateralRatioBIPS.toUint32();
+    }
+
+    function setAgentMinPoolCollateralRatioBIPS(
+        Agent.State storage _agent,
+        uint256 _minPoolCollateralRatioBIPS
+    )
+        internal
+    {
+        CollateralToken.Data storage collateral = getPoolCollateral(_agent);
+        require(_minPoolCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
+            "collateral ratio too small");
+        _agent.minPoolCollateralRatioBIPS = _minPoolCollateralRatioBIPS.toUint32();
     }
 
     function allocateMintedAssets(
@@ -149,6 +161,20 @@ library Agents {
         }
     }
 
+    function setClass1Collateral(
+        Agent.State storage _agent,
+        string memory _tokenIdentifier
+    )
+        internal
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint256 tokenIndex = CollateralTokens.getIndex(_tokenIdentifier);
+        CollateralToken.Data storage token = state.collateralTokens[tokenIndex];
+        require(token.tokenClass == CollateralToken.TokenClass.CLASS1, "not a pool collateral token");
+        require(CollateralTokens.isValid(token), "token not valid");
+        _agent.class1CollateralToken = tokenIndex.toUint16();
+    }
+
     function vaultOwner(
         Agent.State storage _agent
     )
@@ -191,7 +217,7 @@ library Agents {
         returns (IERC20)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.collateralTokenC1].token;
+        return state.collateralTokens[_agent.class1CollateralToken].token;
     }
 
     function getClass1Collateral(Agent.State storage _agent)
@@ -199,7 +225,7 @@ library Agents {
         returns (CollateralToken.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.collateralTokenC1];
+        return state.collateralTokens[_agent.class1CollateralToken];
     }
 
     function getPoolCollateral(Agent.State storage _agent)

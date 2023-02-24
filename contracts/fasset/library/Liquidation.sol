@@ -123,7 +123,7 @@ library Liquidation {
         // target collateral ratio is minCollateralRatioBIPS for CCB and safetyMinCollateralRatioBIPS for LIQUIDATION
         Agent.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_agent);
         uint256 targetRatioClass1BIPS =
-            _targetRatioBIPS(currentPhase, _agent.collateralTokenC1, _agent.class1CollateralUnderwater());
+            _targetRatioBIPS(currentPhase, _agent.class1CollateralToken, _agent.class1CollateralUnderwater());
         uint256 targetRatioPoolBIPS =
             _targetRatioBIPS(currentPhase, _agent.poolCollateralToken, _agent.poolCollateralUnderwater());
         // if agent is safe, restore status to NORMAL
@@ -150,7 +150,7 @@ library Liquidation {
         // still be triggered via startLiquidation() or liquidate().
         CRData memory cr = getCollateralRatiosBIPS(_agent);
         Agent.LiquidationPhase newPhaseC1 =
-            _initialLiquidationPhaseForCollateral(cr.class1CR, _agent.collateralTokenC1);
+            _initialLiquidationPhaseForCollateral(cr.class1CR, _agent.class1CollateralToken);
         Agent.LiquidationPhase newPhasePool =
             _initialLiquidationPhaseForCollateral(cr.poolCR, _agent.poolCollateralToken);
         Agent.LiquidationPhase newPhase = newPhaseC1 >= newPhasePool ? newPhaseC1 : newPhasePool;
@@ -203,7 +203,7 @@ library Liquidation {
         Agent.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_agent);
         // calculate new phase for both collaterals and if any is underwater, set its flag
         Agent.LiquidationPhase newPhaseC1 =
-            _initialLiquidationPhaseForCollateral(_cr.class1CR, _agent.collateralTokenC1);
+            _initialLiquidationPhaseForCollateral(_cr.class1CR, _agent.class1CollateralToken);
         if (newPhaseC1 == Agent.LiquidationPhase.LIQUIDATION) {
             _agent.collateralsUnderwater |= Agent.LF_CLASS1;
         }
@@ -242,7 +242,7 @@ library Liquidation {
         (uint256 class1Factor, uint256 poolFactor) = _currentLiquidationFactorBIPS(_agent, _cr);
         // calculate liquidation amount
         uint256 maxLiquidatedAMG = Math.max(
-            _maxLiquidationAmountAMG(_agent, _cr.class1CR, class1Factor, _agent.collateralTokenC1),
+            _maxLiquidationAmountAMG(_agent, _cr.class1CR, class1Factor, _agent.class1CollateralToken),
             _maxLiquidationAmountAMG(_agent, _cr.poolCR, poolFactor, _agent.poolCollateralToken));
         uint64 amountToLiquidateAMG = Math.min(maxLiquidatedAMG, _amountAMG).toUint64();
         // liquidate redemption tickets

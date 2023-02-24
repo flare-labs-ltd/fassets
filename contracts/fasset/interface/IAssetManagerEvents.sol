@@ -42,7 +42,8 @@ interface IAssetManagerEvents {
     event AgentAvailable(
         address indexed agentVault,
         uint256 feeBIPS,
-        uint256 agentMinCollateralRatioBIPS,
+        uint256 minClass1CollateralRatioBIPS,
+        uint256 minPoolCollateralRatioBIPS,
         uint256 freeCollateralLots);
 
     /**

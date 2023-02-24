@@ -52,8 +52,8 @@ library Agent {
         uint64 dustAMG;
 
         // Index of collateral class 1 token.
-        // The data is obtained as state.collateralTokens[collateralTokenC1].
-        uint16 collateralTokenC1;
+        // The data is obtained as state.collateralTokens[class1CollateralToken].
+        uint16 class1CollateralToken;
 
         // Index of token in collateral pool. This is always wrapped FLR/SGB, however the wrapping
         // contract (WNat) may change. In such case we add new collateral token with class POOL but the
@@ -73,12 +73,12 @@ library Agent {
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio when entering the available agent list,
         // but it must always be greater than minimum collateral ratio.
-        uint32 agentMinCollateralRatioBIPS;
+        uint32 minClass1CollateralRatioBIPS;
 
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio when entering the available agent list,
         // but it must always be greater than minimum collateral ratio.
-        uint32 agentMinPoolCollateralRatioBIPS;
+        uint32 minPoolCollateralRatioBIPS;
 
         // Timestamp of the startLiquidation call.
         // If the agent's CR is above ccbCR, agent is put into CCB state for a while.

@@ -16,8 +16,8 @@ library AvailableAgents {
     struct AgentInfo {
         address agentVault;
         uint256 feeBIPS;
-        uint256 agentMinCollateralRatioBIPS;
-        uint256 agentPoolMinCollateralRatioBIPS;
+        uint256 minClass1CollateralRatioBIPS;
+        uint256 minPoolCollateralRatioBIPS;
         // Note: freeCollateralLots is only informative since it can can change at any time
         // due to price changes, reservation, minting, redemption, or even lot size change
         uint256 freeCollateralLots;
@@ -26,7 +26,8 @@ library AvailableAgents {
     function makeAvailable(
         address _agentVault,
         uint256 _feeBIPS,
-        uint256 _agentMinCollateralRatioBIPS
+        uint256 _minClass1CollateralRatioBIPS,
+        uint256 _minPoolCollateralRatioBIPS
     )
         external
     {
@@ -40,7 +41,8 @@ library AvailableAgents {
         agent.feeBIPS = _feeBIPS.toUint16();
         // when agent becomes available, it is a good idea to set agent's min collateral ratio higher than
         // global min collateral ratio (otherwise he can quickly go to liquidation), so we always do it here
-        Agents.setAgentMinCollateralRatioBIPS(agent, _agentMinCollateralRatioBIPS);
+        Agents.setAgentMinClass1CollateralRatioBIPS(agent, _minClass1CollateralRatioBIPS);
+        Agents.setAgentMinPoolCollateralRatioBIPS(agent, _minPoolCollateralRatioBIPS);
         // check that there is enough free collateral for at least one lot
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         uint256 freeCollateralLots = collateralData.freeCollateralLots(agent);
@@ -48,7 +50,8 @@ library AvailableAgents {
         // add to queue
         state.availableAgents.push(_agentVault);
         agent.availableAgentsPos = state.availableAgents.length.toUint32();     // index+1 (0=not in list)
-        emit AMEvents.AgentAvailable(_agentVault, _feeBIPS, _agentMinCollateralRatioBIPS, freeCollateralLots);
+        emit AMEvents.AgentAvailable(_agentVault, _feeBIPS,
+            _minClass1CollateralRatioBIPS, _minPoolCollateralRatioBIPS, freeCollateralLots);
     }
 
     function exit(
@@ -109,8 +112,8 @@ library AvailableAgents {
             _agents[i - _start] = AgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
-                agentMinCollateralRatioBIPS: agentCR,
-                agentPoolMinCollateralRatioBIPS: poolCR,
+                minClass1CollateralRatioBIPS: agentCR,
+                minPoolCollateralRatioBIPS: poolCR,
                 freeCollateralLots: collateralData.freeCollateralLots(agent)
             });
         }
