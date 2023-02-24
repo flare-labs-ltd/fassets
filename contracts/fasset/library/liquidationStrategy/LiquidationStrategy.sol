@@ -4,8 +4,13 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../data/AssetManagerState.sol";
 import "./LiquidationStrategySettings.sol";
+import "../Agents.sol";
+import "../CollateralTokens.sol";
 
 library LiquidationStrategy {
+    using Agents for Agent.State;
+    using CollateralTokens for CollateralToken.Data;
+
     function initialize(bytes memory _encodedSettings) external {
         LiquidationStrategySettings.verifyAndUpdate(_encodedSettings);
     }
@@ -37,6 +42,18 @@ library LiquidationStrategy {
         // pay the rest from pool. If any factor exceeeds the CR of that collateral, pay that collateral at
         // its CR and pay more of the other. If both collaterals exceed CR, limit both to their CRs.
         _c1FactorBIPS = Math.min(settings.liquidationFactorClass1BIPS[step], factorBIPS);
+        // prevent paying with invalid token (if there is enough of the other tokens)
+        // TODO: should we remove this - is it better to pay with invalidated class1 then with pool?
+        CollateralToken.Data storage class1Collateral = agent.getClass1Collateral();
+        CollateralToken.Data storage poolCollateral = Agents.getPoolCollateral();
+        if (!class1Collateral.isValid() && poolCollateral.isValid()) {
+            // class1 collateral invalid - pay everything with pool collateral
+            _c1FactorBIPS = 0;
+        } else if (class1Collateral.isValid() && !poolCollateral.isValid()) {
+            // pool collateral - pay everything with class1 collateral
+            _c1FactorBIPS = factorBIPS;
+        }
+        // never exceed CR of tokens
         if (_c1FactorBIPS > _class1CR) {
             _c1FactorBIPS = _class1CR;
         }

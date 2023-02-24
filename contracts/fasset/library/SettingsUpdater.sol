@@ -207,7 +207,7 @@ library SettingsUpdater {
             CollateralToken.Data storage collateral = state.collateralTokens[i];
             // do not update invalidated tokens types
             if (collateral.validUntil != 0 && collateral.validUntil < block.timestamp) continue;
-            collateral.ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(collateral.symbol).toUint16();
+            collateral.ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(collateral.ftsoSymbol).toUint16();
         }
     }
 

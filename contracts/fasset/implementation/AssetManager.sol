@@ -23,6 +23,7 @@ import "../library/Liquidation.sol";
 import "../library/UnderlyingWithdrawalAnnouncements.sol";
 import "../library/UnderlyingFreeBalance.sol";
 import "../library/FullAgentInfo.sol";
+import "../library/CollateralTokens.sol";
 
 
 /**
@@ -37,13 +38,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
 
     modifier onlyAssetManagerController {
-        require(msg.sender == AssetManagerState.getSettings().assetManagerController,
-            "only asset manager controller");
+        _checkOnlyAssetManagerController();
         _;
     }
 
     modifier onlyAttached {
-        require(AssetManagerState.get().attached, "not attached");
+        _checkOnlyAttached();
         _;
     }
 
@@ -894,6 +894,50 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
+    // Collateral token handling
+
+    function addCollateralToken(
+        CollateralTokens.TokenInfo calldata _data
+    )
+        external
+        onlyAssetManagerController
+    {
+        CollateralTokens.add(_data);
+    }
+
+    function setCollateralRatiosForToken(
+        string memory _tokenIdentifier,
+        uint256 _minCollateralRatioBIPS,
+        uint256 _ccbMinCollateralRatioBIPS,
+        uint256 _safetyMinCollateralRatioBIPS
+    )
+        external
+        onlyAssetManagerController
+    {
+        CollateralTokens.setCollateralRatios(_tokenIdentifier,
+            _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
+    }
+
+    function deprecateCollateralToken(
+        string memory _tokenIdentifier,
+        uint256 _timeout
+    )
+        external
+        onlyAssetManagerController
+    {
+        CollateralTokens.deprecate(_tokenIdentifier, _timeout);
+    }
+
+    function getCollateralTokenInfo(
+        string memory _tokenIdentifier
+    )
+        external view
+        returns (CollateralTokens.TokenInfo memory)
+    {
+        return CollateralTokens.getInfo(_tokenIdentifier);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
     // Collateral pool redemptions
 
     function redeemChosenAgentUnderlying(
@@ -994,5 +1038,17 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         if (address(settings.whitelist) != address(0)) {
             require(settings.whitelist.isWhitelisted(msg.sender), "not whitelisted");
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Condition checks
+
+    function _checkOnlyAssetManagerController() private view {
+        require(msg.sender == AssetManagerState.getSettings().assetManagerController,
+            "only asset manager controller");
+    }
+
+    function _checkOnlyAttached() private view {
+        require(AssetManagerState.get().attached, "not attached");
     }
 }

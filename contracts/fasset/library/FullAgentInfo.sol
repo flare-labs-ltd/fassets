@@ -51,11 +51,9 @@ library FullAgentInfo {
         // Current fee the agent charges for minting (paid in underlying currency).
         uint256 feeBIPS;
 
-        // The token symbol of the agent's current class 1 collateral.
-        string class1CollateralSymbol;
-
-        // The index in the collateralTokens list of the agent's current class 1 collateral.
-        uint256 class1CollateralIndex;
+        // The token identifier of the agent's current class 1 collateral.
+        // Token identifier can be used to call AssetManager.getCollateralTokenInfo().
+        string class1CollateralTokenId;
 
         // Amount, set by agent, at which locked and free collateral are calculated for new mintings.
         // For agent's class 1 collateral.
@@ -145,8 +143,7 @@ library FullAgentInfo {
         _agentState.ownerAddress = Agents.vaultOwner(agent);
         _agentState.underlyingAddressString = agent.underlyingAddressString;
         _agentState.publiclyAvailable = agent.availableAgentsPos != 0;
-        _agentState.class1CollateralSymbol = collateral.symbol;
-        _agentState.class1CollateralIndex = agent.collateralTokenC1;
+        _agentState.class1CollateralTokenId = collateral.identifier;
         _agentState.feeBIPS = agent.feeBIPS;
         _agentState.agentMinCollateralRatioBIPS =
             Math.max(agent.agentMinCollateralRatioBIPS, collateral.minCollateralRatioBIPS);

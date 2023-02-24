@@ -343,4 +343,22 @@ library AMEvents {
         string name,
         address value);
 
+    event CollateralTokenAdded(
+        string identifier,
+        address tokenContract,
+        uint8 tokenClass,
+        string ftsoSymbol,
+        uint256 minCollateralRatioBIPS,
+        uint256 ccbMinCollateralRatioBIPS,
+        uint256 safetyMinCollateralRatioBIPS);
+
+    event CollateralTokenRatiosChanged(
+        string identifier,
+        uint256 minCollateralRatioBIPS,
+        uint256 ccbMinCollateralRatioBIPS,
+        uint256 safetyMinCollateralRatioBIPS);
+
+    event CollateralTokenDeprecated(
+        string identifier,
+        uint256 validUntil);
 }
