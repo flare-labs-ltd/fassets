@@ -928,13 +928,33 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         CollateralTokens.deprecate(_tokenIdentifier, _timeout);
     }
 
-    function getCollateralTokenInfo(
+    function getCollateralToken(
         string memory _tokenIdentifier
     )
         external view
         returns (CollateralTokens.TokenInfo memory)
     {
         return CollateralTokens.getInfo(_tokenIdentifier);
+    }
+
+    /**
+     * Get the list of all available and deprecated tokens used for collateral.
+     */
+    function getCollateralTokens()
+        external view
+        returns (CollateralTokens.TokenInfo[] memory)
+    {
+        return CollateralTokens.getAllTokenInfos();
+    }
+
+    /**
+     * Check if `_token` is one of the collateral tokens for `_agentVault`.
+     */
+    function isCollateralToken(address _agentVault, IERC20 _token)
+        external view override
+        returns (bool)
+    {
+        return AgentsExternal.isCollateralToken(_agentVault, _token);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -982,27 +1002,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         returns (IWNat)
     {
         return Globals.getWNat();
-    }
-
-    /**
-     * Get the list of all available and deprecated tokens used for collateral.
-     */
-    function getCollateralTokens()
-        external view
-        returns (CollateralToken.Data[] memory)
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens;
-    }
-
-    /**
-     * Check if `_token` is one of the collateral tokens for `_agentVault`.
-     */
-    function isCollateralToken(address _agentVault, IERC20 _token)
-        external view override
-        returns (bool)
-    {
-        return AgentsExternal.isCollateralToken(_agentVault, _token);
     }
 
     /**

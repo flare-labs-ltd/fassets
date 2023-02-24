@@ -108,17 +108,19 @@ library CollateralTokens {
         returns (TokenInfo memory)
     {
         CollateralToken.Data storage token = CollateralTokens.get(_identifier);
-        return TokenInfo({
-            identifier: token.identifier,
-            token: token.token,
-            tokenClass: token.tokenClass,
-            decimals: token.decimals,
-            validUntil: token.validUntil,
-            ftsoSymbol: token.ftsoSymbol,
-            minCollateralRatioBIPS: token.minCollateralRatioBIPS,
-            ccbMinCollateralRatioBIPS: token.ccbMinCollateralRatioBIPS,
-            safetyMinCollateralRatioBIPS: token.safetyMinCollateralRatioBIPS
-        });
+        return _getInfo(token);
+    }
+
+    function getAllTokenInfos()
+        external view
+        returns (TokenInfo[] memory _result)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint256 length = state.collateralTokens.length;
+        _result = new TokenInfo[](length);
+        for (uint256 i = 0; i < length; i++) {
+            _result[i] = _getInfo(state.collateralTokens[i]);
+        }
     }
 
     function get(string memory _identifier)
@@ -136,5 +138,22 @@ library CollateralTokens {
         returns (bool)
     {
         return _token.validUntil == 0 || _token.validUntil > block.timestamp;
+    }
+
+    function _getInfo(CollateralToken.Data storage token)
+        private view
+        returns (TokenInfo memory)
+    {
+        return TokenInfo({
+            identifier: token.identifier,
+            token: token.token,
+            tokenClass: token.tokenClass,
+            decimals: token.decimals,
+            validUntil: token.validUntil,
+            ftsoSymbol: token.ftsoSymbol,
+            minCollateralRatioBIPS: token.minCollateralRatioBIPS,
+            ccbMinCollateralRatioBIPS: token.ccbMinCollateralRatioBIPS,
+            safetyMinCollateralRatioBIPS: token.safetyMinCollateralRatioBIPS
+        });
     }
 }
