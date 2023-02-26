@@ -6,7 +6,7 @@ import "../interface/IAgentVault.sol";
 
 contract AssetManagerMock {
     IWNat private wNat;
-    
+
     constructor(IWNat _wNat) {
         wNat = _wNat;
     }
@@ -17,5 +17,13 @@ contract AssetManagerMock {
 
     function getWNat() external view returns (IWNat) {
         return wNat;
+    }
+
+    function assetPriceNatWei() public pure returns (uint256, uint256) {
+        return (1, 2);
+    }
+
+    function getLotSize() public pure returns (uint256) {
+        return 10000;
     }
 }

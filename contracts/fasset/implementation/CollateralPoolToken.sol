@@ -35,10 +35,12 @@ contract CollateralPoolToken is ERC20 {
         return CollateralPool(collateralPool).liquidTokensOf(_account);
     }
 
-    // override balanceOf to account for locked collateral
+    // override balanceOf to account for locked/debt collateral
     function _beforeTokenTransfer(
         address from, address /* to */, uint256 amount
     ) internal view override {
-        require(amount <= freeBalanceOf(from), "liquid balance too low");
+        if (from != address(0)) { // in case of burn
+            require(amount <= freeBalanceOf(from), "liquid balance too low");
+        }
     }
 }
