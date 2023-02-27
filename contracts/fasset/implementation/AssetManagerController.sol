@@ -104,7 +104,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setLotSizeAmg(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyImmediateGovernance
+        onlyGovernance
     {
         _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_LOT_SIZE_AMG, abi.encode(_value));

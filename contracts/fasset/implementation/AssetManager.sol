@@ -33,8 +33,6 @@ import "../library/CollateralTokens.sol";
 contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     using SafeCast for uint256;
 
-    SettingsUpdater.PendingUpdates private pendingUpdates;
-
     uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
 
     modifier onlyAssetManagerController {
@@ -68,7 +66,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external override
         onlyAssetManagerController
     {
-        SettingsUpdater.callUpdate(pendingUpdates, _method, _params);
+        SettingsUpdater.callUpdate(_method, _params);
     }
 
     /**

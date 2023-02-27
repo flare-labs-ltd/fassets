@@ -12,34 +12,14 @@ library SettingsUpdater {
     using SafeCast for uint256;
     using SafePct for *;
 
-    struct CollateralRatioUpdate {
-        uint64 validAt;
-        uint32 minCollateralRatioBIPS;
-        uint32 ccbMinCollateralRatioBIPS;
-        uint32 safetyMinCollateralRatioBIPS;
-    }
-
-    struct PaymentTimeUpdate {
-        uint64 validAt;
-        uint64 underlyingBlocksForPayment;
-        uint64 underlyingSecondsForPayment;
-    }
-
-    struct WhitelistUpdate {
-        uint64 validAt;
-        address whitelist;
-    }
-
-    struct PendingUpdates {
-        CollateralRatioUpdate collateralRatio;
-        PaymentTimeUpdate paymentTime;
-        WhitelistUpdate whitelist;
-        // last update time
+    struct UpdaterState {
         mapping (bytes32 => uint256) lastUpdate;
     }
 
+    bytes32 internal constant UPDATES_STATE_POSITION = keccak256("fasset.AssetManager.UpdaterState");
+
     bytes32 internal constant UPDATE_CONTRACTS =
-        keccak256("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)");
+        keccak256("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry)");
     bytes32 internal constant REFRESH_ALL_FTSO_INDEXES =
         keccak256("refreshAllFtsoIndexes()");
     bytes32 internal constant REFRESH_FTSO_INDEXES =
@@ -91,7 +71,6 @@ library SettingsUpdater {
     }
 
     function callUpdate(
-        PendingUpdates storage _updates,
         bytes32 _method,
         bytes calldata _params
     )
@@ -104,60 +83,82 @@ library SettingsUpdater {
         } else if (_method == REFRESH_FTSO_INDEXES) {
             _refreshFtsoIndexes(_params);
         } else if (_method == SET_TIME_FOR_PAYMENT) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setTimeForPayment(_params);
         } else if (_method == SET_PAYMENT_CHALLENGE_REWARD) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setPaymentChallengeReward(_params);
         } else if (_method == SET_WHITELIST) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setWhitelist(_params);
         } else if (_method == SET_LOT_SIZE_AMG) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setLotSizeAmg(_params);
         } else if (_method == SET_COLLATERAL_RESERVATION_FEE_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setCollateralReservationFeeBips(_params);
         } else if (_method == SET_REDEMPTION_FEE_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setRedemptionFeeBips(_params);
         } else if (_method == SET_REDEMPTION_DEFAULT_FACTOR_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setRedemptionDefaultFactorBips(_params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setConfirmationByOthersAfterSeconds(_params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_REWARD_C1_WEI) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setConfirmationByOthersRewardC1Wei(_params);
         } else if (_method == SET_MAX_REDEEMED_TICKETS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setMaxRedeemedTickets(_params);
         } else if (_method == SET_WITHDRAWAL_OR_DESTROY_WAIT_MIN_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setWithdrawalOrDestroyWaitMinSeconds(_params);
         } else if (_method == SET_CCB_TIME_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setCcbTimeSeconds(_params);
         } else if (_method == SET_LIQUIDATION_STRATEGY) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setLiquidationStrategy(_params);
         } else if (_method == SET_LIQUIDATION_STRATEGY_SETTINGS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setLiquidationStrategySettings(_params);
         } else if (_method == SET_ATTESTATION_WINDOW_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setAttestationWindowSeconds(_params);
         } else if (_method == SET_MAX_TRUSTED_PRICE_AGE_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setMaxTrustedPriceAgeSeconds(_params);
         } else if (_method == SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setAnnouncedUnderlyingConfirmationMinSeconds(_params);
         }
         else {
             revert("update: invalid method");
         }
+    }
+
+    function _getUpdaterState() private pure returns (UpdaterState storage _state) {
+        // Only direct constants are allowed in inline assembly, so we assign it here
+        bytes32 position = UPDATES_STATE_POSITION;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            _state.slot := position
+        }
+    }
+
+    function _checkEnoughTimeSinceLastUpdate(
+        bytes32 _method
+    )
+        private
+    {
+        UpdaterState storage _state = _getUpdaterState();
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 lastUpdate = _state.lastUpdate[_method];
+        require(lastUpdate == 0 || block.timestamp >= lastUpdate + settings.minUpdateRepeatTimeSeconds,
+            "too close to previous update");
+        _state.lastUpdate[_method] = block.timestamp;
     }
 
     function _updateContracts(
@@ -214,19 +215,6 @@ library SettingsUpdater {
             uint256 ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(collateral.ftsoSymbol);
             collateral.ftsoIndex = ftsoIndex.toUint16();
         }
-    }
-
-    function _checkEnoughTimeSinceLastUpdate(
-        PendingUpdates storage _updates,
-        bytes32 _method
-    )
-        private
-    {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        uint256 lastUpdate = _updates.lastUpdate[_method];
-        require(lastUpdate == 0 || block.timestamp >= lastUpdate + settings.minUpdateRepeatTimeSeconds,
-            "too close to previous update");
-        _updates.lastUpdate[_method] = block.timestamp;
     }
 
     function _setTimeForPayment(
