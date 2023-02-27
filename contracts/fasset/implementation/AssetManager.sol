@@ -23,6 +23,7 @@ import "../library/Liquidation.sol";
 import "../library/UnderlyingWithdrawalAnnouncements.sol";
 import "../library/UnderlyingFreeBalance.sol";
 import "../library/FullAgentInfo.sol";
+import "../library/CollateralTokens.sol";
 
 
 /**
@@ -32,18 +33,15 @@ import "../library/FullAgentInfo.sol";
 contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     using SafeCast for uint256;
 
-    SettingsUpdater.PendingUpdates private pendingUpdates;
-
     uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
 
     modifier onlyAssetManagerController {
-        require(msg.sender == AssetManagerState.getSettings().assetManagerController,
-            "only asset manager controller");
+        _checkOnlyAssetManagerController();
         _;
     }
 
     modifier onlyAttached {
-        require(AssetManagerState.get().attached, "not attached");
+        _checkOnlyAttached();
         _;
     }
 
@@ -68,7 +66,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external override
         onlyAssetManagerController
     {
-        SettingsUpdater.callUpdate(pendingUpdates, _method, _params);
+        SettingsUpdater.callUpdate(_method, _params);
     }
 
     /**
@@ -151,13 +149,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */
     function createAgent(
         string memory _underlyingAddressString,
-        uint256 _collateralTokenClass1
+        string memory _class1CollateralTokenId
     )
         external
         onlyAttached
     {
         requireWhitelistedSender();
-        AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString, _collateralTokenClass1);
+        AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString, _class1CollateralTokenId);
     }
 
     /**
@@ -196,15 +194,17 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Set the ratio at which free collateral for the minting will be accounted.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
-     * @param _agentMinCollateralRatioBIPS the new ratio in BIPS
+     * @param _minClass1CollateralRatioBIPS the new ratio in BIPS
      */
     function setAgentMinCollateralRatioBIPS(
         address _agentVault,
-        uint256 _agentMinCollateralRatioBIPS
+        uint256 _minClass1CollateralRatioBIPS,
+        uint256 _minPoolCollateralRatioBIPS
     )
         external
     {
-        AgentsExternal.setAgentMinCollateralRatioBIPS(_agentVault, _agentMinCollateralRatioBIPS);
+        AgentsExternal.setAgentMinCollateralRatioBIPS(_agentVault, _minClass1CollateralRatioBIPS,
+            _minPoolCollateralRatioBIPS);
     }
 
     /**
@@ -295,19 +295,21 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _feeBIPS fee charged to minters (paid in underlying currency along with backing assets)
-     * @param _agentMinCollateralRatioBIPS when agent is created, free colateral is accounted at the
+     * @param _minClass1CollateralRatioBIPS when agent is created, free colateral is accounted at the
      *  global min collateral ratio; for public agents this can very quickly lead to liquidation,
      *  therefore it is required for agent to set it when becoming available.
-     *  Note that agentMinCollateralRatioBIPS can also be set separately by setAgentMinCollateralRatioBIPS method.
+     *  Note that agent's minCollateralRatioBIPS can also be set separately by setAgentMinCollateralRatioBIPS method.
      */
     function makeAgentAvailable(
         address _agentVault,
         uint256 _feeBIPS,
-        uint256 _agentMinCollateralRatioBIPS
+        uint256 _minClass1CollateralRatioBIPS,
+        uint256 _minPoolCollateralRatioBIPS
     )
         external
     {
-        AvailableAgents.makeAvailable(_agentVault, _feeBIPS, _agentMinCollateralRatioBIPS);
+        AvailableAgents.makeAvailable(_agentVault,
+            _feeBIPS, _minClass1CollateralRatioBIPS, _minPoolCollateralRatioBIPS);
     }
 
     /**
@@ -894,6 +896,88 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
+    // Collateral token handling
+
+    function addCollateralToken(
+        IAssetManager.CollateralTokenInfo calldata _data
+    )
+        external
+        onlyAssetManagerController
+    {
+        CollateralTokens.add(_data);
+    }
+
+    function setCollateralRatiosForToken(
+        string memory _tokenIdentifier,
+        uint256 _minCollateralRatioBIPS,
+        uint256 _ccbMinCollateralRatioBIPS,
+        uint256 _safetyMinCollateralRatioBIPS
+    )
+        external
+        onlyAssetManagerController
+    {
+        CollateralTokens.setCollateralRatios(_tokenIdentifier,
+            _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
+    }
+
+    function deprecateCollateralToken(
+        string memory _tokenIdentifier,
+        uint256 _invalidationTimeSec
+    )
+        external
+        onlyAssetManagerController
+    {
+        CollateralTokens.deprecate(_tokenIdentifier, _invalidationTimeSec);
+    }
+
+    function setCurrentPoolCollateralToken(
+        string memory _tokenIdentifier
+    )
+        external
+        onlyAssetManagerController
+    {
+        CollateralTokens.setCurrentPoolCollateralToken(_tokenIdentifier);
+    }
+
+    function upgradePoolCollateralToken(
+        address _agentVault
+    )
+        external
+    {
+        // AgentsExternal.upgradePoolCollateralToken checks that only agent owner can call
+        AgentsExternal.upgradePoolCollateralToken(_agentVault);
+    }
+
+    function getCollateralToken(
+        string memory _tokenIdentifier
+    )
+        external view
+        returns (IAssetManager.CollateralTokenInfo memory)
+    {
+        return CollateralTokens.getInfo(_tokenIdentifier);
+    }
+
+    /**
+     * Get the list of all available and deprecated tokens used for collateral.
+     */
+    function getCollateralTokens()
+        external view
+        returns (IAssetManager.CollateralTokenInfo[] memory)
+    {
+        return CollateralTokens.getAllTokenInfos();
+    }
+
+    /**
+     * Check if `_token` is one of the collateral tokens for `_agentVault`.
+     */
+    function isCollateralToken(address _agentVault, IERC20 _token)
+        external view override
+        returns (bool)
+    {
+        return AgentsExternal.isCollateralToken(_agentVault, _token);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
     // Collateral pool redemptions
 
     function redeemChosenAgentUnderlying(
@@ -941,27 +1025,6 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     /**
-     * Get the list of all available and deprecated tokens used for collateral.
-     */
-    function getCollateralTokens()
-        external view
-        returns (CollateralToken.Data[] memory)
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens;
-    }
-
-    /**
-     * Check if `_token` is one of the collateral tokens for `_agentVault`.
-     */
-    function isCollateralToken(address _agentVault, IERC20 _token)
-        external view override
-        returns (bool)
-    {
-        return AgentsExternal.isCollateralToken(_agentVault, _token);
-    }
-
-    /**
      * return lot size in UBA.
      */
     function getLotSize()
@@ -980,7 +1043,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         returns (uint256 _multiplier, uint256 _divisor)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        _multiplier = Conversion.currentAmgPriceInTokenWei(Agents.getPoolCollateral());
+        _multiplier = Conversion.currentAmgPriceInTokenWei(Globals.getCurrentPoolCollateral());
         _divisor = Conversion.AMG_TOKENWEI_PRICE_SCALE * settings.assetMintingGranularityUBA;
     }
 
@@ -994,5 +1057,17 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         if (address(settings.whitelist) != address(0)) {
             require(settings.whitelist.isWhitelisted(msg.sender), "not whitelisted");
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Condition checks
+
+    function _checkOnlyAssetManagerController() private view {
+        require(msg.sender == AssetManagerState.getSettings().assetManagerController,
+            "only asset manager controller");
+    }
+
+    function _checkOnlyAttached() private view {
+        require(AssetManagerState.get().attached, "not attached");
     }
 }

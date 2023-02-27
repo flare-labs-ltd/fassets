@@ -9,22 +9,34 @@ import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Globals.sol";
 import "./Conversion.sol";
+import "./CollateralTokens.sol";
 
 library Agents {
     using SafeCast for uint256;
     using Agent for Agent.State;
 
-    function setAgentMinCollateralRatioBIPS(
+    function setAgentMinClass1CollateralRatioBIPS(
         Agent.State storage _agent,
-        uint256 _agentMinCollateralRatioBIPS
+        uint256 _minClass1CollateralRatioBIPS
     )
         internal
     {
-        // TODO: add min pool collateral
         CollateralToken.Data storage collateral = getClass1Collateral(_agent);
-        require(_agentMinCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
+        require(_minClass1CollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
             "collateral ratio too small");
-        _agent.agentMinCollateralRatioBIPS = _agentMinCollateralRatioBIPS.toUint32();
+        _agent.minClass1CollateralRatioBIPS = _minClass1CollateralRatioBIPS.toUint32();
+    }
+
+    function setAgentMinPoolCollateralRatioBIPS(
+        Agent.State storage _agent,
+        uint256 _minPoolCollateralRatioBIPS
+    )
+        internal
+    {
+        CollateralToken.Data storage collateral = getPoolCollateral(_agent);
+        require(_minPoolCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
+            "collateral ratio too small");
+        _agent.minPoolCollateralRatioBIPS = _minPoolCollateralRatioBIPS.toUint32();
     }
 
     function allocateMintedAssets(
@@ -130,7 +142,17 @@ library Agents {
         _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
     }
 
-    function burnCollateral(
+    function burnCollateralClass1(
+        Agent.State storage _agent,
+        uint256 _amountNATWei
+    )
+        internal
+    {
+        // TODO: we don't want to burn (lock) stablecoins, should we put them on market for
+        // flares and then burn flares?
+    }
+
+    function burnCollateralNAT(
         Agent.State storage _agent,
         uint256 _amountNATWei
     )
@@ -141,12 +163,26 @@ library Agents {
         if (settings.burnWithSelfDestruct) {
             // burn by self-destructing a temporary burner contract
             NativeTokenBurner burner = new NativeTokenBurner(settings.burnAddress);
-            vault.payoutNAT(Globals.getWNat(), payable(address(burner)), _amountNATWei);
+            vault.payoutNAT(payable(address(burner)), _amountNATWei);
             burner.die();
         } else {
             // burn directly to burn address
-            vault.payoutNAT(Globals.getWNat(), settings.burnAddress, _amountNATWei);
+            vault.payoutNAT(settings.burnAddress, _amountNATWei);
         }
+    }
+
+    function setClass1Collateral(
+        Agent.State storage _agent,
+        string memory _tokenIdentifier
+    )
+        internal
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint256 tokenIndex = CollateralTokens.getIndex(_tokenIdentifier);
+        CollateralToken.Data storage token = state.collateralTokens[tokenIndex];
+        require(token.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "not class1 collateral token");
+        require(CollateralTokens.isValid(token), "token not valid");
+        _agent.class1CollateralToken = tokenIndex.toUint16();
     }
 
     function vaultOwner(
@@ -191,7 +227,7 @@ library Agents {
         returns (IERC20)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.collateralTokenC1].token;
+        return state.collateralTokens[_agent.class1CollateralToken].token;
     }
 
     function getClass1Collateral(Agent.State storage _agent)
@@ -199,14 +235,28 @@ library Agents {
         returns (CollateralToken.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.collateralTokenC1];
+        return state.collateralTokens[_agent.class1CollateralToken];
     }
 
-    function getPoolCollateral()
+    function getPoolCollateral(Agent.State storage _agent)
         internal view
         returns (CollateralToken.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[CollateralToken.POOL];
+        return state.collateralTokens[_agent.poolCollateralToken];
+    }
+
+    function class1CollateralUnderwater(Agent.State storage _agent)
+        internal view
+        returns (bool)
+    {
+        return (_agent.collateralsUnderwater & Agent.LF_CLASS1) != 0;
+    }
+
+    function poolCollateralUnderwater(Agent.State storage _agent)
+        internal view
+        returns (bool)
+    {
+        return (_agent.collateralsUnderwater & Agent.LF_POOL) != 0;
     }
 }

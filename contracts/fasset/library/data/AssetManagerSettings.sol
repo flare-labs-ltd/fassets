@@ -191,5 +191,9 @@ library AssetManagerSettings {
         // Shouldn't be much bigger than state connector response time, so that payments can be confirmed without
         // extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
         uint64 announcedUnderlyingConfirmationMinSeconds;
+
+        // Minimum time from the moment token is deprecated to when it becomes invalid and agents still using
+        // it as class1 get liquidated.
+        uint64 tokenInvalidationTimeMinSeconds;
     }
 }

@@ -20,6 +20,11 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     mapping(address => uint256) private assetManagerIndex;
     IAssetManager[] private assetManagers;
 
+    modifier onlyGovernanceOrExecutor {
+        _checkOnlyGovernanceOrExecutor();
+        _;
+    }
+
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, address _addressUpdater)
         Governed(_governanceSettings, _initialGovernance)
         AddressUpdatable(_addressUpdater)
@@ -77,12 +82,21 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     // Setters
 
     // this is a safe operation, executor can call without prior governance call
-    function refreshFtsoIndexes(IAssetManager[] memory _assetManagers)
+    function refreshAllFtsoIndexes(IAssetManager[] memory _assetManagers)
         external
+        onlyGovernanceOrExecutor
     {
-        _checkOnlyGovernanceOrExecutor();
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.REFRESH_FTSO_INDEXES, abi.encode());
+            SettingsUpdater.REFRESH_ALL_FTSO_INDEXES, abi.encode());
+    }
+
+    // this is a safe operation, executor can call without prior governance call
+    function refreshFtsoIndexes(IAssetManager[] memory _assetManagers, uint256 _start, uint256 _end)
+        external
+        onlyGovernanceOrExecutor
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.REFRESH_FTSO_INDEXES, abi.encode(_start, _end));
     }
 
     function setWhitelist(IAssetManager[] memory _assetManagers, address _value)
@@ -95,24 +109,10 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setLotSizeAmg(IAssetManager[] memory _assetManagers, uint256 _value)
         external
-        onlyImmediateGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_LOT_SIZE_AMG, abi.encode(_value));
-    }
-
-    function setCollateralRatios(
-        IAssetManager[] memory _assetManagers,
-        uint256 _minCollateralRatioBIPS,
-        uint256 _ccbMinCollateralRatioBIPS,
-        uint256 _safetyMinCollateralRatioBIPS
-    )
-        external
         onlyGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_COLLATERAL_RATIOS,
-            abi.encode(_minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS));
+            SettingsUpdater.SET_LOT_SIZE_AMG, abi.encode(_value));
     }
 
     function setTimeForPayment(
@@ -295,6 +295,62 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Collateral tokens
+
+    function addCollateralToken(
+        IAssetManager[] memory _assetManagers,
+        IAssetManager.CollateralTokenInfo calldata _data
+    )
+        external
+        onlyImmediateGovernance
+    {
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _checkAssetManager(_assetManagers[i]).addCollateralToken(_data);
+        }
+    }
+
+    function setCollateralRatiosForToken(
+        IAssetManager[] memory _assetManagers,
+        string memory _tokenIdentifier,
+        uint256 _minCollateralRatioBIPS,
+        uint256 _ccbMinCollateralRatioBIPS,
+        uint256 _safetyMinCollateralRatioBIPS
+    )
+        external
+        onlyGovernance
+    {
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _checkAssetManager(_assetManagers[i]).setCollateralRatiosForToken(
+                _tokenIdentifier, _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
+        }
+    }
+
+    function deprecateCollateralToken(
+        IAssetManager[] memory _assetManagers,
+        string memory _tokenIdentifier,
+        uint256 _invalidationTimeSec
+    )
+        external
+        onlyGovernance
+    {
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _checkAssetManager(_assetManagers[i]).deprecateCollateralToken(_tokenIdentifier, _invalidationTimeSec);
+        }
+    }
+
+    function setCurrentPoolCollateralToken(
+        IAssetManager[] memory _assetManagers,
+        string memory _tokenIdentifier
+    )
+        external
+        onlyGovernance
+    {
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _checkAssetManager(_assetManagers[i]).setCurrentPoolCollateralToken(_tokenIdentifier);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     // Update contracts
 
     function _updateContractAddresses(
@@ -311,13 +367,11 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             IAttestationClient(_getContractAddress(_contractNameHashes, _contractAddresses, "AttestationClient"));
         IFtsoRegistry ftsoRegistry =
             IFtsoRegistry(_getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry"));
-        IWNat wNat =
-            IWNat(_getContractAddress(_contractNameHashes, _contractAddresses, "WNat"));
         for (uint256 i = 0; i < assetManagers.length; i++) {
             IAssetManager assetManager = assetManagers[i];
             assetManager.updateSettings(
                 SettingsUpdater.UPDATE_CONTRACTS,
-                abi.encode(assetManagerController, agentVaultFactory, attestationClient, ftsoRegistry, wNat));
+                abi.encode(assetManagerController, agentVaultFactory, attestationClient, ftsoRegistry));
         }
         // if this controller was replaced, set forwarding address
         if (assetManagerController != address(this)) {
@@ -344,5 +398,10 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function _checkOnlyGovernanceOrExecutor() private view {
         require(msg.sender == governance() || isExecutor(msg.sender), "only governance or executor");
+    }
+
+    function _checkAssetManager(IAssetManager _assetManager) private view returns (IAssetManager) {
+        require(assetManagerIndex[address(_assetManager)] != 0, "Asset manager not managed");
+        return _assetManager;
     }
 }

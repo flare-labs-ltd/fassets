@@ -120,9 +120,9 @@ library CollateralReservations {
         state.settings.burnAddress.transfer(crt.reservationFeeNatWei);
         // burn reserved collateral at market price
         // TODO: should not burn stablecoins?
-        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.collateralTokenC1);
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.class1CollateralToken);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
-        Agents.burnCollateral(agent, reservedCollateral);
+        Agents.burnCollateralClass1(agent, reservedCollateral);
         // send event
         uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
         emit AMEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
@@ -136,8 +136,9 @@ library CollateralReservations {
         external view
         returns (uint256)
     {
-        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(CollateralToken.POOL);
-        return _reservationFee(amgToTokenWeiPrice, _lots * AssetManagerState.getSettings().lotSizeAMG);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(state.currentPoolCollateralToken);
+        return _reservationFee(amgToTokenWeiPrice, _lots * state.settings.lotSizeAMG);
     }
 
     function releaseCollateralReservation(

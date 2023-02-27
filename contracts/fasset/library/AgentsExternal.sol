@@ -52,7 +52,7 @@ library AgentsExternal {
         Agent.Type _agentType,
         IAssetManager _assetManager,
         string memory _underlyingAddressString,
-        uint256 _collateralTokenClass1
+        string memory _collateralTokenClass1
     )
         external
     {
@@ -65,17 +65,14 @@ library AgentsExternal {
         require(bytes(_underlyingAddressString).length != 0, "empty underlying address");
         agent.agentType = _agentType;
         agent.status = Agent.Status.NORMAL;
-        // set collateral token type
-        require(_collateralTokenClass1 >= 1 && _collateralTokenClass1 < state.collateralTokens.length,
-            "invalid collateral token index");
-        CollateralToken.Data storage collateral = state.collateralTokens[_collateralTokenClass1];
-        require(collateral.tokenClass == CollateralToken.TokenClass.CLASS1,
-            "invalid collateral token class");
-        agent.collateralTokenC1 = _collateralTokenClass1.toUint16();
-        // initially, agentMinCollateralRatioBIPS is the same as global min collateral ratio
+        // set collateral token types
+        Agents.setClass1Collateral(agent, _collateralTokenClass1);
+        agent.poolCollateralToken = state.currentPoolCollateralToken;
+        // initially, agent's min collateral ratios are the same as global min collateral ratios
         // this setting is ok for self-minting, but not for public minting since it quickly leads to liquidation
         // it can be changed with setAgentMinCollateralRatioBIPS or when agent becomes available
-        agent.agentMinCollateralRatioBIPS = collateral.minCollateralRatioBIPS;
+        agent.minClass1CollateralRatioBIPS = agent.getClass1Collateral().minCollateralRatioBIPS;
+        agent.minPoolCollateralRatioBIPS = agent.getPoolCollateral().minCollateralRatioBIPS;
         // claim the address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
         bytes32 underlyingAddressHash = keccak256(bytes(_underlyingAddressString));
@@ -150,7 +147,7 @@ library AgentsExternal {
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
         uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
             .mulBips(state.settings.buybackCollateralFactorBIPS);
-        Agents.burnCollateral(agent, buybackCollateral);
+        Agents.burnCollateralClass1(agent, buybackCollateral);
         agent.mintedAMG = 0;
         state.totalReservedCollateralAMG -= agent.reservedAMG;
         agent.reservedAMG = 0;
@@ -158,12 +155,15 @@ library AgentsExternal {
 
     function setAgentMinCollateralRatioBIPS(
         address _agentVault,
-        uint256 _agentMinCollateralRatioBIPS
+        uint256 _minClass1CollateralRatioBIPS,
+        uint256 _minPoolCollateralRatioBIPS
     )
         external
         onlyAgentVaultOwner(_agentVault)
     {
-        Agents.setAgentMinCollateralRatioBIPS(Agent.get(_agentVault), _agentMinCollateralRatioBIPS);
+        Agent.State storage agent = Agent.get(_agentVault);
+        Agents.setAgentMinClass1CollateralRatioBIPS(agent, _minClass1CollateralRatioBIPS);
+        Agents.setAgentMinPoolCollateralRatioBIPS(agent, _minPoolCollateralRatioBIPS);
     }
 
     // TODO: support multicollateral
@@ -249,6 +249,33 @@ library AgentsExternal {
         agent.withdrawalAnnouncedNATWei -= uint128(_valueNATWei);    // guarded by above require
         // could reset agent.withdrawalAnnouncedAt if agent.withdrawalAnnouncedNATWei == 0,
         // but it's not needed, since no withdrawal can be made anyway
+    }
+
+    function upgradePoolCollateralToken(
+        address _agentVault
+    )
+        external
+        onlyAgentVaultOwner(_agentVault)
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        AssetManagerState.State storage state = AssetManagerState.get();
+        if (agent.poolCollateralToken != state.currentPoolCollateralToken) {
+            IWNat oldWNat = IWNat(address(state.collateralTokens[agent.poolCollateralToken].token));
+            IWNat wNat = IWNat(address(state.collateralTokens[state.currentPoolCollateralToken].token));
+            agent.poolCollateralToken = state.currentPoolCollateralToken;
+            agent.collateralPool.upgradeWNatContract(oldWNat, wNat);
+        }
+    }
+
+    function switchClass1Collateral(
+        address _agentVault,
+        string memory _tokenIdentifier
+    )
+        external
+        onlyAgentVaultOwner(_agentVault)
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        Agents.setClass1Collateral(agent, _tokenIdentifier);
     }
 
     function isCollateralToken(

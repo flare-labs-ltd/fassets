@@ -19,6 +19,9 @@ library AssetManagerState {
         // Pool collateral (always WNat) has index 0.
         CollateralToken.Data[] collateralTokens;
 
+        // mapping(identifier => collateralTokens index + 1)
+        mapping(string => uint256) collateralTokenIndex;
+
         // A list of all agents that are available for minting.
         // Type: array of agent vault addresses; when one is deleted, its position is filled with last
         address[] availableAgents;
@@ -46,6 +49,10 @@ library AssetManagerState {
 
         // Total collateral reservations (in underlying AMG units). Used by minting cap.
         uint64 totalReservedCollateralAMG;
+
+        // Pool collateral is always wrapped NAT, but the wrapping contract may change.
+        // In this case, new pool collateral token must be added and set as current.
+        uint16 currentPoolCollateralToken;
 
         // Current block number and timestamp on the underlying chain
         uint64 currentUnderlyingBlock;

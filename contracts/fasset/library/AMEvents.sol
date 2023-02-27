@@ -42,7 +42,8 @@ library AMEvents {
     event AgentAvailable(
         address indexed agentVault,
         uint256 feeBIPS,
-        uint256 agentMinCollateralRatioBIPS,
+        uint256 minClass1CollateralRatioBIPS,
+        uint256 minPoolCollateralRatioBIPS,
         uint256 freeCollateralLots);
 
     /**
@@ -343,4 +344,22 @@ library AMEvents {
         string name,
         address value);
 
+    event CollateralTokenAdded(
+        string identifier,
+        address tokenContract,
+        uint8 tokenClass,
+        string ftsoSymbol,
+        uint256 minCollateralRatioBIPS,
+        uint256 ccbMinCollateralRatioBIPS,
+        uint256 safetyMinCollateralRatioBIPS);
+
+    event CollateralTokenRatiosChanged(
+        string identifier,
+        uint256 minCollateralRatioBIPS,
+        uint256 ccbMinCollateralRatioBIPS,
+        uint256 safetyMinCollateralRatioBIPS);
+
+    event CollateralTokenDeprecated(
+        string identifier,
+        uint256 validUntil);
 }

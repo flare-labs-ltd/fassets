@@ -36,7 +36,7 @@ library AgentCollateral {
         returns (Collateral.Data memory)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralToken.Data storage collateral = state.collateralTokens[_agent.collateralTokenC1];
+        CollateralToken.Data storage collateral = state.collateralTokens[_agent.class1CollateralToken];
         return Collateral.Data({
             kind: Collateral.Kind.AGENT_CLASS1,
             fullCollateral: collateral.token.balanceOf(_agent.vaultAddress()),
@@ -51,7 +51,7 @@ library AgentCollateral {
         returns (Collateral.Data memory)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralToken.Data storage collateral = state.collateralTokens[CollateralToken.POOL];
+        CollateralToken.Data storage collateral = state.collateralTokens[_agent.poolCollateralToken];
         return Collateral.Data({
             kind: Collateral.Kind.POOL,
             fullCollateral: collateral.token.balanceOf(address(_agent.collateralPool)),
@@ -162,16 +162,16 @@ library AgentCollateral {
             _mintingMinCollateralRatioBIPS = _systemMinCollateralRatioBIPS;
         } else if (_kind == Collateral.Kind.POOL) {
             _systemMinCollateralRatioBIPS =
-                state.collateralTokens[CollateralToken.POOL].minCollateralRatioBIPS;
+                state.collateralTokens[_agent.poolCollateralToken].minCollateralRatioBIPS;
             _mintingMinCollateralRatioBIPS =
-                Math.max(_agent.agentMinPoolCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
+                Math.max(_agent.minPoolCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         } else {
             _systemMinCollateralRatioBIPS =
-                state.collateralTokens[_agent.collateralTokenC1].minCollateralRatioBIPS;
-            // agentMinCollateralRatioBIPS must be greater than minCollateralRatioBIPS when set, but
+                state.collateralTokens[_agent.class1CollateralToken].minCollateralRatioBIPS;
+            // agent's minCollateralRatioBIPS must be greater than minCollateralRatioBIPS when set, but
             // minCollateralRatioBIPS can change later so we always use the max of both
             _mintingMinCollateralRatioBIPS =
-                Math.max(_agent.agentMinCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
+                Math.max(_agent.minClass1CollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         }
     }
 
@@ -191,26 +191,6 @@ library AgentCollateral {
         return _data.fullCollateral.mulDiv(_valueAMG, totalAMG); // totalAMG > 0 (guarded by assert)
     }
 
-    // Used for calculating collateral ration in liquidation.
-    function collateralDataWithTrusted(
-        Agent.State storage _agent,
-        Collateral.Kind _kind
-    )
-        internal view
-        returns (uint256 _fullCollateral, uint256 _amgToTokenWeiPrice, uint256 _amgToTokenWeiPriceTrusted)
-    {
-        assert (_kind != Collateral.Kind.AGENT_POOL);   // does not make sense for liquidation
-        AssetManagerState.State storage state = AssetManagerState.get();
-        uint256 tokenIndex =
-            _kind == Collateral.Kind.AGENT_CLASS1 ? _agent.collateralTokenC1 : CollateralToken.POOL;
-        CollateralToken.Data storage collateral = state.collateralTokens[tokenIndex];
-        address holderAddress =
-            _kind == Collateral.Kind.AGENT_CLASS1 ? _agent.vaultAddress() : address(_agent.collateralPool);
-        _fullCollateral = collateral.token.balanceOf(holderAddress);
-        (_amgToTokenWeiPrice, _amgToTokenWeiPriceTrusted) =
-            Conversion.currentAmgPriceInTokenWeiWithTrusted(collateral);
-    }
-
     // Agent's collateral ratio for single collateral type (BIPS) - used in liquidation.
     // Ignores collateral announced for withdrawal (withdrawals are forbidden during liquidation).
     function collateralRatioBIPS(
@@ -225,5 +205,31 @@ library AgentCollateral {
         if (totalAMG == 0) return 1e10;    // nothing minted - ~infinite collateral ratio (but avoid overflows)
         uint256 backingTokenWei = Conversion.convertAmgToTokenWei(totalAMG, _amgToTokenWeiPrice);
         return _fullCollateral.mulDiv(SafePct.MAX_BIPS, backingTokenWei);
+    }
+
+    function collateralTokenOfKind(
+        Agent.State storage _agent,
+        Collateral.Kind _kind
+    )
+        internal view
+        returns (CollateralToken.Data storage)
+    {
+        assert (_kind != Collateral.Kind.AGENT_POOL);   // there is no agent pool collateral token
+        AssetManagerState.State storage state = AssetManagerState.get();
+        if (_kind == Collateral.Kind.AGENT_CLASS1) {
+            return state.collateralTokens[_agent.class1CollateralToken];
+        } else {
+            return state.collateralTokens[_agent.poolCollateralToken];
+        }
+    }
+
+    function collateralHolderOfKind(
+        Agent.State storage _agent,
+        Collateral.Kind _kind
+    )
+        internal view
+        returns (address)
+    {
+        return _kind == Collateral.Kind.POOL ? address(_agent.collateralPool): _agent.vaultAddress();
     }
 }

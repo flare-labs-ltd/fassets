@@ -3,6 +3,7 @@ pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./IWNat.sol";
 
 
 /**
@@ -13,11 +14,11 @@ interface ICollateralPool {
     function enter(bool _depositFassets) external payable;
     function exit() external;
     function selfCloseExit(
-        bool _getAgentCollateral, uint256 _tokenShare, uint256 _fassets, 
+        bool _getAgentCollateral, uint256 _tokenShare, uint256 _fassets,
         string memory _redeemerUnderlyingAddressString) external;
     function selfCloseExitPaidWithCollateral(
         uint256 _tokenShare, uint256 _fassets) external;
     function payout(address _receiver, uint256 _amountWei, uint256 _agentResponsibilityWei) external;
-
+    function upgradeWNatContract(IWNat oldWNat, IWNat wNat) external;  // switch and transfer all balance to new wnat
     function poolToken() external view returns (IERC20);
 }

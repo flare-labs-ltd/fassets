@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
@@ -11,38 +12,18 @@ library SettingsUpdater {
     using SafeCast for uint256;
     using SafePct for *;
 
-    struct CollateralRatioUpdate {
-        uint64 validAt;
-        uint32 minCollateralRatioBIPS;
-        uint32 ccbMinCollateralRatioBIPS;
-        uint32 safetyMinCollateralRatioBIPS;
-    }
-
-    struct PaymentTimeUpdate {
-        uint64 validAt;
-        uint64 underlyingBlocksForPayment;
-        uint64 underlyingSecondsForPayment;
-    }
-
-    struct WhitelistUpdate {
-        uint64 validAt;
-        address whitelist;
-    }
-
-    struct PendingUpdates {
-        CollateralRatioUpdate collateralRatio;
-        PaymentTimeUpdate paymentTime;
-        WhitelistUpdate whitelist;
-        // last update time
+    struct UpdaterState {
         mapping (bytes32 => uint256) lastUpdate;
     }
 
+    bytes32 internal constant UPDATES_STATE_POSITION = keccak256("fasset.AssetManager.UpdaterState");
+
     bytes32 internal constant UPDATE_CONTRACTS =
-        keccak256("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)");
+        keccak256("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry)");
+    bytes32 internal constant REFRESH_ALL_FTSO_INDEXES =
+        keccak256("refreshAllFtsoIndexes()");
     bytes32 internal constant REFRESH_FTSO_INDEXES =
-        keccak256("refreshFtsoIndexes()");
-    bytes32 internal constant SET_COLLATERAL_RATIOS =
-        keccak256("setCollateralRatios(uint256,uint256,uint256)");
+        keccak256("refreshFtsoIndexes(uint256,uint256)");
     bytes32 internal constant SET_TIME_FOR_PAYMENT =
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant SET_WHITELIST =
@@ -86,11 +67,10 @@ library SettingsUpdater {
         AssetManagerState.State storage state = AssetManagerState.get();
         _validateSettings(_settings);
         state.settings = _settings;
-        _refreshFtsoIndexes();
+        _refreshAllFtsoIndexes();
     }
 
     function callUpdate(
-        PendingUpdates storage _updates,
         bytes32 _method,
         bytes calldata _params
     )
@@ -98,61 +78,60 @@ library SettingsUpdater {
     {
         if (_method == UPDATE_CONTRACTS) {
             _updateContracts(_params);
+        } else if (_method == REFRESH_ALL_FTSO_INDEXES) {
+            _refreshAllFtsoIndexes();
         } else if (_method == REFRESH_FTSO_INDEXES) {
-            _refreshFtsoIndexes();
-        } else if (_method == SET_COLLATERAL_RATIOS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
-            _setCollateralRatios(_params);
+            _refreshFtsoIndexes(_params);
         } else if (_method == SET_TIME_FOR_PAYMENT) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setTimeForPayment(_params);
         } else if (_method == SET_PAYMENT_CHALLENGE_REWARD) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setPaymentChallengeReward(_params);
         } else if (_method == SET_WHITELIST) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setWhitelist(_params);
         } else if (_method == SET_LOT_SIZE_AMG) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setLotSizeAmg(_params);
         } else if (_method == SET_COLLATERAL_RESERVATION_FEE_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setCollateralReservationFeeBips(_params);
         } else if (_method == SET_REDEMPTION_FEE_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setRedemptionFeeBips(_params);
         } else if (_method == SET_REDEMPTION_DEFAULT_FACTOR_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setRedemptionDefaultFactorBips(_params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setConfirmationByOthersAfterSeconds(_params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_REWARD_C1_WEI) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setConfirmationByOthersRewardC1Wei(_params);
         } else if (_method == SET_MAX_REDEEMED_TICKETS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setMaxRedeemedTickets(_params);
         } else if (_method == SET_WITHDRAWAL_OR_DESTROY_WAIT_MIN_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setWithdrawalOrDestroyWaitMinSeconds(_params);
         } else if (_method == SET_CCB_TIME_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setCcbTimeSeconds(_params);
         } else if (_method == SET_LIQUIDATION_STRATEGY) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setLiquidationStrategy(_params);
         } else if (_method == SET_LIQUIDATION_STRATEGY_SETTINGS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setLiquidationStrategySettings(_params);
         } else if (_method == SET_ATTESTATION_WINDOW_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setAttestationWindowSeconds(_params);
         } else if (_method == SET_MAX_TRUSTED_PRICE_AGE_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setMaxTrustedPriceAgeSeconds(_params);
         } else if (_method == SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
+            _checkEnoughTimeSinceLastUpdate(_method);
             _setAnnouncedUnderlyingConfirmationMinSeconds(_params);
         }
         else {
@@ -160,89 +139,82 @@ library SettingsUpdater {
         }
     }
 
+    function _getUpdaterState() private pure returns (UpdaterState storage _state) {
+        // Only direct constants are allowed in inline assembly, so we assign it here
+        bytes32 position = UPDATES_STATE_POSITION;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            _state.slot := position
+        }
+    }
+
+    function _checkEnoughTimeSinceLastUpdate(
+        bytes32 _method
+    )
+        private
+    {
+        UpdaterState storage _state = _getUpdaterState();
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 lastUpdate = _state.lastUpdate[_method];
+        require(lastUpdate == 0 || block.timestamp >= lastUpdate + settings.minUpdateRepeatTimeSeconds,
+            "too close to previous update");
+        _state.lastUpdate[_method] = block.timestamp;
+    }
+
     function _updateContracts(
         bytes calldata _params
     )
         private
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        (
-            address controller,
-            IAgentVaultFactory agentVaultFactory,
-            IAttestationClient attestationClient,
-            IFtsoRegistry ftsoRegistry,
-            IWNat wNat
-        )
-            = abi.decode(_params, (address, IAgentVaultFactory, IAttestationClient, IFtsoRegistry, IWNat));
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
 
-        if (state.settings.assetManagerController != controller) {
-            state.settings.assetManagerController = controller;
+        (address controller, IAgentVaultFactory agentVaultFactory,
+            IAttestationClient attestationClient, IFtsoRegistry ftsoRegistry) =
+            abi.decode(_params, (address, IAgentVaultFactory, IAttestationClient, IFtsoRegistry));
+
+        if (settings.assetManagerController != controller) {
+            settings.assetManagerController = controller;
             emit AMEvents.ContractChanged("assetManagerController", address(controller));
         }
-        if (state.settings.agentVaultFactory != agentVaultFactory) {
-            state.settings.agentVaultFactory = agentVaultFactory;
+        if (settings.agentVaultFactory != agentVaultFactory) {
+            settings.agentVaultFactory = agentVaultFactory;
             emit AMEvents.ContractChanged("agentVaultFactory", address(agentVaultFactory));
         }
-        if (state.settings.attestationClient != attestationClient) {
-            state.settings.attestationClient = attestationClient;
+        if (settings.attestationClient != attestationClient) {
+            settings.attestationClient = attestationClient;
             emit AMEvents.ContractChanged("attestationClient", address(attestationClient));
         }
-        if (state.settings.ftsoRegistry != ftsoRegistry) {
-            state.settings.ftsoRegistry = ftsoRegistry;
+        if (settings.ftsoRegistry != ftsoRegistry) {
+            settings.ftsoRegistry = ftsoRegistry;
             emit AMEvents.ContractChanged("ftsoRegistry", address(ftsoRegistry));
         }
-        // TODO: what to do with the NATs in the pool - this will trigger liquidation
-        CollateralToken.Data storage poolCollateral = state.collateralTokens[CollateralToken.POOL];
-        if (poolCollateral.token != wNat) {
-            poolCollateral.token = wNat;
-            emit AMEvents.ContractChanged("wNat", address(wNat));
-        }
     }
 
-    function _refreshFtsoIndexes() private
+    function _refreshAllFtsoIndexes()
+        private
+    {
+        _refreshFtsoIndexesImpl(0, type(uint256).max);
+    }
+
+    function _refreshFtsoIndexes(bytes calldata _params)
+        private
+    {
+        (uint256 start, uint256 end) = abi.decode(_params, (uint256, uint256));
+        _refreshFtsoIndexesImpl(start, end);
+    }
+
+    function _refreshFtsoIndexesImpl(uint256 _start, uint256 _end)
+        private
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        uint256 length = state.collateralTokens.length;
-        for (uint256 i = 0; i < length; i++) {
+        _end = Math.min(_end, state.collateralTokens.length);
+        for (uint256 i = _start; i < _end; i++) {
             CollateralToken.Data storage collateral = state.collateralTokens[i];
-            // do not update invalidated tokens types
+            // do not update invalidated token types
             if (collateral.validUntil != 0 && collateral.validUntil < block.timestamp) continue;
-            collateral.ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(collateral.symbol).toUint16();
+            uint256 ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(collateral.ftsoSymbol);
+            collateral.ftsoIndex = ftsoIndex.toUint16();
         }
-    }
-
-    function _checkEnoughTimeSinceLastUpdate(
-        PendingUpdates storage _updates,
-        bytes32 _method
-    )
-        private
-    {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        uint256 lastUpdate = _updates.lastUpdate[_method];
-        require(lastUpdate == 0 || block.timestamp >= lastUpdate + settings.minUpdateRepeatTimeSeconds,
-            "too close to previous update");
-        _updates.lastUpdate[_method] = block.timestamp;
-    }
-
-    function _setCollateralRatios(
-        bytes calldata _params
-    )
-        private
-    {
-        // TODO: replace per collateral
-        // (uint256 minCR, uint256 ccbCR, uint256 safetyCR) =
-        //     abi.decode(_params, (uint256, uint256, uint256));
-        // // validations
-        // require(SafePct.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
-        // uint32[] storage liquidationFactors = state.settings.liquidationCollateralFactorBIPS;
-        // require(liquidationFactors[liquidationFactors.length - 1] <= safetyCR, "liquidation factor too high");
-        // // update
-        // state.settings.minCollateralRatioBIPS = minCR.toUint32();
-        // state.settings.ccbMinCollateralRatioBIPS = ccbCR.toUint32();
-        // state.settings.safetyMinCollateralRatioBIPS = safetyCR.toUint32();
-        // emit AMEvents.SettingChanged("minCollateralRatioBIPS", minCR);
-        // emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", ccbCR);
-        // emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", safetyCR);
     }
 
     function _setTimeForPayment(
