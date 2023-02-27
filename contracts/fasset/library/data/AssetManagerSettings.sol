@@ -194,6 +194,6 @@ library AssetManagerSettings {
 
         // Minimum time from the moment token is deprecated to when it becomes invalid and agents still using
         // it as class1 get liquidated.
-        uint64 tokenDeprecationTimeoutMinSeconds;
+        uint64 tokenInvalidationTimeMinSeconds;
     }
 }

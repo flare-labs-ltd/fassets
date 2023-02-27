@@ -180,7 +180,7 @@ library Agents {
         AssetManagerState.State storage state = AssetManagerState.get();
         uint256 tokenIndex = CollateralTokens.getIndex(_tokenIdentifier);
         CollateralToken.Data storage token = state.collateralTokens[tokenIndex];
-        require(token.tokenClass == CollateralToken.TokenClass.CLASS1, "not a pool collateral token");
+        require(token.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "not class1 collateral token");
         require(CollateralTokens.isValid(token), "token not valid");
         _agent.class1CollateralToken = tokenIndex.toUint16();
     }

@@ -2,15 +2,10 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../../interface/IAssetManager.sol";
 
 
 library CollateralToken {
-    enum TokenClass {
-        NONE,   // unused
-        CLASS1, // usable as class 1 collateral
-        POOL    // pool collateral type
-    }
-
     struct Data {
         // Identifier used to access token for updating or getting info.
         string identifier;
@@ -20,7 +15,7 @@ library CollateralToken {
         IERC20 token;
 
         // The kind of collateral for this token.
-        CollateralToken.TokenClass tokenClass;
+        IAssetManager.CollateralTokenClass tokenClass;
 
         // Same as token.decimals(), when that exists.
         // immutable

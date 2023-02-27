@@ -899,7 +899,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     // Collateral token handling
 
     function addCollateralToken(
-        CollateralTokens.TokenInfo calldata _data
+        IAssetManager.CollateralTokenInfo calldata _data
     )
         external
         onlyAssetManagerController
@@ -922,12 +922,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     function deprecateCollateralToken(
         string memory _tokenIdentifier,
-        uint256 _timeout
+        uint256 _invalidationTimeSec
     )
         external
         onlyAssetManagerController
     {
-        CollateralTokens.deprecate(_tokenIdentifier, _timeout);
+        CollateralTokens.deprecate(_tokenIdentifier, _invalidationTimeSec);
     }
 
     function setCurrentPoolCollateralToken(
@@ -944,6 +944,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
+        // AgentsExternal.upgradePoolCollateralToken checks that only agent owner can call
         AgentsExternal.upgradePoolCollateralToken(_agentVault);
     }
 
@@ -951,7 +952,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         string memory _tokenIdentifier
     )
         external view
-        returns (CollateralTokens.TokenInfo memory)
+        returns (IAssetManager.CollateralTokenInfo memory)
     {
         return CollateralTokens.getInfo(_tokenIdentifier);
     }
@@ -961,7 +962,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */
     function getCollateralTokens()
         external view
-        returns (CollateralTokens.TokenInfo[] memory)
+        returns (IAssetManager.CollateralTokenInfo[] memory)
     {
         return CollateralTokens.getAllTokenInfos();
     }

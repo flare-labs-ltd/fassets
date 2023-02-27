@@ -10,39 +10,7 @@ import "./AMEvents.sol";
 library CollateralTokens {
     using SafeCast for uint256;
 
-    struct TokenInfo {
-        // Identifier used to access token for updating or getting info.
-        string identifier;
-
-        // The ERC20 token contract for this collateral type.
-        IERC20 token;
-
-        // The kind of collateral for this token.
-        CollateralToken.TokenClass tokenClass;
-
-        // Same as token.decimals(), when that exists.
-        uint256 decimals;
-
-        // Token invalidation time. Must be 0 on creation.
-        uint256 validUntil;
-
-        // FTSO symbol for token.
-        string ftsoSymbol;
-
-        // Minimum collateral ratio for healthy agents.
-        uint256 minCollateralRatioBIPS;
-
-        // Minimum collateral ratio for agent in CCB (Collateral call band).
-        // If the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.
-        // A bit smaller than minCollateralRatioBIPS.
-        uint256 ccbMinCollateralRatioBIPS;
-
-        // Minimum collateral ratio required to get agent out of liquidation.
-        // Wiil always be greater than minCollateralRatioBIPS.
-        uint256 safetyMinCollateralRatioBIPS;
-    }
-
-    function add(CollateralTokens.TokenInfo calldata _data) external {
+    function add(IAssetManager.CollateralTokenInfo calldata _data) external {
         AssetManagerState.State storage state = AssetManagerState.get();
         require(state.collateralTokenIndex[_data.identifier] == 0, "token already exists");
         require(_data.validUntil == 0, "cannot add deprecated token");
@@ -91,15 +59,15 @@ library CollateralTokens {
 
     function deprecate(
         string memory _identifier,
-        uint256 _timeout
+        uint256 _invalidationTimeSec
     )
         external
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         CollateralToken.Data storage token = CollateralTokens.get(_identifier);
         require(isValid(token), "token not valid");
-        require(_timeout >= settings.tokenDeprecationTimeoutMinSeconds, "deprecation time to short");
-        uint256 validUntil = block.timestamp + _timeout;
+        require(_invalidationTimeSec >= settings.tokenInvalidationTimeMinSeconds, "deprecation time to short");
+        uint256 validUntil = block.timestamp + _invalidationTimeSec;
         token.validUntil = validUntil.toUint64();
         emit AMEvents.CollateralTokenDeprecated(_identifier, validUntil);
     }
@@ -108,13 +76,13 @@ library CollateralTokens {
         AssetManagerState.State storage state = AssetManagerState.get();
         uint256 index = CollateralTokens.getIndex(_identifier);
         CollateralToken.Data storage token = state.collateralTokens[index];
-        require(token.tokenClass == CollateralToken.TokenClass.POOL, "not a pool collateral token");
+        require(token.tokenClass == IAssetManager.CollateralTokenClass.POOL, "not a pool collateral token");
         state.currentPoolCollateralToken = index.toUint16();
     }
 
     function getInfo(string memory _identifier)
         external view
-        returns (TokenInfo memory)
+        returns (IAssetManager.CollateralTokenInfo memory)
     {
         CollateralToken.Data storage token = CollateralTokens.get(_identifier);
         return _getInfo(token);
@@ -122,11 +90,11 @@ library CollateralTokens {
 
     function getAllTokenInfos()
         external view
-        returns (TokenInfo[] memory _result)
+        returns (IAssetManager.CollateralTokenInfo[] memory _result)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         uint256 length = state.collateralTokens.length;
-        _result = new TokenInfo[](length);
+        _result = new IAssetManager.CollateralTokenInfo[](length);
         for (uint256 i = 0; i < length; i++) {
             _result[i] = _getInfo(state.collateralTokens[i]);
         }
@@ -161,9 +129,9 @@ library CollateralTokens {
 
     function _getInfo(CollateralToken.Data storage token)
         private view
-        returns (TokenInfo memory)
+        returns (IAssetManager.CollateralTokenInfo memory)
     {
-        return TokenInfo({
+        return IAssetManager.CollateralTokenInfo({
             identifier: token.identifier,
             token: token.token,
             tokenClass: token.tokenClass,
