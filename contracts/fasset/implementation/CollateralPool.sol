@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/lib/SafePct.sol";
@@ -28,12 +29,11 @@ contract CollateralPool is ReentrancyGuard {
     IAssetManager public immutable assetManager;
     IERC20 public immutable fAsset;
     CollateralPoolToken public poolToken;
-    uint256 public exitCRBIPS;
-    uint256 public topupCRBIPS;
-    uint256 public topupTokenDiscountBIPS;
-    uint256 public topupTokenBonusBIPS;
+    uint32 public exitCRBIPS;
+    uint32 public topupCRBIPS;
+    uint16 public topupTokenDiscountBIPS;
 
-    mapping(address => uint256) public _fassetDebtOf;
+    mapping(address => uint256) private _fassetDebtOf;
     uint256 public poolFassetDebt;
 
     modifier onlyAssetManager {
@@ -48,7 +48,7 @@ contract CollateralPool is ReentrancyGuard {
 
     constructor (
         address payable _agentVault, address _assetManager, address _fAsset,
-        uint256 _exitCRBIPS, uint256 _topupCRBIPS, uint256 _topupTokenDiscountBIPS
+        uint32 _exitCRBIPS, uint32 _topupCRBIPS, uint16 _topupTokenDiscountBIPS
     ) {
         agentVault = _agentVault;
         assetManager = IAssetManager(_assetManager);
@@ -56,16 +56,24 @@ contract CollateralPool is ReentrancyGuard {
         exitCRBIPS = _exitCRBIPS;
         topupCRBIPS = _topupCRBIPS;
         topupTokenDiscountBIPS = _topupTokenDiscountBIPS;
-        topupTokenBonusBIPS = uint256(10_000).mulDiv(10_000, _topupTokenDiscountBIPS);
     }
 
-    function setPoolToken(address _poolToken) external onlyAgent {
-        if (address(poolToken) == address(0)) {
-            poolToken = CollateralPoolToken(_poolToken);
-        }
+    function setPoolToken(
+        address _poolToken
+    )
+        external
+        onlyAgent
+    {
+        require(address(poolToken) == address(0), "pool token already set");
+        poolToken = CollateralPoolToken(_poolToken);
     }
 
-    function enter(uint256 _fassets, bool _enterWithFullFassets) external payable {
+    function enter(
+        uint256 _fassets,
+        bool _enterWithFullFassets
+    )
+        external payable
+    {
         AssetData memory assetData = _getAssetData();
         require(assetData.poolTokenSupply <= assetData.poolNatBalance * MAX_NAT_TO_POOL_TOKEN_RATIO,
             "nat balance too small");
@@ -73,7 +81,7 @@ contract CollateralPool is ReentrancyGuard {
         uint256 tokens = _collateralToTokenShare(msg.value);
         uint256 fassets = assetData.poolTokenSupply == 0 ?
             0 : assetData.poolVirtualFassetBalance.mulDiv(tokens, assetData.poolTokenSupply);
-        uint256 liquidFassets = _enterWithFullFassets ? fassets : min(_fassets, fassets);
+        uint256 liquidFassets = _enterWithFullFassets ? fassets : Math.min(_fassets, fassets);
         // log msg.sender fasset debt
         uint256 debtFassets = fassets - liquidFassets;
         _fassetDebtOf[msg.sender] += debtFassets;
@@ -88,25 +96,17 @@ contract CollateralPool is ReentrancyGuard {
         poolToken.mint(msg.sender, tokens);
     }
 
-    // used to payoff debt and unlock the debt tokens
-    function payoffDebt(uint256 _fassets, bool _payoffAllDebt) external {
-        uint256 debt = _fassetDebtOf[msg.sender];
-        require(_fassets <= debt, "debt is smaller than specified f-assets");
-        uint256 paid = _payoffAllDebt ? debt : _fassets;
-        if (paid > 0) {
-            require(fAsset.allowance(msg.sender, address(this)) >= paid,
-                "f-asset allowance too small");
-            fAsset.transferFrom(msg.sender, address(this), paid);
-            _fassetDebtOf[msg.sender] -= paid;
-            poolFassetDebt -= paid;
-        }
-    }
-
-    function fullExit() external {
+    function fullExit()
+        external
+    {
         exit(liquidTokensOf(msg.sender));
     }
 
-    function exit(uint256 _tokenShare) public {
+    function exit(
+        uint256 _tokenShare
+    )
+        public
+    {
         require(_tokenShare > 0, "token share is zero");
         AssetData memory assetData = _getAssetData();
         // poolTokenSupply >= _tokenShare > 0
@@ -133,9 +133,12 @@ contract CollateralPool is ReentrancyGuard {
     // requires the amount of fassets that doesn't lower pool CR
     // note: _tokenShare must represent liquid tokens
     function selfCloseExit(
-        bool _redeemToCollateral, uint256 _tokenShare,
+        bool _redeemToCollateral,
+        uint256 _tokenShare,
         string memory _redeemerUnderlyingAddressString
-    ) public {
+    )
+        public
+    {
         require(_tokenShare > 0, "token share is zero");
         AssetData memory assetData = _getAssetData();
         // poolTokenSupply >= _tokenShare > 0
@@ -173,12 +176,40 @@ contract CollateralPool is ReentrancyGuard {
     }
 
     // helper function for self-close exits paid with agent's collateral
-    function selfCloseExitPaidWithCollateral(uint256 _tokenShare) external {
+    function selfCloseExitPaidWithCollateral(
+        uint256 _tokenShare
+    )
+        external
+    {
         selfCloseExit(true, _tokenShare, "");
     }
 
+    function payoffAllDebt()
+        external
+    {
+        payoffDebt(_fassetDebtOf[msg.sender]);
+    }
+
+    // used to payoff debt and unlock the debt tokens
+    function payoffDebt(uint256 _fassets)
+        public
+    {
+        uint256 paid = Math.min(_fassetDebtOf[msg.sender], _fassets);
+        if (paid > 0) {
+            require(fAsset.allowance(msg.sender, address(this)) >= paid,
+                "f-asset allowance too small");
+            fAsset.transferFrom(msg.sender, address(this), paid);
+            _fassetDebtOf[msg.sender] -= paid;
+            poolFassetDebt -= paid;
+        }
+    }
+
     // method calculating tokens bought with collateral, taking into account the topup discount
-    function _collateralToTokenShare(uint256 _collateral) internal view returns (uint256) {
+    function _collateralToTokenShare(uint256 _collateral)
+        internal view
+        returns (uint256)
+    {
+        uint256 topupTokenBonusBIPS = uint256(10_000).mulDiv(10_000, topupTokenDiscountBIPS);
         AssetData memory assetData = _getAssetData();
         bool poolConsideredEmpty = assetData.poolNatBalance == 0 || assetData.poolTokenSupply == 0;
         // calculate nat share to be priced with topup discount and nat share to be priced standardly
@@ -186,7 +217,7 @@ contract CollateralPool is ReentrancyGuard {
         uint256 _aux = (assetPriceMul * assetData.fassetSupply).mulBips(topupCRBIPS);
         uint256 natRequiredToTopup = _aux > assetData.poolNatBalance * assetPriceDiv ?
             _aux / assetPriceDiv - assetData.poolNatBalance : 0;
-        uint256 collateralForTopupPricing = min(_collateral, natRequiredToTopup);
+        uint256 collateralForTopupPricing = Math.min(_collateral, natRequiredToTopup);
         uint256 collateralAtStandardPrice = collateralForTopupPricing < _collateral ?
             _collateral - collateralForTopupPricing : 0;
         uint256 collateralAtTopupPrice = collateralForTopupPricing.mulBips(topupTokenBonusBIPS);
@@ -199,7 +230,10 @@ contract CollateralPool is ReentrancyGuard {
         return tokenShareAtTopupPrice + tokenShareAtStandardPrice;
     }
 
-    function _getAssetData() internal view returns (AssetData memory) {
+    function _getAssetData()
+        internal view
+        returns (AssetData memory)
+    {
         uint256 poolFassetBalance = fAsset.balanceOf(address(this));
         return AssetData({
             poolTokenSupply: poolToken.totalSupply(),
@@ -213,25 +247,45 @@ contract CollateralPool is ReentrancyGuard {
     ////////////////////////////////////////////////////////////////////////////////////
     // methods for viewing user balances
 
-    function fassetDebtOf(address _account) external view returns (uint256) {
+    function fassetDebtOf(
+        address _account
+    )
+        external view
+        returns (uint256)
+    {
         return _fassetDebtOf[_account];
     }
 
-    function virtualFassetOf(address _account) external view returns (uint256) {
+    function virtualFassetOf(
+        address _account
+    )
+        external view
+        returns (uint256)
+    {
         AssetData memory assetData = _getAssetData();
         uint256 tokens = poolToken.balanceOf(_account);
         return assetData.poolVirtualFassetBalance.mulDiv(
             tokens, assetData.poolTokenSupply);
     }
 
-    function debtTokensOf(address _account) external view returns (uint256) {
+    function debtTokensOf(
+        address _account
+    )
+        external view
+        returns (uint256)
+    {
         return poolToken.balanceOf(_account) - liquidTokensOf(_account);
     }
 
     // note: integer operations round down the liquid tokens,
     // so the user can get slightly less tokens than those he owns mathematically
     // (we could also calculate liquid tokens as tokens - debtTokens)
-    function liquidTokensOf(address _account) public view returns (uint256) {
+    function liquidTokensOf(
+        address _account
+    )
+        public view
+        returns (uint256)
+    {
         AssetData memory assetData = _getAssetData();
         uint256 tokens = poolToken.balanceOf(_account);
         if (tokens == 0) return 0; // prevents poolTokenSupply = 0
@@ -248,7 +302,10 @@ contract CollateralPool is ReentrancyGuard {
     ////////////////////////////////////////////////////////////////////////////////////
     // Methods to allow for liquidation/destruction of the pool by AssetManager or agent
 
-    function destroy() external onlyAgent {
+    function destroy()
+        external
+        onlyAgent
+    {
         IWNat wnat = assetManager.getWNat();
         uint256 poolBalanceNat = wnat.balanceOf(address(this));
         uint256 poolFassetBalance = fAsset.balanceOf(address(this));
@@ -259,7 +316,10 @@ contract CollateralPool is ReentrancyGuard {
     }
 
     // used by AssetManager to handle liquidation
-    function payout(address _recipient, uint256 _amount)
+    function payout(
+        address _recipient,
+        uint256 _amount
+    )
         external
         onlyAssetManager
         nonReentrant
@@ -271,28 +331,44 @@ contract CollateralPool is ReentrancyGuard {
     ////////////////////////////////////////////////////////////////////////////////////
     // Delegation of the pool's collateral and airdrop claimage (same as in AgentVault)
 
-    function claimAirdropDistribution(IDistributionToDelegators _distribution, uint256 _month)
+    function claimAirdropDistribution(
+        IDistributionToDelegators _distribution,
+        uint256 _month
+    )
         external
         onlyAgent
         returns(uint256)
     {
-        return _distribution.claim(agentVault, _month);
+        return _distribution.claim(address(this), _month);
     }
 
-    function optOutOfAirdrop(IDistributionToDelegators _distribution) external onlyAgent {
+    function optOutOfAirdrop(
+        IDistributionToDelegators _distribution
+    )
+        external
+        onlyAgent
+    {
         _distribution.optOutOfAirdrop();
     }
 
     function delegateCollateral(
-        address[] memory _to, uint256[] memory _bips
-    ) external onlyAgent {
+        address[] memory _to,
+        uint256[] memory _bips
+    )
+        external
+        onlyAgent
+    {
         IVPToken wnat = IVPToken(assetManager.getWNat());
         wnat.batchDelegate(_to, _bips);
     }
 
     function claimFtsoRewards(
-        IFtsoRewardManager _ftsoRewardManager, uint256 _lastRewardEpoch
-    ) external nonReentrant {
+        IFtsoRewardManager _ftsoRewardManager,
+        uint256 _lastRewardEpoch
+    )
+        external
+        nonReentrant
+    {
         uint256 ftsoRewards = _ftsoRewardManager.claim(
             address(this), payable(address(this)), _lastRewardEpoch, false
         );
@@ -317,13 +393,6 @@ contract CollateralPool is ReentrancyGuard {
     {
         _claimSetupManager.setClaimExecutors{value: msg.value}(_executors);
         _claimSetupManager.setAllowedClaimRecipients(_allowedRecipients);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    // auxiliary
-
-    function min(uint256 a, uint256 b) private pure returns (uint256) {
-        return a <= b ? a : b;
     }
 
 }
