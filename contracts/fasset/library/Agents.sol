@@ -163,11 +163,11 @@ library Agents {
         if (settings.burnWithSelfDestruct) {
             // burn by self-destructing a temporary burner contract
             NativeTokenBurner burner = new NativeTokenBurner(settings.burnAddress);
-            vault.payoutNAT(Globals.getWNat(), payable(address(burner)), _amountNATWei);
+            vault.payoutNAT(payable(address(burner)), _amountNATWei);
             burner.die();
         } else {
             // burn directly to burn address
-            vault.payoutNAT(Globals.getWNat(), settings.burnAddress, _amountNATWei);
+            vault.payoutNAT(settings.burnAddress, _amountNATWei);
         }
     }
 

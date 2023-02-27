@@ -2,10 +2,10 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
+import "flare-smart-contracts/contracts/userInterfaces/IVPToken.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IClaimSetupManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IDistributionToDelegators.sol";
-import "./IWNat.sol";
 
 
 interface IAgentVault {
@@ -57,7 +57,7 @@ interface IAgentVault {
     // Used by asset manager (only for burn for now).
     // Is guarded against reentrancy.
     // Only asset manager can call this method.
-    function payoutNAT(IWNat wNat, address payable _recipient, uint256 _amount) external;
+    function payoutNAT(address payable _recipient, uint256 _amount) external;
 
     function transferExternalToken(IERC20 _token, uint256 _amount) external;
 

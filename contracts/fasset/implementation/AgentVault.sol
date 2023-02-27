@@ -201,12 +201,13 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
 
     // Used by asset manager (only for burn for now).
     // Is nonReentrant to prevent reentrancy, in case this is not the last metod called.
-    function payoutNAT(IWNat _wNat, address payable _recipient, uint256 _amount)
+    function payoutNAT(address payable _recipient, uint256 _amount)
         external override
         onlyAssetManager
         nonReentrant
     {
-        _wNat.withdraw(_amount);
+        IWNat wnat = assetManager.getWNat();
+        wnat.withdraw(_amount);
         _transferNAT(_recipient, _amount);
     }
 
