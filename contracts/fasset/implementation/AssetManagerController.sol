@@ -110,20 +110,6 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_LOT_SIZE_AMG, abi.encode(_value));
     }
 
-    function setCollateralRatios(
-        IAssetManager[] memory _assetManagers,
-        uint256 _minCollateralRatioBIPS,
-        uint256 _ccbMinCollateralRatioBIPS,
-        uint256 _safetyMinCollateralRatioBIPS
-    )
-        external
-        onlyGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_COLLATERAL_RATIOS,
-            abi.encode(_minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS));
-    }
-
     function setTimeForPayment(
         IAssetManager[] memory _assetManagers,
         uint256 _underlyingBlocks,

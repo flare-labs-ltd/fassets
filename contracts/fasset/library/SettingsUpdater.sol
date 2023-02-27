@@ -44,8 +44,6 @@ library SettingsUpdater {
         keccak256("refreshAllFtsoIndexes()");
     bytes32 internal constant REFRESH_FTSO_INDEXES =
         keccak256("refreshFtsoIndexes(uint256,uint256)");
-    bytes32 internal constant SET_COLLATERAL_RATIOS =
-        keccak256("setCollateralRatios(uint256,uint256,uint256)");
     bytes32 internal constant SET_TIME_FOR_PAYMENT =
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant SET_WHITELIST =
@@ -105,9 +103,6 @@ library SettingsUpdater {
             _refreshAllFtsoIndexes();
         } else if (_method == REFRESH_FTSO_INDEXES) {
             _refreshFtsoIndexes(_params);
-        } else if (_method == SET_COLLATERAL_RATIOS) {
-            _checkEnoughTimeSinceLastUpdate(_updates, _method);
-            _setCollateralRatios(_params);
         } else if (_method == SET_TIME_FOR_PAYMENT) {
             _checkEnoughTimeSinceLastUpdate(_updates, _method);
             _setTimeForPayment(_params);
@@ -232,27 +227,6 @@ library SettingsUpdater {
         require(lastUpdate == 0 || block.timestamp >= lastUpdate + settings.minUpdateRepeatTimeSeconds,
             "too close to previous update");
         _updates.lastUpdate[_method] = block.timestamp;
-    }
-
-    function _setCollateralRatios(
-        bytes calldata _params
-    )
-        private
-    {
-        // TODO: replace per collateral
-        // (uint256 minCR, uint256 ccbCR, uint256 safetyCR) =
-        //     abi.decode(_params, (uint256, uint256, uint256));
-        // // validations
-        // require(SafePct.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
-        // uint32[] storage liquidationFactors = state.settings.liquidationCollateralFactorBIPS;
-        // require(liquidationFactors[liquidationFactors.length - 1] <= safetyCR, "liquidation factor too high");
-        // // update
-        // state.settings.minCollateralRatioBIPS = minCR.toUint32();
-        // state.settings.ccbMinCollateralRatioBIPS = ccbCR.toUint32();
-        // state.settings.safetyMinCollateralRatioBIPS = safetyCR.toUint32();
-        // emit AMEvents.SettingChanged("minCollateralRatioBIPS", minCR);
-        // emit AMEvents.SettingChanged("ccbMinCollateralRatioBIPS", ccbCR);
-        // emit AMEvents.SettingChanged("safetyMinCollateralRatioBIPS", safetyCR);
     }
 
     function _setTimeForPayment(
