@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
@@ -39,8 +40,10 @@ library SettingsUpdater {
 
     bytes32 internal constant UPDATE_CONTRACTS =
         keccak256("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)");
+    bytes32 internal constant REFRESH_ALL_FTSO_INDEXES =
+        keccak256("refreshAllFtsoIndexes()");
     bytes32 internal constant REFRESH_FTSO_INDEXES =
-        keccak256("refreshFtsoIndexes()");
+        keccak256("refreshFtsoIndexes(uint256,uint256)");
     bytes32 internal constant SET_COLLATERAL_RATIOS =
         keccak256("setCollateralRatios(uint256,uint256,uint256)");
     bytes32 internal constant SET_TIME_FOR_PAYMENT =
@@ -86,7 +89,7 @@ library SettingsUpdater {
         AssetManagerState.State storage state = AssetManagerState.get();
         _validateSettings(_settings);
         state.settings = _settings;
-        _refreshFtsoIndexes();
+        _refreshAllFtsoIndexes();
     }
 
     function callUpdate(
@@ -98,8 +101,10 @@ library SettingsUpdater {
     {
         if (_method == UPDATE_CONTRACTS) {
             _updateContracts(_params);
+        } else if (_method == REFRESH_ALL_FTSO_INDEXES) {
+            _refreshAllFtsoIndexes();
         } else if (_method == REFRESH_FTSO_INDEXES) {
-            _refreshFtsoIndexes();
+            _refreshFtsoIndexes(_params);
         } else if (_method == SET_COLLATERAL_RATIOS) {
             _checkEnoughTimeSinceLastUpdate(_updates, _method);
             _setCollateralRatios(_params);
@@ -189,15 +194,30 @@ library SettingsUpdater {
         }
     }
 
-    function _refreshFtsoIndexes() private
+    function _refreshAllFtsoIndexes()
+        private
+    {
+        _refreshFtsoIndexesImpl(0, type(uint256).max);
+    }
+
+    function _refreshFtsoIndexes(bytes calldata _params)
+        private
+    {
+        (uint256 start, uint256 end) = abi.decode(_params, (uint256, uint256));
+        _refreshFtsoIndexesImpl(start, end);
+    }
+
+    function _refreshFtsoIndexesImpl(uint256 _start, uint256 _end)
+        private
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        uint256 length = state.collateralTokens.length;
-        for (uint256 i = 0; i < length; i++) {
+        _end = Math.min(_end, state.collateralTokens.length);
+        for (uint256 i = _start; i < _end; i++) {
             CollateralToken.Data storage collateral = state.collateralTokens[i];
-            // do not update invalidated tokens types
+            // do not update invalidated token types
             if (collateral.validUntil != 0 && collateral.validUntil < block.timestamp) continue;
-            collateral.ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(collateral.ftsoSymbol).toUint16();
+            uint256 ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(collateral.ftsoSymbol);
+            collateral.ftsoIndex = ftsoIndex.toUint16();
         }
     }
 
