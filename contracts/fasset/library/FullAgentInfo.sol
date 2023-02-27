@@ -39,6 +39,9 @@ library FullAgentInfo {
         // Agent vault owner's address.
         address ownerAddress;
 
+        // Agent's collateral pool address
+        address collateralPool;
+
         // Underlying address as string - to be used for minting payments.
         // For most other purpuses, you use underlyingAddressHash, which is `keccak256(underlyingAddressString)`.
         string underlyingAddressString;
@@ -90,7 +93,14 @@ library FullAgentInfo {
         // The actual pool collateral ratio (see class1 for details).
         uint256 poolCollateralRatioBIPS;
 
-        // TODO: add info about agent's pool tokens
+        // The amount of pool tokens that belong to agent's vault. This limits the amount of possible
+        // minting: to be able to mint, the NAT value of all backed fassets together with new ones, times
+        // mintingPoolHoldingsRequiredBIPS, must be smaller than the agent's pool tokens amount converted to NAT.
+        // Note: the amount of agent's pool tokens only affects minting, not liquidation.
+        uint256 totalAgentPoolTokensWei;
+
+        // Free agent's pool tokens.
+        uint256 freeAgentPoolTokensWei;
 
         // Total amount of minted f-assets.
         uint256 mintedUBA;
@@ -131,7 +141,7 @@ library FullAgentInfo {
         address _agentVault
     )
         external view
-        returns (AgentInfo memory _agentState)
+        returns (AgentInfo memory _info)
     {
         // TODO: add missing data
         Agent.State storage agent = Agent.get(_agentVault);
@@ -139,32 +149,35 @@ library FullAgentInfo {
         CollateralToken.Data storage collateral = agent.getClass1Collateral();
         CollateralToken.Data storage poolCollateral = agent.getPoolCollateral();
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
-        _agentState.status = _getAgentStatusInfo(agent);
-        _agentState.ownerAddress = Agents.vaultOwner(agent);
-        _agentState.underlyingAddressString = agent.underlyingAddressString;
-        _agentState.publiclyAvailable = agent.availableAgentsPos != 0;
-        _agentState.class1CollateralTokenId = collateral.identifier;
-        _agentState.feeBIPS = agent.feeBIPS;
-        _agentState.minClass1CollateralRatioBIPS =
+        _info.status = _getAgentStatusInfo(agent);
+        _info.ownerAddress = Agents.vaultOwner(agent);
+        _info.collateralPool = address(agent.collateralPool);
+        _info.underlyingAddressString = agent.underlyingAddressString;
+        _info.publiclyAvailable = agent.availableAgentsPos != 0;
+        _info.class1CollateralTokenId = collateral.identifier;
+        _info.feeBIPS = agent.feeBIPS;
+        _info.minClass1CollateralRatioBIPS =
             Math.max(agent.minClass1CollateralRatioBIPS, collateral.minCollateralRatioBIPS);
-        _agentState.minPoolCollateralRatioBIPS =
+        _info.minPoolCollateralRatioBIPS =
             Math.max(agent.minPoolCollateralRatioBIPS, poolCollateral.minCollateralRatioBIPS);
-        _agentState.freeCollateralLots = collateralData.freeCollateralLots(agent);
-        _agentState.totalClass1CollateralWei = collateralData.agentCollateral.fullCollateral;
-        _agentState.freeClass1CollateralWei = collateralData.agentCollateral.freeCollateralWei(agent);
-        _agentState.class1CollateralRatioBIPS = cr.class1CR;
-        _agentState.totalPoolCollateralNATWei = collateralData.poolCollateral.fullCollateral;
-        _agentState.freePoolCollateralNATWei = collateralData.poolCollateral.freeCollateralWei(agent);
-        _agentState.poolCollateralRatioBIPS = cr.poolCR;
-        _agentState.mintedUBA = Conversion.convertAmgToUBA(agent.mintedAMG);
-        _agentState.reservedUBA = Conversion.convertAmgToUBA(agent.reservedAMG);
-        _agentState.redeemingUBA = Conversion.convertAmgToUBA(agent.redeemingAMG);
-        _agentState.dustUBA = Conversion.convertAmgToUBA(agent.dustAMG);
-        _agentState.ccbStartTimestamp = _getCCBStartTime(agent);
-        _agentState.liquidationStartTimestamp = _getLiquidationStartTime(agent);
-        _agentState.lockedUnderlyingBalanceUBA = _agentState.mintedUBA;
-        _agentState.freeUnderlyingBalanceUBA = agent.freeUnderlyingBalanceUBA;
-        _agentState.announcedUnderlyingWithdrawalId = agent.announcedUnderlyingWithdrawalId;
+        _info.freeCollateralLots = collateralData.freeCollateralLots(agent);
+        _info.totalClass1CollateralWei = collateralData.agentCollateral.fullCollateral;
+        _info.freeClass1CollateralWei = collateralData.agentCollateral.freeCollateralWei(agent);
+        _info.class1CollateralRatioBIPS = cr.class1CR;
+        _info.totalPoolCollateralNATWei = collateralData.poolCollateral.fullCollateral;
+        _info.freePoolCollateralNATWei = collateralData.poolCollateral.freeCollateralWei(agent);
+        _info.poolCollateralRatioBIPS = cr.poolCR;
+        _info.totalAgentPoolTokensWei = collateralData.agentPoolTokens.fullCollateral;
+        _info.freeAgentPoolTokensWei = collateralData.agentPoolTokens.freeCollateralWei(agent);
+        _info.mintedUBA = Conversion.convertAmgToUBA(agent.mintedAMG);
+        _info.reservedUBA = Conversion.convertAmgToUBA(agent.reservedAMG);
+        _info.redeemingUBA = Conversion.convertAmgToUBA(agent.redeemingAMG);
+        _info.dustUBA = Conversion.convertAmgToUBA(agent.dustAMG);
+        _info.ccbStartTimestamp = _getCCBStartTime(agent);
+        _info.liquidationStartTimestamp = _getLiquidationStartTime(agent);
+        _info.lockedUnderlyingBalanceUBA = _info.mintedUBA;
+        _info.freeUnderlyingBalanceUBA = agent.freeUnderlyingBalanceUBA;
+        _info.announcedUnderlyingWithdrawalId = agent.announcedUnderlyingWithdrawalId;
     }
 
     function _getAgentStatusInfo(
