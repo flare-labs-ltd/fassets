@@ -122,7 +122,7 @@ library CollateralReservations {
         // TODO: should not burn stablecoins?
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.class1CollateralToken);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
-        Agents.burnCollateral(agent, reservedCollateral);
+        Agents.burnCollateralClass1(agent, reservedCollateral);
         // send event
         uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
         emit AMEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);

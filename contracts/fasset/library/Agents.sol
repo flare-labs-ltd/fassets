@@ -142,7 +142,17 @@ library Agents {
         _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
     }
 
-    function burnCollateral(
+    function burnCollateralClass1(
+        Agent.State storage _agent,
+        uint256 _amountNATWei
+    )
+        internal
+    {
+        // TODO: we don't want to burn (lock) stablecoins, should we put them on market for
+        // flares and then burn flares?
+    }
+
+    function burnCollateralNAT(
         Agent.State storage _agent,
         uint256 _amountNATWei
     )

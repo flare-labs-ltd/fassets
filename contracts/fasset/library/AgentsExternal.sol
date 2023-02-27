@@ -147,7 +147,7 @@ library AgentsExternal {
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
         uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
             .mulBips(state.settings.buybackCollateralFactorBIPS);
-        Agents.burnCollateral(agent, buybackCollateral);
+        Agents.burnCollateralClass1(agent, buybackCollateral);
         agent.mintedAMG = 0;
         state.totalReservedCollateralAMG -= agent.reservedAMG;
         agent.reservedAMG = 0;
