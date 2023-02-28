@@ -11,8 +11,9 @@ import "./IWNat.sol";
  */
 interface ICollateralPool {
 
-    function enter(bool _depositFassets) external payable;
-    function exit() external;
+    function enter(uint256 _fassets, bool _enterWithFullFassets) external payable;
+    function exit(uint256 _tokenShare) external returns (uint256 _natShare, uint256 _fassetShare);
+    function withdrawFees(uint256 _amount) external;
     function selfCloseExit(
         bool _getAgentCollateral, uint256 _tokenShare, uint256 _fassets,
         string memory _redeemerUnderlyingAddressString) external;

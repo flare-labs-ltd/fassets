@@ -39,7 +39,7 @@ interface IAssetManager {
         uint256 ccbMinCollateralRatioBIPS;
 
         // Minimum collateral ratio required to get agent out of liquidation.
-        // Wiil always be greater than minCollateralRatioBIPS.
+        // Will always be greater than minCollateralRatioBIPS.
         uint256 safetyMinCollateralRatioBIPS;
     }
 
@@ -50,12 +50,6 @@ interface IAssetManager {
     function terminate() external;
     function withdrawCollateral(IERC20 _token, uint256 _amountWei) external;
     function collateralDeposited(IERC20 _token) external;
-    function isCollateralToken(address _agentVault, IERC20 _token) external view returns (bool);
-    function getWNat() external view returns (IWNat);
-    function assetManagerController() external view returns (address);
-    function controllerAttached() external view returns (bool);
-    function assetPriceNatWei() external view returns (uint256 _multiplier, uint256 _divisor);
-    function getLotSize() external view returns (uint256);
     // collateral pool redemptions
     function redeemChosenAgentUnderlying(
         address _agentVault, uint256 _amountUBA, string memory _redeemerUnderlyingAddressString) external;
@@ -67,4 +61,13 @@ interface IAssetManager {
         uint256 _ccbMinCollateralRatioBIPS, uint256 _safetyMinCollateralRatioBIPS) external;
     function deprecateCollateralToken(string memory _tokenIdentifier, uint256 _invalidationTimeSec) external;
     function setCurrentPoolCollateralToken(string memory _tokenIdentifier) external;
+    // view methods
+    function isCollateralToken(address _agentVault, IERC20 _token) external view returns (bool);
+    function fAsset() external view returns (IERC20);
+    function getWNat() external view returns (IWNat);
+    function assetManagerController() external view returns (address);
+    function controllerAttached() external view returns (bool);
+    function assetPriceNatWei() external view returns (uint256 _multiplier, uint256 _divisor);
+    function getLotSize() external view returns (uint256);
+    function getCollateralPool(address _agentVault) external view returns (address);
 }
