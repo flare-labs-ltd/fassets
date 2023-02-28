@@ -39,7 +39,7 @@ library LiquidationStrategy {
         uint256 factorBIPS = settings.liquidationCollateralFactorBIPS[step];
         // All premiums are expressed as factor BIPS.
         // Current algorithm for splitting payment: use liquidationCollateralFactorBIPS for class1 and
-        // pay the rest from pool. If any factor exceeeds the CR of that collateral, pay that collateral at
+        // pay the rest from pool. If any factor exceeds the CR of that collateral, pay that collateral at
         // its CR and pay more of the other. If both collaterals exceed CR, limit both to their CRs.
         _c1FactorBIPS = Math.min(settings.liquidationFactorClass1BIPS[step], factorBIPS);
         // prevent paying with invalid token (if there is enough of the other tokens)

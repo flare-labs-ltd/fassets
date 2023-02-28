@@ -8,6 +8,7 @@ import "../../utils/lib/SafePct.sol";
 import "../interface/IWNat.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAgentVault.sol";
+import "../interface/ICollateralPool.sol";
 import "./CollateralPoolToken.sol";
 
 contract CollateralPool is ReentrancyGuard {
@@ -329,7 +330,7 @@ contract CollateralPool is ReentrancyGuard {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Delegation of the pool's collateral and airdrop claimage (same as in AgentVault)
+    // Delegation of the pool's collateral and airdrop claiming (same as in AgentVault)
 
     function claimAirdropDistribution(
         IDistributionToDelegators _distribution,

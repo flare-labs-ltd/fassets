@@ -46,7 +46,7 @@ library Agent {
         // The distinction between 'minted' and 'redeemed' assets is important in case of challenge.
         uint64 redeemingAMG;
 
-        // When lot size changes, there may be some leftover after redemtpion that doesn't fit
+        // When lot size changes, there may be some leftover after redemption that doesn't fit
         // a whole lot size. It is added to dustAMG and can be recovered via self-close.
         // Unlike redeemingAMG, dustAMG is still counted in the mintedAMG.
         uint64 dustAMG;

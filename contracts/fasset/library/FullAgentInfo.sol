@@ -43,7 +43,7 @@ library FullAgentInfo {
         address collateralPool;
 
         // Underlying address as string - to be used for minting payments.
-        // For most other purpuses, you use underlyingAddressHash, which is `keccak256(underlyingAddressString)`.
+        // For most other purposes, you use underlyingAddressHash, which is `keccak256(underlyingAddressString)`.
         string underlyingAddressString;
 
         // If true, anybody can mint against this agent.
@@ -126,7 +126,7 @@ library FullAgentInfo {
         // Can be used for calculating current liquidation premium, which depends on time since liquidation started.
         uint256 liquidationStartTimestamp;
 
-        // Underlying balance info (balance on agent's underlying adress)
+        // Underlying balance info (balance on agent's underlying address)
         // Balance required for backing current mintings.
         uint256 lockedUnderlyingBalanceUBA;
 

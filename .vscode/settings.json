@@ -1,4 +1,36 @@
 {
     "files.trimFinalNewlines": true,
-    "files.trimTrailingWhitespace": true
+    "files.trimTrailingWhitespace": true,
+    "cSpell.enableFiletypes": [
+        "solidity"
+    ],
+    "cSpell.words": [
+        "abicoder",
+        "bips",
+        "CRBIPS",
+        "Delegators",
+        "fasset",
+        "fassets",
+        "FTSO",
+        "ftsos",
+        "IERC",
+        "keccak",
+        "mintings",
+        "multicollateral",
+        "prng",
+        "Reentrancy",
+        "selfdestruct",
+        "solhint",
+        "sstore",
+        "stablecoins",
+        "struct",
+        "timelock",
+        "timelocked",
+        "timeshift",
+        "topup",
+        "topups",
+        "undelegate",
+        "utxo",
+        "wnat"
+    ]
 }

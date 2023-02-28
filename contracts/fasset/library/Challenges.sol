@@ -118,7 +118,7 @@ library Challenges {
                 Redemption.Request storage request = state.redemptionRequests[redemptionId];
                 total += pmi.spentAmount - SafeCast.toInt256(request.underlyingValueUBA);
             } else {
-                // for other payment types (annouced withdrawal), everything is paid from free balance
+                // for other payment types (announced withdrawal), everything is paid from free balance
                 total += pmi.spentAmount;
             }
         }

@@ -9,8 +9,8 @@ import "./data/AssetManagerState.sol";
 library Conversion {
     using SafePct for uint256;
 
-    uint256 internal constant AMG_TOKENWEI_PRICE_SCALE_EXP = 9;
-    uint256 internal constant AMG_TOKENWEI_PRICE_SCALE = 10 ** AMG_TOKENWEI_PRICE_SCALE_EXP;
+    uint256 internal constant AMG_TOKEN_WEI_PRICE_SCALE_EXP = 9;
+    uint256 internal constant AMG_TOKEN_WEI_PRICE_SCALE = 10 ** AMG_TOKEN_WEI_PRICE_SCALE_EXP;
     uint256 internal constant NAT_WEI = 1e18;
 
     function currentAmgPriceInTokenWei(
@@ -82,11 +82,11 @@ library Conversion {
     }
 
     function convertAmgToTokenWei(uint256 _valueAMG, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
-        return _valueAMG.mulDiv(_amgToTokenWeiPrice, AMG_TOKENWEI_PRICE_SCALE);
+        return _valueAMG.mulDiv(_amgToTokenWeiPrice, AMG_TOKEN_WEI_PRICE_SCALE);
     }
 
     function convertTokenWeiToAMG(uint256 _valueNATWei, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
-        return _valueNATWei.mulDiv(AMG_TOKENWEI_PRICE_SCALE, _amgToTokenWeiPrice);
+        return _valueNATWei.mulDiv(AMG_TOKEN_WEI_PRICE_SCALE, _amgToTokenWeiPrice);
     }
 
     function _currentAmgPriceInTokenWeiWithTs(CollateralToken.Data storage _token)
@@ -130,7 +130,7 @@ library Conversion {
         returns (uint256)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        uint256 expPlus = _tokenDecimals + _tokenFtsoDecimals + AMG_TOKENWEI_PRICE_SCALE_EXP;
+        uint256 expPlus = _tokenDecimals + _tokenFtsoDecimals + AMG_TOKEN_WEI_PRICE_SCALE_EXP;
         uint256 expMinus = settings.assetMintingDecimals + _assetFtsoDecimals;
         // If negative, price would probably always be 0 after division, so this is forbidden.
         // Anyway, we should know about this before we add the token and/or asset, since
