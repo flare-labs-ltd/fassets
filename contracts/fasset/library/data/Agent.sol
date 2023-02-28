@@ -24,6 +24,18 @@ library Agent {
         LIQUIDATION
     }
 
+    // For agents to withdraw NAT collateral, they must first announce it and then wait
+    // withdrawalAnnouncementSeconds.
+    // The announced amount cannot be used as collateral for minting during that time.
+    // This makes sure that agents cannot just remove all collateral if they are challenged.
+    struct WithdrawalAnnouncement {
+        // Announce amount in collateral token's minimum unit (wei).
+        uint128 amountWei;
+
+        // The time when withdrawal was announced.
+        uint64 announcedAt;
+    }
+
     struct State {
         ICollateralPool collateralPool;
 
@@ -111,19 +123,17 @@ library Agent {
         // The time when ongoing underlying withdrawal was announced.
         uint64 underlyingWithdrawalAnnouncedAt;
 
-        // For agents to withdraw NAT collateral, they must first announce it and then wait
-        // withdrawalAnnouncementSeconds.
-        // The announced amount cannot be used as collateral for minting during that time.
-        // This makes sure that agents cannot just remove all collateral if they are challenged.
-        uint128 withdrawalAnnouncedNATWei;
+        WithdrawalAnnouncement class1WithdrawalAnnouncement;
 
-        // The time when withdrawal was announced.
-        uint64 withdrawalAnnouncedAt;
+        WithdrawalAnnouncement poolTokenWithdrawalAnnouncement;
 
         // Underlying block when the agent was created.
         // Challenger's should track underlying address activity since this block
         // and topups are only valid after this block (both inclusive).
         uint64 underlyingBlockAtCreation;
+
+        //
+        uint64 destroyAnnouncedAt;
 
         // Only used for calculating Agent.State size. See deleteStorage() below.
         uint256[1] _endMarker;

@@ -98,7 +98,7 @@ library AgentsExternal {
         // if not destroying yet, start timing
         if (agent.status != Agent.Status.DESTROYING) {
             agent.status = Agent.Status.DESTROYING;
-            agent.withdrawalAnnouncedAt = block.timestamp.toUint64();
+            agent.destroyAnnouncedAt = block.timestamp.toUint64();
             emit AMEvents.AgentDestroyAnnounced(_agentVault, block.timestamp);
         }
     }
@@ -109,11 +109,12 @@ library AgentsExternal {
         external
         onlyAgentVaultOwner(_agentVault)
     {
+        // TODO: all pool tokens must belong to the agent, then we probably don;t need to announce destroy
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
         // destroy must have been announced enough time before
         require(agent.status == Agent.Status.DESTROYING, "destroy not announced");
-        require(block.timestamp > agent.withdrawalAnnouncedAt + state.settings.withdrawalWaitMinSeconds,
+        require(block.timestamp > agent.destroyAnnouncedAt + state.settings.withdrawalWaitMinSeconds,
             "destroy: not allowed yet");
         // cannot have any minting when in destroying status
         assert(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0);
@@ -166,35 +167,6 @@ library AgentsExternal {
         Agents.setAgentMinPoolCollateralRatioBIPS(agent, _minPoolCollateralRatioBIPS);
     }
 
-    // TODO: support multicollateral
-    function announceWithdrawal(
-        address _agentVault,
-        uint256 _valueNATWei
-    )
-        external
-        onlyAgentVaultOwner(_agentVault)
-    {
-        Agent.State storage agent = Agent.get(_agentVault);
-        require(agent.status == Agent.Status.NORMAL, "withdrawal ann: invalid status");
-        if (_valueNATWei > agent.withdrawalAnnouncedNATWei) {
-            Collateral.Data memory collateralData = AgentCollateral.agentClass1CollateralData(agent);
-            // announcement increased - must check there is enough free collateral and then lock it
-            // in this case the wait to withdrawal restarts from this moment
-            uint256 increase = _valueNATWei - agent.withdrawalAnnouncedNATWei;
-            require(increase <= collateralData.freeCollateralWei(agent), "withdrawal: value too high");
-            agent.withdrawalAnnouncedAt = block.timestamp.toUint64();
-        } else {
-            // announcement decreased or cancelled
-            // if value is 0, we cancel announcement completely (i.e. set announcement time to 0)
-            // otherwise, for decreasing announcement, we can safely leave announcement time unchanged
-            if (_valueNATWei == 0) {
-                agent.withdrawalAnnouncedAt = 0;
-            }
-        }
-        agent.withdrawalAnnouncedNATWei = _valueNATWei.toUint128();
-        emit AMEvents.CollateralWithdrawalAnnounced(_agentVault, _valueNATWei, agent.withdrawalAnnouncedAt);
-    }
-
     function convertDustToTicket(
         address _agentVault
     )
@@ -222,33 +194,74 @@ library AgentsExternal {
         external
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        // TODO: buy pool tokens if NATs are deposited?
-        // for now, only try to pull agent out of liquidation
+        // try to pull agent out of liquidation
         if (Agents.isCollateralToken(agent, _token)) {
             Liquidation.endLiquidationIfHealthy(agent);
+        }
+    }
+
+    function announceWithdrawal(
+        Collateral.Kind _kind,
+        address _agentVault,
+        uint256 _amountWei
+    )
+        external
+        onlyAgentVaultOwner(_agentVault)
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        require(agent.status == Agent.Status.NORMAL, "withdrawal ann: invalid status");
+        Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(_kind);
+        if (_amountWei > withdrawal.amountWei) {
+            Collateral.Data memory collateralData = AgentCollateral.singleCollateralData(agent, _kind);
+            // announcement increased - must check there is enough free collateral and then lock it
+            // in this case the wait to withdrawal restarts from this moment
+            uint256 increase = _amountWei - withdrawal.amountWei;
+            require(increase <= collateralData.freeCollateralWei(agent), "withdrawal: value too high");
+            withdrawal.announcedAt = block.timestamp.toUint64();
+        } else {
+            // announcement decreased or cancelled
+            // if value is 0, we cancel announcement completely (i.e. set announcement time to 0)
+            // otherwise, for decreasing announcement, we can safely leave announcement time unchanged
+            if (_amountWei == 0) {
+                withdrawal.announcedAt = 0;
+            }
+        }
+        withdrawal.amountWei = _amountWei.toUint128();
+        if (_kind == Collateral.Kind.AGENT_CLASS1) {
+            emit AMEvents.Class1WithdrawalAnnounced(_agentVault, _amountWei, withdrawal.announcedAt);
+        } else {
+            emit AMEvents.PoolTokenWithdrawalAnnounced(_agentVault, _amountWei, withdrawal.announcedAt);
         }
     }
 
     function withdrawalExecuted(
         IERC20 _token,
         address _agentVault,
-        uint256 _valueNATWei
+        uint256 _amountWei
     )
         external
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
-        require (_token != agent.collateralPool.poolToken(), "cannot withdraw pool tokens");
-        // we only care about agent's collateral class1 tokens and pool tokens
-        if (_token != agent.getClass1Token()) return;
+        Collateral.Kind kind;
+        if (_token == agent.getClass1Token()) {
+            kind = Collateral.Kind.AGENT_CLASS1;
+        } else if (_token == agent.collateralPool.poolToken()) {
+            kind = Collateral.Kind.AGENT_POOL;
+        } else {
+            return;     // we don;t care about other token withdrawals from agent vault
+        }
+        Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(kind);
         require(agent.status == Agent.Status.NORMAL, "withdrawal: invalid status");
-        require(agent.withdrawalAnnouncedAt != 0, "withdrawal: not announced");
-        require(_valueNATWei <= agent.withdrawalAnnouncedNATWei, "withdrawal: more than announced");
-        require(block.timestamp > agent.withdrawalAnnouncedAt + settings.withdrawalWaitMinSeconds,
+        require(withdrawal.announcedAt != 0, "withdrawal: not announced");
+        require(_amountWei <= withdrawal.amountWei, "withdrawal: more than announced");
+        require(block.timestamp > withdrawal.announcedAt + settings.withdrawalWaitMinSeconds,
             "withdrawal: not allowed yet");
-        agent.withdrawalAnnouncedNATWei -= uint128(_valueNATWei);    // guarded by above require
-        // could reset agent.withdrawalAnnouncedAt if agent.withdrawalAnnouncedNATWei == 0,
-        // but it's not needed, since no withdrawal can be made anyway
+        uint256 remaining = withdrawal.amountWei - _amountWei;    // guarded by above require
+        withdrawal.amountWei = uint128(remaining);
+        if (remaining == 0) {
+            withdrawal.announcedAt = 0;
+        }
     }
 
     function upgradePoolCollateralToken(

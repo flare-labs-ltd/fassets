@@ -31,9 +31,19 @@ library AMEvents {
      * withdraw the announced amount in withdrawalWaitMinSeconds seconds.
      * If withdrawal was canceled, value and timestamp are zero.
      */
-    event CollateralWithdrawalAnnounced(
+    event Class1WithdrawalAnnounced(
         address indexed agentVault,
-        uint256 valueNATWei,
+        uint256 amountWei,
+        uint256 timestamp);
+
+    /**
+     * Agent has announced a withdrawal of collateral and will be able to
+     * withdraw the announced amount in withdrawalWaitMinSeconds seconds.
+     * If withdrawal was canceled, value and timestamp are zero.
+     */
+    event PoolTokenWithdrawalAnnounced(
+        address indexed agentVault,
+        uint256 amountWei,
         uint256 timestamp);
 
     /**

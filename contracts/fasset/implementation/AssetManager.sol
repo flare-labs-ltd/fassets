@@ -235,13 +235,30 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * @param _agentVault agent vault address
      * @param _valueNATWei the amount to be withdrawn
      */
-    function announceCollateralWithdrawal(
+    function announceClass1CollateralWithdrawal(
         address _agentVault,
         uint256 _valueNATWei
     )
         external
     {
-        AgentsExternal.announceWithdrawal(_agentVault, _valueNATWei);
+        AgentsExternal.announceWithdrawal(Collateral.Kind.AGENT_CLASS1, _agentVault, _valueNATWei);
+    }
+
+    /**
+     * Agent is going to withdraw `_valueNATWei` amount of collateral from agent vault.
+     * This has to be announced and agent must then wait `withdrawalWaitMinSeconds` time.
+     * After that time, agent can call withdraw(_valueNATWei) on agent vault.
+     * NOTE: may only be called by the agent vault owner.
+     * @param _agentVault agent vault address
+     * @param _valueNATWei the amount to be withdrawn
+     */
+    function announceAgentPoolTokenExit(
+        address _agentVault,
+        uint256 _valueNATWei
+    )
+        external
+    {
+        AgentsExternal.announceWithdrawal(Collateral.Kind.AGENT_POOL, _agentVault, _valueNATWei);
     }
 
     /**

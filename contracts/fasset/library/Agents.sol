@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../utils/implementation/NativeTokenBurner.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./data/AssetManagerState.sol";
+import "./data/Collateral.sol";
 import "./AMEvents.sol";
 import "./Globals.sol";
 import "./Conversion.sol";
@@ -182,7 +183,10 @@ library Agents {
         CollateralToken.Data storage token = state.collateralTokens[tokenIndex];
         require(token.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "not class1 collateral token");
         require(CollateralTokens.isValid(token), "token not valid");
+        // TODO: check there is enough collateral for current mintings
         _agent.class1CollateralToken = tokenIndex.toUint16();
+        // TODO: timelock, otherwise there can be withdrawal without announcement
+        // (by switching, withdrawing and switching back)
     }
 
     function vaultOwner(
@@ -219,7 +223,7 @@ library Agents {
         internal view
         returns (bool)
     {
-        return _token == Globals.getWNat() || _token == getClass1Token(_agent);
+        return _token == getPoolCollateralToken(_agent) || _token == getClass1Token(_agent);
     }
 
     function getClass1Token(Agent.State storage _agent)
@@ -236,6 +240,14 @@ library Agents {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         return state.collateralTokens[_agent.class1CollateralToken];
+    }
+
+    function getPoolCollateralToken(Agent.State storage _agent)
+        internal view
+        returns (IERC20)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        return state.collateralTokens[_agent.poolCollateralToken].token;
     }
 
     function getPoolCollateral(Agent.State storage _agent)
@@ -258,5 +270,15 @@ library Agents {
         returns (bool)
     {
         return (_agent.collateralsUnderwater & Agent.LF_POOL) != 0;
+    }
+
+    function withdrawalAnnouncement(Agent.State storage _agent, Collateral.Kind _kind)
+        internal view
+        returns (Agent.WithdrawalAnnouncement storage)
+    {
+        assert (_kind != Collateral.Kind.POOL);     // agent cannot withdraw from pool
+        return _kind == Collateral.Kind.AGENT_CLASS1
+            ? _agent.class1WithdrawalAnnouncement
+            : _agent.poolTokenWithdrawalAnnouncement;
     }
 }
