@@ -504,13 +504,6 @@ library SettingsUpdater {
         require(_settings.buybackCollateralFactorBIPS > 0, "cannot be zero");
         require(_settings.withdrawalWaitMinSeconds > 0, "cannot be zero");
         require(_settings.lotSizeAMG > 0, "cannot be zero");
-
-        // TODO: fix collateral ratios for multi collateral tokens
-        // uint256 minCR = _settings.minCollateralRatioBIPS;
-        // uint256 ccbCR = _settings.ccbMinCollateralRatioBIPS;
-        // uint256 safetyCR = _settings.safetyMinCollateralRatioBIPS;
-        // require(SafePct.MAX_BIPS < ccbCR && ccbCR < minCR && minCR < safetyCR, "invalid collateral ratios");
-
         require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         uint256 redemptionFactorBIPS =

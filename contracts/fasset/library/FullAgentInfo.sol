@@ -143,7 +143,6 @@ library FullAgentInfo {
         external view
         returns (AgentInfo memory _info)
     {
-        // TODO: add missing data
         Agent.State storage agent = Agent.get(_agentVault);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         CollateralToken.Data storage collateral = agent.getClass1Collateral();

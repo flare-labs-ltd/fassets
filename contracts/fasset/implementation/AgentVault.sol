@@ -103,7 +103,6 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         _token.safeTransfer(owner, _amount);
     }
 
-    // TODO: Should check that _token is a collateral token? There should be no need for that.
     function delegate(IVPToken _token, address _to, uint256 _bips) external override onlyOwner {
         _token.delegate(_to, _bips);
         _tokenUsed(_token, TOKEN_DELEGATE);

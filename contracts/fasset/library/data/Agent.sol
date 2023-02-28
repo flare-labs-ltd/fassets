@@ -169,7 +169,7 @@ library Agent {
     // Using `delete` doesn't work for storage pointers, so this is a workaround for
     // clearing agent storage at calculated location. The last member of the agent struct
     // must always be empty `_endMarker` for calculating the size to delete.
-    // TODO: test
+    // TODO: test that this really cleans all storage and nothing more
     function deleteStorage(Agent.State storage _agent) internal {
         uint256[1] storage endMarker = _agent._endMarker;
         // solhint-disable-next-line no-inline-assembly
