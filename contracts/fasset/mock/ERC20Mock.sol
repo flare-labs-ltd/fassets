@@ -12,6 +12,10 @@ contract ERC20Mock is ERC20 {
         _mint(_target, amount);
     }
 
+    function burnAmount(address _target, uint256 _amount) public {
+        _burn(_target, _amount);
+    }
+
     function deposit() public payable {
         _mint(msg.sender, msg.value);
     }
