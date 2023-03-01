@@ -20,6 +20,7 @@ interface ICollateralPool {
     function selfCloseExitPaidWithCollateral(
         uint256 _tokenShare, uint256 _fassets) external;
     function payout(address _receiver, uint256 _amountWei, uint256 _agentResponsibilityWei) external;
+    function destroy(address payable _recipient) external;
     function upgradeWNatContract(IWNat oldWNat, IWNat wNat) external;  // switch and transfer all balance to new wnat
     function poolToken() external view returns (IERC20);
 }

@@ -303,16 +303,16 @@ contract CollateralPool is ReentrancyGuard {
     ////////////////////////////////////////////////////////////////////////////////////
     // Methods to allow for liquidation/destruction of the pool by AssetManager or agent
 
-    function destroy()
+    function destroy(address payable _recipient)
         external
-        onlyAgent
+        onlyAssetManager
     {
         IWNat wnat = assetManager.getWNat();
         uint256 poolBalanceNat = wnat.balanceOf(address(this));
         uint256 poolFassetBalance = fAsset.balanceOf(address(this));
         if (poolBalanceNat == 0 && poolFassetBalance == 0) {
             poolToken.destroy();
-            selfdestruct(agentVault);
+            selfdestruct(_recipient);
         }
     }
 

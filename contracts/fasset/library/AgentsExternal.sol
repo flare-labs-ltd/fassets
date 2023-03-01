@@ -118,10 +118,12 @@ library AgentsExternal {
             "destroy: not allowed yet");
         // cannot have any minting when in destroying status
         assert(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0);
-        // delete agent data
-        Agent.deleteStorage(agent);
+        // destroy pool - just burn the remaining nat
+        agent.collateralPool.destroy(state.settings.burnAddress);
         // destroy agent vault
         IAgentVault(_agentVault).destroy();
+        // delete agent data
+        Agent.deleteStorage(agent);
         // notify
         emit AMEvents.AgentDestroyed(_agentVault);
     }
