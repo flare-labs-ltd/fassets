@@ -8,6 +8,7 @@ import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./data/Collateral.sol";
 import "./Conversion.sol";
+import "./Agents.sol";
 
 
 library AgentCollateral {
@@ -27,6 +28,22 @@ library AgentCollateral {
             poolCollateral: poolCollateral,
             agentPoolTokens: agentsPoolTokensCollateralData(_agent, poolCollateral)
         });
+    }
+
+    function singleCollateralData(
+        Agent.State storage _agent,
+        Collateral.Kind _kind
+    )
+        internal view
+        returns (Collateral.Data memory)
+    {
+        if (_kind == Collateral.Kind.AGENT_CLASS1) {
+            return agentClass1CollateralData(_agent);
+        } else if (_kind == Collateral.Kind.AGENT_CLASS1) {
+            return poolCollateralData(_agent);
+        } else {
+            return agentsPoolTokensCollateralData(_agent, poolCollateralData(_agent));
+        }
     }
 
     function agentClass1CollateralData(
@@ -133,7 +150,9 @@ library AgentCollateral {
             .mulBips(mintingMinCollateralRatioBIPS);
         uint256 redeemingCollateral = Conversion.convertAmgToTokenWei(_agent.redeemingAMG, _data.amgToTokenWeiPrice)
             .mulBips(systemMinCollateralRatioBIPS);
-        return mintingCollateral + redeemingCollateral + _agent.withdrawalAnnouncedNATWei;
+        uint256 announcedWithdrawal =
+            _data.kind != Collateral.Kind.POOL ? Agents.withdrawalAnnouncement(_agent, _data.kind).amountWei : 0;
+        return mintingCollateral + redeemingCollateral + announcedWithdrawal;
     }
 
     function mintingLotCollateralWei(

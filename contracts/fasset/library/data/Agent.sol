@@ -24,6 +24,18 @@ library Agent {
         LIQUIDATION
     }
 
+    // For agents to withdraw NAT collateral, they must first announce it and then wait
+    // withdrawalAnnouncementSeconds.
+    // The announced amount cannot be used as collateral for minting during that time.
+    // This makes sure that agents cannot just remove all collateral if they are challenged.
+    struct WithdrawalAnnouncement {
+        // Announce amount in collateral token's minimum unit (wei).
+        uint128 amountWei;
+
+        // The time when withdrawal was announced.
+        uint64 announcedAt;
+    }
+
     struct State {
         ICollateralPool collateralPool;
 
@@ -46,7 +58,7 @@ library Agent {
         // The distinction between 'minted' and 'redeemed' assets is important in case of challenge.
         uint64 redeemingAMG;
 
-        // When lot size changes, there may be some leftover after redemtpion that doesn't fit
+        // When lot size changes, there may be some leftover after redemption that doesn't fit
         // a whole lot size. It is added to dustAMG and can be recovered via self-close.
         // Unlike redeemingAMG, dustAMG is still counted in the mintedAMG.
         uint64 dustAMG;
@@ -111,19 +123,17 @@ library Agent {
         // The time when ongoing underlying withdrawal was announced.
         uint64 underlyingWithdrawalAnnouncedAt;
 
-        // For agents to withdraw NAT collateral, they must first announce it and then wait
-        // withdrawalAnnouncementSeconds.
-        // The announced amount cannot be used as collateral for minting during that time.
-        // This makes sure that agents cannot just remove all collateral if they are challenged.
-        uint128 withdrawalAnnouncedNATWei;
+        WithdrawalAnnouncement class1WithdrawalAnnouncement;
 
-        // The time when withdrawal was announced.
-        uint64 withdrawalAnnouncedAt;
+        WithdrawalAnnouncement poolTokenWithdrawalAnnouncement;
 
         // Underlying block when the agent was created.
         // Challenger's should track underlying address activity since this block
         // and topups are only valid after this block (both inclusive).
         uint64 underlyingBlockAtCreation;
+
+        //
+        uint64 destroyAnnouncedAt;
 
         // Only used for calculating Agent.State size. See deleteStorage() below.
         uint256[1] _endMarker;
@@ -169,7 +179,7 @@ library Agent {
     // Using `delete` doesn't work for storage pointers, so this is a workaround for
     // clearing agent storage at calculated location. The last member of the agent struct
     // must always be empty `_endMarker` for calculating the size to delete.
-    // TODO: test
+    // TODO: test that this really cleans all storage and nothing more
     function deleteStorage(Agent.State storage _agent) internal {
         uint256[1] storage endMarker = _agent._endMarker;
         // solhint-disable-next-line no-inline-assembly

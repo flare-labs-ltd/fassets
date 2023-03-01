@@ -8,6 +8,7 @@ import "../../utils/lib/SafePct.sol";
 import "../interface/IWNat.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAgentVault.sol";
+import "../interface/ICollateralPool.sol";
 import "./CollateralPoolToken.sol";
 
 contract CollateralPool is ReentrancyGuard {
@@ -355,16 +356,16 @@ contract CollateralPool is ReentrancyGuard {
     ////////////////////////////////////////////////////////////////////////////////////
     // Methods to allow for liquidation/destruction of the pool by AssetManager or agent
 
-    function destroy()
+    function destroy(address payable _recipient)
         external
-        onlyAgent
+        onlyAssetManager
     {
         IWNat wnat = assetManager.getWNat();
         uint256 poolBalanceNat = wnat.balanceOf(address(this));
         uint256 poolFassetBalance = fAsset.balanceOf(address(this));
         if (poolBalanceNat == 0 && poolFassetBalance == 0) {
             poolToken.destroy();
-            selfdestruct(agentVault);
+            selfdestruct(_recipient);
         }
     }
 
@@ -382,7 +383,7 @@ contract CollateralPool is ReentrancyGuard {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Delegation of the pool's collateral and airdrop claimage (same as in AgentVault)
+    // Delegation of the pool's collateral and airdrop claiming (same as in AgentVault)
 
     function claimAirdropDistribution(
         IDistributionToDelegators _distribution,

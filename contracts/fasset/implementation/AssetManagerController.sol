@@ -340,13 +340,13 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setCurrentPoolCollateralToken(
         IAssetManager[] memory _assetManagers,
-        string memory _tokenIdentifier
+        IAssetManager.CollateralTokenInfo calldata _data
     )
         external
         onlyGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).setCurrentPoolCollateralToken(_tokenIdentifier);
+            _checkAssetManager(_assetManagers[i]).setCurrentPoolCollateralToken(_data);
         }
     }
 

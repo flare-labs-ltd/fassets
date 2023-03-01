@@ -58,7 +58,7 @@ library Redemptions {
         }
         require(redeemedLots != 0, "redeem 0 lots");
         for (uint256 i = 0; i < redemptionList.length; i++) {
-            _createRemptionRequest(redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress);
+            _createRedemptionRequest(redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress);
         }
         // notify redeemer of incomplete requests
         if (redeemedLots < _lots) {
@@ -101,7 +101,7 @@ library Redemptions {
         _removeFromTicket(ticketId, redeemedAMG);
     }
 
-    function _createRemptionRequest(
+    function _createRedemptionRequest(
         AgentRedemptionData memory _data,
         address _redeemer,
         string memory _redeemerUnderlyingAddressString
@@ -225,7 +225,7 @@ library Redemptions {
         if (block.timestamp <= _request.timestamp + settings.confirmationByOthersAfterSeconds) return false;
         // others can confirm only payments arriving from agent's underlying address
         // - on utxo chains for multi-source payment, 3rd party might lie about payment not coming from agent's
-        //   source, which would delete redemption request but not mark source decresing transaction as used;
+        //   source, which would delete redemption request but not mark source decreasing transaction as used;
         //   so afterwards there can be an illegal payment challenge for this transaction
         // - we really only need 3rd party confirmations for payments from agent's underlying address,
         //   to properly account for underlying free balance (unless payment is failed, the collateral also gets
@@ -316,7 +316,7 @@ library Redemptions {
         if (request.status == Redemption.Status.ACTIVE) {
             // verify proof
             TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
-            // if non-payment proof is stil available, should use redemptionPaymentDefault() instead
+            // if non-payment proof is still available, should use redemptionPaymentDefault() instead
             require(_proof.lowestQueryWindowBlockNumber > request.lastUnderlyingBlock
                 && _proof.lowestQueryWindowBlockTimestamp > request.lastUnderlyingTimestamp,
                 "should default first");

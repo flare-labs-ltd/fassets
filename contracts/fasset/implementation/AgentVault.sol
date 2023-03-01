@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interface/IWNat.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAgentVault.sol";
+import "../interface/ICollateralPool.sol";
 
 
 contract AgentVault is ReentrancyGuard, IAgentVault {
@@ -47,6 +48,32 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         wnat.deposit{value: msg.value}();
         assetManager.collateralDeposited(wnat);
         _tokenUsed(wnat, TOKEN_DEPOSIT);
+    }
+
+    // without "onlyOwner" to allow owner to send funds from any source
+    function buyCollateralPoolTokens()
+        external payable
+    {
+        collateralPool().enter{value: msg.value}(0, false);
+    }
+
+    function withdrawPoolFees(uint256 _amount)
+        external
+        onlyOwner
+    {
+        collateralPool().withdrawFees(_amount);
+        assetManager.fAsset().safeTransfer(owner, _amount);
+    }
+
+    function redeemCollateralPoolTokens(uint256 _amount)
+        external
+        onlyOwner
+    {
+        ICollateralPool pool = collateralPool();
+        assetManager.withdrawCollateral(pool.poolToken(), _amount);
+        (uint256 natShare, uint256 fassetShare) = pool.exit(_amount);
+        _withdrawWNatTo(owner, natShare);
+        assetManager.fAsset().safeTransfer(owner, fassetShare);
     }
 
     // must call `token.approve(vault, amount)` before for each token in _tokens
@@ -92,7 +119,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         _token.safeTransfer(_recipient, _amount);
     }
 
-    // Allow transfering a token, airdropped to the agent vault, to the owner.
+    // Allow transferring a token, airdropped to the agent vault, to the owner.
     // Doesn't work for wNat because this would allow withdrawing the locked collateral.
     function transferExternalToken(IERC20 _token, uint256 _amount)
         external override
@@ -103,7 +130,6 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         _token.safeTransfer(owner, _amount);
     }
 
-    // TODO: Should check that _token is a collateral token? There should be no need for that.
     function delegate(IVPToken _token, address _to, uint256 _bips) external override onlyOwner {
         _token.delegate(_to, _bips);
         _tokenUsed(_token, TOKEN_DELEGATE);
@@ -127,7 +153,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         assetManager.getWNat().governanceVotePower().undelegate();
     }
 
-    // Claim ftso rewards. Aletrnatively, you can set claim executor and then claim directly from FtsoRewardManager.
+    // Claim ftso rewards. Alternatively, you can set claim executor and then claim directly from FtsoRewardManager.
     function claimFtsoRewards(IFtsoRewardManager _ftsoRewardManager, uint256 _lastRewardEpoch)
         external override
         onlyOwner
@@ -200,12 +226,23 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     }
 
     // Used by asset manager (only for burn for now).
-    // Is nonReentrant to prevent reentrancy, in case this is not the last metod called.
+    // Is nonReentrant to prevent reentrancy, in case this is not the last method called.
     function payoutNAT(address payable _recipient, uint256 _amount)
         external override
         onlyAssetManager
         nonReentrant
     {
+        _withdrawWNatTo(_recipient, _amount);
+    }
+
+    function collateralPool()
+        public view
+        returns (ICollateralPool)
+    {
+        return ICollateralPool(assetManager.getCollateralPool(address(this)));
+    }
+
+    function _withdrawWNatTo(address payable _recipient, uint256 _amount) private {
         IWNat wnat = assetManager.getWNat();
         wnat.withdraw(_amount);
         _transferNAT(_recipient, _amount);

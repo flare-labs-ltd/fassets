@@ -365,7 +365,7 @@ library Liquidation {
             return _amount;
         } else if (_agent.collateralsUnderwater == Agent.LF_POOL) {
             return 0;
-        } else {    // both collaterals were underwater - only half responisibility assigned to agent
+        } else {    // both collaterals were underwater - only half responsibility assigned to agent
             return _amount / 2;
         }
     }

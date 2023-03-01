@@ -31,9 +31,19 @@ interface IAssetManagerEvents {
      * withdraw the announced amount in withdrawalWaitMinSeconds seconds.
      * If withdrawal was canceled, value and timestamp are zero.
      */
-    event CollateralWithdrawalAnnounced(
+    event Class1WithdrawalAnnounced(
         address indexed agentVault,
-        uint256 valueNATWei,
+        uint256 amountWei,
+        uint256 timestamp);
+
+    /**
+     * Agent has announced a withdrawal of collateral and will be able to
+     * withdraw the announced amount in withdrawalWaitMinSeconds seconds.
+     * If withdrawal was canceled, value and timestamp are zero.
+     */
+    event PoolTokenWithdrawalAnnounced(
+        address indexed agentVault,
+        uint256 amountWei,
         uint256 timestamp);
 
     /**
@@ -92,7 +102,7 @@ interface IAssetManagerEvents {
 
     /**
      * Both minter and agent failed to present any proof within attestation time window, so
-     * the agent called `unstickMinting` to release reserved colateral.
+     * the agent called `unstickMinting` to release reserved collateral.
      */
     event CollateralReservationDeleted(
         address indexed agentVault,
@@ -212,7 +222,7 @@ interface IAssetManagerEvents {
         uint256 valueUBA);
 
     /**
-     * Agent entered CCB (collateral call band) due to being on the border of unhealty.
+     * Agent entered CCB (collateral call band) due to being on the border of unhealthy.
      * Agent has limited time to topup the collateral, otherwise liquidation starts.
      */
     event AgentInCCB(
@@ -220,7 +230,7 @@ interface IAssetManagerEvents {
         uint256 timestamp);
 
     /**
-     * Agent entered liquidation state due to unhealty position.
+     * Agent entered liquidation state due to unhealthy position.
      * The liquidation ends when agent is again healthy or agent's position is fully liquidated.
      */
     event LiquidationStarted(
@@ -230,7 +240,7 @@ interface IAssetManagerEvents {
     /**
      * Agent entered liquidation state due to illegal payment.
      * Full liquidation will always liquidate whole agent's position and
-     * the agent can never use the same vault and undelrying address for minting again.
+     * the agent can never use the same vault and underlying address for minting again.
      */
     event FullLiquidationStarted(
         address indexed agentVault,
@@ -270,7 +280,7 @@ interface IAssetManagerEvents {
     /**
      * After announcing legal underlying withdrawal and creating transaction,
      * the agent must confirm the transaction. This frees the announcement so the agent can create another one.
-     * If the agent doesn't confirm in time, anybody can confirm the transaction after everal hours.
+     * If the agent doesn't confirm in time, anybody can confirm the transaction after several hours.
      * Failed payments must also be confirmed.
      */
     event UnderlyingWithdrawalConfirmed(
@@ -281,7 +291,7 @@ interface IAssetManagerEvents {
 
     /**
      * After announcing legal underlying withdrawal agent can cancel ongoing withdrawal.
-     * The reason for doing that would be in reseting announcement timestamp due to any problems with underlying
+     * The reason for doing that would be in resetting announcement timestamp due to any problems with underlying
      * withdrawal - in order to prevent others to confirm withdrawal before agent and get some of his collateral.
      */
     event UnderlyingWithdrawalCancelled(

@@ -83,7 +83,7 @@ library Minting {
         state.paymentConfirmations.confirmIncomingPayment(_payment);
         // case _lots==0 is allowed for self minting because if lot size increases between the underlying payment
         // and selfMint call, the paid assets would otherwise be stuck; in this way they are converted to free balance
-        uint256 receivedAmount = uint256(_payment.receivedAmount);  // guarded by reuquire
+        uint256 receivedAmount = uint256(_payment.receivedAmount);  // guarded by require
         if (_lots > 0) {
             uint256 standardFee = valueAMG.mulBips(agent.feeBIPS);
             _performMinting(agent, 0, msg.sender, valueAMG, receivedAmount, standardFee);

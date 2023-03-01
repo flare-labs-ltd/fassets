@@ -64,7 +64,7 @@ library AssetManagerSettings {
         address payable burnAddress;
 
         // If true, the NAT burning is done indirectly via transfer to burner contract and then self-destruct.
-        // This is necessary on Songbird, where the burn address is unpayable.
+        // This is necessary on Songbird, where the burn address is not payable.
         bool burnWithSelfDestruct;
 
         // Must match attestation data chainId.
@@ -182,12 +182,12 @@ library AssetManagerSettings {
         uint64 minUpdateRepeatTimeSeconds;
 
         // Ratio at which the agents can buy back their collateral when f-asset is terminated.
-        // Typically a bit more than 1 to incentivise agents to buy f-assets and self-close instead.
+        // Typically a bit more than 1 to incentivize agents to buy f-assets and self-close instead.
         // immutable
         uint64 buybackCollateralFactorBIPS;
 
         // Minimum time that has to pass between underlying withdrawal announcement and the confirmation.
-        // Any value is ok, but higher values give more security agains multiple announcement attack by a miner.
+        // Any value is ok, but higher values give more security against multiple announcement attack by a miner.
         // Shouldn't be much bigger than state connector response time, so that payments can be confirmed without
         // extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
         uint64 announcedUnderlyingConfirmationMinSeconds;
