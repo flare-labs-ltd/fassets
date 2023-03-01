@@ -51,9 +51,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     constructor(
-        AssetManagerSettings.Data memory _settings
+        AssetManagerSettings.Data memory _settings,
+        IAssetManager.CollateralTokenInfo[] memory _initialCollateralTypes
     ) {
         SettingsUpdater.validateAndSet(_settings);
+        CollateralTokens.initialize(_initialCollateralTypes);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

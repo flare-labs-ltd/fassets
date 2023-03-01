@@ -10,7 +10,26 @@ import "./AMEvents.sol";
 library CollateralTokens {
     using SafeCast for uint256;
 
-    function add(IAssetManager.CollateralTokenInfo calldata _data) external {
+    function initialize(
+        IAssetManager.CollateralTokenInfo[] memory _data
+    )
+        external
+    {
+        require(_data.length >= 2, "need at least two collaterals");
+        require(_data[0].tokenClass == IAssetManager.CollateralTokenClass.POOL,
+            "first collateral must be for pool");
+        for (uint256 i = 1; i < _data.length; i++) {
+            require(_data[i].tokenClass == IAssetManager.CollateralTokenClass.CLASS1,
+                "collateral must be class1");
+            _add(_data[i]);
+        }
+    }
+
+    function add(
+        IAssetManager.CollateralTokenInfo memory _data
+    )
+        external
+    {
         _add(_data);
     }
 
@@ -49,7 +68,11 @@ library CollateralTokens {
         emit AMEvents.CollateralTokenDeprecated(_identifier, validUntil);
     }
 
-    function setCurrentPoolCollateralToken(IAssetManager.CollateralTokenInfo calldata _data) external {
+    function setCurrentPoolCollateralToken(
+        IAssetManager.CollateralTokenInfo memory _data
+    )
+        external
+    {
         require(_data.tokenClass == IAssetManager.CollateralTokenClass.POOL, "not a pool collateral");
         _add(_data);
         _setCurrentPoolCollateralToken(_data.identifier);
@@ -102,7 +125,7 @@ library CollateralTokens {
         return _token.validUntil == 0 || _token.validUntil > block.timestamp;
     }
 
-    function _add(IAssetManager.CollateralTokenInfo calldata _data) private {
+    function _add(IAssetManager.CollateralTokenInfo memory _data) private {
         AssetManagerState.State storage state = AssetManagerState.get();
         require(state.collateralTokenIndex[_data.identifier] == 0, "token already exists");
         require(_data.validUntil == 0, "cannot add deprecated token");
