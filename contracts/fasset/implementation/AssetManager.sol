@@ -951,15 +951,25 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         CollateralTokens.deprecate(_tokenIdentifier, _invalidationTimeSec);
     }
 
+    /**
+     * If the WNat token is replaced, it is not automatically used by the pools in the system.
+     * Instead, it has to be added as a new collateral token of type POOL by this method.
+     * Note that existing pools must switch afterwards using `upgradePoolCollateralToken` method.
+     */
     function setCurrentPoolCollateralToken(
-        string memory _tokenIdentifier
+        IAssetManager.CollateralTokenInfo calldata _data
     )
         external
         onlyAssetManagerController
     {
-        CollateralTokens.setCurrentPoolCollateralToken(_tokenIdentifier);
+        CollateralTokens.setCurrentPoolCollateralToken(_data);
     }
 
+    /**
+     * When current pool collateral token contract (WNat) is replaced by the method setCurrentPoolCollateralToken,
+     * pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for
+     * new ones and sets it for use by the pool.
+     */
     function upgradePoolCollateralToken(
         address _agentVault
     )
@@ -969,6 +979,9 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         AgentsExternal.upgradePoolCollateralToken(_agentVault);
     }
 
+    /**
+     * Get information about a token with identifier `_tokenIdentifier`.
+     */
     function getCollateralToken(
         string memory _tokenIdentifier
     )

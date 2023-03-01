@@ -60,7 +60,7 @@ interface IAssetManager {
     function setCollateralRatiosForToken(string memory _tokenIdentifier, uint256 _minCollateralRatioBIPS,
         uint256 _ccbMinCollateralRatioBIPS, uint256 _safetyMinCollateralRatioBIPS) external;
     function deprecateCollateralToken(string memory _tokenIdentifier, uint256 _invalidationTimeSec) external;
-    function setCurrentPoolCollateralToken(string memory _tokenIdentifier) external;
+    function setCurrentPoolCollateralToken(IAssetManager.CollateralTokenInfo calldata _data) external;
     // view methods
     function isCollateralToken(address _agentVault, IERC20 _token) external view returns (bool);
     function fAsset() external view returns (IERC20);
