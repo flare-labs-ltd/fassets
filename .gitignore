@@ -4,8 +4,9 @@
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+!.vscode/cspell.json
 
-# Typescript 
+# Typescript
 dist
 typechain
 typechain-truffle
@@ -45,7 +46,7 @@ package-lock.json
 gasReporterOutput.json
 
 ## Fake multiplatform /dev/null. On Win `1> nul` does not create a file
-## On Unix systems it creates a file 
+## On Unix systems it creates a file
 nul
 
 ## Flattened contracts
@@ -69,7 +70,7 @@ deployment/deploys/*
 ## Slither working files
 slither.json
 
-## Tenderly 
+## Tenderly
 deployments
 
 ## Airdrop transactions
