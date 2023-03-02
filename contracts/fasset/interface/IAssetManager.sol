@@ -51,10 +51,10 @@ interface IAssetManager {
     function withdrawCollateral(IERC20 _token, uint256 _amountWei) external;
     function collateralDeposited(IERC20 _token) external;
     // collateral pool redemptions
-    function redeemChosenAgentUnderlying(
-        address _agentVault, uint256 _amountUBA, string memory _redeemerUnderlyingAddressString) external;
-    function redeemChosenAgentCollateral(
-        address _agentVault, uint256 _amountUBA, address _redeemerAddress) external;
+    function redeemFromAgent(
+        address _agentVault, address _receiver, uint256 _amountUBA, string memory _receiverUnderlyingAddress) external;
+    function redeemFromAgentInCollateral(
+        address _agentVault, address _receiver, uint256 _amountUBA) external;
     // collateral tokens
     function addCollateralToken(IAssetManager.CollateralTokenInfo calldata _data) external;
     function setCollateralRatiosForToken(string memory _tokenIdentifier, uint256 _minCollateralRatioBIPS,

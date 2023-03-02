@@ -2,6 +2,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
@@ -30,8 +31,7 @@ library RedemptionRequests {
     )
         external
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        uint256 maxRedeemedTickets = settings.maxRedeemedTickets;
+        uint256 maxRedeemedTickets = AssetManagerState.getSettings().maxRedeemedTickets;
         AgentRedemptionList memory redemptionList = AgentRedemptionList({
             length: 0,
             items: new AgentRedemptionData[](maxRedeemedTickets)
@@ -55,7 +55,67 @@ library RedemptionRequests {
         }
         // burn the redeemed value of fassets
         uint256 redeemedUBA = Conversion.convertLotsToUBA(redeemedLots);
-        settings.fAsset.burn(_redeemer, redeemedUBA);
+        Redemptions.burnFAssets(msg.sender, redeemedUBA);
+    }
+
+    function redeemFromAgent(
+        address _agentVault,
+        address _redeemer,
+        uint256 _amountUBA,
+        string memory _receiverUnderlyingAddress
+    )
+        external
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        // TODO: require only collateral pool?
+        require(_amountUBA != 0, "redemption of 0");
+        uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
+        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
+        // create redemption
+        AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
+        _createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress);
+        // burn the closed assets
+        Redemptions.burnFAssets(msg.sender, closedUBA);
+    }
+
+    function redeemFromAgentInCollateral(
+        address _agentVault,
+        address _redeemer,
+        uint256 _amountUBA
+    )
+        external
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        // TODO: require only collateral pool?
+        require(_amountUBA != 0, "redemption of 0");
+        uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
+        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
+        // pay in collateral
+        uint256 priceAmgToWei = Conversion.currentAmgPriceInTokenWei(agent.class1CollateralToken);
+        uint256 paymentWei = Conversion.convertAmgToTokenWei(closedAMG, priceAmgToWei)
+            .mulBips(agent.buyFassetForCollateralRatioBIPS);
+        Agents.payoutClass1(agent, _redeemer, paymentWei);
+        // burn the closed assets
+        Redemptions.burnFAssets(msg.sender, closedUBA);
+    }
+
+    function selfClose(
+        address _agentVault,
+        uint256 _amountUBA
+    )
+        external
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        Agents.requireAgentVaultOwner(_agentVault);
+        require(_amountUBA != 0, "self close of 0");
+        uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
+        (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
+        // burn the self-closed assets
+        Redemptions.burnFAssets(msg.sender, closedUBA);
+        // try to pull agent out of liquidation
+        Liquidation.endLiquidationIfHealthy(agent);
+        // send event
+        emit AMEvents.SelfClose(_agentVault, closedUBA);
     }
 
     function _redeemFirstTicket(

@@ -20,7 +20,6 @@ import "../library/Minting.sol";
 import "../library/RedemptionRequests.sol";
 import "../library/RedemptionConfirmations.sol";
 import "../library/RedemptionFailures.sol";
-import "../library/SelfClosing.sol";
 import "../library/Challenges.sol";
 import "../library/Liquidation.sol";
 import "../library/UnderlyingWithdrawalAnnouncements.sol";
@@ -650,7 +649,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         // in SelfClose.selfClose we check that only agent can do this
-        SelfClosing.selfClose(_agentVault, _amountUBA);
+        RedemptionRequests.selfClose(_agentVault, _amountUBA);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -1026,24 +1025,25 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     ////////////////////////////////////////////////////////////////////////////////////
     // Collateral pool redemptions
 
-    function redeemChosenAgentUnderlying(
+    function redeemFromAgent(
         address _agentVault,
+        address _receiver,
         uint256 _amountUBA,
-        string memory _redeemerUnderlyingAddressString
+        string memory _receiverUnderlyingAddress
     )
         external override
     {
-        // TODO: implement
+        RedemptionRequests.redeemFromAgent(_agentVault, _receiver, _amountUBA, _receiverUnderlyingAddress);
     }
 
-    function redeemChosenAgentCollateral(
+    function redeemFromAgentInCollateral(
         address _agentVault,
-        uint256 _amountUBA,
-        address _redeemerAddress
+        address _receiver,
+        uint256 _amountUBA
     )
         external override
     {
-        // TODO: implement
+        RedemptionRequests.redeemFromAgentInCollateral(_agentVault, _receiver, _amountUBA);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

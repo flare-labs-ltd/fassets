@@ -152,14 +152,12 @@ contract CollateralPool is ReentrancyGuard {
         // agent redemption
         uint256 redeemedFassets = freeFassetShare + additionallyRequiredFassets;
         if (redeemedFassets > 0) {
-            uint256 lotSizeUBA = assetManager.getLotSize();
-            uint256 lotsToRedeem = redeemedFassets / lotSizeUBA;
-            if (lotsToRedeem == 0 || _redeemToCollateral) {
-                assetManager.redeemChosenAgentCollateral(
-                    agentVault, redeemedFassets, msg.sender);
+            if (redeemedFassets < assetManager.getLotSize() || _redeemToCollateral) {
+                assetManager.redeemFromAgentInCollateral(
+                    agentVault, msg.sender, redeemedFassets);
             } else {
-                assetManager.redeemChosenAgentUnderlying(
-                    agentVault, redeemedFassets, _redeemerUnderlyingAddressString);
+                assetManager.redeemFromAgent(
+                    agentVault, msg.sender, redeemedFassets, _redeemerUnderlyingAddressString);
             }
         }
         // transfer/burn assets

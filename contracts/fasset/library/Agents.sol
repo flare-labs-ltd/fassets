@@ -146,7 +146,7 @@ library Agents {
     }
 
     // We cannot burn typical class1 collateral (stablecoins), so the agent must buy them for NAT
-    // at FTSO price plus configurable premium (class1BuyForFlarePremiumBIPS) and then we burn the NATs.
+    // at FTSO price multiplied by class1BuyForFlarePremiumBIPS and then we burn the NATs.
     function burnCollateralClass1(
         Agent.State storage _agent,
         uint256 _amountClass1Wei
@@ -159,12 +159,13 @@ library Agents {
             // If class1 collateral is NAT, just burn directly.
             burnCollateralNAT(_agent, _amountClass1Wei);
         } else {
+            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
             // Calculate NAT amount the agent has to pay to receive the "burned" class1 tokens.
             // The price is FTSO price plus configurable premium (class1BuyForFlarePremiumBIPS).
             (uint256 priceMul, uint256 priceDiv) =
                 Conversion.currentWeiPriceRatio(class1Collateral, poolCollateral);
             uint256 amountNatWei = _amountClass1Wei.mulDiv(priceMul, priceDiv)
-                .addBips(AssetManagerState.getSettings().class1BuyForFlarePremiumBIPS);
+                .mulBips(settings.class1BuyForFlareFactorBIPS);
             // Transfer class1 collateral to the agent vault owner
             SafeERC20.safeTransfer(class1Collateral.token, vaultOwner(_agent), _amountClass1Wei);
             // Burn the NAT equivalent from agent's vault.
