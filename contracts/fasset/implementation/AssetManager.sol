@@ -1025,6 +1025,10 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     ////////////////////////////////////////////////////////////////////////////////////
     // Collateral pool redemptions
 
+    /**
+     * Create a redemption from a single agent. Used in self-close exit from the collateral pool.
+     * Note: only collateral pool can call this method.
+     */
     function redeemFromAgent(
         address _agentVault,
         address _receiver,
@@ -1036,6 +1040,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         RedemptionRequests.redeemFromAgent(_agentVault, _receiver, _amountUBA, _receiverUnderlyingAddress);
     }
 
+    /**
+     * Burn fassets from  a single agent and get paid in class1 collateral by the agent.
+     * Price is FTSO price, multiplied by factor buyFassetForCollateralRatioBIPS (set by agent).
+     * Used in self-close exit from the collateral pool when requested or when self-close amount is less than 1 lot.
+     * Note: only collateral pool can call this method.
+     */
     function redeemFromAgentInCollateral(
         address _agentVault,
         address _receiver,

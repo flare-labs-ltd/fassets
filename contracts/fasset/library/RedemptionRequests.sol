@@ -67,11 +67,12 @@ library RedemptionRequests {
         external
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        // TODO: require only collateral pool?
+        Agents.requireOnlyCollateralPool(agent);
         require(_amountUBA != 0, "redemption of 0");
+        // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
-        // create redemption
+        // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
         _createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress);
         // burn the closed assets
@@ -86,8 +87,9 @@ library RedemptionRequests {
         external
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        // TODO: require only collateral pool?
+        Agents.requireOnlyCollateralPool(agent);
         require(_amountUBA != 0, "redemption of 0");
+        // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
         // pay in collateral

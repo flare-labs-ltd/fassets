@@ -238,6 +238,14 @@ library Agents {
         require(msg.sender == owner, "only agent vault owner");
     }
 
+    function requireOnlyCollateralPool(
+        Agent.State storage _agent
+    )
+        internal view
+    {
+        require(msg.sender == address(_agent.collateralPool), "only collateral pool");
+    }
+
     function isCollateralToken(
         Agent.State storage _agent,
         IERC20 _token
