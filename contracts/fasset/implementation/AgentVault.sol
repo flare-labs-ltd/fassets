@@ -71,7 +71,8 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     {
         ICollateralPool pool = collateralPool();
         assetManager.withdrawCollateral(pool.poolToken(), _amount);
-        (uint256 natShare, uint256 fassetShare) = pool.exit(_amount);
+        (uint256 natShare, uint256 fassetShare) =
+            pool.exit(_amount, ICollateralPool.TokenExitType.WITHDRAW_MOST_FEES);
         _withdrawWNatTo(owner, natShare);
         assetManager.fAsset().safeTransfer(owner, fassetShare);
     }

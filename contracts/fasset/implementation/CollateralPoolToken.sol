@@ -33,7 +33,7 @@ contract CollateralPoolToken is ERC20 {
     }
 
     function freeBalanceOf(address _account) public view returns (uint256) {
-        return CollateralPool(collateralPool).freeTokensOf(_account);
+        return CollateralPool(payable(collateralPool)).freeTokensOf(_account);
     }
 
     // override balanceOf to account for locked/debt collateral

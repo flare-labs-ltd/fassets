@@ -7,7 +7,7 @@ import {
 import { getTestFile } from "../../../utils/test-helpers";
 
 
-enum TokenExitType { PRIORITIZE_DEBT, PRIORITIZE_FASSET, KEEP_RATIO };
+enum TokenExitType { WITHDRAW_MOST_FEES, MINIMIZE_FEE_DEBT, KEEP_RATIO };
 const ONE_ETH = new BN("1000000000000000000");
 const ETH = (x: number | BN | string) => ONE_ETH.mul(new BN(x));
 
@@ -143,7 +143,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter(0, false, { value: collateral });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             expect(tokens.toString()).to.equal(collateral.toString());
-            await collateralPool.exit(tokens, TokenExitType.PRIORITIZE_FASSET);
+            await collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT);
             const nat = await wNat.balanceOf(accounts[0]);
             expect(nat.toString()).to.equal(collateral.toString());
         });
@@ -154,13 +154,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const natToExit = await getNatRequiredToGetPoolCRAbove(exitCR);
             await collateralPool.enter(0, true, { value: natToExit });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            await expectRevert(collateralPool.exit(10, TokenExitType.PRIORITIZE_FASSET),
+            await expectRevert(collateralPool.exit(10, TokenExitType.MINIMIZE_FEE_DEBT),
                 "collateral ratio falls below exitCR");
-            await expectRevert(collateralPool.exit(10, TokenExitType.PRIORITIZE_DEBT),
+            await expectRevert(collateralPool.exit(10, TokenExitType.WITHDRAW_MOST_FEES),
                 "collateral ratio falls below exitCR");
             await expectRevert(collateralPool.exit(tokens, TokenExitType.KEEP_RATIO),
                 "collateral ratio falls below exitCR");
-            await expectRevert(collateralPool.exit(tokens, TokenExitType.PRIORITIZE_FASSET),
+            await expectRevert(collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT),
                 "collateral ratio falls below exitCR")
         });
 
@@ -175,7 +175,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // user enters the pool
             await collateralPool.enter(0, true, { value: collateral });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            await collateralPool.exit(tokens, TokenExitType.PRIORITIZE_FASSET);
+            await collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT);
             const fassets2 = await fAsset.balanceOf(accounts[0]);
             expect(fassets2.sub(fassets).toNumber()).lessThanOrEqual(1);
             const nat = await wNat.balanceOf(accounts[0]);
@@ -199,7 +199,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // users exit the pool
             for (let i = 0; i < investments.length; i++) {
                 const tokens = await collateralPoolToken.balanceOf(accounts[i]);
-                await collateralPool.exit(tokens, TokenExitType.PRIORITIZE_FASSET, { from: accounts[i] });
+                await collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT, { from: accounts[i] });
                 const wnat = await wNat.balanceOf(accounts[i]);
                 expect(wnat.sub(investments[i].nat).toNumber()).lessThanOrEqual(1);
                 const fassets = await fAsset.balanceOf(accounts[i]);

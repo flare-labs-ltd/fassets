@@ -10,15 +10,16 @@ import "./IWNat.sol";
  * Here we declare only the functionalities related to CollateralPool.
  */
 interface ICollateralPool {
+    enum TokenExitType { WITHDRAW_MOST_FEES, MINIMIZE_FEE_DEBT, KEEP_RATIO }
 
     function enter(uint256 _fassets, bool _enterWithFullFassets) external payable;
-    function exit(uint256 _tokenShare) external returns (uint256 _natShare, uint256 _fassetShare);
+    function exit(uint256 _tokenShare, TokenExitType _exitType)
+        external
+        returns (uint256 _natShare, uint256 _fassetShare);
     function withdrawFees(uint256 _amount) external;
     function selfCloseExit(
-        bool _getAgentCollateral, uint256 _tokenShare, uint256 _fassets,
+        uint256 _tokenShare, bool _redeemToCollateral, TokenExitType _exitType,
         string memory _redeemerUnderlyingAddressString) external;
-    function selfCloseExitPaidWithCollateral(
-        uint256 _tokenShare, uint256 _fassets) external;
     function payout(address _receiver, uint256 _amountWei, uint256 _agentResponsibilityWei) external;
     function destroy(address payable _recipient) external;
     function upgradeWNatContract(IWNat oldWNat, IWNat wNat) external;  // switch and transfer all balance to new wnat
