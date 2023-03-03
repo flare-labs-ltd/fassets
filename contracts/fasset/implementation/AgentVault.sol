@@ -180,7 +180,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         onlyOwner
         returns(uint256)
     {
-        return _distribution.claim(owner, _month);
+        return _distribution.claim(address(this), owner, _month, false);
     }
 
     function optOutOfAirdrop(IDistributionToDelegators _distribution) external override onlyOwner {

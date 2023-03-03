@@ -16,7 +16,6 @@ contract CollateralPool is ReentrancyGuard {
     using SafePct for uint256;
 
     enum TokenExitType { PRIORITIZE_DEBT, PRIORITIZE_FASSET, KEEP_RATIO }
-    TokenExitType public tokenExitType;
 
     struct AssetData {
         uint256 poolTokenSupply;
@@ -30,7 +29,8 @@ contract CollateralPool is ReentrancyGuard {
     uint256 public constant CLAIM_FTSO_REWARDS_INTEREST_BIPS = 300;
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
 
-    address payable public immutable agentVault;
+    address public immutable agentVault;
+    address public immutable agentVaultOwner;
     IAssetManager public immutable assetManager;
     IERC20 public immutable fAsset;
     CollateralPoolToken public poolToken;
@@ -47,15 +47,20 @@ contract CollateralPool is ReentrancyGuard {
     }
 
     modifier onlyAgent {
-        require(msg.sender == address(agentVault));
+        require(msg.sender == agentVaultOwner);
         _;
     }
 
     constructor (
-        address payable _agentVault, address _assetManager, address _fAsset,
-        uint32 _exitCRBIPS, uint32 _topupCRBIPS, uint16 _topupTokenDiscountBIPS
+        address _agentVault,
+        address _assetManager,
+        address _fAsset,
+        uint32 _exitCRBIPS,
+        uint32 _topupCRBIPS,
+        uint16 _topupTokenDiscountBIPS
     ) {
         agentVault = _agentVault;
+        agentVaultOwner = IAgentVault(agentVault).owner();
         assetManager = IAssetManager(_assetManager);
         fAsset = IERC20(_fAsset);
         exitCRBIPS = _exitCRBIPS;
@@ -65,7 +70,7 @@ contract CollateralPool is ReentrancyGuard {
 
     function setPoolToken(address _poolToken)
         external
-        onlyAgent
+        onlyAssetManager
     {
         require(address(poolToken) == address(0), "pool token already set");
         poolToken = CollateralPoolToken(_poolToken);
@@ -362,7 +367,7 @@ contract CollateralPool is ReentrancyGuard {
         uint256 poolBalanceNat = wnat.balanceOf(address(this));
         uint256 poolFassetBalance = fAsset.balanceOf(address(this));
         if (poolBalanceNat == 0 && poolFassetBalance == 0) {
-            poolToken.destroy();
+            poolToken.destroy(_recipient);
             selfdestruct(_recipient);
         }
     }
@@ -391,7 +396,7 @@ contract CollateralPool is ReentrancyGuard {
         onlyAgent
         returns(uint256)
     {
-        return _distribution.claim(address(this), _month);
+        return _distribution.claim(address(this), payable(address(this)), _month, true);
     }
 
     function optOutOfAirdrop(
@@ -419,32 +424,22 @@ contract CollateralPool is ReentrancyGuard {
         uint256 _lastRewardEpoch
     )
         external
-        nonReentrant
+        onlyAgent
     {
-        uint256 ftsoRewards = _ftsoRewardManager.claim(
-            address(this), payable(address(this)), _lastRewardEpoch, false
-        );
-        uint256 callerReward = ftsoRewards.mulBips(CLAIM_FTSO_REWARDS_INTEREST_BIPS);
-        if (callerReward > 0) {
-            /* solhint-disable avoid-low-level-calls */
-            //slither-disable-next-line arbitrary-send-eth
-            (bool success, ) = msg.sender.call{value: callerReward}("");
-            /* solhint-enable avoid-low-level-calls */
-            require(success, "transfer failed");
-        }
+        _ftsoRewardManager.claim(address(this), payable(address(this)), _lastRewardEpoch, true);
     }
 
-    // Set executors and recipients that can then automatically claim rewards through FtsoRewardManager.
+    // Set executors that can then automatically claim rewards through FtsoRewardManager.
+
     function setFtsoAutoClaiming(
         IClaimSetupManager _claimSetupManager,
-        address[] memory _executors,
-        address[] memory _allowedRecipients
+        address[] memory _executors
     )
         external payable
         onlyAgent
     {
-        _claimSetupManager.setClaimExecutors{value: msg.value}(_executors);
-        _claimSetupManager.setAllowedClaimRecipients(_allowedRecipients);
+        _claimSetupManager.setAutoClaiming{value: msg.value}(_executors, false);
+        // no recipients setup - claim everything to pool
     }
 
 }
