@@ -11,12 +11,9 @@ import "../interface/IAgentVault.sol";
 import "../interface/ICollateralPool.sol";
 import "./CollateralPoolToken.sol";
 
-contract CollateralPool is ReentrancyGuard {
+contract CollateralPool is ICollateralPool, ReentrancyGuard {
 
     using SafePct for uint256;
-
-    enum TokenExitType { PRIORITIZE_DEBT, PRIORITIZE_FASSET, KEEP_RATIO }
-    TokenExitType public tokenExitType;
 
     struct AssetData {
         uint256 poolTokenSupply;
@@ -30,13 +27,16 @@ contract CollateralPool is ReentrancyGuard {
     uint256 public constant CLAIM_FTSO_REWARDS_INTEREST_BIPS = 300;
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
 
-    address payable public immutable agentVault;
+    address public immutable agentVault;
+    address public immutable agentVaultOwner;
     IAssetManager public immutable assetManager;
     IERC20 public immutable fAsset;
-    CollateralPoolToken public poolToken;
+    IWNat public wNat;
+    CollateralPoolToken private token;
     uint32 public exitCRBIPS;
     uint32 public topupCRBIPS;
     uint16 public topupTokenDiscountBIPS;
+    bool private internalWithdrawal;
 
     mapping(address => uint256) private _fassetDebtOf;
     uint256 public poolFassetDebt;
@@ -47,28 +47,38 @@ contract CollateralPool is ReentrancyGuard {
     }
 
     modifier onlyAgent {
-        require(msg.sender == address(agentVault), "only agent");
+        require(msg.sender == agentVaultOwner);
         _;
     }
 
     constructor (
-        address payable _agentVault, address _assetManager, address _fAsset,
-        uint32 _exitCRBIPS, uint32 _topupCRBIPS, uint16 _topupTokenDiscountBIPS
+        address _agentVault,
+        address _assetManager,
+        address _fAsset,
+        uint32 _exitCRBIPS,
+        uint32 _topupCRBIPS,
+        uint16 _topupTokenDiscountBIPS
     ) {
         agentVault = _agentVault;
+        agentVaultOwner = IAgentVault(agentVault).owner();
         assetManager = IAssetManager(_assetManager);
         fAsset = IERC20(_fAsset);
+        wNat = assetManager.getWNat();
         exitCRBIPS = _exitCRBIPS;
         topupCRBIPS = _topupCRBIPS;
         topupTokenDiscountBIPS = _topupTokenDiscountBIPS;
     }
 
+    receive() external payable {
+        require(internalWithdrawal, "only internal use");
+    }
+
     function setPoolToken(address _poolToken)
         external
-        onlyAgent
+        onlyAssetManager
     {
-        require(address(poolToken) == address(0), "pool token already set");
-        poolToken = CollateralPoolToken(_poolToken);
+        require(address(token) == address(0), "pool token already set");
+        token = CollateralPoolToken(_poolToken);
     }
 
     function enter(uint256 _fassets, bool _enterWithFullFassets)
@@ -94,16 +104,17 @@ contract CollateralPool is ReentrancyGuard {
             fAsset.transferFrom(msg.sender, address(this), freeFassetShare);
         }
         _mintFassetDebt(msg.sender, fassetShare - freeFassetShare);
-        assetManager.getWNat().deposit{value: msg.value}();
-        poolToken.mint(msg.sender, tokenShare);
+        wNat.deposit{value: msg.value}();
+        token.mint(msg.sender, tokenShare);
     }
 
     // check that after exit there remain either 0 or some large enough amount of collateral
     function exit(uint256 _tokenShare, TokenExitType _exitType)
-        public
+        external override
+        returns (uint256, uint256)
     {
         require(_tokenShare > 0, "token share is zero");
-        require(_tokenShare <= poolToken.balanceOf(msg.sender), "token balance too low");
+        require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
         AssetData memory assetData = _getAssetData();
         // poolTokenSupply >= _tokenShare > 0
         uint256 natShare = _tokenShare.mulDiv(assetData.poolNatBalance, assetData.poolTokenSupply);
@@ -118,19 +129,22 @@ contract CollateralPool is ReentrancyGuard {
         if (debtFassetShare > 0) {
             _burnFassetDebt(msg.sender, debtFassetShare);
         }
-        poolToken.burn(msg.sender, _tokenShare);
-        assetManager.getWNat().transfer(msg.sender, natShare);
+        token.burn(msg.sender, _tokenShare);
+        wNat.transfer(msg.sender, natShare);
+        return (natShare, freeFassetShare);
     }
 
     // requires the amount of fassets that doesn't lower pool CR
     function selfCloseExit(
-        uint256 _tokenShare, bool _redeemToCollateral, TokenExitType _exitType,
+        uint256 _tokenShare,
+        bool _redeemToCollateral,
+        TokenExitType _exitType,
         string memory _redeemerUnderlyingAddressString
     )
-        public
+        external
     {
         require(_tokenShare > 0, "token share is zero");
-        require(_tokenShare <= poolToken.balanceOf(msg.sender), "token balance too low");
+        require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
         AssetData memory assetData = _getAssetData();
         uint256 natShare = assetData.poolNatBalance.mulDiv(
             _tokenShare, assetData.poolTokenSupply); // poolTokenSupply >= _tokenShare > 0
@@ -147,40 +161,38 @@ contract CollateralPool is ReentrancyGuard {
             fAsset.transferFrom(msg.sender, address(this), additionallyRequiredFassets);
         }
         // agent redemption
-        uint256 redeemedFassets = freeFassetShare + additionallyRequiredFassets;
-        if (redeemedFassets > 0) {
-            uint256 lotSizeUBA = assetManager.getLotSize();
-            uint256 lotsToRedeem = redeemedFassets / lotSizeUBA;
-            if (lotsToRedeem == 0 || _redeemToCollateral) {
-                assetManager.redeemChosenAgentCollateral(
-                    agentVault, redeemedFassets, msg.sender);
+        uint256 fassetsToRedeem = freeFassetShare + additionallyRequiredFassets;
+        if (fassetsToRedeem > 0) {
+            if (fassetsToRedeem < assetManager.getLotSize() || _redeemToCollateral) {
+                assetManager.redeemFromAgentInCollateral(
+                    agentVault, msg.sender, fassetsToRedeem);
             } else {
-                assetManager.redeemChosenAgentUnderlying(
-                    agentVault, redeemedFassets, _redeemerUnderlyingAddressString);
+                assetManager.redeemFromAgent(
+                    agentVault, msg.sender, fassetsToRedeem, _redeemerUnderlyingAddressString);
             }
         }
         // transfer/burn assets
         _burnFassetDebt(msg.sender, debtFassetShare);
-        assetManager.getWNat().transfer(msg.sender, natShare);
-        poolToken.burn(msg.sender, _tokenShare);
+        wNat.transfer(msg.sender, natShare);
+        token.burn(msg.sender, _tokenShare);
     }
 
     // used to collect fasset fees, at expanse of locking additional free tokens
-    function mintFassetDebt(uint256 _fassets)
-        public
+    function withdrawFees(uint256 _fassets)
+        external
     {
-        AssetData memory assetData = _getAssetData();
-        uint256 freeFassetShare = _virtualFassetOf(msg.sender, assetData) - _fassetDebtOf[msg.sender];
-        require(_fassets <= freeFassetShare, "free f-asset balance too small");
         if (_fassets > 0) {
+            AssetData memory assetData = _getAssetData();
+            uint256 freeFassetShare = _virtualFassetOf(msg.sender, assetData) - _fassetDebtOf[msg.sender];
+            require(_fassets <= freeFassetShare, "free f-asset balance too small");
             _mintFassetDebt(msg.sender, _fassets);
             fAsset.transfer(msg.sender, _fassets);
         }
     }
 
-    // used to payoff debt and unlock the debt tokens
-    function burnFassetDebt(uint256 _fassets)
-        public
+    // used to pay off debt and unlock the debt tokens
+    function payFeeDebt(uint256 _fassets)
+        external
     {
         uint256 paid = Math.min(_fassetDebtOf[msg.sender], _fassets);
         if (paid > 0) {
@@ -189,6 +201,10 @@ contract CollateralPool is ReentrancyGuard {
             _burnFassetDebt(msg.sender, paid);
             fAsset.transferFrom(msg.sender, address(this), paid);
         }
+    }
+
+    function poolToken() external view override returns (IERC20) {
+        return token;
     }
 
     function _mintFassetDebt(address _account, uint256 _fassets)
@@ -233,15 +249,16 @@ contract CollateralPool is ReentrancyGuard {
         address _account, uint256 _tokenShare, TokenExitType _exitType,
         AssetData memory _assetData
     )
-        internal view returns (uint256, uint256)
+        internal view
+        returns (uint256, uint256)
     {
         uint256 debtTokenShare;
         uint256 freeTokenShare;
-        if (_exitType == TokenExitType.PRIORITIZE_DEBT) {
+        if (_exitType == TokenExitType.WITHDRAW_MOST_FEES) {
             uint256 debtTokens = _debtTokensOf(_account, _assetData);
             debtTokenShare = Math.min(_tokenShare, debtTokens);
             freeTokenShare = debtTokenShare < _tokenShare ? _tokenShare - debtTokenShare : 0;
-        } else if (_exitType == TokenExitType.PRIORITIZE_FASSET) {
+        } else if (_exitType == TokenExitType.MINIMIZE_FEE_DEBT) {
             uint256 freeTokens = _freeTokensOf(_account, _assetData);
             freeTokenShare = Math.min(_tokenShare, freeTokens);
             debtTokenShare = freeTokenShare < _tokenShare ? _tokenShare - freeTokenShare : 0;
@@ -271,7 +288,7 @@ contract CollateralPool is ReentrancyGuard {
         internal view
         returns (uint256)
     {
-        uint256 tokens = poolToken.balanceOf(_account);
+        uint256 tokens = token.balanceOf(_account);
         return _assetData.poolVirtualFassetBalance.mulDiv(
             tokens, _assetData.poolTokenSupply);
     }
@@ -280,7 +297,7 @@ contract CollateralPool is ReentrancyGuard {
         internal view
         returns (uint256)
     {
-        return poolToken.balanceOf(_account) - _freeTokensOf(_account, _assetData);
+        return token.balanceOf(_account) - _freeTokensOf(_account, _assetData);
     }
 
     // note: integer operations round down the free tokens,
@@ -290,7 +307,7 @@ contract CollateralPool is ReentrancyGuard {
         internal view
         returns (uint256)
     {
-        uint256 tokens = poolToken.balanceOf(_account);
+        uint256 tokens = token.balanceOf(_account);
         if (tokens == 0) return 0; // prevents poolTokenSupply = 0
         uint256 debtFassets = _fassetDebtOf[_account];
         if (debtFassets == 0) return tokens; // prevents poolVirtualFassetBalance = 0
@@ -308,9 +325,9 @@ contract CollateralPool is ReentrancyGuard {
     {
         uint256 poolFassetBalance = fAsset.balanceOf(address(this));
         return AssetData({
-            poolTokenSupply: poolToken.totalSupply(),
+            poolTokenSupply: token.totalSupply(),
             fassetSupply: fAsset.totalSupply(),
-            poolNatBalance: assetManager.getWNat().balanceOf(address(this)),
+            poolNatBalance: wNat.balanceOf(address(this)),
             poolFassetBalance: poolFassetBalance,
             poolVirtualFassetBalance: poolFassetBalance + poolFassetDebt
         });
@@ -357,11 +374,10 @@ contract CollateralPool is ReentrancyGuard {
         external
         onlyAssetManager
     {
-        IWNat wnat = assetManager.getWNat();
-        uint256 poolBalanceNat = wnat.balanceOf(address(this));
+        uint256 poolBalanceNat = wNat.balanceOf(address(this));
         uint256 poolFassetBalance = fAsset.balanceOf(address(this));
         if (poolBalanceNat == 0 && poolFassetBalance == 0) {
-            poolToken.destroy();
+            token.destroy(_recipient);
             selfdestruct(_recipient);
         }
     }
@@ -369,14 +385,29 @@ contract CollateralPool is ReentrancyGuard {
     // used by AssetManager to handle liquidation
     function payout(
         address _recipient,
-        uint256 _amount
+        uint256 _amount,
+        uint256 _agentResponsibilityWei
     )
-        external
+        external override
         onlyAssetManager
         nonReentrant
     {
-        IWNat wnat = assetManager.getWNat();
-        wnat.transfer(_recipient, _amount);
+        wNat.transfer(_recipient, _amount);
+        // TODO: slash agent vault's pool tokens worth _agentResponsibilityWei in FLR
+        //       (or less if there is not enough)
+    }
+
+    function upgradeWNatContract(IWNat _oldWNat, IWNat _wNat)
+        external
+        onlyAssetManager
+    {
+        assert(wNat == _oldWNat);
+        // transfer all funds to new WNat
+        uint256 balance = _oldWNat.balanceOf(address(this));
+        _oldWNat.withdraw(balance);
+        _wNat.deposit{value: balance}();
+        // set new WNat contract
+        wNat = _wNat;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -390,7 +421,7 @@ contract CollateralPool is ReentrancyGuard {
         onlyAgent
         returns(uint256)
     {
-        return _distribution.claim(address(this), _month);
+        return _distribution.claim(address(this), payable(address(this)), _month, true);
     }
 
     function optOutOfAirdrop(
@@ -409,8 +440,7 @@ contract CollateralPool is ReentrancyGuard {
         external
         onlyAgent
     {
-        IVPToken wnat = IVPToken(assetManager.getWNat());
-        wnat.batchDelegate(_to, _bips);
+        wNat.batchDelegate(_to, _bips);
     }
 
     function claimFtsoRewards(
@@ -418,32 +448,22 @@ contract CollateralPool is ReentrancyGuard {
         uint256 _lastRewardEpoch
     )
         external
-        nonReentrant
+        onlyAgent
     {
-        uint256 ftsoRewards = _ftsoRewardManager.claim(
-            address(this), payable(address(this)), _lastRewardEpoch, false
-        );
-        uint256 callerReward = ftsoRewards.mulBips(CLAIM_FTSO_REWARDS_INTEREST_BIPS);
-        if (callerReward > 0) {
-            /* solhint-disable avoid-low-level-calls */
-            //slither-disable-next-line arbitrary-send-eth
-            (bool success, ) = msg.sender.call{value: callerReward}("");
-            /* solhint-enable avoid-low-level-calls */
-            require(success, "transfer failed");
-        }
+        _ftsoRewardManager.claim(address(this), payable(address(this)), _lastRewardEpoch, true);
     }
 
-    // Set executors and recipients that can then automatically claim rewards through FtsoRewardManager.
+    // Set executors that can then automatically claim rewards through FtsoRewardManager.
+
     function setFtsoAutoClaiming(
         IClaimSetupManager _claimSetupManager,
-        address[] memory _executors,
-        address[] memory _allowedRecipients
+        address[] memory _executors
     )
         external payable
         onlyAgent
     {
-        _claimSetupManager.setClaimExecutors{value: msg.value}(_executors);
-        _claimSetupManager.setAllowedClaimRecipients(_allowedRecipients);
+        _claimSetupManager.setAutoClaiming{value: msg.value}(_executors, false);
+        // no recipients setup - claim everything to pool
     }
 
 }

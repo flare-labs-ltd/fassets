@@ -195,5 +195,12 @@ library AssetManagerSettings {
         // Minimum time from the moment token is deprecated to when it becomes invalid and agents still using
         // it as class1 get liquidated.
         uint64 tokenInvalidationTimeMinSeconds;
+
+        // On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock
+        // collateral. For this, part of collateral corresponding to FTSO asset value is burned and the rest
+        // is released.
+        // However, we cannot burn typical class1 collateral (stablecoins), so the agent must buy them for NAT
+        // at FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.
+        uint32 class1BuyForFlareFactorBIPS;
     }
 }

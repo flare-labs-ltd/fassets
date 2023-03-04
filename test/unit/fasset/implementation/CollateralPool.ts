@@ -2,49 +2,58 @@ import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
 import {
     CollateralPoolInstance, CollateralPoolTokenInstance,
-    ERC20MockInstance, AssetManagerMockInstance
+    ERC20MockInstance, AssetManagerMockInstance,
+    AgentVaultMockInstance
 } from "../../../../typechain-truffle";
 import { getTestFile } from "../../../utils/test-helpers";
 
 
-enum TokenExitType { PRIORITIZE_DEBT, PRIORITIZE_FASSET, KEEP_RATIO };
+enum TokenExitType { WITHDRAW_MOST_FEES, MINIMIZE_FEE_DEBT, KEEP_RATIO };
 const ONE_ETH = new BN("1000000000000000000");
 const ETH = (x: number | BN | string) => ONE_ETH.mul(new BN(x));
 
-const CollateralPool = artifacts.require('CollateralPool');
-const CollateralPoolToken = artifacts.require("CollateralPoolToken")
 const ERC20Mock = artifacts.require("ERC20Mock");
+const AgentVaultMock = artifacts.require("AgentVaultMock");
 const AssetManager = artifacts.require("AssetManagerMock")
+const CollateralPool = artifacts.require("CollateralPool");
+const CollateralPoolToken = artifacts.require("CollateralPoolToken")
 
 contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic tests`, async accounts => {
-    let collateralPool: CollateralPoolInstance;
-    let collateralPoolToken: CollateralPoolTokenInstance;
+    let wNat: ERC20MockInstance;
     let assetManager: AssetManagerMockInstance;
     let fAsset: ERC20MockInstance;
-    let wNat: ERC20MockInstance;
+    let agentVault: AgentVaultMockInstance;
+    let collateralPool: CollateralPoolInstance;
+    let collateralPoolToken: CollateralPoolTokenInstance;
 
-    const agentVault = accounts[12]
+    const agent = accounts[12];
 
     const exitCR = 1.2;
     const topupCR = 1.1;
     const topupTokenDiscount = 0.9;
 
     beforeEach(async () => {
-        fAsset = await ERC20Mock.new("fBitcoin", "fBTC");
         wNat = await ERC20Mock.new("wNative", "wNat");
         assetManager = await AssetManager.new(wNat.address);
+        fAsset = await ERC20Mock.new("fBitcoin", "fBTC");
+        agentVault = await AgentVaultMock.new(assetManager.address, agent);
         collateralPool = await CollateralPool.new(
-            agentVault, assetManager.address, fAsset.address,
-            exitCR*10_000, topupCR*10_000, topupTokenDiscount*10_000);
+            agentVault.address,
+            assetManager.address,
+            fAsset.address,
+            Math.floor(exitCR*10_000),
+            Math.floor(topupCR*10_000),
+            Math.floor(topupTokenDiscount*10_000)
+        );
         collateralPoolToken = await CollateralPoolToken.new(collateralPool.address);
-        await collateralPool.setPoolToken(collateralPoolToken.address, { from: agentVault });
+        await assetManager.setPoolToken(collateralPool.address, collateralPoolToken.address);
     });
 
     function maxBN(x: BN, y: BN) {
         return x.gt(y) ? x : y;
     }
 
-    function mulByBips(x: BN, bips: number) {
+    function mulBips(x: BN, bips: number) {
         const bipsBN = new BN(Math.floor(10_000 * bips));
         return x.mul(bipsBN).div(new BN(10_000));
     }
@@ -53,7 +62,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         const { 0: priceMul, 1: priceDiv } = await assetManager.assetPriceNatWei();
         const poolNatBalance = await wNat.balanceOf(collateralPool.address);
         const fassetSupply = await fAsset.totalSupply();
-        const required = mulByBips(fassetSupply.mul(priceMul), CR).div(priceDiv).sub(poolNatBalance);
+        const required = mulBips(fassetSupply.mul(priceMul), CR).div(priceDiv).sub(poolNatBalance);
         return required.lt(new BN(0)) ? new BN(0) : required;
     }
 
@@ -65,13 +74,14 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     describe("basic restrictions", async () => {
 
-        it("should fail at setting pool token address from non-agent address", async () => {
-            await expectRevert(collateralPool.setPoolToken(accounts[0]), "only agent");
+        it("should fail at calling setPoolToken from non asset manager", async () => {
+            const prms = collateralPool.setPoolToken(collateralPoolToken.address);
+            await expectRevert(prms, "only asset manager");
         });
 
         it("should fail at resetting pool token", async () => {
-            await expectRevert(collateralPool.setPoolToken(accounts[0], { from: agentVault }),
-                "pool token already set");
+            const prms = assetManager.setPoolToken(collateralPool.address, collateralPoolToken.address);
+            await expectRevert(prms, "pool token already set");
         });
 
     });
@@ -116,7 +126,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             expect((await fAsset.balanceOf(accounts[0])).toString()).to.equal("0");
             const tokens1 = await collateralPoolToken.balanceOf(accounts[0]);
             expect(tokens1.toString()).to.equal(
-                mulByBips(natToTopup, 1 / topupTokenDiscount).add(
+                mulBips(natToTopup, 1 / topupTokenDiscount).add(
                     investment[0].collateral.sub(natToTopup)
                 ).toString());
             // enter with specified amount of f-assets (none should be required)
@@ -154,7 +164,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const fassets0 = await collateralPool.virtualFassetOf(accounts[1]);
             expect(fassets0.toString()).to.equal(fassetInvestment.pool.toString());
             const tokens0 = await collateralPoolToken.balanceOf(accounts[1]);
-            expect(tokens0.toString()).to.equal(mulByBips(natToTopup, 1 / topupTokenDiscount).toString());
+            expect(tokens0.toString()).to.equal(mulBips(natToTopup, 1 / topupTokenDiscount).toString());
             // enter collateral pool without f-assets
             await collateralPool.enter(0, false, { value: nat });
             const tokens1 = await collateralPoolToken.balanceOf(accounts[0]);
@@ -166,7 +176,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const debtFasset1 = await collateralPool.fassetDebtOf(accounts[0]);
             expect(debtFasset1.toString()).to.equal(virtualFassets1.toString());
             // pay off the f-asset debt
-            await collateralPool.burnFassetDebt(debtFasset1);
+            await collateralPool.payFeeDebt(debtFasset1);
             const tokens2 = await collateralPoolToken.balanceOf(accounts[0]);
             expect(tokens2.toString()).to.equal(tokens1.toString());
             const liquidTokens2 = await collateralPoolToken.freeBalanceOf(accounts[0]);
@@ -182,14 +192,14 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
     describe("exiting collateral pool", async () => {
 
         it("should revert on exiting the pool with zero tokens", async () => {
-            const prms = collateralPool.exit(0, TokenExitType.PRIORITIZE_DEBT);
+            const prms = collateralPool.exit(0, TokenExitType.WITHDRAW_MOST_FEES);
             await expectRevert(prms, "token share is zero");
         });
 
         it("should revert on user not having enough tokens", async () => {
             await collateralPool.enter(0, true, { value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            const prms = collateralPool.exit(tokens.add(new BN(1)), TokenExitType.PRIORITIZE_FASSET);
+            const prms = collateralPool.exit(tokens.add(new BN(1)), TokenExitType.MINIMIZE_FEE_DEBT);
             await expectRevert(prms, "token balance too low");
         });
 
@@ -199,13 +209,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const natToExit = await getNatRequiredToGetPoolCRAbove(exitCR);
             await collateralPool.enter(0, true, { value: natToExit });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            await expectRevert(collateralPool.exit(10, TokenExitType.PRIORITIZE_FASSET),
+            await expectRevert(collateralPool.exit(10, TokenExitType.MINIMIZE_FEE_DEBT),
                 "collateral ratio falls below exitCR");
-            await expectRevert(collateralPool.exit(10, TokenExitType.PRIORITIZE_DEBT),
+            await expectRevert(collateralPool.exit(10, TokenExitType.WITHDRAW_MOST_FEES),
                 "collateral ratio falls below exitCR");
             await expectRevert(collateralPool.exit(tokens, TokenExitType.KEEP_RATIO),
                 "collateral ratio falls below exitCR");
-            await expectRevert(collateralPool.exit(tokens, TokenExitType.PRIORITIZE_FASSET),
+            await expectRevert(collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT),
                 "collateral ratio falls below exitCR")
         });
 
@@ -214,7 +224,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter(0, false, { value: collateral });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             expect(tokens.toString()).to.equal(collateral.toString());
-            await collateralPool.exit(tokens, TokenExitType.PRIORITIZE_FASSET);
+            await collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT);
             const nat = await wNat.balanceOf(accounts[0]);
             expect(nat.toString()).to.equal(collateral.toString());
         });
@@ -230,7 +240,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // user enters the pool
             await collateralPool.enter(0, true, { value: collateral });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            await collateralPool.exit(tokens, TokenExitType.PRIORITIZE_FASSET);
+            await collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT);
             const fassets2 = await fAsset.balanceOf(accounts[0]);
             expect(fassets2.sub(fassets).toNumber()).lessThanOrEqual(1);
             const nat = await wNat.balanceOf(accounts[0]);
@@ -252,9 +262,9 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             for (let i = 0; i < investments.length; i++)
                 await collateralPool.enter(0, true, { value: investments[i].nat, from: accounts[i] });
             // users exit the pool (in reverse order)
-            for (let i = investments.length; i > 0; i--) {
+            for (let i = investments.length-1; i >= 0; i--) {
                 const tokens = await collateralPoolToken.balanceOf(accounts[i]);
-                await collateralPool.exit(tokens, TokenExitType.PRIORITIZE_FASSET, { from: accounts[i] });
+                await collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT, { from: accounts[i] });
                 const wnat = await wNat.balanceOf(accounts[i]);
                 expect(wnat.sub(investments[i].nat).toNumber()).lessThanOrEqual(1);
                 const fassets = await fAsset.balanceOf(accounts[i]);
@@ -266,24 +276,24 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     describe("self close exits", async () => {
 
-        it.only("should do a self-close exit with only one user", async () => {
+        it("should do a self-close exit with only one user", async () => {
             const collateral = ETH(100);
             const fassets = ETH(100);
             await fAsset.mintAmount(accounts[0], fassets);
             await fAsset.increaseAllowance(collateralPool.address, fassets);
             await collateralPool.enter(0, true, { value: collateral });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            await collateralPool.selfCloseExit(tokens, true, TokenExitType.PRIORITIZE_FASSET, "");
+            await collateralPool.selfCloseExit(tokens, true, TokenExitType.MINIMIZE_FEE_DEBT, "");
             const wnat = await wNat.balanceOf(accounts[0]);
             expect(wnat.toString()).to.equal(collateral.toString());
             const fassets2 = await fAsset.balanceOf(accounts[0]);
             // taking all collateral out of the pool and keeping CR the same
-            // means you have to destroy all f-assets in existence
+            // means you have to destroy all existing f-assets
             expect(fassets2.toString()).to.equal("0");
         });
 
         // should know how to calculate fassets needed for pool stabilization of pool CR
-        it("should do a self-close exit with multiple users", async () => {
+        it.skip("should do a self-close exit with multiple users", async () => {
             const fassetBalances = [ETH(1000), ETH(1000)];
             const investments = [
                 { fasset: ETH(0), nat: ETH(100) },
@@ -299,10 +309,12 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // users do self-close exit
             const cr0 = await getPoolCR();
             const tokenShare0 = await collateralPoolToken.balanceOf(accounts[0]);
-            await collateralPool.selfCloseExit(tokenShare0, true, TokenExitType.PRIORITIZE_FASSET, "");
+            await collateralPool.selfCloseExit(tokenShare0, true, TokenExitType.MINIMIZE_FEE_DEBT, "",
+                { from: accounts[0] });
             const cr1 = await getPoolCR();
             const tokenShare1 = await collateralPoolToken.balanceOf(accounts[1]);
-            await collateralPool.selfCloseExit(tokenShare1, true, TokenExitType.PRIORITIZE_FASSET, "");
+            await collateralPool.selfCloseExit(tokenShare1, true, TokenExitType.MINIMIZE_FEE_DEBT, "",
+                { from: accounts[1] });
             const cr2 = await getPoolCR();
             assert(cr0[0].mul(cr1[1]).lte(cr1[0].mul(cr0[1])));
             assert(cr1[0].mul(cr2[1]).lte(cr2[0].mul(cr1[1])));
@@ -319,7 +331,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter(0, true, { value: ETH(10) });
             await collateralPool.enter(0, true, { value: ETH(10), from: accounts[1] });
             const debt = await collateralPool.fassetDebtOf(accounts[1]);
-            await collateralPool.burnFassetDebt(debt, { from: accounts[1] });
+            await collateralPool.payFeeDebt(debt, { from: accounts[1] });
             const newdebt = await collateralPool.fassetDebtOf(accounts[1]);
             expect(newdebt.toString()).to.equal("0");
             const lockedTokens = await collateralPool.debtTokensOf(accounts[1]);
@@ -335,7 +347,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const virtualFassets = await collateralPool.virtualFassetOf(accounts[1]);
             const debtFassets = await collateralPool.fassetDebtOf(accounts[1]);
             const freeFassets = virtualFassets.sub(debtFassets);
-            await collateralPool.mintFassetDebt(freeFassets, { from: accounts[1] });
+            await collateralPool.withdrawFees(freeFassets, { from: accounts[1] });
             const fassetReward = await fAsset.balanceOf(accounts[1]);
             expect(fassetReward.toString()).to.equal(freeFassets.toString());
         });

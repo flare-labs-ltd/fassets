@@ -132,8 +132,12 @@ library Agent {
         // and topups are only valid after this block (both inclusive).
         uint64 underlyingBlockAtCreation;
 
-        //
+        // The time when ongoing agent vault destroy was announced.
         uint64 destroyAnnouncedAt;
+
+        // The factor set by the agent to multiply the price at which agent buys f-assets from pool
+        // token holders on self-close exit (when requested or the redeemed amount is less than 1 lot).
+        uint16 buyFassetForCollateralRatioBIPS;
 
         // Only used for calculating Agent.State size. See deleteStorage() below.
         uint256[1] _endMarker;

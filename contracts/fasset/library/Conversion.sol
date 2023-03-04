@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "../../utils/lib/SafePct.sol";
@@ -79,6 +80,27 @@ library Conversion {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         // safe multiplication - all values are 64 bit
         return uint256(_lots) * settings.lotSizeAMG * settings.assetMintingGranularityUBA;
+    }
+
+    function currentWeiPriceRatio(
+        CollateralToken.Data storage _token1,
+        CollateralToken.Data storage _token2
+    )
+        internal view
+        returns (uint256 _multiplier, uint256 _divisor)
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        IFtsoRegistry ftsoRegistry = settings.ftsoRegistry;
+        IIFtso token1Ftso = ftsoRegistry.getFtso(_token1.ftsoIndex);
+        IIFtso token2Ftso = ftsoRegistry.getFtso(_token2.ftsoIndex);
+        (uint256 token1Price,, uint256 token1FtsoDec) = token1Ftso.getCurrentPriceWithDecimals();
+        (uint256 token2Price,, uint256 token2FtsoDec) = token2Ftso.getCurrentPriceWithDecimals();
+        uint256 expPlus = _token2.decimals + token2FtsoDec;
+        uint256 expMinus = _token1.decimals + token1FtsoDec;
+        expPlus -= Math.min(expPlus, expMinus);
+        expMinus -= Math.min(expPlus, expMinus);
+        _multiplier = token1Price * 10 ** expPlus;
+        _divisor = token2Price * 10 ** expMinus;
     }
 
     function convertAmgToTokenWei(uint256 _valueAMG, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {

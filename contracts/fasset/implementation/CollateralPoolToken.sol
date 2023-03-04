@@ -6,14 +6,14 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./CollateralPool.sol";
 
 contract CollateralPoolToken is ERC20 {
-    address payable public immutable collateralPool;
+    address public immutable collateralPool;
 
     modifier onlyCollateralPool {
         require(msg.sender == collateralPool, "only collateral pool");
         _;
     }
 
-    constructor(address payable _collateralPool)
+    constructor(address _collateralPool)
         ERC20("FAsset Collateral Pool Token", "FCPT")
     {
         collateralPool = _collateralPool;
@@ -27,12 +27,13 @@ contract CollateralPoolToken is ERC20 {
         _burn(_account, _amount);
     }
 
-    function destroy() external onlyCollateralPool {
-        selfdestruct(collateralPool);
+    function destroy(address payable _recipient) external onlyCollateralPool {
+        // only used at pool destruct so the balance will be moved anyway
+        selfdestruct(_recipient);
     }
 
     function freeBalanceOf(address _account) public view returns (uint256) {
-        return CollateralPool(collateralPool).freeTokensOf(_account);
+        return CollateralPool(payable(collateralPool)).freeTokensOf(_account);
     }
 
     // override balanceOf to account for locked/debt collateral

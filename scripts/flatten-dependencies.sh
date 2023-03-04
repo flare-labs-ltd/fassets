@@ -2,7 +2,7 @@
 
 set -e
 
-if [ -z "$3" ]; then 
+if [ -z "$3" ]; then
     echo "$0 <subproject_dir> <listfile> <outfile>"
     echo "    where <listfile> is a file containing list of input files (relative to <subproject_dir>)"
     exit 1
@@ -29,6 +29,9 @@ cd - > /dev/null
 
 echo "// SPDX-License-Identifier: MIT" > "$OUTFILE"
 echo "$PRAGMA_SOLIDITY" >> "$OUTFILE"
+if grep '^pragma abicoder v2' "$TMPFILE"; then
+    echo 'pragma abicoder v2;' >> "$OUTFILE"
+fi
 echo "" >> "$OUTFILE"
-cat "$TMPFILE" | grep -v '^\$' | grep -v '^// SPDX-License-Identifier: MIT' | grep -v '^pragma solidity' >> "$OUTFILE"
+cat "$TMPFILE" | grep -v '^\$' | grep -v '^// SPDX-License-Identifier: MIT' | grep -v '^pragma solidity' | grep -v '^pragma abicoder v2' >> "$OUTFILE"
 rm "$TMPFILE"

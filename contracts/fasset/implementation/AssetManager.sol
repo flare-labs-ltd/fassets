@@ -17,7 +17,9 @@ import "../library/AvailableAgents.sol";
 import "../library/AgentsExternal.sol";
 import "../library/CollateralReservations.sol";
 import "../library/Minting.sol";
-import "../library/Redemptions.sol";
+import "../library/RedemptionRequests.sol";
+import "../library/RedemptionConfirmations.sol";
+import "../library/RedemptionFailures.sol";
 import "../library/Challenges.sol";
 import "../library/Liquidation.sol";
 import "../library/UnderlyingWithdrawalAnnouncements.sol";
@@ -564,7 +566,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
         onlyWhitelistedSender
     {
-        Redemptions.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
+        RedemptionRequests.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
     }
 
     /**
@@ -588,7 +590,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemptions.confirmRedemptionPayment(_payment, _redemptionRequestId.toUint64());
+        RedemptionConfirmations.confirmRedemptionPayment(_payment, _redemptionRequestId.toUint64());
     }
 
     /**
@@ -607,7 +609,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemptions.redemptionPaymentDefault(_proof, _redemptionRequestId.toUint64());
+        RedemptionFailures.redemptionPaymentDefault(_proof, _redemptionRequestId.toUint64());
     }
 
     /**
@@ -626,7 +628,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        Redemptions.finishRedemptionWithoutPayment(_proof, _redemptionRequestId.toUint64());
+        RedemptionFailures.finishRedemptionWithoutPayment(_proof, _redemptionRequestId.toUint64());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -646,8 +648,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        // in Redemptions.selfClose we check that only agent can do this
-        Redemptions.selfClose(_agentVault, _amountUBA);
+        // in SelfClose.selfClose we check that only agent can do this
+        RedemptionRequests.selfClose(_agentVault, _amountUBA);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -1023,24 +1025,35 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     ////////////////////////////////////////////////////////////////////////////////////
     // Collateral pool redemptions
 
-    function redeemChosenAgentUnderlying(
+    /**
+     * Create a redemption from a single agent. Used in self-close exit from the collateral pool.
+     * Note: only collateral pool can call this method.
+     */
+    function redeemFromAgent(
         address _agentVault,
+        address _receiver,
         uint256 _amountUBA,
-        string memory _redeemerUnderlyingAddressString
+        string memory _receiverUnderlyingAddress
     )
         external override
     {
-        // TODO: implement
+        RedemptionRequests.redeemFromAgent(_agentVault, _receiver, _amountUBA, _receiverUnderlyingAddress);
     }
 
-    function redeemChosenAgentCollateral(
+    /**
+     * Burn fassets from  a single agent and get paid in class1 collateral by the agent.
+     * Price is FTSO price, multiplied by factor buyFassetForCollateralRatioBIPS (set by agent).
+     * Used in self-close exit from the collateral pool when requested or when self-close amount is less than 1 lot.
+     * Note: only collateral pool can call this method.
+     */
+    function redeemFromAgentInCollateral(
         address _agentVault,
-        uint256 _amountUBA,
-        address _redeemerAddress
+        address _receiver,
+        uint256 _amountUBA
     )
         external override
     {
-        // TODO: implement
+        RedemptionRequests.redeemFromAgentInCollateral(_agentVault, _receiver, _amountUBA);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

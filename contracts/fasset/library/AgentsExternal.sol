@@ -109,7 +109,6 @@ library AgentsExternal {
         external
         onlyAgentVaultOwner(_agentVault)
     {
-        // TODO: all pool tokens must belong to the agent, then we probably don;t need to announce destroy
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
         // destroy must have been announced enough time before

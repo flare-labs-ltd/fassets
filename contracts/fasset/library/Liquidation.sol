@@ -75,7 +75,7 @@ library Liquidation {
         // try to pull agent out of liquidation
         endLiquidationIfHealthy(agent);
         // burn liquidated fassets
-        Globals.getFAsset().burn(msg.sender, _liquidatedAmountUBA);
+        Redemptions.burnFAssets(msg.sender, _liquidatedAmountUBA);
         // notify about liquidation
         emit AMEvents.LiquidationPerformed(_agentVault, msg.sender, _liquidatedAmountUBA);
     }
@@ -246,7 +246,7 @@ library Liquidation {
             _maxLiquidationAmountAMG(_agent, _cr.poolCR, poolFactor, _agent.poolCollateralToken));
         uint64 amountToLiquidateAMG = Math.min(maxLiquidatedAMG, _amountAMG).toUint64();
         // liquidate redemption tickets
-        (_liquidatedAMG,) = Redemptions.selfCloseOrLiquidate(_agent, amountToLiquidateAMG);
+        (_liquidatedAMG,) = Redemptions.closeTickets(_agent, amountToLiquidateAMG);
         // calculate payouts to liquidator
         _payoutC1Wei = Conversion.convertAmgToTokenWei(_liquidatedAMG.mulBips(class1Factor), _cr.amgToC1WeiPrice);
         _payoutPoolWei = Conversion.convertAmgToTokenWei(_liquidatedAMG.mulBips(poolFactor), _cr.amgToPoolWeiPrice);

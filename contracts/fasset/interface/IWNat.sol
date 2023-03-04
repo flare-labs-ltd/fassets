@@ -18,7 +18,7 @@ interface IWNat is IVPToken {
      * @notice Deposit Native from msg.sender and mints WNAT ERC20 to recipient address.
      * @param recipient An address to receive minted WNAT.
      */
-    function depositTo(address recipient) external;
+    function depositTo(address recipient) external payable;
 
     /**
      * @notice Withdraw Native and burn WNAT ERC20.

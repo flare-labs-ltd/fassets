@@ -3,6 +3,7 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/implementation/NativeTokenBurner.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./data/AssetManagerState.sol";
@@ -14,6 +15,7 @@ import "./CollateralTokens.sol";
 
 library Agents {
     using SafeCast for uint256;
+    using SafePct for uint256;
     using Agent for Agent.State;
 
     function setAgentMinClass1CollateralRatioBIPS(
@@ -143,14 +145,34 @@ library Agents {
         _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
     }
 
+    // We cannot burn typical class1 collateral (stablecoins), so the agent must buy them for NAT
+    // at FTSO price multiplied by class1BuyForFlarePremiumBIPS and then we burn the NATs.
     function burnCollateralClass1(
         Agent.State storage _agent,
-        uint256 _amountNATWei
+        uint256 _amountClass1Wei
     )
         internal
     {
-        // TODO: we don't want to burn (lock) stablecoins, should we put them on market for
-        // flares and then burn flares?
+        CollateralToken.Data storage class1Collateral = getClass1Collateral(_agent);
+        CollateralToken.Data storage poolCollateral = getPoolCollateral(_agent);
+        if (class1Collateral.token == poolCollateral.token) {
+            // If class1 collateral is NAT, just burn directly.
+            burnCollateralNAT(_agent, _amountClass1Wei);
+        } else {
+            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+            // Calculate NAT amount the agent has to pay to receive the "burned" class1 tokens.
+            // The price is FTSO price plus configurable premium (class1BuyForFlarePremiumBIPS).
+            (uint256 priceMul, uint256 priceDiv) =
+                Conversion.currentWeiPriceRatio(class1Collateral, poolCollateral);
+            uint256 amountNatWei = _amountClass1Wei.mulDiv(priceMul, priceDiv)
+                .mulBips(settings.class1BuyForFlareFactorBIPS);
+            // Transfer class1 collateral to the agent vault owner
+            SafeERC20.safeTransfer(class1Collateral.token, vaultOwner(_agent), _amountClass1Wei);
+            // Burn the NAT equivalent from agent's vault.
+            // We could have the agent send NATs along with the external call instead, but that raises issues of
+            // returning overpaid NATs, so the agent should just deposit NATs to the vault and we pay from there.
+            burnCollateralNAT(_agent, amountNatWei);
+        }
     }
 
     function burnCollateralNAT(
@@ -214,6 +236,14 @@ library Agents {
     {
         address owner = IAgentVault(_agent.vaultAddress()).owner();
         require(msg.sender == owner, "only agent vault owner");
+    }
+
+    function requireOnlyCollateralPool(
+        Agent.State storage _agent
+    )
+        internal view
+    {
+        require(msg.sender == address(_agent.collateralPool), "only collateral pool");
     }
 
     function isCollateralToken(

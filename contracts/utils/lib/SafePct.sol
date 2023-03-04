@@ -60,4 +60,11 @@ library SafePct {
     function mulBips(uint256 x, uint256 y) internal pure returns (uint256) {
         return mulDiv(x, y, MAX_BIPS);
     }
+
+    /**
+     * Return x * (1 + bips/MAX_BIPS).
+     */
+    function addBips(uint256 x, uint256 bips) internal pure returns (uint256) {
+        return mulDiv(x, MAX_BIPS + bips, MAX_BIPS);
+    }
 }
