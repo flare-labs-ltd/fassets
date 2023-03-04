@@ -57,7 +57,50 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         return required.lt(new BN(0)) ? new BN(0) : required;
     }
 
-    describe("entering collateral pool", () => {
+    async function getPoolCR() {
+        const collateral = await wNat.balanceOf(collateralPool.address);
+        const fassets = await fAsset.totalSupply();
+        return [collateral, fassets];
+    }
+
+    describe("basic restrictions", async () => {
+
+        it("should fail at setting pool token address from non-agent address", async () => {
+            await expectRevert(collateralPool.setPoolToken(accounts[0]), "only agent");
+        });
+
+        it("should fail at resetting pool token", async () => {
+            await expectRevert(collateralPool.setPoolToken(accounts[0], { from: agentVault }),
+                "pool token already set");
+        });
+
+    });
+
+    describe("collateral pool token tests", async () => {
+
+    });
+
+    describe("entering collateral pool", async () => {
+
+        it("should not enter the pool with too little funds", async () => {
+            const prms = collateralPool.enter(0, true, { value: ETH(1).sub(new BN(1)) });
+            await expectRevert(prms, "amount of nat sent is too low");
+        });
+
+        it("should not enter with collateral that doesn't cover the one in a tokenless pool", async () => {
+            await wNat.mintAmount(collateralPool.address, ETH(10));
+            const prms = collateralPool.enter(0, true, { value: ETH(5) });
+            await expectRevert(prms,
+                "if pool has no tokens, but has collateral, you need to send at least that amount of collateral");
+        });
+
+        it("should not enter the pool (with f-assets) with allowance set too small", async () => {
+            await fAsset.mintAmount(collateralPool.address, ETH(10));
+            await fAsset.mintAmount(accounts[1], ETH(1000));
+            await collateralPool.enter(0, true, { value: ETH(5), from: accounts[0] });
+            const prms = collateralPool.enter(0, true, { value: ETH(5), from: accounts[1] });
+            await expectRevert(prms, "f-asset allowance too small")
+        });
 
         it("should enter the f-assetless pool in multiple ways", async () => {
             const investment = [
@@ -123,7 +166,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const debtFasset1 = await collateralPool.fassetDebtOf(accounts[0]);
             expect(debtFasset1.toString()).to.equal(virtualFassets1.toString());
             // pay off the f-asset debt
-            await collateralPool.burnDebt(debtFasset1);
+            await collateralPool.burnFassetDebt(debtFasset1);
             const tokens2 = await collateralPoolToken.balanceOf(accounts[0]);
             expect(tokens2.toString()).to.equal(tokens1.toString());
             const liquidTokens2 = await collateralPoolToken.freeBalanceOf(accounts[0]);
@@ -138,14 +181,16 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     describe("exiting collateral pool", async () => {
 
-        it("should enter and exit correctly in the case of fasset supply = 0", async () => {
-            const collateral = ETH(1);
-            await collateralPool.enter(0, false, { value: collateral });
+        it("should revert on exiting the pool with zero tokens", async () => {
+            const prms = collateralPool.exit(0, TokenExitType.PRIORITIZE_DEBT);
+            await expectRevert(prms, "token share is zero");
+        });
+
+        it("should revert on user not having enough tokens", async () => {
+            await collateralPool.enter(0, true, { value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            expect(tokens.toString()).to.equal(collateral.toString());
-            await collateralPool.exit(tokens, TokenExitType.PRIORITIZE_FASSET);
-            const nat = await wNat.balanceOf(accounts[0]);
-            expect(nat.toString()).to.equal(collateral.toString());
+            const prms = collateralPool.exit(tokens.add(new BN(1)), TokenExitType.PRIORITIZE_FASSET);
+            await expectRevert(prms, "token balance too low");
         });
 
         it("should enter the pool and refuse to exit due to CR falling below exitCR", async () => {
@@ -162,6 +207,16 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 "collateral ratio falls below exitCR");
             await expectRevert(collateralPool.exit(tokens, TokenExitType.PRIORITIZE_FASSET),
                 "collateral ratio falls below exitCR")
+        });
+
+        it("should enter and exit correctly in the case of fasset supply = 0", async () => {
+            const collateral = ETH(1);
+            await collateralPool.enter(0, false, { value: collateral });
+            const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            expect(tokens.toString()).to.equal(collateral.toString());
+            await collateralPool.exit(tokens, TokenExitType.PRIORITIZE_FASSET);
+            const nat = await wNat.balanceOf(accounts[0]);
+            expect(nat.toString()).to.equal(collateral.toString());
         });
 
         it("should enter and exit, yielding no profit and (almost) no loss", async () => {
@@ -182,7 +237,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             expect(nat.sub(collateral).toNumber()).lessThanOrEqual(1);
         });
 
-        it.only("should yield no profit or loss to two people exiting", async () => {
+        it("should yield no (at most 1wei) profit or loss to multiple people entering and exiting", async () => {
             const investments = [
                 { fasset: ETH(10), nat: ETH(10) },
                 { fasset: ETH(100), nat: ETH(10) },
@@ -196,8 +251,8 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // users enter the pool
             for (let i = 0; i < investments.length; i++)
                 await collateralPool.enter(0, true, { value: investments[i].nat, from: accounts[i] });
-            // users exit the pool
-            for (let i = 0; i < investments.length; i++) {
+            // users exit the pool (in reverse order)
+            for (let i = investments.length; i > 0; i--) {
                 const tokens = await collateralPoolToken.balanceOf(accounts[i]);
                 await collateralPool.exit(tokens, TokenExitType.PRIORITIZE_FASSET, { from: accounts[i] });
                 const wnat = await wNat.balanceOf(accounts[i]);
@@ -211,16 +266,83 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     describe("self close exits", async () => {
 
-        it("should do the self close exit correctly", async () => {
-            const user0Fassets = ETH(10);
-            const user1Fassets = ETH(10);
-            const user0Collateral = ETH(100);
-            const user1Collateral = ETH(1000);
-            await fAsset.mintAmount(accounts[0], user0Fassets);
-            await fAsset.mintAmount(accounts[1], user1Fassets);
-            // get f-assets into the pool and get collateral above exitCR
-            const natToExit = await getNatRequiredToGetPoolCRAbove(exitCR);
-            await collateralPool.enter(0, true, { value: natToExit.toString(), from: accounts[2] });
+        it.only("should do a self-close exit with only one user", async () => {
+            const collateral = ETH(100);
+            const fassets = ETH(100);
+            await fAsset.mintAmount(accounts[0], fassets);
+            await fAsset.increaseAllowance(collateralPool.address, fassets);
+            await collateralPool.enter(0, true, { value: collateral });
+            const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            await collateralPool.selfCloseExit(tokens, true, TokenExitType.PRIORITIZE_FASSET, "");
+            const wnat = await wNat.balanceOf(accounts[0]);
+            expect(wnat.toString()).to.equal(collateral.toString());
+            const fassets2 = await fAsset.balanceOf(accounts[0]);
+            // taking all collateral out of the pool and keeping CR the same
+            // means you have to destroy all f-assets in existence
+            expect(fassets2.toString()).to.equal("0");
         });
+
+        // should know how to calculate fassets needed for pool stabilization of pool CR
+        it("should do a self-close exit with multiple users", async () => {
+            const fassetBalances = [ETH(1000), ETH(1000)];
+            const investments = [
+                { fasset: ETH(0), nat: ETH(100) },
+                { fasset: ETH(0), nat: ETH(100)}
+            ];
+            await fAsset.mintAmount(accounts[0], fassetBalances[0]);
+            await fAsset.mintAmount(accounts[1], fassetBalances[1]);
+            await fAsset.increaseAllowance(collateralPool.address, fassetBalances[0], { from: accounts[0] });
+            await fAsset.increaseAllowance(collateralPool.address, fassetBalances[1], { from: accounts[1] });
+            // users enter the pool
+            await collateralPool.enter(0, true, { value: investments[0].nat, from: accounts[0] });
+            await collateralPool.enter(0, true, { value: investments[1].nat, from: accounts[1] });
+            // users do self-close exit
+            const cr0 = await getPoolCR();
+            const tokenShare0 = await collateralPoolToken.balanceOf(accounts[0]);
+            await collateralPool.selfCloseExit(tokenShare0, true, TokenExitType.PRIORITIZE_FASSET, "");
+            const cr1 = await getPoolCR();
+            const tokenShare1 = await collateralPoolToken.balanceOf(accounts[1]);
+            await collateralPool.selfCloseExit(tokenShare1, true, TokenExitType.PRIORITIZE_FASSET, "");
+            const cr2 = await getPoolCR();
+            assert(cr0[0].mul(cr1[1]).lte(cr1[0].mul(cr0[1])));
+            assert(cr1[0].mul(cr2[1]).lte(cr2[0].mul(cr1[1])));
+        });
+    });
+
+    describe("explicitly dealing with fasset debt", async () => {
+
+        // self-close exits can exit the pool even when CR is below exitCR
+        it("should enter the pool accruing debt and pay it off", async () => {
+            await fAsset.mintAmount(accounts[1], ETH(10));
+            await fAsset.mintAmount(collateralPool.address, ETH(1));
+            await fAsset.increaseAllowance(collateralPool.address, ETH(10), { from: accounts[1] });
+            await collateralPool.enter(0, true, { value: ETH(10) });
+            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[1] });
+            const debt = await collateralPool.fassetDebtOf(accounts[1]);
+            await collateralPool.burnFassetDebt(debt, { from: accounts[1] });
+            const newdebt = await collateralPool.fassetDebtOf(accounts[1]);
+            expect(newdebt.toString()).to.equal("0");
+            const lockedTokens = await collateralPool.debtTokensOf(accounts[1]);
+            expect(lockedTokens.toString()).to.equal("0");
+        });
+
+        it("should enter the pool accruing debt, then mint new debt to collect f-asset rewards", async () => {
+            // get f-assets in the pool
+            await fAsset.mintAmount(collateralPool.address, ETH(1));
+            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
+            await collateralPool.enter(0, false, { value: ETH(10), from: accounts[1] });
+            await fAsset.mintAmount(collateralPool.address, ETH(1));
+            const virtualFassets = await collateralPool.virtualFassetOf(accounts[1]);
+            const debtFassets = await collateralPool.fassetDebtOf(accounts[1]);
+            const freeFassets = virtualFassets.sub(debtFassets);
+            await collateralPool.mintFassetDebt(freeFassets, { from: accounts[1] });
+            const fassetReward = await fAsset.balanceOf(accounts[1]);
+            expect(fassetReward.toString()).to.equal(freeFassets.toString());
+        });
+
+    });
+
+    describe("custom scenarios", async () => {
+        it("should enter proportionally")
     });
 });

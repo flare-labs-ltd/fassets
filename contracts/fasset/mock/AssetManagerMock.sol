@@ -15,6 +15,11 @@ contract AssetManagerMock {
         _agentVault.payoutNAT(_recipient, _amount);
     }
 
+    function redeemChosenAgentUnderlying(
+        address _agentVault, uint256 _amountUBA, string memory _redeemerUnderlyingAddressString) external {}
+    function redeemChosenAgentCollateral(
+        address _agentVault, uint256 _amountUBA, address _redeemerAddress) external {}
+
     function getWNat() external view returns (IWNat) {
         return wNat;
     }
@@ -24,6 +29,7 @@ contract AssetManagerMock {
     }
 
     function getLotSize() public pure returns (uint256) {
-        return 10000;
+        return 1000;
     }
+
 }

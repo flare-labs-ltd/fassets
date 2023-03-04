@@ -47,7 +47,7 @@ contract CollateralPool is ReentrancyGuard {
     }
 
     modifier onlyAgent {
-        require(msg.sender == address(agentVault));
+        require(msg.sender == address(agentVault), "only agent");
         _;
     }
 
@@ -132,19 +132,16 @@ contract CollateralPool is ReentrancyGuard {
         require(_tokenShare > 0, "token share is zero");
         require(_tokenShare <= poolToken.balanceOf(msg.sender), "token balance too low");
         AssetData memory assetData = _getAssetData();
-        // poolTokenSupply >= _tokenShare > 0
-        uint256 natShare = assetData.poolNatBalance.mulDiv(_tokenShare, assetData.poolTokenSupply);
+        uint256 natShare = assetData.poolNatBalance.mulDiv(
+            _tokenShare, assetData.poolTokenSupply); // poolTokenSupply >= _tokenShare > 0
         require(natShare > 0, "amount of sent tokens is too small");
         (uint256 debtFassetShare, uint256 freeFassetShare) = _getFassetSharesFromTokenShare(
             msg.sender, _tokenShare, _exitType, assetData);
-        // calculate msg.sender's additionally required fassets
-        uint256 updatedPoolBalanceNat = assetData.poolNatBalance - natShare;
-        uint256 updatedFassetSupply = assetData.fassetSupply - freeFassetShare;
-        uint256 exemptionFassets = assetData.poolFassetBalance.mulDiv(
-            updatedPoolBalanceNat, assetData.poolNatBalance);
-        uint256 additionallyRequiredFassets = exemptionFassets <= updatedFassetSupply ?
-            updatedFassetSupply - exemptionFassets : 0;
-        if (additionallyRequiredFassets > 0) {
+        uint256 fassetsRequiredToKeepCR = assetData.fassetSupply.mulDiv(
+            natShare, assetData.poolNatBalance); // poolNatBalance >= natShare > 0
+        uint256 additionallyRequiredFassets = 0;
+        if (freeFassetShare < fassetsRequiredToKeepCR) {
+            additionallyRequiredFassets = fassetsRequiredToKeepCR - freeFassetShare;
             require(fAsset.allowance(msg.sender, address(this)) >= additionallyRequiredFassets,
                 "f-asset allowance too small");
             fAsset.transferFrom(msg.sender, address(this), additionallyRequiredFassets);
