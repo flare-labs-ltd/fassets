@@ -398,7 +398,9 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         assert(wNat == _oldWNat);
         // transfer all funds to new WNat
         uint256 balance = _oldWNat.balanceOf(address(this));
+        internalWithdrawal = true;
         _oldWNat.withdraw(balance);
+        internalWithdrawal = false;
         _wNat.deposit{value: balance}();
         // set new WNat contract
         wNat = _wNat;
