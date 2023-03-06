@@ -204,7 +204,8 @@ library Agents {
         uint256 tokenIndex = CollateralTokens.getIndex(_tokenIdentifier);
         CollateralToken.Data storage token = state.collateralTokens[tokenIndex];
         require(token.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "not class1 collateral token");
-        require(CollateralTokens.isValid(token), "token not valid");
+        // agent should never switch to a deprecated or already invalid token
+        require(token.validUntil == 0, "token deprecated");
         // TODO: check there is enough collateral for current mintings
         _agent.class1CollateralToken = tokenIndex.toUint16();
         // TODO: timelock, otherwise there can be withdrawal without announcement

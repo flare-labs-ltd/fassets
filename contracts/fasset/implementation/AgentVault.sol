@@ -18,6 +18,9 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     IERC20[] private usedTokens;
     mapping(IERC20 => uint256) private tokenUseFlags;
 
+    IWNat public wNat;
+    bool private internalWithdrawal;
+
     uint256 private constant TOKEN_DEPOSIT = 1;
     uint256 private constant TOKEN_DELEGATE = 2;
     uint256 private constant TOKEN_DELEGATE_GOVERNANCE = 4;
@@ -39,15 +42,14 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
 
     // needed to allow wNat.withdraw() to send back funds, since there is no withdrawTo()
     receive() external payable {
-        require(msg.sender == address(assetManager.getWNat()), "only wNat");
+        require(internalWithdrawal, "internal use only");
     }
 
     // without "onlyOwner" to allow owner to send funds from any source
     function depositNat() external payable override {
-        IWNat wnat = assetManager.getWNat();
-        wnat.deposit{value: msg.value}();
-        assetManager.collateralDeposited(wnat);
-        _tokenUsed(wnat, TOKEN_DEPOSIT);
+        wNat.deposit{value: msg.value}();
+        assetManager.collateralDeposited(wNat);
+        _tokenUsed(wNat, TOKEN_DEPOSIT);
     }
 
     // without "onlyOwner" to allow owner to send funds from any source
@@ -101,12 +103,10 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         onlyOwner
         nonReentrant
     {
-        IWNat wnat = assetManager.getWNat();
         // check that enough was announced and reduce announcement
-        assetManager.withdrawCollateral(wnat, _amount);
-        // withdraw from wnat contract and transfer it to _recipient
-        wnat.withdraw(_amount);
-        _transferNAT(_recipient, _amount);
+        assetManager.withdrawCollateral(wNat, _amount);
+        // withdraw from wNat contract and transfer it to _recipient
+        _withdrawWNatTo(_recipient, _amount);
     }
 
     function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient)
@@ -121,7 +121,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     }
 
     // Allow transferring a token, airdropped to the agent vault, to the owner.
-    // Doesn't work for wNat because this would allow withdrawing the locked collateral.
+    // Doesn't work for collateral tokens because this would allow withdrawing the locked collateral.
     function transferExternalToken(IERC20 _token, uint256 _amount)
         external override
         onlyOwner
@@ -145,13 +145,12 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     }
 
     function delegateGovernance(address _to) external override onlyOwner {
-        IWNat wnat = assetManager.getWNat();
-        wnat.governanceVotePower().delegate(_to);
-        _tokenUsed(wnat, TOKEN_DELEGATE_GOVERNANCE);
+        wNat.governanceVotePower().delegate(_to);
+        _tokenUsed(wNat, TOKEN_DELEGATE_GOVERNANCE);
     }
 
     function undelegateGovernance() external override onlyOwner {
-        assetManager.getWNat().governanceVotePower().undelegate();
+        wNat.governanceVotePower().undelegate();
     }
 
     // Claim ftso rewards. Alternatively, you can set claim executor and then claim directly from FtsoRewardManager.
@@ -244,8 +243,9 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     }
 
     function _withdrawWNatTo(address payable _recipient, uint256 _amount) private {
-        IWNat wnat = assetManager.getWNat();
-        wnat.withdraw(_amount);
+        internalWithdrawal = true;
+        wNat.withdraw(_amount);
+        internalWithdrawal = false;
         _transferNAT(_recipient, _amount);
     }
 
