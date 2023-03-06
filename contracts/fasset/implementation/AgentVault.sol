@@ -38,6 +38,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     constructor(IAssetManager _assetManager, address payable _owner) {
         assetManager = _assetManager;
         owner = _owner;
+        wNat = _assetManager.getWNat();
     }
 
     // needed to allow wNat.withdraw() to send back funds, since there is no withdrawTo()
