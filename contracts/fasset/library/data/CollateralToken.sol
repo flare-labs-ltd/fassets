@@ -7,14 +7,12 @@ import "../../interface/IAssetManager.sol";
 
 library CollateralToken {
     struct Data {
-        // Identifier used to access token for updating or getting info.
-        string identifier;
-
         // The ERC20 token contract for this collateral type.
         // immutable
         IERC20 token;
 
         // The kind of collateral for this token.
+        // immutable
         IAssetManager.CollateralTokenClass tokenClass;
 
         // Same as token.decimals(), when that exists.

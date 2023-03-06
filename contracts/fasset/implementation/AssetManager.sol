@@ -158,13 +158,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */
     function createAgent(
         string memory _underlyingAddressString,
-        string memory _class1CollateralTokenId
+        IERC20 _class1CollateralToken
     )
         external
         onlyAttached
         onlyWhitelistedSender
     {
-        AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString, _class1CollateralTokenId);
+        AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString, _class1CollateralToken);
     }
 
     /**
@@ -933,7 +933,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     function setCollateralRatiosForToken(
-        string memory _tokenIdentifier,
+        IAssetManager.CollateralTokenClass _tokenClass,
+        IERC20 _token,
         uint256 _minCollateralRatioBIPS,
         uint256 _ccbMinCollateralRatioBIPS,
         uint256 _safetyMinCollateralRatioBIPS
@@ -941,18 +942,19 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
         onlyAssetManagerController
     {
-        CollateralTokens.setCollateralRatios(_tokenIdentifier,
+        CollateralTokens.setCollateralRatios(_tokenClass, _token,
             _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
     }
 
     function deprecateCollateralToken(
-        string memory _tokenIdentifier,
+        IAssetManager.CollateralTokenClass _tokenClass,
+        IERC20 _token,
         uint256 _invalidationTimeSec
     )
         external
         onlyAssetManagerController
     {
-        CollateralTokens.deprecate(_tokenIdentifier, _invalidationTimeSec);
+        CollateralTokens.deprecate(_tokenClass, _token, _invalidationTimeSec);
     }
 
     /**
@@ -984,15 +986,16 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     /**
-     * Get information about a token with identifier `_tokenIdentifier`.
+     * Get collateral  information about a token.
      */
     function getCollateralToken(
-        string memory _tokenIdentifier
+        IAssetManager.CollateralTokenClass _tokenClass,
+        IERC20 _token
     )
         external view
         returns (IAssetManager.CollateralTokenInfo memory)
     {
-        return CollateralTokens.getInfo(_tokenIdentifier);
+        return CollateralTokens.getInfo(_tokenClass, _token);
     }
 
     /**

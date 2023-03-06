@@ -56,7 +56,7 @@ library FullAgentInfo {
 
         // The token identifier of the agent's current class 1 collateral.
         // Token identifier can be used to call AssetManager.getCollateralTokenInfo().
-        string class1CollateralTokenId;
+        IERC20 class1CollateralToken;
 
         // Amount, set by agent, at which locked and free collateral are calculated for new mintings.
         // For agent's class 1 collateral.
@@ -153,7 +153,7 @@ library FullAgentInfo {
         _info.collateralPool = address(agent.collateralPool);
         _info.underlyingAddressString = agent.underlyingAddressString;
         _info.publiclyAvailable = agent.availableAgentsPos != 0;
-        _info.class1CollateralTokenId = collateral.identifier;
+        _info.class1CollateralToken = collateral.token;
         _info.feeBIPS = agent.feeBIPS;
         _info.minClass1CollateralRatioBIPS =
             Math.max(agent.minClass1CollateralRatioBIPS, collateral.minCollateralRatioBIPS);

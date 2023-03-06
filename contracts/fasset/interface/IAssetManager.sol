@@ -11,12 +11,10 @@ interface IAssetManager {
         CLASS1  // usable as class 1 collateral
     }
 
+    // Collateral token is uniquely identified by the pair (tokenClass, token).
     struct CollateralTokenInfo {
         // The kind of collateral for this token.
         CollateralTokenClass tokenClass;
-
-        // Identifier used to access token for updating or getting info.
-        string identifier;
 
         // The ERC20 token contract for this collateral type.
         IERC20 token;
@@ -57,9 +55,11 @@ interface IAssetManager {
         address _agentVault, address _receiver, uint256 _amountUBA) external;
     // collateral tokens
     function addCollateralToken(IAssetManager.CollateralTokenInfo calldata _data) external;
-    function setCollateralRatiosForToken(string memory _tokenIdentifier, uint256 _minCollateralRatioBIPS,
-        uint256 _ccbMinCollateralRatioBIPS, uint256 _safetyMinCollateralRatioBIPS) external;
-    function deprecateCollateralToken(string memory _tokenIdentifier, uint256 _invalidationTimeSec) external;
+    function setCollateralRatiosForToken(CollateralTokenClass _tokenClass, IERC20 _token,
+        uint256 _minCollateralRatioBIPS, uint256 _ccbMinCollateralRatioBIPS, uint256 _safetyMinCollateralRatioBIPS)
+        external;
+    function deprecateCollateralToken(CollateralTokenClass _tokenClass, IERC20 _token,
+        uint256 _invalidationTimeSec) external;
     function setCurrentPoolCollateralToken(IAssetManager.CollateralTokenInfo calldata _data) external;
     // view methods
     function isCollateralToken(address _agentVault, IERC20 _token) external view returns (bool);

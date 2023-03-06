@@ -311,7 +311,8 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setCollateralRatiosForToken(
         IAssetManager[] memory _assetManagers,
-        string memory _tokenIdentifier,
+        IAssetManager.CollateralTokenClass _tokenClass,
+        IERC20 _token,
         uint256 _minCollateralRatioBIPS,
         uint256 _ccbMinCollateralRatioBIPS,
         uint256 _safetyMinCollateralRatioBIPS
@@ -320,21 +321,22 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         onlyGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).setCollateralRatiosForToken(
-                _tokenIdentifier, _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
+            _checkAssetManager(_assetManagers[i]).setCollateralRatiosForToken(_tokenClass, _token,
+                _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
         }
     }
 
     function deprecateCollateralToken(
         IAssetManager[] memory _assetManagers,
-        string memory _tokenIdentifier,
+        IAssetManager.CollateralTokenClass _tokenClass,
+        IERC20 _token,
         uint256 _invalidationTimeSec
     )
         external
         onlyGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).deprecateCollateralToken(_tokenIdentifier, _invalidationTimeSec);
+            _checkAssetManager(_assetManagers[i]).deprecateCollateralToken(_tokenClass, _token, _invalidationTimeSec);
         }
     }
 

@@ -355,21 +355,22 @@ library AMEvents {
         address value);
 
     event CollateralTokenAdded(
-        string identifier,
-        address tokenContract,
         uint8 tokenClass,
+        address tokenContract,
         string ftsoSymbol,
         uint256 minCollateralRatioBIPS,
         uint256 ccbMinCollateralRatioBIPS,
         uint256 safetyMinCollateralRatioBIPS);
 
     event CollateralTokenRatiosChanged(
-        string identifier,
+        uint8 tokenClass,
+        address tokenContract,
         uint256 minCollateralRatioBIPS,
         uint256 ccbMinCollateralRatioBIPS,
         uint256 safetyMinCollateralRatioBIPS);
 
     event CollateralTokenDeprecated(
-        string identifier,
+        uint8 tokenClass,
+        address tokenContract,
         uint256 validUntil);
 }

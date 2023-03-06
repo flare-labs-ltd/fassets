@@ -52,7 +52,7 @@ library AgentsExternal {
         Agent.Type _agentType,
         IAssetManager _assetManager,
         string memory _underlyingAddressString,
-        string memory _collateralTokenClass1
+        IERC20 _class1CollateralToken
     )
         external
     {
@@ -66,7 +66,7 @@ library AgentsExternal {
         agent.agentType = _agentType;
         agent.status = Agent.Status.NORMAL;
         // set collateral token types
-        Agents.setClass1Collateral(agent, _collateralTokenClass1);
+        Agents.setClass1Collateral(agent, _class1CollateralToken);
         agent.poolCollateralToken = state.currentPoolCollateralToken;
         // initially, agent's min collateral ratios are the same as global min collateral ratios
         // this setting is ok for self-minting, but not for public minting since it quickly leads to liquidation
@@ -283,13 +283,13 @@ library AgentsExternal {
 
     function switchClass1Collateral(
         address _agentVault,
-        string memory _tokenIdentifier
+        IERC20 _token
     )
         external
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        Agents.setClass1Collateral(agent, _tokenIdentifier);
+        Agents.setClass1Collateral(agent, _token);
     }
 
     function isCollateralToken(

@@ -196,12 +196,12 @@ library Agents {
 
     function setClass1Collateral(
         Agent.State storage _agent,
-        string memory _tokenIdentifier
+        IERC20 _token
     )
         internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        uint256 tokenIndex = CollateralTokens.getIndex(_tokenIdentifier);
+        uint256 tokenIndex = CollateralTokens.getIndex(IAssetManager.CollateralTokenClass.CLASS1, _token);
         CollateralToken.Data storage token = state.collateralTokens[tokenIndex];
         require(token.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "not class1 collateral token");
         // agent should never switch to a deprecated or already invalid token

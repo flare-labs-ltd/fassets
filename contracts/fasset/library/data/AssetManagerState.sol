@@ -19,8 +19,8 @@ library AssetManagerState {
         // Pool collateral (always WNat) has index 0.
         CollateralToken.Data[] collateralTokens;
 
-        // mapping(identifier => collateralTokens index + 1)
-        mapping(string => uint256) collateralTokenIndex;
+        // mapping((tokenClass, tokenAddress) => collateralTokens index + 1)
+        mapping(bytes32 => uint256) collateralTokenIndex;
 
         // A list of all agents that are available for minting.
         // Type: array of agent vault addresses; when one is deleted, its position is filled with last
