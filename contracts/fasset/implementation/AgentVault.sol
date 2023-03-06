@@ -4,8 +4,8 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interface/IWNat.sol";
-import "../interface/IAssetManager.sol";
 import "../interface/IAgentVault.sol";
+import "../interface/IAssetManager.sol";
 import "../interface/ICollateralPool.sol";
 
 
@@ -185,6 +185,21 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
 
     function optOutOfAirdrop(IDistributionToDelegators _distribution) external override onlyOwner {
         _distribution.optOutOfAirdrop();
+    }
+
+    function upgradeWNatContract(IWNat _newWNat)
+        external
+        onlyAssetManager
+    {
+        if (_newWNat == wNat) return;
+        // transfer all funds to new WNat
+        uint256 balance = wNat.balanceOf(address(this));
+        internalWithdrawal = true;
+        wNat.withdraw(balance);
+        internalWithdrawal = false;
+        _newWNat.deposit{value: balance}();
+        // set new WNat contract
+        wNat = _newWNat;
     }
 
     // Used by asset manager when destroying agent.

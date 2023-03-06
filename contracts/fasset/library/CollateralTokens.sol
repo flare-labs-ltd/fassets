@@ -30,6 +30,7 @@ library CollateralTokens {
     )
         external
     {
+        require(_data.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "collateral must be class1");
         _add(_data);
     }
 
@@ -127,6 +128,19 @@ library CollateralTokens {
         uint256 index = state.collateralTokenIndex[_tokenKey(_tokenClass, _token)];
         require(index > 0, "unknown token");
         return index - 1;
+    }
+
+    function tryGetIndex(
+        IAssetManager.CollateralTokenClass _tokenClass,
+        IERC20 _token
+    )
+        internal view
+        returns (bool _isCollateralToken, uint256 _index)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint256 index = state.collateralTokenIndex[_tokenKey(_tokenClass, _token)];
+        _isCollateralToken = index > 0;
+        _index = _isCollateralToken ? index - 1 : 0;
     }
 
     function isValid(CollateralToken.Data storage _token)

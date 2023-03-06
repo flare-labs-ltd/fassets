@@ -265,7 +265,7 @@ library AgentsExternal {
         }
     }
 
-    function upgradeWNat(
+    function upgradeWNatContract(
         address _agentVault
     )
         external
@@ -273,11 +273,24 @@ library AgentsExternal {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         AssetManagerState.State storage state = AssetManagerState.get();
+        IWNat wNat = IWNat(address(state.collateralTokens[state.poolCollateralIndex].token));
+        // upgrade pool wnat
         if (agent.poolCollateralIndex != state.poolCollateralIndex) {
-            IWNat oldWNat = IWNat(address(state.collateralTokens[agent.poolCollateralIndex].token));
-            IWNat wNat = IWNat(address(state.collateralTokens[state.poolCollateralIndex].token));
             agent.poolCollateralIndex = state.poolCollateralIndex;
-            agent.collateralPool.upgradeWNatContract(oldWNat, wNat);
+            agent.collateralPool.upgradeWNatContract(wNat);
+        }
+        // upgrade agent vault wnat
+        IWNat vaultWNat = IAgentVault(_agentVault).wNat();
+        if (vaultWNat != wNat) {
+            IAgentVault(_agentVault).upgradeWNatContract(wNat);
+            // should also switch collateral if agent uses WNat as class1 collateral
+            if (vaultWNat == agent.getClass1Token()) {
+                (bool wnatIsCollateralToken, uint256 index) =
+                    CollateralTokens.tryGetIndex(IAssetManager.CollateralTokenClass.CLASS1, vaultWNat);
+                if (wnatIsCollateralToken) {
+                    agent.class1CollateralIndex = uint16(index);
+                }
+            }
         }
     }
 

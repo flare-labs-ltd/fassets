@@ -391,19 +391,19 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         //       (or less if there is not enough)
     }
 
-    function upgradeWNatContract(IWNat _oldWNat, IWNat _wNat)
+    function upgradeWNatContract(IWNat _newWNat)
         external
         onlyAssetManager
     {
-        assert(wNat == _oldWNat);
+        if (_newWNat == wNat) return;
         // transfer all funds to new WNat
-        uint256 balance = _oldWNat.balanceOf(address(this));
+        uint256 balance = wNat.balanceOf(address(this));
         internalWithdrawal = true;
-        _oldWNat.withdraw(balance);
+        wNat.withdraw(balance);
         internalWithdrawal = false;
-        _wNat.deposit{value: balance}();
+        _newWNat.deposit{value: balance}();
         // set new WNat contract
-        wNat = _wNat;
+        wNat = _newWNat;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

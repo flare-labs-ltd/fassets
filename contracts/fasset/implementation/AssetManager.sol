@@ -976,13 +976,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for
      * new ones and sets it for use by the pool.
      */
-    function upgradeWNat(
+    function upgradeWNatContract(
         address _agentVault
     )
         external
     {
         // AgentsExternal.upgradeWNat checks that only agent owner can call
-        AgentsExternal.upgradeWNat(_agentVault);
+        AgentsExternal.upgradeWNatContract(_agentVault);
     }
 
     /**

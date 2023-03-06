@@ -2,11 +2,10 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "flare-smart-contracts/contracts/userInterfaces/IVPToken.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IClaimSetupManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IDistributionToDelegators.sol";
-
+import "./IWNat.sol";
 
 interface IAgentVault {
     function depositNat() external payable;
@@ -45,6 +44,8 @@ interface IAgentVault {
 
     function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient) external;
 
+    function upgradeWNatContract(IWNat newWNat) external;
+
     // agent should make sure to claim rewards before calling destroy(), or they will be forfeit
     function destroy() external;
 
@@ -62,4 +63,6 @@ interface IAgentVault {
     function transferExternalToken(IERC20 _token, uint256 _amount) external;
 
     function owner() external view returns (address payable);
+
+    function wNat() external view returns (IWNat);
 }
