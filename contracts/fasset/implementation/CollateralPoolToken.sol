@@ -40,7 +40,7 @@ contract CollateralPoolToken is ERC20 {
     function _beforeTokenTransfer(
         address from, address /* to */, uint256 amount
     ) internal view override {
-        if (from != address(0)) { // collateral pool can burn locked tokens
+        if (msg.sender != collateralPool) { // collateral pool can mint and burn locked tokens
             require(amount <= freeBalanceOf(from), "liquid balance too low");
         }
     }

@@ -229,7 +229,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             expect(nat.toString()).to.equal(collateral.toString());
         });
 
-        it("should enter and exit, yielding no profit and (almost) no loss", async () => {
+        it("should enter and exit, yielding no profit and no (at most 1wei) loss", async () => {
             const collateral = ETH(100);
             const fassets = ETH(1);
             await fAsset.mintAmount(accounts[1], ETH(10));
@@ -272,6 +272,25 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             }
         });
 
+        it.only("should correctly exit with WITHDRAW_MOST_FEES token exit type", async () => {
+            // user0 enters the pool
+            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[0] });
+            // collateral pool collects fees
+            await fAsset.mintAmount(collateralPool.address, ETH(10));
+            // user1 enters the pool with no f-assets
+            await collateralPool.enter(0, false, { value: ETH(10), from: accounts[1] });
+            // collateral pool collects additional fees
+            await fAsset.mintAmount(collateralPool.address, ETH(10));
+            // user1 exits with fees using WITHDRAW_MOST_FEES token exit type
+            const allTokens = await collateralPoolToken.totalSupply();
+            const virtualFassets = await collateralPool.virtualFassetOf(accounts[1]);
+            const freeTokens = await collateralPoolToken.freeBalanceOf(accounts[1]);
+            await collateralPool.exit(freeTokens, TokenExitType.WITHDRAW_MOST_FEES, { from: accounts[1] });
+            // user1 should have earned f-asset fees
+            const earnedFassets = await fAsset.balanceOf(accounts[1]);
+            expect(earnedFassets.toString()).to.equal(virtualFassets.mul(freeTokens).div(allTokens).toString());
+        });
+
     });
 
     describe("self close exits", async () => {
@@ -294,7 +313,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         // should know how to calculate fassets needed for pool stabilization of pool CR
         it.skip("should do a self-close exit with multiple users", async () => {
-            const fassetBalances = [ETH(1000), ETH(1000)];
+            const fassetBalances = [ETH(2000), ETH(1000)];
             const investments = [
                 { fasset: ETH(0), nat: ETH(100) },
                 { fasset: ETH(0), nat: ETH(100)}

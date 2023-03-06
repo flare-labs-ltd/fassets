@@ -15,14 +15,6 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
 
     using SafePct for uint256;
 
-    struct AssetData {
-        uint256 poolTokenSupply;
-        uint256 fassetSupply;
-        uint256 poolNatBalance;
-        uint256 poolFassetBalance;
-        uint256 poolVirtualFassetBalance;
-    }
-
     uint256 public constant MINIMUM_ENTER_AMOUNT = 1e18; // 1 FLR
     uint256 public constant CLAIM_FTSO_REWARDS_INTEREST_BIPS = 300;
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
@@ -221,7 +213,9 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     }
 
     // method calculating tokens bought with collateral, taking into account the topup discount
-    function _collateralToTokenShare(uint256 _collateral, AssetData memory _assetData)
+    function _collateralToTokenShare(
+        uint256 _collateral, AssetData memory _assetData
+    )
         internal view
         returns (uint256)
     {
@@ -255,13 +249,13 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         uint256 debtTokenShare;
         uint256 freeTokenShare;
         if (_exitType == TokenExitType.WITHDRAW_MOST_FEES) {
-            uint256 debtTokens = _debtTokensOf(_account, _assetData);
-            debtTokenShare = Math.min(_tokenShare, debtTokens);
-            freeTokenShare = debtTokenShare < _tokenShare ? _tokenShare - debtTokenShare : 0;
-        } else if (_exitType == TokenExitType.MINIMIZE_FEE_DEBT) {
             uint256 freeTokens = _freeTokensOf(_account, _assetData);
             freeTokenShare = Math.min(_tokenShare, freeTokens);
             debtTokenShare = freeTokenShare < _tokenShare ? _tokenShare - freeTokenShare : 0;
+        } else if (_exitType == TokenExitType.MINIMIZE_FEE_DEBT) {
+            uint256 debtTokens = _debtTokensOf(_account, _assetData);
+            debtTokenShare = Math.min(_tokenShare, debtTokens);
+            freeTokenShare = debtTokenShare < _tokenShare ? _tokenShare - debtTokenShare : 0;
         } else { // KEEP_RATIO
             uint256 debtTokens = _debtTokensOf(_account, _assetData);
             uint256 freeTokens = _freeTokensOf(_account, _assetData);
@@ -386,7 +380,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     function payout(
         address _recipient,
         uint256 _amount,
-        uint256 _agentResponsibilityWei
+        uint256 /* _agentResponsibilityWei */
     )
         external override
         onlyAssetManager
