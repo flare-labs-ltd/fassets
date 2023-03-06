@@ -123,9 +123,9 @@ library Liquidation {
         // target collateral ratio is minCollateralRatioBIPS for CCB and safetyMinCollateralRatioBIPS for LIQUIDATION
         Agent.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_agent);
         uint256 targetRatioClass1BIPS =
-            _targetRatioBIPS(currentPhase, _agent.class1CollateralToken, _agent.class1CollateralUnderwater());
+            _targetRatioBIPS(currentPhase, _agent.class1CollateralIndex, _agent.class1CollateralUnderwater());
         uint256 targetRatioPoolBIPS =
-            _targetRatioBIPS(currentPhase, _agent.poolCollateralToken, _agent.poolCollateralUnderwater());
+            _targetRatioBIPS(currentPhase, _agent.poolCollateralIndex, _agent.poolCollateralUnderwater());
         // if agent is safe, restore status to NORMAL
         if (cr.class1CR >= targetRatioClass1BIPS && cr.poolCR >= targetRatioPoolBIPS) {
             _agent.status = Agent.Status.NORMAL;
@@ -150,9 +150,9 @@ library Liquidation {
         // still be triggered via startLiquidation() or liquidate().
         CRData memory cr = getCollateralRatiosBIPS(_agent);
         Agent.LiquidationPhase newPhaseC1 =
-            _initialLiquidationPhaseForCollateral(cr.class1CR, _agent.class1CollateralToken);
+            _initialLiquidationPhaseForCollateral(cr.class1CR, _agent.class1CollateralIndex);
         Agent.LiquidationPhase newPhasePool =
-            _initialLiquidationPhaseForCollateral(cr.poolCR, _agent.poolCollateralToken);
+            _initialLiquidationPhaseForCollateral(cr.poolCR, _agent.poolCollateralIndex);
         Agent.LiquidationPhase newPhase = newPhaseC1 >= newPhasePool ? newPhaseC1 : newPhasePool;
         return newPhase > currentPhase ? newPhase : currentPhase;
     }
@@ -203,12 +203,12 @@ library Liquidation {
         Agent.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_agent);
         // calculate new phase for both collaterals and if any is underwater, set its flag
         Agent.LiquidationPhase newPhaseC1 =
-            _initialLiquidationPhaseForCollateral(_cr.class1CR, _agent.class1CollateralToken);
+            _initialLiquidationPhaseForCollateral(_cr.class1CR, _agent.class1CollateralIndex);
         if (newPhaseC1 == Agent.LiquidationPhase.LIQUIDATION) {
             _agent.collateralsUnderwater |= Agent.LF_CLASS1;
         }
         Agent.LiquidationPhase newPhasePool =
-            _initialLiquidationPhaseForCollateral(_cr.poolCR, _agent.poolCollateralToken);
+            _initialLiquidationPhaseForCollateral(_cr.poolCR, _agent.poolCollateralIndex);
         if (newPhasePool == Agent.LiquidationPhase.LIQUIDATION) {
             _agent.collateralsUnderwater |= Agent.LF_POOL;
         }
@@ -242,8 +242,8 @@ library Liquidation {
         (uint256 class1Factor, uint256 poolFactor) = _currentLiquidationFactorBIPS(_agent, _cr);
         // calculate liquidation amount
         uint256 maxLiquidatedAMG = Math.max(
-            _maxLiquidationAmountAMG(_agent, _cr.class1CR, class1Factor, _agent.class1CollateralToken),
-            _maxLiquidationAmountAMG(_agent, _cr.poolCR, poolFactor, _agent.poolCollateralToken));
+            _maxLiquidationAmountAMG(_agent, _cr.class1CR, class1Factor, _agent.class1CollateralIndex),
+            _maxLiquidationAmountAMG(_agent, _cr.poolCR, poolFactor, _agent.poolCollateralIndex));
         uint64 amountToLiquidateAMG = Math.min(maxLiquidatedAMG, _amountAMG).toUint64();
         // liquidate redemption tickets
         (_liquidatedAMG,) = Redemptions.closeTickets(_agent, amountToLiquidateAMG);

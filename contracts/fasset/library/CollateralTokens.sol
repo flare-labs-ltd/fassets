@@ -70,14 +70,14 @@ library CollateralTokens {
         emit AMEvents.CollateralTokenDeprecated(uint8(_tokenClass), address(_token), validUntil);
     }
 
-    function setCurrentPoolCollateralToken(
+    function setPoolCollateralToken(
         IAssetManager.CollateralTokenInfo memory _data
     )
         external
     {
         require(_data.tokenClass == IAssetManager.CollateralTokenClass.POOL, "not a pool collateral");
         uint256 index = _add(_data);
-        _setCurrentPoolCollateralToken(index);
+        _setPoolCollateralTokenIndex(index);
     }
 
     function getInfo(
@@ -163,11 +163,11 @@ library CollateralTokens {
         return newTokenIndex;
     }
 
-    function _setCurrentPoolCollateralToken(uint256 _index) private {
+    function _setPoolCollateralTokenIndex(uint256 _index) private {
         AssetManagerState.State storage state = AssetManagerState.get();
         CollateralToken.Data storage token = state.collateralTokens[_index];
         require(token.tokenClass == IAssetManager.CollateralTokenClass.POOL, "not a pool collateral token");
-        state.currentPoolCollateralToken = _index.toUint16();
+        state.poolCollateralIndex = _index.toUint16();
     }
 
     function _getInfo(CollateralToken.Data storage token)

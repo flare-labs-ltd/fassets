@@ -64,13 +64,13 @@ library Agent {
         uint64 dustAMG;
 
         // Index of collateral class 1 token.
-        // The data is obtained as state.collateralTokens[class1CollateralToken].
-        uint16 class1CollateralToken;
+        // The data is obtained as state.collateralTokens[class1CollateralIndex].
+        uint16 class1CollateralIndex;
 
         // Index of token in collateral pool. This is always wrapped FLR/SGB, however the wrapping
         // contract (WNat) may change. In such case we add new collateral token with class POOL but the
         // agent must call a method to upgrade to new contract, se we must track the actual token used.
-        uint16 poolCollateralToken;
+        uint16 poolCollateralIndex;
 
         // Position of this agent in the list of agents available for minting.
         // Value is actually `list index + 1`, so that 0 means 'not in the list'.

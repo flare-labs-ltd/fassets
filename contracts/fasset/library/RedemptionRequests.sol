@@ -93,7 +93,7 @@ library RedemptionRequests {
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
         // pay in collateral
-        uint256 priceAmgToWei = Conversion.currentAmgPriceInTokenWei(agent.class1CollateralToken);
+        uint256 priceAmgToWei = Conversion.currentAmgPriceInTokenWei(agent.class1CollateralIndex);
         uint256 paymentWei = Conversion.convertAmgToTokenWei(closedAMG, priceAmgToWei)
             .mulBips(agent.buyFassetForCollateralRatioBIPS);
         Agents.payoutClass1(agent, _redeemer, paymentWei);

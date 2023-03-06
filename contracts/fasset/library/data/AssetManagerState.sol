@@ -52,7 +52,7 @@ library AssetManagerState {
 
         // Pool collateral is always wrapped NAT, but the wrapping contract may change.
         // In this case, new pool collateral token must be added and set as current.
-        uint16 currentPoolCollateralToken;
+        uint16 poolCollateralIndex;
 
         // Current block number and timestamp on the underlying chain
         uint64 currentUnderlyingBlock;

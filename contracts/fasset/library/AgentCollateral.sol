@@ -53,7 +53,7 @@ library AgentCollateral {
         returns (Collateral.Data memory)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralToken.Data storage collateral = state.collateralTokens[_agent.class1CollateralToken];
+        CollateralToken.Data storage collateral = state.collateralTokens[_agent.class1CollateralIndex];
         return Collateral.Data({
             kind: Collateral.Kind.AGENT_CLASS1,
             fullCollateral: collateral.token.balanceOf(_agent.vaultAddress()),
@@ -68,7 +68,7 @@ library AgentCollateral {
         returns (Collateral.Data memory)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralToken.Data storage collateral = state.collateralTokens[_agent.poolCollateralToken];
+        CollateralToken.Data storage collateral = state.collateralTokens[_agent.poolCollateralIndex];
         return Collateral.Data({
             kind: Collateral.Kind.POOL,
             fullCollateral: collateral.token.balanceOf(address(_agent.collateralPool)),
@@ -181,12 +181,12 @@ library AgentCollateral {
             _mintingMinCollateralRatioBIPS = _systemMinCollateralRatioBIPS;
         } else if (_kind == Collateral.Kind.POOL) {
             _systemMinCollateralRatioBIPS =
-                state.collateralTokens[_agent.poolCollateralToken].minCollateralRatioBIPS;
+                state.collateralTokens[_agent.poolCollateralIndex].minCollateralRatioBIPS;
             _mintingMinCollateralRatioBIPS =
                 Math.max(_agent.minPoolCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         } else {
             _systemMinCollateralRatioBIPS =
-                state.collateralTokens[_agent.class1CollateralToken].minCollateralRatioBIPS;
+                state.collateralTokens[_agent.class1CollateralIndex].minCollateralRatioBIPS;
             // agent's minCollateralRatioBIPS must be greater than minCollateralRatioBIPS when set, but
             // minCollateralRatioBIPS can change later so we always use the max of both
             _mintingMinCollateralRatioBIPS =
@@ -236,9 +236,9 @@ library AgentCollateral {
         assert (_kind != Collateral.Kind.AGENT_POOL);   // there is no agent pool collateral token
         AssetManagerState.State storage state = AssetManagerState.get();
         if (_kind == Collateral.Kind.AGENT_CLASS1) {
-            return state.collateralTokens[_agent.class1CollateralToken];
+            return state.collateralTokens[_agent.class1CollateralIndex];
         } else {
-            return state.collateralTokens[_agent.poolCollateralToken];
+            return state.collateralTokens[_agent.poolCollateralIndex];
         }
     }
 

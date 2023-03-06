@@ -67,7 +67,7 @@ library AgentsExternal {
         agent.status = Agent.Status.NORMAL;
         // set collateral token types
         Agents.setClass1Collateral(agent, _class1CollateralToken);
-        agent.poolCollateralToken = state.currentPoolCollateralToken;
+        agent.poolCollateralIndex = state.poolCollateralIndex;
         // initially, agent's min collateral ratios are the same as global min collateral ratios
         // this setting is ok for self-minting, but not for public minting since it quickly leads to liquidation
         // it can be changed with setAgentMinCollateralRatioBIPS or when agent becomes available
@@ -265,7 +265,7 @@ library AgentsExternal {
         }
     }
 
-    function upgradePoolCollateralToken(
+    function upgradeWNat(
         address _agentVault
     )
         external
@@ -273,10 +273,10 @@ library AgentsExternal {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         AssetManagerState.State storage state = AssetManagerState.get();
-        if (agent.poolCollateralToken != state.currentPoolCollateralToken) {
-            IWNat oldWNat = IWNat(address(state.collateralTokens[agent.poolCollateralToken].token));
-            IWNat wNat = IWNat(address(state.collateralTokens[state.currentPoolCollateralToken].token));
-            agent.poolCollateralToken = state.currentPoolCollateralToken;
+        if (agent.poolCollateralIndex != state.poolCollateralIndex) {
+            IWNat oldWNat = IWNat(address(state.collateralTokens[agent.poolCollateralIndex].token));
+            IWNat wNat = IWNat(address(state.collateralTokens[state.poolCollateralIndex].token));
+            agent.poolCollateralIndex = state.poolCollateralIndex;
             agent.collateralPool.upgradeWNatContract(oldWNat, wNat);
         }
     }

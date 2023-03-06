@@ -207,7 +207,7 @@ library Agents {
         // agent should never switch to a deprecated or already invalid token
         require(token.validUntil == 0, "token deprecated");
         // TODO: check there is enough collateral for current mintings
-        _agent.class1CollateralToken = tokenIndex.toUint16();
+        _agent.class1CollateralIndex = tokenIndex.toUint16();
         // TODO: timelock, otherwise there can be withdrawal without announcement
         // (by switching, withdrawing and switching back)
     }
@@ -262,7 +262,7 @@ library Agents {
         returns (IERC20)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.class1CollateralToken].token;
+        return state.collateralTokens[_agent.class1CollateralIndex].token;
     }
 
     function getClass1Collateral(Agent.State storage _agent)
@@ -270,7 +270,7 @@ library Agents {
         returns (CollateralToken.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.class1CollateralToken];
+        return state.collateralTokens[_agent.class1CollateralIndex];
     }
 
     function getPoolCollateralToken(Agent.State storage _agent)
@@ -278,7 +278,7 @@ library Agents {
         returns (IERC20)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.poolCollateralToken].token;
+        return state.collateralTokens[_agent.poolCollateralIndex].token;
     }
 
     function getPoolCollateral(Agent.State storage _agent)
@@ -286,7 +286,7 @@ library Agents {
         returns (CollateralToken.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.poolCollateralToken];
+        return state.collateralTokens[_agent.poolCollateralIndex];
     }
 
     function class1CollateralUnderwater(Agent.State storage _agent)

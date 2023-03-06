@@ -340,7 +340,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         }
     }
 
-    function setCurrentPoolCollateralToken(
+    function setPoolCollateralToken(
         IAssetManager[] memory _assetManagers,
         IAssetManager.CollateralTokenInfo calldata _data
     )
@@ -348,7 +348,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         onlyGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).setCurrentPoolCollateralToken(_data);
+            _checkAssetManager(_assetManagers[i]).setPoolCollateralToken(_data);
         }
     }
 

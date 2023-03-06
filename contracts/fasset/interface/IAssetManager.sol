@@ -60,7 +60,7 @@ interface IAssetManager {
         external;
     function deprecateCollateralToken(CollateralTokenClass _tokenClass, IERC20 _token,
         uint256 _invalidationTimeSec) external;
-    function setCurrentPoolCollateralToken(IAssetManager.CollateralTokenInfo calldata _data) external;
+    function setPoolCollateralToken(IAssetManager.CollateralTokenInfo calldata _data) external;
     // view methods
     function isCollateralToken(address _agentVault, IERC20 _token) external view returns (bool);
     function fAsset() external view returns (IERC20);
