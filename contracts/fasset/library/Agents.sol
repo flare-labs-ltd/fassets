@@ -12,6 +12,7 @@ import "./AMEvents.sol";
 import "./Globals.sol";
 import "./Conversion.sol";
 import "./CollateralTokens.sol";
+import "./AgentCollateral.sol";
 
 library Agents {
     using SafeCast for uint256;
@@ -254,14 +255,22 @@ library Agents {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         uint256 tokenIndex = CollateralTokens.getIndex(IAssetManager.CollateralTokenClass.CLASS1, _token);
-        CollateralToken.Data storage token = state.collateralTokens[tokenIndex];
-        require(token.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "not class1 collateral token");
-        // agent should never switch to a deprecated or already invalid token
-        require(token.validUntil == 0, "token deprecated");
-        // TODO: check there is enough collateral for current mintings
+        CollateralToken.Data storage collateral = state.collateralTokens[tokenIndex];
+        require(collateral.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "not class1 collateral token");
+        // agent should never switch to a deprecated or already invalid collateral
+        require(collateral.validUntil == 0, "collateral deprecated");
+        // check that old collateral is deprecated
+        // TODO: could do without this check, but would need timelock, otherwise there can be
+        //       withdrawal without announcement by switching, withdrawing and switching back
+        CollateralToken.Data storage currentCollateral = getClass1Collateral(_agent);
+        require(currentCollateral.validUntil != 0, "current collateral not deprecated");
+        // check there is enough collateral for current mintings
+        uint256 collateralAmount = currentCollateral.token.balanceOf(_agent.vaultAddress());
+        uint256 priceAmgToTokenWei = Conversion.currentAmgPriceInTokenWei(collateral);
+        uint256 crBIPS = AgentCollateral.collateralRatioBIPS(_agent, collateralAmount, priceAmgToTokenWei);
+        require(crBIPS >= collateral.minCollateralRatioBIPS, "not enough collateral");
+        // set the new index
         _agent.class1CollateralIndex = tokenIndex.toUint16();
-        // TODO: timelock, otherwise there can be withdrawal without announcement
-        // (by switching, withdrawing and switching back)
     }
 
     function vaultOwner(
