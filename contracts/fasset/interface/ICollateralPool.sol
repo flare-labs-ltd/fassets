@@ -28,6 +28,8 @@ interface ICollateralPool {
     function payout(address _receiver, uint256 _amountWei, uint256 _agentResponsibilityWei) external;
     function destroy(address payable _recipient) external;
     function upgradeWNatContract(IWNat newWNat) external;
+    function setExitCollateralRatioBIPS(uint256 _value) external;
+    function setTopupCollateralRatioBIPS(uint256 _value) external;
+    function setTopupTokenDiscountBIPS(uint256 _value) external;
     function poolToken() external view returns (IERC20);
-
 }

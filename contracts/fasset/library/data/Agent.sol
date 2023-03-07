@@ -36,6 +36,12 @@ library Agent {
         uint64 announcedAt;
     }
 
+    // Struct to store agent's pending setting updates.
+    struct SettingUpdate {
+        uint128 value;
+        uint64 validAt;
+    }
+
     struct State {
         ICollateralPool collateralPool;
 
@@ -123,8 +129,10 @@ library Agent {
         // The time when ongoing underlying withdrawal was announced.
         uint64 underlyingWithdrawalAnnouncedAt;
 
+        // Announcement for class1 collateral withdrawal.
         WithdrawalAnnouncement class1WithdrawalAnnouncement;
 
+        // Announcement for pool token withdrawal (which also means pool collateral withdrawal).
         WithdrawalAnnouncement poolTokenWithdrawalAnnouncement;
 
         // Underlying block when the agent was created.
@@ -138,6 +146,9 @@ library Agent {
         // The factor set by the agent to multiply the price at which agent buys f-assets from pool
         // token holders on self-close exit (when requested or the redeemed amount is less than 1 lot).
         uint16 buyFassetForCollateralRatioBIPS;
+
+        // Agent's pending setting updates.
+        mapping(bytes32 => SettingUpdate) settingUpdates;
 
         // Only used for calculating Agent.State size. See deleteStorage() below.
         uint256[1] _endMarker;

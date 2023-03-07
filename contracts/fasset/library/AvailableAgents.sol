@@ -24,10 +24,7 @@ library AvailableAgents {
     }
 
     function makeAvailable(
-        address _agentVault,
-        uint256 _feeBIPS,
-        uint256 _minClass1CollateralRatioBIPS,
-        uint256 _minPoolCollateralRatioBIPS
+        address _agentVault
     )
         external
     {
@@ -37,12 +34,6 @@ library AvailableAgents {
         assert(agent.agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         require(agent.status == Agent.Status.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
-        // set parameters
-        agent.feeBIPS = _feeBIPS.toUint16();
-        // when agent becomes available, it is a good idea to set agent's min collateral ratio higher than
-        // global min collateral ratio (otherwise he can quickly go to liquidation), so we always do it here
-        Agents.setAgentMinClass1CollateralRatioBIPS(agent, _minClass1CollateralRatioBIPS);
-        Agents.setAgentMinPoolCollateralRatioBIPS(agent, _minPoolCollateralRatioBIPS);
         // check that there is enough free collateral for at least one lot
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         uint256 freeCollateralLots = collateralData.freeCollateralLots(agent);
@@ -50,8 +41,8 @@ library AvailableAgents {
         // add to queue
         state.availableAgents.push(_agentVault);
         agent.availableAgentsPos = state.availableAgents.length.toUint32();     // index+1 (0=not in list)
-        emit AMEvents.AgentAvailable(_agentVault, _feeBIPS,
-            _minClass1CollateralRatioBIPS, _minPoolCollateralRatioBIPS, freeCollateralLots);
+        emit AMEvents.AgentAvailable(_agentVault, agent.feeBIPS,
+            agent.minClass1CollateralRatioBIPS, agent.minPoolCollateralRatioBIPS, freeCollateralLots);
     }
 
     function exit(

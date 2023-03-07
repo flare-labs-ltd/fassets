@@ -64,6 +64,21 @@ library AMEvents {
         address indexed agentVault);
 
     /**
+     * Agent has initiated setting change (fee or some agent collateral ratio change).
+     */
+    event AgentSettingChangeAnnounced(
+        string name,
+        uint256 value,
+        uint256 validAt);
+
+    /**
+     * Agent has executed setting change (fee or some agent collateral ratio change).
+     */
+    event AgentSettingChanged(
+        string name,
+        uint256 value);
+
+    /**
      * Minter reserved collateral, paid the reservation fee, and is expected to pay the underlying funds.
      * Agent's collateral was reserved.
      */

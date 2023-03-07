@@ -207,5 +207,11 @@ library AssetManagerSettings {
         // However, we cannot burn typical class1 collateral (stablecoins), so the agent must buy them for NAT
         // at FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.
         uint32 class1BuyForFlareFactorBIPS;
+
+        uint64 agentExitTimelockSeconds;
+
+        uint64 agentFeeChangeTimelockSeconds;
+
+        uint64 agentCollateralRatioChangeTimelockSeconds;
     }
 }

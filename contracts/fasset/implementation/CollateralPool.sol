@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -12,7 +13,7 @@ import "../interface/ICollateralPool.sol";
 import "./CollateralPoolToken.sol";
 
 contract CollateralPool is ICollateralPool, ReentrancyGuard {
-
+    using SafeCast for uint256;
     using SafePct for uint256;
 
     uint256 public constant MINIMUM_ENTER_AMOUNT = 1e18; // 1 FLR
@@ -24,8 +25,8 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     IERC20 public immutable fAsset;
     IWNat public wNat;
     CollateralPoolToken private token;
-    uint32 public exitCRBIPS;
-    uint32 public topupCRBIPS;
+    uint32 public exitCollateralRatioBIPS;
+    uint32 public topupCollateralRatioBIPS;
     uint16 public topupTokenDiscountBIPS;
     bool private internalWithdrawal;
 
@@ -46,8 +47,8 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         address _agentVault,
         address _assetManager,
         address _fAsset,
-        uint32 _exitCRBIPS,
-        uint32 _topupCRBIPS,
+        uint32 _exitCollateralRatioBIPS,
+        uint32 _topupCollateralRatioBIPS,
         uint16 _topupTokenDiscountBIPS
     ) {
         agentVault = _agentVault;
@@ -55,8 +56,8 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         assetManager = IAssetManager(_assetManager);
         fAsset = IERC20(_fAsset);
         wNat = assetManager.getWNat();
-        exitCRBIPS = _exitCRBIPS;
-        topupCRBIPS = _topupCRBIPS;
+        exitCollateralRatioBIPS = _exitCollateralRatioBIPS;
+        topupCollateralRatioBIPS = _topupCollateralRatioBIPS;
         topupTokenDiscountBIPS = _topupTokenDiscountBIPS;
     }
 
@@ -70,6 +71,30 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     {
         require(address(token) == address(0), "pool token already set");
         token = CollateralPoolToken(_poolToken);
+    }
+
+    function setExitCollateralRatioBIPS(uint256 _exitCollateralRatioBIPS)
+        external
+        onlyAssetManager
+    {
+        require(_exitCollateralRatioBIPS > topupCollateralRatioBIPS, "value too low");
+        exitCollateralRatioBIPS = _exitCollateralRatioBIPS.toUint32();
+    }
+
+    function setTopupCollateralRatioBIPS(uint256 _topupCollateralRatioBIPS)
+        external
+        onlyAssetManager
+    {
+        require(_topupCollateralRatioBIPS < exitCollateralRatioBIPS, "value too high");
+        topupCollateralRatioBIPS = _topupCollateralRatioBIPS.toUint32();
+    }
+
+    function setTopupTokenDiscountBIPS(uint256 _topupTokenDiscountBIPS)
+        external
+        onlyAssetManager
+    {
+        require(_topupTokenDiscountBIPS < SafePct.MAX_BIPS, "value too high");
+        topupTokenDiscountBIPS = _topupTokenDiscountBIPS.toUint16();
     }
 
     function enter(uint256 _fassets, bool _enterWithFullFassets)
@@ -110,7 +135,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         // poolTokenSupply >= _tokenShare > 0
         uint256 natShare = _tokenShare.mulDiv(assetData.poolNatBalance, assetData.poolTokenSupply);
         require(natShare > 0, "amount of sent tokens is too small");
-        require(_isAboveCR(assetData.poolNatBalance - natShare, assetData.fassetSupply, exitCRBIPS),
+        require(_isAboveCR(assetData.poolNatBalance - natShare, assetData.fassetSupply, exitCollateralRatioBIPS),
             "collateral ratio falls below exitCR");
         (uint256 debtFassetShare, uint256 freeFassetShare) = _getFassetSharesFromTokenShare(
             msg.sender, _tokenShare, _exitType, assetData);
@@ -222,7 +247,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         bool poolConsideredEmpty = _assetData.poolNatBalance == 0 || _assetData.poolTokenSupply == 0;
         // calculate nat share to be priced with topup discount and nat share to be priced standardly
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
-        uint256 _aux = (assetPriceMul * _assetData.fassetSupply).mulBips(topupCRBIPS);
+        uint256 _aux = (assetPriceMul * _assetData.fassetSupply).mulBips(topupCollateralRatioBIPS);
         uint256 natRequiredToTopup = _aux > _assetData.poolNatBalance * assetPriceDiv ?
             _aux / assetPriceDiv - _assetData.poolNatBalance : 0;
         uint256 collateralForTopupPricing = Math.min(_collateral, natRequiredToTopup);

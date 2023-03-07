@@ -52,9 +52,7 @@ library AgentsExternal {
     function createAgent(
         Agent.Type _agentType,
         IAssetManager _assetManager,
-        string memory _underlyingAddressString,
-        IERC20 _class1CollateralToken,
-        ICollateralPoolFactory.InitialSettings calldata _collateralPoolSettings
+        IAssetManager.InitialAgentSettings calldata _settings
     )
         external
     {
@@ -64,31 +62,32 @@ library AgentsExternal {
         Agent.State storage agent = Agent.getWithoutCheck(address(agentVault));
         assert(agent.agentType == Agent.Type.NONE);
         assert(_agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
-        require(bytes(_underlyingAddressString).length != 0, "empty underlying address");
+        require(bytes(_settings.underlyingAddressString).length != 0, "empty underlying address");
         agent.agentType = _agentType;
         agent.status = Agent.Status.NORMAL;
         // set collateral token types
-        Agents.setClass1Collateral(agent, _class1CollateralToken);
+        Agents.setClass1Collateral(agent, _settings.class1CollateralToken);
         agent.poolCollateralIndex = state.poolCollateralIndex;
-        // initially, agent's min collateral ratios are the same as global min collateral ratios
-        // this setting is ok for self-minting, but not for public minting since it quickly leads to liquidation
-        // it can be changed with setAgentMinCollateralRatioBIPS or when agent becomes available
-        agent.minClass1CollateralRatioBIPS = agent.getClass1Collateral().minCollateralRatioBIPS;
-        agent.minPoolCollateralRatioBIPS = agent.getPoolCollateral().minCollateralRatioBIPS;
+        // set initial collateral ratios
+        Agents.setMinClass1CollateralRatioBIPS(agent, _settings.minClass1CollateralRatioBIPS);
+        Agents.setMinPoolCollateralRatioBIPS(agent, _settings.minPoolCollateralRatioBIPS);
+        // set minting fee and share
+        agent.setFeeBIPS(_settings.feeBIPS);
+        agent.setPoolFeeShareBIPS(_settings.poolFeeShareBIPS);
         // claim the address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
-        bytes32 underlyingAddressHash = keccak256(bytes(_underlyingAddressString));
+        bytes32 underlyingAddressHash = keccak256(bytes(_settings.underlyingAddressString));
         state.underlyingAddressOwnership.claim(msg.sender, underlyingAddressHash,
             state.settings.requireEOAAddressProof);
-        agent.underlyingAddressString = _underlyingAddressString;
+        agent.underlyingAddressString = _settings.underlyingAddressString;
         agent.underlyingAddressHash = underlyingAddressHash;
         uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(underlyingAddressHash);
         agent.underlyingBlockAtCreation = SafeMath64.max64(state.currentUnderlyingBlock, eoaProofBlock + 1);
         // add collateral pool
         agent.collateralPool =
-            state.settings.collateralPoolFactory.create(_assetManager, address(agentVault), _collateralPoolSettings);
+            state.settings.collateralPoolFactory.create(_assetManager, address(agentVault), _settings);
         emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), address(agentVault),
-            _underlyingAddressString, address(agent.collateralPool));
+            _settings.underlyingAddressString, address(agent.collateralPool));
     }
 
     function announceDestroy(
@@ -159,19 +158,6 @@ library AgentsExternal {
         agent.mintedAMG = 0;
         state.totalReservedCollateralAMG -= agent.reservedAMG;
         agent.reservedAMG = 0;
-    }
-
-    function setAgentMinCollateralRatioBIPS(
-        address _agentVault,
-        uint256 _minClass1CollateralRatioBIPS,
-        uint256 _minPoolCollateralRatioBIPS
-    )
-        external
-        onlyAgentVaultOwner(_agentVault)
-    {
-        Agent.State storage agent = Agent.get(_agentVault);
-        Agents.setAgentMinClass1CollateralRatioBIPS(agent, _minClass1CollateralRatioBIPS);
-        Agents.setAgentMinPoolCollateralRatioBIPS(agent, _minPoolCollateralRatioBIPS);
     }
 
     function convertDustToTicket(

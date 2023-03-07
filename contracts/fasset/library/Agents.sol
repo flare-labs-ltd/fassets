@@ -18,7 +18,7 @@ library Agents {
     using SafePct for uint256;
     using Agent for Agent.State;
 
-    function setAgentMinClass1CollateralRatioBIPS(
+    function setMinClass1CollateralRatioBIPS(
         Agent.State storage _agent,
         uint256 _minClass1CollateralRatioBIPS
     )
@@ -30,7 +30,7 @@ library Agents {
         _agent.minClass1CollateralRatioBIPS = _minClass1CollateralRatioBIPS.toUint32();
     }
 
-    function setAgentMinPoolCollateralRatioBIPS(
+    function setMinPoolCollateralRatioBIPS(
         Agent.State storage _agent,
         uint256 _minPoolCollateralRatioBIPS
     )
@@ -40,6 +40,58 @@ library Agents {
         require(_minPoolCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
             "collateral ratio too small");
         _agent.minPoolCollateralRatioBIPS = _minPoolCollateralRatioBIPS.toUint32();
+    }
+
+    function setFeeBIPS(
+        Agent.State storage _agent,
+        uint256 _feeBIPS
+    )
+        internal
+    {
+        require(_feeBIPS < SafePct.MAX_BIPS, "fee to high");
+        _agent.feeBIPS = _feeBIPS.toUint16();
+    }
+
+    function setPoolFeeShareBIPS(
+        Agent.State storage _agent,
+        uint256 _poolFeeShareBIPS
+    )
+        internal
+    {
+        require(_poolFeeShareBIPS < SafePct.MAX_BIPS, "value to high");
+        _agent.poolFeeShareBIPS = _poolFeeShareBIPS.toUint16();
+    }
+
+    function setPoolExitCollateralRatioBIPS(
+        Agent.State storage _agent,
+        uint256 _poolExitCollateralRatioBIPS
+    )
+        internal
+    {
+        CollateralToken.Data storage collateral = getPoolCollateral(_agent);
+        uint256 minCR = Math.max(_agent.minPoolCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
+        require(_poolExitCollateralRatioBIPS >= minCR, "value to low");
+        _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
+    }
+
+    function setPoolTopupCollateralRatioBIPS(
+        Agent.State storage _agent,
+        uint256 _poolTopupCollateralRatioBIPS
+    )
+        internal
+    {
+        CollateralToken.Data storage collateral = getPoolCollateral(_agent);
+        require(_poolTopupCollateralRatioBIPS >= collateral.minCollateralRatioBIPS, "value to low");
+        _agent.collateralPool.setTopupCollateralRatioBIPS(_poolTopupCollateralRatioBIPS);
+    }
+
+    function setPoolTopupTokenDiscountBIPS(
+        Agent.State storage _agent,
+        uint256 _poolTopupTokenDiscountBIPS
+    )
+        internal
+    {
+        _agent.collateralPool.setTopupCollateralRatioBIPS(_poolTopupTokenDiscountBIPS);
     }
 
     function allocateMintedAssets(

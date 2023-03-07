@@ -9,15 +9,9 @@ import "./IAssetManager.sol";
  * @title Agent vault factory
  */
 interface ICollateralPoolFactory {
-    struct InitialSettings {
-        uint256 exitCRBIPS;
-        uint256 topupCRBIPS;
-        uint256 topupTokenDiscountBIPS;
-    }
-
     function create(
         IAssetManager _assetManager,
         address _agentVault,
-        InitialSettings memory _settings
+        IAssetManager.InitialAgentSettings memory _settings
     ) external returns (ICollateralPool);
 }
