@@ -8,6 +8,9 @@ import "../interface/ICollateralPool.sol";
 contract AssetManagerMock {
     IWNat private wNat;
 
+    event AgentRedemptionInCollateral(uint256 _amountUBA);
+    event AgentRedemption(uint256 _amountUBA);
+
     constructor(IWNat _wNat) {
         wNat = _wNat;
     }
@@ -25,12 +28,17 @@ contract AssetManagerMock {
     }
 
     function redeemFromAgent(
-        address _agentVault, address _receiver, uint256 _amountUBA, string memory _receiverUnderlyingAddress
-    ) external pure {}
+        address /* _agentVault */, address /* _redeemer */, uint256 _amountUBA,
+        string memory /* _receiverUnderlyingAddress */
+    ) external {
+        emit AgentRedemption(_amountUBA);
+    }
 
     function redeemFromAgentInCollateral(
-        address _agentVault, address _receiver, uint256 _amountUBA
-    ) external pure {}
+        address /* _agentVault */, address /* _redeemer */, uint256 _amountUBA
+    ) external {
+        emit AgentRedemptionInCollateral(_amountUBA);
+    }
 
 
     function assetPriceNatWei() public pure returns (uint256, uint256) {
@@ -38,7 +46,7 @@ contract AssetManagerMock {
     }
 
     function getLotSize() public pure returns (uint256) {
-        return 1000;
+        return 1;
     }
 
 }

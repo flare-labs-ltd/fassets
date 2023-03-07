@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IWNat.sol";
 
 interface ICollateralPool {
-    enum TokenExitType { WITHDRAW_MOST_FEES, MINIMIZE_FEE_DEBT, KEEP_RATIO }
+    enum TokenExitType { MAXIMIZE_FEE_WITHDRAWAL, MINIMIZE_FEE_DEBT, KEEP_RATIO }
 
     struct AssetData {
         uint256 poolTokenSupply;

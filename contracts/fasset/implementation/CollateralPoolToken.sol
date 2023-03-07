@@ -6,14 +6,14 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./CollateralPool.sol";
 
 contract CollateralPoolToken is ERC20 {
-    address public immutable collateralPool;
+    address payable public immutable collateralPool;
 
     modifier onlyCollateralPool {
         require(msg.sender == collateralPool, "only collateral pool");
         _;
     }
 
-    constructor(address _collateralPool)
+    constructor(address payable _collateralPool)
         ERC20("FAsset Collateral Pool Token", "FCPT")
     {
         collateralPool = _collateralPool;
@@ -33,7 +33,11 @@ contract CollateralPoolToken is ERC20 {
     }
 
     function freeBalanceOf(address _account) public view returns (uint256) {
-        return CollateralPool(payable(collateralPool)).freeTokensOf(_account);
+        return CollateralPool(collateralPool).freeTokensOf(_account);
+    }
+
+    function debtBalanceOf(address _account) public view returns (uint256) {
+        return CollateralPool(collateralPool).debtTokensOf(_account);
     }
 
     // override balanceOf to account for locked/debt collateral
@@ -41,7 +45,7 @@ contract CollateralPoolToken is ERC20 {
         address from, address /* to */, uint256 amount
     ) internal view override {
         if (msg.sender != collateralPool) { // collateral pool can mint and burn locked tokens
-            require(amount <= freeBalanceOf(from), "liquid balance too low");
+            require(amount <= freeBalanceOf(from), "free balance too low");
         }
     }
 }
