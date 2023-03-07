@@ -12,13 +12,14 @@ import "./AMEvents.sol";
 import "./Globals.sol";
 import "./Conversion.sol";
 import "./CollateralTokens.sol";
+import "./AgentCollateral.sol";
 
 library Agents {
     using SafeCast for uint256;
     using SafePct for uint256;
     using Agent for Agent.State;
 
-    function setAgentMinClass1CollateralRatioBIPS(
+    function setMinClass1CollateralRatioBIPS(
         Agent.State storage _agent,
         uint256 _minClass1CollateralRatioBIPS
     )
@@ -30,7 +31,7 @@ library Agents {
         _agent.minClass1CollateralRatioBIPS = _minClass1CollateralRatioBIPS.toUint32();
     }
 
-    function setAgentMinPoolCollateralRatioBIPS(
+    function setMinPoolCollateralRatioBIPS(
         Agent.State storage _agent,
         uint256 _minPoolCollateralRatioBIPS
     )
@@ -40,6 +41,58 @@ library Agents {
         require(_minPoolCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
             "collateral ratio too small");
         _agent.minPoolCollateralRatioBIPS = _minPoolCollateralRatioBIPS.toUint32();
+    }
+
+    function setFeeBIPS(
+        Agent.State storage _agent,
+        uint256 _feeBIPS
+    )
+        internal
+    {
+        require(_feeBIPS < SafePct.MAX_BIPS, "fee to high");
+        _agent.feeBIPS = _feeBIPS.toUint16();
+    }
+
+    function setPoolFeeShareBIPS(
+        Agent.State storage _agent,
+        uint256 _poolFeeShareBIPS
+    )
+        internal
+    {
+        require(_poolFeeShareBIPS < SafePct.MAX_BIPS, "value to high");
+        _agent.poolFeeShareBIPS = _poolFeeShareBIPS.toUint16();
+    }
+
+    function setPoolExitCollateralRatioBIPS(
+        Agent.State storage _agent,
+        uint256 _poolExitCollateralRatioBIPS
+    )
+        internal
+    {
+        CollateralToken.Data storage collateral = getPoolCollateral(_agent);
+        uint256 minCR = Math.max(_agent.minPoolCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
+        require(_poolExitCollateralRatioBIPS >= minCR, "value to low");
+        _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
+    }
+
+    function setPoolTopupCollateralRatioBIPS(
+        Agent.State storage _agent,
+        uint256 _poolTopupCollateralRatioBIPS
+    )
+        internal
+    {
+        CollateralToken.Data storage collateral = getPoolCollateral(_agent);
+        require(_poolTopupCollateralRatioBIPS >= collateral.minCollateralRatioBIPS, "value to low");
+        _agent.collateralPool.setTopupCollateralRatioBIPS(_poolTopupCollateralRatioBIPS);
+    }
+
+    function setPoolTopupTokenDiscountBIPS(
+        Agent.State storage _agent,
+        uint256 _poolTopupTokenDiscountBIPS
+    )
+        internal
+    {
+        _agent.collateralPool.setTopupCollateralRatioBIPS(_poolTopupTokenDiscountBIPS);
     }
 
     function allocateMintedAssets(
@@ -196,19 +249,28 @@ library Agents {
 
     function setClass1Collateral(
         Agent.State storage _agent,
-        string memory _tokenIdentifier
+        IERC20 _token
     )
         internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        uint256 tokenIndex = CollateralTokens.getIndex(_tokenIdentifier);
-        CollateralToken.Data storage token = state.collateralTokens[tokenIndex];
-        require(token.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "not class1 collateral token");
-        require(CollateralTokens.isValid(token), "token not valid");
-        // TODO: check there is enough collateral for current mintings
-        _agent.class1CollateralToken = tokenIndex.toUint16();
-        // TODO: timelock, otherwise there can be withdrawal without announcement
-        // (by switching, withdrawing and switching back)
+        uint256 tokenIndex = CollateralTokens.getIndex(IAssetManager.CollateralTokenClass.CLASS1, _token);
+        CollateralToken.Data storage collateral = state.collateralTokens[tokenIndex];
+        require(collateral.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "not class1 collateral token");
+        // agent should never switch to a deprecated or already invalid collateral
+        require(collateral.validUntil == 0, "collateral deprecated");
+        // check that old collateral is deprecated
+        // TODO: could do without this check, but would need timelock, otherwise there can be
+        //       withdrawal without announcement by switching, withdrawing and switching back
+        CollateralToken.Data storage currentCollateral = getClass1Collateral(_agent);
+        require(currentCollateral.validUntil != 0, "current collateral not deprecated");
+        // check there is enough collateral for current mintings
+        uint256 collateralAmount = currentCollateral.token.balanceOf(_agent.vaultAddress());
+        uint256 priceAmgToTokenWei = Conversion.currentAmgPriceInTokenWei(collateral);
+        uint256 crBIPS = AgentCollateral.collateralRatioBIPS(_agent, collateralAmount, priceAmgToTokenWei);
+        require(crBIPS >= collateral.minCollateralRatioBIPS, "not enough collateral");
+        // set the new index
+        _agent.class1CollateralIndex = tokenIndex.toUint16();
     }
 
     function vaultOwner(
@@ -261,7 +323,7 @@ library Agents {
         returns (IERC20)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.class1CollateralToken].token;
+        return state.collateralTokens[_agent.class1CollateralIndex].token;
     }
 
     function getClass1Collateral(Agent.State storage _agent)
@@ -269,7 +331,7 @@ library Agents {
         returns (CollateralToken.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.class1CollateralToken];
+        return state.collateralTokens[_agent.class1CollateralIndex];
     }
 
     function getPoolCollateralToken(Agent.State storage _agent)
@@ -277,7 +339,7 @@ library Agents {
         returns (IERC20)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.poolCollateralToken].token;
+        return state.collateralTokens[_agent.poolCollateralIndex].token;
     }
 
     function getPoolCollateral(Agent.State storage _agent)
@@ -285,7 +347,7 @@ library Agents {
         returns (CollateralToken.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.poolCollateralToken];
+        return state.collateralTokens[_agent.poolCollateralIndex];
     }
 
     function class1CollateralUnderwater(Agent.State storage _agent)

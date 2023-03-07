@@ -36,6 +36,12 @@ library Agent {
         uint64 announcedAt;
     }
 
+    // Struct to store agent's pending setting updates.
+    struct SettingUpdate {
+        uint128 value;
+        uint64 validAt;
+    }
+
     struct State {
         ICollateralPool collateralPool;
 
@@ -64,13 +70,13 @@ library Agent {
         uint64 dustAMG;
 
         // Index of collateral class 1 token.
-        // The data is obtained as state.collateralTokens[class1CollateralToken].
-        uint16 class1CollateralToken;
+        // The data is obtained as state.collateralTokens[class1CollateralIndex].
+        uint16 class1CollateralIndex;
 
         // Index of token in collateral pool. This is always wrapped FLR/SGB, however the wrapping
         // contract (WNat) may change. In such case we add new collateral token with class POOL but the
         // agent must call a method to upgrade to new contract, se we must track the actual token used.
-        uint16 poolCollateralToken;
+        uint16 poolCollateralIndex;
 
         // Position of this agent in the list of agents available for minting.
         // Value is actually `list index + 1`, so that 0 means 'not in the list'.
@@ -123,8 +129,10 @@ library Agent {
         // The time when ongoing underlying withdrawal was announced.
         uint64 underlyingWithdrawalAnnouncedAt;
 
+        // Announcement for class1 collateral withdrawal.
         WithdrawalAnnouncement class1WithdrawalAnnouncement;
 
+        // Announcement for pool token withdrawal (which also means pool collateral withdrawal).
         WithdrawalAnnouncement poolTokenWithdrawalAnnouncement;
 
         // Underlying block when the agent was created.
@@ -138,6 +146,12 @@ library Agent {
         // The factor set by the agent to multiply the price at which agent buys f-assets from pool
         // token holders on self-close exit (when requested or the redeemed amount is less than 1 lot).
         uint16 buyFassetForCollateralRatioBIPS;
+
+        // The announced time when the agent is exiting available agents list.
+        uint64 exitAvailableAfterTs;
+
+        // Agent's pending setting updates.
+        mapping(bytes32 => SettingUpdate) settingUpdates;
 
         // Only used for calculating Agent.State size. See deleteStorage() below.
         uint256[1] _endMarker;

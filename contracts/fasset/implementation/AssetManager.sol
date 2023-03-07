@@ -26,6 +26,7 @@ import "../library/UnderlyingWithdrawalAnnouncements.sol";
 import "../library/UnderlyingFreeBalance.sol";
 import "../library/FullAgentInfo.sol";
 import "../library/CollateralTokens.sol";
+import "../library/AgentSettingsUpdater.sol";
 
 
 /**
@@ -154,17 +155,15 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * (Externally, same account may own several agent vaults,
      *  but in fasset system, each agent vault acts as an independent agent.)
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
-     * @param _underlyingAddressString full address on the underlying chain (not hash)
      */
     function createAgent(
-        string memory _underlyingAddressString,
-        string memory _class1CollateralTokenId
+        IAssetManager.InitialAgentSettings calldata _settings
     )
         external
         onlyAttached
         onlyWhitelistedSender
     {
-        AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString, _class1CollateralTokenId);
+        AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _settings);
     }
 
     /**
@@ -199,21 +198,23 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         AgentsExternal.destroyAgent(_agentVault);
     }
 
-    /**
-     * Set the ratio at which free collateral for the minting will be accounted.
-     * NOTE: may only be called by the agent vault owner.
-     * @param _agentVault agent vault address
-     * @param _minClass1CollateralRatioBIPS the new ratio in BIPS
-     */
-    function setAgentMinCollateralRatioBIPS(
+    function announceAgentSettingUpdate(
         address _agentVault,
-        uint256 _minClass1CollateralRatioBIPS,
-        uint256 _minPoolCollateralRatioBIPS
+        string memory _name,
+        uint256 _value
     )
         external
     {
-        AgentsExternal.setAgentMinCollateralRatioBIPS(_agentVault, _minClass1CollateralRatioBIPS,
-            _minPoolCollateralRatioBIPS);
+        AgentSettingsUpdater.announceUpdate(_agentVault, _name, _value);
+    }
+
+    function executeAgentSettingUpdate(
+        address _agentVault,
+        string memory _name
+    )
+        external
+    {
+        AgentSettingsUpdater.executeUpdate(_agentVault, _name);
     }
 
     /**
@@ -320,27 +321,31 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Other agents can only self-mint.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
-     * @param _feeBIPS fee charged to minters (paid in underlying currency along with backing assets)
-     * @param _minClass1CollateralRatioBIPS when agent is created, free collateral is accounted at the
-     *  global min collateral ratio; for public agents this can very quickly lead to liquidation,
-     *  therefore it is required for agent to set it when becoming available.
-     *  Note that agent's minCollateralRatioBIPS can also be set separately by setAgentMinCollateralRatioBIPS method.
      */
     function makeAgentAvailable(
-        address _agentVault,
-        uint256 _feeBIPS,
-        uint256 _minClass1CollateralRatioBIPS,
-        uint256 _minPoolCollateralRatioBIPS
+        address _agentVault
     )
         external
     {
-        AvailableAgents.makeAvailable(_agentVault,
-            _feeBIPS, _minClass1CollateralRatioBIPS, _minPoolCollateralRatioBIPS);
+        AvailableAgents.makeAvailable(_agentVault);
+    }
+
+    /**
+     * Announce exit from the publicly available agents list.
+     * NOTE: may only be called by the agent vault owner.
+     * @param _agentVault agent vault address
+     */
+    function announceExitAvailableAgentList(
+        address _agentVault
+    )
+        external
+    {
+        AvailableAgents.announceExit(_agentVault);
     }
 
     /**
      * Exit the publicly available agents list.
-     * NOTE: may only be called by the agent vault owner.
+     * NOTE: may only be called by the agent vault owner and after announcement.
      * @param _agentVault agent vault address
      */
     function exitAvailableAgentList(
@@ -933,7 +938,8 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     function setCollateralRatiosForToken(
-        string memory _tokenIdentifier,
+        IAssetManager.CollateralTokenClass _tokenClass,
+        IERC20 _token,
         uint256 _minCollateralRatioBIPS,
         uint256 _ccbMinCollateralRatioBIPS,
         uint256 _safetyMinCollateralRatioBIPS
@@ -941,58 +947,60 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
         onlyAssetManagerController
     {
-        CollateralTokens.setCollateralRatios(_tokenIdentifier,
+        CollateralTokens.setCollateralRatios(_tokenClass, _token,
             _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
     }
 
     function deprecateCollateralToken(
-        string memory _tokenIdentifier,
+        IAssetManager.CollateralTokenClass _tokenClass,
+        IERC20 _token,
         uint256 _invalidationTimeSec
     )
         external
         onlyAssetManagerController
     {
-        CollateralTokens.deprecate(_tokenIdentifier, _invalidationTimeSec);
+        CollateralTokens.deprecate(_tokenClass, _token, _invalidationTimeSec);
     }
 
     /**
      * If the WNat token is replaced, it is not automatically used by the pools in the system.
      * Instead, it has to be added as a new collateral token of type POOL by this method.
-     * Note that existing pools must switch afterwards using `upgradePoolCollateralToken` method.
+     * Note that existing pools must switch afterwards using `upgradeWNat` method.
      */
-    function setCurrentPoolCollateralToken(
+    function setPoolCollateralToken(
         IAssetManager.CollateralTokenInfo calldata _data
     )
         external
         onlyAssetManagerController
     {
-        CollateralTokens.setCurrentPoolCollateralToken(_data);
+        CollateralTokens.setPoolCollateralToken(_data);
     }
 
     /**
-     * When current pool collateral token contract (WNat) is replaced by the method setCurrentPoolCollateralToken,
+     * When current pool collateral token contract (WNat) is replaced by the method setPoolCollateralToken,
      * pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for
      * new ones and sets it for use by the pool.
      */
-    function upgradePoolCollateralToken(
+    function upgradeWNatContract(
         address _agentVault
     )
         external
     {
-        // AgentsExternal.upgradePoolCollateralToken checks that only agent owner can call
-        AgentsExternal.upgradePoolCollateralToken(_agentVault);
+        // AgentsExternal.upgradeWNat checks that only agent owner can call
+        AgentsExternal.upgradeWNatContract(_agentVault);
     }
 
     /**
-     * Get information about a token with identifier `_tokenIdentifier`.
+     * Get collateral  information about a token.
      */
     function getCollateralToken(
-        string memory _tokenIdentifier
+        IAssetManager.CollateralTokenClass _tokenClass,
+        IERC20 _token
     )
         external view
         returns (IAssetManager.CollateralTokenInfo memory)
     {
-        return CollateralTokens.getInfo(_tokenIdentifier);
+        return CollateralTokens.getInfo(_tokenClass, _token);
     }
 
     /**

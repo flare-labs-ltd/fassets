@@ -11,7 +11,7 @@ library Globals {
         returns (IWNat)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return IWNat(address(state.collateralTokens[state.currentPoolCollateralToken].token));
+        return IWNat(address(state.collateralTokens[state.poolCollateralIndex].token));
     }
 
     function getCurrentPoolCollateral()
@@ -19,7 +19,7 @@ library Globals {
         returns (CollateralToken.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[state.currentPoolCollateralToken];
+        return state.collateralTokens[state.poolCollateralIndex];
     }
 
     function getFAsset()

@@ -7,6 +7,8 @@ import "../../interface/IFAsset.sol";
 import "../../interface/IAgentVaultFactory.sol";
 import "../../interface/IWNat.sol";
 import "../../interface/IWhitelist.sol";
+import "../../interface/ICollateralPoolFactory.sol";
+
 
 
 library AssetManagerSettings {
@@ -21,6 +23,9 @@ library AssetManagerSettings {
 
         // Factory for creating new agent vaults.
         IAgentVaultFactory agentVaultFactory;
+
+        // Factory for creating new agent collateral pools.
+        ICollateralPoolFactory collateralPoolFactory;
 
         // If set, the whitelist contains a list of accounts that can call public methods
         // (minting, redeeming, challenging, etc.)
@@ -202,5 +207,11 @@ library AssetManagerSettings {
         // However, we cannot burn typical class1 collateral (stablecoins), so the agent must buy them for NAT
         // at FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.
         uint32 class1BuyForFlareFactorBIPS;
+
+        uint64 agentExitAvailableTimelockSeconds;
+
+        uint64 agentFeeChangeTimelockSeconds;
+
+        uint64 agentCollateralRatioChangeTimelockSeconds;
     }
 }

@@ -11,12 +11,10 @@ interface IAssetManager {
         CLASS1  // usable as class 1 collateral
     }
 
+    // Collateral token is uniquely identified by the pair (tokenClass, token).
     struct CollateralTokenInfo {
         // The kind of collateral for this token.
         CollateralTokenClass tokenClass;
-
-        // Identifier used to access token for updating or getting info.
-        string identifier;
 
         // The ERC20 token contract for this collateral type.
         IERC20 token;
@@ -43,6 +41,50 @@ interface IAssetManager {
         uint256 safetyMinCollateralRatioBIPS;
     }
 
+    struct InitialAgentSettings {
+        // Full address on the underlying chain (not hash).
+        string underlyingAddressString;
+
+        // The token used as class1 collateral. Must be one of the tokens obtained by `getCollateralTokens()`,
+        // with class CLASS1.
+        IERC20 class1CollateralToken;
+
+        // Minting fee. Normally charged to minters for publicly available agents, but must be set
+        // also for self-minting agents to pay part of it to collateral pool.
+        // Fee is paid in underlying currency along with backing assets.
+        uint256 feeBIPS;
+
+        // Share of the minting fee that goes to the pool as percentage of the minting fee.
+        // This share of fee is minted as f-assets and belongs to the pool.
+        uint256 poolFeeShareBIPS;
+
+        // Collateral ratio at which we calculate locked collateral and collateral available for minting.
+        // Agent may set own value for minting collateral ratio on creation.
+        // The value must always be greater than system minimum collateral ratio for class1 collateral.
+        // Warning: having this value near global min collateral ratio can quickly lead to liquidation for public
+        // agents, so it is advisable to set it significantly higher.
+        uint256 minClass1CollateralRatioBIPS;
+
+        // Collateral ratio at which we calculate locked collateral and collateral available for minting.
+        // Agent may set own value for minting collateral ratio on creation.
+        // The value must always be greater than system minimum collateral ratio for pool collateral.
+        // Warning: having this value near global min collateral ratio can quickly lead to liquidation for public
+        // agents, so it is advisable to set it significantly higher.
+        uint256 minPoolCollateralRatioBIPS;
+
+        // The minimum collateral ratio above which a staker can exit the pool
+        // (this is CR that must be left after exit).
+        // Must be higher than system minimum collateral ratio for pool collateral.
+        uint256 poolExitCollateralRatioBIPS;
+
+        // The CR below which it is possible to enter the pool at discounted rate (to prevent liquidation).
+        // Must be higher than system minimum collateral ratio for pool collateral.
+        uint256 poolTopupCollateralRatioBIPS;
+
+        // The discount to pool token price when entering and pool CR is below pool topup CR.
+        uint256 poolTopupTokenDiscountBIPS;
+    }
+
     function updateSettings(bytes32 _method, bytes calldata _params) external;
     function attachController(bool attached) external;
     function pause() external;
@@ -57,10 +99,12 @@ interface IAssetManager {
         address _agentVault, address _receiver, uint256 _amountUBA) external;
     // collateral tokens
     function addCollateralToken(IAssetManager.CollateralTokenInfo calldata _data) external;
-    function setCollateralRatiosForToken(string memory _tokenIdentifier, uint256 _minCollateralRatioBIPS,
-        uint256 _ccbMinCollateralRatioBIPS, uint256 _safetyMinCollateralRatioBIPS) external;
-    function deprecateCollateralToken(string memory _tokenIdentifier, uint256 _invalidationTimeSec) external;
-    function setCurrentPoolCollateralToken(IAssetManager.CollateralTokenInfo calldata _data) external;
+    function setCollateralRatiosForToken(CollateralTokenClass _tokenClass, IERC20 _token,
+        uint256 _minCollateralRatioBIPS, uint256 _ccbMinCollateralRatioBIPS, uint256 _safetyMinCollateralRatioBIPS)
+        external;
+    function deprecateCollateralToken(CollateralTokenClass _tokenClass, IERC20 _token,
+        uint256 _invalidationTimeSec) external;
+    function setPoolCollateralToken(IAssetManager.CollateralTokenInfo calldata _data) external;
     // view methods
     function isCollateralToken(address _agentVault, IERC20 _token) external view returns (bool);
     function fAsset() external view returns (IERC20);

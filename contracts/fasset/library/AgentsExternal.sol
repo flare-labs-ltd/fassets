@@ -4,6 +4,7 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../interface/IAssetManager.sol";
+import "../interface/ICollateralPoolFactory.sol";
 import "../../utils/implementation/NativeTokenBurner.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
@@ -51,8 +52,7 @@ library AgentsExternal {
     function createAgent(
         Agent.Type _agentType,
         IAssetManager _assetManager,
-        string memory _underlyingAddressString,
-        string memory _collateralTokenClass1
+        IAssetManager.InitialAgentSettings calldata _settings
     )
         external
     {
@@ -62,27 +62,32 @@ library AgentsExternal {
         Agent.State storage agent = Agent.getWithoutCheck(address(agentVault));
         assert(agent.agentType == Agent.Type.NONE);
         assert(_agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
-        require(bytes(_underlyingAddressString).length != 0, "empty underlying address");
+        require(bytes(_settings.underlyingAddressString).length != 0, "empty underlying address");
         agent.agentType = _agentType;
         agent.status = Agent.Status.NORMAL;
         // set collateral token types
-        Agents.setClass1Collateral(agent, _collateralTokenClass1);
-        agent.poolCollateralToken = state.currentPoolCollateralToken;
-        // initially, agent's min collateral ratios are the same as global min collateral ratios
-        // this setting is ok for self-minting, but not for public minting since it quickly leads to liquidation
-        // it can be changed with setAgentMinCollateralRatioBIPS or when agent becomes available
-        agent.minClass1CollateralRatioBIPS = agent.getClass1Collateral().minCollateralRatioBIPS;
-        agent.minPoolCollateralRatioBIPS = agent.getPoolCollateral().minCollateralRatioBIPS;
+        Agents.setClass1Collateral(agent, _settings.class1CollateralToken);
+        agent.poolCollateralIndex = state.poolCollateralIndex;
+        // set initial collateral ratios
+        Agents.setMinClass1CollateralRatioBIPS(agent, _settings.minClass1CollateralRatioBIPS);
+        Agents.setMinPoolCollateralRatioBIPS(agent, _settings.minPoolCollateralRatioBIPS);
+        // set minting fee and share
+        agent.setFeeBIPS(_settings.feeBIPS);
+        agent.setPoolFeeShareBIPS(_settings.poolFeeShareBIPS);
         // claim the address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
-        bytes32 underlyingAddressHash = keccak256(bytes(_underlyingAddressString));
+        bytes32 underlyingAddressHash = keccak256(bytes(_settings.underlyingAddressString));
         state.underlyingAddressOwnership.claim(msg.sender, underlyingAddressHash,
             state.settings.requireEOAAddressProof);
-        agent.underlyingAddressString = _underlyingAddressString;
+        agent.underlyingAddressString = _settings.underlyingAddressString;
         agent.underlyingAddressHash = underlyingAddressHash;
         uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(underlyingAddressHash);
         agent.underlyingBlockAtCreation = SafeMath64.max64(state.currentUnderlyingBlock, eoaProofBlock + 1);
-        emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), address(agentVault), _underlyingAddressString);
+        // add collateral pool
+        agent.collateralPool =
+            state.settings.collateralPoolFactory.create(_assetManager, address(agentVault), _settings);
+        emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), address(agentVault),
+            _settings.underlyingAddressString, address(agent.collateralPool));
     }
 
     function announceDestroy(
@@ -153,19 +158,6 @@ library AgentsExternal {
         agent.mintedAMG = 0;
         state.totalReservedCollateralAMG -= agent.reservedAMG;
         agent.reservedAMG = 0;
-    }
-
-    function setAgentMinCollateralRatioBIPS(
-        address _agentVault,
-        uint256 _minClass1CollateralRatioBIPS,
-        uint256 _minPoolCollateralRatioBIPS
-    )
-        external
-        onlyAgentVaultOwner(_agentVault)
-    {
-        Agent.State storage agent = Agent.get(_agentVault);
-        Agents.setAgentMinClass1CollateralRatioBIPS(agent, _minClass1CollateralRatioBIPS);
-        Agents.setAgentMinPoolCollateralRatioBIPS(agent, _minPoolCollateralRatioBIPS);
     }
 
     function convertDustToTicket(
@@ -265,7 +257,7 @@ library AgentsExternal {
         }
     }
 
-    function upgradePoolCollateralToken(
+    function upgradeWNatContract(
         address _agentVault
     )
         external
@@ -273,23 +265,36 @@ library AgentsExternal {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         AssetManagerState.State storage state = AssetManagerState.get();
-        if (agent.poolCollateralToken != state.currentPoolCollateralToken) {
-            IWNat oldWNat = IWNat(address(state.collateralTokens[agent.poolCollateralToken].token));
-            IWNat wNat = IWNat(address(state.collateralTokens[state.currentPoolCollateralToken].token));
-            agent.poolCollateralToken = state.currentPoolCollateralToken;
-            agent.collateralPool.upgradeWNatContract(oldWNat, wNat);
+        IWNat wNat = IWNat(address(state.collateralTokens[state.poolCollateralIndex].token));
+        // upgrade pool wnat
+        if (agent.poolCollateralIndex != state.poolCollateralIndex) {
+            agent.poolCollateralIndex = state.poolCollateralIndex;
+            agent.collateralPool.upgradeWNatContract(wNat);
+        }
+        // upgrade agent vault wnat
+        IWNat vaultWNat = IAgentVault(_agentVault).wNat();
+        if (vaultWNat != wNat) {
+            IAgentVault(_agentVault).upgradeWNatContract(wNat);
+            // should also switch collateral if agent uses WNat as class1 collateral
+            if (vaultWNat == agent.getClass1Token()) {
+                (bool wnatIsCollateralToken, uint256 index) =
+                    CollateralTokens.tryGetIndex(IAssetManager.CollateralTokenClass.CLASS1, vaultWNat);
+                if (wnatIsCollateralToken) {
+                    agent.class1CollateralIndex = uint16(index);
+                }
+            }
         }
     }
 
     function switchClass1Collateral(
         address _agentVault,
-        string memory _tokenIdentifier
+        IERC20 _token
     )
         external
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        Agents.setClass1Collateral(agent, _tokenIdentifier);
+        Agents.setClass1Collateral(agent, _token);
     }
 
     function isCollateralToken(

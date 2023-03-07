@@ -23,26 +23,22 @@ library AvailableAgents {
         uint256 freeCollateralLots;
     }
 
+    modifier onlyAgentVaultOwner(address _agentVault) {
+        Agents.requireAgentVaultOwner(_agentVault);
+        _;
+    }
+
     function makeAvailable(
-        address _agentVault,
-        uint256 _feeBIPS,
-        uint256 _minClass1CollateralRatioBIPS,
-        uint256 _minPoolCollateralRatioBIPS
+        address _agentVault
     )
         external
+        onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
-        Agents.requireAgentVaultOwner(_agentVault);
         assert(agent.agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         require(agent.status == Agent.Status.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
-        // set parameters
-        agent.feeBIPS = _feeBIPS.toUint16();
-        // when agent becomes available, it is a good idea to set agent's min collateral ratio higher than
-        // global min collateral ratio (otherwise he can quickly go to liquidation), so we always do it here
-        Agents.setAgentMinClass1CollateralRatioBIPS(agent, _minClass1CollateralRatioBIPS);
-        Agents.setAgentMinPoolCollateralRatioBIPS(agent, _minPoolCollateralRatioBIPS);
         // check that there is enough free collateral for at least one lot
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         uint256 freeCollateralLots = collateralData.freeCollateralLots(agent);
@@ -50,19 +46,35 @@ library AvailableAgents {
         // add to queue
         state.availableAgents.push(_agentVault);
         agent.availableAgentsPos = state.availableAgents.length.toUint32();     // index+1 (0=not in list)
-        emit AMEvents.AgentAvailable(_agentVault, _feeBIPS,
-            _minClass1CollateralRatioBIPS, _minPoolCollateralRatioBIPS, freeCollateralLots);
+        emit AMEvents.AgentAvailable(_agentVault, agent.feeBIPS,
+            agent.minClass1CollateralRatioBIPS, agent.minPoolCollateralRatioBIPS, freeCollateralLots);
+    }
+
+    function announceExit(
+        address _agentVault
+    )
+        external
+        onlyAgentVaultOwner(_agentVault)
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        require(agent.availableAgentsPos != 0, "agent not available");
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 exitAfterTs = block.timestamp + settings.agentExitAvailableTimelockSeconds;
+        agent.exitAvailableAfterTs = exitAfterTs.toUint64();
+        emit AMEvents.AvailableAgentExitAnnounced(_agentVault, exitAfterTs);
     }
 
     function exit(
         address _agentVault
     )
         external
+        onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
-        Agents.requireAgentVaultOwner(_agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
+        require(agent.exitAvailableAfterTs != 0, "exit not announced");
+        require(block.timestamp >= agent.exitAvailableAfterTs, "exit too soon");
         uint256 ind = agent.availableAgentsPos - 1;
         if (ind + 1 < state.availableAgents.length) {
             state.availableAgents[ind] = state.availableAgents[state.availableAgents.length - 1];
@@ -71,6 +83,7 @@ library AvailableAgents {
         }
         agent.availableAgentsPos = 0;
         state.availableAgents.pop();
+        agent.exitAvailableAfterTs = 0;
         emit AMEvents.AvailableAgentExited(_agentVault);
     }
 

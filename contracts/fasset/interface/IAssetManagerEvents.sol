@@ -10,7 +10,8 @@ interface IAssetManagerEvents {
         address indexed owner,
         uint8 agentType,
         address agentVault,
-        string underlyingAddress);
+        string underlyingAddress,
+        address collateralPool);
 
     /**
      * Agent has announced destroy (close) of agent vault and will be able to
@@ -59,8 +60,30 @@ interface IAssetManagerEvents {
     /**
      * Agent exited from available agents list.
      */
+    event AvailableAgentExitAnnounced(
+        address indexed agentVault,
+        uint256 exitAfterTs);
+
+    /**
+     * Agent exited from available agents list.
+     */
     event AvailableAgentExited(
         address indexed agentVault);
+
+    /**
+     * Agent has initiated setting change (fee or some agent collateral ratio change).
+     */
+    event AgentSettingChangeAnnounced(
+        string name,
+        uint256 value,
+        uint256 validAt);
+
+    /**
+     * Agent has executed setting change (fee or some agent collateral ratio change).
+     */
+    event AgentSettingChanged(
+        string name,
+        uint256 value);
 
     /**
      * Minter reserved collateral, paid the reservation fee, and is expected to pay the underlying funds.
@@ -355,21 +378,22 @@ interface IAssetManagerEvents {
         address value);
 
     event CollateralTokenAdded(
-        string identifier,
-        address tokenContract,
         uint8 tokenClass,
+        address tokenContract,
         string ftsoSymbol,
         uint256 minCollateralRatioBIPS,
         uint256 ccbMinCollateralRatioBIPS,
         uint256 safetyMinCollateralRatioBIPS);
 
     event CollateralTokenRatiosChanged(
-        string identifier,
+        uint8 tokenClass,
+        address tokenContract,
         uint256 minCollateralRatioBIPS,
         uint256 ccbMinCollateralRatioBIPS,
         uint256 safetyMinCollateralRatioBIPS);
 
     event CollateralTokenDeprecated(
-        string identifier,
+        uint8 tokenClass,
+        address tokenContract,
         uint256 validUntil);
 }
