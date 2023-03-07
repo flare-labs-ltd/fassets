@@ -158,13 +158,15 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      */
     function createAgent(
         string memory _underlyingAddressString,
-        IERC20 _class1CollateralToken
+        IERC20 _class1CollateralToken,
+        ICollateralPoolFactory.InitialSettings calldata _collateralPoolSettings
     )
         external
         onlyAttached
         onlyWhitelistedSender
     {
-        AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString, _class1CollateralToken);
+        AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _underlyingAddressString,
+            _class1CollateralToken, _collateralPoolSettings);
     }
 
     /**

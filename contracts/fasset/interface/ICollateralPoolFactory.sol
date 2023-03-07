@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "./IAgentVault.sol";
+import "./ICollateralPool.sol";
 import "./IAssetManager.sol";
 
 
@@ -9,8 +9,15 @@ import "./IAssetManager.sol";
  * @title Agent vault factory
  */
 interface ICollateralPoolFactory {
-    /**
-     * @notice Creates new agent vault
-     */
-    function create(IAssetManager _assetManager, address payable _owner) external returns (IAgentVault);
+    struct InitialSettings {
+        uint256 exitCRBIPS;
+        uint256 topupCRBIPS;
+        uint256 topupTokenDiscountBIPS;
+    }
+
+    function create(
+        IAssetManager _assetManager,
+        address _agentVault,
+        InitialSettings memory _settings
+    ) external returns (ICollateralPool);
 }

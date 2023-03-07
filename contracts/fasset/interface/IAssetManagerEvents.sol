@@ -10,7 +10,8 @@ interface IAssetManagerEvents {
         address indexed owner,
         uint8 agentType,
         address agentVault,
-        string underlyingAddress);
+        string underlyingAddress,
+        address collateralPool);
 
     /**
      * Agent has announced destroy (close) of agent vault and will be able to

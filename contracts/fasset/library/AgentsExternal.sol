@@ -4,6 +4,7 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../interface/IAssetManager.sol";
+import "../interface/ICollateralPoolFactory.sol";
 import "../../utils/implementation/NativeTokenBurner.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
@@ -52,7 +53,8 @@ library AgentsExternal {
         Agent.Type _agentType,
         IAssetManager _assetManager,
         string memory _underlyingAddressString,
-        IERC20 _class1CollateralToken
+        IERC20 _class1CollateralToken,
+        ICollateralPoolFactory.InitialSettings calldata _collateralPoolSettings
     )
         external
     {
@@ -82,7 +84,11 @@ library AgentsExternal {
         agent.underlyingAddressHash = underlyingAddressHash;
         uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(underlyingAddressHash);
         agent.underlyingBlockAtCreation = SafeMath64.max64(state.currentUnderlyingBlock, eoaProofBlock + 1);
-        emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), address(agentVault), _underlyingAddressString);
+        // add collateral pool
+        agent.collateralPool =
+            state.settings.collateralPoolFactory.create(_assetManager, address(agentVault), _collateralPoolSettings);
+        emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), address(agentVault),
+            _underlyingAddressString, address(agent.collateralPool));
     }
 
     function announceDestroy(

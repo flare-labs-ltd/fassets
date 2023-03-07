@@ -16,7 +16,6 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     using SafePct for uint256;
 
     uint256 public constant MINIMUM_ENTER_AMOUNT = 1e18; // 1 FLR
-    uint256 public constant CLAIM_FTSO_REWARDS_INTEREST_BIPS = 300;
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
 
     address public immutable agentVault;

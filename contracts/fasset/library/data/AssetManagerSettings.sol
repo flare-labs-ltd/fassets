@@ -7,6 +7,8 @@ import "../../interface/IFAsset.sol";
 import "../../interface/IAgentVaultFactory.sol";
 import "../../interface/IWNat.sol";
 import "../../interface/IWhitelist.sol";
+import "../../interface/ICollateralPoolFactory.sol";
+
 
 
 library AssetManagerSettings {
@@ -21,6 +23,9 @@ library AssetManagerSettings {
 
         // Factory for creating new agent vaults.
         IAgentVaultFactory agentVaultFactory;
+
+        // Factory for creating new agent collateral pools.
+        ICollateralPoolFactory collateralPoolFactory;
 
         // If set, the whitelist contains a list of accounts that can call public methods
         // (minting, redeeming, challenging, etc.)
