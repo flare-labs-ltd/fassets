@@ -208,7 +208,7 @@ library AssetManagerSettings {
         // at FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.
         uint32 class1BuyForFlareFactorBIPS;
 
-        uint64 agentExitTimelockSeconds;
+        uint64 agentExitAvailableTimelockSeconds;
 
         uint64 agentFeeChangeTimelockSeconds;
 

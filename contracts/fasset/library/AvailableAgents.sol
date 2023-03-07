@@ -23,14 +23,19 @@ library AvailableAgents {
         uint256 freeCollateralLots;
     }
 
+    modifier onlyAgentVaultOwner(address _agentVault) {
+        Agents.requireAgentVaultOwner(_agentVault);
+        _;
+    }
+
     function makeAvailable(
         address _agentVault
     )
         external
+        onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
-        Agents.requireAgentVaultOwner(_agentVault);
         assert(agent.agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         require(agent.status == Agent.Status.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
@@ -45,15 +50,31 @@ library AvailableAgents {
             agent.minClass1CollateralRatioBIPS, agent.minPoolCollateralRatioBIPS, freeCollateralLots);
     }
 
+    function announceExit(
+        address _agentVault
+    )
+        external
+        onlyAgentVaultOwner(_agentVault)
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        require(agent.availableAgentsPos != 0, "agent not available");
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 exitAfterTs = block.timestamp + settings.agentExitAvailableTimelockSeconds;
+        agent.exitAvailableAfterTs = exitAfterTs.toUint64();
+        emit AMEvents.AvailableAgentExitAnnounced(_agentVault, exitAfterTs);
+    }
+
     function exit(
         address _agentVault
     )
         external
+        onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
-        Agents.requireAgentVaultOwner(_agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
+        require(agent.exitAvailableAfterTs != 0, "exit not announced");
+        require(block.timestamp >= agent.exitAvailableAfterTs, "exit too soon");
         uint256 ind = agent.availableAgentsPos - 1;
         if (ind + 1 < state.availableAgents.length) {
             state.availableAgents[ind] = state.availableAgents[state.availableAgents.length - 1];
@@ -62,6 +83,7 @@ library AvailableAgents {
         }
         agent.availableAgentsPos = 0;
         state.availableAgents.pop();
+        agent.exitAvailableAfterTs = 0;
         emit AMEvents.AvailableAgentExited(_agentVault);
     }
 

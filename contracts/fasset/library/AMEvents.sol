@@ -60,6 +60,13 @@ library AMEvents {
     /**
      * Agent exited from available agents list.
      */
+    event AvailableAgentExitAnnounced(
+        address indexed agentVault,
+        uint256 exitAfterTs);
+
+    /**
+     * Agent exited from available agents list.
+     */
     event AvailableAgentExited(
         address indexed agentVault);
 

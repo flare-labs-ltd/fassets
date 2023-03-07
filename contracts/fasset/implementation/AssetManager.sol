@@ -331,8 +331,21 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     /**
-     * Exit the publicly available agents list.
+     * Announce exit from the publicly available agents list.
      * NOTE: may only be called by the agent vault owner.
+     * @param _agentVault agent vault address
+     */
+    function announceExitAvailableAgentList(
+        address _agentVault
+    )
+        external
+    {
+        AvailableAgents.announceExit(_agentVault);
+    }
+
+    /**
+     * Exit the publicly available agents list.
+     * NOTE: may only be called by the agent vault owner and after announcement.
      * @param _agentVault agent vault address
      */
     function exitAvailableAgentList(

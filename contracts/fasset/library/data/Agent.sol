@@ -147,6 +147,9 @@ library Agent {
         // token holders on self-close exit (when requested or the redeemed amount is less than 1 lot).
         uint16 buyFassetForCollateralRatioBIPS;
 
+        // The announced time when the agent is exiting available agents list.
+        uint64 exitAvailableAfterTs;
+
         // Agent's pending setting updates.
         mapping(bytes32 => SettingUpdate) settingUpdates;
 
