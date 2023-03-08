@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
-import ".//liquidationStrategy/LiquidationStrategyWrapper.sol";
+import "./LiquidationStrategy.sol";
 
 library SettingsUpdater {
     using SafeCast for uint256;
@@ -470,7 +470,7 @@ library SettingsUpdater {
         require(liquidationStrategy != address(0), "address zero");
         // update and initialize
         settings.liquidationStrategy = liquidationStrategy;
-        LiquidationStrategyWrapper.initialize(initialSettings);
+        LiquidationStrategy.initialize(initialSettings);
         emit AMEvents.SettingChanged("liquidationStrategy", uint160(liquidationStrategy));
     }
 
@@ -480,7 +480,7 @@ library SettingsUpdater {
         private
     {
         // just pass to LiquidationStrategy.updateSettings, it will do the decoding and validation
-        LiquidationStrategyWrapper.updateSettings(_params);
+        LiquidationStrategy.updateSettings(_params);
     }
 
     function _validateSettings(

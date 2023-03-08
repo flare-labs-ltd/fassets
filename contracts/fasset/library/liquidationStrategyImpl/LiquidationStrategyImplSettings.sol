@@ -6,7 +6,7 @@ import "../../../utils/lib/SafePct.sol";
 import "../AMEvents.sol";
 
 
-library LiquidationStrategySettings {
+library LiquidationStrategyImplSettings {
     using SafeCast for uint256;
 
     struct Data {
@@ -28,7 +28,7 @@ library LiquidationStrategySettings {
         uint32[] liquidationFactorClass1BIPS;
     }
 
-    bytes32 internal constant SETTINGS_POSITION = keccak256("fasset.AssetManager.LiquidationStrategySettings");
+    bytes32 internal constant SETTINGS_POSITION = keccak256("fasset.AssetManager.LiquidationStrategyImplSettings");
 
     function verifyAndUpdate(bytes memory _encodedSettings) internal {
         (uint256 stepSeconds, uint256[] memory liquidationFactors, uint256[] memory class1Factors) =
@@ -38,13 +38,13 @@ library LiquidationStrategySettings {
     }
 
     function getEncoded() internal view returns (bytes memory) {
-        LiquidationStrategySettings.Data storage settings = LiquidationStrategySettings.get();
+        LiquidationStrategyImplSettings.Data storage settings = LiquidationStrategyImplSettings.get();
         return abi.encode(settings.liquidationCollateralFactorBIPS, settings.liquidationFactorClass1BIPS);
     }
 
     function get()
         internal pure
-        returns (LiquidationStrategySettings.Data storage _settings)
+        returns (LiquidationStrategyImplSettings.Data storage _settings)
     {
         // Only direct constants are allowed in inline assembly, so we assign it here
         bytes32 position = SETTINGS_POSITION;
@@ -55,7 +55,7 @@ library LiquidationStrategySettings {
     }
 
     function _updateFactors(uint256[] memory _liquidationFactors, uint256[] memory _class1Factors) private {
-        LiquidationStrategySettings.Data storage settings = LiquidationStrategySettings.get();
+        LiquidationStrategyImplSettings.Data storage settings = LiquidationStrategyImplSettings.get();
         // validate
         require(_liquidationFactors.length == _class1Factors.length, "lengths not equal");
         require(_liquidationFactors.length >= 1, "at least one factor required");
@@ -77,7 +77,7 @@ library LiquidationStrategySettings {
     }
 
     function _updateLiquidationStepSeconds(uint256 _stepSeconds) private {
-        LiquidationStrategySettings.Data storage settings = LiquidationStrategySettings.get();
+        LiquidationStrategyImplSettings.Data storage settings = LiquidationStrategyImplSettings.get();
         // validate
         require(_stepSeconds > 0, "cannot be zero");
         require(settings.liquidationStepSeconds == 0 || _stepSeconds <= settings.liquidationStepSeconds * 2,

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "../data/AssetManagerState.sol";
 
 interface ILiquidationStrategy {
     function initialize(bytes memory _encodedSettings) external;

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "../../../utils/lib/DynamicLibrary.sol";
-import "../data/AssetManagerState.sol";
-import "./ILiquidationStrategy.sol";
+import "../interface/ILiquidationStrategy.sol";
+import "../../utils/lib/DynamicLibrary.sol";
+import "./data/AssetManagerState.sol";
 
-library LiquidationStrategyWrapper {
+// This is just a wrapper for dynamic library with interface ILiquidationStrategy.
+library LiquidationStrategy {
     using Agent for Agent.State;
 
     function initialize(bytes memory _encodedSettings) internal {

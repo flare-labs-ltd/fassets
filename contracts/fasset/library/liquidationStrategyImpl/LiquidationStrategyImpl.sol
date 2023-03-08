@@ -3,24 +3,24 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../data/AssetManagerState.sol";
-import "./LiquidationStrategySettings.sol";
+import "./LiquidationStrategyImplSettings.sol";
 import "../Agents.sol";
 import "../CollateralTokens.sol";
 
-library LiquidationStrategy {
+library LiquidationStrategyImpl {
     using Agents for Agent.State;
     using CollateralTokens for CollateralToken.Data;
 
     function initialize(bytes memory _encodedSettings) external {
-        LiquidationStrategySettings.verifyAndUpdate(_encodedSettings);
+        LiquidationStrategyImplSettings.verifyAndUpdate(_encodedSettings);
     }
 
     function updateSettings(bytes memory _encodedSettings) external {
-        LiquidationStrategySettings.verifyAndUpdate(_encodedSettings);
+        LiquidationStrategyImplSettings.verifyAndUpdate(_encodedSettings);
     }
 
     function getSettings() external view returns (bytes memory) {
-        return LiquidationStrategySettings.getEncoded();
+        return LiquidationStrategyImplSettings.getEncoded();
     }
 
     // Liquidation premium step (depends on time, but is capped by the current collateral ratio)
@@ -33,7 +33,7 @@ library LiquidationStrategy {
         external view
         returns (uint256 _c1FactorBIPS, uint256 _poolFactorBIPS)
     {
-        LiquidationStrategySettings.Data storage settings = LiquidationStrategySettings.get();
+        LiquidationStrategyImplSettings.Data storage settings = LiquidationStrategyImplSettings.get();
         Agent.State storage agent = Agent.get(_agentVault);
         uint256 step = _currentLiquidationStep(agent);
         uint256 factorBIPS = settings.liquidationCollateralFactorBIPS[step];
@@ -73,7 +73,7 @@ library LiquidationStrategy {
         returns (uint256)
     {
         AssetManagerSettings.Data storage globalSettings = AssetManagerState.getSettings();
-        LiquidationStrategySettings.Data storage settings = LiquidationStrategySettings.get();
+        LiquidationStrategyImplSettings.Data storage settings = LiquidationStrategyImplSettings.get();
         // calculate premium step based on time since liquidation started
         bool startedInCCB = _agent.status == Agent.Status.LIQUIDATION
             && _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;

@@ -12,7 +12,7 @@ import "./Agents.sol";
 import "./Conversion.sol";
 import "./Redemptions.sol";
 import "./AgentCollateral.sol";
-import "./liquidationStrategy/LiquidationStrategyWrapper.sol";
+import "./LiquidationStrategy.sol";
 
 
 library Liquidation {
@@ -300,7 +300,7 @@ library Liquidation {
         private view
         returns (uint256 _c1FactorBIPS, uint256 _poolFactorBIPS)
     {
-        return LiquidationStrategyWrapper.currentLiquidationFactorBIPS(_agent, _cr.class1CR, _cr.poolCR);
+        return LiquidationStrategy.currentLiquidationFactorBIPS(_agent, _cr.class1CR, _cr.poolCR);
     }
 
     function _targetRatioBIPS(
