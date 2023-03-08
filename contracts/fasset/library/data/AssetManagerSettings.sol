@@ -8,7 +8,7 @@ import "../../interface/IAgentVaultFactory.sol";
 import "../../interface/IWNat.sol";
 import "../../interface/IWhitelist.sol";
 import "../../interface/ICollateralPoolFactory.sol";
-
+import "../../interface/IAddressValidator.sol";
 
 
 library AssetManagerSettings {
@@ -34,6 +34,9 @@ library AssetManagerSettings {
 
         // Attestation client verifies and decodes attestation proofs.
         IAttestationClient attestationClient;
+
+        // Pluggable validator for underlying addresses (typically, each chain has different rules).
+        IAddressValidator underlyingAddressValidator;
 
         // External (dynamically loaded) library for calculation liquidation factors.
         address liquidationStrategy;

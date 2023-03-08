@@ -14,7 +14,7 @@ library Globals {
         return IWNat(address(state.collateralTokens[state.poolCollateralIndex].token));
     }
 
-    function getCurrentPoolCollateral()
+    function getPoolCollateral()
         internal view
         returns (CollateralToken.Data storage)
     {

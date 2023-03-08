@@ -160,6 +160,11 @@ library RedemptionRequests {
         private
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        // validate redemption address
+        require(bytes(_redeemerUnderlyingAddressString).length != 0, "empty underlying address");
+        require(state.settings.underlyingAddressValidator.validate(_redeemerUnderlyingAddressString),
+            "invalid underlying address");
+        // create request
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
         state.newRedemptionRequestId += PaymentReference.randomizedIdSkip();
         uint64 requestId = state.newRedemptionRequestId;

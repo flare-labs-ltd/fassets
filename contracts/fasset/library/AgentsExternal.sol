@@ -57,12 +57,17 @@ library AgentsExternal {
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        assert(_agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
+        // validate underlying address
+        require(bytes(_settings.underlyingAddressString).length != 0, "empty underlying address");
+        require(state.settings.underlyingAddressValidator.validate(_settings.underlyingAddressString),
+            "invalid underlying address");
+        // create agent vault
         IAgentVaultFactory agentVaultFactory = state.settings.agentVaultFactory;
         IAgentVault agentVault = agentVaultFactory.create(_assetManager, payable(msg.sender));
+        // set initial status
         Agent.State storage agent = Agent.getWithoutCheck(address(agentVault));
-        assert(agent.agentType == Agent.Type.NONE);
-        assert(_agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
-        require(bytes(_settings.underlyingAddressString).length != 0, "empty underlying address");
+        assert(agent.agentType == Agent.Type.NONE);     // state should be empty on creation
         agent.agentType = _agentType;
         agent.status = Agent.Status.NORMAL;
         // set collateral token types

@@ -1107,7 +1107,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         returns (uint256 _multiplier, uint256 _divisor)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        _multiplier = Conversion.currentAmgPriceInTokenWei(Globals.getCurrentPoolCollateral());
+        _multiplier = Conversion.currentAmgPriceInTokenWei(Globals.getPoolCollateral());
         _divisor = Conversion.AMG_TOKEN_WEI_PRICE_SCALE * settings.assetMintingGranularityUBA;
     }
 
