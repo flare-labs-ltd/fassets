@@ -84,7 +84,7 @@ library AgentSettingsUpdater {
 
     function _getTimelock(bytes32 _hash) private view returns (uint64) {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        if (_hash == FEE_BIPS || _hash == POOL_FEE_SHARE_BIPS) {
+        if (_hash == FEE_BIPS || _hash == POOL_FEE_SHARE_BIPS || _hash == BUY_FASSET_BY_AGENT_RATIO_BIPS) {
             return settings.agentFeeChangeTimelockSeconds;
         } else {
             return settings.agentCollateralRatioChangeTimelockSeconds;
