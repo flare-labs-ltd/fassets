@@ -611,6 +611,7 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
+        require(value >= SafePct.MAX_BIPS, "value too small");
         // update
         settings.class1BuyForFlareFactorBIPS = value.toUint32();
         emit AMEvents.SettingChanged("class1BuyForFlareFactorBIPS", value);
@@ -689,6 +690,13 @@ library SettingsUpdater {
         private pure
     {
         require(address(_settings.fAsset) != address(0), "zero fAsset address");
+        require(address(_settings.agentVaultFactory) != address(0), "zero agentVaultFactory address");
+        require(address(_settings.collateralPoolFactory) != address(0), "zero collateralPoolFactory address");
+        require(address(_settings.attestationClient) != address(0), "zero attestationClient address");
+        require(address(_settings.underlyingAddressValidator) != address(0),
+            "zero underlyingAddressValidator address");
+        require(address(_settings.ftsoRegistry) != address(0), "zero ftsoRegistry address");
+        require(address(_settings.liquidationStrategy) == address(0), "set liquidationStrategy later");
 
         require(_settings.assetUnitUBA > 0, "cannot be zero");
         require(_settings.assetMintingGranularityUBA > 0, "cannot be zero");
@@ -712,5 +720,6 @@ library SettingsUpdater {
         require(_settings.attestationWindowSeconds >= 1 days, "window too small");
         require(_settings.confirmationByOthersAfterSeconds >= 2 hours, "must be at least two hours");
         require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, "confirmation time too big");
+        require(_settings.class1BuyForFlareFactorBIPS >= SafePct.MAX_BIPS, "value too small");
     }
 }
