@@ -211,7 +211,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS, abi.encode(_value));
     }
 
-    function setConfirmationByOthersRewardC1Wei(IAssetManager[] memory _assetManagers, uint256 _value)
+    function setConfirmationByOthersRewardClass1Wei(IAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyImmediateGovernance
     {
@@ -267,7 +267,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_MINTING_POOL_HOLDINGS_REQUIRED_BIPS, abi.encode(_value));
     }
 
-    function setMintingCapAMG(IAssetManager[] memory _assetManagers, uint256 _value)
+    function setMintingCapAmg(IAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyImmediateGovernance
     {
