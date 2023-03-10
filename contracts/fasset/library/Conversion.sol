@@ -39,11 +39,11 @@ library Conversion {
         internal view
         returns (uint256 _ftsoPrice, uint256 _trustedPrice)
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         (uint256 ftsoPrice, uint256 assetTimestamp, uint256 tokenTimestamp) =
             _currentAmgPriceInTokenWeiWithTs(_token);
         (uint256 trustedPrice, uint256 assetTimestampTrusted, uint256 tokenTimestampTrusted) =
             _currentTrustedAmgPriceInTokenWeiWithTs(_token);
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         bool trustedPriceFresh = tokenTimestampTrusted + settings.maxTrustedPriceAgeSeconds >= tokenTimestamp
                 && assetTimestampTrusted + settings.maxTrustedPriceAgeSeconds >= assetTimestamp;
         _ftsoPrice = ftsoPrice;

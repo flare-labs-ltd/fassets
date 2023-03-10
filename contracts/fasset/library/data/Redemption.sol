@@ -20,5 +20,6 @@ library Redemption {
         uint64 timestamp;
         address agentVault;
         Redemption.Status status;
+        bool poolSelfClose;
     }
 }

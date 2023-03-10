@@ -111,6 +111,8 @@ library FullAgentInfo {
         // Total amount of ongoing redemptions.
         uint256 redeemingUBA;
 
+        // TODO: need poolRedeemingUBA?
+
         // Total amount of dust (unredeemable minted f-assets).
         // Note: dustUBA is part of mintedUBA, so the amount of redeemable f-assets is calculated as
         // `mintedUBA - dustUBA`

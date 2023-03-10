@@ -53,21 +53,11 @@ library Agent {
         // for matching payment addresses we always use `underlyingAddressHash = keccak256(underlyingAddressString)`
         bytes32 underlyingAddressHash;
 
-        // Amount of collateral locked by collateral reservation.
-        uint64 reservedAMG;
+        // agent's type; EMPTY if agent doesn't exists
+        Agent.Type agentType;
 
-        // Amount of collateral backing minted fassets.
-        uint64 mintedAMG;
-
-        // The amount of fassets being redeemed. In this case, the fassets were already burned,
-        // but the collateral must still be locked to allow payment in case of redemption failure.
-        // The distinction between 'minted' and 'redeemed' assets is important in case of challenge.
-        uint64 redeemingAMG;
-
-        // When lot size changes, there may be some leftover after redemption that doesn't fit
-        // a whole lot size. It is added to dustAMG and can be recovered via self-close.
-        // Unlike redeemingAMG, dustAMG is still counted in the mintedAMG.
-        uint64 dustAMG;
+        // Current status of the agent (changes for liquidation).
+        Agent.Status status;
 
         // Index of collateral class 1 token.
         // The data is obtained as state.collateralTokens[class1CollateralIndex].
@@ -105,17 +95,34 @@ library Agent {
         // initialLiquidationPhase are reset to new values).
         uint64 liquidationStartedAt;
 
-        // agent's type; EMPTY if agent doesn't exists
-        Agent.Type agentType;
-
-        // Current status of the agent (changes for liquidation).
-        Agent.Status status;
-
         // Liquidation phase at the time when liquidation started.
         LiquidationPhase initialLiquidationPhase;
 
         // Bitmap signifying which collateral type(s) triggered liquidation (LF_CLASS1 | LF_POOL).
         uint8 collateralsUnderwater;
+
+        // Amount of collateral locked by collateral reservation.
+        uint64 reservedAMG;
+
+        // Amount of collateral backing minted fassets.
+        uint64 mintedAMG;
+
+        // The amount of fassets being redeemed. In this case, the fassets were already burned,
+        // but the collateral must still be locked to allow payment in case of redemption failure.
+        // The distinction between 'minted' and 'redeemed' assets is important in case of challenge.
+        uint64 redeemingAMG;
+
+        // The amount of fassets being redeemed EXCEPT those from pool self-close exits.
+        // Unlike normal redemption, pool collateral was already withdrawn, so the redeeming collateral
+        // must only be accounte for / locked for class1 collateral.
+        // On redemption payment failure, redeemer will be paid only in class1 in this case
+        // (and will be paid less if there isn't enough - small extra risk for pool token holders).
+        uint64 poolRedeemingAMG;
+
+        // When lot size changes, there may be some leftover after redemption that doesn't fit
+        // a whole lot size. It is added to dustAMG and can be recovered via self-close.
+        // Unlike redeemingAMG, dustAMG is still counted in the mintedAMG.
+        uint64 dustAMG;
 
         // The amount of underlying funds that may be withdrawn by the agent
         // (fees, self-close, and amount released by liquidation).

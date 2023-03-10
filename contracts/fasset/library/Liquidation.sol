@@ -181,11 +181,11 @@ library Liquidation {
         internal view
         returns (uint256 _collateralRatioBIPS, uint256 _amgToTokenWeiPrice)
     {
-        (uint256 fullCollateral, uint256 amgToTokenWeiPrice, uint256 amgToTokenWeiPriceTrusted) =
+        (Collateral.Data memory _data, Collateral.Data memory _trustedData) =
             _collateralDataWithTrusted(_agent, _collateralKind);
-        uint256 ratio = AgentCollateral.collateralRatioBIPS(_agent, fullCollateral, amgToTokenWeiPrice);
-        uint256 ratioTrusted = AgentCollateral.collateralRatioBIPS(_agent, fullCollateral, amgToTokenWeiPriceTrusted);
-        _amgToTokenWeiPrice = amgToTokenWeiPrice;
+        uint256 ratio = AgentCollateral.collateralRatioBIPS(_data, _agent);
+        uint256 ratioTrusted = AgentCollateral.collateralRatioBIPS(_trustedData, _agent);
+        _amgToTokenWeiPrice = _data.amgToTokenWeiPrice;
         _collateralRatioBIPS = Math.max(ratio, ratioTrusted);
     }
 
@@ -363,7 +363,7 @@ library Liquidation {
         Collateral.Kind _kind
     )
         private view
-        returns (uint256 _fullCollateral, uint256 _amgToTokenWeiPrice, uint256 _amgToTokenWeiPriceTrusted)
+        returns (Collateral.Data memory _data, Collateral.Data memory _trustedData)
     {
         CollateralToken.Data storage collateral = _agent.getCollateral(_kind);
         address owner = _agent.getCollateralOwner(_kind);
@@ -371,8 +371,9 @@ library Liquidation {
         // set fullCollateral for expired types to 0.
         // This will also make all liquidation payments in the other collateral type.
         // TODO: 1) is this ok?  2) test if it works.
-        _fullCollateral = CollateralTokens.isValid(collateral) ? collateral.token.balanceOf(owner) : 0;
-        (_amgToTokenWeiPrice, _amgToTokenWeiPriceTrusted) =
-            Conversion.currentAmgPriceInTokenWeiWithTrusted(collateral);
+        uint256 fullCollateral = CollateralTokens.isValid(collateral) ? collateral.token.balanceOf(owner) : 0;
+        (uint256 price, uint256 trusted) = Conversion.currentAmgPriceInTokenWeiWithTrusted(collateral);
+        _data = Collateral.Data({ kind: _kind, fullCollateral: fullCollateral, amgToTokenWeiPrice: price });
+        _trustedData = Collateral.Data({ kind: _kind, fullCollateral: fullCollateral, amgToTokenWeiPrice: trusted });
     }
 }

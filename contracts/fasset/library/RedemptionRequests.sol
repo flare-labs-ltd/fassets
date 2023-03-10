@@ -47,7 +47,7 @@ library RedemptionRequests {
         }
         require(redeemedLots != 0, "redeem 0 lots");
         for (uint256 i = 0; i < redemptionList.length; i++) {
-            _createRedemptionRequest(redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress);
+            _createRedemptionRequest(redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress, false);
         }
         // notify redeemer of incomplete requests
         if (redeemedLots < _lots) {
@@ -74,7 +74,7 @@ library RedemptionRequests {
         (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
         // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
-        _createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress);
+        _createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress, true);
         // burn the closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
     }
@@ -155,7 +155,8 @@ library RedemptionRequests {
     function _createRedemptionRequest(
         AgentRedemptionData memory _data,
         address _redeemer,
-        string memory _redeemerUnderlyingAddressString
+        string memory _redeemerUnderlyingAddressString,
+        bool _poolSelfClose
     )
         private
     {
@@ -180,11 +181,12 @@ library RedemptionRequests {
             redeemer: _redeemer,
             agentVault: _data.agentVault,
             valueAMG: _data.valueAMG,
-            status: Redemption.Status.ACTIVE
+            status: Redemption.Status.ACTIVE,
+            poolSelfClose: _poolSelfClose
         });
         // decrease mintedAMG and mark it to redeemingAMG
         // do not add it to freeBalance yet (only after failed redemption payment)
-        Agents.startRedeemingAssets(Agent.get(_data.agentVault), _data.valueAMG);
+        Agents.startRedeemingAssets(Agent.get(_data.agentVault), _data.valueAMG, _poolSelfClose);
         // emit event to remind agent to pay
         emit AMEvents.RedemptionRequested(_data.agentVault,
             requestId,

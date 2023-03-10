@@ -103,6 +103,7 @@ library AgentsExternal {
         // all minting must stop and all minted assets must have been cleared
         require(agent.availableAgentsPos == 0, "agent still available");
         require(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0, "agent still active");
+        assert(agent.poolRedeemingAMG == 0);    // must be <= redeemingAMG
         // if not destroying yet, start timing
         if (agent.status != Agent.Status.DESTROYING) {
             agent.status = Agent.Status.DESTROYING;
@@ -124,7 +125,8 @@ library AgentsExternal {
         require(block.timestamp > agent.destroyAnnouncedAt + state.settings.withdrawalWaitMinSeconds,
             "destroy: not allowed yet");
         // cannot have any minting when in destroying status
-        assert(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0);
+        assert(agent.mintedAMG == 0 && agent.reservedAMG == 0 &&
+            agent.redeemingAMG == 0 && agent.poolRedeemingAMG == 0);
         // destroy pool - just burn the remaining nat
         agent.collateralPool.destroy(state.settings.burnAddress);
         // destroy agent vault
@@ -148,8 +150,8 @@ library AgentsExternal {
         // - reservedAMG should be 0, since asset manager had to be paused for a month, so all collateral
         //   reservation requests must have been minted or defaulted by now.
         //   However, it may be nonzero due to some forgotten payment proof, so we burn and clear it.
-        // - redeemingAMG corresponds to redemptions where f-assets were already burned, so the redemption can
-        //   finish normally even if f-asset is now terminated
+        // - redeemingAMG and poolRedeemingAMG corresponds to redemptions where f-assets were already burned,
+        //   so the redemption can finish normally even if f-asset is now terminated
         //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
         // - mintedAMG must be burned and cleared
         uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;

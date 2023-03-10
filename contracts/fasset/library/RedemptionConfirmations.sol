@@ -45,7 +45,7 @@ library RedemptionConfirmations {
             (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
             if (paymentValid) {
                 // release agent collateral
-                Agents.endRedeemingAssets(agent, request.valueAMG);
+                Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
                 // notify
                 if (_payment.status == TransactionAttestation.PAYMENT_SUCCESS) {
                     emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,

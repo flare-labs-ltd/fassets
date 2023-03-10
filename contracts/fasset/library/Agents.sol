@@ -125,21 +125,29 @@ library Agents {
 
     function startRedeemingAssets(
         Agent.State storage _agent,
-        uint64 _valueAMG
+        uint64 _valueAMG,
+        bool _poolSelfCloseRedemption
     )
         internal
     {
-        _agent.redeemingAMG = _agent.redeemingAMG + _valueAMG;
+        _agent.redeemingAMG += _valueAMG;
+        if (!_poolSelfCloseRedemption) {
+            _agent.poolRedeemingAMG += _valueAMG;
+        }
         _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
     }
 
     function endRedeemingAssets(
         Agent.State storage _agent,
-        uint64 _valueAMG
+        uint64 _valueAMG,
+        bool _poolSelfCloseRedemption
     )
         internal
     {
         _agent.redeemingAMG = SafeMath64.sub64(_agent.redeemingAMG, _valueAMG, "not enough redeeming");
+        if (!_poolSelfCloseRedemption) {
+            _agent.poolRedeemingAMG += SafeMath64.sub64(_agent.poolRedeemingAMG, _valueAMG, "not enough redeeming");
+        }
     }
 
     function changeDust(
@@ -275,9 +283,12 @@ library Agents {
         CollateralToken.Data storage currentCollateral = getClass1Collateral(_agent);
         require(currentCollateral.validUntil != 0, "current collateral not deprecated");
         // check there is enough collateral for current mintings
-        uint256 collateralAmount = currentCollateral.token.balanceOf(_agent.vaultAddress());
-        uint256 priceAmgToTokenWei = Conversion.currentAmgPriceInTokenWei(collateral);
-        uint256 crBIPS = AgentCollateral.collateralRatioBIPS(_agent, collateralAmount, priceAmgToTokenWei);
+        Collateral.Data memory switchCollateralData = Collateral.Data({
+            kind: Collateral.Kind.AGENT_CLASS1,
+            fullCollateral: currentCollateral.token.balanceOf(_agent.vaultAddress()),
+            amgToTokenWeiPrice: Conversion.currentAmgPriceInTokenWei(collateral)
+        });
+        uint256 crBIPS = AgentCollateral.collateralRatioBIPS(switchCollateralData, _agent);
         require(crBIPS >= collateral.minCollateralRatioBIPS, "not enough collateral");
         // set the new index
         _agent.class1CollateralIndex = tokenIndex.toUint16();

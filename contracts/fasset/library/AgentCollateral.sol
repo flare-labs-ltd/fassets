@@ -148,7 +148,8 @@ library AgentCollateral {
         uint256 backedAMG = uint256(_agent.reservedAMG) + uint256(_agent.mintedAMG);
         uint256 mintingCollateral = Conversion.convertAmgToTokenWei(backedAMG, _data.amgToTokenWeiPrice)
             .mulBips(mintingMinCollateralRatioBIPS);
-        uint256 redeemingCollateral = Conversion.convertAmgToTokenWei(_agent.redeemingAMG, _data.amgToTokenWeiPrice)
+        uint64 redeemingAMG = _data.kind == Collateral.Kind.POOL ? _agent.poolRedeemingAMG : _agent.redeemingAMG;
+        uint256 redeemingCollateral = Conversion.convertAmgToTokenWei(redeemingAMG, _data.amgToTokenWeiPrice)
             .mulBips(systemMinCollateralRatioBIPS);
         uint256 announcedWithdrawal =
             _data.kind != Collateral.Kind.POOL ? Agents.withdrawalAnnouncement(_agent, _data.kind).amountWei : 0;
@@ -205,24 +206,27 @@ library AgentCollateral {
         internal view
         returns (uint256)
     {
-        assert(_agent.redeemingAMG > 0 && _valueAMG <= _agent.redeemingAMG);
-        uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG);
+        if (_valueAMG == 0) return 0;
+        // Assumption is that redemption is NOT a pool self close redemption,
+        // otherwise the below formula would not be correct.
+        uint64 redeemingAMG = _data.kind == Collateral.Kind.POOL ? _agent.poolRedeemingAMG : _agent.redeemingAMG;
+        assert(_valueAMG <= redeemingAMG);
+        uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(redeemingAMG);
         return _data.fullCollateral.mulDiv(_valueAMG, totalAMG); // totalAMG > 0 (guarded by assert)
     }
 
     // Agent's collateral ratio for single collateral type (BIPS) - used in liquidation.
     // Ignores collateral announced for withdrawal (withdrawals are forbidden during liquidation).
     function collateralRatioBIPS(
-        Agent.State storage _agent,
-        uint256 _fullCollateral,
-        uint256 _amgToTokenWeiPrice
+        Collateral.Data memory _data,
+        Agent.State storage _agent
     )
         internal view
         returns (uint256)
     {
         uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG);
         if (totalAMG == 0) return 1e10;    // nothing minted - ~infinite collateral ratio (but avoid overflows)
-        uint256 backingTokenWei = Conversion.convertAmgToTokenWei(totalAMG, _amgToTokenWeiPrice);
-        return _fullCollateral.mulDiv(SafePct.MAX_BIPS, backingTokenWei);
+        uint256 backingTokenWei = Conversion.convertAmgToTokenWei(totalAMG, _data.amgToTokenWeiPrice);
+        return _data.fullCollateral.mulDiv(SafePct.MAX_BIPS, backingTokenWei);
     }
 }
