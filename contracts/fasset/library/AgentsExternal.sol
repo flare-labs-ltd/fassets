@@ -73,8 +73,8 @@ library AgentsExternal {
         Agents.setClass1Collateral(agent, _settings.class1CollateralToken);
         agent.poolCollateralIndex = state.poolCollateralIndex;
         // set initial collateral ratios
-        Agents.setMinClass1CollateralRatioBIPS(agent, _settings.minClass1CollateralRatioBIPS);
-        Agents.setMinPoolCollateralRatioBIPS(agent, _settings.minPoolCollateralRatioBIPS);
+        Agents.setMintingClass1CollateralRatioBIPS(agent, _settings.mintingClass1CollateralRatioBIPS);
+        Agents.setMintingPoolCollateralRatioBIPS(agent, _settings.mintingPoolCollateralRatioBIPS);
         // set minting fee and share
         agent.setFeeBIPS(_settings.feeBIPS);
         agent.setPoolFeeShareBIPS(_settings.poolFeeShareBIPS);

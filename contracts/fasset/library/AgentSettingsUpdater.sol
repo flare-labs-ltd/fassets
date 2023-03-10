@@ -12,8 +12,8 @@ library AgentSettingsUpdater {
 
     bytes32 internal constant FEE_BIPS = keccak256("feeBIPS");
     bytes32 internal constant POOL_FEE_SHARE_BIPS = keccak256("poolFeeShareBIPS");
-    bytes32 internal constant MIN_CLASS1_COLLATERAL_RATIO_BIPS = keccak256("minClass1CollateralRatioBIPS");
-    bytes32 internal constant MIN_POOL_COLLATERAL_RATIO_BIPS = keccak256("minPoolCollateralRatioBIPS");
+    bytes32 internal constant MINTING_CLASS1_COLLATERAL_RATIO_BIPS = keccak256("mintingClass1CollateralRatioBIPS");
+    bytes32 internal constant MINTING_POOL_COLLATERAL_RATIO_BIPS = keccak256("mintingPoolCollateralRatioBIPS");
     bytes32 internal constant BUY_FASSET_BY_AGENT_RATIO_BIPS = keccak256("buyFAssetByAgentRatioBIPS");
     bytes32 internal constant POOL_EXIT_COLLATERAL_RATIO_BIPS = keccak256("poolExitCollateralRatioBIPS");
     bytes32 internal constant POOL_TOPUP_COLLATERAL_RATIO_BIPS = keccak256("poolTopupCollateralRatioBIPS");
@@ -67,10 +67,10 @@ library AgentSettingsUpdater {
             Agents.setFeeBIPS(_agent, _value);
         } else if (_hash == POOL_FEE_SHARE_BIPS) {
             Agents.setPoolFeeShareBIPS(_agent, _value);
-        } else if (_hash == MIN_CLASS1_COLLATERAL_RATIO_BIPS) {
-            Agents.setMinClass1CollateralRatioBIPS(_agent, _value);
-        } else if (_hash == MIN_POOL_COLLATERAL_RATIO_BIPS) {
-            Agents.setMinPoolCollateralRatioBIPS(_agent, _value);
+        } else if (_hash == MINTING_CLASS1_COLLATERAL_RATIO_BIPS) {
+            Agents.setMintingClass1CollateralRatioBIPS(_agent, _value);
+        } else if (_hash == MINTING_POOL_COLLATERAL_RATIO_BIPS) {
+            Agents.setMintingPoolCollateralRatioBIPS(_agent, _value);
         } else if (_hash == BUY_FASSET_BY_AGENT_RATIO_BIPS) {
             Agents.setBuyFAssetByAgentRatioBIPS(_agent, _value);
         } else if (_hash == POOL_EXIT_COLLATERAL_RATIO_BIPS) {
@@ -96,8 +96,8 @@ library AgentSettingsUpdater {
         bool settingNameValid =
             hash == FEE_BIPS ||
             hash == POOL_FEE_SHARE_BIPS ||
-            hash == MIN_CLASS1_COLLATERAL_RATIO_BIPS ||
-            hash == MIN_POOL_COLLATERAL_RATIO_BIPS ||
+            hash == MINTING_CLASS1_COLLATERAL_RATIO_BIPS ||
+            hash == MINTING_POOL_COLLATERAL_RATIO_BIPS ||
             hash == BUY_FASSET_BY_AGENT_RATIO_BIPS ||
             hash == POOL_EXIT_COLLATERAL_RATIO_BIPS ||
             hash == POOL_TOPUP_COLLATERAL_RATIO_BIPS ||

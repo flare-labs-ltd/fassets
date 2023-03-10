@@ -81,12 +81,12 @@ library Agent {
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio when entering the available agent list,
         // but it must always be greater than minimum collateral ratio.
-        uint32 minClass1CollateralRatioBIPS;
+        uint32 mintingClass1CollateralRatioBIPS;
 
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio when entering the available agent list,
         // but it must always be greater than minimum collateral ratio.
-        uint32 minPoolCollateralRatioBIPS;
+        uint32 mintingPoolCollateralRatioBIPS;
 
         // Timestamp of the startLiquidation call.
         // If the agent's CR is above ccbCR, agent is put into CCB state for a while.

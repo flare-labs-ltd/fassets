@@ -16,8 +16,8 @@ library AvailableAgents {
     struct AgentInfo {
         address agentVault;
         uint256 feeBIPS;
-        uint256 minClass1CollateralRatioBIPS;
-        uint256 minPoolCollateralRatioBIPS;
+        uint256 mintingClass1CollateralRatioBIPS;
+        uint256 mintingPoolCollateralRatioBIPS;
         // Note: freeCollateralLots is only informative since it can can change at any time
         // due to price changes, reservation, minting, redemption, or even lot size change
         uint256 freeCollateralLots;
@@ -47,7 +47,7 @@ library AvailableAgents {
         state.availableAgents.push(_agentVault);
         agent.availableAgentsPos = state.availableAgents.length.toUint32();     // index+1 (0=not in list)
         emit AMEvents.AgentAvailable(_agentVault, agent.feeBIPS,
-            agent.minClass1CollateralRatioBIPS, agent.minPoolCollateralRatioBIPS, freeCollateralLots);
+            agent.mintingClass1CollateralRatioBIPS, agent.mintingPoolCollateralRatioBIPS, freeCollateralLots);
     }
 
     function announceExit(
@@ -125,8 +125,8 @@ library AvailableAgents {
             _agents[i - _start] = AgentInfo({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
-                minClass1CollateralRatioBIPS: agentCR,
-                minPoolCollateralRatioBIPS: poolCR,
+                mintingClass1CollateralRatioBIPS: agentCR,
+                mintingPoolCollateralRatioBIPS: poolCR,
                 freeCollateralLots: collateralData.freeCollateralLots(agent)
             });
         }

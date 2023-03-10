@@ -184,14 +184,14 @@ library AgentCollateral {
             _systemMinCollateralRatioBIPS =
                 state.collateralTokens[_agent.poolCollateralIndex].minCollateralRatioBIPS;
             _mintingMinCollateralRatioBIPS =
-                Math.max(_agent.minPoolCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
+                Math.max(_agent.mintingPoolCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         } else {
             _systemMinCollateralRatioBIPS =
                 state.collateralTokens[_agent.class1CollateralIndex].minCollateralRatioBIPS;
             // agent's minCollateralRatioBIPS must be greater than minCollateralRatioBIPS when set, but
             // minCollateralRatioBIPS can change later so we always use the max of both
             _mintingMinCollateralRatioBIPS =
-                Math.max(_agent.minClass1CollateralRatioBIPS, _systemMinCollateralRatioBIPS);
+                Math.max(_agent.mintingClass1CollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         }
     }
 

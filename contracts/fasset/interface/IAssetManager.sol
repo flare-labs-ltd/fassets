@@ -63,14 +63,14 @@ interface IAssetManager {
         // The value must always be greater than system minimum collateral ratio for class1 collateral.
         // Warning: having this value near global min collateral ratio can quickly lead to liquidation for public
         // agents, so it is advisable to set it significantly higher.
-        uint256 minClass1CollateralRatioBIPS;
+        uint256 mintingClass1CollateralRatioBIPS;
 
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio on creation.
         // The value must always be greater than system minimum collateral ratio for pool collateral.
         // Warning: having this value near global min collateral ratio can quickly lead to liquidation for public
         // agents, so it is advisable to set it significantly higher.
-        uint256 minPoolCollateralRatioBIPS;
+        uint256 mintingPoolCollateralRatioBIPS;
 
         // The factor set by the agent to multiply the price at which agent buys f-assets from pool
         // token holders on self-close exit (when requested or the redeemed amount is less than 1 lot).

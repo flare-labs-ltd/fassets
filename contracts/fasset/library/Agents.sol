@@ -19,28 +19,28 @@ library Agents {
     using SafePct for uint256;
     using Agent for Agent.State;
 
-    function setMinClass1CollateralRatioBIPS(
+    function setMintingClass1CollateralRatioBIPS(
         Agent.State storage _agent,
-        uint256 _minClass1CollateralRatioBIPS
+        uint256 _mintingClass1CollateralRatioBIPS
     )
         internal
     {
         CollateralToken.Data storage collateral = getClass1Collateral(_agent);
-        require(_minClass1CollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
+        require(_mintingClass1CollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
             "collateral ratio too small");
-        _agent.minClass1CollateralRatioBIPS = _minClass1CollateralRatioBIPS.toUint32();
+        _agent.mintingClass1CollateralRatioBIPS = _mintingClass1CollateralRatioBIPS.toUint32();
     }
 
-    function setMinPoolCollateralRatioBIPS(
+    function setMintingPoolCollateralRatioBIPS(
         Agent.State storage _agent,
-        uint256 _minPoolCollateralRatioBIPS
+        uint256 _mintingPoolCollateralRatioBIPS
     )
         internal
     {
         CollateralToken.Data storage collateral = getPoolCollateral(_agent);
-        require(_minPoolCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
+        require(_mintingPoolCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
             "collateral ratio too small");
-        _agent.minPoolCollateralRatioBIPS = _minPoolCollateralRatioBIPS.toUint32();
+        _agent.mintingPoolCollateralRatioBIPS = _mintingPoolCollateralRatioBIPS.toUint32();
     }
 
     function setFeeBIPS(
@@ -79,7 +79,7 @@ library Agents {
         internal
     {
         CollateralToken.Data storage collateral = getPoolCollateral(_agent);
-        uint256 minCR = Math.max(_agent.minPoolCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
+        uint256 minCR = Math.max(_agent.mintingPoolCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
         require(_poolExitCollateralRatioBIPS >= minCR, "value to low");
         _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
     }
