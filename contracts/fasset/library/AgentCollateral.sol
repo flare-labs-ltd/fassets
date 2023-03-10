@@ -225,30 +225,4 @@ library AgentCollateral {
         uint256 backingTokenWei = Conversion.convertAmgToTokenWei(totalAMG, _amgToTokenWeiPrice);
         return _fullCollateral.mulDiv(SafePct.MAX_BIPS, backingTokenWei);
     }
-
-    function collateralTokenOfKind(
-        Agent.State storage _agent,
-        Collateral.Kind _kind
-    )
-        internal view
-        returns (CollateralToken.Data storage)
-    {
-        assert (_kind != Collateral.Kind.AGENT_POOL);   // there is no agent pool collateral token
-        AssetManagerState.State storage state = AssetManagerState.get();
-        if (_kind == Collateral.Kind.AGENT_CLASS1) {
-            return state.collateralTokens[_agent.class1CollateralIndex];
-        } else {
-            return state.collateralTokens[_agent.poolCollateralIndex];
-        }
-    }
-
-    function collateralHolderOfKind(
-        Agent.State storage _agent,
-        Collateral.Kind _kind
-    )
-        internal view
-        returns (address)
-    {
-        return _kind == Collateral.Kind.POOL ? address(_agent.collateralPool): _agent.vaultAddress();
-    }
 }

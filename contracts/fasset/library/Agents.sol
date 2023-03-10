@@ -360,18 +360,37 @@ library Agents {
         return state.collateralTokens[_agent.poolCollateralIndex];
     }
 
-    function class1CollateralUnderwater(Agent.State storage _agent)
+    function getCollateral(Agent.State storage _agent, Collateral.Kind _kind)
         internal view
-        returns (bool)
+        returns (CollateralToken.Data storage)
     {
-        return (_agent.collateralsUnderwater & Agent.LF_CLASS1) != 0;
+        assert (_kind != Collateral.Kind.AGENT_POOL);   // there is no agent pool collateral token
+        AssetManagerState.State storage state = AssetManagerState.get();
+        if (_kind == Collateral.Kind.AGENT_CLASS1) {
+            return state.collateralTokens[_agent.class1CollateralIndex];
+        } else {
+            return state.collateralTokens[_agent.poolCollateralIndex];
+        }
     }
 
-    function poolCollateralUnderwater(Agent.State storage _agent)
+    function getCollateralOwner(Agent.State storage _agent, Collateral.Kind _kind)
+        internal view
+        returns (address)
+    {
+        return _kind == Collateral.Kind.POOL ? address(_agent.collateralPool): _agent.vaultAddress();
+    }
+
+    function collateralUnderwater(Agent.State storage _agent, Collateral.Kind _kind)
         internal view
         returns (bool)
     {
-        return (_agent.collateralsUnderwater & Agent.LF_POOL) != 0;
+        if (_kind == Collateral.Kind.AGENT_CLASS1) {
+            return (_agent.collateralsUnderwater & Agent.LF_CLASS1) != 0;
+        } else if (_kind == Collateral.Kind.POOL) {
+            return (_agent.collateralsUnderwater & Agent.LF_POOL) != 0;
+        } else {
+            return false;    // AGENT_POOL collateral cannot be underwater (it only affects minting)
+        }
     }
 
     function withdrawalAnnouncement(Agent.State storage _agent, Collateral.Kind _kind)
