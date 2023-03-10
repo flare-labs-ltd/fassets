@@ -161,9 +161,8 @@ library RedemptionRequests {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         // validate redemption address
-        require(bytes(_redeemerUnderlyingAddressString).length != 0, "empty underlying address");
-        require(state.settings.underlyingAddressValidator.validate(_redeemerUnderlyingAddressString),
-            "invalid underlying address");
+        (string memory normalizedUnderlyingAddress, bytes32 underlyingAddressHash) =
+            Globals.validateAndNormalizeUnderlyingAddress(_redeemerUnderlyingAddressString);
         // create request
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
         state.newRedemptionRequestId += PaymentReference.randomizedIdSkip();
@@ -171,7 +170,7 @@ library RedemptionRequests {
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
         uint128 redemptionFeeUBA = redeemedValueUBA.mulBips(state.settings.redemptionFeeBIPS).toUint128();
         state.redemptionRequests[requestId] = Redemption.Request({
-            redeemerUnderlyingAddressHash: keccak256(bytes(_redeemerUnderlyingAddressString)),
+            redeemerUnderlyingAddressHash: underlyingAddressHash,
             underlyingValueUBA: redeemedValueUBA,
             firstUnderlyingBlock: state.currentUnderlyingBlock,
             lastUnderlyingBlock: lastUnderlyingBlock,
@@ -189,7 +188,7 @@ library RedemptionRequests {
         // emit event to remind agent to pay
         emit AMEvents.RedemptionRequested(_data.agentVault,
             requestId,
-            _redeemerUnderlyingAddressString,
+            normalizedUnderlyingAddress,
             redeemedValueUBA,
             redemptionFeeUBA,
             lastUnderlyingBlock,

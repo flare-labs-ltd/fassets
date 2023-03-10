@@ -59,9 +59,8 @@ library AgentsExternal {
         AssetManagerState.State storage state = AssetManagerState.get();
         assert(_agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         // validate underlying address
-        require(bytes(_settings.underlyingAddressString).length != 0, "empty underlying address");
-        require(state.settings.underlyingAddressValidator.validate(_settings.underlyingAddressString),
-            "invalid underlying address");
+        (string memory normalizedUnderlyingAddress, bytes32 underlyingAddressHash) =
+            Globals.validateAndNormalizeUnderlyingAddress(_settings.underlyingAddressString);
         // create agent vault
         IAgentVaultFactory agentVaultFactory = state.settings.agentVaultFactory;
         IAgentVault agentVault = agentVaultFactory.create(_assetManager, payable(msg.sender));
@@ -81,10 +80,9 @@ library AgentsExternal {
         agent.setPoolFeeShareBIPS(_settings.poolFeeShareBIPS);
         // claim the address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
-        bytes32 underlyingAddressHash = keccak256(bytes(_settings.underlyingAddressString));
         state.underlyingAddressOwnership.claim(msg.sender, underlyingAddressHash,
             state.settings.requireEOAAddressProof);
-        agent.underlyingAddressString = _settings.underlyingAddressString;
+        agent.underlyingAddressString = normalizedUnderlyingAddress;
         agent.underlyingAddressHash = underlyingAddressHash;
         uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(underlyingAddressHash);
         agent.underlyingBlockAtCreation = SafeMath64.max64(state.currentUnderlyingBlock, eoaProofBlock + 1);
@@ -92,7 +90,7 @@ library AgentsExternal {
         agent.collateralPool =
             state.settings.collateralPoolFactory.create(_assetManager, address(agentVault), _settings);
         emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), address(agentVault),
-            _settings.underlyingAddressString, address(agent.collateralPool));
+            normalizedUnderlyingAddress, address(agent.collateralPool));
     }
 
     function announceDestroy(

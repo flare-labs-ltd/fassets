@@ -29,4 +29,14 @@ library Globals {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         return settings.fAsset;
     }
+
+    function validateAndNormalizeUnderlyingAddress(string memory _underlyingAddressString)
+        internal view
+        returns (string memory _normalizedAddressString, bytes32 _uniqueHash)
+    {
+        IAddressValidator validator = AssetManagerState.getSettings().underlyingAddressValidator;
+        require(bytes(_underlyingAddressString).length != 0, "empty underlying address");
+        require(validator.validate(_underlyingAddressString), "invalid underlying address");
+        return validator.normalize(_underlyingAddressString);
+    }
 }
