@@ -95,7 +95,7 @@ library RedemptionRequests {
         // pay in collateral
         uint256 priceAmgToWei = Conversion.currentAmgPriceInTokenWei(agent.class1CollateralIndex);
         uint256 paymentWei = Conversion.convertAmgToTokenWei(closedAMG, priceAmgToWei)
-            .mulBips(agent.buyFassetByAgentRatioBIPS);
+            .mulBips(agent.buyFAssetByAgentRatioBIPS);
         Agents.payoutClass1(agent, _redeemer, paymentWei);
         // burn the closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);

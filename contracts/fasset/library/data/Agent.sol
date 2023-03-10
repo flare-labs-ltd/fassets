@@ -152,7 +152,7 @@ library Agent {
 
         // The factor set by the agent to multiply the price at which agent buys f-assets from pool
         // token holders on self-close exit (when requested or the redeemed amount is less than 1 lot).
-        uint16 buyFassetByAgentRatioBIPS;
+        uint16 buyFAssetByAgentRatioBIPS;
 
         // The announced time when the agent is exiting available agents list.
         uint64 exitAvailableAfterTs;

@@ -1050,7 +1050,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     /**
      * Burn fassets from  a single agent and get paid in class1 collateral by the agent.
-     * Price is FTSO price, multiplied by factor buyFassetByAgentRatioBIPS (set by agent).
+     * Price is FTSO price, multiplied by factor buyFAssetByAgentRatioBIPS (set by agent).
      * Used in self-close exit from the collateral pool when requested or when self-close amount is less than 1 lot.
      * Note: only collateral pool can call this method.
      */

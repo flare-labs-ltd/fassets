@@ -72,6 +72,10 @@ interface IAssetManager {
         // agents, so it is advisable to set it significantly higher.
         uint256 minPoolCollateralRatioBIPS;
 
+        // The factor set by the agent to multiply the price at which agent buys f-assets from pool
+        // token holders on self-close exit (when requested or the redeemed amount is less than 1 lot).
+        uint256 buyFAssetByAgentRatioBIPS;
+
         // The minimum collateral ratio above which a staker can exit the pool
         // (this is CR that must be left after exit).
         // Must be higher than system minimum collateral ratio for pool collateral.
