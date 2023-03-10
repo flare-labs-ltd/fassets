@@ -107,6 +107,38 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_WHITELIST, abi.encode(_value));
     }
 
+    function setAgentVaultFactory(IAssetManager[] memory _assetManagers, address _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_AGENT_VAULT_FACTORY, abi.encode(_value));
+    }
+
+    function setCollateralPoolFactory(IAssetManager[] memory _assetManagers, address _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_COLLATERAL_POOL_FACTORY, abi.encode(_value));
+    }
+
+    function setUnderlyingAddressValidator(IAssetManager[] memory _assetManagers, address _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_UNDERLYING_ADDRESS_VALIDATOR, abi.encode(_value));
+    }
+
+    function setMinUpdateRepeatTimeSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_MIN_UPDATE_REPEAT_TIME_SECONDS, abi.encode(_value));
+    }
+
     function setLotSizeAmg(IAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance
@@ -129,14 +161,14 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setPaymentChallengeReward(
         IAssetManager[] memory _assetManagers,
-        uint256 _rewardNATWei,
+        uint256 _rewardClass1Wei,
         uint256 _rewardBIPS
     )
         external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_PAYMENT_CHALLENGE_REWARD, abi.encode(_rewardNATWei, _rewardBIPS));
+            SettingsUpdater.SET_PAYMENT_CHALLENGE_REWARD, abi.encode(_rewardClass1Wei, _rewardBIPS));
     }
 
     function setMaxTrustedPriceAgeSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
@@ -211,29 +243,6 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_CCB_TIME_SECONDS, abi.encode(_value));
     }
 
-    function setLiquidationStrategy(
-        IAssetManager[] memory _assetManagers,
-        address _liquidationStrategy,
-        bytes memory _encodedInitialSettings
-    )
-        external
-        onlyImmediateGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_LIQUIDATION_STRATEGY, abi.encode(_liquidationStrategy, _encodedInitialSettings));
-    }
-
-    function setLiquidationStrategySettings(
-        IAssetManager[] memory _assetManagers,
-        bytes memory _encodedSettings
-    )
-        external
-        onlyImmediateGovernance
-    {
-        _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_LIQUIDATION_STRATEGY_SETTINGS, abi.encode(_encodedSettings));
-    }
-
     function setAttestationWindowSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyImmediateGovernance
@@ -248,6 +257,143 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     {
         _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS, abi.encode(_value));
+    }
+
+    function setMintingPoolHoldingsRequiredBIPS(IAssetManager[] memory _assetManagers, uint256 _value)
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_MINTING_POOL_HOLDINGS_REQUIRED_BIPS, abi.encode(_value));
+    }
+
+    function setMintingCapAMG(IAssetManager[] memory _assetManagers, uint256 _value)
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_MINTING_CAP_AMG, abi.encode(_value));
+    }
+
+    function setTokenInvalidationTimeMinSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_TOKEN_INVALIDATION_TIME_MIN_SECONDS, abi.encode(_value));
+    }
+
+    function setClass1BuyForFlareFactorBIPS(IAssetManager[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_CLASS1_BUY_FOR_FLARE_FACTOR_BIPS, abi.encode(_value));
+    }
+
+    function setAgentExitAvailableTimelockSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_AGENT_EXIT_AVAILABLE_TIMELOCK_SECONDS, abi.encode(_value));
+    }
+
+    function setAgentFeeChangeTimelockSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS, abi.encode(_value));
+    }
+
+    function setAgentCollateralRatioChangeTimelockSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_AGENT_COLLATERAL_RATIO_CHANGE_TIMELOCK_SECONDS, abi.encode(_value));
+    }
+
+    function setLiquidationStrategy(
+        IAssetManager[] memory _assetManagers,
+        address _liquidationStrategy,
+        bytes memory _encodedInitialSettings
+    )
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_LIQUIDATION_STRATEGY, abi.encode(_liquidationStrategy, _encodedInitialSettings));
+    }
+
+    function updateLiquidationStrategySettings(
+        IAssetManager[] memory _assetManagers,
+        bytes memory _encodedSettings
+    )
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.UPDATE_LIQUIDATION_STRATEGY_SETTINGS, abi.encode(_encodedSettings));
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Collateral tokens
+
+    function addCollateralToken(
+        IAssetManager[] memory _assetManagers,
+        IAssetManager.CollateralTokenInfo calldata _data
+    )
+        external
+        onlyImmediateGovernance
+    {
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _checkAssetManager(_assetManagers[i]).addCollateralToken(_data);
+        }
+    }
+
+    function setCollateralRatiosForToken(
+        IAssetManager[] memory _assetManagers,
+        IAssetManager.CollateralTokenClass _tokenClass,
+        IERC20 _token,
+        uint256 _minCollateralRatioBIPS,
+        uint256 _ccbMinCollateralRatioBIPS,
+        uint256 _safetyMinCollateralRatioBIPS
+    )
+        external
+        onlyGovernance
+    {
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _checkAssetManager(_assetManagers[i]).setCollateralRatiosForToken(_tokenClass, _token,
+                _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
+        }
+    }
+
+    function deprecateCollateralToken(
+        IAssetManager[] memory _assetManagers,
+        IAssetManager.CollateralTokenClass _tokenClass,
+        IERC20 _token,
+        uint256 _invalidationTimeSec
+    )
+        external
+        onlyImmediateGovernance
+    {
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _checkAssetManager(_assetManagers[i]).deprecateCollateralToken(_tokenClass, _token, _invalidationTimeSec);
+        }
+    }
+
+    function setPoolCollateralToken(
+        IAssetManager[] memory _assetManagers,
+        IAssetManager.CollateralTokenInfo calldata _data
+    )
+        external
+        onlyImmediateGovernance
+    {
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _checkAssetManager(_assetManagers[i]).setPoolCollateralToken(_data);
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -295,64 +441,6 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    // Collateral tokens
-
-    function addCollateralToken(
-        IAssetManager[] memory _assetManagers,
-        IAssetManager.CollateralTokenInfo calldata _data
-    )
-        external
-        onlyImmediateGovernance
-    {
-        for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).addCollateralToken(_data);
-        }
-    }
-
-    function setCollateralRatiosForToken(
-        IAssetManager[] memory _assetManagers,
-        IAssetManager.CollateralTokenClass _tokenClass,
-        IERC20 _token,
-        uint256 _minCollateralRatioBIPS,
-        uint256 _ccbMinCollateralRatioBIPS,
-        uint256 _safetyMinCollateralRatioBIPS
-    )
-        external
-        onlyGovernance
-    {
-        for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).setCollateralRatiosForToken(_tokenClass, _token,
-                _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
-        }
-    }
-
-    function deprecateCollateralToken(
-        IAssetManager[] memory _assetManagers,
-        IAssetManager.CollateralTokenClass _tokenClass,
-        IERC20 _token,
-        uint256 _invalidationTimeSec
-    )
-        external
-        onlyGovernance
-    {
-        for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).deprecateCollateralToken(_tokenClass, _token, _invalidationTimeSec);
-        }
-    }
-
-    function setPoolCollateralToken(
-        IAssetManager[] memory _assetManagers,
-        IAssetManager.CollateralTokenInfo calldata _data
-    )
-        external
-        onlyGovernance
-    {
-        for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).setPoolCollateralToken(_data);
-        }
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
     // Update contracts
 
     function _updateContractAddresses(
@@ -363,8 +451,6 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     {
         address assetManagerController =
             _getContractAddress(_contractNameHashes, _contractAddresses, "AssetManagerController");
-        IAgentVaultFactory agentVaultFactory =
-            IAgentVaultFactory(_getContractAddress(_contractNameHashes, _contractAddresses, "AgentVaultFactory"));
         IAttestationClient attestationClient =
             IAttestationClient(_getContractAddress(_contractNameHashes, _contractAddresses, "AttestationClient"));
         IFtsoRegistry ftsoRegistry =
@@ -373,7 +459,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             IAssetManager assetManager = assetManagers[i];
             assetManager.updateSettings(
                 SettingsUpdater.UPDATE_CONTRACTS,
-                abi.encode(assetManagerController, agentVaultFactory, attestationClient, ftsoRegistry));
+                abi.encode(assetManagerController, attestationClient, ftsoRegistry));
         }
         // if this controller was replaced, set forwarding address
         if (assetManagerController != address(this)) {

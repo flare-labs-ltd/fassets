@@ -248,7 +248,7 @@ library AgentsExternal {
         } else if (_token == agent.collateralPool.poolToken()) {
             kind = Collateral.Kind.AGENT_POOL;
         } else {
-            return;     // we don;t care about other token withdrawals from agent vault
+            return;     // we don't care about other token withdrawals from agent vault
         }
         Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(kind);
         require(agent.status == Agent.Status.NORMAL, "withdrawal: invalid status");

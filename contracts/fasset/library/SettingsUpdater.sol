@@ -19,7 +19,7 @@ library SettingsUpdater {
     bytes32 internal constant UPDATES_STATE_POSITION = keccak256("fasset.AssetManager.UpdaterState");
 
     bytes32 internal constant UPDATE_CONTRACTS =
-        keccak256("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry)");
+        keccak256("updateContracts(address,IAttestationClient,IFtsoRegistry)");
     bytes32 internal constant REFRESH_ALL_FTSO_INDEXES =
         keccak256("refreshAllFtsoIndexes()");
     bytes32 internal constant REFRESH_FTSO_INDEXES =
@@ -28,6 +28,14 @@ library SettingsUpdater {
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant SET_WHITELIST =
         keccak256("setWhitelist(address)");
+    bytes32 internal constant SET_AGENT_VAULT_FACTORY =
+        keccak256("setAgentVaultFactory(address)");
+    bytes32 internal constant SET_COLLATERAL_POOL_FACTORY =
+        keccak256("setCollateralPoolFactory(address)");
+    bytes32 internal constant SET_UNDERLYING_ADDRESS_VALIDATOR =
+        keccak256("setUnderlyingAddressValidator(address)");
+    bytes32 internal constant SET_MIN_UPDATE_REPEAT_TIME_SECONDS =
+        keccak256("setMinUpdateRepeatTimeSeconds(uint256)");
     bytes32 internal constant SET_LOT_SIZE_AMG =
         keccak256("setLotSizeAmg(uint256)");
     bytes32 internal constant SET_MAX_TRUSTED_PRICE_AGE_SECONDS =
@@ -52,12 +60,26 @@ library SettingsUpdater {
         keccak256("setCcbTimeSeconds(uint256)");
     bytes32 internal constant SET_LIQUIDATION_STRATEGY =
         keccak256("setLiquidationStrategy(address,bytes)");
-    bytes32 internal constant SET_LIQUIDATION_STRATEGY_SETTINGS =
-        keccak256("setLiquidationStrategySettings(bytes)");
+    bytes32 internal constant UPDATE_LIQUIDATION_STRATEGY_SETTINGS =
+        keccak256("updateLiquidationStrategySettings(bytes)");
     bytes32 internal constant SET_ATTESTATION_WINDOW_SECONDS =
         keccak256("setAttestationWindowSeconds(uint256)");
     bytes32 internal constant SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS =
         keccak256("setAnnouncedUnderlyingConfirmationMinSeconds(uint256)");
+    bytes32 internal constant SET_MINTING_POOL_HOLDINGS_REQUIRED_BIPS =
+        keccak256("setMintingPoolHoldingsRequiredBIPS((uint256)");
+    bytes32 internal constant SET_MINTING_CAP_AMG =
+        keccak256("setMintingCapAMG((uint256)");
+    bytes32 internal constant SET_TOKEN_INVALIDATION_TIME_MIN_SECONDS =
+        keccak256("setTokenInvalidationTimeMinSeconds((uint256)");
+    bytes32 internal constant SET_CLASS1_BUY_FOR_FLARE_FACTOR_BIPS =
+        keccak256("setClass1BuyForFlareFactorBIPS((uint256)");
+    bytes32 internal constant SET_AGENT_EXIT_AVAILABLE_TIMELOCK_SECONDS =
+        keccak256("setAgentExitAvailableTimelockSeconds((uint256)");
+    bytes32 internal constant SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS =
+        keccak256("setAgentFeeChangeTimelockSeconds((uint256)");
+    bytes32 internal constant SET_AGENT_COLLATERAL_RATIO_CHANGE_TIMELOCK_SECONDS =
+        keccak256("setAgentCollateralRatioChangeTimelockSeconds((uint256)");
 
     function validateAndSet(
         AssetManagerSettings.Data memory _settings
@@ -91,6 +113,18 @@ library SettingsUpdater {
         } else if (_method == SET_WHITELIST) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setWhitelist(_params);
+        } else if (_method == SET_AGENT_VAULT_FACTORY) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setAgentVaultFactory(_params);
+        } else if (_method == SET_COLLATERAL_POOL_FACTORY) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setCollateralPoolFactory(_params);
+        } else if (_method == SET_UNDERLYING_ADDRESS_VALIDATOR) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setUnderlyingAddressValidator(_params);
+        } else if (_method == SET_MIN_UPDATE_REPEAT_TIME_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setMinUpdateRepeatTimeSeconds(_params);
         } else if (_method == SET_LOT_SIZE_AMG) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setLotSizeAmg(_params);
@@ -121,9 +155,9 @@ library SettingsUpdater {
         } else if (_method == SET_LIQUIDATION_STRATEGY) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setLiquidationStrategy(_params);
-        } else if (_method == SET_LIQUIDATION_STRATEGY_SETTINGS) {
+        } else if (_method == UPDATE_LIQUIDATION_STRATEGY_SETTINGS) {
             _checkEnoughTimeSinceLastUpdate(_method);
-            _setLiquidationStrategySettings(_params);
+            _updateLiquidationStrategySettings(_params);
         } else if (_method == SET_ATTESTATION_WINDOW_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAttestationWindowSeconds(_params);
@@ -133,8 +167,28 @@ library SettingsUpdater {
         } else if (_method == SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAnnouncedUnderlyingConfirmationMinSeconds(_params);
-        }
-        else {
+        } else if (_method == SET_MINTING_POOL_HOLDINGS_REQUIRED_BIPS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setMintingPoolHoldingsRequiredBIPS(_params);
+        } else if (_method == SET_MINTING_CAP_AMG) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setMintingCapAMG(_params);
+        } else if (_method == SET_TOKEN_INVALIDATION_TIME_MIN_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setTokenInvalidationTimeMinSeconds(_params);
+        } else if (_method == SET_CLASS1_BUY_FOR_FLARE_FACTOR_BIPS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setClass1BuyForFlareFactorBIPS(_params);
+        } else if (_method == SET_AGENT_EXIT_AVAILABLE_TIMELOCK_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setAgentExitAvailableTimelockSeconds(_params);
+        } else if (_method == SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setAgentFeeChangeTimelockSeconds(_params);
+        } else if (_method == SET_AGENT_COLLATERAL_RATIO_CHANGE_TIMELOCK_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setAgentCollateralRatioChangeTimelockSeconds(_params);
+        } else {
             revert("update: invalid method");
         }
     }
@@ -168,17 +222,12 @@ library SettingsUpdater {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
 
-        (address controller, IAgentVaultFactory agentVaultFactory,
-            IAttestationClient attestationClient, IFtsoRegistry ftsoRegistry) =
-            abi.decode(_params, (address, IAgentVaultFactory, IAttestationClient, IFtsoRegistry));
+        (address controller, IAttestationClient attestationClient, IFtsoRegistry ftsoRegistry) =
+            abi.decode(_params, (address, IAttestationClient, IFtsoRegistry));
 
         if (settings.assetManagerController != controller) {
             settings.assetManagerController = controller;
             emit AMEvents.ContractChanged("assetManagerController", address(controller));
-        }
-        if (settings.agentVaultFactory != agentVaultFactory) {
-            settings.agentVaultFactory = agentVaultFactory;
-            emit AMEvents.ContractChanged("agentVaultFactory", address(agentVaultFactory));
         }
         if (settings.attestationClient != attestationClient) {
             settings.attestationClient = attestationClient;
@@ -262,7 +311,62 @@ library SettingsUpdater {
         // update
         settings.whitelist = IWhitelist(value);
         emit AMEvents.ContractChanged("whitelist", value);
+    }
 
+    function _setAgentVaultFactory(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        address value = abi.decode(_params, (address));
+        // validate
+        require(value != address(0), "address zero");
+        // update
+        settings.agentVaultFactory = IAgentVaultFactory(value);
+        emit AMEvents.ContractChanged("agentVaultFactory", value);
+    }
+
+    function _setCollateralPoolFactory(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        address value = abi.decode(_params, (address));
+        // validate
+        require(value != address(0), "address zero");
+        // update
+        settings.collateralPoolFactory = ICollateralPoolFactory(value);
+        emit AMEvents.ContractChanged("collateralPoolFactory", value);
+    }
+
+    function _setUnderlyingAddressValidator(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        address value = abi.decode(_params, (address));
+        // validate
+        require(value != address(0), "address zero");
+        // update
+        settings.underlyingAddressValidator = IAddressValidator(value);
+        emit AMEvents.ContractChanged("underlyingAddressValidator", value);
+    }
+
+    function _setMinUpdateRepeatTimeSeconds(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value > 0, "cannot be zero");
+        // update
+        settings.minUpdateRepeatTimeSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("minUpdateRepeatTimeSeconds", value);
     }
 
     function _setLotSizeAmg(
@@ -276,7 +380,7 @@ library SettingsUpdater {
         // huge lot size increase is very dangerous, because it breaks redemption
         // (converts all tickets to dust)
         require(value > 0, "cannot be zero");
-        require(value <= settings.lotSizeAMG * 2, "lot size increase too big");
+        require(value <= settings.lotSizeAMG * 4, "lot size increase too big");
         require(value >= settings.lotSizeAMG / 4, "lot size decrease too big");
         // update
         settings.lotSizeAMG = value.toUint64();
@@ -459,6 +563,101 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("announcedUnderlyingConfirmationMinSeconds", value);
     }
 
+    function _setMintingPoolHoldingsRequiredBIPS(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= settings.mintingPoolHoldingsRequiredBIPS * 4 + SafePct.MAX_BIPS, "value too big");
+        // update
+        settings.mintingPoolHoldingsRequiredBIPS = value.toUint32();
+        emit AMEvents.SettingChanged("mintingPoolHoldingsRequiredBIPS", value);
+    }
+
+    function _setMintingCapAMG(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        // update
+        settings.mintingCapAMG = value.toUint64();
+        emit AMEvents.SettingChanged("mintingCapAMG", value);
+    }
+
+    function _setTokenInvalidationTimeMinSeconds(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        // update
+        settings.tokenInvalidationTimeMinSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("tokenInvalidationTimeMinSeconds", value);
+    }
+
+    function _setClass1BuyForFlareFactorBIPS(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        // update
+        settings.class1BuyForFlareFactorBIPS = value.toUint32();
+        emit AMEvents.SettingChanged("class1BuyForFlareFactorBIPS", value);
+    }
+
+    function _setAgentExitAvailableTimelockSeconds(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= settings.agentExitAvailableTimelockSeconds * 4 + 1 weeks);
+        // update
+        settings.agentExitAvailableTimelockSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("agentExitAvailableTimelockSeconds", value);
+    }
+
+    function _setAgentFeeChangeTimelockSeconds(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= settings.agentFeeChangeTimelockSeconds * 4 + 1 weeks);
+        // update
+        settings.agentFeeChangeTimelockSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("agentFeeChangeTimelockSeconds", value);
+    }
+
+    function _setAgentCollateralRatioChangeTimelockSeconds(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= settings.agentCollateralRatioChangeTimelockSeconds * 4 + 1 weeks);
+        // update
+        settings.agentCollateralRatioChangeTimelockSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("agentCollateralRatioChangeTimelockSeconds", value);
+    }
+
     function _setLiquidationStrategy(
         bytes calldata _params
     )
@@ -468,13 +667,14 @@ library SettingsUpdater {
         (address liquidationStrategy, bytes memory initialSettings) = abi.decode(_params, (address, bytes));
         // validate
         require(liquidationStrategy != address(0), "address zero");
-        // update and initialize
+        // update contract
         settings.liquidationStrategy = liquidationStrategy;
+        emit AMEvents.ContractChanged("liquidationStrategy", liquidationStrategy);
+        // initialize
         LiquidationStrategy.initialize(initialSettings);
-        emit AMEvents.SettingChanged("liquidationStrategy", uint160(liquidationStrategy));
     }
 
-    function _setLiquidationStrategySettings(
+    function _updateLiquidationStrategySettings(
         bytes calldata _params
     )
         private

@@ -15,6 +15,7 @@ library AssetManagerSettings {
     struct Data {
         // Required contracts.
         // Only used to verify that calls come from assetManagerController.
+        // changed via address updater
         address assetManagerController;
 
         // The f-asset contract managed by this asset manager.
@@ -22,26 +23,33 @@ library AssetManagerSettings {
         IFAsset fAsset;
 
         // Factory for creating new agent vaults.
+        // timelocked
         IAgentVaultFactory agentVaultFactory;
 
         // Factory for creating new agent collateral pools.
+        // timelocked
         ICollateralPoolFactory collateralPoolFactory;
 
         // If set, the whitelist contains a list of accounts that can call public methods
         // (minting, redeeming, challenging, etc.)
         // This can be `address(0)`, in which case no whitelist checks are done.
+        // timelocked
         IWhitelist whitelist;
 
         // Attestation client verifies and decodes attestation proofs.
+        // changed via address updater
         IAttestationClient attestationClient;
 
         // Pluggable validator for underlying addresses (typically, each chain has different rules).
+        // timelocked
         IAddressValidator underlyingAddressValidator;
 
         // External (dynamically loaded) library for calculation liquidation factors.
+        // timelocked
         address liquidationStrategy;
 
         // FTSO registry from which the system obtains ftso's for nat and asset.
+        // changed via address updater
         IFtsoRegistry ftsoRegistry;
 
         // FTSO contract for managed asset (index).
@@ -60,6 +68,7 @@ library AssetManagerSettings {
         // The minimum amount of pool tokens the agent must hold to be able to mint.
         // To be able to mint, the NAT value of all backed fassets together with new ones times this percentage
         // must be smaller than the agent's pool tokens' amount converted to NAT.
+        // rate-limited
         uint32 mintingPoolHoldingsRequiredBIPS;
 
         // FTSO contract for managed asset (symbol).
@@ -73,6 +82,7 @@ library AssetManagerSettings {
 
         // If true, the NAT burning is done indirectly via transfer to burner contract and then self-destruct.
         // This is necessary on Songbird, where the burn address is not payable.
+        // immutable
         bool burnWithSelfDestruct;
 
         // Must match attestation data chainId.
@@ -81,6 +91,7 @@ library AssetManagerSettings {
 
         // Collateral reservation fee that must be paid by the minter.
         // Payment is in NAT, but is proportional to the value of assets to be minted.
+        // rate-limited
         uint16 collateralReservationFeeBIPS;
 
         // Asset unit value (e.g. 1 BTC or 1 ETH) in UBA = 10 ** assetToken.decimals()
@@ -96,7 +107,7 @@ library AssetManagerSettings {
         uint64 assetMintingGranularityUBA;
 
         // Lot size in asset minting granularity. May change, which affects subsequent mintings and redemptions.
-        // rate-limited
+        // timelocked
         uint64 lotSizeAMG;
 
         // Maximum minted amount of the f-asset.
@@ -186,7 +197,7 @@ library AssetManagerSettings {
         uint64 attestationWindowSeconds;
 
         // Minimum time after an update of a setting before the same setting can be updated again.
-        // immutable
+        // timelocked
         uint64 minUpdateRepeatTimeSeconds;
 
         // Ratio at which the agents can buy back their collateral when f-asset is terminated.
@@ -198,10 +209,12 @@ library AssetManagerSettings {
         // Any value is ok, but higher values give more security against multiple announcement attack by a miner.
         // Shouldn't be much bigger than state connector response time, so that payments can be confirmed without
         // extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
+        // rate-limited
         uint64 announcedUnderlyingConfirmationMinSeconds;
 
         // Minimum time from the moment token is deprecated to when it becomes invalid and agents still using
         // it as class1 get liquidated.
+        // timelocked
         uint64 tokenInvalidationTimeMinSeconds;
 
         // On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock
@@ -209,12 +222,20 @@ library AssetManagerSettings {
         // is released.
         // However, we cannot burn typical class1 collateral (stablecoins), so the agent must buy them for NAT
         // at FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.
+        // timelocked
         uint32 class1BuyForFlareFactorBIPS;
 
+        // Amount of seconds that have to pass between available list exit announcement and execution.
+        // rate-limited
         uint64 agentExitAvailableTimelockSeconds;
 
+        // Amount of seconds that have to pass between agent fee and pool fee share change announcement and execution.
+        // rate-limited
         uint64 agentFeeChangeTimelockSeconds;
 
+        // Amount of seconds that have to pass between agent-set collateral ratio (minting, pool exit)
+        // change announcement and execution.
+        // rate-limited
         uint64 agentCollateralRatioChangeTimelockSeconds;
     }
 }
