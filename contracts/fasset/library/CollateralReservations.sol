@@ -15,7 +15,7 @@ import "./TransactionAttestation.sol";
 
 
 library CollateralReservations {
-    using SafePct for uint256;
+    using SafePct for *;
     using SafeCast for uint256;
     using AgentCollateral for Collateral.CombinedData;
 
@@ -94,8 +94,10 @@ library CollateralReservations {
             "minting request too old");
         // send event
         emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, underlyingValueUBA);
-        // transfer crt fee to the agent's vault
-        IAgentVault(crt.agentVault).depositNat{value: crt.reservationFeeNatWei}();
+        // share collateral reservation fee between the agent's vault and pool
+        uint256 poolFeeShare = crt.reservationFeeNatWei.mulBips(agent.poolFeeShareBIPS);
+        Agents.getPoolWNat(agent).depositTo{value: poolFeeShare}(address(agent.collateralPool));
+        IAgentVault(crt.agentVault).depositNat{value: crt.reservationFeeNatWei - poolFeeShare}();
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
     }

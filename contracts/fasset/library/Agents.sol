@@ -325,7 +325,7 @@ library Agents {
         internal view
         returns (bool)
     {
-        return _token == getPoolCollateralToken(_agent) || _token == getClass1Token(_agent);
+        return _token == getPoolWNat(_agent) || _token == getClass1Token(_agent);
     }
 
     function getClass1Token(Agent.State storage _agent)
@@ -344,12 +344,12 @@ library Agents {
         return state.collateralTokens[_agent.class1CollateralIndex];
     }
 
-    function getPoolCollateralToken(Agent.State storage _agent)
+    function getPoolWNat(Agent.State storage _agent)
         internal view
-        returns (IERC20)
+        returns (IWNat)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.poolCollateralIndex].token;
+        return IWNat(address(state.collateralTokens[_agent.poolCollateralIndex].token));
     }
 
     function getPoolCollateral(Agent.State storage _agent)
