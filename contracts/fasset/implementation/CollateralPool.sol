@@ -16,8 +16,9 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     using SafeCast for uint256;
     using SafePct for uint256;
 
-    uint256 public constant MINIMUM_ENTER_AMOUNT = 1e18; // 1 FLR
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
+    uint256 public constant MIN_NAT_TO_ENTER = 1e18; // 1 FLR
+    uint256 public constant MIN_TOKEN_BALANCE_AFTER_EXIT = 1e18; // 1 FLR
 
     address public immutable agentVault;
     address public immutable agentVaultOwner;
@@ -103,7 +104,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         AssetData memory assetData = _getAssetData();
         require(assetData.poolTokenSupply <= assetData.poolNatBalance * MAX_NAT_TO_POOL_TOKEN_RATIO,
             "pool nat balance too small");
-        require(msg.value >= MINIMUM_ENTER_AMOUNT, "amount of nat sent is too low");
+        require(msg.value >= MIN_NAT_TO_ENTER, "amount of nat sent is too low");
         if (assetData.poolTokenSupply == 0) {
             require(msg.value >= assetData.poolNatBalance,
                 "if pool has no tokens, but has collateral, you need to send at least that amount of collateral");
@@ -130,7 +131,10 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         returns (uint256, uint256)
     {
         require(_tokenShare > 0, "token share is zero");
-        require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
+        uint256 tokenBalance = token.balanceOf(msg.sender);
+        require(_tokenShare <= tokenBalance, "token balance too low");
+        require(tokenBalance == _tokenShare || tokenBalance - _tokenShare >= MIN_TOKEN_BALANCE_AFTER_EXIT,
+            "token balance left after exit too low and non-zero");
         AssetData memory assetData = _getAssetData();
         // poolTokenSupply >= _tokenShare > 0
         uint256 natShare = _tokenShare.mulDiv(assetData.poolNatBalance, assetData.poolTokenSupply);
@@ -160,7 +164,10 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         external
     {
         require(_tokenShare > 0, "token share is zero");
-        require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
+        uint256 tokenBalance = token.balanceOf(msg.sender);
+        require(_tokenShare <= tokenBalance, "token balance too low");
+        require(tokenBalance == _tokenShare || tokenBalance - _tokenShare >= MIN_TOKEN_BALANCE_AFTER_EXIT,
+            "token balance left after exit too low and non-zero");
         AssetData memory assetData = _getAssetData();
         uint256 natShare = assetData.poolNatBalance.mulDiv(
             _tokenShare, assetData.poolTokenSupply); // poolTokenSupply >= _tokenShare > 0
@@ -281,7 +288,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         } else { // KEEP_RATIO
             uint256 tokens = token.balanceOf(_account);
             uint256 freeTokens = _freeTokensOf(_account, _assetData);
-            freeTokenShare = freeTokens > 0 ? _tokenShare.mulDiv(freeTokens, tokens) : 0;
+            freeTokenShare = freeTokens > 0 ? _tokenShare.mulDiv(freeTokens, tokens) : 0; // tokens >= freeTokens > 0
             debtTokenShare = _tokenShare - freeTokenShare;
         }
         uint256 freeFassetShare = _assetData.poolVirtualFassetBalance.mulDiv(
@@ -297,6 +304,20 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     {
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
         return _poolBalanceNat * assetPriceDiv >= (_fassetSupply * assetPriceMul).mulBips(_crBIPS);
+    }
+
+    function _getAssetData()
+        internal view
+        returns (AssetData memory)
+    {
+        uint256 poolFassetBalance = fAsset.balanceOf(address(this));
+        return AssetData({
+            poolTokenSupply: token.totalSupply(),
+            fassetSupply: fAsset.totalSupply(),
+            poolNatBalance: wNat.balanceOf(address(this)),
+            poolFassetBalance: poolFassetBalance,
+            poolVirtualFassetBalance: poolFassetBalance + poolFassetDebt
+        });
     }
 
     function _virtualFassetOf(address _account, AssetData memory _assetData)
@@ -334,29 +355,8 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         return freeTokens;
     }
 
-    function _getAssetData()
-        internal view
-        returns (AssetData memory)
-    {
-        uint256 poolFassetBalance = fAsset.balanceOf(address(this));
-        return AssetData({
-            poolTokenSupply: token.totalSupply(),
-            fassetSupply: fAsset.totalSupply(),
-            poolNatBalance: wNat.balanceOf(address(this)),
-            poolFassetBalance: poolFassetBalance,
-            poolVirtualFassetBalance: poolFassetBalance + poolFassetDebt
-        });
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////
     // methods for viewing user balances
-
-    function fassetDebtOf(address _account)
-        external view
-        returns (uint256)
-    {
-        return _fassetDebtOf[_account];
-    }
 
     function virtualFassetOf(address _account)
         external view
@@ -364,6 +364,21 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     {
         AssetData memory assetData = _getAssetData();
         return _virtualFassetOf(_account, assetData);
+    }
+
+    function freeFassetOf(address _account)
+        external view
+        returns (uint256)
+    {
+        AssetData memory assetData = _getAssetData();
+        return _virtualFassetOf(_account, assetData) - _fassetDebtOf[_account];
+    }
+
+    function fassetDebtOf(address _account)
+        external view
+        returns (uint256)
+    {
+        return _fassetDebtOf[_account];
     }
 
     function debtTokensOf(address _account)

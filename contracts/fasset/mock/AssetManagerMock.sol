@@ -49,4 +49,11 @@ contract AssetManagerMock {
         return 1;
     }
 
+    function callFunction(address _contract, string memory _function, uint256 _argument) external {
+        bytes memory payload = abi.encodeWithSignature(_function, _argument);
+        // slither-disable-next-line avoid-low-level-calls
+        (bool success,) = _contract.call(payload);
+        require(success, "function call failed");
+    }
+
 }

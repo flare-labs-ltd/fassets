@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./CollateralPool.sol";
 
 contract CollateralPoolToken is ERC20 {
-    address payable public immutable collateralPool;
+    address public immutable collateralPool;
 
     modifier onlyCollateralPool {
         require(msg.sender == collateralPool, "only collateral pool");
@@ -33,11 +33,11 @@ contract CollateralPoolToken is ERC20 {
     }
 
     function freeBalanceOf(address _account) public view returns (uint256) {
-        return CollateralPool(collateralPool).freeTokensOf(_account);
+        return CollateralPool(payable(collateralPool)).freeTokensOf(_account);
     }
 
     function debtBalanceOf(address _account) public view returns (uint256) {
-        return CollateralPool(collateralPool).debtTokensOf(_account);
+        return CollateralPool(payable(collateralPool)).debtTokensOf(_account);
     }
 
     // override balanceOf to account for locked/debt collateral
