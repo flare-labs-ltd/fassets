@@ -145,7 +145,7 @@ library Challenges {
             AgentCollateral.agentClass1CollateralData(_agent);
         uint256 rewardAMG = _backingAMGAtChallenge.mulBips(settings.paymentChallengeRewardBIPS);
         uint256 rewardC1Wei = Conversion.convertAmgToTokenWei(rewardAMG, collateralData.amgToTokenWeiPrice)
-            + settings.paymentChallengeRewardC1Wei;
+            + Agents.convertUSD5ToClass1Wei(_agent, settings.paymentChallengeRewardUSD5);
         Agents.payoutClass1(_agent, _challenger, rewardC1Wei);
     }
 }

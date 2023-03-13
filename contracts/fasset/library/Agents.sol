@@ -232,9 +232,7 @@ library Agents {
             AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
             // Calculate NAT amount the agent has to pay to receive the "burned" class1 tokens.
             // The price is FTSO price plus configurable premium (class1BuyForFlarePremiumBIPS).
-            (uint256 priceMul, uint256 priceDiv) =
-                Conversion.currentWeiPriceRatio(class1Collateral, poolCollateral);
-            uint256 amountNatWei = _amountClass1Wei.mulDiv(priceMul, priceDiv)
+            uint256 amountNatWei = Conversion.convert(_amountClass1Wei, class1Collateral, poolCollateral)
                 .mulBips(settings.class1BuyForFlareFactorBIPS);
             // Transfer class1 collateral to the agent vault owner
             SafeERC20.safeTransfer(class1Collateral.token, vaultOwner(_agent), _amountClass1Wei);
@@ -352,6 +350,13 @@ library Agents {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         return state.collateralTokens[_agent.class1CollateralIndex];
+    }
+
+    function convertUSD5ToClass1Wei(Agent.State storage _agent, uint256 _amountUSD5)
+        internal view
+        returns (uint256)
+    {
+        return Conversion.convertFromUSD5(_amountUSD5, getClass1Collateral(_agent));
     }
 
     function getPoolWNat(Agent.State storage _agent)
