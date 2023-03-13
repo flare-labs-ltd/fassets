@@ -524,7 +524,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter(0, true, { value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const resp = await collateralPool.selfCloseExit(tokens, true, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, "");
-            expectEvent.inTransaction(resp.receipt, assetManager, "AgentRedemptionInCollateral");
+            await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
         });
 
         it("should do a self-close exit where additional f-assets are required", async () => {
@@ -533,7 +533,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter(0, false, { value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const resp = await collateralPool.selfCloseExit(tokens, true, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, "");
-            expectEvent.inTransaction(resp.receipt, assetManager, "AgentRedemptionInCollateral");
+            await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
         });
 
         it("should do a self-close exit where additional f-assets are required but the allowance is not high enough", async () => {
@@ -549,7 +549,8 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter(0, true, { value: ETH(10) });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const resp = await collateralPool.selfCloseExit(tokens, true, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, "");
-            expectEvent.inTransaction(resp.receipt, assetManager, "AgentRedemptionInCollateral");
+            await expectEvent.notEmitted.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
+            await expectEvent.notEmitted.inTransaction(resp.tx, assetManager, "AgentRedemption");
         });
 
         it("should do a self-close exit where redemption is done in underlying asset", async () => {
@@ -558,7 +559,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const resp = await collateralPool.selfCloseExit(tokens, false, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL,
                 "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2");
-            expectEvent.inTransaction(resp.receipt, assetManager, "AgentRedemption");
+            await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemption");
         });
 
         it("should do a simple self-close exit with one user", async () => {
@@ -597,7 +598,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const fassetsRequiredFromAccount0 = await fassetsRequiredToKeepCR0(tokenShareOfAccount0);
             const resp0 = await collateralPool.selfCloseExit(tokenShareOfAccount0, true, TokenExitType.MINIMIZE_FEE_DEBT, "",
                 { from: accounts[0] });
-            expectEvent.inTransaction(resp0.receipt, assetManager, "AgentRedemptionInCollateral",
+            await expectEvent.inTransaction(resp0.receipt, assetManager, "AgentRedemptionInCollateral",
                 { _amountUBA: fassetsRequiredFromAccount0 });
             await fAsset.burnAmount(collateralPool.address, fassetsRequiredFromAccount0); // artificially burn "redeemed" f-assets
             // account0 does self-close exit with one tenth of his tokens
@@ -606,7 +607,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const fassetsRequiredFromAccount1 = await fassetsRequiredToKeepCR0(tokenShareOfAccount1);
             const resp1 = await collateralPool.selfCloseExit(tokenShareOfAccount1, true, TokenExitType.MINIMIZE_FEE_DEBT, "",
                 { from: accounts[1] });
-            expectEvent.inTransaction(resp1.receipt, assetManager, "AgentRedemptionInCollateral",
+            await expectEvent.inTransaction(resp1.receipt, assetManager, "AgentRedemptionInCollateral",
                 { _amountUBA: fassetsRequiredFromAccount1 });
             await fAsset.burnAmount(collateralPool.address, fassetsRequiredFromAccount1);
             const cr2 = await getPoolCR();
@@ -729,6 +730,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // check how much (free) f-assets does account1 have
             const account1FreeFasset = await collateralPool.freeFassetOf(accounts[1]);
             assertLessBN(account1FreeFasset, ETH(10), "strategy should make user lose f-assets");
+        });
+    });
+
+    describe("methods for pool liquidation through asset manager", async () => {
+
+        it("should destroy the pool", async () => {
+            
         });
     });
 

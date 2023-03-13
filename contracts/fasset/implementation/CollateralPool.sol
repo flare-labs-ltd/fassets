@@ -17,15 +17,15 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     using SafePct for uint256;
 
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
-    uint256 public constant MIN_NAT_TO_ENTER = 1e18; // 1 FLR
-    uint256 public constant MIN_TOKEN_BALANCE_AFTER_EXIT = 1e18; // 1 FLR
+    uint256 public constant MIN_NAT_TO_ENTER = 1 ether; // 1 FLR
+    uint256 public constant MIN_TOKEN_BALANCE_AFTER_EXIT = 1 ether; // 1 FLR
+    CollateralPoolToken public token; // practically immutable
 
     address public immutable agentVault;
     address public immutable agentVaultOwner;
     IAssetManager public immutable assetManager;
     IERC20 public immutable fAsset;
     IWNat public wNat;
-    CollateralPoolToken private token;
     uint32 public exitCollateralRatioBIPS;
     uint32 public topupCollateralRatioBIPS;
     uint16 public topupTokenDiscountBIPS;
