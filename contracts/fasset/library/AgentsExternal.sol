@@ -14,6 +14,7 @@ import "./Conversion.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
 import "./Liquidation.sol";
+import "./AgentSettingsUpdater.sol";
 
 library AgentsExternal {
     using SafePct for uint256;
@@ -70,11 +71,11 @@ library AgentsExternal {
         agent.agentType = _agentType;
         agent.status = Agent.Status.NORMAL;
         // set collateral token types
-        Agents.setClass1Collateral(agent, _settings.class1CollateralToken);
+        agent.setClass1Collateral(_settings.class1CollateralToken);
         agent.poolCollateralIndex = state.poolCollateralIndex;
         // set initial collateral ratios
-        Agents.setMintingClass1CollateralRatioBIPS(agent, _settings.mintingClass1CollateralRatioBIPS);
-        Agents.setMintingPoolCollateralRatioBIPS(agent, _settings.mintingPoolCollateralRatioBIPS);
+        agent.setMintingClass1CollateralRatioBIPS(_settings.mintingClass1CollateralRatioBIPS);
+        agent.setMintingPoolCollateralRatioBIPS(_settings.mintingPoolCollateralRatioBIPS);
         // set minting fee and share
         agent.setFeeBIPS(_settings.feeBIPS);
         agent.setPoolFeeShareBIPS(_settings.poolFeeShareBIPS);
@@ -90,6 +91,11 @@ library AgentsExternal {
         // add collateral pool
         agent.collateralPool =
             state.settings.collateralPoolFactory.create(_assetManager, address(agentVault), _settings);
+        // run the pool setters just for validation
+        agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
+        agent.setPoolTopupCollateralRatioBIPS(_settings.poolTopupCollateralRatioBIPS);
+        agent.setPoolTopupTokenDiscountBIPS(_settings.poolTopupTokenDiscountBIPS);
+        // notify
         emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), address(agentVault),
             normalizedUnderlyingAddress, address(agent.collateralPool));
     }
@@ -133,6 +139,7 @@ library AgentsExternal {
         // destroy agent vault
         IAgentVault(_agentVault).destroy();
         // delete agent data
+        AgentSettingsUpdater.clearPendingUpdates(agent);
         Agent.deleteStorage(agent);
         // notify
         emit AMEvents.AgentDestroyed(_agentVault);
@@ -160,7 +167,7 @@ library AgentsExternal {
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
         uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
             .mulBips(state.settings.buybackCollateralFactorBIPS);
-        Agents.burnCollateralClass1(agent, buybackCollateral);
+        agent.burnCollateralClass1(buybackCollateral);
         agent.mintedAMG = 0;
         state.totalReservedCollateralAMG -= agent.reservedAMG;
         agent.reservedAMG = 0;
@@ -194,7 +201,7 @@ library AgentsExternal {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         // try to pull agent out of liquidation
-        if (Agents.isCollateralToken(agent, _token)) {
+        if (agent.isCollateralToken(_token)) {
             Liquidation.endLiquidationIfHealthy(agent);
         }
     }
@@ -300,7 +307,7 @@ library AgentsExternal {
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        Agents.setClass1Collateral(agent, _token);
+        agent.setClass1Collateral(_token);
     }
 
     function isCollateralToken(
@@ -311,6 +318,6 @@ library AgentsExternal {
         returns (bool)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        return Agents.isCollateralToken(agent, _token);
+        return agent.isCollateralToken(_token);
     }
 }

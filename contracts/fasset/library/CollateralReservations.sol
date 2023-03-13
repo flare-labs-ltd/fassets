@@ -121,7 +121,6 @@ library CollateralReservations {
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
         state.settings.burnAddress.transfer(crt.reservationFeeNatWei);
         // burn reserved collateral at market price
-        // TODO: should not burn stablecoins?
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.class1CollateralIndex);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
         Agents.burnCollateralClass1(agent, reservedCollateral);

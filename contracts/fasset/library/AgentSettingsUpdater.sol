@@ -56,6 +56,21 @@ library AgentSettingsUpdater {
         delete agent.settingUpdates[hash];
     }
 
+    function clearPendingUpdates(
+        Agent.State storage _agent
+    )
+        internal
+    {
+        delete _agent.settingUpdates[FEE_BIPS];
+        delete _agent.settingUpdates[POOL_FEE_SHARE_BIPS];
+        delete _agent.settingUpdates[MINTING_CLASS1_COLLATERAL_RATIO_BIPS];
+        delete _agent.settingUpdates[MINTING_POOL_COLLATERAL_RATIO_BIPS];
+        delete _agent.settingUpdates[BUY_FASSET_BY_AGENT_RATIO_BIPS];
+        delete _agent.settingUpdates[POOL_EXIT_COLLATERAL_RATIO_BIPS];
+        delete _agent.settingUpdates[POOL_TOPUP_COLLATERAL_RATIO_BIPS];
+        delete _agent.settingUpdates[POOL_TOPUP_TOKEN_DISCOUNT_BIPS];
+    }
+
     function _executeUpdate(
         Agent.State storage _agent,
         bytes32 _hash,

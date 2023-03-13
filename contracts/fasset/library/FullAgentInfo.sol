@@ -111,7 +111,10 @@ library FullAgentInfo {
         // Total amount of ongoing redemptions.
         uint256 redeemingUBA;
 
-        // TODO: need poolRedeemingUBA?
+        // Total amount of ongoing redemptions that lock the pool collateral.
+        // (In pool self-close exits, pool collateral is not locked. So the amount of locked
+        // collateral in the pool can be less than the amount of locked class1 collateral.)
+        uint256 poolRedeemingUBA;
 
         // Total amount of dust (unredeemable minted f-assets).
         // Note: dustUBA is part of mintedUBA, so the amount of redeemable f-assets is calculated as
@@ -173,6 +176,7 @@ library FullAgentInfo {
         _info.mintedUBA = Conversion.convertAmgToUBA(agent.mintedAMG);
         _info.reservedUBA = Conversion.convertAmgToUBA(agent.reservedAMG);
         _info.redeemingUBA = Conversion.convertAmgToUBA(agent.redeemingAMG);
+        _info.poolRedeemingUBA = Conversion.convertAmgToUBA(agent.poolRedeemingAMG);
         _info.dustUBA = Conversion.convertAmgToUBA(agent.dustAMG);
         _info.ccbStartTimestamp = _getCCBStartTime(agent);
         _info.liquidationStartTimestamp = _getLiquidationStartTime(agent);

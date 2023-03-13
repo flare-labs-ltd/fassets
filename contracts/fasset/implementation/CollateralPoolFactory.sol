@@ -18,7 +18,6 @@ contract CollateralPoolFactory is ICollateralPoolFactory {
         external
         returns (ICollateralPool)
     {
-        validatePoolSettings(_assetManager, _agentVault, _settings);
         address fAsset = address(_assetManager.fAsset());
         ICollateralPool pool = new CollateralPool(_agentVault, address(_assetManager), fAsset,
             _settings.poolExitCollateralRatioBIPS.toUint32(),
@@ -27,15 +26,5 @@ contract CollateralPoolFactory is ICollateralPoolFactory {
         CollateralPoolToken poolToken = new CollateralPoolToken(payable(address(pool)));
         pool.setPoolToken(address(poolToken));
         return pool;
-    }
-
-    function validatePoolSettings(
-        IAssetManager _assetManager,
-        address _agentVault,
-        IAssetManager.InitialAgentSettings memory _settings
-    )
-        internal view
-    {
-        // TODO
     }
 }

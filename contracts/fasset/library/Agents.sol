@@ -277,7 +277,7 @@ library Agents {
         // agent should never switch to a deprecated or already invalid collateral
         require(collateral.validUntil == 0, "collateral deprecated");
         // check that old collateral is deprecated
-        // TODO: could do without this check, but would need timelock, otherwise there can be
+        // TODO: could work without this check, but would need timelock, otherwise there can be
         //       withdrawal without announcement by switching, withdrawing and switching back
         CollateralToken.Data storage currentCollateral = getClass1Collateral(_agent);
         require(currentCollateral.validUntil != 0, "current collateral not deprecated");
