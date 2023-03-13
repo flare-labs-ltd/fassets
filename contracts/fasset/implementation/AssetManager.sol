@@ -15,6 +15,7 @@ import "../library/SettingsUpdater.sol";
 import "../library/StateUpdater.sol";
 import "../library/AvailableAgents.sol";
 import "../library/AgentsExternal.sol";
+import "../library/AgentsCreateDestroy.sol";
 import "../library/CollateralReservations.sol";
 import "../library/Minting.sol";
 import "../library/RedemptionRequests.sol";
@@ -146,7 +147,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
         onlyWhitelistedSender
     {
-        AgentsExternal.claimAddressWithEOAProof(_payment);
+        AgentsCreateDestroy.claimAddressWithEOAProof(_payment);
     }
 
     /**
@@ -163,7 +164,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         onlyAttached
         onlyWhitelistedSender
     {
-        AgentsExternal.createAgent(Agent.Type.AGENT_100, this, _settings);
+        AgentsCreateDestroy.createAgent(Agent.Type.AGENT_100, this, _settings);
     }
 
     /**
@@ -176,7 +177,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        AgentsExternal.announceDestroy(_agentVault);
+        AgentsCreateDestroy.announceDestroy(_agentVault);
     }
 
     /**
@@ -195,9 +196,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        AgentsExternal.destroyAgent(_agentVault);
+        AgentsCreateDestroy.destroyAgent(_agentVault);
     }
 
+    /**
+     * Due to effect on the pool, all agent settings are timelocked.
+     * This method announces a setting change. The change can be executed after the timelock expires.
+     */
     function announceAgentSettingUpdate(
         address _agentVault,
         string memory _name,
@@ -208,6 +213,10 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         AgentSettingsUpdater.announceUpdate(_agentVault, _name, _value);
     }
 
+    /**
+     * Due to effect on the pool, all agent settings are timelocked.
+     * This method executes a setting change after the timelock expired.
+     */
     function executeAgentSettingUpdate(
         address _agentVault,
         string memory _name
@@ -911,7 +920,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
     {
         require(Globals.getFAsset().terminated(), "f-asset not terminated");
-        AgentsExternal.buybackAgentCollateral(_agentVault);
+        AgentsCreateDestroy.buybackAgentCollateral(_agentVault);
     }
 
     /**
