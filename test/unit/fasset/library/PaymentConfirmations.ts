@@ -37,11 +37,11 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
-    
+
     // addresses
     const agentOwner1 = accounts[20];
     // addresses on mock underlying chain can be any string, as long as it is unique
-    const underlyingAgent1 = "Agent1"; 
+    const underlyingAgent1 = "Agent1";
     const underlyingRandomAddress = "Random";
 
     async function createAgent(chain: MockChain, owner: string, underlyingAddress: string) {
@@ -84,9 +84,9 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
         // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT");
+        natFtso = await FtsoMock.new("NAT", 5);
         await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH");
+        assetFtso = await FtsoMock.new("ETH", 5);
         await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
         // create ftso registry
         ftsoRegistry = await FtsoRegistryMock.new();

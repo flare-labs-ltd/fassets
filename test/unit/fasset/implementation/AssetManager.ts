@@ -40,7 +40,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
     let whitelist: WhitelistInstance;
-    
+
     // addresses
     const underlyingBurnAddr = "Burn";
     const agentOwner1 = accounts[20];
@@ -64,9 +64,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
         // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT");
+        natFtso = await FtsoMock.new("NAT", 5);
         await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH");
+        assetFtso = await FtsoMock.new("ETH", 5);
         await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
         // create ftso registry
         ftsoRegistry = await FtsoRegistryMock.new();
@@ -94,8 +94,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // act
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             newSettings.collateralReservationFeeBIPS = 150;
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setCollateralReservationFeeBips(uint256)")), 
-                web3.eth.abi.encodeParameters(['uint256'], [150]), 
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setCollateralReservationFeeBips(uint256)")),
+                web3.eth.abi.encodeParameters(['uint256'], [150]),
                 { from: assetManagerController });
             // assert
             const res = web3ResultStruct(await assetManager.getSettings());
@@ -103,7 +103,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should revert update settings - invalid method", async () => {
-            let res = assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("invalidMethod")), 
+            let res = assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("invalidMethod")),
             constants.ZERO_ADDRESS,
             { from: assetManagerController });
             await expectRevert(res,"update: invalid method");
@@ -119,9 +119,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             whitelist = await Whitelist.new(governanceSettings.address, governance);
             await whitelist.switchToProductionMode({ from: governance });
             await whitelist.addAddressToWhitelist(whitelistedAccount, {from: governance});
-                                
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")), 
-                web3.eth.abi.encodeParameters(['address'], [whitelist.address]), 
+
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
                 { from: assetManagerController });
             // assert
             await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agentOwner1 }),
@@ -192,8 +192,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             let ftsoRegistryNewAddress = accounts[23];
             let wnatNewAddress = accounts[24];
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)")), 
-            web3.eth.abi.encodeParameters(['address', 'address', 'address', 'address', 'address'], [assetManagerController, agentVaultFactoryNewAddress, attestationClientNewAddress, ftsoRegistryNewAddress, wnatNewAddress]), 
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)")),
+            web3.eth.abi.encodeParameters(['address', 'address', 'address', 'address', 'address'], [assetManagerController, agentVaultFactoryNewAddress, attestationClientNewAddress, ftsoRegistryNewAddress, wnatNewAddress]),
                 { from: assetManagerController });
             const res = web3ResultStruct(await assetManager.getSettings());
             assert.notEqual(newSettings.agentVaultFactory, res.agentVaultFactory)
@@ -204,8 +204,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should not update contract addresses", async () => {
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)")), 
-            web3.eth.abi.encodeParameters(['address', 'address', 'address', 'address', 'address'], [assetManagerController, agentVaultFactory.address, attestationClient.address, ftsoRegistry.address, wnat.address]), 
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)")),
+            web3.eth.abi.encodeParameters(['address', 'address', 'address', 'address', 'address'], [assetManagerController, agentVaultFactory.address, attestationClient.address, ftsoRegistry.address, wnat.address]),
                 { from: assetManagerController });
             const res = web3ResultStruct(await assetManager.getSettings());
             assertWeb3DeepEqual(res, newSettings)
@@ -218,7 +218,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings0.collateralReservationFeeBIPS = 0;
             let res0 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings0);
             await expectRevert(res0, "cannot be zero");
-            
+
             let newSettings1 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
             newSettings1.assetUnitUBA = 0;
             let res1 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings1);
@@ -226,7 +226,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
             let newSettings2 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
             newSettings2.assetMintingGranularityUBA = 0;
-            let res2 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings2);            
+            let res2 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings2);
             await expectRevert(res2, "cannot be zero");
 
             let newSettings3 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
@@ -311,7 +311,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should validate settings - other validators", async () => {
-            let newSettings0 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);            
+            let newSettings0 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
             newSettings0.collateralReservationFeeBIPS = 10001;
             let res0 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings0);
             await expectRevert(res0, "bips value too high");
@@ -357,7 +357,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             let newSettings6 = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
             newSettings6.minCollateralRatioBIPS = 1_8000;
             newSettings6.ccbMinCollateralRatioBIPS = 2_2000;
-            newSettings6.safetyMinCollateralRatioBIPS = 2_4000;            
+            newSettings6.safetyMinCollateralRatioBIPS = 2_4000;
             let res9 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings6);
             await expectRevert(res9, "invalid collateral ratios");
         });

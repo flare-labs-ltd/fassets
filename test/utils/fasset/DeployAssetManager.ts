@@ -1,24 +1,31 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralToken } from "../../../lib/fasset/AssetManagerTypes";
 import { findEvent } from "../../../lib/utils/events/truffle";
+import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance } from "../../../typechain-truffle";
 import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
 
 export async function newAssetManager(
     governanceAddress: string,
     assetManagerController: string | AssetManagerControllerInstance,
-    name: string, 
-    symbol: string, 
+    name: string,
+    symbol: string,
     decimals: number,
     assetManagerSettings: AssetManagerSettings,
+    collateralTokens: CollateralToken[],
+    encodedLiquidationStrategySettings: string,
     updateExecutor: string = governanceAddress
 ): Promise<[AssetManagerInstance, FAssetInstance]> {
     const AssetManager = await linkAssetManager();
     const FAsset = artifacts.require('FAsset');
     const fAsset = await FAsset.new(governanceAddress, name, symbol, decimals);
     const assetManagerControllerAddress = typeof assetManagerController === 'string' ? assetManagerController : assetManagerController.address;
-    assetManagerSettings = { ...assetManagerSettings, assetManagerController: assetManagerControllerAddress };
-    const assetManager = await AssetManager.new(assetManagerSettings, fAsset.address);
+    assetManagerSettings = web3DeepNormalize({
+        ...assetManagerSettings,
+        assetManagerController: assetManagerControllerAddress,
+        fAsset: fAsset.address
+    });
+    const assetManager = await AssetManager.new(assetManagerSettings, collateralTokens, encodedLiquidationStrategySettings);
     if (typeof assetManagerController !== 'string') {
         const res = await assetManagerController.addAssetManager(assetManager.address, { from: governanceAddress });
         await waitForTimelock(res, assetManagerController, updateExecutor);
@@ -56,8 +63,8 @@ export async function linkAssetManager() {
     const Challenges = await deployLibrary('Challenges');
     const FullAgentInfo = await deployLibrary('FullAgentInfo');
     // link AssetManagerContract
-    return linkDependencies(artifacts.require('AssetManager'), { 
-        SettingsUpdater, StateUpdater, Agents, AvailableAgents, CollateralReservations, Liquidation, Minting, 
+    return linkDependencies(artifacts.require('AssetManager'), {
+        SettingsUpdater, StateUpdater, Agents, AvailableAgents, CollateralReservations, Liquidation, Minting,
         UnderlyingFreeBalance, Redemption, UnderlyingWithdrawalAnnouncements, Challenges, FullAgentInfo
     });
 }

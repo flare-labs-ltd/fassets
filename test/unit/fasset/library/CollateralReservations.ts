@@ -44,12 +44,12 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     let attestationProvider: AttestationHelper;
 
     const feeBIPS = 500;
-    
+
     // addresses
     const agentOwner1 = accounts[20];
     const minterAddress1 = accounts[30];
     // addresses on mock underlying chain can be any string, as long as it is unique
-    const underlyingAgent1 = "Agent1"; 
+    const underlyingAgent1 = "Agent1";
     const underlyingMinter1 = "Minter1";
     const underlyingRandomAddress = "Random";
 
@@ -82,7 +82,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
         return requiredEventArgs(res, 'CollateralReserved');
     }
-    
+
     async function performMintingPayment(crt: EventArgs<CollateralReserved>) {
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         chain.mint(underlyingMinter1, paymentAmount);
@@ -112,9 +112,9 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
         // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT");
+        natFtso = await FtsoMock.new("NAT", 5);
         await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH");
+        assetFtso = await FtsoMock.new("ETH", 5);
         await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
         // create ftso registry
         ftsoRegistry = await FtsoRegistryMock.new();

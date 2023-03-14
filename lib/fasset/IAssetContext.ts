@@ -10,12 +10,15 @@ export type AssetManagerControllerEvents = import('../../typechain-truffle/Asset
 export type WNatEvents = import('../../typechain-truffle/WNat').AllEvents;
 export type StateConnectorMockEvents = import('../../typechain-truffle/StateConnectorMock').AllEvents;
 export type AgentVaultFactoryEvents = import('../../typechain-truffle/AgentVaultFactory').AllEvents;
+export type CollateralPoolFactoryEvents = import('../../typechain-truffle/CollateralPoolFactory').AllEvents;
+export type WhitelistEvents = import('../../typechain-truffle/Whitelist').AllEvents;
 export type AttestationClientSCEvents = import('../../typechain-truffle/AttestationClientSC').AllEvents;
 export type FtsoRegistryMockEvents = import('../../typechain-truffle/FtsoRegistryMock').AllEvents;
 export type FtsoMockEvents = import('../../typechain-truffle/FtsoMock').AllEvents;
 export type FtsoManagerMockEvents = import('../../typechain-truffle/FtsoManagerMock').AllEvents;
 export type AssetManagerEvents = import('../../typechain-truffle/AssetManager').AllEvents;
 export type FAssetEvents = import('../../typechain-truffle/FAsset').AllEvents;
+export type ERC20Events = import('../../typechain-truffle/IERC20').AllEvents;
 
 export interface IAssetContext {
     chainInfo: ChainInfo;

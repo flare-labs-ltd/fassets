@@ -39,7 +39,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
-    
+
     // addresses
     const underlyingBurnAddr = "Burn";
     const agentOwner1 = accounts[20];
@@ -78,9 +78,9 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
         // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT");
+        natFtso = await FtsoMock.new("NAT", 5);
         await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH");
+        assetFtso = await FtsoMock.new("ETH", 5);
         await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
         // create ftso registry
         ftsoRegistry = await FtsoRegistryMock.new();
@@ -110,7 +110,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
         await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "invalid address ownership proof");
     });
-    
+
     it("should not prove EOA address - address already claimed", async () => {
         // init
         await createAgent(chain, agentOwner1, underlyingAgent1);
@@ -220,7 +220,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await expectRevert(assetManager.exitAvailableAgentList(agentVault.address),
             "only agent vault owner");
     });
-    
+
     it("only owner can announce destroy agent", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
@@ -436,7 +436,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await expectRevert(agentVault.withdraw(101, { from: agentOwner1 }),
             "withdrawal: more than announced");
     });
-    
+
     it("should change agent's min collateral ratio", async () => {
         // init
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);

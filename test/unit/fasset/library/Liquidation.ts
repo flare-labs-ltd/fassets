@@ -118,9 +118,9 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
         // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT");
+        natFtso = await FtsoMock.new("NAT", 5);
         await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH");
+        assetFtso = await FtsoMock.new("ETH", 5);
         await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
         // create ftso registry
         ftsoRegistry = await FtsoRegistryMock.new();
@@ -130,7 +130,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
     });
-    
+
     it("should not liquidate if collateral ratio is ok", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);

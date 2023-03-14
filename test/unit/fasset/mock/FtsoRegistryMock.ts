@@ -13,9 +13,9 @@ contract(`FtsoRegistryMock.sol; ${getTestFile(__filename)}; Ftso registry mock b
 
     beforeEach(async () => {
         // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT");
+        natFtso = await FtsoMock.new("NAT", 5);
         await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH");
+        assetFtso = await FtsoMock.new("ETH", 5);
         await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
     });
 
@@ -46,10 +46,10 @@ contract(`FtsoRegistryMock.sol; ${getTestFile(__filename)}; Ftso registry mock b
             ftsoRegistry = await FtsoRegistryMock.new();
             await ftsoRegistry.addFtso(natFtso.address);
             await ftsoRegistry.addFtso(assetFtso.address);
-            
+
             let res = ftsoRegistry.getFtsoIndex("BTC");
             await expectRevert(res, "unknown ftso symbol");
-    
+
         });
     });
 });

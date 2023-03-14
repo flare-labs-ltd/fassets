@@ -43,12 +43,12 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
-    
+
     // addresses
     const agentOwner1 = accounts[20];
     const minterAddress1 = accounts[30];
     // addresses on mock underlying chain can be any string, as long as it is unique
-    const underlyingAgent1 = "Agent1"; 
+    const underlyingAgent1 = "Agent1";
     const underlyingMinter1 = "Minter1";
     const underlyingRandomAddress = "Random";
 
@@ -74,7 +74,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
         return requiredEventArgs(res, 'CollateralReserved');
     }
-    
+
     async function performMintingPayment(crt: EventArgs<CollateralReserved>) {
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         chain.mint(underlyingMinter1, paymentAmount);
@@ -102,9 +102,9 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
         // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT");
+        natFtso = await FtsoMock.new("NAT", 5);
         await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH");
+        assetFtso = await FtsoMock.new("ETH", 5);
         await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
         // create ftso registry
         ftsoRegistry = await FtsoRegistryMock.new();
@@ -490,7 +490,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const nonce = await ethers.provider.getTransactionCount(agentVaultFactory.address);
         let agentVaultAddressCalc = ethers.utils.getContractAddress({from: agentVaultFactory.address, nonce: nonce});
         const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVaultAddressCalc));
-        
+
         const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });

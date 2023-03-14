@@ -40,7 +40,7 @@ contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFree
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
-    
+
     // addresses
     const agentOwner1 = accounts[20];
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
@@ -79,9 +79,9 @@ contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFree
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
         // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT");
+        natFtso = await FtsoMock.new("NAT", 5);
         await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH");
+        assetFtso = await FtsoMock.new("ETH", 5);
         await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
         // create ftso registry
         ftsoRegistry = await FtsoRegistryMock.new();
@@ -111,25 +111,25 @@ contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFree
     });
 
     it("should reject confirmation of top up payment - not underlying address", async () => {
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);  
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingRandomAddress, 500, PaymentReference.topup(agentVault.address));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingRandomAddress);
         let res = assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
         await expectRevert(res, 'not underlying address');
     });
     it("should reject confirmation of top up payment - not a topup payment", async () => {
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);    
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, 500, PaymentReference.topup(randomAddress()));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
-        let res = assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });   
+        let res = assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
         await expectRevert(res, 'not a topup payment');
     });
     it("should reject confirmation of top up payment - topup before agent created", async () => {
         let agentVaultAddressCalc = ethers.utils.getContractAddress({from: agentVaultFactory.address, nonce: 1});
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, 500, PaymentReference.topup(agentVaultAddressCalc));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);  
-        let res =  assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });   
+        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        let res =  assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
         await expectRevert(res, 'topup before agent created');
     });
 });

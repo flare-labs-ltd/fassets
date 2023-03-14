@@ -59,7 +59,7 @@ export function isNotNull<T>(x: T): x is NonNullable<T> {
 }
 
 /**
- * Helper wrapper to convert number to BN 
+ * Helper wrapper to convert number to BN
  * @param x number expressed in any reasonable type
  * @returns same number as BN
  */
@@ -86,6 +86,7 @@ export function toStringExp(x: number | string, exponent: number): string {
         const decimals = Math.min(exponent, significantDecimals);
         xstr = x.toFixed(decimals);
     } else {
+        if (!/\d+(\.\d+)?/.test(x)) throw new Error("toStringExp: invalid number string");
         xstr = x;
     }
     const dot = xstr.indexOf('.');
@@ -283,7 +284,7 @@ export interface PromiseValue<T> {
  */
 export function promiseValue<T>(promise: Promise<T>): PromiseValue<T> {
     const result: PromiseValue<T> = { resolved: false };
-    void promise.then(value => { 
+    void promise.then(value => {
         result.resolved = true;
         result.value = value;
     });
@@ -328,4 +329,12 @@ export function errorIncluded(error: any, expectedErrors: ErrorFilter[]) {
 export function expectErrors(error: any, expectedErrors: ErrorFilter[]): undefined {
     if (errorIncluded(error, expectedErrors)) return;
     throw error;    // unexpected error
+}
+
+export function toBIPS(x: number | string) {
+    if (typeof x === 'string' && x.endsWith('%')) {
+        return toBNExp(x.slice(0, x.length - 1), 2);    // x is in percent, only multiply by 100
+    } else {
+        return toBNExp(x, 4);
+    }
 }

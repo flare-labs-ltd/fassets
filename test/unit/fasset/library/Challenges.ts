@@ -46,7 +46,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
 
     let agentTxHash: string;
     let agentTxProof: any;
-    
+
     // addresses
     const underlyingBurnAddr = "Burn";
     const agentOwner1 = accounts[20];
@@ -82,7 +82,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         return requiredEventArgs(res, 'AgentAvailable');
     }
 
-        
+
     async function depositCollateral(amountNATWei: BNish) {
         const res = await agentVault.deposit({ from: whitelistedAccount, value: toBN(amountNATWei) });
         const tr = await web3.eth.getTransaction(res.tx);
@@ -101,7 +101,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         const proof = await attestationProvider.proveConfirmedBlockHeightExists();
         await assetManager.updateCurrentBlock(proof);
     }
-    
+
     async function mintAndRedeem(agentVault: AgentVaultInstance, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, underlyingRedeemerAddress: string, redeemerAddress: string, updateBlock: boolean) {
         // minter
         chain.mint(underlyingMinterAddress, toBNExp(10000, 18));
@@ -143,9 +143,9 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
         // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT");
+        natFtso = await FtsoMock.new("NAT", 5);
         await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH");
+        assetFtso = await FtsoMock.new("ETH", 5);
         await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
         // create ftso registry
         ftsoRegistry = await FtsoRegistryMock.new();
@@ -187,7 +187,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             let txHash = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(0));
             let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
-            
+
             await time.increase(14 * 86400);
             let res = assetManager.illegalPaymentChallenge(
                 proof, agentVault.address, { from: whitelistedAccount });
@@ -198,7 +198,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             let txHash = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(0));
             let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
-            
+
             let res = assetManager.illegalPaymentChallenge(
                 proof, agentVault2.address, { from: whitelistedAccount });
             await expectRevert(res, "chlg: not agent's address")
@@ -208,7 +208,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const resp = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
             const req = requiredEventArgs(resp, 'UnderlyingWithdrawalAnnounced')
             const txHash = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer, 1, req.paymentReference);
-            
+
             const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             const res = assetManager.illegalPaymentChallenge(proof, agentVault.address, { from: whitelistedAccount });
             await expectRevert(res, 'matching ongoing announced pmt');
@@ -250,7 +250,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
                 agentTxProof, proof, agentVault2.address, { from: whitelistedAccount });
             await expectRevert(res, "chlg 1: not agent's address");
         });
-    
+
         it("should successfully challenge double payments", async() => {
             let txHash = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(1));
@@ -291,9 +291,9 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
             const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
             await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-            
+
             let proof2 = await attestationProvider.proveBalanceDecreasingTransaction(tx1Hash, underlyingAgent1);
-    
+
             let res = assetManager.freeBalanceNegativeChallenge([agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
             await expectRevert(res, "mult chlg: payment confirmed");
         });
@@ -307,10 +307,10 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
             const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
             await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-     
+
             let txHash2 = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer, 1, PaymentReference.announcedWithdrawal(2));
             let proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
-    
+
             let res = assetManager.freeBalanceNegativeChallenge([agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
             await expectRevert(res, "mult chlg: enough free balance");
         });

@@ -49,9 +49,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         wnat = await WNat.new(governance, "NetworkNative", "NAT");
         await setDefaultVPContract(wnat, governance);
         // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT");
+        natFtso = await FtsoMock.new("NAT", 5);
         await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH");
+        assetFtso = await FtsoMock.new("ETH", 5);
         await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
         // create ftso registry
         const ftsoRegistry = await FtsoRegistryMock.new();
@@ -215,7 +215,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let res = await assetManagerController.setPaymentChallengeReward([assetManager.address], paymentChallengeRewardNATWei_new, paymentChallengeRewardBIPS_new, { from: governance });
             expectEvent(res, "SettingChanged", { name: "paymentChallengeRewardNATWei", value: paymentChallengeRewardNATWei_new });
             expectEvent(res, "SettingChanged", { name: "paymentChallengeRewardBIPS", value: paymentChallengeRewardBIPS_new });
-        });       
+        });
 
         it("should set time for payment", async () => {
             const currentSettings = await assetManager.getSettings();
@@ -406,9 +406,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
             let res_empty = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_empty, { from: governance });
             let res_tooHigh = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_tooHigh, { from: governance });
-            let res_tooMaxBips = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_maxBips, { from: governance }); 
-            let res_notIncreasing = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_notIncreasing, { from: governance }); 
-            
+            let res_tooMaxBips = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_maxBips, { from: governance });
+            let res_notIncreasing = assetManagerController.setLiquidationCollateralFactorBips([assetManager.address], liquidationCollateralFactorBIPS_notIncreasing, { from: governance });
+
             await expectRevert(res_empty, "at least one factor required");
             await expectRevert(res_tooHigh, "liquidation factor too high");
             await expectRevert(res_tooMaxBips, "factor not above 1");
@@ -435,7 +435,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
             await expectRevert(res_small, "confirmation time too big");
         });
-        
+
         it("should set attestation window", async () => {
             const currentSettings = await assetManager.getSettings();
             let attestationWindowSeconds_new = toBN(currentSettings.attestationWindowSeconds).muln(2);
@@ -448,7 +448,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let res = await assetManagerController.setAnnouncedUnderlyingConfirmationMinSeconds([assetManager.address], announcedUnderlyingConfirmationMinSeconds_new, { from: governance });
             expectEvent(res, "SettingChanged", { name: "announcedUnderlyingConfirmationMinSeconds", value: toBN(announcedUnderlyingConfirmationMinSeconds_new) });
         });
-        
+
         it("should revert redemption default factor bips", async () => {
             const currentSettings = await assetManager.getSettings();
             let redemptionDefaultFactorBIPS_big = toBN(currentSettings.redemptionDefaultFactorBIPS).muln(12001).divn(10_000);
@@ -467,10 +467,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_new, { from: governance });
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             let redemptionDefaultFactorBIPS_small = toBN(newSettings.redemptionDefaultFactorBIPS).muln(8332).divn(10_000);;
-            
+
             await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
-            let res_small = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_small, { from: governance });           
-            await expectRevert(res_small, "fee decrease too big"); 
+            let res_small = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_small, { from: governance });
+            await expectRevert(res_small, "fee decrease too big");
         });
 
         it("should set redemption default factor bips", async () => {
@@ -483,9 +483,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should revert update - too close to previous update", async () => {
             let redemptionDefaultFactorBIPS_new = 1_3000;
             await assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_new, { from: governance });
-            let update = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_new, { from: governance });           
-            await expectRevert(update, "too close to previous update"); 
-        });        
+            let update = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_new, { from: governance });
+            await expectRevert(update, "too close to previous update");
+        });
 
         it("should correctly set asset manager settings", async () => {
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
@@ -557,7 +557,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let res_invalid = waitForTimelock(assetManagerController.setCollateralRatios([assetManager.address], 1_8000, 2_2000, 2_4000, { from: governance }),
                 assetManagerController, updateExecutor);
             await expectRevert(res_invalid, "invalid collateral ratios");
-            let res_too_high = waitForTimelock(assetManagerController.setCollateralRatios([assetManager.address],  1_6000, 1_4000, 1_8000, { from: governance }),   
+            let res_too_high = waitForTimelock(assetManagerController.setCollateralRatios([assetManager.address],  1_6000, 1_4000, 1_8000, { from: governance }),
                 assetManagerController, updateExecutor);
             await expectRevert(res_too_high, "liquidation factor too high");
         });
@@ -646,7 +646,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(promise, "only governance");
             assert.isTrue(await assetManager.paused());
         });
-        
+
         it("should not terminate if not called from governance", async () => {
             const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
             assert.isFalse(await assetManager.paused());
