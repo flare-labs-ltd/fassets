@@ -10,6 +10,7 @@ import "../interface/IFAsset.sol";
 import "../library/data/AssetManagerState.sol";
 import "../library/data/AssetManagerSettings.sol";
 import "../library/Globals.sol";
+import "../library/LiquidationStrategy.sol";
 // external
 import "../library/SettingsUpdater.sol";
 import "../library/StateUpdater.sol";
@@ -56,10 +57,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     constructor(
         AssetManagerSettings.Data memory _settings,
-        IAssetManager.CollateralTokenInfo[] memory _initialCollateralTypes
+        IAssetManager.CollateralTokenInfo[] memory _initialCollateralTypes,
+        bytes memory _initialLiquidationSettings
     ) {
         SettingsUpdater.validateAndSet(_settings);
         CollateralTokens.initialize(_initialCollateralTypes);
+        LiquidationStrategy.initialize(_initialLiquidationSettings);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
