@@ -82,6 +82,33 @@ library Conversion {
         return uint256(_lots) * settings.lotSizeAMG * settings.assetMintingGranularityUBA;
     }
 
+    function convert(
+        uint256 _amount,
+        CollateralToken.Data storage _fromToken,
+        CollateralToken.Data storage _toToken
+    )
+        internal view
+        returns (uint256)
+    {
+        (uint256 priceMul, uint256 priceDiv) = currentWeiPriceRatio(_fromToken, _toToken);
+        return _amount.mulDiv(priceMul, priceDiv);
+    }
+
+    function convertFromUSD5(
+        uint256 _amountUSD5,
+        CollateralToken.Data storage _toToken
+    )
+        internal view
+        returns (uint256)
+    {
+        IFtsoRegistry ftsoRegistry = AssetManagerState.getSettings().ftsoRegistry;
+        IIFtso tokenFtso = ftsoRegistry.getFtso(_toToken.ftsoIndex);
+        (uint256 tokenPrice,, uint256 tokenFtsoDec) = tokenFtso.getCurrentPriceWithDecimals();
+        uint256 expPlus = _toToken.decimals + tokenFtsoDec;
+        // 1e10 in divisor: 5 for amount decimals, 5 for price decimals
+        return _amountUSD5.mulDiv(tokenPrice * 10 ** expPlus, 1e10);
+    }
+
     function currentWeiPriceRatio(
         CollateralToken.Data storage _token1,
         CollateralToken.Data storage _token2
@@ -89,8 +116,7 @@ library Conversion {
         internal view
         returns (uint256 _multiplier, uint256 _divisor)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        IFtsoRegistry ftsoRegistry = settings.ftsoRegistry;
+        IFtsoRegistry ftsoRegistry = AssetManagerState.getSettings().ftsoRegistry;
         IIFtso token1Ftso = ftsoRegistry.getFtso(_token1.ftsoIndex);
         IIFtso token2Ftso = ftsoRegistry.getFtso(_token2.ftsoIndex);
         (uint256 token1Price,, uint256 token1FtsoDec) = token1Ftso.getCurrentPriceWithDecimals();

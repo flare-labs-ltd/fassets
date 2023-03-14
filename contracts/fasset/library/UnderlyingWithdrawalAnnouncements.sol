@@ -61,7 +61,8 @@ library UnderlyingWithdrawalAnnouncements {
         UnderlyingFreeBalance.updateFreeBalance(agent, -_payment.spentAmount);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payoutClass1(agent, msg.sender, state.settings.confirmationByOthersRewardC1Wei);
+            Agents.payoutClass1(agent, msg.sender,
+                Agents.convertUSD5ToClass1Wei(agent, state.settings.confirmationByOthersRewardUSD5));
         }
         // send event
         emit AMEvents.UnderlyingWithdrawalConfirmed(_agentVault, _payment.spentAmount,
