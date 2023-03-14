@@ -249,7 +249,6 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         poolFassetDebt -= _fassets;
     }
 
-    // method calculating tokens bought with collateral, taking into account the topup discount
     function _collateralToTokenShare(
         uint256 _collateral, AssetData memory _assetData
     )
@@ -281,29 +280,23 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         AssetData memory _assetData
     )
         internal view
-        returns (uint256, uint256)
+        returns (uint256 debtFassetShare, uint256 freeFassetShare)
     {
-        uint256 debtTokenShare;
-        uint256 freeTokenShare;
+        uint256 virtualFassetBalance = _virtualFassetOf(_account, _assetData);
+        uint256 debtFasset = _fassetDebtOf[_account];
+        uint256 fassetShare = virtualFassetBalance.mulDiv(_tokenShare, token.balanceOf(_account));
         if (_exitType == TokenExitType.MAXIMIZE_FEE_WITHDRAWAL) {
-            uint256 freeTokens = _freeTokensOf(_account, _assetData);
-            freeTokenShare = Math.min(_tokenShare, freeTokens);
-            debtTokenShare = freeTokenShare < _tokenShare ? _tokenShare - freeTokenShare : 0;
+            uint256 freeFasset = virtualFassetBalance - debtFasset;
+            freeFassetShare = Math.min(fassetShare, freeFasset);
+            debtFassetShare = freeFassetShare < fassetShare ? fassetShare - freeFassetShare : 0;
         } else if (_exitType == TokenExitType.MINIMIZE_FEE_DEBT) {
-            uint256 debtTokens = _debtTokensOf(_account, _assetData);
-            debtTokenShare = Math.min(_tokenShare, debtTokens);
-            freeTokenShare = debtTokenShare < _tokenShare ? _tokenShare - debtTokenShare : 0;
+            debtFassetShare = Math.min(fassetShare, debtFasset);
+            freeFassetShare = debtFassetShare < fassetShare ? fassetShare - debtFassetShare : 0;
         } else { // KEEP_RATIO
-            uint256 tokens = token.balanceOf(_account);
-            uint256 freeTokens = _freeTokensOf(_account, _assetData);
-            freeTokenShare = freeTokens > 0 ? _tokenShare.mulDiv(freeTokens, tokens) : 0; // tokens >= freeTokens > 0
-            debtTokenShare = _tokenShare - freeTokenShare;
+            // debtFasset <= virtualFassetBalance
+            debtFassetShare = debtFasset > 0 ? debtFasset.mulDiv(fassetShare, virtualFassetBalance) : 0;
+            freeFassetShare = fassetShare - debtFassetShare;
         }
-        uint256 freeFassetShare = _assetData.poolVirtualFassetBalance.mulDiv(
-            freeTokenShare, _assetData.poolTokenSupply);
-        uint256 debtFassetShare = _assetData.poolVirtualFassetBalance.mulDiv(
-            debtTokenShare, _assetData.poolTokenSupply);
-        return (debtFassetShare, freeFassetShare);
     }
 
     function _isAboveCR(uint256 _poolBalanceNat, uint256 _fassetSupply, uint256 _crBIPS)
@@ -335,13 +328,6 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         uint256 tokens = token.balanceOf(_account);
         return _assetData.poolVirtualFassetBalance.mulDiv(
             tokens, _assetData.poolTokenSupply);
-    }
-
-    function _debtTokensOf(address _account, AssetData memory _assetData)
-        internal view
-        returns (uint256)
-    {
-        return token.balanceOf(_account) - _freeTokensOf(_account, _assetData);
     }
 
     // note: integer operations round down the free tokens,
@@ -394,7 +380,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         returns (uint256)
     {
         AssetData memory assetData = _getAssetData();
-        return _debtTokensOf(_account, assetData);
+        return token.balanceOf(_account) - _freeTokensOf(_account, assetData);
     }
 
     function freeTokensOf(address _account)

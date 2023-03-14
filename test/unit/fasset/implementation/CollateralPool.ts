@@ -472,7 +472,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const virtualFassets = await getPoolVirtualFassets();
             const poolNatBalance = await wNat.balanceOf(collateralPool.address);
             await collateralPool.exit(freeTokens, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, { from: accounts[1] });
-            // account1 should have earned 0 wnat and all his f-asset fees
+            // account1 should have earned wnat and all his f-asset fees
             const earnedFassets = await fAsset.balanceOf(accounts[1]);
             assertEqualBN(earnedFassets, virtualFassets.mul(freeTokens).div(allTokens));
             const earnedWnat = await wNat.balanceOf(accounts[1]);
