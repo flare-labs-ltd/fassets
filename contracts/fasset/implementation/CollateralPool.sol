@@ -17,14 +17,16 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     using SafePct for uint256;
 
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
-    uint256 public constant MIN_NAT_TO_ENTER = 1 ether; // 1 FLR
-    uint256 public constant MIN_TOKEN_BALANCE_AFTER_EXIT = 1 ether; // 1 FLR
-    CollateralPoolToken public token; // practically immutable
+    uint256 public constant MIN_NAT_TO_ENTER = 1 ether;
+    uint256 public constant MIN_TOKEN_SUPPLY_AFTER_EXIT = 1 ether;
+    uint256 public constant MIN_NAT_BALANCE_AFTER_EXIT = 1 ether;
 
     address public immutable agentVault;
     address public immutable agentVaultOwner;
     IAssetManager public immutable assetManager;
     IERC20 public immutable fAsset;
+    CollateralPoolToken public token; // practically immutable
+
     IWNat public wNat;
     uint32 public exitCollateralRatioBIPS;
     uint32 public topupCollateralRatioBIPS;
@@ -40,7 +42,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     }
 
     modifier onlyAgent {
-        require(msg.sender == agentVaultOwner);
+        require(msg.sender == agentVaultOwner, "only agent");
         _;
     }
 
@@ -125,20 +127,22 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         token.mint(msg.sender, tokenShare);
     }
 
-    // check that after exit there remain either 0 or some large enough amount of collateral
     function exit(uint256 _tokenShare, TokenExitType _exitType)
         external override
         returns (uint256, uint256)
     {
         require(_tokenShare > 0, "token share is zero");
-        uint256 tokenBalance = token.balanceOf(msg.sender);
-        require(_tokenShare <= tokenBalance, "token balance too low");
-        require(tokenBalance == _tokenShare || tokenBalance - _tokenShare >= MIN_TOKEN_BALANCE_AFTER_EXIT,
-            "token balance left after exit too low and non-zero");
+        require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
         AssetData memory assetData = _getAssetData();
+        require(assetData.poolTokenSupply == _tokenShare ||
+            assetData.poolTokenSupply - _tokenShare >= MIN_TOKEN_SUPPLY_AFTER_EXIT,
+            "token supply left after exit is too low and non-zero");
         // poolTokenSupply >= _tokenShare > 0
         uint256 natShare = _tokenShare.mulDiv(assetData.poolNatBalance, assetData.poolTokenSupply);
         require(natShare > 0, "amount of sent tokens is too small");
+        require(assetData.poolNatBalance == natShare ||
+            assetData.poolNatBalance - natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
+            "collateral left after exit is too low and non-zero");
         require(_isAboveCR(assetData.poolNatBalance - natShare, assetData.fassetSupply, exitCollateralRatioBIPS),
             "collateral ratio falls below exitCR");
         (uint256 debtFassetShare, uint256 freeFassetShare) = _getDebtAndFreeFassetShareFromTokenShare(
@@ -164,14 +168,17 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         external
     {
         require(_tokenShare > 0, "token share is zero");
-        uint256 tokenBalance = token.balanceOf(msg.sender);
-        require(_tokenShare <= tokenBalance, "token balance too low");
-        require(tokenBalance == _tokenShare || tokenBalance - _tokenShare >= MIN_TOKEN_BALANCE_AFTER_EXIT,
-            "token balance left after exit too low and non-zero");
+        require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
         AssetData memory assetData = _getAssetData();
+        require(assetData.poolTokenSupply == _tokenShare ||
+            assetData.poolTokenSupply - _tokenShare >= MIN_TOKEN_SUPPLY_AFTER_EXIT,
+            "token supply left after exit is too low and non-zero");
         uint256 natShare = assetData.poolNatBalance.mulDiv(
             _tokenShare, assetData.poolTokenSupply); // poolTokenSupply >= _tokenShare > 0
         require(natShare > 0, "amount of sent tokens is too small");
+        require(assetData.poolNatBalance == natShare ||
+            assetData.poolNatBalance - natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
+            "collateral left after exit is too low and non-zero");
         (uint256 debtFassetShare, uint256 freeFassetShare) = _getDebtAndFreeFassetShareFromTokenShare(
             msg.sender, _tokenShare, _exitType, assetData);
         uint256 fassetsRequiredToKeepCR = assetData.fassetSupply.mulDiv(
@@ -183,8 +190,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
                 "f-asset allowance too small");
             fAsset.transferFrom(msg.sender, address(this), additionallyRequiredFassets);
         }
-        // agent redemption
-        // note: fassetsToRedeem can be larger than fassetsRequiredToKeepCR
+        // agent redemption (note: fassetsToRedeem can be larger than fassetsRequiredToKeepCR)
         uint256 fassetsToRedeem = freeFassetShare + additionallyRequiredFassets;
         if (fassetsToRedeem > 0) {
             if (fassetsToRedeem < assetManager.getLotSize() || _redeemToCollateral) {
@@ -196,7 +202,9 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
             }
         }
         // transfer/burn assets
-        _burnFassetDebt(msg.sender, debtFassetShare);
+        if (debtFassetShare > 0) {
+            _burnFassetDebt(msg.sender, debtFassetShare);
+        }
         wNat.transfer(msg.sender, natShare);
         token.burn(msg.sender, _tokenShare);
     }
@@ -213,7 +221,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         fAsset.transfer(msg.sender, _fassets);
     }
 
-    // used to pay off debt and unlock the debt tokens
+    // used to pay debt and unlock the debt tokens
     function payFeeDebt(uint256 _fassets)
         external
     {
@@ -405,11 +413,11 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         onlyAssetManager
     {
         uint256 poolBalanceNat = wNat.balanceOf(address(this));
+        require(poolBalanceNat == 0, "cannot destroy a pool holding collateral");
         uint256 poolFassetBalance = fAsset.balanceOf(address(this));
-        if (poolBalanceNat == 0 && poolFassetBalance == 0) {
-            token.destroy(_recipient);
-            selfdestruct(_recipient);
-        }
+        require(poolFassetBalance == 0, "cannot destroy a pool holding f-assets");
+        token.destroy(_recipient);
+        selfdestruct(_recipient);
     }
 
     // used by AssetManager to handle liquidation
@@ -432,7 +440,6 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
             agentVault, toSlash, TokenExitType.KEEP_RATIO, assetData);
         _burnFassetDebt(agentVault, debtFassetShare);
         token.burn(agentVault, toSlash);
-
     }
 
     function upgradeWNatContract(IWNat _newWNat)

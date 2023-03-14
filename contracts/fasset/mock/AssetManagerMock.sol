@@ -19,13 +19,17 @@ contract AssetManagerMock {
         _agentVault.payoutNAT(_recipient, _amount);
     }
 
-    function setPoolToken(ICollateralPool _collateralPool, address _poolToken) external {
-        _collateralPool.setPoolToken(_poolToken);
-    }
-
     function getWNat() external view returns (IWNat) {
         return wNat;
     }
+
+    function callFunctionAt(address _contract, bytes memory _payload) external {
+        (bool success, bytes memory data) = _contract.call(_payload);
+        require(success, string(data));
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Methods specific to collateral pool contract
 
     function redeemFromAgent(
         address /* _agentVault */, address /* _redeemer */, uint256 _amountUBA,
@@ -40,20 +44,12 @@ contract AssetManagerMock {
         emit AgentRedemptionInCollateral(_amountUBA);
     }
 
-
     function assetPriceNatWei() public pure returns (uint256, uint256) {
         return (1, 2);
     }
 
     function getLotSize() public pure returns (uint256) {
         return 1;
-    }
-
-    function callFunction(address _contract, string memory _function, uint256 _argument) external {
-        bytes memory payload = abi.encodeWithSignature(_function, _argument);
-        // slither-disable-next-line avoid-low-level-calls
-        (bool success,) = _contract.call(payload);
-        require(success, "function call failed");
     }
 
 }
