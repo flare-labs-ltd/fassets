@@ -36,6 +36,11 @@ library AssetManagerSettings {
         // timelocked
         IWhitelist whitelist;
 
+        // If set, the whitelist contains a list of allowed agent owners.
+        // This can be `address(0)`, in which case no whitelist checks are done.
+        // timelocked
+        IWhitelist agentWhitelist;
+
         // Attestation client verifies and decodes attestation proofs.
         // changed via address updater
         IAttestationClient attestationClient;

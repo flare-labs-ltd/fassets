@@ -138,14 +138,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * NOTE: calling this method before `createAgent()` is optional on most chains,
      * but is required on smart contract chains to make sure the agent is using EOA address
      * (depends on setting `requireEOAAddressProof`).
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
+     * NOTE: may only be called by a whitelisted agent
      * @param _payment proof of payment on the underlying chain
      */
     function proveUnderlyingAddressEOA(
         IAttestationClient.Payment calldata _payment
     )
         external
-        onlyWhitelistedSender
     {
         AgentsCreateDestroy.claimAddressWithEOAProof(_payment);
     }
@@ -155,14 +154,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Agent will always be identified by `_agentVault` address.
      * (Externally, same account may own several agent vaults,
      *  but in fasset system, each agent vault acts as an independent agent.)
-     * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
+     * NOTE: may only be called by a whitelisted agent
      */
     function createAgent(
         IAssetManager.InitialAgentSettings calldata _settings
     )
         external
         onlyAttached
-        onlyWhitelistedSender
     {
         AgentsCreateDestroy.createAgent(Agent.Type.AGENT_100, this, _settings);
     }
@@ -445,6 +443,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains
      * f-assets. Otherwise the agent collects the collateral reservation fee.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
+     * NOTE: the owner of the agent vault must be whitelisted agent.
      * @param _agentVault agent vault address
      * @param _lots the number of lots for which to reserve collateral
      * @param _maxMintingFeeBIPS maximum minting fee (BIPS) that can be charged by the agent - best is just to
@@ -539,6 +538,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * and no collateral reservation fee payment.
      * Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
      * NOTE: may only be called by the agent vault owner.
+     * NOTE: the caller must be a whitelisted agent.
      * @param _payment proof of the underlying payment; must contain payment reference of the form
      *      `0x4642505266410012000...0<agent_vault_address>`
      * @param _agentVault agent vault address

@@ -300,6 +300,24 @@ library Agents {
         return IAgentVault(_agent.vaultAddress()).owner();
     }
 
+    function requireWhitelisted(
+        address _owner
+    )
+        internal view
+    {
+        IWhitelist whitelist = AssetManagerState.getSettings().agentWhitelist;
+        require(address(whitelist) == address(0) || whitelist.isWhitelisted(_owner),
+            "agent not whitelisted");
+    }
+
+    function requireWhitelistedAgentVaultOwner(
+        Agent.State storage _agent
+    )
+        internal view
+    {
+        requireWhitelisted(vaultOwner(_agent));
+    }
+
     function requireAgentVaultOwner(
         address _agentVault
     )
@@ -317,6 +335,8 @@ library Agents {
         address owner = IAgentVault(_agent.vaultAddress()).owner();
         require(msg.sender == owner, "only agent vault owner");
     }
+
+
 
     function requireOnlyCollateralPool(
         Agent.State storage _agent

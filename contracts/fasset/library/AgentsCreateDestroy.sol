@@ -27,10 +27,16 @@ library AgentsCreateDestroy {
         _;
     }
 
+    modifier onlyWhitelistedAgent {
+        Agents.requireWhitelisted(msg.sender);
+        _;
+    }
+
     function claimAddressWithEOAProof(
         IAttestationClient.Payment calldata _payment
     )
         external
+        onlyWhitelistedAgent
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         TransactionAttestation.verifyPaymentSuccess(_payment);
@@ -53,6 +59,7 @@ library AgentsCreateDestroy {
         IAssetManager.InitialAgentSettings calldata _settings
     )
         external
+        onlyWhitelistedAgent
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         assert(_agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet

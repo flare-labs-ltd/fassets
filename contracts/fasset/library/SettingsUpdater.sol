@@ -28,6 +28,8 @@ library SettingsUpdater {
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant SET_WHITELIST =
         keccak256("setWhitelist(address)");
+    bytes32 internal constant SET_AGENT_WHITELIST =
+        keccak256("setAgentWhitelist(address)");
     bytes32 internal constant SET_AGENT_VAULT_FACTORY =
         keccak256("setAgentVaultFactory(address)");
     bytes32 internal constant SET_COLLATERAL_POOL_FACTORY =
@@ -113,6 +115,9 @@ library SettingsUpdater {
         } else if (_method == SET_WHITELIST) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setWhitelist(_params);
+        } else if (_method == SET_AGENT_WHITELIST) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setAgentWhitelist(_params);
         } else if (_method == SET_AGENT_VAULT_FACTORY) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAgentVaultFactory(_params);
@@ -311,6 +316,19 @@ library SettingsUpdater {
         // update
         settings.whitelist = IWhitelist(value);
         emit AMEvents.ContractChanged("whitelist", value);
+    }
+
+    function _setAgentWhitelist(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        address value = abi.decode(_params, (address));
+        // validate
+        // update
+        settings.agentWhitelist = IWhitelist(value);
+        emit AMEvents.ContractChanged("agentWhitelist", value);
     }
 
     function _setAgentVaultFactory(

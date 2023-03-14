@@ -5,14 +5,14 @@ import "../../governance/implementation/Governed.sol";
 import "../interface/IWhitelist.sol";
 
 contract Whitelist is IWhitelist, Governed {
-    mapping(address => bool) public whitelist;
+    bool public immutable supportsRevoke;
+    mapping(address => bool) private whitelist;
 
-    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance)
+
+    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, bool _supportsRevoke)
         Governed(_governanceSettings, _initialGovernance)
-    {}
-
-    function isWhitelisted(address _address) external view returns (bool) {
-        return whitelist[_address];
+    {
+        supportsRevoke = _supportsRevoke;
     }
 
     function addAddressToWhitelist(address _address) external onlyImmediateGovernance {
@@ -25,9 +25,22 @@ contract Whitelist is IWhitelist, Governed {
         }
     }
 
+    function revokeAddress(address _address) external onlyGovernance {
+        require(supportsRevoke, "revoke not supported");
+        _removeAddressFromWhitelist(_address);
+    }
+
+    function isWhitelisted(address _address) external view returns (bool) {
+        return whitelist[_address];
+    }
+
     function _addAddressToWhitelist(address _address) private {
         whitelist[_address] = true;
         emit Whitelisted(_address);
     }
 
+    function _removeAddressFromWhitelist(address _address) private {
+        delete whitelist[_address];
+        emit WhitelistingRevoked(_address);
+    }
 }
