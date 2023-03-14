@@ -321,7 +321,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         bytes memory _encodedInitialSettings
     )
         external
-        onlyImmediateGovernance
+        onlyGovernance
     {
         _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_LIQUIDATION_STRATEGY, abi.encode(_liquidationStrategy, _encodedInitialSettings));
@@ -332,7 +332,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         bytes memory _encodedSettings
     )
         external
-        onlyImmediateGovernance
+        onlyGovernance
     {
         _setValueOnManagers(_assetManagers,
             SettingsUpdater.UPDATE_LIQUIDATION_STRATEGY_SETTINGS, abi.encode(_encodedSettings));
@@ -389,7 +389,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         IAssetManager.CollateralTokenInfo calldata _data
     )
         external
-        onlyImmediateGovernance
+        onlyGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
             _checkAssetManager(_assetManagers[i]).setPoolCollateralToken(_data);
