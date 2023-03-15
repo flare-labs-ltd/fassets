@@ -9,6 +9,8 @@ export enum CollateralTokenClass {
 
 export type CollateralToken = Parameters<AssetManagerContract['new']>[1][0];
 
+export type AgentSettings = Parameters<AssetManagerInstance['createAgent']>[0];
+
 export type AgentInfo = Awaited<ReturnType<AssetManagerInstance['getAgentInfo']>>;
 
 export type AvailableAgentInfo = Awaited<ReturnType<AssetManagerInstance['getAvailableAgentsDetailedList']>>[0][0];

@@ -1,19 +1,39 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
 import { LiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
 import { DAYS, Dict, HOURS, MINUTES, toBIPS, toBNExp } from "../../../lib/utils/helpers";
-import { AgentVaultFactoryInstance, AttestationClientSCInstance, CollateralPoolFactoryInstance, IAddressValidatorInstance, IERC20Instance, IFtsoRegistryInstance, IWhitelistInstance, IWNatInstance, WNatInstance } from "../../../typechain-truffle";
+import {
+    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AttestationClientSCInstance,
+    CollateralPoolFactoryInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance, IAddressValidatorInstance,
+    IERC20Instance, IWhitelistInstance, WNatInstance
+} from "../../../typechain-truffle";
+import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
+import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
-export const GENESIS_GOVERNANCE = "0xfffEc6C83c8BF5c3F4AE0cCF8c45CE20E4560BD7";
+const WNat = artifacts.require("WNat");
+const AddressUpdater = artifacts.require('AddressUpdater');
+const AttestationClient = artifacts.require('AttestationClientSC');
+const FtsoMock = artifacts.require('FtsoMock');
+const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
+const StateConnector = artifacts.require('StateConnectorMock');
+const GovernanceSettings = artifacts.require('GovernanceSettings');
+const AgentVaultFactory = artifacts.require('AgentVaultFactory');
+const ERC20Mock = artifacts.require("ERC20Mock");
+const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
+const TrivialAddressValidatorMock = artifacts.require("TrivialAddressValidatorMock");
+const AssetManagerController = artifacts.require('AssetManagerController');
 
 export interface TestSettingsContracts {
+    governanceSettings: GovernanceSettingsInstance;
+    addressUpdater: AddressUpdaterInstance;
     agentVaultFactory: AgentVaultFactoryInstance;
     collateralPoolFactory: CollateralPoolFactoryInstance;
     attestationClient: AttestationClientSCInstance;
     addressValidator: IAddressValidatorInstance;
+    assetManagerController: AssetManagerControllerInstance;
     whitelist?: IWhitelistInstance;
     agentWhitelist?: IWhitelistInstance;
-    ftsoRegistry: IFtsoRegistryInstance;
+    ftsoRegistry: FtsoRegistryMockInstance;
     liquidationStrategy: string; // lib address
     wNat: WNatInstance,
     stablecoins: Dict<IERC20Instance>
@@ -116,4 +136,64 @@ export function createTestLiquidationSettings(): LiquidationStrategyImplSettings
         liquidationCollateralFactorBIPS: [toBIPS(1.2), toBIPS(1.6), toBIPS(2.0)],
         liquidationFactorClass1BIPS: [toBIPS(1), toBIPS(1), toBIPS(1)],
     };
+}
+
+export function createTestAgentSettings(underlyingAddress: string, options: Partial<AgentSettings> = {}): AgentSettings {
+    const defaults: AgentSettings = {
+        underlyingAddressString: underlyingAddress,
+        class1CollateralToken: 'USDC',
+        feeBIPS: toBIPS("10%"),
+        poolFeeShareBIPS: toBIPS("40%"),
+        mintingClass1CollateralRatioBIPS: toBIPS(1.6),
+        mintingPoolCollateralRatioBIPS: toBIPS(2.5),
+        poolExitCollateralRatioBIPS: toBIPS(2.6),
+        buyFAssetByAgentFactorBIPS: toBIPS(0.9),
+        poolTopupCollateralRatioBIPS: toBIPS(2.1),
+        poolTopupTokenPriceFactorBIPS: toBIPS(0.8),
+    };
+    return { ...defaults, ...options };
+}
+
+export async function createFtsoMock(ftsoRegistry: FtsoRegistryMockInstance, ftsoSymbol: string, initialPrice: number, decimals: number = 5): Promise<FtsoMockInstance> {
+    const ftso = await FtsoMock.new(ftsoSymbol, decimals);
+    await ftso.setCurrentPrice(toBNExp(initialPrice, decimals), 0);
+    await ftsoRegistry.addFtso(ftso.address);
+    return ftso;
+}
+
+export async function createTestContracts(governance: string): Promise<TestSettingsContracts> {
+    // create governance settings
+    const governanceSettings = await GovernanceSettings.new();
+    await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+    // create address updater
+    const addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
+    // create state connector
+    const stateConnector = await StateConnector.new();
+    // create attestation client
+    const attestationClient = await AttestationClient.new(stateConnector.address);
+    // create WNat token
+    const wNat = await WNat.new(governance, "NetworkNative", "NAT");
+    await setDefaultVPContract(wNat, governance);
+    // create stablecoins
+    const stablecoins = {
+        USDC: await ERC20Mock.new("USDCoin", "USDC"),
+        USDT: await ERC20Mock.new("Tether", "USDT"),
+    };
+    // create ftso registry
+    const ftsoRegistry = await FtsoRegistryMock.new();
+    // create agent vault factory
+    const agentVaultFactory = await AgentVaultFactory.new();
+    // create collateral pool factory
+    const collateralPoolFactory = await CollateralPoolFactory.new();
+    // create address validator
+    const addressValidator = await TrivialAddressValidatorMock.new();
+    // create liquidation strategy
+    const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
+    const liquidationStrategy = liquidationStrategyLib.address;
+    // create asset manager controller
+    const assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
+    await assetManagerController.switchToProductionMode({ from: governance });
+    //
+    return { governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, attestationClient,
+        addressValidator, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
 }

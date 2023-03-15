@@ -1,29 +1,17 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, CollateralPoolFactoryInstance, FAssetInstance, FtsoMockInstance, TrivialAddressValidatorMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
 import { AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
-import { toBN, toBNExp } from "../../../../lib/utils/helpers";
-import { getTestFile } from "../../../utils/test-helpers";
-import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { createTestCollaterals, createTestLiquidationSettings, createTestSettings, GENESIS_GOVERNANCE, TestSettingsContracts } from "../test-settings";
 import { encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
+import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
+import { toBN } from "../../../../lib/utils/helpers";
+import { AddressUpdaterInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { getTestFile } from "../../../utils/test-helpers";
+import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { createFtsoMock, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestLiquidationSettings, createTestSettings } from "../test-settings";
 
-const WNat = artifacts.require("WNat");
 const AgentVault = artifacts.require("AgentVault");
-const AddressUpdater = artifacts.require('AddressUpdater');
-const AssetManagerController = artifacts.require('AssetManagerController');
-const AttestationClient = artifacts.require('AttestationClientSC');
-const FtsoMock = artifacts.require('FtsoMock');
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const MockContract = artifacts.require('MockContract');
-const StateConnector = artifacts.require('StateConnectorMock');
-const GovernanceSettings = artifacts.require('GovernanceSettings');
-const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const ERC20Mock = artifacts.require("ERC20Mock");
-const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
-const TrivialAddressValidatorMock = artifacts.require("TrivialAddressValidatorMock");
 
 
 contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, async accounts => {
@@ -48,7 +36,8 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     async function createAgent(agentOwner: string, underlyingAddress: string) {
         // create agent
-        const response = await assetManager.createAgent(underlyingAddress, { from: agentOwner });
+        const settings = createTestAgentSettings(underlyingAddress);
+        const response = await assetManager.createAgent(settings, { from: agentOwner });
         // extract agent vault address from AgentCreated event
         const event = findRequiredEvent(response, 'AgentCreated');
         const agentVaultAddress = event.args.agentVault;
@@ -64,60 +53,22 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     }
 
     beforeEach(async () => {
-        // create governance settings
-        const governanceSettings = await GovernanceSettings.new();
-        await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE });
-        // create state connector
-        const stateConnector = await StateConnector.new();
-        // create attestation client
-        attestationClient = await AttestationClient.new(stateConnector.address);
-        // create WNat token
-        wNat = await WNat.new(governance, "NetworkNative", "NAT");
-        await setDefaultVPContract(wNat, governance);
-        // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT", 5);
-        await natFtso.setCurrentPrice(toBNExp(0.42, 5), 0);
-        usdcFtso = await FtsoMock.new("USDC", 5);
-        await usdcFtso.setCurrentPrice(toBNExp(1.01, 5), 0);
-        usdtFtso = await FtsoMock.new("USDT", 5);
-        await usdtFtso.setCurrentPrice(toBNExp(0.99, 5), 0);
-        assetFtso = await FtsoMock.new("ETH", 5);
-        await assetFtso.setCurrentPrice(toBNExp(1621, 5), 0);
-        // create ftso registry
-        const ftsoRegistry = await FtsoRegistryMock.new();
-        await ftsoRegistry.addFtso(natFtso.address);
-        await ftsoRegistry.addFtso(usdcFtso.address);
-        await ftsoRegistry.addFtso(usdtFtso.address);
-        await ftsoRegistry.addFtso(assetFtso.address);
-        // create stablecoins
-        const stablecoins = {
-            USDC: await ERC20Mock.new("USDCoin", "USDC"),
-            USDT: await ERC20Mock.new("Tether", "USDT"),
-        };
-        // create address updater
-        addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
-        // create agent vault factory
-        const agentVaultFactory = await AgentVaultFactory.new();
-        // create collateral pool factory
-        const collateralPoolFactory = await CollateralPoolFactory.new();
-        // create address validator
-        const addressValidator = await TrivialAddressValidatorMock.new();
-        // create liquidation strategy
-        const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
-        const liquidationStrategy = liquidationStrategyLib.address;
-        const liquidationStrategySettings = encodeLiquidationStrategyImplSettings(createTestLiquidationSettings());
-        // create asset manager controller
-        assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
-        await assetManagerController.switchToProductionMode({ from: governance });
+        const contracts = await createTestContracts(governance);
+        // save some contracts as globals
+        ({ attestationClient, addressUpdater, wNat, assetManagerController } = contracts);
+        // create FTSOs for nat, stablecoins and asset and set some price
+        natFtso = await createFtsoMock(contracts.ftsoRegistry, "NAT", 0.42);
+        usdcFtso = await createFtsoMock(contracts.ftsoRegistry, "USDC", 1.01);
+        usdtFtso = await createFtsoMock(contracts.ftsoRegistry, "USDT", 0.99);
+        assetFtso = await createFtsoMock(contracts.ftsoRegistry, "ETH", 1621);
         // create asset manager
-        const contracts: TestSettingsContracts = { agentVaultFactory, collateralPoolFactory, attestationClient, addressValidator, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
         collaterals = createTestCollaterals(contracts);
         settings = createTestSettings(contracts, { requireEOAAddressProof: false });
+        const liquidationStrategySettings = encodeLiquidationStrategyImplSettings(createTestLiquidationSettings());
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals, liquidationStrategySettings);
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
         // create agent vault
         agentVault = await AgentVault.new(assetManager.address, owner);
-
     });
 
     it("should deposit from any address", async () => {
