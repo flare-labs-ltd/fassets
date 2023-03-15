@@ -190,7 +190,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
                 "f-asset allowance too small");
             fAsset.transferFrom(msg.sender, address(this), additionallyRequiredFassets);
         }
-        // agent redemption (note: fassetsToRedeem can be larger than fassetsRequiredToKeepCR)
+        // agent redemption (note: fassetToRedeem can be larger than fassetsRequiredToKeepCR)
         uint256 fassetsToRedeem = freeFassetShare + additionallyRequiredFassets;
         if (fassetsToRedeem > 0) {
             if (fassetsToRedeem < assetManager.getLotSize() || _redeemToCollateral) {
