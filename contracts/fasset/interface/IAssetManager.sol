@@ -74,7 +74,7 @@ interface IAssetManager {
 
         // The factor set by the agent to multiply the price at which agent buys f-assets from pool
         // token holders on self-close exit (when requested or the redeemed amount is less than 1 lot).
-        uint256 buyFAssetByAgentRatioBIPS;
+        uint256 buyFAssetByAgentFactorBIPS;
 
         // The minimum collateral ratio above which a staker can exit the pool
         // (this is CR that must be left after exit).

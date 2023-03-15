@@ -83,7 +83,7 @@ library AgentsCreateDestroy {
         // set minting fee and share
         agent.setFeeBIPS(_settings.feeBIPS);
         agent.setPoolFeeShareBIPS(_settings.poolFeeShareBIPS);
-        agent.setBuyFAssetByAgentRatioBIPS(_settings.buyFAssetByAgentRatioBIPS);
+        agent.setBuyFAssetByAgentFactorBIPS(_settings.buyFAssetByAgentFactorBIPS);
         // claim the address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
         state.underlyingAddressOwnership.claim(msg.sender, underlyingAddressHash,

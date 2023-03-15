@@ -63,13 +63,13 @@ library Agents {
         _agent.poolFeeShareBIPS = _poolFeeShareBIPS.toUint16();
     }
 
-    function setBuyFAssetByAgentRatioBIPS(
+    function setBuyFAssetByAgentFactorBIPS(
         Agent.State storage _agent,
-        uint256 _buyFAssetByAgentRatioBIPS
+        uint256 _buyFAssetByAgentFactorBIPS
     )
         internal
     {
-        _agent.buyFAssetByAgentRatioBIPS = _buyFAssetByAgentRatioBIPS.toUint16();
+        _agent.buyFAssetByAgentFactorBIPS = _buyFAssetByAgentFactorBIPS.toUint16();
     }
 
     function setPoolExitCollateralRatioBIPS(

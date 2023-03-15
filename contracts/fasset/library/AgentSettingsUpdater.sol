@@ -14,7 +14,7 @@ library AgentSettingsUpdater {
     bytes32 internal constant POOL_FEE_SHARE_BIPS = keccak256("poolFeeShareBIPS");
     bytes32 internal constant MINTING_CLASS1_COLLATERAL_RATIO_BIPS = keccak256("mintingClass1CollateralRatioBIPS");
     bytes32 internal constant MINTING_POOL_COLLATERAL_RATIO_BIPS = keccak256("mintingPoolCollateralRatioBIPS");
-    bytes32 internal constant BUY_FASSET_BY_AGENT_RATIO_BIPS = keccak256("buyFAssetByAgentRatioBIPS");
+    bytes32 internal constant BUY_FASSET_BY_AGENT_FACTOR_BIPS = keccak256("buyFAssetByAgentFactorBIPS");
     bytes32 internal constant POOL_EXIT_COLLATERAL_RATIO_BIPS = keccak256("poolExitCollateralRatioBIPS");
     bytes32 internal constant POOL_TOPUP_COLLATERAL_RATIO_BIPS = keccak256("poolTopupCollateralRatioBIPS");
     bytes32 internal constant POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS = keccak256("poolTopupTokenPriceFactorBIPS");
@@ -65,7 +65,7 @@ library AgentSettingsUpdater {
         delete _agent.settingUpdates[POOL_FEE_SHARE_BIPS];
         delete _agent.settingUpdates[MINTING_CLASS1_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[MINTING_POOL_COLLATERAL_RATIO_BIPS];
-        delete _agent.settingUpdates[BUY_FASSET_BY_AGENT_RATIO_BIPS];
+        delete _agent.settingUpdates[BUY_FASSET_BY_AGENT_FACTOR_BIPS];
         delete _agent.settingUpdates[POOL_EXIT_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[POOL_TOPUP_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS];
@@ -86,8 +86,8 @@ library AgentSettingsUpdater {
             Agents.setMintingClass1CollateralRatioBIPS(_agent, _value);
         } else if (_hash == MINTING_POOL_COLLATERAL_RATIO_BIPS) {
             Agents.setMintingPoolCollateralRatioBIPS(_agent, _value);
-        } else if (_hash == BUY_FASSET_BY_AGENT_RATIO_BIPS) {
-            Agents.setBuyFAssetByAgentRatioBIPS(_agent, _value);
+        } else if (_hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS) {
+            Agents.setBuyFAssetByAgentFactorBIPS(_agent, _value);
         } else if (_hash == POOL_EXIT_COLLATERAL_RATIO_BIPS) {
             Agents.setPoolExitCollateralRatioBIPS(_agent, _value);
         } else if (_hash == POOL_TOPUP_COLLATERAL_RATIO_BIPS) {
@@ -99,7 +99,7 @@ library AgentSettingsUpdater {
 
     function _getTimelock(bytes32 _hash) private view returns (uint64) {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        if (_hash == FEE_BIPS || _hash == POOL_FEE_SHARE_BIPS || _hash == BUY_FASSET_BY_AGENT_RATIO_BIPS) {
+        if (_hash == FEE_BIPS || _hash == POOL_FEE_SHARE_BIPS || _hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS) {
             return settings.agentFeeChangeTimelockSeconds;
         } else {
             return settings.agentCollateralRatioChangeTimelockSeconds;
@@ -113,7 +113,7 @@ library AgentSettingsUpdater {
             hash == POOL_FEE_SHARE_BIPS ||
             hash == MINTING_CLASS1_COLLATERAL_RATIO_BIPS ||
             hash == MINTING_POOL_COLLATERAL_RATIO_BIPS ||
-            hash == BUY_FASSET_BY_AGENT_RATIO_BIPS ||
+            hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS ||
             hash == POOL_EXIT_COLLATERAL_RATIO_BIPS ||
             hash == POOL_TOPUP_COLLATERAL_RATIO_BIPS ||
             hash == POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS;
