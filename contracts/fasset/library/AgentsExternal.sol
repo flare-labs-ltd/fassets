@@ -161,6 +161,12 @@ library AgentsExternal {
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
+        // check that old collateral is deprecated
+        // TODO: could work without this check, but would need timelock, otherwise there can be
+        //       withdrawal without announcement by switching, withdrawing and switching back
+        CollateralToken.Data storage currentCollateral = agent.getClass1Collateral();
+        require(currentCollateral.validUntil != 0, "current collateral not deprecated");
+        // set new collateral
         agent.setClass1Collateral(_token);
     }
 

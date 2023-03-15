@@ -128,7 +128,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         onlyOwner
         nonReentrant
     {
-        require(!assetManager.isCollateralToken(address(this), _token), "Only non-collateral tokens");
+        require(!assetManager.isCollateralToken(address(this), _token), "only non-collateral tokens");
         _token.safeTransfer(owner, _amount);
     }
 
@@ -230,9 +230,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     }
 
     // Used by asset manager for liquidation and failed redemption.
-    // Since _recipient is typically an unknown address, we do not directly send NAT,
-    // but transfer WNAT (doesn't trigger any callbacks) which the recipient must withdraw.
-    // Is nonReentrant to prevent reentrancy in case anybody ever adds receive hooks on wNat.
+    // Is nonReentrant to prevent reentrancy in case the token has receive hooks.
     function payout(IERC20 _token, address _recipient, uint256 _amount)
         external override
         onlyAssetManager

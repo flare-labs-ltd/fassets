@@ -14,4 +14,7 @@ interface ICollateralPoolFactory {
         address _agentVault,
         IAssetManager.InitialAgentSettings memory _settings
     ) external returns (ICollateralPool);
+
+    function createPoolToken(ICollateralPool pool)
+        external returns (address);
 }

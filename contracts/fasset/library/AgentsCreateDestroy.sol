@@ -95,6 +95,9 @@ library AgentsCreateDestroy {
         // add collateral pool
         agent.collateralPool =
             state.settings.collateralPoolFactory.create(_assetManager, address(agentVault), _settings);
+        address poolToken =
+            state.settings.collateralPoolFactory.createPoolToken(agent.collateralPool);
+        agent.collateralPool.setPoolToken(poolToken);
         // run the pool setters just for validation
         agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
         agent.setPoolTopupCollateralRatioBIPS(_settings.poolTopupCollateralRatioBIPS);

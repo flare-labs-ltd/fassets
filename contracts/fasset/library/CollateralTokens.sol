@@ -16,8 +16,12 @@ library CollateralTokens {
         external
     {
         require(_data.length >= 2, "need at least two collaterals");
+        // initial pool collateral token
         require(_data[0].tokenClass == IAssetManager.CollateralTokenClass.POOL,
-            "first collateral must be for pool");
+            "first collateral must be pool");
+        _add(_data[0]);
+        _setPoolCollateralTokenIndex(0);
+        // initial class1 tokens
         for (uint256 i = 1; i < _data.length; i++) {
             require(_data[i].tokenClass == IAssetManager.CollateralTokenClass.CLASS1,
                 "collateral must be class1");
@@ -30,7 +34,7 @@ library CollateralTokens {
     )
         external
     {
-        require(_data.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "collateral must be class1");
+        require(_data.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "not a class1 collateral");
         _add(_data);
     }
 

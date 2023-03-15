@@ -274,17 +274,8 @@ library Agents {
         require(collateral.tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "not class1 collateral token");
         // agent should never switch to a deprecated or already invalid collateral
         require(collateral.validUntil == 0, "collateral deprecated");
-        // check that old collateral is deprecated
-        // TODO: could work without this check, but would need timelock, otherwise there can be
-        //       withdrawal without announcement by switching, withdrawing and switching back
-        CollateralToken.Data storage currentCollateral = getClass1Collateral(_agent);
-        require(currentCollateral.validUntil != 0, "current collateral not deprecated");
         // check there is enough collateral for current mintings
-        Collateral.Data memory switchCollateralData = Collateral.Data({
-            kind: Collateral.Kind.AGENT_CLASS1,
-            fullCollateral: currentCollateral.token.balanceOf(_agent.vaultAddress()),
-            amgToTokenWeiPrice: Conversion.currentAmgPriceInTokenWei(collateral)
-        });
+        Collateral.Data memory switchCollateralData = AgentCollateral.agentClass1CollateralData(_agent);
         uint256 crBIPS = AgentCollateral.collateralRatioBIPS(switchCollateralData, _agent);
         require(crBIPS >= collateral.minCollateralRatioBIPS, "not enough collateral");
         // set the new index

@@ -23,8 +23,14 @@ contract CollateralPoolFactory is ICollateralPoolFactory {
             _settings.poolExitCollateralRatioBIPS.toUint32(),
             _settings.poolTopupCollateralRatioBIPS.toUint32(),
             _settings.poolTopupTokenPriceFactorBIPS.toUint16());
-        CollateralPoolToken poolToken = new CollateralPoolToken(payable(address(pool)));
-        pool.setPoolToken(address(poolToken));
         return pool;
+    }
+
+    function createPoolToken(ICollateralPool _pool)
+        external
+        returns (address)
+    {
+        CollateralPoolToken poolToken = new CollateralPoolToken(payable(address(_pool)));
+        return address(poolToken);
     }
 }
