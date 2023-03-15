@@ -86,7 +86,7 @@ interface IAssetManager {
         uint256 poolTopupCollateralRatioBIPS;
 
         // The discount to pool token price when entering and pool CR is below pool topup CR.
-        uint256 poolTopupTokenDiscountBIPS;
+        uint256 poolTopupTokenPriceFactorBIPS;
     }
 
     function updateSettings(bytes32 _method, bytes calldata _params) external;

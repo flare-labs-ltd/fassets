@@ -30,6 +30,6 @@ interface ICollateralPool {
     function upgradeWNatContract(IWNat newWNat) external;
     function setExitCollateralRatioBIPS(uint256 _value) external;
     function setTopupCollateralRatioBIPS(uint256 _value) external;
-    function setTopupTokenDiscountBIPS(uint256 _value) external;
+    function setTopupTokenPriceFactorBIPS(uint256 _value) external;
     function poolToken() external view returns (IERC20);
 }

@@ -22,7 +22,7 @@ contract CollateralPoolFactory is ICollateralPoolFactory {
         ICollateralPool pool = new CollateralPool(_agentVault, address(_assetManager), fAsset,
             _settings.poolExitCollateralRatioBIPS.toUint32(),
             _settings.poolTopupCollateralRatioBIPS.toUint32(),
-            _settings.poolTopupTokenDiscountBIPS.toUint16());
+            _settings.poolTopupTokenPriceFactorBIPS.toUint16());
         CollateralPoolToken poolToken = new CollateralPoolToken(payable(address(pool)));
         pool.setPoolToken(address(poolToken));
         return pool;

@@ -17,7 +17,7 @@ library AgentSettingsUpdater {
     bytes32 internal constant BUY_FASSET_BY_AGENT_RATIO_BIPS = keccak256("buyFAssetByAgentRatioBIPS");
     bytes32 internal constant POOL_EXIT_COLLATERAL_RATIO_BIPS = keccak256("poolExitCollateralRatioBIPS");
     bytes32 internal constant POOL_TOPUP_COLLATERAL_RATIO_BIPS = keccak256("poolTopupCollateralRatioBIPS");
-    bytes32 internal constant POOL_TOPUP_TOKEN_DISCOUNT_BIPS = keccak256("poolTopupTokenDiscountBIPS");
+    bytes32 internal constant POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS = keccak256("poolTopupTokenPriceFactorBIPS");
 
     function announceUpdate(
         address _agentVault,
@@ -68,7 +68,7 @@ library AgentSettingsUpdater {
         delete _agent.settingUpdates[BUY_FASSET_BY_AGENT_RATIO_BIPS];
         delete _agent.settingUpdates[POOL_EXIT_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[POOL_TOPUP_COLLATERAL_RATIO_BIPS];
-        delete _agent.settingUpdates[POOL_TOPUP_TOKEN_DISCOUNT_BIPS];
+        delete _agent.settingUpdates[POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS];
     }
 
     function _executeUpdate(
@@ -92,8 +92,8 @@ library AgentSettingsUpdater {
             Agents.setPoolExitCollateralRatioBIPS(_agent, _value);
         } else if (_hash == POOL_TOPUP_COLLATERAL_RATIO_BIPS) {
             Agents.setPoolTopupCollateralRatioBIPS(_agent, _value);
-        } else if (_hash == POOL_TOPUP_TOKEN_DISCOUNT_BIPS) {
-            Agents.setPoolTopupTokenDiscountBIPS(_agent, _value);
+        } else if (_hash == POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS) {
+            Agents.setPoolTopupTokenPriceFactorBIPS(_agent, _value);
         }
     }
 
@@ -116,7 +116,7 @@ library AgentSettingsUpdater {
             hash == BUY_FASSET_BY_AGENT_RATIO_BIPS ||
             hash == POOL_EXIT_COLLATERAL_RATIO_BIPS ||
             hash == POOL_TOPUP_COLLATERAL_RATIO_BIPS ||
-            hash == POOL_TOPUP_TOKEN_DISCOUNT_BIPS;
+            hash == POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS;
         require(settingNameValid, "invalid setting name");
         return hash;
     }

@@ -163,16 +163,16 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("should fail at setting topup token discount if conditions aren't met", async () => {
-            const payload = collateralPool.contract.methods.setTopupTokenDiscountBIPS(10_000).encodeABI();
+            const payload = collateralPool.contract.methods.setTopupTokenPriceFactorBIPS(10_000).encodeABI();
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
             await expectRevert(prms, "value too high");
         });
 
         it("should correctly set topup token discount", async () => {
             const setTo = new BN(10_000).sub(BN_ONE);
-            const payload = collateralPool.contract.methods.setTopupTokenDiscountBIPS(setTo).encodeABI();
+            const payload = collateralPool.contract.methods.setTopupTokenPriceFactorBIPS(setTo).encodeABI();
             await assetManager.callFunctionAt(collateralPool.address, payload);
-            const newExitCollateralCR = await collateralPool.topupTokenDiscountBIPS();
+            const newExitCollateralCR = await collateralPool.topupTokenPriceFactorBIPS();
             assertEqualBN(newExitCollateralCR, setTo);
         });
 

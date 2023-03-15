@@ -30,7 +30,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     IWNat public wNat;
     uint32 public exitCollateralRatioBIPS;
     uint32 public topupCollateralRatioBIPS;
-    uint16 public topupTokenDiscountBIPS;
+    uint16 public topupTokenPriceFactorBIPS;
     bool private internalWithdrawal;
 
     mapping(address => uint256) private _fassetDebtOf;
@@ -52,7 +52,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         address _fAsset,
         uint32 _exitCollateralRatioBIPS,
         uint32 _topupCollateralRatioBIPS,
-        uint16 _topupTokenDiscountBIPS
+        uint16 _topupTokenPriceFactorBIPS
     ) {
         agentVault = _agentVault;
         agentVaultOwner = IAgentVault(agentVault).owner();
@@ -61,7 +61,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         wNat = assetManager.getWNat();
         exitCollateralRatioBIPS = _exitCollateralRatioBIPS;
         topupCollateralRatioBIPS = _topupCollateralRatioBIPS;
-        topupTokenDiscountBIPS = _topupTokenDiscountBIPS;
+        topupTokenPriceFactorBIPS = _topupTokenPriceFactorBIPS;
     }
 
     receive() external payable {
@@ -92,12 +92,12 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         topupCollateralRatioBIPS = _topupCollateralRatioBIPS.toUint32();
     }
 
-    function setTopupTokenDiscountBIPS(uint256 _topupTokenDiscountBIPS)
+    function setTopupTokenPriceFactorBIPS(uint256 _topupTokenPriceFactorBIPS)
         external
         onlyAssetManager
     {
-        require(_topupTokenDiscountBIPS < SafePct.MAX_BIPS, "value too high");
-        topupTokenDiscountBIPS = _topupTokenDiscountBIPS.toUint16();
+        require(_topupTokenPriceFactorBIPS < SafePct.MAX_BIPS, "value too high");
+        topupTokenPriceFactorBIPS = _topupTokenPriceFactorBIPS.toUint16();
     }
 
     function enter(uint256 _fassets, bool _enterWithFullFassets)
@@ -255,7 +255,6 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         internal view
         returns (uint256)
     {
-        uint256 topupTokenBonusBIPS = uint256(10_000).mulDiv(10_000, topupTokenDiscountBIPS);
         bool poolConsideredEmpty = _assetData.poolNatBalance == 0 || _assetData.poolTokenSupply == 0;
         // calculate nat share to be priced with topup discount and nat share to be priced standardly
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
@@ -265,7 +264,8 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         uint256 collateralForTopupPricing = Math.min(_collateral, natRequiredToTopup);
         uint256 collateralAtStandardPrice = collateralForTopupPricing < _collateral ?
             _collateral - collateralForTopupPricing : 0;
-        uint256 collateralAtTopupPrice = collateralForTopupPricing.mulBips(topupTokenBonusBIPS);
+        uint256 collateralAtTopupPrice = collateralForTopupPricing.mulDiv(
+            SafePct.MAX_BIPS, topupTokenPriceFactorBIPS);
         uint256 tokenShareAtStandardPrice = poolConsideredEmpty ?
             collateralAtStandardPrice : _assetData.poolTokenSupply.mulDiv(
                 collateralAtStandardPrice, _assetData.poolNatBalance);

@@ -55,16 +55,9 @@ library SafePct {
     }
 
     /**
-     * Multiply `x` by `y` BIPS.
+     * Return `x * y BIPS` = `x * y / 10_000`, rounded down.
      */
     function mulBips(uint256 x, uint256 y) internal pure returns (uint256) {
         return mulDiv(x, y, MAX_BIPS);
-    }
-
-    /**
-     * Return x * (1 + bips/MAX_BIPS).
-     */
-    function addBips(uint256 x, uint256 bips) internal pure returns (uint256) {
-        return mulDiv(x, MAX_BIPS + bips, MAX_BIPS);
     }
 }

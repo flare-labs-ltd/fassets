@@ -98,7 +98,7 @@ library AgentsCreateDestroy {
         // run the pool setters just for validation
         agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
         agent.setPoolTopupCollateralRatioBIPS(_settings.poolTopupCollateralRatioBIPS);
-        agent.setPoolTopupTokenDiscountBIPS(_settings.poolTopupTokenDiscountBIPS);
+        agent.setPoolTopupTokenPriceFactorBIPS(_settings.poolTopupTokenPriceFactorBIPS);
         // notify
         emit AMEvents.AgentCreated(msg.sender, uint8(_agentType), address(agentVault),
             normalizedUnderlyingAddress, address(agent.collateralPool));

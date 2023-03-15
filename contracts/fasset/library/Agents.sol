@@ -95,13 +95,13 @@ library Agents {
         _agent.collateralPool.setTopupCollateralRatioBIPS(_poolTopupCollateralRatioBIPS);
     }
 
-    function setPoolTopupTokenDiscountBIPS(
+    function setPoolTopupTokenPriceFactorBIPS(
         Agent.State storage _agent,
-        uint256 _poolTopupTokenDiscountBIPS
+        uint256 _poolTopupTokenPriceFactorBIPS
     )
         internal
     {
-        _agent.collateralPool.setTopupCollateralRatioBIPS(_poolTopupTokenDiscountBIPS);
+        _agent.collateralPool.setTopupCollateralRatioBIPS(_poolTopupTokenPriceFactorBIPS);
     }
 
     function allocateMintedAssets(
