@@ -25,6 +25,7 @@ export async function newAssetManager(
         assetManagerController: assetManagerControllerAddress,
         fAsset: fAsset.address
     });
+    collateralTokens = web3DeepNormalize(collateralTokens);
     const assetManager = await AssetManager.new(assetManagerSettings, collateralTokens, encodedLiquidationStrategySettings);
     if (typeof assetManagerController !== 'string') {
         const res = await assetManagerController.addAssetManager(assetManager.address, { from: governanceAddress });
@@ -52,20 +53,25 @@ export async function linkAssetManager() {
     // deploy all libraries
     const SettingsUpdater = await deployLibrary('SettingsUpdater');
     const StateUpdater = await deployLibrary('StateUpdater');
-    const Agents = await deployLibrary('Agents');
+    const CollateralTokens = await deployLibrary('CollateralTokens');
+    const AgentsExternal = await deployLibrary('AgentsExternal');
+    const AgentsCreateDestroy = await deployLibrary('AgentsCreateDestroy');
+    const AgentSettingsUpdater = await deployLibrary('AgentSettingsUpdater');
     const AvailableAgents = await deployLibrary('AvailableAgents');
     const CollateralReservations = await deployLibrary('CollateralReservations');
     const Liquidation = await deployLibrary('Liquidation');
     const Minting = await deployLibrary('Minting');
     const UnderlyingFreeBalance = await deployLibrary('UnderlyingFreeBalance');
-    const Redemption = await deployLibrary('Redemption');
+    const RedemptionRequests = await deployLibrary('RedemptionRequests');
+    const RedemptionConfirmations = await deployLibrary('RedemptionConfirmations');
+    const RedemptionFailures = await deployLibrary('RedemptionFailures');
     const UnderlyingWithdrawalAnnouncements = await deployLibrary('UnderlyingWithdrawalAnnouncements');
     const Challenges = await deployLibrary('Challenges');
     const FullAgentInfo = await deployLibrary('FullAgentInfo');
     // link AssetManagerContract
     return linkDependencies(artifacts.require('AssetManager'), {
-        SettingsUpdater, StateUpdater, Agents, AvailableAgents, CollateralReservations, Liquidation, Minting,
-        UnderlyingFreeBalance, Redemption, UnderlyingWithdrawalAnnouncements, Challenges, FullAgentInfo
+        SettingsUpdater, StateUpdater, CollateralTokens, AgentsExternal, AgentsCreateDestroy, AgentSettingsUpdater, AvailableAgents, CollateralReservations, Liquidation, Minting,
+        UnderlyingFreeBalance, RedemptionRequests, RedemptionConfirmations, RedemptionFailures, UnderlyingWithdrawalAnnouncements, Challenges, FullAgentInfo
     });
 }
 

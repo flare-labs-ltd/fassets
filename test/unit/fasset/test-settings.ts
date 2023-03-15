@@ -1,11 +1,11 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
 import { LiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
-import { DAYS, Dict, HOURS, MINUTES, toBIPS, toBNExp } from "../../../lib/utils/helpers";
+import { DAYS, HOURS, MINUTES, toBIPS, toBNExp } from "../../../lib/utils/helpers";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AttestationClientSCInstance,
-    CollateralPoolFactoryInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance, IAddressValidatorInstance,
-    IERC20Instance, IWhitelistInstance, WNatInstance
+    CollateralPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
+    IAddressValidatorInstance, IWhitelistInstance, WNatInstance
 } from "../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
@@ -36,7 +36,7 @@ export interface TestSettingsContracts {
     ftsoRegistry: FtsoRegistryMockInstance;
     liquidationStrategy: string; // lib address
     wNat: WNatInstance,
-    stablecoins: Dict<IERC20Instance>
+    stablecoins: Record<string, ERC20MockInstance>
 }
 
 export interface TestSettingOptions {
@@ -138,10 +138,10 @@ export function createTestLiquidationSettings(): LiquidationStrategyImplSettings
     };
 }
 
-export function createTestAgentSettings(underlyingAddress: string, options: Partial<AgentSettings> = {}): AgentSettings {
+export function createTestAgentSettings(underlyingAddress: string, class1TokenAddress: string, options?: Partial<AgentSettings>): AgentSettings {
     const defaults: AgentSettings = {
         underlyingAddressString: underlyingAddress,
-        class1CollateralToken: 'USDC',
+        class1CollateralToken: class1TokenAddress,
         feeBIPS: toBIPS("10%"),
         poolFeeShareBIPS: toBIPS("40%"),
         mintingClass1CollateralRatioBIPS: toBIPS(1.6),
@@ -151,12 +151,13 @@ export function createTestAgentSettings(underlyingAddress: string, options: Part
         poolTopupCollateralRatioBIPS: toBIPS(2.1),
         poolTopupTokenPriceFactorBIPS: toBIPS(0.8),
     };
-    return { ...defaults, ...options };
+    return { ...defaults, ...(options ?? {}) };
 }
 
 export async function createFtsoMock(ftsoRegistry: FtsoRegistryMockInstance, ftsoSymbol: string, initialPrice: number, decimals: number = 5): Promise<FtsoMockInstance> {
     const ftso = await FtsoMock.new(ftsoSymbol, decimals);
     await ftso.setCurrentPrice(toBNExp(initialPrice, decimals), 0);
+    await ftso.setCurrentPriceFromTrustedProviders(toBNExp(initialPrice, decimals), 0);
     await ftsoRegistry.addFtso(ftso.address);
     return ftso;
 }
@@ -195,5 +196,5 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     await assetManagerController.switchToProductionMode({ from: governance });
     //
     return { governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, attestationClient,
-        addressValidator, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
+        addressValidator, assetManagerController, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
 }
