@@ -1,3 +1,4 @@
+import { Web3 } from "hardhat";
 import { AssetManagerContract, AssetManagerInstance } from "../../typechain-truffle";
 
 export type AssetManagerSettings = Parameters<AssetManagerContract['new']>[0];
@@ -14,3 +15,6 @@ export type AgentSettings = Parameters<AssetManagerInstance['createAgent']>[0];
 export type AgentInfo = Awaited<ReturnType<AssetManagerInstance['getAgentInfo']>>;
 
 export type AvailableAgentInfo = Awaited<ReturnType<AssetManagerInstance['getAvailableAgentsDetailedList']>>[0][0];
+
+export type AgentSetting = "feeBIPS" | "poolFeeShareBIPS" | "mintingClass1CollateralRatioBIPS" | "mintingPoolCollateralRatioBIPS" |
+    "buyFAssetByAgentFactorBIPS" | "poolExitCollateralRatioBIPS" | "poolTopupCollateralRatioBIPS" | "poolTopupTokenPriceFactorBIPS";
