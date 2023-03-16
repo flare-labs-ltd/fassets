@@ -1,40 +1,32 @@
 import { balance, ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { calcGasCost } from "../../../utils/eth";
-import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
-import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
+import { AssetManagerInstance, AttestationClientSCInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { testChainInfo } from "../../../integration/utils/TestChainInfo";
+import { calcGasCost } from "../../../utils/eth";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
-import { toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
-import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../../lib/verification/sources/sources";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { createTestSettings } from "../test-settings";
-
-const AgentVault = artifacts.require('AgentVault');
-const AttestationClient = artifacts.require('AttestationClientSC');
-const WNat = artifacts.require('WNat');
-const FtsoMock = artifacts.require('FtsoMock');
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
-const StateConnector = artifacts.require('StateConnectorMock');
-const AgentVaultFactory = artifacts.require('AgentVaultFactory');
+import { createEncodedTestLiquidationSettings, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos,
+    createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
 
 contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accounts => {
     const governance = accounts[10];
     let assetManagerController = accounts[11];
+    let contracts: TestSettingsContracts;
     let attestationClient: AttestationClientSCInstance;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
-    let wnat: WNatInstance;
-    let ftsoRegistry: FtsoRegistryMockInstance;
-    let natFtso: FtsoMockInstance;
-    let assetFtso: FtsoMockInstance;
+    let wNat: WNatInstance;
+    let usdc: ERC20MockInstance;
+    let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
-    const chainId: SourceId = 1;
+    let collaterals: CollateralToken[];
     let chain: MockChain;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
@@ -45,50 +37,28 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
     const agentOwner1 = accounts[20];
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
 
-
-    async function createAgent(chain: MockChain, owner: string, underlyingAddress: string) {
-        // mint some funds on underlying address (just enough to make EOA proof)
-        chain.mint(underlyingAddress, 101);
-        // create and prove transaction from underlyingAddress
-        const txHash = await wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(owner), { maxFee: 100 });
-        const proof = await attestationProvider.provePayment(txHash, underlyingAddress, underlyingAddress);
-        await assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
-        // create agent
-        const response = await assetManager.createAgent(underlyingAddress, { from: owner });
-        // extract agent vault address from AgentCreated event
-        const event = findRequiredEvent(response, 'AgentCreated');
-        const agentVaultAddress = event.args.agentVault;
-        // get vault contract at this address
-        return await AgentVault.at(agentVaultAddress);
+    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
     }
 
     beforeEach(async () => {
-        // create state connector
-        const stateConnector = await StateConnector.new();
-        // create agent vault factory
-        const agentVaultFactory = await AgentVaultFactory.new();
-        // create atetstation client
-        attestationClient = await AttestationClient.new(stateConnector.address);
-        // create mock chain attestation provider
+        const ci = testChainInfo.btc;
+        contracts = await createTestContracts(governance);
+        // save some contracts as globals
+        ({ wNat } = contracts);
+        usdc = contracts.stablecoins.USDC;
+        // create FTSOs for nat, stablecoins and asset and set some price
+        ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
+        // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
-        // create WNat token
-        wnat = await WNat.new(governance, "NetworkNative", "NAT");
-        await setDefaultVPContract(wnat, governance);
-        // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT", 5);
-        await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH", 5);
-        await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
-        // create ftso registry
-        ftsoRegistry = await FtsoRegistryMock.new();
-        await ftsoRegistry.addFtso(natFtso.address);
-        await ftsoRegistry.addFtso(assetFtso.address);
+        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
         // create asset manager
-        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
+        collaterals = createTestCollaterals(contracts);
+        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
     });
 
     it("should prove EOA address", async () => {
@@ -113,7 +83,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should not prove EOA address - address already claimed", async () => {
         // init
-        await createAgent(chain, agentOwner1, underlyingAgent1);
+        await createAgent(agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, toBNExp(100, 18));
         // act
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
@@ -129,7 +99,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
-        const res = await assetManager.createAgent(underlyingAgent1, { from: agentOwner1 });
+        const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
+        const res = await assetManager.createAgent(web3DeepNormalize(agentSettings), { from: agentOwner1 });
         // assert
         expectEvent(res, "AgentCreated", { owner: agentOwner1, agentType: toBN(1), underlyingAddress: underlyingAgent1 });
     });
@@ -138,16 +109,18 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // init
         // act
         // assert
-        await expectRevert(assetManager.createAgent("", { from: agentOwner1 }),
+        const agentSettings = createTestAgentSettings("", usdc.address);
+        await expectRevert(assetManager.createAgent(web3DeepNormalize(agentSettings), { from: agentOwner1 }),
             "empty underlying address");
     });
 
     it("should not create agent - address already claimed", async () => {
         // init
-        await createAgent(chain, agentOwner1, underlyingAgent1);
+        await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.createAgent(underlyingAgent1),
+        const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
+        await expectRevert(assetManager.createAgent(web3DeepNormalize(agentSettings)),
             "address already claimed");
     });
 
@@ -155,13 +128,14 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // init
         // act
         // assert
-        await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agentOwner1 }),
+        const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
+        await expectRevert(assetManager.createAgent(web3DeepNormalize(agentSettings), { from: agentOwner1 }),
             "EOA proof required");
     });
 
     it("only owner can make agent available", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
         await expectRevert(assetManager.makeAgentAvailable(agentVault.address, 500, 22000),
@@ -170,7 +144,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("cannot add agent to available list if agent's status is not 'NORMAL'", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
@@ -182,7 +156,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("cannot add agent to available list twice", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -194,7 +168,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("cannot add agent to available list if not enough free collateral", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
         await expectRevert(assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 }),
@@ -203,7 +177,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("cannot exit if not active", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         // act
@@ -214,7 +188,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("only owner can exit agent", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
         await expectRevert(assetManager.exitAvailableAgentList(agentVault.address),
@@ -223,7 +197,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("only owner can announce destroy agent", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
         await expectRevert(assetManager.announceDestroyAgent(agentVault.address),
@@ -232,7 +206,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("cannot announce destroy agent if still active", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -244,7 +218,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("only owner can destroy agent", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
         await expectRevert(assetManager.destroyAgent(agentVault.address),
@@ -253,7 +227,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("cannot destroy agent without announcement", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
         await expectRevert(assetManager.destroyAgent(agentVault.address, { from: agentOwner1 }),
@@ -262,7 +236,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("cannot destroy agent too soon", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         // act
@@ -274,7 +248,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should destroy agent after announced withdrawal time passes", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         // act
@@ -297,7 +271,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("only owner can announce collateral withdrawal", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
         await expectRevert(assetManager.announceCollateralWithdrawal(agentVault.address, 100),
@@ -306,7 +280,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("cannot annouce collateral withdrawal if agent's status is not 'NORMAL'", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
@@ -318,7 +292,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should announce collateral withdrawal", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         // act
@@ -330,7 +304,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should decrease announced collateral withdrawal", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
@@ -343,7 +317,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should cancel announced collateral withdrawal", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
@@ -356,7 +330,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should withdraw collateral after announced withdrawal time passes", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
@@ -371,7 +345,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should withdraw collateral in a few transactions after announced withdrawal time passes, but not more than announced", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
@@ -391,7 +365,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("only owner can withdraw collateral", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         // act
@@ -402,7 +376,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should not withdraw collateral if not accounced", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         // act
@@ -413,7 +387,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should not withdraw collateral before announced withdrawal time passes", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
@@ -426,7 +400,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should not withdraw more collateral than announced", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
@@ -439,7 +413,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should change agent's min collateral ratio", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         const collateralRatioBIPS = 23000;
         await assetManager.setAgentMinCollateralRatioBIPS(agentVault.address, collateralRatioBIPS, { from: agentOwner1 });
@@ -450,7 +424,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("only owner can change agent's min collateral ratio", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         const collateralRatioBIPS = 23000;
         // assert
@@ -460,7 +434,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should not set too low agent's min collateral ratio", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         const collateralRatioBIPS = 2_1000 - 1;
         // assert
@@ -471,7 +445,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("anyone can call convertDustToTicket", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
         await assetManager.convertDustToTicket(agentVault.address);

@@ -20,14 +20,14 @@ export const testNatInfo: TestNatInfo = {
     startPrice: 1.12,
 }
 
-export const testChainInfo: { [name: string]: TestChainInfo } = {
+export const testChainInfo: Record<'eth' | 'btc' | 'xrp', TestChainInfo> = {
     eth: {
         chainId: 1,
         name: "Ethereum",
         symbol: "ETH",
         decimals: 18,
         amgDecimals: 9,
-        startPrice: 3251.0,
+        startPrice: 1621.0,
         blockTime: 12,
         finalizationBlocks: 6,
         underlyingBlocksForPayment: 10,
@@ -39,8 +39,8 @@ export const testChainInfo: { [name: string]: TestChainInfo } = {
         name: "Bitcoin",
         symbol: "BTC",
         decimals: 8,
-        amgDecimals: 0,
-        startPrice: 45213.0,
+        amgDecimals: 8,
+        startPrice: 25213.0,
         blockTime: 600,
         finalizationBlocks: 6,
         underlyingBlocksForPayment: 8,
@@ -52,8 +52,8 @@ export const testChainInfo: { [name: string]: TestChainInfo } = {
         name: "Ripple",
         symbol: "XRP",
         decimals: 6,
-        amgDecimals: 0,
-        startPrice: 0.8,
+        amgDecimals: 8,
+        startPrice: 0.53,
         blockTime: 10,
         finalizationBlocks: 6,
         underlyingBlocksForPayment: 10,

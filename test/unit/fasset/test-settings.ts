@@ -1,15 +1,22 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
-import { LiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
+import { encodeLiquidationStrategyImplSettings, LiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
+import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
+import { findRequiredEvent } from "../../../lib/utils/events/truffle";
 import { DAYS, HOURS, MINUTES, toBIPS, toBNExp } from "../../../lib/utils/helpers";
+import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import {
-    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AttestationClientSCInstance,
+    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance,
     CollateralPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
-    IAddressValidatorInstance, IWhitelistInstance, WNatInstance
+    IAddressValidatorInstance, IWhitelistInstance, StateConnectorMockInstance, WNatInstance
 } from "../../../typechain-truffle";
+import { TestChainInfo } from "../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
+import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 
+const AgentVault = artifacts.require("AgentVault");
 const WNat = artifacts.require("WNat");
 const AddressUpdater = artifacts.require('AddressUpdater');
 const AttestationClient = artifacts.require('AttestationClientSC');
@@ -21,32 +28,27 @@ const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const ERC20Mock = artifacts.require("ERC20Mock");
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const TrivialAddressValidatorMock = artifacts.require("TrivialAddressValidatorMock");
-const AssetManagerController = artifacts.require('AssetManagerController');
 
 export interface TestSettingsContracts {
     governanceSettings: GovernanceSettingsInstance;
     addressUpdater: AddressUpdaterInstance;
     agentVaultFactory: AgentVaultFactoryInstance;
     collateralPoolFactory: CollateralPoolFactoryInstance;
+    stateConnector: StateConnectorMockInstance;
     attestationClient: AttestationClientSCInstance;
     addressValidator: IAddressValidatorInstance;
-    assetManagerController: AssetManagerControllerInstance;
     whitelist?: IWhitelistInstance;
     agentWhitelist?: IWhitelistInstance;
     ftsoRegistry: FtsoRegistryMockInstance;
     liquidationStrategy: string; // lib address
     wNat: WNatInstance,
-    stablecoins: Record<string, ERC20MockInstance>
+    stablecoins: Record<string, ERC20MockInstance>,
 }
 
-export interface TestSettingOptions {
-    burnAddress?: string;
-    requireEOAAddressProof?: boolean;
-    burnWithSelfDestruct?: boolean;
-}
+export type TestSettingOptions = Partial<AssetManagerSettings>;
 
-export function createTestSettings(contracts: TestSettingsContracts, options: TestSettingOptions = {}): AssetManagerSettings {
-    return {
+export function createTestSettings(contracts: TestSettingsContracts, ci: TestChainInfo, options?: TestSettingOptions): AssetManagerSettings {
+    const result: AssetManagerSettings = {
         assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
         fAsset: constants.ZERO_ADDRESS,                     // replaced in newAssetManager(...)
         agentVaultFactory: contracts.agentVaultFactory.address,
@@ -58,27 +60,27 @@ export function createTestSettings(contracts: TestSettingsContracts, options: Te
         agentWhitelist: contracts.agentWhitelist?.address ?? constants.ZERO_ADDRESS,
         ftsoRegistry: contracts.ftsoRegistry.address,
         mintingCapAMG: 0,                                   // minting cap disabled
-        assetFtsoSymbol: "ETH",
+        assetFtsoSymbol: ci.symbol,
         assetFtsoIndex: 0,                                  // set automatically in contract
-        burnAddress: options.burnAddress ?? constants.ZERO_ADDRESS,
-        burnWithSelfDestruct: options.burnWithSelfDestruct ?? false,
-        chainId: 1,
+        burnAddress: constants.ZERO_ADDRESS,
+        burnWithSelfDestruct: false,
+        chainId: ci.chainId,
         collateralReservationFeeBIPS: toBIPS("1%"),
-        assetDecimals: 18,
-        assetUnitUBA: toBNExp(1, 18),                   // 1e18 wei per eth
-        assetMintingDecimals: 9,                        // 1 eth = 1e9 amg
-        assetMintingGranularityUBA: toBNExp(1, 9),      // 1 amg = 1 eth / 1e9 = 1e9 uba
-        lotSizeAMG: toBNExp(1_000, 9),                  // 1000 eth
-        requireEOAAddressProof: options.requireEOAAddressProof ?? true,
-        underlyingBlocksForPayment: 10,
-        underlyingSecondsForPayment: 120,                      // 12s per block assumed
+        assetDecimals: ci.decimals,
+        assetUnitUBA: toBNExp(1, ci.decimals),
+        assetMintingDecimals: ci.amgDecimals,
+        assetMintingGranularityUBA: toBNExp(1, ci.decimals - ci.amgDecimals),
+        lotSizeAMG: toBNExp(ci.lotSize, ci.amgDecimals),
+        requireEOAAddressProof: ci.requireEOAProof,
+        underlyingBlocksForPayment: ci.underlyingBlocksForPayment,
+        underlyingSecondsForPayment: ci.underlyingBlocksForPayment * ci.blockTime,
         redemptionFeeBIPS: toBIPS("2%"),
         maxRedeemedTickets: 20,                                 // TODO: find number that fits comfortably in gas limits
         redemptionDefaultFactorAgentC1BIPS: toBIPS(1.1),
         redemptionDefaultFactorPoolBIPS: toBIPS(0.1),
         confirmationByOthersAfterSeconds: 6 * HOURS,            // 6 hours
-        confirmationByOthersRewardUSD5: toBNExp(100, 5),    // 100 USD
-        paymentChallengeRewardUSD5: toBNExp(300, 5),        // 300 USD
+        confirmationByOthersRewardUSD5: toBNExp(100, 5),        // 100 USD
+        paymentChallengeRewardUSD5: toBNExp(300, 5),            // 300 USD
         paymentChallengeRewardBIPS: 0,
         withdrawalWaitMinSeconds: 300,
         ccbTimeSeconds: 180,
@@ -94,6 +96,7 @@ export function createTestSettings(contracts: TestSettingsContracts, options: Te
         mintingPoolHoldingsRequiredBIPS: toBIPS("50%"),
         tokenInvalidationTimeMinSeconds: 1 * DAYS,
     };
+    return Object.assign(result, options ?? {});
 }
 
 export function createTestCollaterals(contracts: TestSettingsContracts): CollateralToken[] {
@@ -138,20 +141,8 @@ export function createTestLiquidationSettings(): LiquidationStrategyImplSettings
     };
 }
 
-export function createTestAgentSettings(underlyingAddress: string, class1TokenAddress: string, options?: Partial<AgentSettings>): AgentSettings {
-    const defaults: AgentSettings = {
-        underlyingAddressString: underlyingAddress,
-        class1CollateralToken: class1TokenAddress,
-        feeBIPS: toBIPS("10%"),
-        poolFeeShareBIPS: toBIPS("40%"),
-        mintingClass1CollateralRatioBIPS: toBIPS(1.6),
-        mintingPoolCollateralRatioBIPS: toBIPS(2.5),
-        poolExitCollateralRatioBIPS: toBIPS(2.6),
-        buyFAssetByAgentFactorBIPS: toBIPS(0.9),
-        poolTopupCollateralRatioBIPS: toBIPS(2.1),
-        poolTopupTokenPriceFactorBIPS: toBIPS(0.8),
-    };
-    return { ...defaults, ...(options ?? {}) };
+export function createEncodedTestLiquidationSettings() {
+    return encodeLiquidationStrategyImplSettings(createTestLiquidationSettings());
 }
 
 export async function createFtsoMock(ftsoRegistry: FtsoRegistryMockInstance, ftsoSymbol: string, initialPrice: number, decimals: number = 5): Promise<FtsoMockInstance> {
@@ -160,6 +151,17 @@ export async function createFtsoMock(ftsoRegistry: FtsoRegistryMockInstance, fts
     await ftso.setCurrentPriceFromTrustedProviders(toBNExp(initialPrice, decimals), 0);
     await ftsoRegistry.addFtso(ftso.address);
     return ftso;
+}
+
+export type TestFtsos = Record<'nat' | 'usdc' | 'usdt' | 'asset', FtsoMockInstance>;
+
+export async function createTestFtsos(ftsoRegistry: FtsoRegistryMockInstance, assetChainInfo: TestChainInfo): Promise<TestFtsos> {
+    return {
+        nat: await createFtsoMock(ftsoRegistry, "NAT", 0.42),
+        usdc: await createFtsoMock(ftsoRegistry, "USDC", 1.01),
+        usdt: await createFtsoMock(ftsoRegistry, "USDT", 0.99),
+        asset: await createFtsoMock(ftsoRegistry, assetChainInfo.symbol, assetChainInfo.startPrice),
+    };
 }
 
 export async function createTestContracts(governance: string): Promise<TestSettingsContracts> {
@@ -191,10 +193,51 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     // create liquidation strategy
     const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
     const liquidationStrategy = liquidationStrategyLib.address;
-    // create asset manager controller
-    const assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
-    await assetManagerController.switchToProductionMode({ from: governance });
     //
-    return { governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, attestationClient,
-        addressValidator, assetManagerController, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
+    return { governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, stateConnector, attestationClient,
+        addressValidator, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
+}
+
+export interface CreateTestAgentDeps {
+    assetManager: AssetManagerInstance;
+    settings: AssetManagerSettings;
+    chain?: MockChain;
+    wallet?: MockChainWallet;
+    attestationProvider?: AttestationHelper;
+}
+
+export function createTestAgentSettings(underlyingAddress: string, class1TokenAddress: string, options?: Partial<AgentSettings>): AgentSettings {
+    const defaults: AgentSettings = {
+        underlyingAddressString: underlyingAddress,
+        class1CollateralToken: class1TokenAddress,
+        feeBIPS: toBIPS("10%"),
+        poolFeeShareBIPS: toBIPS("40%"),
+        mintingClass1CollateralRatioBIPS: toBIPS(1.6),
+        mintingPoolCollateralRatioBIPS: toBIPS(2.5),
+        poolExitCollateralRatioBIPS: toBIPS(2.6),
+        buyFAssetByAgentFactorBIPS: toBIPS(0.9),
+        poolTopupCollateralRatioBIPS: toBIPS(2.1),
+        poolTopupTokenPriceFactorBIPS: toBIPS(0.8),
+    };
+    return { ...defaults, ...(options ?? {}) };
+}
+
+export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, underlyingAddress: string, class1CollateralToken: string, options?: Partial<AgentSettings>) {
+    if (deps.settings.requireEOAAddressProof) {
+        if (!deps.chain || !deps.wallet || !deps.attestationProvider) throw new Error("Missing chain data for EOA proof");
+        // mint some funds on underlying address (just enough to make EOA proof)
+        deps.chain.mint(underlyingAddress, 101);
+        // create and prove transaction from underlyingAddress
+        const txHash = await deps.wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(owner), { maxFee: 100 });
+        const proof = await deps.attestationProvider.provePayment(txHash, underlyingAddress, underlyingAddress);
+        await deps.assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
+    }
+    // create agent
+    const agentSettings = createTestAgentSettings(underlyingAddress, class1CollateralToken, options);
+    const response = await deps.assetManager.createAgent(web3DeepNormalize(agentSettings), { from: owner });
+    // extract agent vault address from AgentCreated event
+    const event = findRequiredEvent(response, 'AgentCreated');
+    const agentVaultAddress = event.args.agentVault;
+    // get vault contract at this address
+    return await AgentVault.at(agentVaultAddress);
 }

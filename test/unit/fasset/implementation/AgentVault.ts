@@ -8,27 +8,24 @@ import {
     AddressUpdaterInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance,
     ERC20MockInstance, FAssetInstance, FtsoMockInstance, WNatInstance
 } from "../../../../typechain-truffle";
+import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { createFtsoMock, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestLiquidationSettings, createTestSettings } from "../test-settings";
+import { createEncodedTestLiquidationSettings, createFtsoMock, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestLiquidationSettings, createTestSettings, createTestAgent, TestFtsos, TestSettingsContracts } from "../test-settings";
 
+const AssetManagerController = artifacts.require('AssetManagerController');
 const AgentVault = artifacts.require("AgentVault");
 const MockContract = artifacts.require('MockContract');
 const ERC20Mock = artifacts.require("ERC20Mock");
 
-
 contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, async accounts => {
+    let contracts: TestSettingsContracts;
     let wNat: WNatInstance;
     let stablecoins: Record<string, ERC20MockInstance>;
     let usdc: ERC20MockInstance;
     let assetManagerController: AssetManagerControllerInstance;
-    let addressUpdater: AddressUpdaterInstance;
-    let attestationClient: AttestationClientSCInstance;
-    let natFtso: FtsoMockInstance;
-    let usdcFtso: FtsoMockInstance;
-    let usdtFtso: FtsoMockInstance;
-    let assetFtso: FtsoMockInstance;
+    let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
     let assetManager: AssetManagerInstance;
     let collaterals: CollateralToken[];
@@ -39,16 +36,9 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingAgent1 = "Agent1";
 
-    async function createAgent(agentOwner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
-        // create agent
+    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
-        const settings = createTestAgentSettings(underlyingAddress, class1CollateralToken, options);
-        const response = await assetManager.createAgent(web3DeepNormalize(settings), { from: agentOwner });
-        // extract agent vault address from AgentCreated event
-        const event = findRequiredEvent(response, 'AgentCreated');
-        const agentVaultAddress = event.args.agentVault;
-        // get vault contract at this address
-        return await AgentVault.at(agentVaultAddress);
+        return createTestAgent({ assetManager, settings }, owner, underlyingAddress, class1CollateralToken, options);
     }
 
     async function createGovernanceVP() {
@@ -59,20 +49,19 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     }
 
     beforeEach(async () => {
-        const contracts = await createTestContracts(governance);
+        const ci = testChainInfo.btc;
+        contracts = await createTestContracts(governance);
         // save some contracts as globals
-        ({ attestationClient, addressUpdater, wNat, assetManagerController, stablecoins } = contracts);
+        ({ wNat, stablecoins } = contracts);
         usdc = stablecoins.USDC;
         // create FTSOs for nat, stablecoins and asset and set some price
-        natFtso = await createFtsoMock(contracts.ftsoRegistry, "NAT", 0.42);
-        usdcFtso = await createFtsoMock(contracts.ftsoRegistry, "USDC", 1.01);
-        usdtFtso = await createFtsoMock(contracts.ftsoRegistry, "USDT", 0.99);
-        assetFtso = await createFtsoMock(contracts.ftsoRegistry, "ETH", 1621);
+        ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
+        // create asset manager controller (don't switch to production)
+        assetManagerController = await AssetManagerController.new(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
         // create asset manager
         collaterals = createTestCollaterals(contracts);
-        settings = createTestSettings(contracts, { requireEOAAddressProof: false });
-        const liquidationStrategySettings = encodeLiquidationStrategyImplSettings(createTestLiquidationSettings());
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals, liquidationStrategySettings);
+        settings = createTestSettings(contracts, ci);
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
     });
 
