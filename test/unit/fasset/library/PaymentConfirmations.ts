@@ -1,26 +1,15 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentVaultInstance, AssetManagerInstance, AttestationClientSCInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
 import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { DAYS } from "../../../../lib/utils/helpers";
+import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
-import { DAYS, toBNExp } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
-import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../../lib/verification/sources/sources";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
-import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
-
-const AgentVault = artifacts.require('AgentVault');
-const AttestationClient = artifacts.require('AttestationClientSC');
-const WNat = artifacts.require('WNat');
-const FtsoMock = artifacts.require('FtsoMock');
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
-const StateConnector = artifacts.require('StateConnectorMock');
-const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmations basic tests`, async accounts => {
     const governance = accounts[10];
@@ -76,7 +65,7 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
     });
 
     it("should cleanup payment verifications after 15 days", async () => {
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const proof1 = await agentTopup(agentVault);
         // make transaction in the "future" (chains timestamp may differ)
         chain.skipTime(15 * DAYS);

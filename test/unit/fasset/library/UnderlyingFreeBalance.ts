@@ -1,27 +1,17 @@
-import { AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
-import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
-import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { randomAddress, toBNExp } from "../../../../lib/utils/helpers";
-import { getTestFile } from "../../../utils/test-helpers";
-import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../../lib/verification/sources/sources";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
-import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
-import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { ethers } from "hardhat";
-import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
-
-const AgentVault = artifacts.require('AgentVault');
-const AttestationClient = artifacts.require('AttestationClientSC');
-const WNat = artifacts.require('WNat');
-const FtsoMock = artifacts.require('FtsoMock');
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
-const StateConnector = artifacts.require('StateConnectorMock');
-const AgentVaultFactory = artifacts.require('AgentVaultFactory');
+import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
+import { randomAddress } from "../../../../lib/utils/helpers";
+import { AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { testChainInfo } from "../../../integration/utils/TestChainInfo";
+import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
+import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { getTestFile } from "../../../utils/test-helpers";
+import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
 
 contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFreeBalance unit tests`, async accounts => {
 
@@ -70,14 +60,14 @@ contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFree
     });
 
     it("should confirm top up payment", async () => {
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, 500, PaymentReference.topup(agentVault.address));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         await assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
     });
 
     it("should reject confirmation of top up payment if payment is negative", async () => {
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         let txHash = await wallet.addMultiTransaction({[underlyingAgent1]: 500, [underlyingRandomAddress]: 100}, {[underlyingAgent1]: 450, [underlyingRandomAddress]: 0}, PaymentReference.topup(agentVault.address));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         await expectRevert(assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 }), "SafeCast: value must be positive");
@@ -88,14 +78,14 @@ contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFree
     });
 
     it("should reject confirmation of top up payment - not underlying address", async () => {
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingRandomAddress, 500, PaymentReference.topup(agentVault.address));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingRandomAddress);
         let res = assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
         await expectRevert(res, 'not underlying address');
     });
     it("should reject confirmation of top up payment - not a topup payment", async () => {
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, 500, PaymentReference.topup(randomAddress()));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         let res = assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
@@ -105,7 +95,7 @@ contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFree
         let agentVaultAddressCalc = ethers.utils.getContractAddress({from: agentVaultFactory.address, nonce: 1});
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, 500, PaymentReference.topup(agentVaultAddressCalc));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         let res =  assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
         await expectRevert(res, 'topup before agent created');
     });

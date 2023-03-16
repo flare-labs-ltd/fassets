@@ -1,29 +1,17 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { LiquidationEnded } from "../../../../typechain-truffle/AssetManager";
-import { AgentVaultInstance, AssetManagerInstance, AttestationClientSCInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { findRequiredEvent, requiredEventArgs, filterEvents } from "../../../../lib/utils/events/truffle";
-import { EventArgs } from "../../../../lib/utils/events/common";
 import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
+import { toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
-import { toBN, BNish, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
-import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../../lib/verification/sources/sources";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
-import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 
-
-const AgentVault = artifacts.require('AgentVault');
-const AttestationClient = artifacts.require('AttestationClientSC');
-const WNat = artifacts.require('WNat');
-const FtsoMock = artifacts.require('FtsoMock');
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
-const StateConnector = artifacts.require('StateConnectorMock');
-const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, async accounts => {
     const governance = accounts[10];
@@ -64,19 +52,6 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
-    }
-
-    async function makeAgentAvailable(feeBIPS: BNish, collateralRatioBIPS: BNish) {
-        const res = await assetManager.makeAgentAvailable(agentVault.address, feeBIPS, collateralRatioBIPS, { from: whitelistedAccount });
-        return requiredEventArgs(res, 'AgentAvailable');
-    }
-
-
-    async function depositCollateral(amountNATWei: BNish) {
-        const res = await agentVault.deposit({ from: whitelistedAccount, value: toBN(amountNATWei) });
-        const tr = await web3.eth.getTransaction(res.tx);
-        const res2 = await assetManager.getPastEvents('LiquidationEnded', { fromBlock: tr.blockNumber!, toBlock: tr.blockNumber!, filter: {transactionHash: res.tx} })
-        return res2.length > 0 ? (res2[0] as any).args as EventArgs<LiquidationEnded> : undefined;
     }
 
     async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string) {

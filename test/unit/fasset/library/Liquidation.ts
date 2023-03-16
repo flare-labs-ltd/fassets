@@ -1,27 +1,16 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentVaultInstance, AssetManagerInstance, AttestationClientSCInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { filterEvents, findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
+import { toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
-import { toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
-import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../../lib/verification/sources/sources";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
-
-const AgentVault = artifacts.require('AgentVault');
-const AttestationClient = artifacts.require('AttestationClientSC');
-const WNat = artifacts.require('WNat');
-const FtsoMock = artifacts.require('FtsoMock');
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
-const StateConnector = artifacts.require('StateConnectorMock');
-const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`, async accounts => {
     const governance = accounts[10];
@@ -138,7 +127,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         await mint(agentVault, underlyingMinter1, minterAddress1);
         // act
-        await assetFtso.setCurrentPrice(toBNExp(3521, 50), 0);
+        await ftsos.asset.setCurrentPrice(toBNExp(3521, 50), 0);
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         const tx = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer1, 100, null);
@@ -157,13 +146,13 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
         // act
-        await assetFtso.setCurrentPrice(toBNExp(3521, 50), 0);
+        await ftsos.asset.setCurrentPrice(toBNExp(3521, 50), 0);
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         // liquidator "buys" f-assets
         await fAsset.transfer(liquidatorAddress1, minted.mintedAmountUBA.divn(2), { from: minterAddress1 });
         await assetManager.liquidate(agentVault.address, minted.mintedAmountUBA.divn(2), { from: liquidatorAddress1 });
-        await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
+        await ftsos.asset.setCurrentPrice(toBNExp(3521, 5), 0);
         await assetManager.startLiquidation(agentVault.address);
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         await assetManager.endLiquidation(agentVault.address);

@@ -1,31 +1,21 @@
 import { balance, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { ethers } from "hardhat";
-import { AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
-import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { EventArgs } from "../../../../lib/utils/events/common";
 import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { TX_BLOCKED, TX_FAILED } from "../../../../lib/underlying-chain/interfaces/IBlockChain";
+import { EventArgs } from "../../../../lib/utils/events/common";
+import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
+import { BNish, toBN, toWei } from "../../../../lib/utils/helpers";
+import { AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
+import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
-import { BNish, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
-import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../../lib/verification/sources/sources";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingOptions, TestSettingsContracts } from "../test-settings";
-import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
-
-const AgentVault = artifacts.require('AgentVault');
-const AttestationClient = artifacts.require('AttestationClientSC');
-const WNat = artifacts.require('WNat');
-const FtsoMock = artifacts.require('FtsoMock');
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
-const StateConnector = artifacts.require('StateConnectorMock');
-const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async accounts => {
     const governance = accounts[10];
@@ -95,7 +85,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should execute minting (minter)", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -115,7 +105,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should execute minting (agent)", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -135,7 +125,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not execute minting if not agent or minter", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -150,7 +140,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not execute minting if invalid minting reference", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -167,7 +157,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not execute minting if minting payment failed", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -184,7 +174,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not execute minting if minting payment blocked", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -201,7 +191,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not execute minting if not minting agent's address", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -218,7 +208,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not execute minting if minting payment too small", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -242,7 +232,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         settings = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry, options);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -265,7 +255,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should self-mint", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -286,7 +276,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should self-mint and increase free balance", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -307,7 +297,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not self-mint if not agent", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -323,7 +313,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not self-mint if invalid self-mint reference", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -340,7 +330,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not self-mint if payment failed", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -357,7 +347,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not self-mint if payment blocked", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -374,7 +364,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not self-mint if not agent's address", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -391,7 +381,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not self-mint if self-mint payment too small", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -408,7 +398,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not self-mint if not enough free collateral", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -425,7 +415,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should only topup if trying to self-mint 0 lots", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, 500, 22000, { from: agentOwner1 });
@@ -445,7 +435,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should not self-mint if agent's status is not 'NORMAL'", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
@@ -469,7 +459,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         let agentVaultAddressCalc = ethers.utils.getContractAddress({from: agentVaultFactory.address, nonce: nonce});
         const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVaultAddressCalc));
 
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await agentVault.deposit({ from: agentOwner1, value: amount });
         // act

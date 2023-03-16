@@ -1,29 +1,19 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentVaultInstance, AssetManagerInstance, AttestationClientSCInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { EventArgs } from "../../../../lib/utils/events/common";
+import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
+import { BNish, toBN, toWei } from "../../../../lib/utils/helpers";
+import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { EventArgs } from "../../../../lib/utils/events/common";
-import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
-import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
-import { BNish, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
-import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { SourceId } from "../../../../lib/verification/sources/sources";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
-
-const AgentVault = artifacts.require('AgentVault');
-const AttestationClient = artifacts.require('AttestationClientSC');
-const WNat = artifacts.require('WNat');
-const FtsoMock = artifacts.require('FtsoMock');
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
-const StateConnector = artifacts.require('StateConnectorMock');
-const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralReservations basic tests`, async accounts => {
     const governance = accounts[10];
@@ -103,7 +93,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should reserve collateral", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 2;
@@ -124,7 +114,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should not reserve collateral if agent not available", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
@@ -135,7 +125,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should not reserve collateral if trying to mint 0 lots", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
@@ -148,7 +138,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     it("should not reserve collateral if agent's status is not 'NORMAL'", async () => {
         // init
         chain.mint(underlyingAgent1, 100);
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const tx = await wallet.addTransaction(underlyingAgent1, underlyingRandomAddress, 100, null);
         const proof = await attestationProvider.proveBalanceDecreasingTransaction(tx, underlyingAgent1);
@@ -164,7 +154,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     it("should not reserve collateral if not enough free collateral", async () => {
         // init
         chain.mint(underlyingAgent1, 100);
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 10000;
@@ -177,7 +167,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     it("should not reserve collateral if agent's fee is too high", async () => {
         // init
         chain.mint(underlyingAgent1, 100);
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
@@ -190,7 +180,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     it("should not reserve collateral if inappropriate fee amount is sent", async () => {
         // init
         chain.mint(underlyingAgent1, 100);
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
@@ -204,7 +194,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should not default minting if minting non-payment mismatch", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const crt = await reserveCollateral(agentVault.address, 3);
         // mine some blocks to create overflow block
@@ -231,7 +221,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should not default minting if called too early", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const crt = await reserveCollateral(agentVault.address, 3);
         // mine some blocks to create overflow block
@@ -249,7 +239,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should not default minting if minting request too old", async () => {
         // init
-        const agentVault = await createAgent(chain, agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const crt = await reserveCollateral(agentVault.address, 3);
         // mine some blocks to create overflow block
