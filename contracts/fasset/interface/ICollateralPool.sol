@@ -32,4 +32,7 @@ interface ICollateralPool {
     function setTopupCollateralRatioBIPS(uint256 _value) external;
     function setTopupTokenPriceFactorBIPS(uint256 _value) external;
     function poolToken() external view returns (IERC20);
+    function exitCollateralRatioBIPS() external view returns (uint32);
+    function topupCollateralRatioBIPS() external view returns (uint32);
+    function topupTokenPriceFactorBIPS() external view returns (uint16);
 }

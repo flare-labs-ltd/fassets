@@ -54,6 +54,10 @@ library FullAgentInfo {
         // Current fee the agent charges for minting (paid in underlying currency).
         uint256 feeBIPS;
 
+        // Share of the minting fee that goes to the pool as percentage of the minting fee.
+        // This share of fee is minted as f-assets and belongs to the pool.
+        uint256 poolFeeShareBIPS;
+
         // The token identifier of the agent's current class 1 collateral.
         // Token identifier can be used to call AssetManager.getCollateralTokenInfo().
         IERC20 class1CollateralToken;
@@ -140,6 +144,22 @@ library FullAgentInfo {
 
         // Current underlying withdrawal announcement (or 0 if no announcement was made).
         uint256 announcedUnderlyingWithdrawalId;
+
+        // The factor set by the agent to multiply the price at which agent buys f-assets from pool
+        // token holders on self-close exit (when requested or the redeemed amount is less than 1 lot).
+        uint256 buyFAssetByAgentFactorBIPS;
+
+        // The minimum collateral ratio above which a staker can exit the pool
+        // (this is CR that must be left after exit).
+        // Must be higher than system minimum collateral ratio for pool collateral.
+        uint256 poolExitCollateralRatioBIPS;
+
+        // The CR below which it is possible to enter the pool at discounted rate (to prevent liquidation).
+        // Must be higher than system minimum collateral ratio for pool collateral.
+        uint256 poolTopupCollateralRatioBIPS;
+
+        // The discount to pool token price when entering and pool CR is below pool topup CR.
+        uint256 poolTopupTokenPriceFactorBIPS;
     }
 
     function getAgentInfo(
@@ -160,6 +180,7 @@ library FullAgentInfo {
         _info.publiclyAvailable = agent.availableAgentsPos != 0;
         _info.class1CollateralToken = collateral.token;
         _info.feeBIPS = agent.feeBIPS;
+        _info.poolFeeShareBIPS = agent.poolFeeShareBIPS;
         _info.mintingClass1CollateralRatioBIPS =
             Math.max(agent.mintingClass1CollateralRatioBIPS, collateral.minCollateralRatioBIPS);
         _info.mintingPoolCollateralRatioBIPS =
@@ -183,6 +204,10 @@ library FullAgentInfo {
         _info.lockedUnderlyingBalanceUBA = _info.mintedUBA;
         _info.freeUnderlyingBalanceUBA = agent.freeUnderlyingBalanceUBA;
         _info.announcedUnderlyingWithdrawalId = agent.announcedUnderlyingWithdrawalId;
+        _info.buyFAssetByAgentFactorBIPS = agent.buyFAssetByAgentFactorBIPS;
+        _info.poolExitCollateralRatioBIPS = agent.collateralPool.exitCollateralRatioBIPS();
+        _info.poolTopupCollateralRatioBIPS = agent.collateralPool.topupCollateralRatioBIPS();
+        _info.poolTopupTokenPriceFactorBIPS = agent.collateralPool.topupTokenPriceFactorBIPS();
     }
 
     function _getAgentStatusInfo(

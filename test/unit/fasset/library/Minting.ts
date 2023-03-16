@@ -6,7 +6,7 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { TX_BLOCKED, TX_FAILED } from "../../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, toBN, toWei } from "../../../../lib/utils/helpers";
+import { BNish, MAX_BIPS, toBIPS, toBN, toWei } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -76,6 +76,14 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         return await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVault));
     }
 
+    function getAgentFeeShare(fee: BN, poolFeeShareBIPS: BN) {
+        return fee.sub(getPoolFeeShare(fee, poolFeeShareBIPS));
+    }
+
+    function getPoolFeeShare(fee: BN, poolFeeShareBIPS: BN) {
+        return fee.mul(poolFeeShareBIPS).divn(MAX_BIPS);
+    }
+
     beforeEach(async () => {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
@@ -97,7 +105,8 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     it("should execute minting (minter)", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { poolFeeShareBIPS });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const crt = await reserveCollateral(agentVault.address, 1);
@@ -109,13 +118,15 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         assertWeb3Equal(event.agentVault, agentVault.address);
         assertWeb3Equal(event.collateralReservationId, crt.collateralReservationId);
         assertWeb3Equal(event.mintedAmountUBA, crt.valueUBA);
-        assertWeb3Equal(event.receivedFeeUBA, crt.feeUBA);
+        assertWeb3Equal(event.agentFeeUBA, getAgentFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
+        assertWeb3Equal(event.poolFeeUBA, getPoolFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
         assertWeb3Equal(event.redemptionTicketId, 1);
     });
 
     it("should execute minting (agent)", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { poolFeeShareBIPS });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const crt = await reserveCollateral(agentVault.address, 1);
@@ -127,7 +138,8 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         assertWeb3Equal(event.agentVault, agentVault.address);
         assertWeb3Equal(event.collateralReservationId, crt.collateralReservationId);
         assertWeb3Equal(event.mintedAmountUBA, crt.valueUBA);
-        assertWeb3Equal(event.receivedFeeUBA, crt.feeUBA);
+        assertWeb3Equal(event.agentFeeUBA, getAgentFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
+        assertWeb3Equal(event.poolFeeUBA, getPoolFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
         assertWeb3Equal(event.redemptionTicketId, 1);
     });
 
@@ -228,7 +240,8 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         settings = createTestSettings(contracts, testChainInfo.eth, options);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings());
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { poolFeeShareBIPS });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const crFee = await assetManager.collateralReservationFee(1);
@@ -242,14 +255,17 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         assertWeb3Equal(event.agentVault, agentVault.address);
         assertWeb3Equal(event.collateralReservationId, crt.collateralReservationId);
         assertWeb3Equal(event.mintedAmountUBA, crt.valueUBA);
-        assertWeb3Equal(event.receivedFeeUBA, crt.feeUBA);
+        assertWeb3Equal(event.agentFeeUBA, getAgentFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
+        assertWeb3Equal(event.poolFeeUBA, getPoolFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
         assertWeb3Equal(event.redemptionTicketId, 1);
         assertWeb3Equal(burned, crFee);
     });
 
     it("should self-mint", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const feeBIPS = toBIPS("10%");
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 2;
@@ -259,16 +275,20 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const res = await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
         const event = requiredEventArgs(res, 'MintingExecuted');
+        const poolFee = toBN(event.mintedAmountUBA).mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
         assertWeb3Equal(event.agentVault, agentVault.address);
         assertWeb3Equal(event.collateralReservationId, 0);
         assertWeb3Equal(event.mintedAmountUBA, paymentAmount);
-        assertWeb3Equal(event.receivedFeeUBA, 0);
+        assertWeb3Equal(event.agentFeeUBA, 0);
+        assertWeb3Equal(event.poolFeeUBA, poolFee);
         assertWeb3Equal(event.redemptionTicketId, 1);
     });
 
     it("should self-mint and increase free balance", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const feeBIPS = toBIPS("10%");
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 2;
@@ -278,10 +298,12 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const res = await assetManager.selfMint(proof, agentVault.address, 1, { from: agentOwner1 });
         // assert
         const event = requiredEventArgs(res, 'MintingExecuted');
+        const poolFee = toBN(event.mintedAmountUBA).mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
         assertWeb3Equal(event.agentVault, agentVault.address);
         assertWeb3Equal(event.collateralReservationId, 0);
         assertWeb3Equal(event.mintedAmountUBA, paymentAmount.divn(2));
-        assertWeb3Equal(event.receivedFeeUBA, paymentAmount.divn(2));
+        assertWeb3Equal(event.agentFeeUBA, paymentAmount.divn(2).sub(poolFee));
+        assertWeb3Equal(event.poolFeeUBA, poolFee);
         assertWeb3Equal(event.redemptionTicketId, 1);
     });
 
