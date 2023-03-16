@@ -1,73 +1,57 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AddressUpdaterInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, GovernanceSettingsInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
-import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
-import { newAssetManager, waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
-import { DAYS, HOURS, MAX_BIPS, randomAddress, toBN, toBNExp, toStringExp } from "../../../../lib/utils/helpers";
-import { getTestFile } from "../../../utils/test-helpers";
-import { setDefaultVPContract } from "../../../utils/token-test-helpers";
-import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
-import { createTestSettings, GENESIS_GOVERNANCE } from "../test-settings";
+import { AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
+import { DAYS, HOURS, MAX_BIPS, randomAddress, toBN, toStringExp } from "../../../../lib/utils/helpers";
+import { AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
+import { testChainInfo } from "../../../integration/utils/TestChainInfo";
+import { newAssetManager, waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
+import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
+import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { getTestFile } from "../../../utils/test-helpers";
+import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
+import { createEncodedTestLiquidationSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
 
-const AttestationClient = artifacts.require('AttestationClientSC');
-const WNat = artifacts.require('WNat');
-const FtsoMock = artifacts.require('FtsoMock');
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
-const AddressUpdater = artifacts.require('AddressUpdater');
-const AssetManagerController = artifacts.require('AssetManagerController');
 const Whitelist = artifacts.require('Whitelist');
-const StateConnector = artifacts.require('StateConnectorMock');
-const GovernanceSettings = artifacts.require('GovernanceSettings');
-const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 
 contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager controller basic tests`, async accounts => {
     const governance = accounts[10];
     const updateExecutor = accounts[11];
-    let attestationClient: AttestationClientSCInstance;
-    let governanceSettings: GovernanceSettingsInstance;
-    let addressUpdater: AddressUpdaterInstance;
     let assetManagerController: AssetManagerControllerInstance;
+    let contracts: TestSettingsContracts;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
-    let wnat: WNatInstance;
-    let natFtso: FtsoMockInstance;
-    let assetFtso: FtsoMockInstance;
+    let wNat: WNatInstance;
+    let usdc: ERC20MockInstance;
+    let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
+    let collaterals: CollateralToken[];
+    let chain: MockChain;
+    let wallet: MockChainWallet;
+    let stateConnectorClient: MockStateConnectorClient;
+    let attestationProvider: AttestationHelper;
     let whitelist: WhitelistInstance;
 
     beforeEach(async () => {
-        // create governance settings
-        governanceSettings = await GovernanceSettings.new();
-        await governanceSettings.initialise(governance, 60, [updateExecutor], { from: GENESIS_GOVERNANCE });
-        // create state connector
-        const stateConnector = await StateConnector.new();
-        // create agent vault factory
-        const agentVaultFactory = await AgentVaultFactory.new();
-        // create atetstation client
-        attestationClient = await AttestationClient.new(stateConnector.address);
-        // create WNat token
-        wnat = await WNat.new(governance, "NetworkNative", "NAT");
-        await setDefaultVPContract(wnat, governance);
-        // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT", 5);
-        await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH", 5);
-        await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
-        // create ftso registry
-        const ftsoRegistry = await FtsoRegistryMock.new();
-        await ftsoRegistry.addFtso(natFtso.address);
-        await ftsoRegistry.addFtso(assetFtso.address);
+        const ci = testChainInfo.eth;
+        contracts = await createTestContracts(governance);
+        // save some contracts as globals
+        ({ wNat } = contracts);
+        usdc = contracts.stablecoins.USDC;
+        // create FTSOs for nat, stablecoins and asset and set some price
+        ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
+        // create mock chain and attestation provider
+        chain = new MockChain(await time.latest());
+        wallet = new MockChainWallet(chain);
+        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
         // create whitelist
-        whitelist = await Whitelist.new(governanceSettings.address, governance);
+        whitelist = await Whitelist.new(contracts.governanceSettings.address, governance, false);
         await whitelist.switchToProductionMode({ from: governance });
-        // create asset manager controller
-        addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
-        assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
-        await assetManagerController.switchToProductionMode({ from: governance });
         // create asset manager
-        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, updateExecutor);
-        await assetManagerController.addAssetManager(assetManager.address, { from: governance });
+        collaterals = createTestCollaterals(contracts);
+        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
     });
 
     describe("set and update settings with controller", () => {

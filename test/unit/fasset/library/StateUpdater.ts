@@ -1,6 +1,6 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
-import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerInstance, AttestationClientSCInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -10,7 +10,8 @@ import { toBNExp } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../../lib/verification/sources/sources";
-import { createTestSettings } from "../test-settings";
+import { createEncodedTestLiquidationSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
+import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 
 const AttestationClient = artifacts.require('AttestationClientSC');
 const WNat = artifacts.require('WNat');
@@ -22,15 +23,12 @@ const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests`, async accounts => {
     const governance = accounts[10];
     let assetManagerController = accounts[11];
-    let attestationClient: AttestationClientSCInstance;
+    let contracts: TestSettingsContracts;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
-    let wnat: WNatInstance;
-    let ftsoRegistry: FtsoRegistryMockInstance;
-    let natFtso: FtsoMockInstance;
-    let assetFtso: FtsoMockInstance;
+    let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
-    const chainId: SourceId = 1;
+    let collaterals: CollateralToken[];
     let chain: MockChain;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
@@ -41,32 +39,19 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
 
     beforeEach(async () => {
-        // create state connector
-        const stateConnector = await StateConnector.new();
-        // create agent vault factory
-        const agentVaultFactory = await AgentVaultFactory.new();
-        // create atetstation client
-        attestationClient = await AttestationClient.new(stateConnector.address);
-        // create mock chain attestation provider
+        const ci = testChainInfo.eth;
+        contracts = await createTestContracts(governance);
+        // create FTSOs for nat, stablecoins and asset and set some price
+        ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
+        // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
-        // create WNat token
-        wnat = await WNat.new(governance, "NetworkNative", "NAT");
-        await setDefaultVPContract(wnat, governance);
-        // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT", 5);
-        await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH", 5);
-        await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
-        // create ftso registry
-        ftsoRegistry = await FtsoRegistryMock.new();
-        await ftsoRegistry.addFtso(natFtso.address);
-        await ftsoRegistry.addFtso(assetFtso.address);
+        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
         // create asset manager
-        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
+        collaterals = createTestCollaterals(contracts);
+        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
     });
 
     it("update current block - twice", async () => {

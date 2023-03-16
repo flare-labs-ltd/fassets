@@ -1,7 +1,7 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerInstance, AttestationClientSCInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AssetManagerInstance, AttestationClientSCInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { eventArgs, findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { AssetManagerSettings } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -12,7 +12,8 @@ import { getTestFile } from "../../../utils/test-helpers";
 import { setDefaultVPContract } from "../../../utils/token-test-helpers";
 import { SourceId } from "../../../../lib/verification/sources/sources";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { createTestSettings } from "../test-settings";
+import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
+import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 
 const AgentVault = artifacts.require('AgentVault');
 const AttestationClient = artifacts.require('AttestationClientSC');
@@ -25,15 +26,14 @@ const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; UnderlyingWithdrawalAnnouncements basic tests`, async accounts => {
     const governance = accounts[10];
     let assetManagerController = accounts[11];
-    let attestationClient: AttestationClientSCInstance;
+    let contracts: TestSettingsContracts;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
-    let wnat: WNatInstance;
-    let ftsoRegistry: FtsoRegistryMockInstance;
-    let natFtso: FtsoMockInstance;
-    let assetFtso: FtsoMockInstance;
+    let wNat: WNatInstance;
+    let usdc: ERC20MockInstance;
+    let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
-    const chainId: SourceId = 1;
+    let collaterals: CollateralToken[];
     let chain: MockChain;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
@@ -45,49 +45,28 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
 
 
-    async function createAgent(chain: MockChain, owner: string, underlyingAddress: string) {
-        // mint some funds on underlying address (just enough to make EOA proof)
-        chain.mint(underlyingAddress, 101);
-        // create and prove transaction from underlyingAddress
-        const txHash = await wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(owner), { maxFee: 100 });
-        const proof = await attestationProvider.provePayment(txHash, underlyingAddress, underlyingAddress);
-        await assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
-        // create agent
-        const response = await assetManager.createAgent(underlyingAddress, { from: owner });
-        // extract agent vault address from AgentCreated event
-        const event = findRequiredEvent(response, 'AgentCreated');
-        const agentVaultAddress = event.args.agentVault;
-        // get vault contract at this address
-        return await AgentVault.at(agentVaultAddress);
+    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
     }
 
     beforeEach(async () => {
-        // create state connector
-        const stateConnector = await StateConnector.new();
-        // create agent vault factory
-        const agentVaultFactory = await AgentVaultFactory.new();
-        // create atetstation client
-        attestationClient = await AttestationClient.new(stateConnector.address);
-        // create mock chain attestation provider
+        const ci = testChainInfo.eth;
+        contracts = await createTestContracts(governance);
+        // save some contracts as globals
+        ({ wNat } = contracts);
+        usdc = contracts.stablecoins.USDC;
+        // create FTSOs for nat, stablecoins and asset and set some price
+        ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
+        // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
-        // create WNat token
-        wnat = await WNat.new(governance, "NetworkNative", "NAT");
-        await setDefaultVPContract(wnat, governance);
-        // create FTSOs for nat and asset and set some price
-        natFtso = await FtsoMock.new("NAT", 5);
-        await natFtso.setCurrentPrice(toBNExp(1.12, 5), 0);
-        assetFtso = await FtsoMock.new("ETH", 5);
-        await assetFtso.setCurrentPrice(toBNExp(3521, 5), 0);
-        // create ftso registry
-        ftsoRegistry = await FtsoRegistryMock.new();
-        await ftsoRegistry.addFtso(natFtso.address);
-        await ftsoRegistry.addFtso(assetFtso.address);
+        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
         // create asset manager
-        settings = createTestSettings(agentVaultFactory, attestationClient, wnat, ftsoRegistry);
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings);
+        collaterals = createTestCollaterals(contracts);
+        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
     });
 
     it("should announce underlying withdrawal", async () => {

@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AssetManagerInstance, AttestationClientSCInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { calcGasCost } from "../../../utils/eth";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
@@ -12,14 +12,15 @@ import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { createEncodedTestLiquidationSettings, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos,
-    createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
+import {
+    createEncodedTestLiquidationSettings, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos,
+    createTestSettings, TestFtsos, TestSettingsContracts
+} from "../test-settings";
 
 contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accounts => {
     const governance = accounts[10];
     let assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
-    let attestationClient: AttestationClientSCInstance;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;

@@ -256,7 +256,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // enter the pool
             await collateralPool.enter(0, true, { value: ETH(1001) });
             // artificially burn pool collateral
-            wNat.burnAmount(collateralPool.address, ETH(1000));
+            await wNat.burnAmount(collateralPool.address, ETH(1000));
             // check that entering is disabled
             const prms = collateralPool.enter(0, true, { value: MIN_ENTER_NAT, from: accounts[1] });
             await expectRevert(prms, "pool nat balance too small");

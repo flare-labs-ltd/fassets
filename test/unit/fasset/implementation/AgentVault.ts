@@ -1,18 +1,12 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
-import { encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
-import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
 import { toBN } from "../../../../lib/utils/helpers";
-import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import {
-    AddressUpdaterInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance,
-    ERC20MockInstance, FAssetInstance, FtsoMockInstance, WNatInstance
-} from "../../../../typechain-truffle";
+import { AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { createEncodedTestLiquidationSettings, createFtsoMock, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestLiquidationSettings, createTestSettings, createTestAgent, TestFtsos, TestSettingsContracts } from "../test-settings";
+import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
 
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AgentVault = artifacts.require("AgentVault");
