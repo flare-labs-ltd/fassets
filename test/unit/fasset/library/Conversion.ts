@@ -14,13 +14,13 @@ contract(`Conversion.sol; ${getTestFile(__filename)};  Conversion unit tests`, a
 
     it("should convert correctly", async () => {
         let amgValue = toStringExp(1, 9);
-        let res = await conversion.convertAmgToNATWei(amgValue, amgToNATWeiPrice);
+        let res = await conversion.convertAmgToTokenWei(amgValue, amgToNATWeiPrice);
         let expected = 2;
         expect(res).to.eql(toBN(expected));
     });
     it("should convert correctly - 2", async () => {
         let natWeiValue = toStringExp(1, 18);
-        let res = await conversion.convertNATWeiToAMG(natWeiValue, amgToNATWeiPrice);
+        let res = await conversion.convertTokenWeiToAMG(natWeiValue, amgToNATWeiPrice);
         let expected = toStringExp(5, 26);
         expect(res).to.eql(toBN(expected));
     });

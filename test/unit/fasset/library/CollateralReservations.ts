@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, toBN, toWei } from "../../../../lib/utils/helpers";
+import { BNish, toBN, toWei, toBIPS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -42,6 +42,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     const underlyingMinter1 = "Minter1";
     const underlyingRandomAddress = "Random";
 
+    /*
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
@@ -50,8 +51,32 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string) {
         // depositCollateral
         const fullAgentCollateral = toWei(3e8);
-        await agentVault.deposit({ from: owner, value: toBN(fullAgentCollateral) });
-        await assetManager.makeAgentAvailable(agentVault.address, feeBIPS, 2_2000, { from: owner });
+        await agentVault.depositNat({ from: owner, value: toBN(fullAgentCollateral) });
+        await assetManager.makeAgentAvailable(agentVault.address, {from: owner});
+    }
+
+    async function reserveCollateral(agentVault: string, lots: BNish) {
+        const agentInfo = await assetManager.getAgentInfo(agentVault);
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+        return requiredEventArgs(res, 'CollateralReserved');
+    }*/
+
+    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
+    }
+
+    async function depositCollateral(owner: string, agentVault: AgentVaultInstance, amount: BN, token: ERC20MockInstance = usdc) {
+        await token.mintAmount(owner, amount);
+        await token.approve(agentVault.address, amount, { from: owner });
+        await agentVault.depositCollateral(token.address, amount, { from: owner });
+    }
+
+    async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string, fullAgentCollateral: BN = toWei(3e8)) {
+        await depositCollateral(owner, agentVault, fullAgentCollateral);
+        await agentVault.buyCollateralPoolTokens({ from: owner, value: fullAgentCollateral });  // add pool collateral and agent pool tokens
+        await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 
     async function reserveCollateral(agentVault: string, lots: BNish) {
@@ -93,10 +118,10 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should reserve collateral", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
-        const lots = 2;
+        const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, { from: minterAddress1, value: crFee });
         // assert
@@ -157,7 +182,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
-        const lots = 10000;
+        const lots = 500000000;
         const crFee = await assetManager.collateralReservationFee(lots);
         const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, { from: minterAddress1, value: crFee });
         // assert
@@ -180,7 +205,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     it("should not reserve collateral if inappropriate fee amount is sent", async () => {
         // init
         chain.mint(underlyingAgent1, 100);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
@@ -198,7 +223,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const crt = await reserveCollateral(agentVault.address, 3);
         // mine some blocks to create overflow block
-        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
         // act
@@ -225,7 +250,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const crt = await reserveCollateral(agentVault.address, 3);
         // mine some blocks to create overflow block
-        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
         // act
