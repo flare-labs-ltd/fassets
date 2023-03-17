@@ -17,7 +17,7 @@ export interface TestChainInfo extends ChainInfo {
 export const testNatInfo: TestNatInfo = {
     name: "NetworkNative",
     symbol: "NAT",
-    startPrice: 1.12,
+    startPrice: 0.42,
 }
 
 export const testChainInfo: Record<'eth' | 'btc' | 'xrp', TestChainInfo> = {

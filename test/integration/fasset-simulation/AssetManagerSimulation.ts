@@ -11,7 +11,8 @@ import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorC
 import { getTestFile } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
-import { AssetContext, CommonContext } from "../utils/AssetContext";
+import { AssetContext } from "../utils/AssetContext";
+import { CommonContext } from "../utils/CommonContext";
 import { Challenger } from "../utils/Challenger";
 import { Liquidator } from "../utils/Liquidator";
 import { Minter } from "../utils/Minter";
@@ -37,19 +38,19 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     const underlyingMinter2 = "Minter2";
     const underlyingRedeemer1 = "Redeemer1";
     const underlyingRedeemer2 = "Redeemer2";
-    
+
     let commonContext: CommonContext;
     let context: AssetContext;
     let mockChain: MockChain;
     let mockStateConnectorClient: MockStateConnectorClient;
-    
+
     beforeEach(async () => {
         commonContext = await CommonContext.createTest(governance, testNatInfo);
         context = await AssetContext.createTest(commonContext, testChainInfo.eth);
         mockChain = context.chain as MockChain;
         mockStateConnectorClient = context.stateConnectorClient as MockStateConnectorClient;
     });
-    
+
     describe("simple scenarios", () => {
         it("create agent", async () => {
             await Agent.createTest(context, agentOwner1, underlyingAgent1);
@@ -474,7 +475,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.add(crFee));
         });
-        
+
         it("mint unstick - no underlying payment", async () => {
             mockStateConnectorClient.queryWindowSeconds = 300;
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
@@ -1183,7 +1184,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
-        
+
         it("mint and redeem f-assets (others can confirm redemption payment after some time)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -1385,7 +1386,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedCollateralWei).sub(toBN(context.settings.confirmationByOthersRewardNATWei)));
         });
-        
+
         it("mint and redeem f-assets - pause, terminate, buybackAgentCollateral", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter1 = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -1770,7 +1771,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
         });
-        
+
         it("full liquidation", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -2039,7 +2040,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(liquidationReward1).sub(liquidationReward2));
         });
-        
+
         it("liquidation due to price change (agent cannot be safe again)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
@@ -2185,7 +2186,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(liquidationReward1));
         });
-        
+
         it("liquidation due to price change (others can end liquidation after new price change)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));

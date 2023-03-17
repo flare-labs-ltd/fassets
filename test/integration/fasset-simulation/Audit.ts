@@ -8,7 +8,8 @@ import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../..
 import { getTestFile } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
-import { AssetContext, CommonContext } from "../utils/AssetContext";
+import { AssetContext } from "../utils/AssetContext";
+import { CommonContext } from "../utils/CommonContext";
 import { Challenger } from "../utils/Challenger";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
@@ -114,7 +115,7 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
         await challenger.illegalPaymentChallenge(agent, fakeTxHash);
     });
-    
+
     it("should not be allowed to mint with the payment from before eoa proof", async () => {
         if (!(context.chain instanceof MockChain)) assert.fail("only for mock chains");
         // create mock wallet
@@ -140,7 +141,7 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         const fullAgentCollateral = toWei(3e8);
         await agent.depositCollateral(fullAgentCollateral);
         await agent.makeAvailable(500, 2_2000);
-        // reserve collateral        
+        // reserve collateral
         await time.advanceBlockTo(guessBlock - 1);
         const minter = new Minter(context, agentOwner1, underlyingOwner1, wallet);
         const crt = await minter.reserveCollateral(agent.agentVault.address, 1);

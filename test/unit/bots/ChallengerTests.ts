@@ -12,7 +12,8 @@ import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { InterceptorEvmEvents } from "../../fuzzing/fasset/InterceptorEvmEvents";
 import { TruffleTransactionInterceptor } from "../../fuzzing/fasset/TransactionInterceptor";
 import { Agent } from "../../integration/utils/Agent";
-import { AssetContext, CommonContext } from "../../integration/utils/AssetContext";
+import { AssetContext } from "../../integration/utils/AssetContext";
+import { CommonContext } from "../../integration/utils/CommonContext";
 import { Minter } from "../../integration/utils/Minter";
 import { Redeemer } from "../../integration/utils/Redeemer";
 import { testChainInfo, TestChainInfo, testNatInfo } from "../../integration/utils/TestChainInfo";
@@ -30,7 +31,7 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
     const customerAddress1 = accounts[30];
     const underlyingCustomer1 = "Customer1";
     const challengerAddress1 = accounts[50];
-    
+
     let commonContext: CommonContext;
     let context: AssetContext;
     // let timeline: FuzzingTimeline;
@@ -44,11 +45,11 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
     let trackedState: TrackedState;
     let logger: ILogger;
     let runner: ScopedRunner;
-    
+
     let agent: Agent;
     let minter: Minter;
     let redeemer: Redeemer;
-    
+
     async function waitThreadsToFinish() {
         while (runner.runningThreads > 0 || eventQueue.length > 0) {
             chain.mine();
@@ -63,12 +64,12 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
         const txHash = await minter.performMintingPayment(crt);
         await minter.executeMinting(crt, txHash);
     }
-    
+
     async function getAgentStatus(agent: Agent) {
         const agentInfo = await agent.getAgentInfo();
         return Number(agentInfo.status) as AgentStatus;
     }
-    
+
     beforeEach(async () => {
         // create context
         commonContext = await CommonContext.createTest(governance, testNatInfo);
@@ -111,7 +112,7 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
         minter = await Minter.createTest(context, customerAddress1, underlyingCustomer1, toBNExp(100_000, 18));
         redeemer = await Redeemer.create(context, customerAddress1, underlyingCustomer1);
     });
-    
+
     it("challenge illegal payment", async () => {
         const challenger = new Challenger(runner, trackedState, challengerAddress1);
         await performMinting(minter, agent, 50);
@@ -157,7 +158,7 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
         await waitThreadsToFinish();
         assert.equal(await getAgentStatus(agent), AgentStatus.FULL_LIQUIDATION);
     });
-    
+
     it("challenge illegal payment - reference for already confirmed redemption", async () => {
         const challenger = new Challenger(runner, trackedState, challengerAddress1);
         await performMinting(minter, agent, 50);
@@ -198,7 +199,7 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
         await waitThreadsToFinish();
         assert.equal(await getAgentStatus(agent), AgentStatus.FULL_LIQUIDATION);
     });
-    
+
     it("challenge negative free balance - multiple requests", async () => {
         const N = 10;
         const challenger = new Challenger(runner, trackedState, challengerAddress1);
@@ -321,5 +322,5 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
         await waitThreadsToFinish();
         assert.equal(await getAgentStatus(agent), AgentStatus.FULL_LIQUIDATION);
     });
-    
+
 });

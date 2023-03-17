@@ -83,7 +83,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         paymentChallengeRewardUSD5: toBNExp(300, 5),            // 300 USD
         paymentChallengeRewardBIPS: 0,
         withdrawalWaitMinSeconds: 300,
-        ccbTimeSeconds: 180,
+        ccbTimeSeconds: 3 * MINUTES,
         maxTrustedPriceAgeSeconds: 8 * MINUTES,
         minUpdateRepeatTimeSeconds: 1 * DAYS,
         attestationWindowSeconds: 1 * DAYS,

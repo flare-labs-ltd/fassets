@@ -5,7 +5,8 @@ import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { expectErrors, formatBN, latestBlockTimestamp, sleep, systemTimestamp, toBN, toWei } from "../../../lib/utils/helpers";
 import { LogFile } from "../../../lib/utils/logging";
 import { FtsoMockInstance } from "../../../typechain-truffle";
-import { AssetContext, CommonContext } from "../../integration/utils/AssetContext";
+import { AssetContext } from "../../integration/utils/AssetContext";
+import { CommonContext } from "../../integration/utils/CommonContext";
 import { TestChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/TestChainInfo";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
@@ -92,7 +93,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         (context.stateConnectorClient as MockStateConnectorClient).logger = logger;
         fuzzingState.logger = logger;
     });
-    
+
     after(() => {
         // fuzzingState.logAllAgentActions();
         fuzzingState.logAllAgentSummaries();
@@ -235,7 +236,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     async function refreshAvailableAgents() {
         await runner.refreshAvailableAgents();
     }
-    
+
     async function updateUnderlyingBlock() {
         await context.updateUnderlyingBlock();
     }
@@ -281,7 +282,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         const agent = randomChoice(agentsWithRedemptions);
         runner.startThread((scope) => agent.makeDoublePayment(scope));
     }
-    
+
     async function testLiquidate() {
         const customer = randomChoice(customers);
         runner.startThread((scope) => customer.liquidate(scope));
@@ -295,7 +296,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         await context.assetManagerController.setLotSizeAmg([context.assetManager.address], newLotSizeAMG, { from: context.governance })
             .catch(e => expectErrors(e, ['too close to previous update']));
     }
-    
+
     async function testChangePrices(index: number) {
         const [natMinF, natMaxF] = CHANGE_PRICE_FACTOR?.nat ?? [0.9, 1.1];
         await _changePriceOnFtso(context.natFtso, randomNum(natMinF, natMaxF));

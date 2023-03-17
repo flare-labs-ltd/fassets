@@ -1,115 +1,76 @@
-import { constants, time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
+import { time } from "@openzeppelin/test-helpers";
+import { AssetManagerSettings, CollateralToken } from "../../../lib/fasset/AssetManagerTypes";
 import { amgToNATWeiPrice, AMG_TOKENWEI_PRICE_SCALE } from "../../../lib/fasset/Conversions";
-import {
-    AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents, AssetManagerEvents, AttestationClientSCEvents, CollateralPoolFactoryEvents, FAssetEvents,
-    FtsoManagerMockEvents, FtsoMockEvents, FtsoRegistryMockEvents, IAssetContext, StateConnectorMockEvents, WNatEvents
-} from "../../../lib/fasset/IAssetContext";
+import { AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
+import { encodeLiquidationStrategyImplSettings, LiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { IBlockChain } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
-import { BNish, DAYS, HOURS, toBN, toBNExp, toNumber, toWei } from "../../../lib/utils/helpers";
-import {
-    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AssetManagerInstance, AttestationClientSCInstance, CollateralPoolFactoryInstance, FAssetInstance,
-    FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, StateConnectorMockInstance, WNatInstance
-} from "../../../typechain-truffle";
-import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
+import { BNish, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
+import { AssetManagerInstance, FAssetInstance, IAddressValidatorInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { createTestCollaterals, createTestLiquidationSettings, createTestSettings } from "../../unit/fasset/test-settings";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { TestChainInfo, TestNatInfo } from "./TestChainInfo";
+import { CommonContext } from "./CommonContext";
+import { TestChainInfo } from "./TestChainInfo";
 
-const AgentVaultFactory = artifacts.require('AgentVaultFactory');
-const AttestationClient = artifacts.require('AttestationClientSC');
-const AssetManagerController = artifacts.require('AssetManagerController');
-const AddressUpdater = artifacts.require('AddressUpdater');
-const WNat = artifacts.require('WNat');
-const FtsoMock = artifacts.require('FtsoMock');
-const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
-const FtsoManagerMock = artifacts.require('FtsoManagerMock');
-const StateConnector = artifacts.require('StateConnectorMock');
-const GovernanceSettings = artifacts.require('GovernanceSettings');
+const TrivialAddressValidatorMock = artifacts.require('TrivialAddressValidatorMock');
 
 export interface SettingsOptions {
+    // optional settings
     burnWithSelfDestruct?: boolean;
-}
-
-// common context shared between several asset managers
-export class CommonContext {
-    constructor(
-        public governance: string,
-        public addressUpdater: ContractWithEvents<AddressUpdaterInstance, AddressUpdaterEvents>,
-        public assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>,
-        public stateConnector: ContractWithEvents<StateConnectorMockInstance, StateConnectorMockEvents>,
-        public agentVaultFactory: ContractWithEvents<AgentVaultFactoryInstance, AgentVaultFactoryEvents>,
-        public collateralPoolFactory: ContractWithEvents<CollateralPoolFactoryInstance, CollateralPoolFactoryEvents>,
-        public attestationClient: ContractWithEvents<AttestationClientSCInstance, AttestationClientSCEvents>,
-        public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryMockEvents>,
-        public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerMockEvents>,
-        public wnat: ContractWithEvents<WNatInstance, WNatEvents>,
-        public natFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>,
-    ) {}
-
-    static async createTest(governance: string, natInfo: TestNatInfo): Promise<CommonContext> {
-        // create governance settings
-        const governanceSettings = await GovernanceSettings.new();
-        await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
-        // create state connector
-        const stateConnector = await StateConnector.new();
-        // create agent vault factory
-        const agentVaultFactory = await AgentVaultFactory.new();
-        // create attestation client
-        const attestationClient = await AttestationClient.new(stateConnector.address);
-        // create asset manager controller
-        const addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
-        const assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
-        await assetManagerController.switchToProductionMode({ from: governance });
-        // create WNat token
-        const wnat = await WNat.new(governance, natInfo.name, natInfo.symbol);
-        await setDefaultVPContract(wnat, governance);
-        // create NAT ftso
-        const natFtso = await FtsoMock.new(natInfo.symbol, 5);
-        await natFtso.setCurrentPrice(toBNExp(natInfo.startPrice, 5), 0);
-        // create ftso registry
-        const ftsoRegistry = await FtsoRegistryMock.new();
-        await ftsoRegistry.addFtso(natFtso.address);
-        const ftsoManager = await FtsoManagerMock.new();
-        return new CommonContext(governance, addressUpdater, assetManagerController, stateConnector, agentVaultFactory, attestationClient, ftsoRegistry, ftsoManager, wnat, natFtso);
-    }
+    collaterals?: CollateralToken[];
+    liquidationSettings?: LiquidationStrategyImplSettings;
+    // optional contracts
+    whitelist?: ContractWithEvents<WhitelistInstance, WhitelistEvents>;
+    agentWhitelist?: ContractWithEvents<WhitelistInstance, WhitelistEvents>;
 }
 
 // context, specific for each asset manager (includes common context vars)
 export class AssetContext implements IAssetContext {
     constructor(
-        // common context
-        public governance: string,
-        public addressUpdater: ContractWithEvents<AddressUpdaterInstance, AddressUpdaterEvents>,
-        public assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>,
-        public attestationClient: ContractWithEvents<AttestationClientSCInstance, AttestationClientSCEvents>,
-        public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryMockEvents>,
-        public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerMockEvents>,
-        public wnat: ContractWithEvents<WNatInstance, WNatEvents>,
-        public natFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>,
-        // asset context
+        public common: CommonContext,
         public chainInfo: TestChainInfo,
         public chain: IBlockChain,
         public chainEvents: UnderlyingChainEvents,
         public stateConnectorClient: IStateConnectorClient,
         public attestationProvider: AttestationHelper,
-        public settings: AssetManagerSettings,      // may not be fresh
+        public addressValidator: IAddressValidatorInstance,
+        public whitelist: ContractWithEvents<WhitelistInstance, WhitelistEvents> | undefined,
+        public agentWhitelist: ContractWithEvents<WhitelistInstance, WhitelistEvents> | undefined,
         public assetManager: ContractWithEvents<AssetManagerInstance, AssetManagerEvents>,
         public fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>,
-        public assetFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>,
+        // following three settings are initial and may not be fresh
+        public settings: AssetManagerSettings,
+        public collaterals: CollateralToken[],
+        public liquidationSettings: LiquidationStrategyImplSettings,
     ) {
     }
 
-    get chainId() {
-        return this.chainInfo.chainId;
-    }
+    governance = this.common.governance;
+    addressUpdater = this.common.addressUpdater;
+    assetManagerController = this.common.assetManagerController;
+    stateConnector = this.common.stateConnector;
+    agentVaultFactory = this.common.agentVaultFactory;
+    collateralPoolFactory = this.common.collateralPoolFactory;
+    attestationClient = this.common.attestationClient;
+    ftsoRegistry = this.common.ftsoRegistry;
+    ftsoManager = this.common.ftsoManager;
+    wnat = this.common.wNat;
+    stablecoins = this.common.stablecoins;
+    ftsos = this.common.ftsos;
+
+    natFtso = this.ftsos.nat;
+    assetFtso = this.ftsos.bySymbol[this.settings.assetFtsoSymbol];
+
+    usdc = this.stablecoins.USDC;
+    usdt = this.stablecoins.USDT;
+
+    chainId = this.chainInfo.chainId;
 
     /**
      * Convert underlying amount to base units (e.g. eth to wei)
@@ -131,16 +92,16 @@ export class AssetContext implements IAssetContext {
 
     async currentAmgToNATWeiPrice() {
         // Force cast here to circument architecure in original contracts
-        const {0: natPrice, } = await this.natFtso.getCurrentPrice();
-        const {0: assetPrice, } = await this.assetFtso.getCurrentPrice();
+        const { 0: natPrice, } = await this.natFtso.getCurrentPrice();
+        const { 0: assetPrice, } = await this.assetFtso.getCurrentPrice();
         return this.amgToNATWeiPrice(natPrice, assetPrice);
     }
 
     async currentAmgToNATWeiPriceWithTrusted(): Promise<[ftsoPrice: BN, trustedPrice: BN]> {
-        const {0: natPrice, 1: natTimestamp } = await this.natFtso.getCurrentPrice();
-        const {0: assetPrice, 1: assetTimestamp } = await this.assetFtso.getCurrentPrice();
-        const {0: natPriceTrusted, 1: natTimestampTrusted } = await this.natFtso.getCurrentPriceFromTrustedProviders();
-        const {0: assetPriceTrusted, 1: assetTimestampTrusted } = await this.assetFtso.getCurrentPriceFromTrustedProviders();
+        const { 0: natPrice, 1: natTimestamp } = await this.natFtso.getCurrentPrice();
+        const { 0: assetPrice, 1: assetTimestamp } = await this.assetFtso.getCurrentPrice();
+        const { 0: natPriceTrusted, 1: natTimestampTrusted } = await this.natFtso.getCurrentPriceFromTrustedProviders();
+        const { 0: assetPriceTrusted, 1: assetTimestampTrusted } = await this.assetFtso.getCurrentPriceFromTrustedProviders();
         const ftsoPrice = this.amgToNATWeiPrice(natPrice, assetPrice);
         const trustedPrice = natTimestampTrusted.add(toBN(this.settings.maxTrustedPriceAgeSeconds)).gte(natTimestamp) &&
             assetTimestampTrusted.add(toBN(this.settings.maxTrustedPriceAgeSeconds)).gte(assetTimestamp) ?
@@ -194,81 +155,42 @@ export class AssetContext implements IAssetContext {
     }
 
     static async createTest(common: CommonContext, chainInfo: TestChainInfo, options: SettingsOptions = {}): Promise<AssetContext> {
-        // create mock chain attestation provider
+        // create mock chain
         const chain = new MockChain(await time.latest());
         chain.secondsPerBlock = chainInfo.blockTime;
-        const chainEventsRaw = chain;
-        const chainEvents = new UnderlyingChainEvents(chain, chainEventsRaw, null);
+        // chain event listener
+        const chainEvents = new UnderlyingChainEvents(chain, chain /* as IBlockChainEvents */, null);
+        // create mock attestation provider
         const stateConnectorClient = new MockStateConnectorClient(common.stateConnector, { [chainInfo.chainId]: chain }, 'on_wait');
         const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId);
-        // create asset FTSO and set some price
-        const assetFtso = await FtsoMock.new(chainInfo.symbol, 5);
-        await assetFtso.setCurrentPrice(toBNExp(chainInfo.startPrice, 5), 0);
-        await common.ftsoRegistry.addFtso(assetFtso.address);
-        // create asset manager
-        const settings = await AssetContext.createTestSettings(common, chainInfo, options);
+        // create address validator
+        const addressValidator = await TrivialAddressValidatorMock.new();
+        // create liquidation strategy (dynamic library)
+        const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
+        const liquidationStrategy = liquidationStrategyLib.address;
+        // create collaterals
+        const testSettingsContracts = { ...common, addressValidator, liquidationStrategy };
+        // create settings
+        const settings = createTestSettings(testSettingsContracts, chainInfo, { burnWithSelfDestruct: options.burnWithSelfDestruct });
+        const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts);
+        const liquidationSettings = options.liquidationSettings ?? createTestLiquidationSettings();
         // web3DeepNormalize is required when passing structs, otherwise BN is incorrectly serialized
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
-            chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings);
-        return new AssetContext(common.governance, common.addressUpdater, common.assetManagerController, common.attestationClient,
-            common.ftsoRegistry, common.ftsoManager, common.wnat, common.natFtso,
-            chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider, settings, assetManager, fAsset, assetFtso);
-    }
-
-    static async createTestSettings(ctx: CommonContext, ci: TestChainInfo, options: SettingsOptions): Promise<AssetManagerSettings> {
-        return {
-            assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
-            agentVaultFactory: ctx.agentVaultFactory.address,
-            attestationClient: ctx.attestationClient.address,
-            wNat: ctx.wnat.address,
-            whitelist: constants.ZERO_ADDRESS,
-            ftsoRegistry: ctx.ftsoRegistry.address,
-            natFtsoIndex: 0,                                    // set automatically in contract
-            assetFtsoIndex: 0,                                  // set automatically in contract
-            natFtsoSymbol: await ctx.wnat.symbol(),
-            assetFtsoSymbol: ci.symbol,
-            chainId: ci.chainId,
-            assetUnitUBA: toBNExp(1, ci.decimals),
-            assetMintingGranularityUBA: toBNExp(1, ci.decimals - ci.amgDecimals),
-            lotSizeAMG: toBNExp(ci.lotSize, ci.amgDecimals),
-            requireEOAAddressProof: ci.requireEOAProof,
-            underlyingBlocksForPayment: ci.underlyingBlocksForPayment,
-            underlyingSecondsForPayment: ci.underlyingBlocksForPayment * ci.blockTime,
-            // settings that are more or less chain independent
-            burnAddress: constants.ZERO_ADDRESS,            // burn address on local chain - same for all assets
-            burnWithSelfDestruct: options.burnWithSelfDestruct ?? false,
-            collateralReservationFeeBIPS: 100,              // 1%
-            minCollateralRatioBIPS: 2_1000,          // 2.1
-            ccbMinCollateralRatioBIPS: 1_9000,   // 1.9
-            safetyMinCollateralRatioBIPS: 2_5000,      // 2.5
-            redemptionFeeBIPS: 200,                         // 2%
-            redemptionDefaultFactorBIPS: 1_2000,            // 1.2
-            confirmationByOthersAfterSeconds: 6 * HOURS,      // 6 hours
-            confirmationByOthersRewardNATWei: toWei(100),      // 100 NAT
-            maxRedeemedTickets: 20,                         // TODO: find number that fits comfortably in gas limits
-            paymentChallengeRewardBIPS: 1,
-            paymentChallengeRewardNATWei: toWei(300),       // 300 NAT
-            withdrawalWaitMinSeconds: 60,
-            liquidationCollateralFactorBIPS: [12000, 16000, 20000],
-            ccbTimeSeconds: 180,
-            liquidationStepSeconds: 90,
-            maxTrustedPriceAgeSeconds: 8 * 60,
-            minUpdateRepeatTimeSeconds: 1 * DAYS,
-            attestationWindowSeconds: 1 * DAYS,
-            buybackCollateralFactorBIPS: 1_1000,                    // 1.1
-            announcedUnderlyingConfirmationMinSeconds: 0,           // should be higher in production (~ state connector response time, in tests sc response time is 0)
-        };
+            chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings));
+        return new AssetContext(common, chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider, addressValidator,
+            options.whitelist, options.agentWhitelist, assetManager, fAsset, settings, collaterals, liquidationSettings);
     }
 }
 
 export class AssetContextClient {
     constructor(
         public context: AssetContext,
-    ) {}
+    ) { }
 
     protected assetManager = this.context.assetManager;
     protected chain = this.context.chain;
     protected attestationProvider = this.context.attestationProvider;
     protected wnat = this.context.wnat;
+    protected usdc = this.context.usdc;
     protected fAsset = this.context.fAsset;
 }
