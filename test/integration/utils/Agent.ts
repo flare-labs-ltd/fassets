@@ -1,13 +1,15 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AgentVaultInstance } from "../../../typechain-truffle";
-import { UnderlyingWithdrawalAnnounced, CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionFinished, RedemptionRequested, RedemptionPaymentFailed } from "../../../typechain-truffle/AssetManager";
-import { calcGasCost } from "../../utils/eth";
-import { checkEventNotEmited, eventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { EventArgs } from "../../../lib/utils/events/common";
-import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
-import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
+import { AgentSettings } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { BNish, BN_ZERO, MAX_BIPS, randomAddress, toBN } from "../../../lib/utils/helpers";
+import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
+import { EventArgs } from "../../../lib/utils/events/common";
+import { checkEventNotEmited, eventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { BNish, MAX_BIPS, randomAddress, requireNotNull, toBN } from "../../../lib/utils/helpers";
+import { AgentVaultInstance } from "../../../typechain-truffle";
+import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionFinished, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/AssetManager";
+import { createTestAgentSettings } from "../../unit/fasset/test-settings";
+import { calcGasCost } from "../../utils/eth";
+import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
@@ -19,17 +21,19 @@ export class Agent extends AssetContextClient {
         context: AssetContext,
         public ownerAddress: string,
         public agentVault: AgentVaultInstance,
-        public underlyingAddress: string,
         public wallet: IBlockChainWallet,
+        public settings: AgentSettings,
     ) {
         super(context);
     }
-    
-    get vaultAddress() {
-        return this.agentVault.address;
-    }
-    
-    static async createTest(ctx: AssetContext, ownerAddress: string, underlyingAddress: string) {
+
+    vaultAddress = this.agentVault.address;
+    underlyingAddress = this.settings.underlyingAddressString;
+
+    class1Token = requireNotNull(Object.values(this.context.stablecoins).find(token => token.address === this.settings.class1CollateralToken));
+    class1Collateral = requireNotNull(this.context.collaterals.find(c => c.token === this.settings.class1CollateralToken));
+
+    static async createTest(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         if (!(ctx.chain instanceof MockChain)) assert.fail("only for mock chains");
         // mint some funds on underlying address (just enough to make EOA proof)
         if (ctx.chainInfo.requireEOAProof) {
@@ -37,12 +41,15 @@ export class Agent extends AssetContextClient {
         }
         // create mock wallet
         const wallet = new MockChainWallet(ctx.chain);
-        return await Agent.create(ctx, ownerAddress, underlyingAddress, wallet);
+        // complete settings
+        const settings = createTestAgentSettings(underlyingAddress, options?.class1CollateralToken ?? ctx.usdc.address, options);
+        return await Agent.create(ctx, ownerAddress, wallet, settings);
     }
-    
-    static async create(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, wallet: IBlockChainWallet) {
+
+    static async create(ctx: AssetContext, ownerAddress: string, wallet: IBlockChainWallet, settings: AgentSettings) {
         // create and prove transaction from underlyingAddress if EOA required
         if (ctx.chainInfo.requireEOAProof) {
+            const underlyingAddress = settings.underlyingAddressString;
             const txHash = await wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(ownerAddress));
             if (ctx.chain.finalizationBlocks > 0) {
                 await ctx.waitForUnderlyingTransactionFinalization(undefined, txHash);
@@ -51,24 +58,34 @@ export class Agent extends AssetContextClient {
             await ctx.assetManager.proveUnderlyingAddressEOA(proof, { from: ownerAddress });
         }
         // create agent
-        const response = await ctx.assetManager.createAgent(underlyingAddress, { from: ownerAddress });
+        const response = await ctx.assetManager.createAgent(settings, { from: ownerAddress });
         // extract agent vault address from AgentCreated event
         const event = findRequiredEvent(response, 'AgentCreated');
         // get vault contract at agent's vault address address
         const agentVault = await AgentVault.at(event.args.agentVault);
         // creater object
-        return new Agent(ctx, ownerAddress, agentVault, underlyingAddress, wallet);
+        return new Agent(ctx, ownerAddress, agentVault, wallet, settings);
     }
-    
-    async depositCollateral(amountNATWei: BNish) {
-        const res = await this.agentVault.deposit({ from: this.ownerAddress, value: toBN(amountNATWei) });
-        const tr = await web3.eth.getTransaction(res.tx);
-        const res2 = await this.assetManager.getPastEvents('LiquidationEnded', { fromBlock: tr.blockNumber!, toBlock: tr.blockNumber!, filter: {transactionHash: res.tx} })
-        return res2.length > 0 ? (res2[0] as any).args as EventArgs<LiquidationEnded> : undefined;
+
+    async depositClass1Collateral(amountTokenWei: BNish) {
+        await this.class1Token.mintAmount(this.ownerAddress, amountTokenWei);
+        await this.class1Token.approve(this.agentVault.address, amountTokenWei, { from: this.ownerAddress });
+        return await this.agentVault.depositCollateral(this.class1Token.address, amountTokenWei, { from: this.ownerAddress });
     }
-    
-    async makeAvailable(feeBIPS: BNish, collateralRatioBIPS: BNish) {
-        const res = await this.assetManager.makeAgentAvailable(this.vaultAddress, feeBIPS, collateralRatioBIPS, { from: this.ownerAddress });
+
+    // adds pool collateral and agent pool tokens
+    async buyCollateralPoolTokens(amountNatWei: BNish) {
+        return await this.agentVault.buyCollateralPoolTokens({ from: this.ownerAddress, value: toBN(amountNatWei) });
+    }
+
+    async hasLiquidationEnded(tx: Truffle.TransactionResponse<any>) {
+        // const tr = await web3.eth.getTransaction(res.tx);
+        // const res2 = await this.assetManager.getPastEvents('LiquidationEnded', { fromBlock: tr.blockNumber!, toBlock: tr.blockNumber!, filter: { transactionHash: res.tx } })
+        // return res2.length > 0 ? (res2[0] as any).args as EventArgs<LiquidationEnded> : undefined;
+    }
+
+    async makeAvailable() {
+        const res = await this.assetManager.makeAgentAvailable(this.vaultAddress, { from: this.ownerAddress });
         return requiredEventArgs(res, 'AgentAvailable');
     }
 
@@ -87,19 +104,19 @@ export class Agent extends AssetContextClient {
         const endBalance = toBN(await web3.eth.getBalance(this.ownerAddress));
         assertWeb3Equal(endBalance.sub(startBalance).add(await calcGasCost(res)), collateral);
     }
-    
-    async announceCollateralWithdrawal(amountNATWei: BNish) {
-        await this.assetManager.announceCollateralWithdrawal(this.vaultAddress, amountNATWei, { from: this.ownerAddress });
+
+    async announceClass1CollateralWithdrawal(amountWei: BNish) {
+        await this.assetManager.announceClass1CollateralWithdrawal(this.vaultAddress, amountWei, { from: this.ownerAddress });
     }
 
-    async withdrawCollateral(amountNATWei: BNish) {
-        return await this.agentVault.withdraw(amountNATWei, { from: this.ownerAddress });
+    async withdrawClass1Collateral(amountWei: BNish) {
+        return await this.agentVault.withdrawCollateral(this.class1Token.address, amountWei, { from: this.ownerAddress });
     }
 
     async announceDestroy() {
         await this.assetManager.announceDestroyAgent(this.vaultAddress, { from: this.ownerAddress });
     }
-    
+
     async destroy() {
         const res = await this.assetManager.destroyAgent(this.vaultAddress, { from: this.ownerAddress });
         const args = requiredEventArgs(res, 'AgentDestroyed');
@@ -139,7 +156,7 @@ export class Agent extends AssetContextClient {
         const res = await this.assetManager.cancelUnderlyingWithdrawal(this.agentVault.address, { from: this.ownerAddress });
         return requiredEventArgs(res, 'UnderlyingWithdrawalCancelled');
     }
-    
+
     async performRedemptionPayment(request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
         const paymentAmount = request.valueUBA.sub(request.feeUBA);
         return await this.performPayment(request.paymentAddress, paymentAmount, request.paymentReference, options);
@@ -151,7 +168,7 @@ export class Agent extends AssetContextClient {
         findRequiredEvent(res, 'RedemptionFinished');
         return requiredEventArgs(res, 'RedemptionPerformed');
     }
-    
+
     async confirmDefaultedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
         const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerAddress });
@@ -194,12 +211,12 @@ export class Agent extends AssetContextClient {
 
     async getRedemptionPaymentDefaultValue(lots: BNish) {
         return this.context.convertAmgToNATWei(
-                toBN(await this.context.convertLotsToAMG(lots))
+            toBN(await this.context.convertLotsToAMG(lots))
                 .mul(toBN(this.context.settings.redemptionDefaultFactorBIPS))
                 .divn(10_000),
-                await this.context.currentAmgToNATWeiPrice()
-            );
-            // TODO collateral share
+            await this.context.currentAmgToNATWeiPrice()
+        );
+        // TODO collateral share
     }
 
     async executeMinting(crt: EventArgs<CollateralReserved>, transactionHash: string, minter?: Minter) {
@@ -333,18 +350,18 @@ export class Agent extends AssetContextClient {
 
         return info;
     }
-    
+
     async getAgentInfo() {
         return await this.context.assetManager.getAgentInfo(this.agentVault.address);
     }
-    
+
     async performFakeRedemptionPayment(request: EventArgs<RedemptionRequested>, options?:MockTransactionOptionsWithFee) {
         const paymentAmount = request.valueUBA.sub(request.feeUBA);
         let ref = request.paymentReference;
         let newRef = "0xffffffffffffffff" + ref.substring(18, ref.length);
         return await this.performPayment(request.paymentAddress, paymentAmount, newRef, options);
     }
-    
+
     async performFakeRedemptionPaymentID(request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
         const paymentAmount = request.valueUBA.sub(request.feeUBA);
         let ref = request.paymentReference;

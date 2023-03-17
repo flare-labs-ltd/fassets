@@ -66,7 +66,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info.liquidationStartTimestamp, 0);
             assertWeb3Equal(info.feeBIPS, 0);
             assertWeb3Equal(info.announcedUnderlyingWithdrawalId, 0);
-            assertWeb3Equal(info.agentMinCollateralRatioBIPS, context.settings.minCollateralRatioBIPS);
+            assertWeb3Equal(info.mintingClass1CollateralRatioBIPS, context.settings.minCollateralRatioBIPS);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
             await agent.depositCollateral(fullAgentCollateral);
@@ -322,7 +322,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.checkAgentInfo(fullAgentCollateral, crt1.feeUBA.add(crt2.feeUBA), minted1.mintedAmountUBA, await context.convertLotsToUBA(lots1), 0, await context.convertLotsToUBA(lots2));
             await agent.confirmActiveRedemptionPayment(request, txHash);
             await agent.checkAgentInfo(fullAgentCollateral, crt1.feeUBA.add(crt2.feeUBA).add(request.feeUBA), minted1.mintedAmountUBA, await context.convertLotsToUBA(lots1));
-            await expectRevert(agent.announceCollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+            await expectRevert(agent.announceClass1CollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
         });
 
         it("mint and redeem f-assets (two redemption tickets - different agents)", async () => {
@@ -360,14 +360,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(request1.agentVault, agent1.vaultAddress);
             const tx3Hash = await agent1.performRedemptionPayment(request1);
             await agent1.confirmActiveRedemptionPayment(request1, tx3Hash);
-            await agent1.announceCollateralWithdrawal(fullAgentCollateral);
+            await agent1.announceClass1CollateralWithdrawal(fullAgentCollateral);
             await agent1.checkAgentInfo(fullAgentCollateral, crt1.feeUBA.add(request1.feeUBA), 0, 0, 0, 0, fullAgentCollateral);
             const request2 = redemptionRequests[1];
             assert.equal(request2.agentVault, agent2.vaultAddress);
             const tx4Hash = await agent2.performRedemptionPayment(request2);
             await agent2.confirmActiveRedemptionPayment(request2, tx4Hash);
             await agent2.checkAgentInfo(fullAgentCollateral, crt2.feeUBA.add(request2.feeUBA), minted1.mintedAmountUBA, await context.convertLotsToUBA(lots1));
-            await expectRevert(agent2.announceCollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+            await expectRevert(agent2.announceClass1CollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
         });
 
         it("mint and redeem f-assets (one redemption ticket - two redeemers)", async () => {
@@ -403,7 +403,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(request1.agentVault, agent.vaultAddress);
             const tx3Hash = await agent.performRedemptionPayment(request1);
             await agent.confirmActiveRedemptionPayment(request1, tx3Hash);
-            await expectRevert(agent.announceCollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+            await expectRevert(agent.announceClass1CollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
             const request2 = redemptionRequests2[0];
             assert.equal(request2.agentVault, agent.vaultAddress);
             const tx4Hash = await agent.performRedemptionPayment(request2);
@@ -1480,23 +1480,23 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
             await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA);
             // should not withdraw all but only free collateral
-            await expectRevert(agent.announceCollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+            await expectRevert(agent.announceClass1CollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
             const agentMinCollateralRatioBIPS = (await context.assetManager.getAgentInfo(agent.agentVault.address)).agentMinCollateralRatioBIPS;
             const reservedCollateral = context.convertAmgToNATWei(
                     await context.convertLotsToAMG(lots),
                     await context.currentAmgToNATWeiPrice())
                 .mul(toBN(agentMinCollateralRatioBIPS)).divn(10000);
             const withdrawalAmount = fullAgentCollateral.sub(reservedCollateral);
-            await agent.announceCollateralWithdrawal(withdrawalAmount);
+            await agent.announceClass1CollateralWithdrawal(withdrawalAmount);
             await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA, 0, 0, withdrawalAmount);
-            await expectRevert(agent.withdrawCollateral(withdrawalAmount), "withdrawal: not allowed yet");
+            await expectRevert(agent.withdrawClass1Collateral(withdrawalAmount), "withdrawal: not allowed yet");
             await time.increase(300);
             const startBalance = toBN(await web3.eth.getBalance(agent.ownerAddress));
-            const tx = await agent.withdrawCollateral(withdrawalAmount);
+            const tx = await agent.withdrawClass1Collateral(withdrawalAmount);
             await agent.checkAgentInfo(reservedCollateral, crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA);
             const endBalance = toBN(await web3.eth.getBalance(agent.ownerAddress));
             assertWeb3Equal(endBalance.sub(startBalance).add(await calcGasCost(tx)), withdrawalAmount);
-            await expectRevert(agent.announceCollateralWithdrawal(1), "withdrawal: value too high");
+            await expectRevert(agent.announceClass1CollateralWithdrawal(1), "withdrawal: value too high");
         });
 
         it("topup payment", async () => {

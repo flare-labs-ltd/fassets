@@ -174,9 +174,10 @@ export class AssetContext implements IAssetContext {
         const settings = createTestSettings(testSettingsContracts, chainInfo, { burnWithSelfDestruct: options.burnWithSelfDestruct });
         const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts);
         const liquidationSettings = options.liquidationSettings ?? createTestLiquidationSettings();
-        // web3DeepNormalize is required when passing structs, otherwise BN is incorrectly serialized
+        // create asset manager
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
             chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings));
+        // collect
         return new AssetContext(common, chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider, addressValidator,
             options.whitelist, options.agentWhitelist, assetManager, fAsset, settings, collaterals, liquidationSettings);
     }

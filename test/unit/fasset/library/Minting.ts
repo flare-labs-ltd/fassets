@@ -396,7 +396,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         await expectRevert(promise, "self-mint payment too small");
     });
 
-    it.only("should not self-mint if not enough free collateral", async () => {
+    it("should not self-mint if not enough free collateral", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(1_000_000));
