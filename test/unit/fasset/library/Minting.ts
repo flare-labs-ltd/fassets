@@ -270,12 +270,12 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         // act
         const lots = 2;
         const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
-        const txHash = await performSelfMintingPayment(agentVault.address, paymentAmount);
+        const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
+        const txHash = await performSelfMintingPayment(agentVault.address, paymentAmount.add(poolFee));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const res = await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
         const event = requiredEventArgs(res, 'MintingExecuted');
-        const poolFee = toBN(event.mintedAmountUBA).mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
         assertWeb3Equal(event.agentVault, agentVault.address);
         assertWeb3Equal(event.collateralReservationId, 0);
         assertWeb3Equal(event.mintedAmountUBA, paymentAmount);
@@ -396,17 +396,17 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         await expectRevert(promise, "self-mint payment too small");
     });
 
-    it("should not self-mint if not enough free collateral", async () => {
+    it.only("should not self-mint if not enough free collateral", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(1_000_000));
         // act
-        const lots = 2;
-        const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots).subn(1);
+        const lots = 1000;
+        const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
         chain.mint(underlyingRandomAddress, paymentAmount);
         const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVault.address));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
-        const promise = assetManager.selfMint(proof, agentVault.address, 5000, { from: agentOwner1 });
+        const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
         await expectRevert(promise, "not enough free collateral");
     });

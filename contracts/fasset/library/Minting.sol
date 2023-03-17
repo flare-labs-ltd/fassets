@@ -11,7 +11,6 @@ import "./CollateralReservations.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
 
-
 library Minting {
     using SafePct for *;
     using RedemptionQueue for RedemptionQueue.State;
@@ -46,7 +45,8 @@ library Minting {
         require(_payment.blockNumber >= crt.firstUnderlyingBlock,
             "minting payment too old");
         // execute minting
-        _performMinting(agent, _crtId, crt.minter, crt.valueAMG, receivedAmount, crt.underlyingFeeUBA);
+        _performMinting(agent, _crtId, crt.minter, crt.valueAMG, receivedAmount,
+            crt.underlyingFeeUBA.mulBips(agent.poolFeeShareBIPS));
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
         AssetManagerState.getSettings().burnAddress.transfer(crt.reservationFeeNatWei);
         // cleanup
@@ -73,11 +73,12 @@ library Minting {
         uint64 valueAMG = _lots * state.settings.lotSizeAMG;
         checkMintingCap(valueAMG);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
+        uint256 poolFeeUBA = _lots > 0 ? mintValueUBA.mulBips(agent.feeBIPS).mulBips(agent.poolFeeShareBIPS) : 0;
         require(_payment.paymentReference == PaymentReference.selfMint(_agentVault),
             "invalid self-mint reference");
         require(_payment.receivingAddressHash == agent.underlyingAddressHash,
             "self-mint not agent's address");
-        require(_payment.receivedAmount >= 0 && uint256(_payment.receivedAmount) >= mintValueUBA,
+        require(_payment.receivedAmount >= 0 && uint256(_payment.receivedAmount) >= mintValueUBA + poolFeeUBA,
             "self-mint payment too small");
         require(_payment.blockNumber >= agent.underlyingBlockAtCreation,
             "self-mint payment too old");
@@ -86,8 +87,7 @@ library Minting {
         // and selfMint call, the paid assets would otherwise be stuck; in this way they are converted to free balance
         uint256 receivedAmount = uint256(_payment.receivedAmount);  // guarded by require
         if (_lots > 0) {
-            uint256 standardFee = valueAMG.mulBips(agent.feeBIPS);
-            _performMinting(agent, 0, msg.sender, valueAMG, receivedAmount, standardFee);
+            _performMinting(agent, 0, msg.sender, valueAMG, receivedAmount, poolFeeUBA);
         } else {
             UnderlyingFreeBalance.increaseFreeBalance(agent, receivedAmount);
             emit AMEvents.MintingExecuted(_agentVault, 0, 0, 0, receivedAmount, 0);
@@ -113,14 +113,15 @@ library Minting {
         address _minter,
         uint64 _mintValueAMG,
         uint256 _receivedAmountUBA,
-        uint256 _feeUBA
+        uint256 _poolFeeUBA
     )
         private
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        _poolFeeUBA = Conversion.roundUBAToAmg(_poolFeeUBA);   // make sure we don't have rounding errors
         // Add pool fee to dust (usually less than 1 lot), but if dust exceeds 1 lot, add as much as possible
         // to the created ticket. At the end, there will always be less than 1 lot of dust left.
-        uint64 poolFeeAMG = Conversion.convertUBAToAmg(_feeUBA.mulBips(_agent.poolFeeShareBIPS));
+        uint64 poolFeeAMG = Conversion.convertUBAToAmg(_poolFeeUBA);
         uint64 newDustAMG = _agent.dustAMG + poolFeeAMG;
         uint64 ticketValueAMG = _mintValueAMG;
         if (newDustAMG >= state.settings.lotSizeAMG) {
@@ -135,14 +136,13 @@ library Minting {
         Agents.changeDust(_agent, newDustAMG);
         // update agent free balance with agent's fee
         uint256 mintValueUBA = Conversion.convertAmgToUBA(_mintValueAMG);
-        uint256 poolFeeUBA = Conversion.convertAmgToUBA(poolFeeAMG);
-        uint256 agentFeeUBA = _receivedAmountUBA - mintValueUBA - poolFeeUBA;
+        uint256 agentFeeUBA = _receivedAmountUBA - mintValueUBA - _poolFeeUBA;
         UnderlyingFreeBalance.increaseFreeBalance(_agent, agentFeeUBA);
         // perform minting
         state.settings.fAsset.mint(_minter, mintValueUBA);
-        state.settings.fAsset.mint(address(_agent.collateralPool), poolFeeUBA);
+        state.settings.fAsset.mint(address(_agent.collateralPool), _poolFeeUBA);
         // notify
         emit AMEvents.MintingExecuted(_agent.vaultAddress(), _crtId, redemptionTicketId,
-            mintValueUBA, agentFeeUBA, poolFeeUBA);
+            mintValueUBA, agentFeeUBA, _poolFeeUBA);
     }
 }

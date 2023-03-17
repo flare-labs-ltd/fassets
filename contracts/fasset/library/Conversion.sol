@@ -71,6 +71,16 @@ library Conversion {
         return SafeCast.toUint64(_valueUBA / settings.assetMintingGranularityUBA);
     }
 
+    function roundUBAToAmg(
+        uint256 _valueUBA
+    )
+        internal view
+        returns (uint256)
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        return _valueUBA - (_valueUBA % settings.assetMintingGranularityUBA);
+    }
+
     function convertLotsToUBA(
         uint64 _lots
     )
