@@ -42,26 +42,6 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     const underlyingMinter1 = "Minter1";
     const underlyingRandomAddress = "Random";
 
-    /*
-    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
-        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
-        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
-    }
-
-    async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string) {
-        // depositCollateral
-        const fullAgentCollateral = toWei(3e8);
-        await agentVault.depositNat({ from: owner, value: toBN(fullAgentCollateral) });
-        await assetManager.makeAgentAvailable(agentVault.address, {from: owner});
-    }
-
-    async function reserveCollateral(agentVault: string, lots: BNish) {
-        const agentInfo = await assetManager.getAgentInfo(agentVault);
-        const crFee = await assetManager.collateralReservationFee(lots);
-        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
-        return requiredEventArgs(res, 'CollateralReserved');
-    }*/
-
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
