@@ -32,8 +32,8 @@ library Agent {
         // Announce amount in collateral token's minimum unit (wei).
         uint128 amountWei;
 
-        // The time when withdrawal was announced.
-        uint64 announcedAt;
+        // The timestamp when withdrawal can be executed.
+        uint64 allowedAt;
     }
 
     // Struct to store agent's pending setting updates.
@@ -148,7 +148,7 @@ library Agent {
         uint64 underlyingBlockAtCreation;
 
         // The time when ongoing agent vault destroy was announced.
-        uint64 destroyAnnouncedAt;
+        uint64 destroyAllowedAt;
 
         // The factor set by the agent to multiply the price at which agent buys f-assets from pool
         // token holders on self-close exit (when requested or the redeemed amount is less than 1 lot).

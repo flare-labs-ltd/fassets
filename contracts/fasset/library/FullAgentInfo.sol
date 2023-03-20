@@ -135,10 +135,6 @@ library FullAgentInfo {
         // Can be used for calculating current liquidation premium, which depends on time since liquidation started.
         uint256 liquidationStartTimestamp;
 
-        // Underlying balance info (balance on agent's underlying address)
-        // Balance required for backing current mintings.
-        uint256 lockedUnderlyingBalanceUBA;
-
         // Remaining underlying balance (can be used for gas/fees or withdrawn after announcement).
         int256 freeUnderlyingBalanceUBA;
 
@@ -201,7 +197,6 @@ library FullAgentInfo {
         _info.dustUBA = Conversion.convertAmgToUBA(agent.dustAMG);
         _info.ccbStartTimestamp = _getCCBStartTime(agent);
         _info.liquidationStartTimestamp = _getLiquidationStartTime(agent);
-        _info.lockedUnderlyingBalanceUBA = _info.mintedUBA;
         _info.freeUnderlyingBalanceUBA = agent.freeUnderlyingBalanceUBA;
         _info.announcedUnderlyingWithdrawalId = agent.announcedUnderlyingWithdrawalId;
         _info.buyFAssetByAgentFactorBIPS = agent.buyFAssetByAgentFactorBIPS;

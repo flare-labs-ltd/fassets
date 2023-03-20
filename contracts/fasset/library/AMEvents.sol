@@ -19,7 +19,7 @@ library AMEvents {
      */
     event AgentDestroyAnnounced(
         address indexed agentVault,
-        uint256 timestamp);
+        uint256 destroyAllowedAt);
 
     /**
      * Agent has destroyed (closed) the agent vault.
@@ -35,7 +35,7 @@ library AMEvents {
     event Class1WithdrawalAnnounced(
         address indexed agentVault,
         uint256 amountWei,
-        uint256 timestamp);
+        uint256 withdrawalAllowedAt);
 
     /**
      * Agent has announced a withdrawal of collateral and will be able to
@@ -45,7 +45,7 @@ library AMEvents {
     event PoolTokenWithdrawalAnnounced(
         address indexed agentVault,
         uint256 amountWei,
-        uint256 timestamp);
+        uint256 withdrawalAllowedAt);
 
     /**
      * Agent was added to the list of available agents and can accept collateral reservation requests.
@@ -62,7 +62,7 @@ library AMEvents {
      */
     event AvailableAgentExitAnnounced(
         address indexed agentVault,
-        uint256 exitAfterTs);
+        uint256 exitAllowedAt);
 
     /**
      * Agent exited from available agents list.
