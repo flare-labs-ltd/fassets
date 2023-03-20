@@ -145,7 +145,7 @@ library Agents {
     {
         _agent.redeemingAMG = SafeMath64.sub64(_agent.redeemingAMG, _valueAMG, "not enough redeeming");
         if (!_poolSelfCloseRedemption) {
-            _agent.poolRedeemingAMG += SafeMath64.sub64(_agent.poolRedeemingAMG, _valueAMG, "not enough redeeming");
+            _agent.poolRedeemingAMG = SafeMath64.sub64(_agent.poolRedeemingAMG, _valueAMG, "not enough redeeming");
         }
     }
 
