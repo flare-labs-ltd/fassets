@@ -63,7 +63,7 @@ export function isNotNull<T>(x: T): x is NonNullable<T> {
  * Returns guaranteed non-null value.
  */
 export function requireNotNull<T>(x: T): NonNullable<T> {
-    if (x != null) return x;
+    if (x != null) return x as NonNullable<T>;
     throw new Error("Value is null or undefined");
 }
 
