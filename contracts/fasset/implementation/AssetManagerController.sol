@@ -316,7 +316,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     }
 
     function setAgentCollateralRatioChangeTimelockSeconds(IAssetManager[] memory _assetManagers, uint256 _value)
-        external
+    external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
@@ -343,7 +343,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         onlyGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.UPDATE_LIQUIDATION_STRATEGY_SETTINGS, abi.encode(_encodedSettings));
+            SettingsUpdater.UPDATE_LIQUIDATION_STRATEGY_SETTINGS, _encodedSettings);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

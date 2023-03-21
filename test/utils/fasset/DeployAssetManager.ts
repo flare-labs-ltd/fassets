@@ -45,7 +45,7 @@ export async function waitForTimelock<C extends Truffle.ContractInstance>(respon
     if (timelockEvent) {
         const timelock = timelockEvent.args;
         await time.increaseTo(Number(timelock.allowedAfterTimestamp) + 1);
-        await (contract as any).executeGovernanceCall(timelock.selector, { from: executorAddress });
+        return await (contract as any).executeGovernanceCall(timelock.selector, { from: executorAddress });
     }
 }
 
