@@ -13,9 +13,9 @@ const AgentVault = artifacts.require('AgentVault');
 contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, async accounts => {
     let networkConfig: string;
     let contracts: ChainContracts;
-    
+
     let assetManagerController: AssetManagerControllerInstance;
-    
+
     before(async () => {
         networkConfig = requiredEnvironmentVariable('NETWORK_CONFIG');
         contracts = loadContracts(`deployment/deploys/${networkConfig}.json`);
@@ -26,7 +26,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         const production = await assetManagerController.productionMode();
         assert.isTrue(production, "not in production mode");
     });
-    
+
     it("Controller has at least one manager", async () => {
         const managers = await assetManagerController.getAssetManagers();
         assert.isAbove(managers.length, 0);
@@ -44,7 +44,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
             assert.equal(mgrController, assetManagerController.address);
         }
     });
-    
+
     it("Can create an agent on all managers", async () => {
         const managers = await assetManagerController.getAssetManagers();
         for (const mgrAddress of managers) {
@@ -60,9 +60,8 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
             // announce destroy (can really destroy later)
             const destroyRes = await assetManager.announceDestroyAgent(createArgs.agentVault, { from: accounts[0] });
             const destroyArgs = requiredEventArgs(destroyRes, "AgentDestroyAnnounced");
-            const destroyTimestamp = destroyArgs.timestamp.add(toBN(settings.withdrawalWaitMinSeconds));
-            console.log(`    you can destroy agent ${createArgs.agentVault} on asset manager ${mgrAddress} after timestamp ${destroyTimestamp}`);
+            console.log(`    you can destroy agent ${createArgs.agentVault} on asset manager ${mgrAddress} after timestamp ${destroyArgs.destroyAllowedAt}`);
         }
     });
-    
+
 });

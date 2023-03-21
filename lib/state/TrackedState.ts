@@ -96,7 +96,7 @@ export class TrackedState {
         this.assetManagerEvent('AgentCreated').subscribe(args => this.createAgent(args.agentVault, args.owner, args.underlyingAddress));
         this.assetManagerEvent('AgentDestroyed').subscribe(args => this.destroyAgent(args.agentVault));
         // collateral deposit / whithdrawal
-        this.truffleEvents.event(this.context.wnat, 'Transfer').immediate().subscribe(args => {
+        this.truffleEvents.event(this.context.wNat, 'Transfer').immediate().subscribe(args => {
             this.agents.get(args.from)?.withdrawCollateral(toBN(args.value));
             this.agents.get(args.to)?.depositCollateral(toBN(args.value));
         });
@@ -105,7 +105,7 @@ export class TrackedState {
         this.assetManagerEvent('LiquidationStarted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.LIQUIDATION, args.timestamp));
         this.assetManagerEvent('FullLiquidationStarted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.FULL_LIQUIDATION, args.timestamp));
         this.assetManagerEvent('LiquidationEnded').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.NORMAL));
-        this.assetManagerEvent('AgentDestroyAnnounced').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.DESTROYING, args.timestamp));
+        this.assetManagerEvent('AgentDestroyAnnounced').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.DESTROYING));
         // enter/exit available agents list
         this.assetManagerEvent('AgentAvailable').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleAgentAvailable(args));
         this.assetManagerEvent('AvailableAgentExited').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleAvailableAgentExited(args));
@@ -136,7 +136,7 @@ export class TrackedState {
     getAgent(address: string): TrackedAgentState | undefined {
         return this.agents.get(address);
     }
-    
+
     getAgentTriggerAdd(address: string): TrackedAgentState | undefined {
         const agent = this.agents.get(address);
         if (!agent) {
@@ -144,7 +144,7 @@ export class TrackedState {
         }
         return agent;
     }
-    
+
     async createAgentWithCurrentState(address: string) {
         const agentInfo = await this.context.assetManager.getAgentInfo(address);
         const agent = this.createAgent(address, agentInfo.ownerAddress, agentInfo.underlyingAddressString);
@@ -171,7 +171,7 @@ export class TrackedState {
     }
 
     // helpers
-    
+
     assetManagerEvent<N extends AssetManagerEvents['name']>(event: N, filter?: Partial<ExtractedEventArgs<AssetManagerEvents, N>>) {
         return this.truffleEvents.event(this.context.assetManager, event, filter).immediate();
     }

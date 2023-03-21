@@ -8,11 +8,13 @@ export function lotSize(settings: AssetManagerSettings) {
     return toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
 }
 
-export function amgToNATWeiPrice(settings: AssetManagerSettings, natPriceUSDDec5: BNish, assetPriceUSDDec5: BNish) {
-    // _natPriceUSDDec5 < 2^128 (in ftso) and assetUnitUBA, are both 64 bit, so there can be no overflow
-    return toBN(assetPriceUSDDec5)
-        .mul(toBN(settings.assetMintingGranularityUBA).mul(NAT_WEI).mul(AMG_TOKENWEI_PRICE_SCALE))
-        .div(toBN(natPriceUSDDec5).mul(toBN(settings.assetUnitUBA)));
+export function amgToTokenWeiPrice(settings: AssetManagerSettings, tokenDecimals: BNish, tokenUSD: BNish, tokenFtsoDecimals: BNish, assetUSD: BNish, assetFtsoDecimals: BNish) {
+    const ten = toBN(10);
+    // the scale by which token/asset price is divided
+    const tokenScale = ten.pow(toBN(tokenDecimals).add(toBN(tokenFtsoDecimals)));
+    const assetScale = ten.pow(toBN(settings.assetMintingDecimals).add(toBN(assetFtsoDecimals)));
+    return toBN(assetUSD).mul(tokenScale).mul(AMG_TOKENWEI_PRICE_SCALE)
+        .div(toBN(tokenUSD).mul(assetScale));
 }
 
 export function convertAmgToUBA(settings: AssetManagerSettings, valueAMG: BNish) {
@@ -35,14 +37,14 @@ export function convertLotsToAMG(settings: AssetManagerSettings, lots: BNish) {
     return toBN(lots).mul(toBN(settings.lotSizeAMG));
 }
 
-export function convertAmgToNATWei(valueAMG: BNish, amgToNATWeiPrice: BNish) {
-    return toBN(valueAMG).mul(toBN(amgToNATWeiPrice)).div(AMG_TOKENWEI_PRICE_SCALE);
+export function convertAmgToTokenWei(valueAMG: BNish, amgToTokenWeiPrice: BNish) {
+    return toBN(valueAMG).mul(toBN(amgToTokenWeiPrice)).div(AMG_TOKENWEI_PRICE_SCALE);
 }
 
-export function convertNATWeiToAMG(valueNATWei: BNish, amgToNATWeiPrice: BNish) {
-    return toBN(valueNATWei).mul(AMG_TOKENWEI_PRICE_SCALE).div(toBN(amgToNATWeiPrice));
+export function convertTokenWeiToAMG(valueNATWei: BNish, amgToTokenWeiPrice: BNish) {
+    return toBN(valueNATWei).mul(AMG_TOKENWEI_PRICE_SCALE).div(toBN(amgToTokenWeiPrice));
 }
 
-export function convertUBAToNATWei(settings: AssetManagerSettings, valueUBA: BNish, amgToNATWeiPrice: BNish) {
-    return convertAmgToNATWei(convertUBAToAmg(settings, valueUBA), amgToNATWeiPrice);
+export function convertUBAToTokenWei(settings: AssetManagerSettings, valueUBA: BNish, amgToNATWeiPrice: BNish) {
+    return convertAmgToTokenWei(convertUBAToAmg(settings, valueUBA), amgToNATWeiPrice);
 }

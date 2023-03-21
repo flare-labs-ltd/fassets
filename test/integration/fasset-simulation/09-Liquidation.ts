@@ -159,9 +159,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
             const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
-            const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const startBalanceLiquidator1 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
-            const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const endBalanceLiquidator1 = await context.wNat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA1);
             assert.equal(liquidationStarted1.agentVault, agent.agentVault.address);
             assert.isUndefined(liquidationCancelled1);
@@ -180,9 +180,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await time.increase(90);
             // liquidate agent (second part)
             const liquidateMaxUBA2 = minted.mintedAmountUBA.sub(liquidatedUBA1);
-            const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            const startBalanceLiquidator2 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA2, liquidationTimestamp2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA2);
-            const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            const endBalanceLiquidator2 = await context.wNat.balanceOf(liquidator.address);
             assert(liquidatedUBA2.lt(liquidateMaxUBA2)); // agent is safe again
             assertWeb3Equal(await context.convertLotsToUBA(await context.convertUBAToLots(liquidatedUBA2)), liquidatedUBA2);
             assert.isUndefined(liquidationStarted2);
@@ -232,9 +232,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
             const liquidateMaxUBA = minted.mintedAmountUBA.divn(lots);
-            const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const startBalanceLiquidator1 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA);
-            const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const endBalanceLiquidator1 = await context.wNat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA);
             assert.equal(liquidationStarted1.agentVault, agent.agentVault.address);
             assert.isUndefined(liquidationCancelled1);
@@ -249,9 +249,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // wait some time to get next premium
             await time.increase(90);
             // liquidate agent (second part)
-            const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            const startBalanceLiquidator2 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA2, liquidationTimestamp2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA);
-            const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            const endBalanceLiquidator2 = await context.wNat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA2, liquidateMaxUBA);
             assert.isUndefined(liquidationStarted2);
             assert.isUndefined(liquidationCancelled2);
@@ -266,9 +266,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // wait some time to get next premium
             await time.increase(90);
             // liquidate agent (last part)
-            const startBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
+            const startBalanceLiquidator3 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA3, liquidationTimestamp3, liquidationStarted3, liquidationCancelled3] = await liquidator.liquidate(agent, liquidateMaxUBA);
-            const endBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
+            const endBalanceLiquidator3 = await context.wNat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA3, liquidateMaxUBA);
             assert.isUndefined(liquidationStarted3);
             assert.equal(liquidationCancelled3.agentVault, agent.agentVault.address);
@@ -315,9 +315,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
             const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
-            const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const startBalanceLiquidator1 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
-            const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const endBalanceLiquidator1 = await context.wNat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA1);
             assert.equal(liquidationStarted1.agentVault, agent.agentVault.address);
             assert.isUndefined(liquidationCancelled1);
@@ -378,9 +378,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
             const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
-            const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const startBalanceLiquidator1 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
-            const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const endBalanceLiquidator1 = await context.wNat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA1);
             assert.equal(liquidationStarted1.agentVault, agent.agentVault.address);
             assert.isUndefined(liquidationCancelled1);
@@ -441,9 +441,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
             const liquidateMaxUBA1 = minted.mintedAmountUBA.divn(lots);
-            const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const startBalanceLiquidator1 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA1);
-            const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const endBalanceLiquidator1 = await context.wNat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA1);
             assert.equal(liquidationStarted1.agentVault, agent.agentVault.address);
             assert.isUndefined(liquidationCancelled1);
@@ -467,9 +467,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info1.liquidationStartTimestamp, liquidationTimestamp1);
             // liquidate agent (second part) - cannot liquidate anything as agent is safe again due to price change
             const liquidateMaxUBA2 = minted.mintedAmountUBA.sub(liquidatedUBA1);
-            const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            const startBalanceLiquidator2 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA2, liquidationTimestamp2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA2);
-            const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            const endBalanceLiquidator2 = await context.wNat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA2, 0);
             assert.isUndefined(liquidationStarted2);
             assert.equal(liquidationCancelled2.agentVault, agent.agentVault.address);

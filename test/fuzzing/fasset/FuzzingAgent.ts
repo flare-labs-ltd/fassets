@@ -23,11 +23,11 @@ export class FuzzingAgent extends FuzzingActor {
         super(runner);
         this.registerForEvents(agent.agentVault.address);
     }
-    
+
     ownerName() {
         return this.formatAddress(this.ownerAddress);
     }
-    
+
     name(agent: Agent) {
         return this.formatAddress(agent.agentVault.address);
     }
@@ -43,7 +43,7 @@ export class FuzzingAgent extends FuzzingActor {
     }
 
     eventSubscriptions: EventSubscription[] = [];
-    
+
     registerForEvents(agentVaultAddress: string) {
         this.eventSubscriptions = [
             this.runner.assetManagerEvent('RedemptionRequested', { agentVault: agentVaultAddress })
@@ -63,7 +63,7 @@ export class FuzzingAgent extends FuzzingActor {
                 .subscribe((args) => this.checkForFullLiquidationEnd()),
         ];
     }
-    
+
     unregisterEvents() {
         for (const subscription of this.eventSubscriptions) {
             subscription.unsubscribe();
@@ -94,7 +94,7 @@ export class FuzzingAgent extends FuzzingActor {
             }
         });
     }
-    
+
     async selfMint(scope: EventScope) {
         const agent = this.agent;   // save in case it is destroyed and re-created
         const agentInfo = await this.context.assetManager.getAgentInfo(agent.vaultAddress);
@@ -110,7 +110,7 @@ export class FuzzingAgent extends FuzzingActor {
         // execute
         const proof = await this.context.attestationProvider.provePayment(txHash, null, agent.underlyingAddress);
         const res = await this.context.assetManager.selfMint(proof, agent.vaultAddress, lots, { from: this.ownerAddress })
-            .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral', 'self-mint payment too small', 
+            .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral', 'self-mint payment too small',
                 'self-mint invalid agent status', 'invalid self-mint reference', 'self-mint payment too old']));
         // 'self-mint payment too small' can happen after lot size change
         // 'invalid self-mint reference' can happen if agent is destroyed and re-created
@@ -118,7 +118,7 @@ export class FuzzingAgent extends FuzzingActor {
         const args = requiredEventArgs(res, 'MintingExecuted');
         // TODO: accounting?
     }
-    
+
     async selfClose(scope: EventScope) {
         const agent = this.agent;   // save in case agent is destroyed and re-created
         const agentState = this.agentState(agent);
@@ -147,7 +147,7 @@ export class FuzzingAgent extends FuzzingActor {
         }
         this.runner.startThread(async (scope) => {
             const agent = this.agent;   // save in case it is destroyed and re-created
-            const collateral = await this.context.wnat.balanceOf(agent.agentVault.address);
+            const collateral = await this.context.wNat.balanceOf(agent.agentVault.address);
             const [amgToNATWeiPrice, amgToNATWeiPriceTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
             const amgToNATWei = BN.min(amgToNATWeiPrice, amgToNATWeiPriceTrusted);
             const agentState = this.agentState(agent);
@@ -166,7 +166,7 @@ export class FuzzingAgent extends FuzzingActor {
             this.runner.comment(`Topped up ${this.name(agent)} by ${formatBN(requiredTopup)}  crBefore=${crBefore.toFixed(3)}  crAfter=${crAfter.toFixed(3)}`);
         });
     }
-    
+
     async announcedUnderlyingWithdrawal(scope: EventScope) {
         const agent = this.agent;   // save in case agent is destroyed and re-created
         const agentState = this.agentState(agent);
@@ -182,7 +182,7 @@ export class FuzzingAgent extends FuzzingActor {
                 .catch(e => scope.exitOnExpectedError(e, []));
             // wait for finalization
             await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
-            // wait 
+            // wait
             // confirm
             await agent.confirmUnderlyingWithdrawal(announcement, txHash)
                 .catch(e => scope.exitOnExpectedError(e, []));
@@ -212,16 +212,16 @@ export class FuzzingAgent extends FuzzingActor {
         this.comment(`Making double payment of ${formatBN(amount)} from ${agent.underlyingAddress}`);
         await agent.wallet.addTransaction(agent.underlyingAddress, this.ownerUnderlyingAddress, amount, redemption.paymentReference);
     }
-    
+
     checkForFullLiquidationEnd(): void {
         const agentState = this.agentState(this.agent);
         if (agentState.status !== AgentStatus.FULL_LIQUIDATION) return;
         if (agentState.mintedUBA.gt(BN_ZERO) || agentState.reservedUBA.gt(BN_ZERO) || agentState.redeemingUBA.gt(BN_ZERO)) return;
         this.runner.startThread((scope) => this.destroyAndReenter(scope));
     }
-    
+
     destroying: boolean = false;
-    
+
     async destroyAgent(scope: EventScope) {
         const agentState = this.agentState(this.agent);
         if (this.destroying) return;
@@ -240,7 +240,7 @@ export class FuzzingAgent extends FuzzingActor {
         await this.agent.destroy();
         this.unregisterEvents();
     }
-    
+
     async destroyAndReenter(scope: EventScope) {
         // save old agent's data
         const name = this.name(this.agent);

@@ -69,12 +69,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // perform illegal payment
             const tx1Hash = await agent.performPayment("IllegalPayment1", 100);
             // challenge agent for illegal payment
-            const startBalance = await context.wnat.balanceOf(challenger.address);
+            const startBalance = await context.wNat.balanceOf(challenger.address);
             const liquidationStarted = await challenger.illegalPaymentChallenge(agent, tx1Hash);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: already liquidating");
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
-            const endBalance = await context.wnat.balanceOf(challenger.address);
+            const endBalance = await context.wNat.balanceOf(challenger.address);
             // test rewarding
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), reward);
@@ -111,12 +111,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: same transaction");
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx3Hash), "challenge: not duplicate");
             // challenge agent for double payment
-            const startBalance = await context.wnat.balanceOf(challenger.address);
+            const startBalance = await context.wNat.balanceOf(challenger.address);
             const liquidationStarted = await challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx2Hash), "chlg dbl: already liquidating");
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
-            const endBalance = await context.wnat.balanceOf(challenger.address);
+            const endBalance = await context.wNat.balanceOf(challenger.address);
             // test rewarding
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), reward);
@@ -150,12 +150,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that we cannot use the same transaction multiple times
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash, tx1Hash]), "mult chlg: repeated transaction");
             // challenge agent for negative underlying balance
-            const startBalance = await context.wnat.balanceOf(challenger.address);
+            const startBalance = await context.wNat.balanceOf(challenger.address);
             const liquidationStarted = await challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: already liquidating");
             await expectRevert(challenger.doublePaymentChallenge(agent, tx1Hash, tx1Hash), "chlg dbl: already liquidating");
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash]), "mult chlg: already liquidating");
-            const endBalance = await context.wnat.balanceOf(challenger.address);
+            const endBalance = await context.wNat.balanceOf(challenger.address);
             // test rewarding
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), reward);
@@ -245,9 +245,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // perform illegal payment
             const tx1Hash = await agent.performPayment("IllegalPayment1", 100);
             // challenge agent for illegal payment
-            const startBalance = await context.wnat.balanceOf(challenger.address);
+            const startBalance = await context.wNat.balanceOf(challenger.address);
             const liquidationStarted = await challenger.illegalPaymentChallenge(agent, tx1Hash);
-            const endBalance = await context.wnat.balanceOf(challenger.address);
+            const endBalance = await context.wNat.balanceOf(challenger.address);
             // test rewarding
             const challengerReward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), challengerReward);
@@ -260,9 +260,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
             const liquidateMaxUBA = minted.mintedAmountUBA.divn(lots);
-            const startBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const startBalanceLiquidator1 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA1, liquidationTimestamp1, liquidationStarted1, liquidationCancelled1] = await liquidator.liquidate(agent, liquidateMaxUBA);
-            const endBalanceLiquidator1 = await context.wnat.balanceOf(liquidator.address);
+            const endBalanceLiquidator1 = await context.wNat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA);
             assert.isUndefined(liquidationStarted1);
             assert.isUndefined(liquidationCancelled1);
@@ -280,9 +280,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // wait some time to get next premium
             await time.increase(90);
             // liquidate agent (second part)
-            const startBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            const startBalanceLiquidator2 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA2, liquidationTimestamp2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA);
-            const endBalanceLiquidator2 = await context.wnat.balanceOf(liquidator.address);
+            const endBalanceLiquidator2 = await context.wNat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA2, liquidateMaxUBA);
             assert.isUndefined(liquidationStarted2);
             assert.isUndefined(liquidationCancelled2);
@@ -300,9 +300,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // wait some time to get next premium
             await time.increase(90);
             // liquidate agent (last part)
-            const startBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
+            const startBalanceLiquidator3 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA3, liquidationTimestamp3, liquidationStarted3, liquidationCancelled3] = await liquidator.liquidate(agent, liquidateMaxUBA);
-            const endBalanceLiquidator3 = await context.wnat.balanceOf(liquidator.address);
+            const endBalanceLiquidator3 = await context.wNat.balanceOf(liquidator.address);
             assertWeb3Equal(liquidatedUBA3, liquidateMaxUBA);
             assert.isUndefined(liquidationStarted3);
             assert.isUndefined(liquidationCancelled3);

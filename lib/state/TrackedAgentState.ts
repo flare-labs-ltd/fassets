@@ -1,6 +1,6 @@
 import BN from "bn.js";
 import { AgentInfo } from "../fasset/AssetManagerTypes";
-import { convertUBAToNATWei } from "../fasset/Conversions";
+import { convertUBAToTokenWei } from "../fasset/Conversions";
 import { Prices } from "./Prices";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
 import { BN_ZERO, formatBN, MAX_BIPS, toBN } from "../utils/helpers";
@@ -49,7 +49,7 @@ export class TrackedAgentState {
     freeUnderlyingBalanceUBA: BN = BN_ZERO;
 
     // init
-    
+
     initialize(agentInfo: AgentInfo) {
         this.status = Number(agentInfo.status);
         this.publiclyAvailable = agentInfo.publiclyAvailable;
@@ -65,7 +65,7 @@ export class TrackedAgentState {
         this.dustUBA = toBN(agentInfo.dustUBA);
         this.freeUnderlyingBalanceUBA = toBN(agentInfo.freeUnderlyingBalanceUBA);
     }
-    
+
     // handlers: agent availability
 
     handleAgentAvailable(args: EvmEventArgs<AgentAvailable>) {
@@ -198,7 +198,7 @@ export class TrackedAgentState {
     private collateralRatioForPriceBIPS(prices: Prices) {
         const totalUBA = this.reservedUBA.add(this.mintedUBA).add(this.redeemingUBA);
         if (totalUBA.isZero()) return MAX_UINT256;
-        const backingCollateral = convertUBAToNATWei(this.parent.settings, totalUBA, prices.amgNatWei);
+        const backingCollateral = convertUBAToTokenWei(this.parent.settings, totalUBA, prices.amgToNatWei);
         return this.totalCollateralNATWei.muln(MAX_BIPS).div(backingCollateral);
     }
 

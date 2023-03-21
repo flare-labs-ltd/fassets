@@ -71,7 +71,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             assetManager: context.assetManager,
             assetManagerController: context.assetManagerController,
             fAsset: context.fAsset,
-            wnat: context.wnat,
+            wnat: context.wNat,
             ftsoManager: context.ftsoManager,
         });
         // uniform event handlers
@@ -293,7 +293,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         const factor = CHANGE_LOT_SIZE_FACTOR.length > 0 ? CHANGE_LOT_SIZE_FACTOR[index % CHANGE_LOT_SIZE_FACTOR.length] : randomNum(0.5, 2);
         const newLotSizeAMG = lotSizeAMG.muln(factor);
         interceptor.comment(`Changing lot size by factor ${factor}, old=${formatBN(lotSizeAMG)}, new=${formatBN(newLotSizeAMG)}`);
-        await context.assetManagerController.setLotSizeAmg([context.assetManager.address], newLotSizeAMG, { from: context.governance })
+        await context.setLotSizeAmg(newLotSizeAMG)
             .catch(e => expectErrors(e, ['too close to previous update']));
     }
 

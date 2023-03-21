@@ -83,7 +83,7 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
             assetManager: context.assetManager,
             assetManagerController: context.assetManagerController,
             fAsset: context.fAsset,
-            wnat: context.wnat,
+            wnat: context.wNat,
             ftsoManager: context.ftsoManager,
         });
         // uniform event handlers

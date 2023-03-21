@@ -97,10 +97,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // change lot size
             const currentSettings = await context.assetManager.getSettings();
-            await context.assetManagerController.setLotSizeAmg([context.assetManager.address], toBN(currentSettings.lotSizeAMG).muln(2), { from: governance });
+            await context.setLotSizeAmg(toBN(currentSettings.lotSizeAMG).muln(2));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
@@ -161,7 +161,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(dustChangesUBA[0], minted.mintedAmountUBA.sub(selfCloseAmountUBA));
             // change lot size
             const currentSettings = await context.assetManager.getSettings();
-            await context.assetManagerController.setLotSizeAmg([context.assetManager.address], toBN(currentSettings.lotSizeAMG).divn(4), { from: governance });
+            await context.setLotSizeAmg(toBN(currentSettings.lotSizeAMG).divn(4));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA.sub(selfCloseAmountUBA), { from: minter.address });
             // perform redemption - no tickets
@@ -170,7 +170,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info2.dustUBA, dustAmountUBA);
             // convert dust to redemption tickets
             const dustChangeUBA2 = await redeemer.convertDustToTicket(agent);
-            const newDustAmount = (await context.convertLotsToUBA(1)).sub(context.convertAmgToUBA(5));
+            const newDustAmount = context.convertLotsToUBA(1).sub(context.convertAmgToUBA(5));
             assertWeb3Equal(dustChangeUBA2, newDustAmount);
             const info3 = await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA.add(selfCloseAmountUBA), dustAmountUBA, dustAmountUBA);
             assertWeb3Equal(info3.dustUBA, newDustAmount);

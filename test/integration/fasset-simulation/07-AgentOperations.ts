@@ -168,12 +168,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching ongoing announced pmt");
             // others can confirm underlying withdrawal after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
-            const startBalance = await context.wnat.balanceOf(challenger.address);
+            const startBalance = await context.wNat.balanceOf(challenger.address);
             const res = await challenger.confirmUnderlyingWithdrawal(underlyingWithdrawal, tx1Hash, agent);
             await agent.checkAgentInfo(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)), 0, 0, 0);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
             assertWeb3Equal(res.spentUBA, amount);
-            const endBalance = await context.wnat.balanceOf(challenger.address);
+            const endBalance = await context.wNat.balanceOf(challenger.address);
             // test rewarding
             assertWeb3Equal(endBalance.sub(startBalance), context.settings.confirmationByOthersRewardNATWei);
             // agent can exit now
@@ -244,9 +244,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // buybackAgentCollateral
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             await agent.buybackAgentCollateral();
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             const buybackAgentCollateralValue = await agent.getBuybackAgentCollateralValue(minted2.mintedAmountUBA.divn(3));
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), buybackAgentCollateralValue);

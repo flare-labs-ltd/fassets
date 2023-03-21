@@ -1,15 +1,16 @@
 import { time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralToken } from "../../../lib/fasset/AssetManagerTypes";
-import { amgToNATWeiPrice, AMG_TOKENWEI_PRICE_SCALE } from "../../../lib/fasset/Conversions";
+import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../../lib/fasset/Conversions";
 import { AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
 import { encodeLiquidationStrategyImplSettings, LiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
+import { Prices } from "../../../lib/state/Prices";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { IBlockChain } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
-import { BNish, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
+import { BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
 import { AssetManagerInstance, FAssetInstance, IAddressValidatorInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { createTestCollaterals, createTestLiquidationSettings, createTestSettings } from "../../unit/fasset/test-settings";
 import { newAssetManager } from "../../utils/fasset/DeployAssetManager";
@@ -60,12 +61,13 @@ export class AssetContext implements IAssetContext {
     attestationClient = this.common.attestationClient;
     ftsoRegistry = this.common.ftsoRegistry;
     ftsoManager = this.common.ftsoManager;
-    wnat = this.common.wNat;
+    natInfo = this.common.natInfo;
+    wNat = this.common.wNat;
     stablecoins = this.common.stablecoins;
     ftsos = this.common.ftsos;
 
-    natFtso = this.ftsos.nat;
-    assetFtso = this.ftsos.bySymbol[this.settings.assetFtsoSymbol];
+    natFtso = requireNotNull(this.ftsos[this.natInfo.symbol]);
+    assetFtso = requireNotNull(this.ftsos[this.settings.assetFtsoSymbol]);
 
     usdc = this.stablecoins.USDC;
     usdt = this.stablecoins.USDT;
@@ -79,9 +81,17 @@ export class AssetContext implements IAssetContext {
         return toBNExp(value, this.chainInfo.decimals);
     }
 
-    async lotSize() {
-        const settings = await this.assetManager.getSettings();
-        return toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
+    async refreshSettings() {
+        this.settings = await this.assetManager.getSettings();
+    }
+
+    lotSize() {
+        return toBN(this.settings.lotSizeAMG).mul(toBN(this.settings.assetMintingGranularityUBA));
+    }
+
+    async setLotSizeAmg(newLotSizeAMG: BNish) {
+        await this.assetManagerController.setLotSizeAmg([this.assetManager.address], newLotSizeAMG, { from: this.governance });
+        await this.refreshSettings();
     }
 
     async updateUnderlyingBlock() {
@@ -91,59 +101,50 @@ export class AssetContext implements IAssetContext {
     }
 
     async currentAmgToNATWeiPrice() {
-        // Force cast here to circument architecure in original contracts
-        const { 0: natPrice, } = await this.natFtso.getCurrentPrice();
-        const { 0: assetPrice, } = await this.assetFtso.getCurrentPrice();
-        return this.amgToNATWeiPrice(natPrice, assetPrice);
+        const prices = await Prices.getFtsoPrices(this, this.settings, this.collaterals, []);
+        return prices.amgToNatWei;
     }
 
     async currentAmgToNATWeiPriceWithTrusted(): Promise<[ftsoPrice: BN, trustedPrice: BN]> {
-        const { 0: natPrice, 1: natTimestamp } = await this.natFtso.getCurrentPrice();
-        const { 0: assetPrice, 1: assetTimestamp } = await this.assetFtso.getCurrentPrice();
-        const { 0: natPriceTrusted, 1: natTimestampTrusted } = await this.natFtso.getCurrentPriceFromTrustedProviders();
-        const { 0: assetPriceTrusted, 1: assetTimestampTrusted } = await this.assetFtso.getCurrentPriceFromTrustedProviders();
-        const ftsoPrice = this.amgToNATWeiPrice(natPrice, assetPrice);
-        const trustedPrice = natTimestampTrusted.add(toBN(this.settings.maxTrustedPriceAgeSeconds)).gte(natTimestamp) &&
-            assetTimestampTrusted.add(toBN(this.settings.maxTrustedPriceAgeSeconds)).gte(assetTimestamp) ?
-            this.amgToNATWeiPrice(natPriceTrusted, assetPriceTrusted) : ftsoPrice;
-        return [ftsoPrice, trustedPrice];
-    }
-
-    amgToNATWeiPrice(natPriceUSDDec5: BNish, assetPriceUSDDec5: BNish) {
-        return amgToNATWeiPrice(this.settings, natPriceUSDDec5, assetPriceUSDDec5);
+        const prices = await Prices.getFtsoPrices(this, this.settings, this.collaterals, []);
+        const trustedPrices = await Prices.getTrustedPrices(this, this.settings, this.collaterals, prices, []);
+        return [prices.amgToNatWei, trustedPrices.amgToNatWei];
     }
 
     convertAmgToUBA(valueAMG: BNish) {
-        return toBN(valueAMG).mul(toBN(this.settings.assetMintingGranularityUBA));
+        return convertAmgToUBA(this.settings, valueAMG);
     }
 
     convertUBAToAmg(valueUBA: BNish) {
-        return toBN(valueUBA).div(toBN(this.settings.assetMintingGranularityUBA));
+        return convertUBAToAmg(this.settings, valueUBA);
     }
 
-    async convertUBAToLots(valueUBA: BNish) {
-        return toBN(valueUBA).div(await this.lotSize());
+    convertUBAToLots(valueUBA: BNish) {
+        return toBN(valueUBA).div(this.lotSize());
     }
 
-    async convertLotsToUBA(lots: BNish) {
-        return toBN(lots).mul(await this.lotSize());
+    convertLotsToUBA(lots: BNish) {
+        return toBN(lots).mul(this.lotSize());
     }
 
-    async convertLotsToAMG(lots: BNish) {
-        const settings = await this.assetManager.getSettings();
-        return toBN(lots).mul(toBN(settings.lotSizeAMG));
+    convertLotsToAMG(lots: BNish) {
+        return toBN(lots).mul(toBN(this.settings.lotSizeAMG));
     }
 
     convertAmgToNATWei(valueAMG: BNish, amgToNATWeiPrice: BNish) {
-        return toBN(valueAMG).mul(toBN(amgToNATWeiPrice)).div(AMG_TOKENWEI_PRICE_SCALE);
+        return convertAmgToTokenWei(valueAMG, amgToNATWeiPrice);
     }
 
     convertNATWeiToAMG(valueNATWei: BNish, amgToNATWeiPrice: BNish) {
-        return toBN(valueNATWei).mul(AMG_TOKENWEI_PRICE_SCALE).div(toBN(amgToNATWeiPrice));
+        return convertTokenWeiToAMG(valueNATWei, amgToNATWeiPrice);
     }
 
     convertUBAToNATWei(valueUBA: BNish, amgToNATWeiPrice: BNish) {
         return this.convertAmgToNATWei(this.convertUBAToAmg(valueUBA), amgToNATWeiPrice);
+    }
+
+    getPrices(selectedStablecoins?: string[]) {
+        return Prices.getPrices(this, this.settings, this.collaterals, selectedStablecoins);
     }
 
     async waitForUnderlyingTransaction(scope: EventScope | undefined, txHash: string, maxBlocksToWaitForTx?: number) {
@@ -191,7 +192,7 @@ export class AssetContextClient {
     protected assetManager = this.context.assetManager;
     protected chain = this.context.chain;
     protected attestationProvider = this.context.attestationProvider;
-    protected wnat = this.context.wnat;
+    protected wnat = this.context.wNat;
     protected usdc = this.context.usdc;
     protected fAsset = this.context.fAsset;
 }

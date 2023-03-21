@@ -63,10 +63,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // test rewarding for mint default
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             await agent.mintingPaymentDefault(crt);
             await agent.checkAgentInfo(fullAgentCollateral.add(crFee), 0, 0, 0);
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee);
             // check that executing minting after calling mintingPaymentDefault will revert
             const txHash = await minter.performMintingPayment(crt);
@@ -95,10 +95,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // test rewarding for mint default
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             await agent.mintingPaymentDefault(crt);
             await agent.checkAgentInfo(fullAgentCollateral.add(crFee), 0, 0, 0);
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee);
             // check that executing minting after calling mintingPaymentDefault will revert
             const txHash = await minter.performMintingPayment(crt);
@@ -134,10 +134,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.checkAgentInfo(fullAgentCollateral, 0, 0, 0, await context.convertLotsToUBA(lots));
             // test rewarding for unstick default
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             await agent.unstickMinting(crt);
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             const reservedCollateral = context.convertAmgToNATWei(
                 await context.convertLotsToAMG(lots),
@@ -182,10 +182,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             }
             // test rewarding for unstick default
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             await agent.unstickMinting(crt);
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             const reservedCollateral = context.convertAmgToNATWei(
                 await context.convertLotsToAMG(lots),
@@ -230,10 +230,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             }
             // test rewarding for unstick default
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             await agent.unstickMinting(crt);
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             const reservedCollateral = context.convertAmgToNATWei(
                 await context.convertLotsToAMG(lots),

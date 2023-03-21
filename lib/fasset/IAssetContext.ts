@@ -1,4 +1,4 @@
-import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../typechain-truffle";
+import { AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../typechain-truffle";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
 import { IBlockChain } from "../underlying-chain/interfaces/IBlockChain";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
@@ -29,9 +29,11 @@ export interface IAssetContext {
     assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>;
     ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryMockEvents>;
     ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerMockEvents>;
-    wnat: ContractWithEvents<WNatInstance, WNatEvents>;
+    wNat: ContractWithEvents<WNatInstance, WNatEvents>;
     natFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>;
     fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>;
     assetFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>;
     assetManager: ContractWithEvents<AssetManagerInstance, AssetManagerEvents>;
+    stablecoins: Record<string, ContractWithEvents<ERC20MockInstance, ERC20Events>>;
+    ftsos: Record<string, ContractWithEvents<FtsoMockInstance, FtsoMockEvents>>;
 }

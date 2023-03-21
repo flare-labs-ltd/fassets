@@ -125,14 +125,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             }
             await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
             // test rewarding for redemption payment default
-            const startBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const res = await agent.redemptionPaymentDefault(request);
             await agent.checkAgentInfo(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA, 0, 0);
             const [redFin, redDef] = await agent.finishRedemptionWithoutPayment(request);
             await agent.checkAgentInfo(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA.add(crt.valueUBA), 0, 0);
-            const endBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(redFin.requestId, request.requestId);
             assert.isUndefined(redDef);
             assertWeb3Equal(res.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
@@ -173,8 +173,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
             // perform some (failed) payment with correct redemption reference
             const tx1Hash = await agent.performRedemptionPayment(request, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
-            const startBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const res = await agent.confirmFailedRedemptionPayment(request, tx1Hash);
             // mine some blocks to create overflow block
             for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
@@ -184,8 +184,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
             // test rewarding for redemption payment default
             await agent.checkAgentInfo(fullAgentCollateral.sub(res[1].redeemedCollateralWei), crt.feeUBA.add(request.valueUBA).subn(100), 0, 0);
-            const endBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res[0].failureReason, "transaction failed");
             assertWeb3Equal(res[1].redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
             assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), res[1].redeemedCollateralWei);
@@ -223,8 +223,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // perform some (failed) payment with correct redemption reference
             const tx1Hash = await agent.performPayment(minter.underlyingAddress, request.valueUBA, request.paymentReference);
             const proof = await context.attestationProvider.provePayment(tx1Hash, agent.underlyingAddress, minter.underlyingAddress);
-            const startBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const res = await context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerAddress })
             findRequiredEvent(res, 'RedemptionFinished');
             const resFailed = requiredEventArgs(res, 'RedemptionPaymentFailed');
@@ -237,8 +237,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
             // test rewarding for redemption payment default
             await agent.checkAgentInfo(fullAgentCollateral.sub(resDefault.redeemedCollateralWei), crt.feeUBA, 0, 0);
-            const endBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(resFailed.failureReason, "not redeemer's address");
             assertWeb3Equal(resDefault.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
             assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), resDefault.redeemedCollateralWei);
@@ -275,8 +275,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
             // perform some (failed) payment with correct redemption reference
             const tx1Hash = await agent.performPayment(request.paymentAddress, 100, request.paymentReference);
-            const startBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const res = await agent.confirmFailedRedemptionPayment(request, tx1Hash);
             // mine some blocks to create overflow block
             for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
@@ -286,8 +286,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
             // test rewarding for redemption payment default
             await agent.checkAgentInfo(fullAgentCollateral.sub(res[1].redeemedCollateralWei), crt.feeUBA.add(request.valueUBA).subn(100), 0, 0);
-            const endBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res[0].failureReason, "redemption payment too small");
             assertWeb3Equal(res[1].redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
             assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), res[1].redeemedCollateralWei);
@@ -333,12 +333,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // check that calling finishRedemptionWithoutPayment after failed redemption payment will revert
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "should default first");
             // test rewarding for redemption payment default
-            const startBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const res = await redeemer.redemptionPaymentDefault(request);
             await agent.checkAgentInfo(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA, 0, 0);
-            const endBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
             assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), res.redeemedCollateralWei);
             assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), res.redeemedCollateralWei);
@@ -388,12 +388,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
                 mockChain.mine();
             }
             // test rewarding for redemption payment default
-            const startBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const [redFin, redDef] = await agent.finishRedemptionWithoutPayment(request);
             await agent.checkAgentInfo(fullAgentCollateral.sub(redDef.redeemedCollateralWei), crt.feeUBA.add(request.valueUBA), 0, 0);
-            const endBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(redFin.requestId, request.requestId);
             assertWeb3Equal(redDef.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
             assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), redDef.redeemedCollateralWei);
@@ -436,13 +436,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // test rewarding for redemption payment default
-            const startBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const startBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
             const res = await redeemer.redemptionPaymentDefault(request);
             await agent.checkAgentInfo(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA, 0, 0);
-            const endBalanceRedeemer = await context.wnat.balanceOf(redeemer.address);
-            const endBalanceAgent = await context.wnat.balanceOf(agent.agentVault.address);
+            const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
+            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
             assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), res.redeemedCollateralWei);
             assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), res.redeemedCollateralWei);

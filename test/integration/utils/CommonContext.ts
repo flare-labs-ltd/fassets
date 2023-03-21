@@ -10,7 +10,7 @@ import {
 import { createFtsoMock } from "../../unit/fasset/test-settings";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { testChainInfo, testNatInfo } from "./TestChainInfo";
+import { testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
 
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
@@ -26,10 +26,8 @@ const GovernanceSettings = artifacts.require('GovernanceSettings');
 
 // common context shared between several asset managers
 
-export type TestContextFtsoKey = 'nat' | 'usdc' | 'usdt' | keyof (typeof testChainInfo);
-
-export type TestContextFtsos = Record<TestContextFtsoKey, ContractWithEvents<FtsoMockInstance, FtsoMockEvents>>
-    & { bySymbol: Record<string, ContractWithEvents<FtsoMockInstance, FtsoMockEvents>> };
+// indexed by "key" (nat, usdc, etc.) or "ftso symbol" (NAT, USDC, etc.)
+export type TestContextFtsos = Record<string, ContractWithEvents<FtsoMockInstance, FtsoMockEvents>>;
 
 export class CommonContext {
     constructor(
@@ -43,6 +41,7 @@ export class CommonContext {
         public attestationClient: ContractWithEvents<AttestationClientSCInstance, AttestationClientSCEvents>,
         public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryMockEvents>,
         public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerMockEvents>,
+        public natInfo: TestNatInfo,
         public wNat: ContractWithEvents<WNatInstance, WNatEvents>,
         public stablecoins: Record<string, ContractWithEvents<ERC20MockInstance, ERC20Events>>,
         public ftsos: TestContextFtsos
@@ -81,17 +80,17 @@ export class CommonContext {
         await assetManagerController.switchToProductionMode({ from: governance });
         // collect
         return new CommonContext(governance, governanceSettings, addressUpdater, assetManagerController, stateConnector,
-            agentVaultFactory, collateralPoolFactory, attestationClient, ftsoRegistry, ftsoManager, wNat, stablecoins, ftsos);
+            agentVaultFactory, collateralPoolFactory, attestationClient, ftsoRegistry, ftsoManager, testNatInfo, wNat, stablecoins, ftsos);
     }
 }
 
 async function createTestFtsos(ftsoRegistry: FtsoRegistryMockInstance): Promise<TestContextFtsos> {
-    const res: Partial<TestContextFtsos> = { bySymbol: {} };
-    res.nat = res.bySymbol![testNatInfo.symbol] = await createFtsoMock(ftsoRegistry, "NAT", testNatInfo.startPrice);
-    res.usdc = res.bySymbol!["USDC"] = await createFtsoMock(ftsoRegistry, "USDC", 1.01);
-    res.usdt = res.bySymbol!["USDT"] = await createFtsoMock(ftsoRegistry, "USDT", 0.99);
-    for (const [key, ci] of Object.entries(testChainInfo)) {
-        res[key as TestContextFtsoKey] = res.bySymbol![ci.symbol] = await createFtsoMock(ftsoRegistry, ci.symbol, ci.startPrice);
+    const res: Partial<TestContextFtsos> = { };
+    res[testNatInfo.symbol] = await createFtsoMock(ftsoRegistry, testNatInfo.symbol, testNatInfo.startPrice);
+    res["USDC"] = await createFtsoMock(ftsoRegistry, "USDC", 1.01);
+    res["USDT"] = await createFtsoMock(ftsoRegistry, "USDT", 0.99);
+    for (const ci of Object.values(testChainInfo)) {
+        res[ci.symbol] = await createFtsoMock(ftsoRegistry, ci.symbol, ci.startPrice);
     }
     return res as TestContextFtsos;
 }

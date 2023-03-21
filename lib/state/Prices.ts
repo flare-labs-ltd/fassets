@@ -1,59 +1,107 @@
-import { AssetManagerSettings } from "../fasset/AssetManagerTypes";
-import { amgToNATWeiPrice } from "../fasset/Conversions";
+import { IFtsoInstance } from "../../typechain-truffle";
+import { AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../fasset/AssetManagerTypes";
+import { amgToTokenWeiPrice } from "../fasset/Conversions";
 import { IAssetContext } from "../fasset/IAssetContext";
-import { BNish, BN_ZERO, toBN } from "../utils/helpers";
+import { requireNotNull, toBN } from "../utils/helpers";
 
-
-export class Prices {
+export class TokenPrice {
     constructor(
-        settings: AssetManagerSettings,
-        public readonly natUSDDec5: BN,
-        public readonly natTimestamp: BN,
-        public readonly assetUSDDec5: BN,
-        public readonly assetTimestamp: BN,
-    ) { 
-        this.amgNatWei = !natTimestamp.isZero() && !assetTimestamp.isZero() ? amgToNATWeiPrice(settings, natUSDDec5, assetUSDDec5) : BN_ZERO;
-    }
-    
-    readonly amgNatWei: BN;
+        public readonly price: BN,
+        public readonly timestamp: BN,
+        public readonly decimals: BN,
+    ) {}
 
-    get natUSD() {
-        return Number(this.natUSDDec5) * 1e-5;
+    fresh(relativeTo: TokenPrice, maxAge: BN) {
+        return this.timestamp.add(maxAge).gte(relativeTo.timestamp);
     }
 
-    get assetUSD() {
-        return Number(this.assetUSDDec5) * 1e-5;
+    toNumber() {
+        return Number(this.price) * (10 ** -Number(this.decimals));
     }
 
-    get assetNat() {
-        return this.assetUSD / this.natUSD;
-    }
-
-    fresh(relativeTo: Prices, maxAge: BNish) {
-        maxAge = toBN(maxAge);
-        return this.natTimestamp.add(maxAge).gte(relativeTo.natTimestamp) && this.assetTimestamp.add(maxAge).gte(relativeTo.assetTimestamp);
+    toFixed(displayDecimals: number = 3) {
+        return this.toNumber().toFixed(displayDecimals);
     }
 
     toString() {
-        return `(nat=${this.natUSD.toFixed(3)}$, asset=${this.assetUSD.toFixed(3)}$, asset/nat=${this.assetNat.toFixed(3)})`;
+        return this.toNumber().toFixed(3);
+    }
+}
+
+export type StablecoinPrices = { [tokenAddress: string]: TokenPrice };
+
+export class Prices {
+    constructor(
+        context: IAssetContext,
+        settings: AssetManagerSettings,
+        collaterals: CollateralToken[],
+        public readonly natUSD: TokenPrice,
+        public readonly assetUSD: TokenPrice,
+        public readonly stablecoinUSD: StablecoinPrices,
+    ) {
+        this.amgToNatWei = this.calculateAmgToTokenWei(settings, collaterals, CollateralTokenClass.POOL, context.wNat.address);
+        this.amgToClass1Wei = {};
+        for (const collateral of collaterals) {
+            if (collateral.token in stablecoinUSD) {
+                this.amgToClass1Wei[collateral.token] = this.calculateAmgToTokenWei(settings, collaterals, Number(collateral.tokenClass), collateral.token);
+            }
+        }
     }
 
-    static async getFtsoPrices(context: IAssetContext, settings: AssetManagerSettings): Promise<Prices> {
-        const { 0: natPrice, 1: natTimestamp } = await context.natFtso.getCurrentPrice();
-        const { 0: assetPrice, 1: assetTimestamp } = await context.assetFtso.getCurrentPrice();
-        return new Prices(settings, natPrice, natTimestamp, assetPrice, assetTimestamp);
+    amgToNatWei: BN;
+    amgToClass1Wei: { [tokenAddress: string]: BN };
+
+    get assetNatNum() {
+        return this.assetUSD.toNumber() / this.natUSD.toNumber();
     }
 
-    static async getTrustedPrices(context: IAssetContext, settings: AssetManagerSettings): Promise<Prices> {
-        const { 0: natPriceTrusted, 1: natTimestampTrusted } = await context.natFtso.getCurrentPriceFromTrustedProviders();
-        const { 0: assetPriceTrusted, 1: assetTimestampTrusted } = await context.assetFtso.getCurrentPriceFromTrustedProviders();
-        return new Prices(settings, natPriceTrusted, natTimestampTrusted, assetPriceTrusted, assetTimestampTrusted);
+    calculateAmgToTokenWei(settings: AssetManagerSettings, collaterals: CollateralToken[], tokenClass: CollateralTokenClass, tokenAddress: string) {
+        const tokenPrice = this.stablecoinUSD[tokenAddress];
+        const tokenCollateral = requireNotNull(collaterals.find(c => c.tokenClass === tokenClass && c.token === tokenAddress));
+        return amgToTokenWeiPrice(settings, tokenCollateral.decimals, tokenPrice.price, tokenPrice.decimals,
+            this.assetUSD.price, this.assetUSD.decimals);
     }
-    
-    static async getPrices(context: IAssetContext, settings: AssetManagerSettings): Promise<[Prices, Prices]> {
-        const ftsoPrices = await this.getFtsoPrices(context, settings);
-        const trustedPrices = await this.getTrustedPrices(context, settings);
-        const trustedPricesFresh = trustedPrices.fresh(ftsoPrices, settings.maxTrustedPriceAgeSeconds);
-        return [ftsoPrices, trustedPricesFresh ? trustedPrices : ftsoPrices];
+
+    toString() {
+        return `(nat=${this.natUSD.toFixed(3)}$, asset=${this.assetUSD.toFixed(3)}$, asset/nat=${this.assetNatNum.toFixed(3)})`;
+    }
+
+    static async getPriceForFtso(ftso: IFtsoInstance): Promise<TokenPrice> {
+        const { 0: price, 1: timestamp, 2: decimals } = await ftso.getCurrentPriceWithDecimals();
+        return new TokenPrice(toBN(price), toBN(timestamp), toBN(decimals));
+    }
+
+    static async getTrustedPriceForFtso(ftso: IFtsoInstance, maxAge: BN, fallbackPrice: TokenPrice): Promise<TokenPrice> {
+        const { 0: price, 1: timestamp, 2: decimals } = await ftso.getCurrentPriceWithDecimalsFromTrustedProviders();
+        const trustedPrice = new TokenPrice(toBN(price), toBN(timestamp), toBN(decimals));
+        return trustedPrice.fresh(fallbackPrice, maxAge) ? trustedPrice : fallbackPrice;
+    }
+
+    static async getFtsoPrices(context: IAssetContext, settings: AssetManagerSettings, collaterals: CollateralToken[], selectedStablecoins?: string[]): Promise<Prices> {
+        const natPrice = await this.getPriceForFtso(context.natFtso);
+        const assetPrice = await this.getPriceForFtso(context.assetFtso);
+        const stablecoinPrices: StablecoinPrices = {};
+        for (const tokenKey of selectedStablecoins ?? Object.keys(context.stablecoins)) {
+            stablecoinPrices[context.stablecoins[tokenKey].address] = await this.getPriceForFtso(context.ftsos[tokenKey]);
+        }
+        return new Prices(context, settings, collaterals, natPrice, assetPrice, stablecoinPrices);
+    }
+
+    static async getTrustedPrices(context: IAssetContext, settings: AssetManagerSettings, collaterals: CollateralToken[], ftsoPrices: Prices, selectedStablecoins?: string[]): Promise<Prices> {
+        const maxAge = toBN(settings.maxTrustedPriceAgeSeconds);
+        const natPrice = await this.getTrustedPriceForFtso(context.natFtso, maxAge, ftsoPrices.natUSD);
+        const assetPrice = await this.getTrustedPriceForFtso(context.assetFtso, maxAge, ftsoPrices.assetUSD);
+        const stablecoinPrices: StablecoinPrices = {};
+        for (const tokenKey of selectedStablecoins ?? Object.keys(context.stablecoins)) {
+            const tokenAddress = context.stablecoins[tokenKey].address;
+            stablecoinPrices[tokenAddress] = await this.getTrustedPriceForFtso(context.ftsos[tokenKey], maxAge, ftsoPrices.stablecoinUSD[tokenKey]);
+        }
+        return new Prices(context, settings, collaterals, natPrice, assetPrice, stablecoinPrices);
+    }
+
+    static async getPrices(context: IAssetContext, settings: AssetManagerSettings, collaterals: CollateralToken[], selectedStablecoins?: string[]): Promise<[Prices, Prices]> {
+        const ftsoPrices = await this.getFtsoPrices(context, settings, collaterals, selectedStablecoins);
+        const trustedPrices = await this.getTrustedPrices(context, settings, collaterals, ftsoPrices, selectedStablecoins);
+        return [ftsoPrices, trustedPrices];
     }
 }

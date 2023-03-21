@@ -1,5 +1,5 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
-import { toBN, toWei } from "../../../lib/utils/helpers";
+import { MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../utils/test-helpers";
@@ -34,13 +34,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let commonContext: CommonContext;
     let context: AssetContext;
     let mockChain: MockChain;
-    let mockStateConnectorClient: MockStateConnectorClient;
 
     beforeEach(async () => {
-        commonContext = await CommonContext.createTest(governance, testNatInfo);
+        commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.eth);
         mockChain = context.chain as MockChain;
-        mockStateConnectorClient = context.stateConnectorClient as MockStateConnectorClient;
     });
 
     describe("simple scenarios - successful minting and redeeming", () => {
@@ -50,8 +48,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // mine some blocks to skip the agent creation time
             mockChain.mine(5);
             // update block
@@ -64,21 +61,24 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crFee = await minter.getCollateralReservationFee(lots);
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
-            const lotsUBA = await context.convertLotsToUBA(lots);
+            const lotsUBA = context.convertLotsToUBA(lots);
             await agent.checkAgentInfo(fullAgentCollateral, 0, 0, 0, lotsUBA);
-            const burnAddress = (await context.assetManager.getSettings()).burnAddress;
+            const burnAddress = context.settings.burnAddress;
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             const minted = await minter.executeMinting(crt, txHash);
             const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             assertWeb3Equal(minted.mintedAmountUBA, lotsUBA);
-            await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, crt.valueUBA, lotsUBA);
+            const poolFeeShare = crt.feeUBA.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+            const agentFeeShare = crt.feeUBA.sub(poolFeeShare);
+            const mintedUBA = crt.valueUBA.add(poolFeeShare);
+            await agent.checkAgentInfo(fullAgentCollateral, agentFeeShare, mintedUBA, mintedUBA);
             // check that fee was burned
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
             const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
-            await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, 0, 0, 0, lotsUBA);
+            await agent.checkAgentInfo(fullAgentCollateral, agentFeeShare, 0, poolFeeShare, 0, lotsUBA);
             assertWeb3Equal(remainingLots, 0);
             assert.equal(dustChanges.length, 0);
             assert.equal(redemptionRequests.length, 1);
@@ -86,7 +86,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(request.agentVault, agent.vaultAddress);
             const tx1Hash = await agent.performRedemptionPayment(request);
             await agent.confirmActiveRedemptionPayment(request, tx1Hash);
-            await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA.add(request.feeUBA), 0, 0);
+            await agent.checkAgentInfo(fullAgentCollateral, agentFeeShare.add(request.feeUBA), 0, poolFeeShare);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
@@ -98,8 +98,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -143,10 +142,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent1.depositCollateral(fullAgentCollateral);
-            await agent1.makeAvailable(500, 2_2000);
-            await agent2.depositCollateral(fullAgentCollateral);
-            await agent2.makeAvailable(500, 2_2000);
+            await agent1.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            await agent2.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -188,8 +185,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const redeemer2 = await Redeemer.create(context, redeemerAddress2, underlyingRedeemer2);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -227,8 +223,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform self-minting
@@ -251,8 +246,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting

@@ -75,12 +75,12 @@ export class FuzzingStateAgent extends TrackedAgentState {
     redemptionTickets: Map<number, RedemptionTicket> = new Map();
     redemptionRequests: Map<number, RedemptionRequest> = new Map();
     freeUnderlyingBalanceChanges: FreeUnderlyingBalanceChange[] = [];
-    
+
     // log
     actionLog: FuzzingStateLogRecord[] = [];
-    
+
     // init
-    
+
     override initialize(agentInfo: AgentInfo) {
         super.initialize(agentInfo);
         this.calculatedDustUBA = toBN(agentInfo.dustUBA);
@@ -181,7 +181,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
     }
 
     // handlers: dust
-    
+
     override handleDustConvertedToTicket(args: EvmEventArgs<DustConvertedToTicket>): void {
         super.handleDustConvertedToTicket(args);
         // create redemption ticket
@@ -191,16 +191,16 @@ export class FuzzingStateAgent extends TrackedAgentState {
         this.calculatedDustUBA = this.calculatedDustUBA.sub(toBN(args.valueUBA));
         this.logAction(`new RedemptionTicket(${ticket.id}) [from dust]: amount=${formatBN(ticket.amountUBA)} remaining_dust=${formatBN(this.calculatedDustUBA)}`, args.$event);
     }
-    
+
     override handleDustChanged(args: EvmEventArgs<DustChanged>): void {
         super.handleDustChanged(args);
         // log change
         const change = args.dustUBA.sub(this.dustUBA);
         this.logAction(`dust changed by ${change}, new dust=${formatBN(this.dustUBA)}`, args.$event);
     }
-    
+
     // handlers: underlying withdrawal
-    
+
     override handleUnderlyingWithdrawalAnnounced(args: EvmEventArgs<UnderlyingWithdrawalAnnounced>): void {
         this.expect(this.announcedUnderlyingWithdrawalId.isZero(), `underlying withdrawal announcement made twice`, args.$event);
         super.handleUnderlyingWithdrawalAnnounced(args);
@@ -216,18 +216,18 @@ export class FuzzingStateAgent extends TrackedAgentState {
         this.expect(this.announcedUnderlyingWithdrawalId.eq(args.announcementId), `underlying withdrawal id mismatch`, args.$event);
         super.handleUnderlyingWithdrawalCancelled(args);
     }
-    
+
     // handlers: liquidation
-    
+
     override handleLiquidationPerformed(args: EvmEventArgs<LiquidationPerformed>): void {
         super.handleLiquidationPerformed(args);
         // close tickets, update free balance
         this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.valueUBA));
         this.addFreeUnderlyingBalanceChange(args.$event, 'self-close', toBN(args.valueUBA));
     }
-    
+
     // handlers: underlying transactions
-    
+
     handleTransactionFromUnderlying(transaction: ITransaction) {
         this.logAction(`underlying withdraw amount=${formatBN(transaction.outputs[0][1])} to=${transaction.outputs[0][0]}`, "UNDERLYING_TRANSACTION");
     }
@@ -235,7 +235,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
     handleTransactionToUnderlying(transaction: ITransaction) {
         this.logAction(`underlying deposit amount=${formatBN(transaction.outputs[0][1])} from=${transaction.inputs[0][0]}`, "UNDERLYING_TRANSACTION");
     }
-    
+
     // agent state changing
 
     newCollateralReservation(args: EvmEventArgs<CollateralReserved>): CollateralReservation {
@@ -272,7 +272,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
             amountUBA: amountUBA
         };
     }
-    
+
     addRedemptionTicket(event: EvmEvent, ticketId: number, amountUBA: BN) {
         const ticket = this.newRedemptionTicket(ticketId, amountUBA);
         this.redemptionTickets.set(ticket.id, ticket);
@@ -340,7 +340,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
         this.expect(remainingUBA.isZero(), `Ticket close mismatch closedUBA=${formatBN(redeemedUBA)}, amountUBA=${formatBN(amountUBA)} remainingUBA=${formatBN(remainingUBA)}`, event);
         this.logAction(`redeemed (any amount) ${count} tickets, redeemed=${formatBN(redeemedUBA)}, remainingUBA=${formatBN(remainingUBA)}, lotSize=${formatBN(lotSize)}`, event);
     }
-    
+
     newRedemptionRequest(args: EvmEventArgs<RedemptionRequested>): RedemptionRequest {
         return {
             id: Number(args.requestId),
@@ -355,7 +355,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
             underlyingReleased: false,
         };
     }
-    
+
     addRedemptionRequest(args: EvmEventArgs<RedemptionRequested>) {
         const request = this.newRedemptionRequest(args);
         this.redemptionRequests.set(request.id, request);
@@ -396,18 +396,18 @@ export class FuzzingStateAgent extends TrackedAgentState {
     calculateFreeUnderlyingBalanceUBA() {
         return sumBN(this.freeUnderlyingBalanceChanges, change => change.amountUBA);
     }
-    
+
     // calculations
-    
+
     private collateralRatioForPrice(prices: Prices) {
         const assetUnitUBA = Number(this.parent.settings.assetUnitUBA);
         const backedAmount = (Number(this.reservedUBA) + Number(this.mintedUBA) + Number(this.redeemingUBA)) / assetUnitUBA;
         if (backedAmount === 0) return Number.POSITIVE_INFINITY;
         const totalCollateral = Number(this.totalCollateralNATWei) / Number(NAT_WEI);
-        const backingCollateral = Number(backedAmount) * prices.assetNat;
+        const backingCollateral = Number(backedAmount) * prices.assetNatNum;
         return totalCollateral / backingCollateral;
     }
-    
+
     collateralRatio() {
         const ratio = this.collateralRatioForPrice(this.parent.prices);
         const ratioFromTrusted = this.collateralRatioForPrice(this.parent.trustedPrices);
@@ -451,16 +451,16 @@ export class FuzzingStateAgent extends TrackedAgentState {
             this.writeActionLog(checker.logger);
         }
     }
-    
+
     // expectations and logs
-    
+
     expect(condition: boolean, message: string, event: EvmEvent) {
         if (!condition) {
             const text = `expectation failed for ${this.name}: ${message}`;
             this.parent.failedExpectations.push({ text, event });
         }
     }
-    
+
     logAction(text: string, event: EvmEvent | string) {
         this.actionLog.push({ text, event });
     }
