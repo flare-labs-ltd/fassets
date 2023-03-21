@@ -15,7 +15,7 @@ interface IAssetManagerEvents {
 
     /**
      * Agent has announced destroy (close) of agent vault and will be able to
-     * perform destroy in withdrawalWaitMinSeconds seconds.
+     * perform destroy after the timestamp `destroyAllowedAt`.
      */
     event AgentDestroyAnnounced(
         address indexed agentVault,
@@ -29,8 +29,8 @@ interface IAssetManagerEvents {
 
     /**
      * Agent has announced a withdrawal of collateral and will be able to
-     * withdraw the announced amount in withdrawalWaitMinSeconds seconds.
-     * If withdrawal was canceled, value and timestamp are zero.
+     * withdraw the announced amount after timestamp `withdrawalAllowedAt`.
+     * If withdrawal was canceled (announced with amount 0), amountWei and withdrawalAllowedAt are zero.
      */
     event Class1WithdrawalAnnounced(
         address indexed agentVault,
@@ -39,10 +39,10 @@ interface IAssetManagerEvents {
 
     /**
      * Agent has announced a withdrawal of collateral and will be able to
-     * withdraw the announced amount in withdrawalWaitMinSeconds seconds.
-     * If withdrawal was canceled, value and timestamp are zero.
+     * redeem the the announced amount of pool tokens after the timestamp `withdrawalAllowedAt`.
+     * If withdrawal was canceled (announced with amount 0), amountWei and withdrawalAllowedAt are zero.
      */
-    event PoolTokenWithdrawalAnnounced(
+    event PoolTokenRedemptionAnnounced(
         address indexed agentVault,
         uint256 amountWei,
         uint256 withdrawalAllowedAt);
@@ -59,6 +59,7 @@ interface IAssetManagerEvents {
 
     /**
      * Agent exited from available agents list.
+     * Agent can exit the available list after the timestamp `exitAllowedAt`.
      */
     event AvailableAgentExitAnnounced(
         address indexed agentVault,
@@ -72,6 +73,7 @@ interface IAssetManagerEvents {
 
     /**
      * Agent has initiated setting change (fee or some agent collateral ratio change).
+     * The setting change can be executed after the timestamp `validAt`.
      */
     event AgentSettingChangeAnnounced(
         string name,
@@ -377,6 +379,9 @@ interface IAssetManagerEvents {
         string name,
         address value);
 
+    /**
+     * New collateral token has been added.
+     */
     event CollateralTokenAdded(
         uint8 tokenClass,
         address tokenContract,
@@ -385,6 +390,9 @@ interface IAssetManagerEvents {
         uint256 ccbMinCollateralRatioBIPS,
         uint256 safetyMinCollateralRatioBIPS);
 
+    /**
+     * System defined collateral ratios for the token have changed (minimal, CCB and safety collateral ratio).
+     */
     event CollateralTokenRatiosChanged(
         uint8 tokenClass,
         address tokenContract,
@@ -392,6 +400,10 @@ interface IAssetManagerEvents {
         uint256 ccbMinCollateralRatioBIPS,
         uint256 safetyMinCollateralRatioBIPS);
 
+    /**
+     * Collateral token has been marked as deprecated. After timestamp `validUntil` passes, it will be
+     * considered invalid and the agent who haven't switched their collateral before will be liquidated.
+     */
     event CollateralTokenDeprecated(
         uint8 tokenClass,
         address tokenContract,

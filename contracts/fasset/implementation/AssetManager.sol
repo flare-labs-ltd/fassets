@@ -267,7 +267,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * @param _agentVault agent vault address
      * @param _valueNATWei the amount to be withdrawn
      */
-    function announceAgentPoolTokenExit(
+    function announceAgentPoolTokenRedemption(
         address _agentVault,
         uint256 _valueNATWei
     )

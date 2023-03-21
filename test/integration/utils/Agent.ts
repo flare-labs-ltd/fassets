@@ -164,8 +164,8 @@ export class Agent extends AssetContextClient {
     }
 
     async announcePoolTokenRedemption(amountWei: BNish) {
-        const res = await this.assetManager.announceAgentPoolTokenExit(this.vaultAddress, amountWei, { from: this.ownerAddress });
-        const args = requiredEventArgs(res, 'PoolTokenWithdrawalAnnounced');
+        const res = await this.assetManager.announceAgentPoolTokenRedemption(this.vaultAddress, amountWei, { from: this.ownerAddress });
+        const args = requiredEventArgs(res, 'PoolTokenRedemptionAnnounced');
         assert.equal(args.agentVault, this.vaultAddress);
         return args;
     }

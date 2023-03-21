@@ -223,7 +223,10 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
             }
             // transfer balance to owner
             if ((useFlags & TOKEN_DEPOSIT) != 0) {
-                token.transfer(owner, token.balanceOf(address(this)));
+                uint256 balance = token.balanceOf(address(this));
+                if (balance > 0) {
+                    token.transfer(owner, balance);
+                }
             }
         }
         selfdestruct(owner);

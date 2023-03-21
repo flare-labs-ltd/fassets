@@ -91,7 +91,7 @@ library AgentsExternal {
         if (_kind == Collateral.Kind.AGENT_CLASS1) {
             emit AMEvents.Class1WithdrawalAnnounced(_agentVault, _amountWei, withdrawal.allowedAt);
         } else {
-            emit AMEvents.PoolTokenWithdrawalAnnounced(_agentVault, _amountWei, withdrawal.allowedAt);
+            emit AMEvents.PoolTokenRedemptionAnnounced(_agentVault, _amountWei, withdrawal.allowedAt);
         }
     }
 
