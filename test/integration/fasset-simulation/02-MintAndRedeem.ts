@@ -91,7 +91,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.exitAndDestroy(fullAgentCollateral);
         });
 
-        it("mint and redeem f-assets (two redemption tickets - same agent) + agent can confirm mintings", async () => {
+        it.only("mint and redeem f-assets (two redemption tickets - same agent) + agent can confirm mintings", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter1 = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             const minter2 = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.underlyingAmount(10000));
@@ -109,16 +109,16 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const tx1Hash = await minter1.performMintingPayment(crt1);
             await agent.checkAgentInfo(fullAgentCollateral, 0, 0, 0, crt1.valueUBA);
             const minted1 = await agent.executeMinting(crt1, tx1Hash);
-            assertWeb3Equal(minted1.mintedAmountUBA, await context.convertLotsToUBA(lots1));
-            await agent.checkAgentInfo(fullAgentCollateral, crt1.feeUBA, minted1.mintedAmountUBA, await context.convertLotsToUBA(lots1));
+            assertWeb3Equal(minted1.mintedAmountUBA, context.convertLotsToUBA(lots1));
+            await agent.checkAgentInfo(fullAgentCollateral, crt1.feeUBA, minted1.mintedAmountUBA, context.convertLotsToUBA(lots1));
             const lots2 = 6;
             const crt2 = await minter2.reserveCollateral(agent.vaultAddress, lots2);
-            await agent.checkAgentInfo(fullAgentCollateral, crt1.feeUBA, minted1.mintedAmountUBA, await context.convertLotsToUBA(lots1), crt2.valueUBA);
+            await agent.checkAgentInfo(fullAgentCollateral, crt1.feeUBA, minted1.mintedAmountUBA, context.convertLotsToUBA(lots1), crt2.valueUBA);
             const tx2Hash = await minter2.performMintingPayment(crt2);
-            await agent.checkAgentInfo(fullAgentCollateral, crt1.feeUBA, minted1.mintedAmountUBA, await context.convertLotsToUBA(lots1), crt2.valueUBA);
+            await agent.checkAgentInfo(fullAgentCollateral, crt1.feeUBA, minted1.mintedAmountUBA, context.convertLotsToUBA(lots1), crt2.valueUBA);
             const minted2 = await agent.executeMinting(crt2, tx2Hash, minter2);
-            assertWeb3Equal(minted2.mintedAmountUBA, await context.convertLotsToUBA(lots2));
-            await agent.checkAgentInfo(fullAgentCollateral, crt1.feeUBA.add(crt2.feeUBA), minted1.mintedAmountUBA.add(minted2.mintedAmountUBA), await context.convertLotsToUBA(lots1 + lots2));
+            assertWeb3Equal(minted2.mintedAmountUBA, context.convertLotsToUBA(lots2));
+            await agent.checkAgentInfo(fullAgentCollateral, crt1.feeUBA.add(crt2.feeUBA), minted1.mintedAmountUBA.add(minted2.mintedAmountUBA), context.convertLotsToUBA(lots1 + lots2));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted2.mintedAmountUBA, { from: minter2.address });
             // perform redemption

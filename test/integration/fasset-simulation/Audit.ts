@@ -1,8 +1,10 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
+import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { toWei } from "../../../lib/utils/helpers";
-import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
+import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
 import { getTestFile } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
@@ -72,7 +74,7 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         const request = redemptionRequests[0];
         assert.equal(request.agentVault, agent.vaultAddress);
         const tx1Hash = await agent.performRedemptionPayment(request);
-        const fakeTxHash = await agent.performFakeRedemptionPayment(request);
+        const fakeTxHash = await performFakeRedemptionPayment(agent, request);
         // others cannot confirm redemption payment immediately or challenge it as illegal payment
         await expectRevert(challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent), "only agent vault owner");
         await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
@@ -107,7 +109,7 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         const request = redemptionRequests[0];
         assert.equal(request.agentVault, agent.vaultAddress);
         const tx1Hash = await agent.performRedemptionPayment(request);
-        const fakeTxHash = await agent.performFakeRedemptionPaymentID(request);
+        const fakeTxHash = await performFakeRedemptionPaymentID(agent, request);
         // others cannot confirm redemption payment immediately or challenge it as illegal payment
         await expectRevert(challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent), "only agent vault owner");
         await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "matching redemption active");
@@ -148,4 +150,18 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         await expectRevert(context.assetManager.executeMinting(proof, crt.collateralReservationId, { from: agentOwner1 }),
             "minting payment too old");
     });
+
+    async function performFakeRedemptionPayment(agent: Agent, request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
+        const paymentAmount = request.valueUBA.sub(request.feeUBA);
+        let ref = request.paymentReference;
+        let newRef = "0xffffffffffffffff" + ref.substring(18, ref.length);
+        return await agent.performPayment(request.paymentAddress, paymentAmount, newRef, options);
+    }
+
+    async function performFakeRedemptionPaymentID(agent: Agent, request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
+        const paymentAmount = request.valueUBA.sub(request.feeUBA);
+        let ref = request.paymentReference;
+        let newRef = "0x4642505266410002aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" + ref.substring(50, ref.length);
+        return await agent.performPayment(request.paymentAddress, paymentAmount, newRef, options);
+    }
 });
