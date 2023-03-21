@@ -16,6 +16,14 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     using SafeCast for uint256;
     using SafePct for uint256;
 
+    struct AssetData {
+        uint256 poolTokenSupply;
+        uint256 backedFAssets;
+        uint256 poolNatBalance;
+        uint256 poolFassetBalance;
+        uint256 poolVirtualFassetBalance;
+    }
+
     uint256 internal constant MAX_NAT_TO_POOL_TOKEN_RATIO = 1000;
     uint256 public constant MIN_NAT_TO_ENTER = 1 ether;
     uint256 public constant MIN_TOKEN_SUPPLY_AFTER_EXIT = 1 ether;
@@ -143,7 +151,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         require(assetData.poolNatBalance == natShare ||
             assetData.poolNatBalance - natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
             "collateral left after exit is too low and non-zero");
-        require(_isAboveCR(assetData.poolNatBalance - natShare, assetData.fassetSupply, exitCollateralRatioBIPS),
+        require(_isAboveCR(assetData.poolNatBalance - natShare, assetData.backedFAssets, exitCollateralRatioBIPS),
             "collateral ratio falls below exitCR");
         (uint256 debtFassetShare, uint256 freeFassetShare) = _getDebtAndFreeFassetShareFromTokenShare(
             msg.sender, _tokenShare, _exitType, assetData);
@@ -181,7 +189,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
             "collateral left after exit is too low and non-zero");
         (uint256 debtFassetShare, uint256 freeFassetShare) = _getDebtAndFreeFassetShareFromTokenShare(
             msg.sender, _tokenShare, _exitType, assetData);
-        uint256 fassetsRequiredToKeepCR = assetData.fassetSupply.mulDiv(
+        uint256 fassetsRequiredToKeepCR = assetData.backedFAssets.mulDiv(
             natShare, assetData.poolNatBalance); // poolNatBalance >= natShare > 0
         uint256 additionallyRequiredFassets;
         if (freeFassetShare < fassetsRequiredToKeepCR) {
@@ -258,7 +266,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         bool poolConsideredEmpty = _assetData.poolNatBalance == 0 || _assetData.poolTokenSupply == 0;
         // calculate nat share to be priced with topup discount and nat share to be priced standardly
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
-        uint256 _aux = (assetPriceMul * _assetData.fassetSupply).mulBips(topupCollateralRatioBIPS);
+        uint256 _aux = (assetPriceMul * _assetData.backedFAssets).mulBips(topupCollateralRatioBIPS);
         uint256 natRequiredToTopup = _aux > _assetData.poolNatBalance * assetPriceDiv ?
             _aux / assetPriceDiv - _assetData.poolNatBalance : 0;
         uint256 collateralForTopupPricing = Math.min(_collateral, natRequiredToTopup);
@@ -314,7 +322,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         uint256 poolFassetBalance = fAsset.balanceOf(address(this));
         return AssetData({
             poolTokenSupply: token.totalSupply(),
-            fassetSupply: fAsset.totalSupply(),
+            backedFAssets: assetManager.getFAssetsBackedByPool(address(agentVault)),
             poolNatBalance: wNat.balanceOf(address(this)),
             poolFassetBalance: poolFassetBalance,
             poolVirtualFassetBalance: poolFassetBalance + poolFassetDebt

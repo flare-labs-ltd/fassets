@@ -8,14 +8,6 @@ import "./IWNat.sol";
 interface ICollateralPool {
     enum TokenExitType { MAXIMIZE_FEE_WITHDRAWAL, MINIMIZE_FEE_DEBT, KEEP_RATIO }
 
-    struct AssetData {
-        uint256 poolTokenSupply;
-        uint256 fassetSupply;
-        uint256 poolNatBalance;
-        uint256 poolFassetBalance;
-        uint256 poolVirtualFassetBalance;
-    }
-
     function enter(uint256 _fassets, bool _enterWithFullFassets) external payable;
     function exit(uint256 _tokenShare, TokenExitType _exitType)
         external

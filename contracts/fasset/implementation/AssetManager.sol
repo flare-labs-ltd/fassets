@@ -1042,6 +1042,13 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         return address(Agent.get(_agentVault).collateralPool);
     }
 
+    function getFAssetsBackedByPool(address _agentVault)
+        external view
+        returns (uint256)
+    {
+        return AgentsExternal.getFAssetsBackedByPool(_agentVault);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Collateral pool redemptions
 

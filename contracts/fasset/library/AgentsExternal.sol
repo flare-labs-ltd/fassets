@@ -179,4 +179,12 @@ library AgentsExternal {
         Agent.State storage agent = Agent.get(_agentVault);
         return agent.isCollateralToken(_token);
     }
+
+    function getFAssetsBackedByPool(address _agentVault)
+        external view
+        returns (uint256)
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        return Conversion.convertAmgToUBA(agent.reservedAMG + agent.mintedAMG + agent.poolRedeemingAMG);
+    }
 }

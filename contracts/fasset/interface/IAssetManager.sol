@@ -118,4 +118,5 @@ interface IAssetManager {
     function assetPriceNatWei() external view returns (uint256 _multiplier, uint256 _divisor);
     function getLotSize() external view returns (uint256);
     function getCollateralPool(address _agentVault) external view returns (address);
+    function getFAssetsBackedByPool(address _agentVault) external view returns (uint256);
 }
