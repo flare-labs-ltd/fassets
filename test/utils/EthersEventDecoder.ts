@@ -2,7 +2,7 @@ import { EventFragment, ParamType } from "@ethersproject/abi";
 import { Log as EthersRawEvent, TransactionReceipt as EthersTransactionReceipt } from "@ethersproject/abstract-provider";
 import { BigNumber, Contract, ContractReceipt, Event as EthersEvent } from "ethers";
 import { isNotNull } from "../../lib/utils/helpers";
-import { EventFormatter } from "../../lib/utils/EventFormatter";
+import { EventFormatter } from "../../lib/utils/events/EventFormatter";
 import { EvmEvent } from "../../lib/utils/events/common";
 
 

@@ -1,6 +1,6 @@
 import BN from "bn.js";
-import { BaseEvent } from "./events/common";
-import { formatBN } from "./helpers";
+import { BaseEvent } from "./common";
+import { formatBN } from "../helpers";
 
 
 export class EventFormatter {

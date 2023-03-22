@@ -3,7 +3,7 @@ import { IAssetContext } from "../../../lib/fasset/IAssetContext";
 import { TrackedState } from "../../../lib/state/TrackedState";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
-import { EventFormatter } from "../../../lib/utils/EventFormatter";
+import { EventFormatter } from "../../../lib/utils/events/EventFormatter";
 import { EvmEvent } from "../../../lib/utils/events/common";
 import { IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
@@ -29,11 +29,11 @@ export class FuzzingState extends TrackedState {
 
     // state
     fAssetBalance = new SparseArray();
-    
+
     // override agent state type (initialized in AssetState)
     override agents!: Map<string, FuzzingStateAgent>;
     override agentsByUnderlying!: Map<string, FuzzingStateAgent>;
-    
+
     // logs
     failedExpectations: FuzzingStateLogRecord[] = [];
 
@@ -58,7 +58,7 @@ export class FuzzingState extends TrackedState {
             // }
         });
     }
-    
+
     // override with correct state
     override getAgent(address: string): FuzzingStateAgent | undefined {
         return this.agents.get(address);
@@ -67,7 +67,7 @@ export class FuzzingState extends TrackedState {
     protected override newAgent(address: string, owner: string, underlyingAddressString: string) {
         return new FuzzingStateAgent(this, address, owner, underlyingAddressString);
     }
-    
+
     async checkInvariants(failOnProblems: boolean) {
         const checker = new FuzzingStateComparator();
         // total supply

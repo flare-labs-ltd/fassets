@@ -1,7 +1,7 @@
 import { AssetManagerSettings } from "../fasset/AssetManagerTypes";
 import { AssetManagerEvents, IAssetContext } from "../fasset/IAssetContext";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
-import { EventFormatter } from "../utils/EventFormatter";
+import { EventFormatter } from "../utils/events/EventFormatter";
 import { EvmEvent, ExtractedEventArgs } from "../utils/events/common";
 import { IEvmEvents } from "../utils/events/IEvmEvents";
 import { EventExecutionQueue, TriggerableEvent } from "../utils/events/ScopedEvents";
