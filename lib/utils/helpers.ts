@@ -1,4 +1,3 @@
-import { time } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
 import Web3 from "web3";
 
@@ -35,8 +34,8 @@ export function systemTimestamp() {
  * Return latest block timestamp as number (seconds since 1.1.1970).
  */
 export async function latestBlockTimestamp() {
-    const ts = await time.latest();
-    return ts.toNumber();
+    const latestBlock = await web3.eth.getBlock('latest');
+    return Number(latestBlock.timestamp);
 }
 
 /**

@@ -1,9 +1,20 @@
 import BN from "bn.js";
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { AssetManagerSettings } from '../../lib/fasset/AssetManagerTypes';
-import { AssetManagerParameters } from './asset-manager-parameters';
+import { AssetManagerSettings, CollateralToken, CollateralTokenClass } from '../../lib/fasset/AssetManagerTypes';
+import { JsonParameterSchema } from "./JsonParameterSchema";
+import { AssetManagerParameters, CollateralTokenParameters } from './asset-manager-parameters';
 import { ChainContracts, loadContracts, newContract, saveContracts } from "./contracts";
-import { assetManagerParameters, loadDeployAccounts, ZERO_ADDRESS } from './deploy-utils';
+import { loadDeployAccounts, ZERO_ADDRESS } from './deploy-utils';
+import { ILiquidationStrategyFactory } from "./liquidationStrategyFactory/ILiquidationStrategyFactory";
+import { LiquidationStrategyImpl } from "./liquidationStrategyFactory/LiquidationStrategyImpl";
+import { FAssetInstance } from "../../typechain-truffle";
+import { web3DeepNormalize } from "../../lib/utils/web3normalize";
+
+export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
+
+export const liquidationStrategyFactories: Record<string, () => ILiquidationStrategyFactory<any>> = {
+    LiquidationStrategyImpl: () => new LiquidationStrategyImpl(),
+}
 
 export async function deployAttestationClient(hre: HardhatRuntimeEnvironment, contractsFile: string) {
     console.log(`Deploying AttestationClient`);
@@ -19,7 +30,7 @@ export async function deployAttestationClient(hre: HardhatRuntimeEnvironment, co
     contracts.AttestationClient = newContract("AttestationClient", "AttestationClientSC.sol", attestationClient.address);
     saveContracts(contractsFile, contracts);
 
-    console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AttestationClient"], [${attestationClient.address}])'`);
+    // console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AttestationClient"], [${attestationClient.address}])'`);
 }
 
 export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
@@ -36,120 +47,176 @@ export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, co
     contracts.AgentVaultFactory = newContract("AgentVaultFactory", "AgentVaultFactory.sol", agentVaultFactory.address);
     saveContracts(contractsFile, contracts);
 
-    console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AgentVaultFactory"], [${agentVaultFactory.address}])'`);
+    // console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AgentVaultFactory"], [${agentVaultFactory.address}])'`);
+}
+
+export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    console.log(`Deploying CollateralPoolFactory`);
+
+    const artifacts = hre.artifacts as Truffle.Artifacts;
+
+    const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
+
+    const contracts = loadContracts(contractsFile);
+
+    const collateralPoolFactory = await CollateralPoolFactory.new();
+
+    contracts.CollateralPoolFactory = newContract("CollateralPoolFactory", "CollateralPoolFactory.sol", collateralPoolFactory.address);
+    saveContracts(contractsFile, contracts);
+
+    // console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["CollateralPoolFactory"], [${collateralPoolFactory.address}])'`);
 }
 
 export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, contractsFile: string, managerParameterFiles: string[]) {
-    // const artifacts = hre.artifacts as Truffle.Artifacts;
+    const artifacts = hre.artifacts as Truffle.Artifacts;
 
-    // console.log(`Deploying AssetManagerController`);
+    console.log(`Deploying AssetManagerController`);
 
-    // const AssetManagerController = artifacts.require("AssetManagerController");
+    const AssetManagerController = artifacts.require("AssetManagerController");
 
-    // const { deployer } = loadDeployAccounts(hre);
-    // const contracts = loadContracts(contractsFile);
+    const { deployer } = loadDeployAccounts(hre);
+    const contracts = loadContracts(contractsFile);
 
-    // const assetManagerController = await AssetManagerController.new(contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address);
+    const assetManagerController = await AssetManagerController.new(contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address);
 
-    // contracts.AssetManagerController = newContract("AssetManagerController", "AssetManagerController.sol", assetManagerController.address);
-    // saveContracts(contractsFile, contracts);
+    contracts.AssetManagerController = newContract("AssetManagerController", "AssetManagerController.sol", assetManagerController.address);
+    saveContracts(contractsFile, contracts);
 
-    // // add asset managers before switching to production governance
-    // for (const parameterFile of managerParameterFiles) {
-    //     console.log(`   deploying AssetManager with config ${parameterFile}`);
-    //     const assetManager = await deployAssetManager(hre, parameterFile, contractsFile, false);
-    //     await assetManagerController.addAssetManager(assetManager.address, { from: deployer });
-    // }
+    // add asset managers before switching to production governance
+    for (const parameterFile of managerParameterFiles) {
+        console.log(`   deploying AssetManager with config ${parameterFile}`);
+        const assetManager = await deployAssetManager(hre, parameterFile, contractsFile, false);
+        await assetManagerController.addAssetManager(assetManager.address, { from: deployer });
+    }
 
-    // await assetManagerController.switchToProductionMode({ from: deployer });
+    await assetManagerController.switchToProductionMode({ from: deployer });
 
-    // console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AssetManagerController"], [${assetManagerController.address}])'`);
+    console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AssetManagerController"], [${assetManagerController.address}])'`);
 }
 
 // assumes AssetManager contract artifact has been linked already
 export async function deployAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contractsFile: string, standalone: boolean) {
-    // const artifacts = hre.artifacts as Truffle.Artifacts;
+    const artifacts = hre.artifacts as Truffle.Artifacts;
 
-    // const AssetManager = artifacts.require("AssetManager");
-    // const FAsset = artifacts.require('FAsset');
+    const AssetManager = artifacts.require("AssetManager");
+    const FAsset = artifacts.require('FAsset');
 
-    // const { deployer } = loadDeployAccounts(hre);
-    // const parameters = assetManagerParameters.load(parametersFile);
+    const { deployer } = loadDeployAccounts(hre);
+    const parameters = assetManagerParameters.load(parametersFile);
 
-    // const contracts = loadContracts(contractsFile);
+    const contracts = loadContracts(contractsFile);
 
-    // const fAsset = await FAsset.new(deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetDecimals);
+    const fAsset = await FAsset.new(deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetDecimals);
 
-    // const assetManagerSettings = createAssetManagerSettings(contracts, parameters);
+    const [addressValidatorArtifact, addressValidatorConstructorArgs] = parameters.underlyingAddressValidator;
+    const AddressValidator = hre.artifacts.require(addressValidatorArtifact);
+    const addressValidator = await AddressValidator.new(...addressValidatorConstructorArgs) as Truffle.ContractInstance;
 
-    // const assetManager = await AssetManager.new(assetManagerSettings, fAsset.address);
+    const poolCollateralToken = convertCollateralToken(contracts, parameters.poolCollateral, CollateralTokenClass.POOL);
+    const class1CollateralTokens = parameters.class1Collaterals.map(p => convertCollateralToken(contracts, p, CollateralTokenClass.CLASS1));
+    const collateralTokens = [poolCollateralToken, ...class1CollateralTokens];
 
-    // await fAsset.setAssetManager(assetManager.address, { from: deployer });
+    const liquidationStrategyFactory = liquidationStrategyFactories[parameters.liquidationStrategy]();
+    const liquidationStrategy = await liquidationStrategyFactory.deployLibrary(hre, contracts);
+    const liquidationStrategySettings = liquidationStrategyFactory.schema.validate(parameters.liquidationStrategySettings);
+    const liquidationStrategySettingsEnc = liquidationStrategyFactory.encodeSettings(liquidationStrategySettings)
 
-    // const symbol = parameters.fAssetSymbol;
-    // contracts[`AssetManager_${symbol}`] = newContract(`AssetManager_${symbol}`, "AssetManager.sol", assetManager.address);
-    // contracts[symbol] = newContract(symbol, "FAsset.sol", fAsset.address);
-    // saveContracts(contractsFile, contracts);
+    const assetManagerSettings = createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy, addressValidator.address);
 
-    // await fAsset.switchToProductionMode({ from: deployer });
+    const assetManager = await AssetManager.new(web3DeepNormalize(assetManagerSettings), collateralTokens, liquidationStrategySettingsEnc);
 
-    // if (standalone) {
-    //     console.log(`NOTE: perform governance call 'AssetManagerController(${contracts.AssetManagerController?.address}).addAssetManager(${assetManager.address})'`);
-    // }
+    await fAsset.setAssetManager(assetManager.address, { from: deployer });
 
-    // return assetManager;
-}
+    const symbol = parameters.fAssetSymbol;
+    contracts[`AssetManager_${symbol}`] = newContract(`AssetManager_${symbol}`, "AssetManager.sol", assetManager.address);
+    contracts[symbol] = newContract(symbol, "FAsset.sol", fAsset.address);
+    contracts[`AddressValidator_${symbol}`] = newContract(`AddressValidator_${symbol}`, `${addressValidatorArtifact}.sol`, addressValidator.address);
+    saveContracts(contractsFile, contracts);
 
-function bnToString(x: BN | number | string) {
-    if (!BN.isBN(x)) {
-        x = new BN(x);  // convert to BN to remove spaces etc.
+    await fAsset.switchToProductionMode({ from: deployer });
+
+    if (standalone) {
+        console.log(`NOTE: perform governance call 'AssetManagerController(${contracts.AssetManagerController?.address}).addAssetManager(${assetManager.address})'`);
     }
-    return x.toString(10);
+
+    return assetManager;
 }
 
-// function createAssetManagerSettings(contracts: ChainContracts, parameters: AssetManagerParameters): AssetManagerSettings {
-//     if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.AttestationClient) {
-//         throw new Error("Missing contracts");
-//     }
-//     return {
-//         assetManagerController: contracts.AssetManagerController.address,
-//         agentVaultFactory: contracts.AgentVaultFactory.address,
-//         whitelist: contracts.AssetManagerWhitelist?.address ?? ZERO_ADDRESS,
-//         attestationClient: contracts.AttestationClient.address,
-//         wNat: contracts.WNat.address,
-//         ftsoRegistry: contracts.FtsoRegistry.address,
-//         natFtsoIndex: 0,        // set by contract constructor
-//         assetFtsoIndex: 0,      // set by contract constructor
-//         natFtsoSymbol: parameters.natSymbol,
-//         assetFtsoSymbol: parameters.assetSymbol,
-//         burnAddress: parameters.burnAddress,
-//         burnWithSelfDestruct: parameters.burnWithSelfDestruct,
-//         chainId: bnToString(parameters.chainId),
-//         collateralReservationFeeBIPS: bnToString(parameters.collateralReservationFeeBIPS),
-//         assetUnitUBA: bnToString(new BN(10).pow(new BN(parameters.assetDecimals))),
-//         assetMintingGranularityUBA: bnToString(parameters.assetMintingGranularityUBA),
-//         lotSizeAMG: bnToString(new BN(parameters.lotSize).div(new BN(parameters.assetMintingGranularityUBA))),
-//         maxTrustedPriceAgeSeconds: bnToString(parameters.maxTrustedPriceAgeSeconds),
-//         requireEOAAddressProof: parameters.requireEOAAddressProof,
-//         minCollateralRatioBIPS: bnToString(parameters.minCollateralRatioBIPS),
-//         ccbMinCollateralRatioBIPS: bnToString(parameters.ccbMinCollateralRatioBIPS),
-//         safetyMinCollateralRatioBIPS: bnToString(parameters.safetyMinCollateralRatioBIPS),
-//         underlyingBlocksForPayment: bnToString(parameters.underlyingBlocksForPayment),
-//         underlyingSecondsForPayment: bnToString(parameters.underlyingSecondsForPayment),
-//         redemptionFeeBIPS: bnToString(parameters.redemptionFeeBIPS),
-//         redemptionDefaultFactorBIPS: bnToString(parameters.redemptionDefaultFactorBIPS),
-//         confirmationByOthersAfterSeconds: bnToString(parameters.confirmationByOthersAfterSeconds),
-//         confirmationByOthersRewardNATWei: bnToString(parameters.confirmationByOthersRewardNATWei),
-//         maxRedeemedTickets: bnToString(parameters.maxRedeemedTickets),
-//         paymentChallengeRewardBIPS: bnToString(parameters.paymentChallengeRewardBIPS),
-//         paymentChallengeRewardNATWei: bnToString(parameters.paymentChallengeRewardNATWei),
-//         withdrawalWaitMinSeconds: bnToString(parameters.withdrawalWaitMinSeconds),
-//         liquidationCollateralFactorBIPS: parameters.liquidationCollateralFactorBIPS.map(bnToString),
-//         ccbTimeSeconds: bnToString(parameters.ccbTimeSeconds),
-//         liquidationStepSeconds: bnToString(parameters.liquidationStepSeconds),
-//         attestationWindowSeconds: bnToString(parameters.attestationWindowSeconds),
-//         minUpdateRepeatTimeSeconds: bnToString(parameters.minUpdateRepeatTimeSeconds),
-//         buybackCollateralFactorBIPS: bnToString(parameters.buybackCollateralFactorBIPS),
-//         announcedUnderlyingConfirmationMinSeconds: bnToString(parameters.announcedUnderlyingConfirmationMinSeconds),
-//     };
-// }
+function addressFromParameter(contracts: ChainContracts, addressOrName: string) {
+    if (addressOrName.startsWith('0x')) return addressOrName;
+    return contracts[addressOrName]!.address;
+}
+
+function parseBN(s: string) {
+    return new BN(s.replace(/_/g, ''), 10);
+}
+
+function convertCollateralToken(contracts: ChainContracts, parameters: CollateralTokenParameters, tokenClass: CollateralTokenClass): CollateralToken {
+    return {
+        tokenClass: tokenClass,
+        token: addressFromParameter(contracts, parameters.token),
+        decimals: parameters.decimals,
+        validUntil: 0,  // not deprecated
+        ftsoSymbol: parameters.ftsoSymbol,
+        minCollateralRatioBIPS: parameters.minCollateralRatioBIPS,
+        ccbMinCollateralRatioBIPS: parameters.ccbMinCollateralRatioBIPS,
+        safetyMinCollateralRatioBIPS: parameters.safetyMinCollateralRatioBIPS,
+    }
+}
+
+function createAssetManagerSettings(contracts: ChainContracts, parameters: AssetManagerParameters, fAsset: FAssetInstance, liquidationStrategy: string, addressValidator: string): AssetManagerSettings {
+    if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.AttestationClient || !contracts.CollateralPoolFactory) {
+        throw new Error("Missing contracts");
+    }
+    const ten = new BN(10);
+    const assetUnitUBA = ten.pow(new BN(parameters.assetDecimals));
+    const assetMintingGranularityUBA = ten.pow(new BN(parameters.assetDecimals - parameters.assetMintingDecimals));
+    return {
+        assetManagerController: contracts.AssetManagerController.address,
+        fAsset: fAsset.address,
+        agentVaultFactory: contracts.AgentVaultFactory.address,
+        collateralPoolFactory: contracts.CollateralPoolFactory.address,
+        attestationClient: contracts.AttestationClient.address,
+        underlyingAddressValidator: addressValidator,
+        liquidationStrategy: liquidationStrategy,
+        whitelist: parameters.whitelist ? addressFromParameter(contracts, parameters.whitelist) : ZERO_ADDRESS,
+        agentWhitelist: parameters.agentWhitelist ? addressFromParameter(contracts, parameters.agentWhitelist) : ZERO_ADDRESS,
+        ftsoRegistry: contracts.FtsoRegistry.address,
+        assetFtsoSymbol: parameters.assetSymbol,
+        assetFtsoIndex: 0,      // set by contract constructor
+        burnAddress: parameters.burnAddress,
+        burnWithSelfDestruct: parameters.burnWithSelfDestruct,
+        chainId: parameters.chainId,
+        assetDecimals: parameters.assetDecimals,
+        assetUnitUBA: assetUnitUBA,
+        assetMintingDecimals: parameters.assetMintingDecimals,
+        assetMintingGranularityUBA: assetMintingGranularityUBA,
+        mintingCapAMG: parseBN(parameters.mintingCap).div(assetMintingGranularityUBA),
+        lotSizeAMG: parseBN(parameters.lotSize).div(assetMintingGranularityUBA),
+        requireEOAAddressProof: parameters.requireEOAAddressProof,
+        collateralReservationFeeBIPS: parameters.collateralReservationFeeBIPS,
+        mintingPoolHoldingsRequiredBIPS: parameters.mintingPoolHoldingsRequiredBIPS,
+        maxRedeemedTickets: parameters.maxRedeemedTickets,
+        redemptionFeeBIPS: parameters.redemptionFeeBIPS,
+        redemptionDefaultFactorAgentC1BIPS: parameters.redemptionDefaultFactorClass1BIPS,
+        redemptionDefaultFactorPoolBIPS: parameters.redemptionDefaultFactorPoolBIPS,
+        underlyingBlocksForPayment: parameters.underlyingBlocksForPayment,
+        underlyingSecondsForPayment: parameters.underlyingSecondsForPayment,
+        attestationWindowSeconds: parameters.attestationWindowSeconds,
+        confirmationByOthersAfterSeconds: parameters.confirmationByOthersAfterSeconds,
+        confirmationByOthersRewardUSD5: parseBN(parameters.confirmationByOthersRewardUSD5),
+        paymentChallengeRewardBIPS: parameters.paymentChallengeRewardBIPS,
+        paymentChallengeRewardUSD5: parseBN(parameters.paymentChallengeRewardUSD5),
+        ccbTimeSeconds: parameters.ccbTimeSeconds,
+        maxTrustedPriceAgeSeconds: parameters.maxTrustedPriceAgeSeconds,
+        withdrawalWaitMinSeconds: parameters.withdrawalWaitMinSeconds,
+        announcedUnderlyingConfirmationMinSeconds: parameters.announcedUnderlyingConfirmationMinSeconds,
+        buybackCollateralFactorBIPS: parameters.buybackCollateralFactorBIPS,
+        class1BuyForFlareFactorBIPS: parameters.class1BuyForFlareFactorBIPS,
+        minUpdateRepeatTimeSeconds: parameters.minUpdateRepeatTimeSeconds,
+        tokenInvalidationTimeMinSeconds: parameters.tokenInvalidationTimeMinSeconds,
+        agentExitAvailableTimelockSeconds: parameters.agentExitAvailableTimelockSeconds,
+        agentFeeChangeTimelockSeconds: parameters.agentFeeChangeTimelockSeconds,
+        agentCollateralRatioChangeTimelockSeconds: parameters.agentCollateralRatioChangeTimelockSeconds,
+    };
+}

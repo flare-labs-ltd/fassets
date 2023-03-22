@@ -1,4 +1,3 @@
-import { Web3 } from "hardhat";
 import { AssetManagerContract, AssetManagerInstance } from "../../typechain-truffle";
 
 export type AssetManagerSettings = Parameters<AssetManagerContract['new']>[0];

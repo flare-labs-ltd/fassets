@@ -4,14 +4,14 @@ import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
 import "@tenderly/hardhat-tenderly";
 import * as dotenv from "dotenv";
+import fs from "fs/promises";
 import "hardhat-contract-sizer";
 import 'hardhat-deploy';
 import "hardhat-gas-reporter";
-import { extendEnvironment, task } from "hardhat/config";
+import { task } from "hardhat/config";
 import path from "path";
-import fs from "fs/promises";
 import 'solidity-coverage';
-import { deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployAttestationClient } from "./deployment/lib/deploy-asset-manager";
+import { deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployAttestationClient, deployCollateralPoolFactory } from "./deployment/lib/deploy-asset-manager";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import "./type-extensions";
 
@@ -20,30 +20,6 @@ import config from "./hardhatSetup.config";
 
 
 dotenv.config();
-
-function getChainConfigParameters(chainConfig: string | undefined): any {
-    if (chainConfig) {
-        const parameters = require(`./deployment/chain-config/${process.env.CHAIN_CONFIG}.json`)
-
-        // inject private keys from .env, if they exist
-        if (process.env.DEPLOYER_PRIVATE_KEY) {
-            parameters.deployerPrivateKey = process.env.DEPLOYER_PRIVATE_KEY
-        }
-        if (process.env.GENESIS_GOVERNANCE_PRIVATE_KEY) {
-            parameters.genesisGovernancePrivateKey = process.env.GENESIS_GOVERNANCE_PRIVATE_KEY
-        }
-        if (process.env.GOVERNANCE_PRIVATE_KEY) {
-            parameters.governancePrivateKey = process.env.GOVERNANCE_PRIVATE_KEY
-        }
-        if (process.env.GOVERNANCE_PUBLIC_KEY) {
-            parameters.governancePublicKey = process.env.GOVERNANCE_PUBLIC_KEY
-        }
-        // verifyParameters(parameters);
-        return parameters;
-    } else {
-        return undefined;
-    }
-}
 
 task("link-contracts", "Link contracts with external libraries")
     .addVariadicPositionalParam("contracts", "The contract names to link")
@@ -87,6 +63,7 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
         if (deployController) {
             await deployAttestationClient(hre, contractsFile);
             await deployAgentVaultFactory(hre, contractsFile);
+            await deployCollateralPoolFactory(hre, contractsFile);
             await deployAssetManagerController(hre, contractsFile, managerParameterFiles);
         } else {
             for (const paramFile of managerParameterFiles) {
@@ -94,9 +71,5 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
             }
         }
     });
-
-extendEnvironment((hre) => {
-    hre.getChainConfigParameters = getChainConfigParameters;
-});
 
 export default config;

@@ -1,6 +1,7 @@
 import { existsSync } from 'fs';
 import { Artifact, HardhatRuntimeEnvironment } from 'hardhat/types';
 import { Contract, loadContractsList, saveContractsList } from './contracts';
+import { readDeployedCode } from './deploy-utils';
 
 export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: string[], mapfile: string | null) {
     const web3 = hre.web3;
@@ -9,7 +10,7 @@ export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: s
 
     const deployedLibs: Map<string, string> = new Map();
     const existingDeployedLibs: Map<string, string> = new Map();
-    
+
     if (mapfile && existsSync(mapfile)) {
         const contractsList = loadContractsList(mapfile);
         contractsList.forEach(c => existingDeployedLibs.set(`${c.contractName}:${c.name}`, c.address));
@@ -32,12 +33,6 @@ export async function linkContracts(hre: HardhatRuntimeEnvironment, contracts: s
             settings: { ...defaults.settings, libraries: {} }
         };
     };
-
-    async function readDeployedCode(address: string | undefined) {
-        if (address == null) return null;
-        let code = await web3.eth.getCode(address);
-        return code.replace(new RegExp(address.slice(2), "gi"), "0000000000000000000000000000000000000000");
-    }
 
     console.log(`Initial clean recompilation...`);
     await hre.run("compile", { force: true });

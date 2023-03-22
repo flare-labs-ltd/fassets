@@ -59,7 +59,6 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         whitelist: contracts.whitelist?.address ?? constants.ZERO_ADDRESS,
         agentWhitelist: contracts.agentWhitelist?.address ?? constants.ZERO_ADDRESS,
         ftsoRegistry: contracts.ftsoRegistry.address,
-        mintingCapAMG: 0,                                   // minting cap disabled
         assetFtsoSymbol: ci.symbol,
         assetFtsoIndex: 0,                                  // set automatically in contract
         burnAddress: constants.ZERO_ADDRESS,
@@ -70,6 +69,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         assetUnitUBA: toBNExp(1, ci.decimals),
         assetMintingDecimals: ci.amgDecimals,
         assetMintingGranularityUBA: toBNExp(1, ci.decimals - ci.amgDecimals),
+        mintingCapAMG: 0,                                   // minting cap disabled
         lotSizeAMG: toBNExp(ci.lotSize, ci.amgDecimals),
         requireEOAAddressProof: ci.requireEOAProof,
         underlyingBlocksForPayment: ci.underlyingBlocksForPayment,

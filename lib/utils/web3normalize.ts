@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import { BigNumber } from "ethers";
+// import { BigNumber } from "ethers";
 
 // convert primitive object to normalized form (mostly string)
 
@@ -21,9 +21,9 @@ export function web3Normalize(x: any) {
             if (BN.isBN(x)) {
                 return x.toString(10);
             }
-            if (BigNumber.isBigNumber(x)) {
-                return x.toString();
-            }
+            // if (BigNumber.isBigNumber(x)) {
+            //     return x.toString();
+            // }
             break;
     }
     throw new Error("Unsupported object type");
@@ -64,8 +64,8 @@ export function web3DeepNormalize<T = any>(value: T): T {
         } else if (typeof obj === "object") {
             if (BN.isBN(obj)) {
                 return obj.toString(10);
-            } else if (BigNumber.isBigNumber(obj)) {
-                return obj.toString();
+            // } else if (BigNumber.isBigNumber(obj)) {
+            //     return obj.toString();
             } else if (Array.isArray(obj)) {
                 return normalizeArray(obj);
             } else {
