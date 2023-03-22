@@ -401,7 +401,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(1_000_000));
         // act
-        const lots = 1000;
+        const lots = 1000000;
         const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
         chain.mint(underlyingRandomAddress, paymentAmount);
         const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVault.address));
@@ -432,7 +432,8 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     it("should not self-mint if agent's status is not 'NORMAL'", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        //await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1});
         // act
         const lots = 2;
         const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots).subn(1);
@@ -448,14 +449,17 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         // init
         const lots = 2;
         const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
-        chain.mint(underlyingRandomAddress, paymentAmount);
+        const feeBIPS = toBIPS("10%");
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
+        chain.mint(underlyingRandomAddress, paymentAmount.add(poolFee));
         const nonce = await ethers.provider.getTransactionCount(contracts.agentVaultFactory.address);
         let agentVaultAddressCalc = ethers.utils.getContractAddress({ from: contracts.agentVaultFactory.address, nonce: nonce });
-        const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVaultAddressCalc));
+        const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount.add(poolFee), PaymentReference.selfMint(agentVaultAddressCalc));
 
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
         const amount = toWei(3e8);
-        await depositCollateral(agentOwner1, agentVault, amount);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const promise = assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
