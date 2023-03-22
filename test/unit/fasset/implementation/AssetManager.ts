@@ -1,5 +1,6 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { DAYS, HOURS, toBNExp, toNumber } from "../../../../lib/utils/helpers";
@@ -11,10 +12,23 @@ import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3DeepEqual, web3ResultStruct } from "../../../utils/web3assertions";
-import { createEncodedTestLiquidationSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
+import { createEncodedTestLiquidationSettings, createTestLiquidationSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts, createTestAgentSettings } from "../test-settings";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
+
+function createTestAgentSettings_(underlyingAgent: string, class1TokenAddress: string) {
+    const settings = createTestAgentSettings(underlyingAgent, class1TokenAddress);
+    settings.mintingClass1CollateralRatioBIPS = settings.mintingClass1CollateralRatioBIPS.toString();
+    settings.mintingPoolCollateralRatioBIPS = settings.mintingPoolCollateralRatioBIPS.toString();
+    settings.poolExitCollateralRatioBIPS = settings.poolExitCollateralRatioBIPS.toString();
+    settings.buyFAssetByAgentFactorBIPS = settings.buyFAssetByAgentFactorBIPS.toString();
+    settings.poolTopupCollateralRatioBIPS = settings.poolTopupCollateralRatioBIPS.toString();
+    settings.poolTopupTokenPriceFactorBIPS = settings.poolTopupTokenPriceFactorBIPS.toString();
+    settings.poolFeeShareBIPS = settings.poolFeeShareBIPS.toString();
+    settings.feeBIPS = settings.feeBIPS.toString();
+    return settings;
+}
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic tests`, async accounts => {
     const governance = accounts[10];
@@ -64,9 +78,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.notEqual(resFAsset, constants.ZERO_ADDRESS);
             assert.equal(resFAsset, fAsset.address);
             const resSettings = web3ResultStruct(await assetManager.getSettings());
-            settings.assetManagerController = assetManagerController;           // added to settings in newAssetManager
-            settings.natFtsoIndex = await ftsoRegistry.getFtsoIndex(settings.natFtsoSymbol);        // set in contract
-            settings.assetFtsoIndex = await ftsoRegistry.getFtsoIndex(settings.assetFtsoSymbol);    // set in contract
+            settings.fAsset = fAsset.address;
+            settings.assetManagerController = assetManagerController;
             assertWeb3DeepEqual(resSettings, settings);
             assert.equal(await assetManager.assetManagerController(), assetManagerController);
         });
@@ -97,22 +110,21 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const governanceSettings = await GovernanceSettings.new();
             await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
             // create whitelist
-            const whitelist = await Whitelist.new(governanceSettings.address, governance);
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
             await whitelist.switchToProductionMode({ from: governance });
-            await whitelist.addAddressToWhitelist(whitelistedAccount, {from: governance});
-
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentWhitelist(address)")),
                 web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
                 { from: assetManagerController });
             // assert
-            await expectRevert(assetManager.createAgent(underlyingAgent1, { from: agentOwner1 }),
+            const settings = createTestAgentSettings_(underlyingAgent1, usdc.address);
+            await expectRevert(assetManager.createAgent(settings, { from: agentOwner1 }),
                 "not whitelisted");
-
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(whitelistedAccount));
             const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
             await assetManager.proveUnderlyingAddressEOA(proof, { from: whitelistedAccount });
-            expectEvent(await assetManager.createAgent(underlyingAgent1, { from: whitelistedAccount}), "AgentCreated");
+            expectEvent(await assetManager.createAgent(settings, { from: whitelistedAccount}), "AgentCreated");
         });
     });
 
@@ -171,23 +183,25 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             let agentVaultFactoryNewAddress = accounts[21];
             let attestationClientNewAddress = accounts[22];
             let ftsoRegistryNewAddress = accounts[23];
-            let wnatNewAddress = accounts[24];
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)")),
-            web3.eth.abi.encodeParameters(['address', 'address', 'address', 'address', 'address'], [assetManagerController, agentVaultFactoryNewAddress, attestationClientNewAddress, ftsoRegistryNewAddress, wnatNewAddress]),
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAttestationClient,IFtsoRegistry)")),
+                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, attestationClientNewAddress, ftsoRegistryNewAddress]),
                 { from: assetManagerController });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentVaultFactory(address)")),
+                web3.eth.abi.encodeParameters(['address'], [agentVaultFactoryNewAddress]), { from: assetManagerController });
             const res = web3ResultStruct(await assetManager.getSettings());
             assert.notEqual(newSettings.agentVaultFactory, res.agentVaultFactory)
             assert.notEqual(newSettings.attestationClient, res.attestationClient)
             assert.notEqual(newSettings.ftsoRegistry, res.ftsoRegistry)
-            assert.notEqual(newSettings.wNat, res.wNat)
         });
 
         it("should not update contract addresses", async () => {
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAgentVaultFactory,IAttestationClient,IFtsoRegistry,IWNat)")),
-            web3.eth.abi.encodeParameters(['address', 'address', 'address', 'address', 'address'], [assetManagerController, agentVaultFactory.address, attestationClient.address, ftsoRegistry.address, wNat.address]),
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAttestationClient,IFtsoRegistry)")),
+            web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, contracts.attestationClient.address, contracts.ftsoRegistry.address]),
                 { from: assetManagerController });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentVaultFactory(address)")),
+                web3.eth.abi.encodeParameters(['address'], [contracts.agentVaultFactory.address]), { from: assetManagerController });
             const res = web3ResultStruct(await assetManager.getSettings());
             assertWeb3DeepEqual(res, newSettings)
         });
@@ -195,151 +209,150 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
     describe("should validate settings at creation", () => {
         it("should validate settings - cannot be zero", async () => {
-            let newSettings0 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            const liquidationSettings = createEncodedTestLiquidationSettings();
+
+            let newSettings0 = createTestSettings(contracts, testChainInfo.eth);
             newSettings0.collateralReservationFeeBIPS = 0;
-            let res0 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings0);
+            let res0 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings0, collaterals, liquidationSettings);
             await expectRevert(res0, "cannot be zero");
 
-            let newSettings1 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings1 = createTestSettings(contracts, testChainInfo.eth);
             newSettings1.assetUnitUBA = 0;
-            let res1 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings1);
+            let res1 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings1, collaterals, liquidationSettings);
             await expectRevert(res1, "cannot be zero");
 
-            let newSettings2 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings2 = createTestSettings(contracts, testChainInfo.eth);
             newSettings2.assetMintingGranularityUBA = 0;
-            let res2 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings2);
+            let res2 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings2, collaterals, liquidationSettings);
             await expectRevert(res2, "cannot be zero");
 
-            let newSettings3 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
-            newSettings3.minCollateralRatioBIPS = 0;
-            let res3 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings3);
-            await expectRevert(res3, "cannot be zero");
+            let collaterals3 = createTestCollaterals(contracts);
+            collaterals3[0].minCollateralRatioBIPS = 0;
+            collaterals3[0].ccbMinCollateralRatioBIPS = 0;
+            collaterals3[0].safetyMinCollateralRatioBIPS = 0;
+            await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals3, liquidationSettings);
+            // await expectRevert(res3, "cannot be zero");
 
-            let newSettings4 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
-            newSettings4.ccbMinCollateralRatioBIPS = 0;
-            let res4 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings4);
-            await expectRevert(res4, "cannot be zero");
-
-            let newSettings5 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
-            newSettings5.ccbMinCollateralRatioBIPS = 0;
-            let res5 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
-            await expectRevert(res5, "cannot be zero");
-
-            let newSettings6 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings6 = createTestSettings(contracts, testChainInfo.eth);
             newSettings6.underlyingBlocksForPayment = 0;
-            let res6 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings6);
+            let res6 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings6, collaterals, liquidationSettings);
             await expectRevert(res6, "cannot be zero");
 
-            let newSettings7 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings7 = createTestSettings(contracts, testChainInfo.eth);
             newSettings7.underlyingSecondsForPayment = 0;
-            let res7 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings7);
+            let res7 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings7, collaterals, liquidationSettings);
             await expectRevert(res7, "cannot be zero");
 
-            let newSettings8 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings8 = createTestSettings(contracts, testChainInfo.eth);
             newSettings8.redemptionFeeBIPS = 0;
-            let res8 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings8);
+            let res8 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings8, collaterals, liquidationSettings);
             await expectRevert(res8, "cannot be zero");;
 
-            let newSettings9 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
-            newSettings9.confirmationByOthersRewardNATWei = 0;
-            let res9 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings9);
-            await expectRevert(res9, "cannot be zero");
-
-            let newSettings10 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings10 = createTestSettings(contracts, testChainInfo.eth);
             newSettings10.maxRedeemedTickets = 0;
-            let res10 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings10);
+            let res10 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings10, collaterals, liquidationSettings);
             await expectRevert(res10, "cannot be zero");
 
-            let newSettings11 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings11 = createTestSettings(contracts, testChainInfo.eth);
             newSettings11.ccbTimeSeconds = 0;
-            let res11 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings11);
+            let res11 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings11, collaterals, liquidationSettings);
             await expectRevert(res11, "cannot be zero");
 
-            let newSettings12 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
-            newSettings12.liquidationStepSeconds = 0;
-            let res12 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings12);
+            let newSettings12 = createTestSettings(contracts, testChainInfo.eth);
+            let liquidationSettings12 = createTestLiquidationSettings();
+            liquidationSettings12.liquidationStepSeconds = 0;
+            let res12 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings12, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings12));
             await expectRevert(res12, "cannot be zero");
 
-            let newSettings13 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings13 = createTestSettings(contracts, testChainInfo.eth);
             newSettings13.maxTrustedPriceAgeSeconds = 0;
-            let res13 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings13);
+            let res13 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings13, collaterals, liquidationSettings);
             await expectRevert(res13, "cannot be zero");
 
-            let newSettings15 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings15 = createTestSettings(contracts, testChainInfo.eth);
             newSettings15.minUpdateRepeatTimeSeconds = 0;
-            let res15 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings15);
+            let res15 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings15, collaterals, liquidationSettings);
             await expectRevert(res15, "cannot be zero");
 
-            let newSettings16 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings16 = createTestSettings(contracts, testChainInfo.eth);
             newSettings16.buybackCollateralFactorBIPS = 0;
-            let res16 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings16);
+            let res16 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings16, collaterals, liquidationSettings);
             await expectRevert(res16, "cannot be zero");
 
-            let newSettings17 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings17 = createTestSettings(contracts, testChainInfo.eth);
             newSettings17.withdrawalWaitMinSeconds = 0;
-            let res17 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings17);
+            let res17 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings17, collaterals, liquidationSettings);
             await expectRevert(res17, "cannot be zero");
 
-            let newSettings19 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry)
+            let newSettings19 = createTestSettings(contracts, testChainInfo.eth)
             newSettings19.lotSizeAMG = 0;
-            let res19 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings19);
+            let res19 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings19, collaterals, liquidationSettings);
             await expectRevert(res19, "cannot be zero");
 
-            let newSettings20 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry)
+            let newSettings20 = createTestSettings(contracts, testChainInfo.eth)
             newSettings20.announcedUnderlyingConfirmationMinSeconds = 2 * HOURS;
-            let res20 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings20);
+            let res20 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings20, collaterals, liquidationSettings);
             await expectRevert(res20, "confirmation time too big");
         });
 
         it("should validate settings - other validators", async () => {
-            let newSettings0 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            const liquidationSettings = createEncodedTestLiquidationSettings();
+
+            let newSettings0 = createTestSettings(contracts, testChainInfo.eth);
             newSettings0.collateralReservationFeeBIPS = 10001;
-            let res0 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings0);
+            let res0 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings0, collaterals, liquidationSettings);
             await expectRevert(res0, "bips value too high");
 
-            let newSettings1 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings1 = createTestSettings(contracts, testChainInfo.eth);
             newSettings1.redemptionFeeBIPS = 10001;
-            let res1 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings1);
+            let res1 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings1, collaterals, liquidationSettings);
             await expectRevert(res1, "bips value too high");
 
-            let newSettings2 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
-            newSettings2.redemptionDefaultFactorBIPS = 10000;
-            let res2 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings2);
+            let newSettings2 = createTestSettings(contracts, testChainInfo.eth);
+            newSettings2.redemptionDefaultFactorAgentC1BIPS = 5000;
+            newSettings2.redemptionDefaultFactorPoolBIPS = 5000;
+            let res2 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings2, collaterals, liquidationSettings);
             await expectRevert(res2, "bips value too low");
 
-            let newSettings3 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings3 = createTestSettings(contracts, testChainInfo.eth);
             newSettings3.attestationWindowSeconds = 0.9 * DAYS;
-            let res3 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings3);
+            let res3 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings3, collaterals, liquidationSettings);
             await expectRevert(res3, "window too small");
 
-            let newSettings4 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
+            let newSettings4 = createTestSettings(contracts, testChainInfo.eth);
             newSettings4.confirmationByOthersAfterSeconds = 1.9 * HOURS;
-            let res4 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings4);
+            let res4 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings4, collaterals, liquidationSettings);
             await expectRevert(res4, "must be at least two hours");
 
-            let newSettings5 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
-            newSettings5.liquidationCollateralFactorBIPS = [];
-            let res5 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
+            let liquidationSettings5 = createTestLiquidationSettings();
+            liquidationSettings5.liquidationCollateralFactorBIPS = [];
+            liquidationSettings5.liquidationFactorClass1BIPS = [];
+            let res5 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings5));
             await expectRevert(res5, "at least one factor required");
 
-            newSettings5.liquidationCollateralFactorBIPS = [12000, 11000];;
-            let res6 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
+            let liquidationSettings6 = createTestLiquidationSettings();
+            liquidationSettings6.liquidationCollateralFactorBIPS = [12000, 11000];
+            liquidationSettings6.liquidationFactorClass1BIPS = [12000, 11000];
+            let res6 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings6));
             await expectRevert(res6, "factors not increasing");
 
-            let value = toNumber(newSettings5.safetyMinCollateralRatioBIPS) + 10000;
-            newSettings5.liquidationCollateralFactorBIPS = [value];
-            let res7 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
-            await expectRevert(res7, "liquidation factor too high");
+            let liquidationSettings7 = createTestLiquidationSettings();
+            liquidationSettings7.liquidationCollateralFactorBIPS = [12000];
+            liquidationSettings7.liquidationFactorClass1BIPS = [12001];
+            let res7 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings7));
+            await expectRevert(res7, "class1 factor higher than total");
 
-            newSettings5.liquidationCollateralFactorBIPS = [1000];
-            let res8 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5);
+            let liquidationSettings8 = createTestLiquidationSettings();
+            liquidationSettings8.liquidationCollateralFactorBIPS = [1000];
+            liquidationSettings8.liquidationFactorClass1BIPS = [1000];
+            let res8 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings8));
             await expectRevert(res8, "factor not above 1");
 
-            let newSettings6 = createTestSettings(agentVaultFactory, attestationClient, wNat, ftsoRegistry);
-            newSettings6.minCollateralRatioBIPS = 1_8000;
-            newSettings6.ccbMinCollateralRatioBIPS = 2_2000;
-            newSettings6.safetyMinCollateralRatioBIPS = 2_4000;
-            let res9 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings6);
+            let collaterals6 = createTestCollaterals(contracts);
+            collaterals6[0].minCollateralRatioBIPS = 1_8000;
+            collaterals6[0].ccbMinCollateralRatioBIPS = 2_2000;
+            collaterals6[0].safetyMinCollateralRatioBIPS = 2_4000;
+            let res9 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals6, liquidationSettings);
             await expectRevert(res9, "invalid collateral ratios");
         });
     });
