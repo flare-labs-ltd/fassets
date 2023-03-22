@@ -108,6 +108,11 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         topupTokenPriceFactorBIPS = _topupTokenPriceFactorBIPS.toUint16();
     }
 
+    /**
+     * @notice Enters the collateral pool by depositing some NAT
+     * @param _fassets                 Number of f-assets sent along the deposited NAT (not all may be used)
+     * @param _enterWithFullFassets    Specifies whether "required" f-assets should be calculated automatically
+     */
     function enter(uint256 _fassets, bool _enterWithFullFassets)
         external payable
     {
@@ -135,6 +140,11 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         token.mint(msg.sender, tokenShare);
     }
 
+    /**
+     * @notice Exits the pool by liquidating the given amount of pool tokens
+     * @param _tokenShare   The amount of pool tokens to be liquidated
+     * @param _exitType     An enum describing the ratio used to liquidate debt and free tokens
+     */
     function exit(uint256 _tokenShare, TokenExitType _exitType)
         external override
         returns (uint256, uint256)
@@ -166,12 +176,20 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         return (natShare, freeFassetShare);
     }
 
-    // requires the amount of fassets that doesn't lower pool CR
+    /**
+     * @notice Exits the pool by liquidating the given amount of pool tokens and redeeming
+     *  f-assets in a way that preserves or increases the pool collateral ratio
+     * @param _tokenShare                   The amount of pool tokens to be liquidated
+     * @param _exitType                     An enum describing the ratio used to liquidate debt and free tokens
+     * @param _redeemToCollateral           Specifies if agent should redeem f-assets in NAT from his collateral
+     * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
+     * @notice F-assets can still be redeemed in collateral if their value does not exceed one lot
+     */
     function selfCloseExit(
         uint256 _tokenShare,
-        bool _redeemToCollateral,
         TokenExitType _exitType,
-        string memory _redeemerUnderlyingAddressString
+        bool _redeemToCollateral,
+        string memory _redeemerUnderlyingAddress
     )
         external
     {
@@ -206,7 +224,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
                     agentVault, msg.sender, fassetsToRedeem);
             } else {
                 assetManager.redeemFromAgent(
-                    agentVault, msg.sender, fassetsToRedeem, _redeemerUnderlyingAddressString);
+                    agentVault, msg.sender, fassetsToRedeem, _redeemerUnderlyingAddress);
             }
         }
         // transfer/burn assets
@@ -217,7 +235,10 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         token.burn(msg.sender, _tokenShare);
     }
 
-    // used to collect fasset fees, at expanse of locking additional free tokens
+    /**
+     * @notice Collect f-asset fees by locking free tokens
+     * @param _fassets  The amount of f-asset fees to withdraw
+     */
     function withdrawFees(uint256 _fassets)
         external
     {
@@ -229,7 +250,10 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         fAsset.transfer(msg.sender, _fassets);
     }
 
-    // used to pay debt and unlock the debt tokens
+    /**
+     * @notice Free debt tokens by paying f-assets
+     * @param _fassets  Amount of payed f-assets
+     */
     function payFeeDebt(uint256 _fassets)
         external
     {
@@ -240,6 +264,9 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         fAsset.transferFrom(msg.sender, address(this), _fassets);
     }
 
+    /**
+     * @notice Returns the collateral pool token contract used by this contract
+     */
     function poolToken() external view override returns (IERC20) {
         return token;
     }
@@ -338,9 +365,6 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
             tokens, _assetData.poolTokenSupply);
     }
 
-    // note: integer operations round down the free tokens,
-    // so the user can get slightly less tokens than those he owns mathematically
-    // (we could also calculate free tokens as tokens - debtTokens)
     function _freeTokensOf(address _account, AssetData memory _assetData)
         internal view
         returns (uint256)
@@ -360,6 +384,10 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     ////////////////////////////////////////////////////////////////////////////////////
     // methods for viewing user balances
 
+    /**
+     * @notice Returns the sum of the user's reward f-assets and their corresponding f-asset debt
+     * @param _account  User address
+     */
     function virtualFassetOf(address _account)
         external view
         returns (uint256)
@@ -368,6 +396,10 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         return _virtualFassetOf(_account, assetData);
     }
 
+    /**
+     * @notice Returns user's reward f-assets
+     * @param _account  User address
+     */
     function freeFassetOf(address _account)
         external view
         returns (uint256)
@@ -376,6 +408,10 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         return _virtualFassetOf(_account, assetData) - _fassetDebtOf[_account];
     }
 
+    /**
+     * @notice Returns user's f-asset debt
+     * @param _account  User address
+     */
     function fassetDebtOf(address _account)
         external view
         returns (uint256)
@@ -383,6 +419,10 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         return _fassetDebtOf[_account];
     }
 
+    /**
+     * @notice Returns user's debt tokens
+     * @param _account  User address
+     */
     function debtTokensOf(address _account)
         external view
         returns (uint256)
@@ -391,6 +431,10 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         return token.balanceOf(_account) - _freeTokensOf(_account, assetData);
     }
 
+    /**
+     * @notice Returns user's free tokens
+     * @param _account  User address
+     */
     function freeTokensOf(address _account)
         external view
         returns (uint256)
@@ -414,7 +458,6 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         selfdestruct(_recipient);
     }
 
-    // used by AssetManager to handle liquidation
     function payout(
         address _recipient,
         uint256 _amount,

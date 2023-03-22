@@ -14,8 +14,8 @@ interface ICollateralPool {
         returns (uint256 _natShare, uint256 _fassetShare);
     function withdrawFees(uint256 _amount) external;
     function selfCloseExit(
-        uint256 _tokenShare, bool _redeemToCollateral, TokenExitType _exitType,
-        string memory _redeemerUnderlyingAddressString) external;
+        uint256 _tokenShare, TokenExitType _exitType, bool _redeemToCollateral,
+        string memory _redeemerUnderlyingAddress) external;
     function setPoolToken(address _poolToken) external;
     function payout(address _receiver, uint256 _amountWei, uint256 _agentResponsibilityWei) external;
     function destroy(address payable _recipient) external;

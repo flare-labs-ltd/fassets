@@ -4,6 +4,7 @@ pragma solidity 0.8.11;
 import "../interface/IWNat.sol";
 import "../interface/IAgentVault.sol";
 import "../interface/ICollateralPool.sol";
+import "./ERC20Mock.sol";
 
 contract AssetManagerMock {
     IWNat private wNat;
@@ -42,6 +43,15 @@ contract AssetManagerMock {
         address /* _agentVault */, address /* _redeemer */, uint256 _amountUBA
     ) external {
         emit AgentRedemptionInCollateral(_amountUBA);
+    }
+
+    ERC20Mock public fasset;
+    function registerFAssetForCollateralPool(ERC20Mock _fasset) external {
+        fasset = _fasset;
+    }
+
+    function getFAssetsBackedByPool(address /* _backer */) external view returns (uint256) {
+        return fasset.totalSupply();
     }
 
     function assetPriceNatWei() public pure returns (uint256, uint256) {
