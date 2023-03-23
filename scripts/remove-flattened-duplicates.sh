@@ -6,8 +6,10 @@ rm -rf artifacts/flare-sc
 mkdir -p artifacts/flare-sc
 cp artifacts/flattened/**/*.json artifacts/flare-sc
 
-# remove interfaces
-rm artifacts/flare-sc/I[A-Z]*.json
-# remove some contracts
-rm artifacts/flare-sc/Governed*.json
-rm artifacts/flare-sc/ERC20*.json
+# duplicated files in flare-smart-contracts
+duplicates=$(find artifacts/ -name '*.json' -not -path 'artifacts/flattened/*/*' -not -path 'artifacts/flare-sc/*' -printf '%f ')
+
+# remove duplicates
+cd artifacts/flare-sc
+rm -f $duplicates
+cd - > /dev/null

@@ -3,9 +3,10 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../interface/ICollateralPoolToken.sol";
 import "./CollateralPool.sol";
 
-contract CollateralPoolToken is ERC20 {
+contract CollateralPoolToken is ICollateralPoolToken, ERC20 {
     address public immutable collateralPool;
 
     modifier onlyCollateralPool {

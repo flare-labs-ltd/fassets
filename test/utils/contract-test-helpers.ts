@@ -1,11 +1,12 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import { network } from "hardhat";
-import { findEvent } from "../../lib/utils/events/truffle";
 import { toBN } from "../../lib/utils/helpers";
-import { GovernedBaseInstance } from "../../typechain-truffle";
+import { GovernedBaseContract } from "../../typechain-truffle";
+import { Web3EventDecoder } from "./Web3EventDecoder";
 
 const SuicidalMock = artifacts.require("SuicidalMock");
-const GovernanceSettings = artifacts.require("GovernanceSettings"); 
+const GovernanceSettings = artifacts.require("GovernanceSettings");
+const GovernedBase = artifacts.require("contracts/governance/implementation/GovernedBase.sol:GovernedBase" as any) as any as GovernedBaseContract;
 
 export async function transferWithSuicide(amount: BN, from: string, to: string) {
     if (amount.lten(0)) throw new Error("Amount must be positive");
@@ -36,11 +37,12 @@ export async function emptyAddressBalance(address: string, toAccount: string) {
 }
 
 export async function executeTimelockedGovernanceCall(contract: Truffle.ContractInstance, methodCall: (governance: string) => Promise<Truffle.TransactionResponse<any>>) {
-    const contractGoverned = contract as GovernedBaseInstance;
+    const contractGoverned = await GovernedBase.at(contract.address);           // hack because when contract is an instance of interface, it doesn't expose methods of GovernedBase
+    const eventDecoder = new Web3EventDecoder({ contract, contractGoverned });  // also needed to decode events from GovernedBase artifact
     const governanceSettings = await GovernanceSettings.at(await contractGoverned.governanceSettings());
     const governance = await governanceSettings.getGovernanceAddress();
     const response = await methodCall(governance);
-    const timelockEvent = findEvent(response, 'GovernanceCallTimelocked');
+    const timelockEvent = eventDecoder.findEvent(response, 'GovernanceCallTimelocked');
     if (timelockEvent) {
         const executor = (await governanceSettings.getExecutors())[0];
         const timelock = timelockEvent.args;

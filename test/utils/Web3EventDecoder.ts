@@ -1,6 +1,7 @@
 import { isNotNull, toBN } from "../../lib/utils/helpers";
 import { EventFormatter } from "../../lib/utils/events/EventFormatter";
-import { EvmEvent } from "../../lib/utils/events/common";
+import { EventSelector, EvmEvent } from "../../lib/utils/events/common";
+import { TruffleExtractEvent } from "../../lib/utils/events/truffle";
 
 export declare type RawEvent = import("web3-core").Log;
 
@@ -61,5 +62,10 @@ export class Web3EventDecoder extends EventFormatter {
         const rawLogs: RawEvent[] = 'rawLogs' in receipt ? (receipt as any).rawLogs : receipt.logs;
         // decode all events
         return rawLogs.map(raw => this.decodeEvent(raw)).filter(isNotNull);
+    }
+
+    findEvent<E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<E>, name: N): TruffleExtractEvent<E, N> | undefined {
+        const logs = this.decodeEvents(response);
+        return logs.find(e => e.event === name) as any;
     }
 }

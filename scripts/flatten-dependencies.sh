@@ -29,7 +29,7 @@ cd - > /dev/null
 
 echo "// SPDX-License-Identifier: MIT" > "$OUTFILE"
 echo "$PRAGMA_SOLIDITY" >> "$OUTFILE"
-if grep '^pragma abicoder v2' "$TMPFILE"; then
+if grep '^pragma abicoder v2' "$TMPFILE" > /dev/null; then
     echo 'pragma abicoder v2;' >> "$OUTFILE"
 fi
 echo "" >> "$OUTFILE"
