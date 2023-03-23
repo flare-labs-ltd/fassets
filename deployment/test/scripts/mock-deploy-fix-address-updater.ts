@@ -1,6 +1,6 @@
-import { loadContracts } from "../../deployment/lib/contracts";
-import { runAsyncMain } from "../../lib/utils/helpers";
-import { executeTimelockedGovernanceCall } from "../utils/contract-test-helpers";
+import { loadContracts } from "../../lib/contracts";
+import { runAsyncMain } from "../../../lib/utils/helpers";
+import { executeTimelockedGovernanceCall } from "../../../test/utils/contract-test-helpers";
 
 const AddressUpdater = artifacts.require('AddressUpdater');
 

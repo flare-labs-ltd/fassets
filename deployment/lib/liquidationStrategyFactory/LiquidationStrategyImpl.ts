@@ -1,4 +1,5 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { ILiquidationStrategyContract } from "../../../typechain-truffle";
 import { ChainContracts, newContract } from "../contracts";
 import { deployedCodeMatches } from "../deploy-utils";
 import { JsonParameterSchema } from "../JsonParameterSchema";
@@ -15,8 +16,8 @@ export class LiquidationStrategyImpl implements ILiquidationStrategyFactory<Liqu
         if (await deployedCodeMatches(liquidationStrategyArtifact, contracts.LiquidationStrategyImpl?.address)) {
             return contracts.LiquidationStrategyImpl!.address;
         }
-        const LiquidationStrategy = hre.artifacts.require('LiquidationStrategyImpl');
-        const liquidationStrategy = LiquidationStrategy.new();
+        const LiquidationStrategy = hre.artifacts.require('LiquidationStrategyImpl') as ILiquidationStrategyContract;
+        const liquidationStrategy = await LiquidationStrategy.new();
         contracts.LiquidationStrategyImpl = newContract('LiquidationStrategyImpl', 'LiquidationStrategyImpl', liquidationStrategy.address);
         return liquidationStrategy.address;
     }

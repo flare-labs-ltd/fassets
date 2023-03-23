@@ -222,7 +222,7 @@ export function createTestAgentSettings(underlyingAddress: string, class1TokenAd
     return { ...defaults, ...(options ?? {}) };
 }
 
-export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, underlyingAddress: string, class1CollateralToken: string, options?: Partial<AgentSettings>) {
+export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, underlyingAddress: string, class1TokenAddress: string, options?: Partial<AgentSettings>) {
     if (deps.settings.requireEOAAddressProof) {
         if (!deps.chain || !deps.wallet || !deps.attestationProvider) throw new Error("Missing chain data for EOA proof");
         // mint some funds on underlying address (just enough to make EOA proof)
@@ -233,7 +233,7 @@ export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, 
         await deps.assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
     }
     // create agent
-    const agentSettings = createTestAgentSettings(underlyingAddress, class1CollateralToken, options);
+    const agentSettings = createTestAgentSettings(underlyingAddress, class1TokenAddress, options);
     const response = await deps.assetManager.createAgent(web3DeepNormalize(agentSettings), { from: owner });
     // extract agent vault address from AgentCreated event
     const event = findRequiredEvent(response, 'AgentCreated');

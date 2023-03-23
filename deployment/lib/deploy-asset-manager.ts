@@ -121,9 +121,11 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const liquidationStrategySettings = liquidationStrategyFactory.schema.validate(parameters.liquidationStrategySettings);
     const liquidationStrategySettingsEnc = liquidationStrategyFactory.encodeSettings(liquidationStrategySettings)
 
-    const assetManagerSettings = createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy, addressValidator.address);
+    const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy, addressValidator.address));
 
-    const assetManager = await AssetManager.new(web3DeepNormalize(assetManagerSettings), collateralTokens, liquidationStrategySettingsEnc);
+    // console.log(JSON.stringify(assetManagerSettings, null, 4));
+
+    const assetManager = await AssetManager.new(assetManagerSettings, collateralTokens, liquidationStrategySettingsEnc);
 
     await fAsset.setAssetManager(assetManager.address, { from: deployer });
 
@@ -144,7 +146,9 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
 function addressFromParameter(contracts: ChainContracts, addressOrName: string) {
     if (addressOrName.startsWith('0x')) return addressOrName;
-    return contracts[addressOrName]!.address;
+    const contract = contracts[addressOrName];
+    if (contract != null) return contract.address;
+    throw new Error(`Missing contract ${addressOrName}`);
 }
 
 function parseBN(s: string) {
