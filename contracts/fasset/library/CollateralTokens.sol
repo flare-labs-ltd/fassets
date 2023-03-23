@@ -15,16 +15,14 @@ library CollateralTokens {
     )
         external
     {
-        require(_data.length >= 2, "need at least two collaterals");
+        require(_data.length >= 2, "at least two collaterals required");
         // initial pool collateral token
-        require(_data[0].tokenClass == IAssetManager.CollateralTokenClass.POOL,
-            "first collateral must be pool");
+        require(_data[0].tokenClass == IAssetManager.CollateralTokenClass.POOL, "not a pool collateral at 0");
         _add(_data[0]);
         _setPoolCollateralTokenIndex(0);
         // initial class1 tokens
         for (uint256 i = 1; i < _data.length; i++) {
-            require(_data[i].tokenClass == IAssetManager.CollateralTokenClass.CLASS1,
-                "collateral must be class1");
+            require(_data[i].tokenClass == IAssetManager.CollateralTokenClass.CLASS1, "not a class1 collateral");
             _add(_data[i]);
         }
     }
@@ -47,7 +45,9 @@ library CollateralTokens {
     )
         external
     {
-        bool ratiosValid = _ccbMinCollateralRatioBIPS <= _minCollateralRatioBIPS &&
+        bool ratiosValid =
+            SafePct.MAX_BIPS < _ccbMinCollateralRatioBIPS &&
+            _ccbMinCollateralRatioBIPS <= _minCollateralRatioBIPS &&
             _minCollateralRatioBIPS <= _safetyMinCollateralRatioBIPS;
         require(ratiosValid, "invalid collateral ratios");
         // update
@@ -156,10 +156,14 @@ library CollateralTokens {
 
     function _add(IAssetManager.CollateralTokenInfo memory _data) private returns (uint256) {
         AssetManagerState.State storage state = AssetManagerState.get();
+        // validation of tokenClass is done before call to _add
+        require(address(_data.token) != address(0), "token zero");
         bytes32 tokenKey = _tokenKey(_data.tokenClass, _data.token);
         require(state.collateralTokenIndex[tokenKey] == 0, "token already exists");
         require(_data.validUntil == 0, "cannot add deprecated token");
-        bool ratiosValid = _data.ccbMinCollateralRatioBIPS <= _data.minCollateralRatioBIPS &&
+        bool ratiosValid =
+            SafePct.MAX_BIPS < _data.ccbMinCollateralRatioBIPS &&
+            _data.ccbMinCollateralRatioBIPS <= _data.minCollateralRatioBIPS &&
             _data.minCollateralRatioBIPS <= _data.safetyMinCollateralRatioBIPS;
         require(ratiosValid, "invalid collateral ratios");
         uint256 ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(_data.ftsoSymbol);
