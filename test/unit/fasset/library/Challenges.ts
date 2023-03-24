@@ -12,6 +12,8 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile } from "../../../utils/test-helpers";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
 
+const CollateralPool = artifacts.require('CollateralPool');
+const CollateralPoolToken = artifacts.require('CollateralPoolToken');
 
 contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, async accounts => {
     const governance = accounts[10];
@@ -57,8 +59,12 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
     async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string) {
         // depositCollateral
         const fullAgentCollateral = toWei(3e8);
-        await agentVault.deposit({ from: owner, value: toBN(fullAgentCollateral) });
-        await assetManager.makeAgentAvailable(agentVault.address, 500, 2_2000, { from: owner });
+        await agentVault.depositNat({ from: owner, value: toBN(fullAgentCollateral) });
+        await usdc.mintAmount(owner, toBNExp(10000, 18));
+        await usdc.increaseAllowance(agentVault.address, toBNExp(10000, 18), { from: owner });
+        await agentVault.depositCollateral(usdc.address, toBNExp(10000, 18), { from: owner });
+        await depositPoolTokens(agentVault, owner, fullAgentCollateral);
+        await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 
     async function updateUnderlyingBlock() {
@@ -90,6 +96,12 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         return request;
     }
 
+    async function depositPoolTokens(agentVault: AgentVaultInstance, owner: string, tokens: BN) {
+        const pool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
+        const poolToken = await CollateralPoolToken.at(await pool.poolToken());
+        await pool.enter(0, false, { value: tokens, from: owner }); // owner will get at least `tokens` of tokens
+        await poolToken.transfer(agentVault.address, tokens, { from: owner });
+    }
 
     beforeEach(async () => {
         const ci = testChainInfo.eth;
