@@ -228,10 +228,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
             let collaterals3 = createTestCollaterals(contracts);
             collaterals3[0].minCollateralRatioBIPS = 0;
-            collaterals3[0].ccbMinCollateralRatioBIPS = 0;
-            collaterals3[0].safetyMinCollateralRatioBIPS = 0;
-            await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals3, liquidationSettings);
-            // await expectRevert(res3, "cannot be zero");
+            let res3 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals3, liquidationSettings);
+            await expectRevert(res3, "invalid collateral ratios");
 
             let newSettings6 = createTestSettings(contracts, testChainInfo.eth);
             newSettings6.underlyingBlocksForPayment = 0;
