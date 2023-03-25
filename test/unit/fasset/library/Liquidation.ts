@@ -2,7 +2,7 @@ import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { toBN, toBNExp, toWei, toNumber } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
@@ -44,11 +44,16 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
     }
 
-    async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string) {
-        // depositCollateral
-        const fullAgentCollateral = toWei(3e8);
-        await agentVault.deposit({ from: owner, value: toBN(fullAgentCollateral) });
-        await assetManager.makeAgentAvailable(agentVault.address, 500, 2_2000, { from: owner });
+    async function depositCollateral(owner: string, agentVault: AgentVaultInstance, amount: BN, token: ERC20MockInstance = usdc) {
+        await token.mintAmount(owner, amount);
+        await token.approve(agentVault.address, amount, { from: owner });
+        await agentVault.depositCollateral(token.address, amount, { from: owner });
+    }
+
+    async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string, fullAgentCollateral: BN = toWei(3e8)) {
+        await depositCollateral(owner, agentVault, fullAgentCollateral);
+        await agentVault.buyCollateralPoolTokens({ from: owner, value: fullAgentCollateral });  // add pool collateral and agent pool tokens
+        await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 
     async function mint(agentVault: AgentVaultInstance, underlyingMinterAddress: string, minterAddress: string) {
@@ -124,16 +129,18 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         // init
         chain.mint(underlyingAgent1, 100);
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(250));
         await mint(agentVault, underlyingMinter1, minterAddress1);
         // act
-        await ftsos.asset.setCurrentPrice(toBNExp(3521, 50), 0);
+        await ftsos.asset.setCurrentPrice(toBNExp(1, 1), 0);
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         const tx = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer1, 100, null);
         const proof = await attestationProvider.proveBalanceDecreasingTransaction(tx, underlyingAgent1);
         await assetManager.illegalPaymentChallenge(proof, agentVault.address);
         const info2 = await assetManager.getAgentInfo(agentVault.address);
+        console.log(info1.liquidationStartTimestamp);
+        console.log(info2.liquidationStartTimestamp);
         // assert
         assertWeb3Equal(info1.liquidationStartTimestamp, info2.liquidationStartTimestamp);
         assertWeb3Equal(info1.status, 2);

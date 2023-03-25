@@ -39,6 +39,7 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
     }
 
     async function agentTopup(agentVault: AgentVaultInstance){
+        chain.mint(underlyingRandomAddress, 1);
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, 1, PaymentReference.topup(agentVault.address));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         await assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });

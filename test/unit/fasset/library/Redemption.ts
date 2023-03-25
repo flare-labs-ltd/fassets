@@ -3,7 +3,7 @@ import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../.
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { randomAddress, toBN, toBNExp, toNumber, toWei } from "../../../../lib/utils/helpers";
+import { randomAddress, toBN, toBNExp, toNumber, toWei, toBIPS, MAX_BIPS, BNish } from "../../../../lib/utils/helpers";
 import { SourceId } from "../../../../lib/verification/sources/sources";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -48,11 +48,22 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
     }
 
-    async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string) {
-        // depositCollateral
-        const fullAgentCollateral = toWei(3e8);
-        await agentVault.deposit({ from: owner, value: toBN(fullAgentCollateral) });
-        await assetManager.makeAgentAvailable(agentVault.address, 500, 2_2000, { from: owner });
+    async function depositCollateral(owner: string, agentVault: AgentVaultInstance, amount: BN, token: ERC20MockInstance = usdc) {
+        await token.mintAmount(owner, amount);
+        await token.approve(agentVault.address, amount, { from: owner });
+        await agentVault.depositCollateral(token.address, amount, { from: owner });
+    }
+
+    async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string, fullAgentCollateral: BN = toWei(3e8)) {
+        await depositCollateral(owner, agentVault, fullAgentCollateral);
+        await agentVault.buyCollateralPoolTokens({ from: owner, value: fullAgentCollateral });  // add pool collateral and agent pool tokens
+        await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
+    }
+
+    async function performSelfMintingPayment(agentVault: string, paymentAmount: BNish) {
+        const randomAddr = randomAddress();
+        chain.mint(randomAddr, paymentAmount);
+        return await wallet.addTransaction(randomAddr, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVault));
     }
 
     async function updateUnderlyingBlock() {
@@ -189,18 +200,19 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should self close", async () => {
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const feeBIPS = toBIPS("10%");
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e8));
         // perform self-minting
         const lots = 3;
-        const randomAddr = randomAddress();
-        let val = toBNExp(10000, 18);
-        chain.mint(randomAddr, val);
-        const transactionHash = await wallet.addTransaction(randomAddr, underlyingAgent1, val, PaymentReference.selfMint(agentVault.address));
+        const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
+        const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
+        const transactionHash = await performSelfMintingPayment(agentVault.address, paymentAmount.add(poolFee));
         const proof = await attestationProvider.provePayment(transactionHash, null, underlyingAgent1);
         await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
 
-        let res = await assetManager.selfClose(agentVault.address, val, { from: agentOwner1 });
+        let res = await assetManager.selfClose(agentVault.address, lots, { from: agentOwner1 });
         expectEvent(res, "SelfClose")
     });
 
@@ -209,7 +221,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
-        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
@@ -223,7 +235,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
-        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
@@ -237,7 +249,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
-        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
@@ -251,7 +263,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
-        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
@@ -265,7 +277,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
-        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
@@ -301,7 +313,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
-        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
@@ -311,14 +323,17 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should self-mint - multiple tickets", async () => {
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        const agentVault2 = await createAgent(agentOwner2, underlyingAgent2);
+        const feeBIPS = toBIPS("10%");
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
+        const agentVault2 = await createAgent(agentOwner2, underlyingAgent2, { feeBIPS, poolFeeShareBIPS });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         await depositAndMakeAgentAvailable(agentVault2, agentOwner2);
 
         const lots = 2;
-        let amt = toBN(lots).mul(toBN(settings.lotSizeAMG)); // in amg
-        let amount = toBN(amt).mul(toBN(settings.assetMintingGranularityUBA)); // in uba
+        const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
+        const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
+        const amount = paymentAmount.add(poolFee);
 
         const randomAddr = randomAddress();
         chain.mint(randomAddr, amount);
@@ -345,7 +360,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const res4 = await assetManager.selfMint(proof4, agentVault2.address, lots, { from: agentOwner2 });
         expectEvent(res4, "MintingExecuted");
 
-        const resSelf = await assetManager.selfClose(agentVault.address, amount, { from: agentOwner1 });
+        const resSelf = await assetManager.selfClose(agentVault.address, lots, { from: agentOwner1 });
         expectEvent(resSelf, 'SelfClose');
     });
 
@@ -354,12 +369,12 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
-        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 2; i++) {
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
         const chainId: SourceId = 2;
-        stateConnectorClient = new MockStateConnectorClient(stateConnector, { [chainId]: chain }, 'auto');
+        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: agentOwner1 });
