@@ -29,15 +29,15 @@ export class AttestationHelper {
         public chain: IBlockChain,
         public chainId: SourceId,
     ) {}
-    
+
     roundFinalized(round: number): Promise<boolean> {
         return this.client.roundFinalized(round);
     }
-    
+
     waitForRoundFinalization(round: number): Promise<void> {
         return this.client.waitForRoundFinalization(round);
     }
-    
+
     async requestPaymentProof(transactionHash: string, sourceAddress: string | null, receivingAddress: string | null): Promise<AttestationRequest> {
         const transaction = await this.chain.getTransaction(transactionHash);
         const block = await this.chain.getTransactionBlock(transactionHash);
@@ -137,7 +137,7 @@ export class AttestationHelper {
     async obtainConfirmedBlockHeightExistsProof(round: number, requestData: string): Promise<AttestationResponse<DHConfirmedBlockHeightExists>> {
         return await this.client.obtainProof(round, requestData) as AttestationResponse<DHConfirmedBlockHeightExists>;
     }
-    
+
     async provePayment(transactionHash: string, sourceAddress: string | null, receivingAddress: string | null): Promise<ProvedDH<DHPayment>> {
         const request = await this.requestPaymentProof(transactionHash, sourceAddress, receivingAddress);
         await this.client.waitForRoundFinalization(request.round);

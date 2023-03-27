@@ -42,16 +42,9 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     const underlyingRedeemer1 = "Redeemer1";
     const underlyingRedeemer2 = "Redeemer2";
 
-
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
-    }
-
-    async function depositCollateral(owner: string, agentVault: AgentVaultInstance, amount: BN, token: ERC20MockInstance = usdc) {
-        await token.mintAmount(owner, amount);
-        await token.approve(agentVault.address, amount, { from: owner });
-        await agentVault.depositCollateral(token.address, amount, { from: owner });
     }
 
     async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string, fullAgentCollateral: BN = toWei(3e8)) {
@@ -60,10 +53,16 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 
+    async function depositCollateral(owner: string, agentVault: AgentVaultInstance, amount: BN, token: ERC20MockInstance = usdc) {
+        await token.mintAmount(owner, amount);
+        await token.approve(agentVault.address, amount, { from: owner });
+        await agentVault.depositCollateral(token.address, amount, { from: owner });
+    }
+
     async function performSelfMintingPayment(agentVault: string, paymentAmount: BNish) {
         const randomAddr = randomAddress();
         chain.mint(randomAddr, paymentAmount);
-        return await wallet.addTransaction(randomAddr, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVault));
+        return wallet.addTransaction(randomAddr, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVault));
     }
 
     async function updateUnderlyingBlock() {
@@ -95,7 +94,6 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const request = redemptionRequests[0];
         return request;
     }
-
 
     beforeEach(async () => {
         const ci = chainInfo = testChainInfo.eth;
@@ -140,7 +138,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const tx1Hash = await wallet.addTransaction(underlyingAgent2, request.paymentAddress, paymentAmt, request.paymentReference);
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent2, request.paymentAddress);
         let res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-        await expectEvent(res, 'RedemptionFinished');
+        expectEvent(res, 'RedemptionFinished');
     });
 
     it("should not confirm redemption payment - only agent vault owner", async () => {
@@ -211,8 +209,11 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const transactionHash = await performSelfMintingPayment(agentVault.address, paymentAmount.add(poolFee));
         const proof = await attestationProvider.provePayment(transactionHash, null, underlyingAgent1);
         await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
-
-        let res = await assetManager.selfClose(agentVault.address, lots, { from: agentOwner1 });
+        // withdraw pool f-asset fees to agent vault (so he owns all minted f-assets and can self-close)
+        const agentPoolFees = await fAsset.balanceOf(await assetManager.getCollateralPool(agentVault.address));
+        await agentVault.withdrawPoolFees(agentPoolFees, { from: agentOwner1 });
+        const agentFassetBalance = await fAsset.balanceOf(agentOwner1);
+        let res = await assetManager.selfClose(agentVault.address, agentFassetBalance, { from: agentOwner1 });
         expectEvent(res, "SelfClose")
     });
 
@@ -221,6 +222,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
+        // chain.mine(chainInfo.underlyingBlocksForPayment + 1);
+        // chain.skipTimeTo(request.lastUnderlyingTimestamp.toNumber() + 1);
         for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
@@ -333,34 +336,34 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const lots = 2;
         const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
         const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
-        const amount = paymentAmount.add(poolFee);
+        const amountWithPoolFee = paymentAmount.add(poolFee);
 
         const randomAddr = randomAddress();
-        chain.mint(randomAddr, amount);
-        const transactionHash1 = await wallet.addTransaction(randomAddr, underlyingAgent2, amount, PaymentReference.selfMint(agentVault2.address));
+        chain.mint(randomAddr, amountWithPoolFee);
+        const transactionHash1 = await wallet.addTransaction(randomAddr, underlyingAgent2, amountWithPoolFee, PaymentReference.selfMint(agentVault2.address));
         const proof1 = await attestationProvider.provePayment(transactionHash1, null, underlyingAgent2);
         const res1 = await assetManager.selfMint(proof1, agentVault2.address, lots, { from: agentOwner2 });
         expectEvent(res1, "MintingExecuted");
 
-        chain.mint(randomAddr, amount);
-        const transactionHash2 = await wallet.addTransaction(randomAddr, underlyingAgent1, amount, PaymentReference.selfMint(agentVault.address));
+        chain.mint(randomAddr, amountWithPoolFee);
+        const transactionHash2 = await wallet.addTransaction(randomAddr, underlyingAgent1, amountWithPoolFee, PaymentReference.selfMint(agentVault.address));
         const proof2 = await attestationProvider.provePayment(transactionHash2, null, underlyingAgent1);
         const res2 = await assetManager.selfMint(proof2, agentVault.address, lots, { from: agentOwner1 });
         expectEvent(res2, "MintingExecuted");
 
-        chain.mint(randomAddr, amount);
-        const transactionHash3 = await wallet.addTransaction(randomAddr, underlyingAgent2, amount, PaymentReference.selfMint(agentVault2.address));
+        chain.mint(randomAddr, amountWithPoolFee);
+        const transactionHash3 = await wallet.addTransaction(randomAddr, underlyingAgent2, amountWithPoolFee, PaymentReference.selfMint(agentVault2.address));
         const proof3 = await attestationProvider.provePayment(transactionHash3, null, underlyingAgent2);
         const res3 = await assetManager.selfMint(proof3, agentVault2.address, lots, { from: agentOwner2 });
         expectEvent(res3, "MintingExecuted");
 
-        chain.mint(randomAddr, amount);
-        const transactionHash4 = await wallet.addTransaction(randomAddr, underlyingAgent2, amount, PaymentReference.selfMint(agentVault2.address));
+        chain.mint(randomAddr, amountWithPoolFee);
+        const transactionHash4 = await wallet.addTransaction(randomAddr, underlyingAgent2, amountWithPoolFee, PaymentReference.selfMint(agentVault2.address));
         const proof4 = await attestationProvider.provePayment(transactionHash4, null, underlyingAgent2);
         const res4 = await assetManager.selfMint(proof4, agentVault2.address, lots, { from: agentOwner2 });
         expectEvent(res4, "MintingExecuted");
 
-        const resSelf = await assetManager.selfClose(agentVault.address, lots, { from: agentOwner1 });
+        const resSelf = await assetManager.selfClose(agentVault.address, paymentAmount, { from: agentOwner1 });
         expectEvent(resSelf, 'SelfClose');
     });
 

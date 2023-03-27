@@ -45,7 +45,7 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
     nextBlockTransactions: MockChainTransaction[] = [];
     blockHandlers: { [subscriptionId: string]: BlockHandler } = {};
     transactionHandlers: { [subscriptionId: string]: [filter: Dict<string> | null, handler: TransactionHandler] } = {};
-    
+
     // some settings that can be tuned for tests
     finalizationBlocks: number = 0;
     secondsPerBlock: number = 1;
@@ -53,72 +53,72 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
     estimatedGasPrice: BN = BN_ZERO;
     automine: boolean = true;
     logger?: ILogger;
-    
+
     async getTransaction(txHash: string): Promise<ITransaction | null> {
         const [block, ind] = this.transactionIndex[txHash] ?? [null, null];
         if (block == null || ind == null) return null;
         return this.blocks[block].transactions[ind];
     }
-    
+
     async getTransactionBlock(txHash: string): Promise<IBlockId | null> {
         const [block, _] = this.transactionIndex[txHash] ?? [null, null];
         if (block == null) return null;
         return { number: block, hash: this.blocks[block].hash };
     }
-    
+
     async getBalance(address: string): Promise<BN> {
         return this.balances[address] ?? BN_ZERO;
     }
-    
+
     async getBlock(blockHash: string): Promise<IBlock | null> {
         const index = this.blockIndex[blockHash];
         return index != null ? this.toIBlock(this.blocks[index]) : null;
     }
-    
+
     async getBlockAt(blockNumber: number): Promise<IBlock | null> {
         return blockNumber >= 0 && blockNumber < this.blocks.length ? this.toIBlock(this.blocks[blockNumber]) : null;
     }
-    
+
     async getBlockHeight(): Promise<number> {
         return this.blocks.length - 1;
     }
-    
+
     static lastSubscriptionId = 0;
-    
+
     addBlockHandler(handler: (blockId: IBlockId) => void): string {
         const subscriptionId = String(++MockChain.lastSubscriptionId);
         this.blockHandlers[subscriptionId] = handler;
         return subscriptionId;
     }
-    
+
     addTransactionHandler(filter: Dict<string> | null, handler: (transaction: ITransaction) => void): string {
         const subscriptionId = String(++MockChain.lastSubscriptionId);
         this.transactionHandlers[subscriptionId] = [filter, handler];
         return subscriptionId;
     }
-    
+
     removeHandler(subscriptionId: string): void {
         delete this.blockHandlers[subscriptionId];
         delete this.transactionHandlers[subscriptionId];
     }
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     // Mock methods
-    
+
     addTransaction(transaction: MockChainTransaction) {
         this.nextBlockTransactions.push(transaction);
         if (this.automine) {
             this.mine();
         }
     }
-    
+
     mine(blocks: number = 1) {
         for (let i = 0; i < blocks; i++) {
             this.addBlock(this.nextBlockTransactions);
             this.nextBlockTransactions = [];
         }
     }
-    
+
     createTransactionHash(inputs: TxInputOutput[], outputs: TxInputOutput[], reference: string | null): string {
         // build data structure to hash
         const data = {
@@ -133,7 +133,7 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
         // calculate hash
         return web3.utils.keccak256(JSON.stringify(data));
     }
-    
+
     skipTime(timeDelta: number) {
         this.timestampSkew += timeDelta;
         this.mine();
@@ -143,26 +143,26 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
         this.timestampSkew = timestamp - systemTimestamp();
         this.mine();
     }
-    
+
     mint(address: string, value: BNish) {
         this.balances[address] = (this.balances[address] ?? BN_ZERO).add(toBN(value));
     }
-    
+
     blockHeight() {
         return this.blocks.length - 1;
     }
-    
+
     blockWithHash(blockHash: string) {
         const index = this.blockIndex[blockHash];
         return index != null ? this.blocks[index] : null;
     }
-    
+
     lastBlockTimestamp() {
-        return this.blocks.length > 0 
-            ? this.blocks[this.blocks.length - 1].timestamp 
+        return this.blocks.length > 0
+            ? this.blocks[this.blocks.length - 1].timestamp
             : systemTimestamp() + this.timestampSkew - this.secondsPerBlock;    // so that new block will be exactly systemTimestamp + skew
     }
-    
+
     nextBlockTimestamp() {
         return Math.max(systemTimestamp() + this.timestampSkew, this.lastBlockTimestamp() + this.secondsPerBlock);
     }
@@ -170,7 +170,7 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
     currentTimestamp() {
         return Math.max(systemTimestamp() + this.timestampSkew, this.lastBlockTimestamp());
     }
-    
+
     private addBlock(transactions: MockChainTransaction[]) {
         // check that balances stay positive
         for (let i = 0; i < transactions.length; i++) {
@@ -229,7 +229,7 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
             }
         }
     }
-    
+
     private filterMatches(filter: Dict<string>, transaction: MockChainTransaction) {
         for (const [key, value] of Object.entries(filter)) {
             switch (key) {
@@ -256,13 +256,13 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
         }
         return true;
     }
-    
+
     private newBlockTimestamp() {
         const timestamp = this.nextBlockTimestamp();
         this.timestampSkew = timestamp - systemTimestamp();  // update skew
         return timestamp;
     }
-    
+
     private toIBlock(block: MockChainBlock): IBlock {
         const txHashes = block.transactions.map(tx => tx.hash);
         return { hash: block.hash, number: block.number, timestamp: block.timestamp, transactions: txHashes };
@@ -273,7 +273,7 @@ export class MockChainWallet implements IBlockChainWallet {
     constructor(
         public chain: MockChain,
     ) {}
-    
+
     async addTransaction(from: string, to: string, value: BNish, reference: string | null, options?: MockTransactionOptionsWithFee): Promise<string> {
         const transaction = this.createTransaction(from, to, value, reference, options);
         this.chain.addTransaction(transaction);
