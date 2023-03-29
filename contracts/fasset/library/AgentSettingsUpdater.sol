@@ -35,7 +35,7 @@ library AgentSettingsUpdater {
             value: _value.toUint128(),
             validAt: validAt.toUint64()
         });
-        emit AMEvents.AgentSettingChangeAnnounced(_name, _value, validAt);
+        emit AMEvents.AgentSettingChangeAnnounced(_agentVault, _name, _value, validAt);
         return validAt;
     }
 
@@ -52,7 +52,7 @@ library AgentSettingsUpdater {
         require(update.validAt != 0, "no pending update");
         require(update.validAt <= block.timestamp, "update not valid yet");
         _executeUpdate(agent, hash, update.value);
-        emit AMEvents.AgentSettingChanged(_name, update.value);
+        emit AMEvents.AgentSettingChanged(_agentVault, _name, update.value);
         delete agent.settingUpdates[hash];
     }
 

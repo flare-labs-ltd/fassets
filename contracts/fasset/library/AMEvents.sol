@@ -76,6 +76,7 @@ library AMEvents {
      * The setting change can be executed after the timestamp `validAt`.
      */
     event AgentSettingChangeAnnounced(
+        address agentVault,
         string name,
         uint256 value,
         uint256 validAt);
@@ -84,6 +85,7 @@ library AMEvents {
      * Agent has executed setting change (fee or some agent collateral ratio change).
      */
     event AgentSettingChanged(
+        address agentVault,
         string name,
         uint256 value);
 
