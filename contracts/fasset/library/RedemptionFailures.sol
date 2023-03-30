@@ -39,7 +39,7 @@ library RedemptionFailures {
         // We allow only redeemers or agents to trigger redemption default, since they may want
         // to do it at some particular time. (Agent might want to call default to unstick redemption when
         // the redeemer is unresponsive.)
-        require(msg.sender == request.redeemer || msg.sender == Agents.vaultOwner(agent),
+        require(msg.sender == request.redeemer || Agents.isOwner(agent, msg.sender),
             "only redeemer or agent");
         // pay redeemer in native currency and mark as defaulted
         executeDefaultPayment(agent, request, _redemptionRequestId);

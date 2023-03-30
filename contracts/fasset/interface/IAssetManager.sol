@@ -119,4 +119,7 @@ interface IAssetManager {
     function getLotSize() external view returns (uint256);
     function getCollateralPool(address _agentVault) external view returns (address);
     function getFAssetsBackedByPool(address _agentVault) external view returns (uint256);
+    function getAgentVaultOwner(address _agentVault) external view
+        returns (address _ownerColdAddress, address _ownerHotAddress);
+    function isAgentVaultOwner(address _agentVault, address _address) external view returns (bool);
 }

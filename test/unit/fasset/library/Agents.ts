@@ -116,6 +116,22 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         expectEvent(res, "AgentCreated", { owner: agentOwner1, agentType: toBN(1), underlyingAddress: underlyingAgent1 });
     });
 
+    it("should create agent from owner's hot address", async () => {
+        // init
+        chain.mint(underlyingAgent1, toBNExp(100, 18));
+        const ownerHotAddress = accounts[21];
+        assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
+        // act
+        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
+        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
+        await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
+        const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
+        const res = await assetManager.createAgent(web3DeepNormalize(agentSettings), { from: ownerHotAddress });
+        // assert
+        // the owner returned in the AgentCreated event must be cold address
+        expectEvent(res, "AgentCreated", { owner: agentOwner1, agentType: toBN(1), underlyingAddress: underlyingAgent1 });
+    });
+
     it("should require underlying address to not be empty", async () => {
         // init
         // act
@@ -234,7 +250,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.destroyAgent(agentVault.address),
+        await expectRevert(assetManager.destroyAgent(agentVault.address, agentOwner1),
             "only agent vault owner");
     });
 
@@ -243,7 +259,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.destroyAgent(agentVault.address, { from: agentOwner1 }),
+        await expectRevert(assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 }),
             "destroy not announced");
     });
 
@@ -256,7 +272,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
         await time.increase(150);
         // assert
-        await expectRevert(assetManager.destroyAgent(agentVault.address, { from: agentOwner1 }), "destroy: not allowed yet");
+        await expectRevert(assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 }), "destroy: not allowed yet");
     });
 
     it("should destroy agent after announced withdrawal time passes", async () => {
@@ -275,7 +291,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await time.increase(150);
         await expectRevert(agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 }), "withdrawal: invalid status");
         const startBalance = await usdc.balanceOf(agentOwner1);
-        const tx = await assetManager.destroyAgent(agentVault.address, { from: agentOwner1 });
+        const tx = await assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 });
         // assert
         const recovered = (await usdc.balanceOf(agentOwner1)).sub(startBalance);
         // console.log(`recovered = ${recovered},  rec=${recipient}`);

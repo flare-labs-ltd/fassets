@@ -40,7 +40,7 @@ library UnderlyingWithdrawalAnnouncements {
         AssetManagerState.State storage state = AssetManagerState.get();
         TransactionAttestation.verifyPayment(_payment);
         Agent.State storage agent = Agent.get(_agentVault);
-        bool isAgent = msg.sender == Agents.vaultOwner(agent);
+        bool isAgent = Agents.isOwner(agent, msg.sender);
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
         require(announcementId != 0, "no active announcement");
         bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);

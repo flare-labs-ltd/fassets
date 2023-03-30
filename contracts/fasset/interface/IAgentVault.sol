@@ -24,8 +24,11 @@ interface IAgentVault {
 
     function undelegateGovernance() external;
 
-    function claimFtsoRewards(IFtsoRewardManager _ftsoRewardManager, uint256 _lastRewardEpoch) external
-        returns (uint256);
+    function claimFtsoRewards(
+        IFtsoRewardManager _ftsoRewardManager,
+        uint256 _lastRewardEpoch,
+        address payable _recipient
+    ) external returns (uint256);
 
     function setFtsoAutoClaiming(
         IClaimSetupManager _claimSetupManager,
@@ -37,7 +40,8 @@ interface IAgentVault {
 
     function claimAirdropDistribution(
         IDistributionToDelegators _distribution,
-        uint256 _month
+        uint256 _month,
+        address payable _recipient
     ) external returns(uint256);
 
     function withdrawNat(uint256 _amount, address payable _recipient) external;
@@ -47,7 +51,7 @@ interface IAgentVault {
     function upgradeWNatContract(IWNat newWNat) external;
 
     // agent should make sure to claim rewards before calling destroy(), or they will be forfeit
-    function destroy() external;
+    function destroy(address payable _recipient) external;
 
     // Used by asset manager for liquidation and failed redemption.
     // Since _recipient is typically an unknown address, we do not directly send NAT,
@@ -61,8 +65,6 @@ interface IAgentVault {
     function payoutNAT(address payable _recipient, uint256 _amount) external;
 
     function transferExternalToken(IERC20 _token, uint256 _amount) external;
-
-    function owner() external view returns (address payable);
 
     function wNat() external view returns (IWNat);
 }

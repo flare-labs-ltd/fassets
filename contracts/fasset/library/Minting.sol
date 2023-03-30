@@ -30,7 +30,7 @@ library Minting {
         TransactionAttestation.verifyPaymentSuccess(_payment);
         // minter or agent can present the proof - agent may do it to unlock the collateral if minter
         // becomes unresponsive
-        require(msg.sender == crt.minter || msg.sender == Agents.vaultOwner(agent),
+        require(msg.sender == crt.minter || Agents.isOwner(agent, msg.sender),
             "only minter or agent");
         require(_payment.paymentReference == PaymentReference.minting(_crtId),
             "invalid minting reference");

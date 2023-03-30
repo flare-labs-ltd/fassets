@@ -13,12 +13,13 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     using SafeERC20 for IERC20;
 
     IAssetManager public immutable assetManager;
-    address payable public immutable override owner;
 
     IERC20[] private usedTokens;
+
     mapping(IERC20 => uint256) private tokenUseFlags;
 
     IWNat public wNat;
+
     bool private internalWithdrawal;
 
     uint256 private constant TOKEN_DEPOSIT = 1;
@@ -26,7 +27,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     uint256 private constant TOKEN_DELEGATE_GOVERNANCE = 4;
 
     modifier onlyOwner {
-        require(msg.sender == owner, "only owner");
+        require(isOwner(msg.sender), "only owner");
         _;
     }
 
@@ -35,9 +36,8 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         _;
     }
 
-    constructor(IAssetManager _assetManager, address payable _owner) {
+    constructor(IAssetManager _assetManager) {
         assetManager = _assetManager;
-        owner = _owner;
         wNat = _assetManager.getWNat();
     }
 
@@ -60,15 +60,15 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         collateralPool().enter{value: msg.value}(0, false);
     }
 
-    function withdrawPoolFees(uint256 _amount)
+    function withdrawPoolFees(uint256 _amount, address _recipient)
         external
         onlyOwner
     {
         collateralPool().withdrawFees(_amount);
-        assetManager.fAsset().safeTransfer(owner, _amount);
+        assetManager.fAsset().safeTransfer(_recipient, _amount);
     }
 
-    function redeemCollateralPoolTokens(uint256 _amount)
+    function redeemCollateralPoolTokens(uint256 _amount, address payable _recipient)
         external
         onlyOwner
     {
@@ -76,8 +76,8 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         assetManager.withdrawCollateral(pool.poolToken(), _amount);
         (uint256 natShare, uint256 fassetShare) =
             pool.exit(_amount, ICollateralPool.TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
-        _withdrawWNatTo(owner, natShare);
-        assetManager.fAsset().safeTransfer(owner, fassetShare);
+        _withdrawWNatTo(_recipient, natShare);
+        assetManager.fAsset().safeTransfer(_recipient, fassetShare);
     }
 
     // must call `token.approve(vault, amount)` before for each token in _tokens
@@ -121,7 +121,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         _token.safeTransfer(_recipient, _amount);
     }
 
-    // Allow transferring a token, airdropped to the agent vault, to the owner.
+    // Allow transferring a token, airdropped to the agent vault, to the owner (cold wallet).
     // Doesn't work for collateral tokens because this would allow withdrawing the locked collateral.
     function transferExternalToken(IERC20 _token, uint256 _amount)
         external override
@@ -129,7 +129,8 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         nonReentrant
     {
         require(!assetManager.isCollateralToken(address(this), _token), "only non-collateral tokens");
-        _token.safeTransfer(owner, _amount);
+        (address ownerColdAddress,) = assetManager.getAgentVaultOwner(address(this));
+        _token.safeTransfer(ownerColdAddress, _amount);
     }
 
     function delegate(IVPToken _token, address _to, uint256 _bips) external override onlyOwner {
@@ -155,12 +156,16 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     }
 
     // Claim ftso rewards. Alternatively, you can set claim executor and then claim directly from FtsoRewardManager.
-    function claimFtsoRewards(IFtsoRewardManager _ftsoRewardManager, uint256 _lastRewardEpoch)
+    function claimFtsoRewards(
+        IFtsoRewardManager _ftsoRewardManager,
+        uint256 _lastRewardEpoch,
+        address payable _recipient
+    )
         external override
         onlyOwner
         returns (uint256)
     {
-        return _ftsoRewardManager.claim(address(this), owner, _lastRewardEpoch, false);
+        return _ftsoRewardManager.claim(address(this), _recipient, _lastRewardEpoch, false);
     }
 
     // Set executors and recipients that can then automatically claim rewards through FtsoRewardManager.
@@ -176,15 +181,22 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         _claimSetupManager.setAllowedClaimRecipients(_allowedRecipients);
     }
 
-    function claimAirdropDistribution(IDistributionToDelegators _distribution, uint256 _month)
+    function claimAirdropDistribution(
+        IDistributionToDelegators _distribution,
+        uint256 _month,
+        address payable _recipient
+    )
         external override
         onlyOwner
         returns(uint256)
     {
-        return _distribution.claim(address(this), owner, _month, false);
+        return _distribution.claim(address(this), _recipient, _month, false);
     }
 
-    function optOutOfAirdrop(IDistributionToDelegators _distribution) external override onlyOwner {
+    function optOutOfAirdrop(IDistributionToDelegators _distribution)
+        external override
+        onlyOwner
+    {
         _distribution.optOutOfAirdrop();
     }
 
@@ -205,7 +217,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
 
     // Used by asset manager when destroying agent.
     // Completely erases agent vault and transfers all funds to the owner.
-    function destroy()
+    function destroy(address payable _recipient)
         external override
         onlyAssetManager
     {
@@ -221,15 +233,15 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
             if ((useFlags & TOKEN_DELEGATE) != 0) {
                 IVPToken(address(token)).undelegateAll();
             }
-            // transfer balance to owner
+            // transfer balance to recipient
             if ((useFlags & TOKEN_DEPOSIT) != 0) {
                 uint256 balance = token.balanceOf(address(this));
                 if (balance > 0) {
-                    token.transfer(owner, balance);
+                    token.transfer(_recipient, balance);
                 }
             }
         }
-        selfdestruct(owner);
+        selfdestruct(_recipient);
     }
 
     // Used by asset manager for liquidation and failed redemption.
@@ -257,6 +269,13 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         returns (ICollateralPool)
     {
         return ICollateralPool(assetManager.getCollateralPool(address(this)));
+    }
+
+    function isOwner(address _address)
+        public view
+        returns (bool)
+    {
+        return assetManager.isAgentVaultOwner(address(this), _address);
     }
 
     function _withdrawWNatTo(address payable _recipient, uint256 _amount) private {

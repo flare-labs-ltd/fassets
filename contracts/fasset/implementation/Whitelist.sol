@@ -35,6 +35,7 @@ contract Whitelist is IWhitelist, Governed {
     }
 
     function _addAddressToWhitelist(address _address) private {
+        require(_address != address(0), "address zero");
         whitelist[_address] = true;
         emit Whitelisted(_address);
     }

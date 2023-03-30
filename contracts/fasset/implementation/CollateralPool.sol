@@ -30,7 +30,6 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     uint256 public constant MIN_NAT_BALANCE_AFTER_EXIT = 1 ether;
 
     address public immutable agentVault;
-    address public immutable agentVaultOwner;
     IAssetManager public immutable assetManager;
     IERC20 public immutable fAsset;
     CollateralPoolToken public token; // practically immutable
@@ -50,7 +49,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     }
 
     modifier onlyAgent {
-        require(msg.sender == agentVaultOwner, "only agent");
+        require(isAgentVaultOwner(msg.sender), "only agent");
         _;
     }
 
@@ -63,7 +62,6 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         uint16 _topupTokenPriceFactorBIPS
     ) {
         agentVault = _agentVault;
-        agentVaultOwner = IAgentVault(agentVault).owner();
         assetManager = IAssetManager(_assetManager);
         fAsset = IERC20(_fAsset);
         wNat = assetManager.getWNat();
@@ -548,6 +546,14 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     {
         _claimSetupManager.setAutoClaiming{value: msg.value}(_executors, false);
         // no recipients setup - claim everything to pool
+    }
+
+    function isAgentVaultOwner(address _address)
+        internal view
+        returns (bool)
+    {
+
+        return assetManager.isAgentVaultOwner(agentVault, _address);
     }
 
 }

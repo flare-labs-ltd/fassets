@@ -22,7 +22,7 @@ library RedemptionConfirmations {
         // Usually, we require the agent to trigger confirmation.
         // But if the agent doesn't respond for long enough,
         // we allow anybody and that user gets rewarded from agent's vault.
-        bool isAgent = msg.sender == Agents.vaultOwner(agent);
+        bool isAgent = Agents.isOwner(agent, msg.sender);
         require(isAgent || _othersCanConfirmPayment(agent, request, _payment),
             "only agent vault owner");
         // verify transaction

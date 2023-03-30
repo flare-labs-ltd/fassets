@@ -187,4 +187,11 @@ library AgentsExternal {
         Agent.State storage agent = Agent.get(_agentVault);
         return Conversion.convertAmgToUBA(agent.reservedAMG + agent.mintedAMG + agent.poolRedeemingAMG);
     }
+
+    function getAgentVaultOwner(address _agentVault)
+        external view
+        returns (address _ownerColdAddress, address _ownerHotAddress)
+    {
+        return Agents.vaultOwner(Agent.get(_agentVault));
+    }
 }

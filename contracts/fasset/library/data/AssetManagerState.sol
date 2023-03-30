@@ -22,6 +22,10 @@ library AssetManagerState {
         // mapping((tokenClass, tokenAddress) => collateralTokens index + 1)
         mapping(bytes32 => uint256) collateralTokenIndex;
 
+        // bidirectional mapping between owner's hot and cold addresses
+        mapping(address => address) ownerHotToCold;
+        mapping(address => address) ownerColdToHot;
+
         // A list of all agents that are available for minting.
         // Type: array of agent vault addresses; when one is deleted, its position is filled with last
         address[] availableAgents;

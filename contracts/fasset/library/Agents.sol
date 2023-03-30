@@ -235,7 +235,7 @@ library Agents {
             uint256 amountNatWei = Conversion.convert(_amountClass1Wei, class1Collateral, poolCollateral)
                 .mulBips(settings.class1BuyForFlareFactorBIPS);
             // Transfer class1 collateral to the agent vault owner
-            SafeERC20.safeTransfer(class1Collateral.token, vaultOwner(_agent), _amountClass1Wei);
+            SafeERC20.safeTransfer(class1Collateral.token, _agent.ownerColdAddress, _amountClass1Wei);
             // Burn the NAT equivalent from agent's vault.
             // We could have the agent send NATs along with the external call instead, but that raises issues of
             // returning overpaid NATs, so the agent should just deposit NATs to the vault and we pay from there.
@@ -286,18 +286,32 @@ library Agents {
         Agent.State storage _agent
     )
         internal view
-        returns (address)
+        returns (address _ownerColdAddress, address _ownerHotAddress)
     {
-        return IAgentVault(_agent.vaultAddress()).owner();
+        AssetManagerState.State storage state = AssetManagerState.get();
+        _ownerColdAddress = _agent.ownerColdAddress;
+        _ownerHotAddress = state.ownerColdToHot[_ownerColdAddress];
+    }
+
+    function isOwner(
+        Agent.State storage _agent,
+        address _address
+    )
+        internal view
+        returns (bool)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        address ownerColdAddress = _agent.ownerColdAddress;
+        return _address == ownerColdAddress || _address == state.ownerColdToHot[ownerColdAddress];
     }
 
     function requireWhitelisted(
-        address _owner
+        address _ownerColdAddress
     )
         internal view
     {
         IWhitelist whitelist = AssetManagerState.getSettings().agentWhitelist;
-        require(address(whitelist) == address(0) || whitelist.isWhitelisted(_owner),
+        require(address(whitelist) == address(0) || whitelist.isWhitelisted(_ownerColdAddress),
             "agent not whitelisted");
     }
 
@@ -306,7 +320,7 @@ library Agents {
     )
         internal view
     {
-        requireWhitelisted(vaultOwner(_agent));
+        requireWhitelisted(_agent.ownerColdAddress);
     }
 
     function requireAgentVaultOwner(
@@ -314,8 +328,7 @@ library Agents {
     )
         internal view
     {
-        address owner = IAgentVault(_agentVault).owner();
-        require(msg.sender == owner, "only agent vault owner");
+        require(isOwner(Agent.get(_agentVault), msg.sender), "only agent vault owner");
     }
 
     function requireAgentVaultOwner(
@@ -323,13 +336,10 @@ library Agents {
     )
         internal view
     {
-        address owner = IAgentVault(_agent.vaultAddress()).owner();
-        require(msg.sender == owner, "only agent vault owner");
+        require(isOwner(_agent, msg.sender), "only agent vault owner");
     }
 
-
-
-    function requireOnlyCollateralPool(
+    function requireCollateralPool(
         Agent.State storage _agent
     )
         internal view

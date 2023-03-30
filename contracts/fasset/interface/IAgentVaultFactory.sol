@@ -12,5 +12,5 @@ interface IAgentVaultFactory {
     /**
      * @notice Creates new agent vault
      */
-    function create(IAssetManager _assetManager, address payable _owner) external returns (IAgentVault);
+    function create(IAssetManager _assetManager) external returns (IAgentVault);
 }

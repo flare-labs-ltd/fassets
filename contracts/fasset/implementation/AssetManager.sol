@@ -134,6 +134,12 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     ////////////////////////////////////////////////////////////////////////////////////
     // Agent handling
 
+    function setOwnerHotAddress(address _ownerHotAddress)
+        external
+    {
+        AgentsCreateDestroy.setOwnerHotAddress(_ownerHotAddress);
+    }
+
     /**
      * This method fixes the underlying address to be used by given agent owner.
      * A proof of payment (can be minimal or to itself) from this address must be provided,
@@ -189,15 +195,17 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * - announce destroy (and wait the required time)
      * - call destroyAgent()
      * NOTE: may only be called by the agent vault owner.
-     * NOTE: the remaining funds from the vault will be transferred (as native currency) to the agent vault owner.
+     * NOTE: the remaining funds from the vault will be transferred to the provided recipient.
      * @param _agentVault address of the agent's vault to destroy
+     * @param _recipient address that receives the remaining funds and possible vault balance
      */
     function destroyAgent(
-        address _agentVault
+        address _agentVault,
+        address payable _recipient
     )
         external
     {
-        AgentsCreateDestroy.destroyAgent(_agentVault);
+        AgentsCreateDestroy.destroyAgent(_agentVault, _recipient);
     }
 
     /**
@@ -1047,6 +1055,20 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         returns (uint256)
     {
         return AgentsExternal.getFAssetsBackedByPool(_agentVault);
+    }
+
+    function isAgentVaultOwner(address _agentVault, address _address)
+        external view
+        returns (bool)
+    {
+        return Agents.isOwner(Agent.get(_agentVault), _address);
+    }
+
+    function getAgentVaultOwner(address _agentVault)
+        external view
+        returns (address _ownerColdAddress, address _ownerHotAddress)
+    {
+        return AgentsExternal.getAgentVaultOwner(_agentVault);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

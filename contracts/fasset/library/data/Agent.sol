@@ -45,6 +45,10 @@ library Agent {
     struct State {
         ICollateralPool collateralPool;
 
+        // Address of the agent owner. This is the cold wallet address, which is immutable.
+        // The hot wallet address can be retrieved from the global state mapping between cold and hot addresses.
+        address ownerColdAddress;
+
         // Current address for underlying agent's collateral.
         // Agent can change this address anytime and it affects future mintings.
         string underlyingAddressString;
