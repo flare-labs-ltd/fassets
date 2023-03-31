@@ -211,7 +211,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // withdraw pool f-asset fees to agent vault (so he owns all minted f-assets and can self-close)
         const agentPoolFees = await fAsset.balanceOf(await assetManager.getCollateralPool(agentVault.address));
-        await agentVault.withdrawPoolFees(agentPoolFees, { from: agentOwner1 });
+        await agentVault.withdrawPoolFees(agentPoolFees, agentOwner1, { from: agentOwner1 });
         const agentFassetBalance = await fAsset.balanceOf(agentOwner1);
         let res = await assetManager.selfClose(agentVault.address, agentFassetBalance, { from: agentOwner1 });
         expectEvent(res, "SelfClose")
