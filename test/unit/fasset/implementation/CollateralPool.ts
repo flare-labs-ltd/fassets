@@ -59,6 +59,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
     beforeEach(async () => {
         wNat = await ERC20Mock.new("wNative", "wNat");
         assetManager = await AssetManager.new(wNat.address);
+        assetManager.setCommonOwner(agent);
         fAsset = await ERC20Mock.new("fBitcoin", "fBTC");
         agentVault = await AgentVaultMock.new(assetManager.address, agent);
         collateralPool = await CollateralPool.new(

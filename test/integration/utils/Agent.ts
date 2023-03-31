@@ -1,7 +1,6 @@
 import { time } from "@openzeppelin/test-helpers";
 import { AgentSettings } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { Prices } from "../../../lib/state/Prices";
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { checkEventNotEmited, eventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
@@ -10,7 +9,6 @@ import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionFinished, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/AssetManager";
 import { createTestAgentSettings } from "../../unit/fasset/test-settings";
-import { calcGasCost } from "../../utils/eth";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
@@ -171,11 +169,11 @@ export class Agent extends AssetContextClient {
     }
 
     async redeemCollateralPoolTokens(amountWei: BNish) {
-        return await this.agentVault.redeemCollateralPoolTokens(amountWei, { from: this.ownerAddress });
+        return await this.agentVault.redeemCollateralPoolTokens(amountWei, this.ownerAddress, { from: this.ownerAddress });
     }
 
     async withdrawPoolFees(amountUBA: BNish) {
-        await this.agentVault.withdrawPoolFees(amountUBA, { from: this.ownerAddress });
+        await this.agentVault.withdrawPoolFees(amountUBA, this.ownerAddress, { from: this.ownerAddress });
     }
 
     async poolFeeBalance() {
@@ -190,7 +188,7 @@ export class Agent extends AssetContextClient {
     }
 
     async destroy() {
-        const res = await this.assetManager.destroyAgent(this.vaultAddress, { from: this.ownerAddress });
+        const res = await this.assetManager.destroyAgent(this.vaultAddress, this.ownerAddress, { from: this.ownerAddress });
         const args = requiredEventArgs(res, 'AgentDestroyed');
         assert.equal(args.agentVault, this.vaultAddress);
         return res;
