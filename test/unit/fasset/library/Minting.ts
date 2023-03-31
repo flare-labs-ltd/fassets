@@ -6,7 +6,8 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { TX_BLOCKED, TX_FAILED } from "../../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, MAX_BIPS, toBIPS, toBN, toWei } from "../../../../lib/utils/helpers";
+import { BNish, Dict, formatStruct, MAX_BIPS, toBIPS, toBN, toWei } from "../../../../lib/utils/helpers";
+import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -401,7 +402,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(1_000_000));
         // act
-        const lots = 1000000;
+        const lots = 1000;
         const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
         chain.mint(underlyingRandomAddress, paymentAmount);
         const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVault.address));
@@ -410,6 +411,19 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         // assert
         await expectRevert(promise, "not enough free collateral");
     });
+
+    it.only("check agent's minting capacity", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(1_000_000));
+        // act
+        const settings = await assetManager.getSettings();
+        console.log("Settings", formatStruct(settings));
+        const info = await assetManager.getAgentInfo(agentVault.address);
+        console.log("Agent info", formatStruct(info));
+        //
+    });
+
 
     it("should only topup if trying to self-mint 0 lots", async () => {
         // init

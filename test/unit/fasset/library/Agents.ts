@@ -120,7 +120,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // init
         chain.mint(underlyingAgent1, toBNExp(100, 18));
         const ownerHotAddress = accounts[21];
-        assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
+        await assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
         // act
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);

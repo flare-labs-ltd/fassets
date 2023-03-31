@@ -61,9 +61,9 @@ export function isNotNull<T>(x: T): x is NonNullable<T> {
  * Check if value is non-null and throw otherwise.
  * Returns guaranteed non-null value.
  */
-export function requireNotNull<T>(x: T): NonNullable<T> {
+export function requireNotNull<T>(x: T, errorMessage?: string): NonNullable<T> {
     if (x != null) return x as NonNullable<T>;
-    throw new Error("Value is null or undefined");
+    throw new Error(errorMessage ?? "Value is null or undefined");
 }
 
 /**
@@ -269,6 +269,28 @@ export function sumBN<T>(list: Iterable<T>, elementValue: (x: T) => BN = (x: any
 }
 
 /**
+ * Return the maximum of two or more BN values.
+ */
+export function maxBN(first: BN, ...rest: BN[]) {
+    let result = first;
+    for (const x of rest) {
+        if (x.gt(result)) result = x;
+    }
+    return result;
+}
+
+/**
+ * Return the minimum of two or more BN values.
+ */
+export function minBN(first: BN, ...rest: BN[]) {
+    let result = first;
+    for (const x of rest) {
+        if (x.lt(result)) result = x;
+    }
+    return result;
+}
+
+/**
  * Return a copy of list, sorted by comparisonKey.
  */
 export function sorted<T, K>(list: Iterable<T>, comparisonKey: (e: T) => K): T[];
@@ -344,5 +366,26 @@ export function toBIPS(x: number | string) {
         return toBNExp(x.slice(0, x.length - 1), 2);    // x is in percent, only multiply by 100
     } else {
         return toBNExp(x, 4);
+    }
+}
+
+// Some Web3 results are union of array and struct so console.log prints them as array.
+// This function converts it to struct nad also formats values.
+export function formatStruct(value: any): any {
+    if (BN.isBN(value) || (typeof value === 'string' && /^\d+$/.test(value))) {
+        return formatBN(value);
+    } else if (Array.isArray(value)) {
+        const structEntries = Object.entries(value).filter(([key, val]) => typeof key !== 'number' && !/^\d+$/.test(key));
+        if (structEntries.length > 0 && structEntries.length >= value.length) {
+            const formattedEntries = structEntries.map(([key, val]) => [key, formatStruct(val)]);
+            return Object.fromEntries(formattedEntries);
+        } else {
+            return value.map(v => formatStruct(v));
+        }
+    } else if (typeof value === 'object') {
+        const formattedEntries = Object.entries(value).map(([key, val]) => [key, formatStruct(val)]);
+        return Object.fromEntries(formattedEntries);
+    } else {
+        return value;
     }
 }
