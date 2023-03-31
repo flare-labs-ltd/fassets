@@ -38,11 +38,11 @@ library FullAgentInfo {
 
         // Agent vault owner's cold wallet address, used for occasional administration.
         // Immutable.
-        address ownerColdAddressAddress;
+        address ownerColdWalletAddress;
 
         // Agent vault owner's cold wallet address, used for automatic operations.
         // Can be changed by a call from the owner's cold wallet.
-        address ownerHotAddressAddress;
+        address ownerHotWalletAddress;
 
         // Agent's collateral pool address
         address collateralPool;
@@ -175,7 +175,7 @@ library FullAgentInfo {
         CollateralToken.Data storage poolCollateral = agent.getPoolCollateral();
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
         _info.status = _getAgentStatusInfo(agent);
-        (_info.ownerColdAddressAddress, _info.ownerHotAddressAddress) = Agents.vaultOwner(agent);
+        (_info.ownerColdWalletAddress, _info.ownerHotWalletAddress) = Agents.vaultOwner(agent);
         _info.collateralPool = address(agent.collateralPool);
         _info.underlyingAddressString = agent.underlyingAddressString;
         _info.publiclyAvailable = agent.availableAgentsPos != 0;

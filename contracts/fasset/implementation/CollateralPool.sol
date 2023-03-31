@@ -552,7 +552,6 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         internal view
         returns (bool)
     {
-
         return assetManager.isAgentVaultOwner(agentVault, _address);
     }
 
