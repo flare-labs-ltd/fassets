@@ -7,20 +7,20 @@ import "flare-smart-contracts/contracts/ftso/interface/IIFtso.sol";
 contract FtsoMock is IIFtso {
     bool public immutable active = true;
     string public symbol;
-    
+
     uint256 private price;
     uint256 private priceTimestamp;
 
     uint256 private priceFromTrustedProviders;
     uint256 private priceTimestampFromTrustedProviders;
-    
+
     uint256 private immutable decimals;
-    
+
     constructor(string memory _symbol, uint256 _decimals) {
         symbol = _symbol;
         decimals = _decimals;
     }
-    
+
     function setCurrentPrice(uint256 _price, uint256 _ageSeconds) external {
         price = _price;
         priceTimestamp = block.timestamp - _ageSeconds;
@@ -30,24 +30,24 @@ contract FtsoMock is IIFtso {
         priceFromTrustedProviders = _price;
         priceTimestampFromTrustedProviders = block.timestamp - _ageSeconds;
     }
-    
+
     // in FAsset system, we only need current price
-    
+
     function getCurrentPrice() external view returns (uint256 _price, uint256 _timestamp) {
         return (price, priceTimestamp);
     }
-    
-    function getCurrentPriceWithDecimals() 
-        external view 
-        returns (uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals) 
+
+    function getCurrentPriceWithDecimals()
+        external view
+        returns (uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals)
     {
         return (price, priceTimestamp, decimals);
     }
-    
+
     function getCurrentPriceFromTrustedProviders() external view returns (uint256 _price, uint256 _timestamp) {
         return (priceFromTrustedProviders, priceTimestampFromTrustedProviders);
     }
-    
+
     function getCurrentPriceWithDecimalsFromTrustedProviders()
         external view
         returns (uint256 _price, uint256 _timestamp, uint256 _assetPriceUsdDecimals)
@@ -56,11 +56,11 @@ contract FtsoMock is IIFtso {
     }
 
     // unused
-    
+
     function getCurrentEpochId() external view returns (uint256) {}
 
     function getEpochId(uint256 _timestamp) external view returns (uint256) {}
-    
+
     function getRandom(uint256 _epochId) external view returns (uint256) {}
 
     function getEpochPrice(uint256 _epochId) external view returns (uint256) {}
@@ -78,7 +78,7 @@ contract FtsoMock is IIFtso {
         uint256 _submitPeriodSeconds,
         uint256 _revealPeriodSeconds
     ) {}
-    
+
     function getEpochPriceForVoter(uint256 _epochId, address _voter) external view returns (uint256) {}
 
     function getCurrentPriceDetails() external view returns (
@@ -88,11 +88,11 @@ contract FtsoMock is IIFtso {
         uint256 _lastPriceEpochFinalizationTimestamp,
         PriceFinalizationType _lastPriceEpochFinalizationType
     ) {}
-    
+
     function getCurrentRandom() external view returns (uint256) {}
 
     // IFtsoGenesis
-    
+
     function revealPriceSubmitter(
         address _voter,
         uint256 _epochId,
@@ -101,9 +101,9 @@ contract FtsoMock is IIFtso {
     ) external {}
 
     function wNatVotePowerCached(address _voter, uint256 _epochId) external returns (uint256) {}
-    
+
     // IIFtso
-    
+
     function finalizePriceEpoch(uint256 _epochId, bool _returnRewardData) external
         returns(
             address[] memory _eligibleAddresses,
@@ -142,14 +142,14 @@ contract FtsoMock is IIFtso {
     function setVotePowerBlock(uint256 _blockNumber) external {}
 
     function initializeCurrentEpochStateForReveal(uint256 _circulatingSupplyNat, bool _fallbackMode) external {}
-  
+
     function ftsoManager() external view returns (address) {}
 
     function getAsset() external view returns (IIVPToken) {}
 
     function getAssetFtsos() external view returns (IIFtso[] memory) {}
 
-    function epochsConfiguration() external view 
+    function epochsConfiguration() external view
         returns (
             uint256 _maxVotePowerNatThresholdFraction,
             uint256 _maxVotePowerAssetThresholdFraction,
@@ -160,7 +160,7 @@ contract FtsoMock is IIFtso {
             address[] memory _trustedAddresses
         ) {}
 
-    function getVoteWeightingParameters() external view 
+    function getVoteWeightingParameters() external view
         returns (
             IIVPToken[] memory _assets,
             uint256[] memory _assetMultipliers,
@@ -171,5 +171,5 @@ contract FtsoMock is IIFtso {
         ) {}
 
     function wNat() external view returns (IIVPToken) {}
-    
+
 }

@@ -12,6 +12,9 @@ import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
 
+const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
+const FtsoMock = artifacts.require('FtsoMock');
+
 contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`, async accounts => {
     const governance = accounts[10];
     let assetManagerController = accounts[11];
@@ -97,6 +100,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         // create asset manager
         collaterals = createTestCollaterals(contracts);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        settings.assetFtsoIndex = 3;
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
     });
 
@@ -127,20 +131,19 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
 
     it("should not change liquidationStartedAt timestamp when liquidation phase does not change (liquidation -> full_liquidation)", async () => {
         // init
-        chain.mint(underlyingAgent1, 100);
+        chain.mint(underlyingAgent1, 200);
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(250));
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
         // act
-        await ftsos.asset.setCurrentPrice(toBNExp(1, 1), 0);
+        await ftsos.asset.setCurrentPrice(toBNExp(3521, 50), 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(3521, 50), 0);
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         const tx = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer1, 100, null);
         const proof = await attestationProvider.proveBalanceDecreasingTransaction(tx, underlyingAgent1);
         await assetManager.illegalPaymentChallenge(proof, agentVault.address);
         const info2 = await assetManager.getAgentInfo(agentVault.address);
-        console.log(info1.liquidationStartTimestamp);
-        console.log(info2.liquidationStartTimestamp);
         // assert
         assertWeb3Equal(info1.liquidationStartTimestamp, info2.liquidationStartTimestamp);
         assertWeb3Equal(info1.status, 2);
@@ -150,10 +153,11 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     it("should not do anything if callig startLiquidation twice", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
         // act
         await ftsos.asset.setCurrentPrice(toBNExp(3521, 50), 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(3521, 50), 0);
         await assetManager.startLiquidation(agentVault.address);
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         // liquidator "buys" f-assets
