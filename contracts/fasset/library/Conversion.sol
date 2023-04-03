@@ -30,7 +30,7 @@ library Conversion {
         internal view
         returns (uint256 _price)
     {
-        (_price,,) = _currentAmgPriceInTokenWeiWithTs(_token);
+        (_price,,) = currentAmgPriceInTokenWeiWithTs(_token);
     }
 
     function currentAmgPriceInTokenWeiWithTrusted(
@@ -41,9 +41,9 @@ library Conversion {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         (uint256 ftsoPrice, uint256 assetTimestamp, uint256 tokenTimestamp) =
-            _currentAmgPriceInTokenWeiWithTs(_token);
+            currentAmgPriceInTokenWeiWithTs(_token);
         (uint256 trustedPrice, uint256 assetTimestampTrusted, uint256 tokenTimestampTrusted) =
-            _currentTrustedAmgPriceInTokenWeiWithTs(_token);
+            currentTrustedAmgPriceInTokenWeiWithTs(_token);
         bool trustedPriceFresh = tokenTimestampTrusted + settings.maxTrustedPriceAgeSeconds >= tokenTimestamp
                 && assetTimestampTrusted + settings.maxTrustedPriceAgeSeconds >= assetTimestamp;
         _ftsoPrice = ftsoPrice;
@@ -139,15 +139,7 @@ library Conversion {
         _divisor = token2Price * 10 ** expMinus;
     }
 
-    function convertAmgToTokenWei(uint256 _valueAMG, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
-        return _valueAMG.mulDiv(_amgToTokenWeiPrice, AMG_TOKEN_WEI_PRICE_SCALE);
-    }
-
-    function convertTokenWeiToAMG(uint256 _valueNATWei, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
-        return _valueNATWei.mulDiv(AMG_TOKEN_WEI_PRICE_SCALE, _amgToTokenWeiPrice);
-    }
-
-    function _currentAmgPriceInTokenWeiWithTs(CollateralToken.Data storage _token)
+    function currentAmgPriceInTokenWeiWithTs(CollateralToken.Data storage _token)
         private view
         returns (uint256 /*_price*/, uint256 /*_assetTs*/, uint256 /*_tokenTs*/)
     {
@@ -157,11 +149,11 @@ library Conversion {
         IIFtso tokenFtso = ftsoRegistry.getFtso(_token.ftsoIndex);
         (uint256 assetPrice, uint256 assetTs, uint256 assetFtsoDec) = assetFtso.getCurrentPriceWithDecimals();
         (uint256 tokenPrice, uint256 tokenTs, uint256 tokenFtsoDec) = tokenFtso.getCurrentPriceWithDecimals();
-        uint256 price = _calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDec, assetPrice, assetFtsoDec);
+        uint256 price = calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDec, assetPrice, assetFtsoDec);
         return (price, assetTs, tokenTs);
     }
 
-    function _currentTrustedAmgPriceInTokenWeiWithTs(CollateralToken.Data storage _token)
+    function currentTrustedAmgPriceInTokenWeiWithTs(CollateralToken.Data storage _token)
         private view
         returns (uint256 /*_price*/, uint256 /*_assetTs*/, uint256 /*_tokenTs*/)
     {
@@ -173,18 +165,18 @@ library Conversion {
             assetFtso.getCurrentPriceWithDecimalsFromTrustedProviders();
         (uint256 tokenPrice, uint256 tokenTs, uint256 tokenFtsoDec) =
             tokenFtso.getCurrentPriceWithDecimalsFromTrustedProviders();
-        uint256 price = _calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDec, assetPrice, assetFtsoDec);
+        uint256 price = calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDec, assetPrice, assetFtsoDec);
         return (price, assetTs, tokenTs);
     }
 
-    function _calcAmgToTokenWeiPrice(
+    function calcAmgToTokenWeiPrice(
         uint256 _tokenDecimals,
         uint256 _tokenPrice,
         uint256 _tokenFtsoDecimals,
         uint256 _assetPrice,
         uint256 _assetFtsoDecimals
     )
-        private view
+        internal view
         returns (uint256)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
@@ -195,5 +187,13 @@ library Conversion {
         // token decimals and ftso decimals typically never change.
         assert(expPlus >= expMinus);
         return _assetPrice.mulDiv(10 ** (expPlus - expMinus), _tokenPrice);
+    }
+
+    function convertAmgToTokenWei(uint256 _valueAMG, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
+        return _valueAMG.mulDiv(_amgToTokenWeiPrice, AMG_TOKEN_WEI_PRICE_SCALE);
+    }
+
+    function convertTokenWeiToAMG(uint256 _valueNATWei, uint256 _amgToTokenWeiPrice) internal pure returns (uint256) {
+        return _valueNATWei.mulDiv(AMG_TOKEN_WEI_PRICE_SCALE, _amgToTokenWeiPrice);
     }
 }

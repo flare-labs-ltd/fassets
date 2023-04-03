@@ -178,8 +178,11 @@ library AgentCollateral {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         if (_kind == Collateral.Kind.AGENT_POOL) {
-            _systemMinCollateralRatioBIPS = state.settings.mintingPoolHoldingsRequiredBIPS;
-            _mintingMinCollateralRatioBIPS = _systemMinCollateralRatioBIPS;
+            (uint256 mintingPoolMin, uint256 systemPoolMin) = mintingMinCollateralRatio(_agent, Collateral.Kind.POOL);
+            _systemMinCollateralRatioBIPS =
+                uint256(state.settings.mintingPoolHoldingsRequiredBIPS).mulBips(systemPoolMin);
+            _mintingMinCollateralRatioBIPS =
+                uint256(state.settings.mintingPoolHoldingsRequiredBIPS).mulBips(mintingPoolMin);
         } else if (_kind == Collateral.Kind.POOL) {
             _systemMinCollateralRatioBIPS =
                 state.collateralTokens[_agent.poolCollateralIndex].minCollateralRatioBIPS;

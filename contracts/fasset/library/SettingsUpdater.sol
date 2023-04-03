@@ -269,6 +269,9 @@ library SettingsUpdater {
             uint256 ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(collateral.ftsoSymbol);
             collateral.ftsoIndex = ftsoIndex.toUint16();
         }
+        // always refresh asset ftso index
+        AssetManagerSettings.Data storage settings = state.settings;
+        settings.assetFtsoIndex = settings.ftsoRegistry.getFtsoIndex(settings.assetFtsoSymbol).toUint16();
     }
 
     function _setTimeForPayment(

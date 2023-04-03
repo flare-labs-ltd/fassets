@@ -141,6 +141,33 @@ export function createTestLiquidationSettings(): LiquidationStrategyImplSettings
     };
 }
 
+export type TestFtsos = Record<'nat' | 'usdc' | 'usdt' | 'asset', FtsoMockInstance>;
+
+export async function createTestFtsos(ftsoRegistry: FtsoRegistryMockInstance, assetChainInfo: TestChainInfo): Promise<TestFtsos> {
+    return {
+        nat: await createFtsoMock(ftsoRegistry, "NAT", 0.42),
+        usdc: await createFtsoMock(ftsoRegistry, "USDC", 1.01),
+        usdt: await createFtsoMock(ftsoRegistry, "USDT", 0.99),
+        asset: await createFtsoMock(ftsoRegistry, assetChainInfo.symbol, assetChainInfo.startPrice),
+    };
+}
+
+export function createTestAgentSettings(underlyingAddress: string, class1TokenAddress: string, options?: Partial<AgentSettings>): AgentSettings {
+    const defaults: AgentSettings = {
+        underlyingAddressString: underlyingAddress,
+        class1CollateralToken: class1TokenAddress,
+        feeBIPS: toBIPS("10%"),
+        poolFeeShareBIPS: toBIPS("40%"),
+        mintingClass1CollateralRatioBIPS: toBIPS(1.6),
+        mintingPoolCollateralRatioBIPS: toBIPS(2.5),
+        poolExitCollateralRatioBIPS: toBIPS(2.6),
+        buyFAssetByAgentFactorBIPS: toBIPS(0.9),
+        poolTopupCollateralRatioBIPS: toBIPS(2.1),
+        poolTopupTokenPriceFactorBIPS: toBIPS(0.8),
+    };
+    return { ...defaults, ...(options ?? {}) };
+}
+
 export function createEncodedTestLiquidationSettings() {
     return encodeLiquidationStrategyImplSettings(createTestLiquidationSettings());
 }
@@ -151,17 +178,6 @@ export async function createFtsoMock(ftsoRegistry: FtsoRegistryMockInstance, fts
     await ftso.setCurrentPriceFromTrustedProviders(toBNExp(initialPrice, decimals), 0);
     await ftsoRegistry.addFtso(ftso.address);
     return ftso;
-}
-
-export type TestFtsos = Record<'nat' | 'usdc' | 'usdt' | 'asset', FtsoMockInstance>;
-
-export async function createTestFtsos(ftsoRegistry: FtsoRegistryMockInstance, assetChainInfo: TestChainInfo): Promise<TestFtsos> {
-    return {
-        nat: await createFtsoMock(ftsoRegistry, "NAT", 0.42),
-        usdc: await createFtsoMock(ftsoRegistry, "USDC", 1.01),
-        usdt: await createFtsoMock(ftsoRegistry, "USDT", 0.99),
-        asset: await createFtsoMock(ftsoRegistry, assetChainInfo.symbol, assetChainInfo.startPrice),
-    };
 }
 
 export async function createTestContracts(governance: string): Promise<TestSettingsContracts> {
@@ -204,22 +220,6 @@ export interface CreateTestAgentDeps {
     chain?: MockChain;
     wallet?: MockChainWallet;
     attestationProvider?: AttestationHelper;
-}
-
-export function createTestAgentSettings(underlyingAddress: string, class1TokenAddress: string, options?: Partial<AgentSettings>): AgentSettings {
-    const defaults: AgentSettings = {
-        underlyingAddressString: underlyingAddress,
-        class1CollateralToken: class1TokenAddress,
-        feeBIPS: toBIPS("10%"),
-        poolFeeShareBIPS: toBIPS("40%"),
-        mintingClass1CollateralRatioBIPS: toBIPS(1.6),
-        mintingPoolCollateralRatioBIPS: toBIPS(2.5),
-        poolExitCollateralRatioBIPS: toBIPS(2.6),
-        buyFAssetByAgentFactorBIPS: toBIPS(0.9),
-        poolTopupCollateralRatioBIPS: toBIPS(2.1),
-        poolTopupTokenPriceFactorBIPS: toBIPS(0.8),
-    };
-    return { ...defaults, ...(options ?? {}) };
 }
 
 export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, underlyingAddress: string, class1TokenAddress: string, options?: Partial<AgentSettings>) {
