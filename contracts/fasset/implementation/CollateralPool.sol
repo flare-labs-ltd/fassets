@@ -141,6 +141,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     /**
      * @notice Exits the pool by liquidating the given amount of pool tokens
      * @param _tokenShare   The amount of pool tokens to be liquidated
+     *                      Must be positive and smaller or equal to the sender's token balance
      * @param _exitType     An enum describing the ratio used to liquidate debt and free tokens
      */
     function exit(uint256 _tokenShare, TokenExitType _exitType)
@@ -178,6 +179,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
      * @notice Exits the pool by liquidating the given amount of pool tokens and redeeming
      *  f-assets in a way that preserves or increases the pool collateral ratio
      * @param _tokenShare                   The amount of pool tokens to be liquidated
+     *                                      Must be positive and smaller or equal to the sender's token balance
      * @param _exitType                     An enum describing the ratio used to liquidate debt and free tokens
      * @param _redeemToCollateral           Specifies if agent should redeem f-assets in NAT from his collateral
      * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
@@ -236,6 +238,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     /**
      * @notice Collect f-asset fees by locking free tokens
      * @param _fassets  The amount of f-asset fees to withdraw
+     *                  Must be positive and smaller or equal to the sender's reward f-assets
      */
     function withdrawFees(uint256 _fassets)
         external
@@ -251,6 +254,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     /**
      * @notice Free debt tokens by paying f-assets
      * @param _fassets  Amount of payed f-assets
+     *                  _fassets must be positive and smaller or equal to the sender's debt f-assets
      */
     function payFeeDebt(uint256 _fassets)
         external
@@ -275,6 +279,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         _fassetDebtOf[_account] += _fassets;
         poolFassetDebt += _fassets;
     }
+    // _fassets should be smaller or equal to _account's f-asset debt
     function _burnFassetDebt(address _account, uint256 _fassets)
         internal
     {
@@ -308,6 +313,11 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         return tokenShareAtTopupPrice + tokenShareAtStandardPrice;
     }
 
+    // _tokenShare should be smaller or equal to _account's token balance
+    // Assumption is not checked explicitly,
+    // if _exitType is MAXIMIZE_FEE_WITHDRAWAL or MINIMIZE_FEE_DEBT, then _tokenShare overflow
+    // is treated as _tokenShare = token.balanceOf(_account), while on _exitType = KEEP_RATIO,
+    // the function reverts as fassetShare - debtFassetShare < 0
     function _getDebtAndFreeFassetShareFromTokenShare(
         address _account, uint256 _tokenShare, TokenExitType _exitType,
         AssetData memory _assetData
@@ -456,6 +466,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         selfdestruct(_recipient);
     }
 
+    // _agentResponsibilityWei should be less than agent vault balance
     function payout(
         address _recipient,
         uint256 _amount,
