@@ -18,10 +18,10 @@ library Conversion {
         uint256 _tokenType
     )
         internal view
-        returns (uint256)
+        returns (uint256 _price)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return currentAmgPriceInTokenWei(state.collateralTokens[_tokenType]);
+        (_price,,) = currentAmgPriceInTokenWeiWithTs(state.collateralTokens[_tokenType], false);
     }
 
     function currentAmgPriceInTokenWei(
@@ -30,7 +30,7 @@ library Conversion {
         internal view
         returns (uint256 _price)
     {
-        (_price,,) = currentAmgPriceInTokenWeiWithTs(_token);
+        (_price,,) = currentAmgPriceInTokenWeiWithTs(_token, false);
     }
 
     function currentAmgPriceInTokenWeiWithTrusted(
@@ -41,9 +41,9 @@ library Conversion {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         (uint256 ftsoPrice, uint256 assetTimestamp, uint256 tokenTimestamp) =
-            currentAmgPriceInTokenWeiWithTs(_token);
+            currentAmgPriceInTokenWeiWithTs(_token, false);
         (uint256 trustedPrice, uint256 assetTimestampTrusted, uint256 tokenTimestampTrusted) =
-            currentTrustedAmgPriceInTokenWeiWithTs(_token);
+            currentAmgPriceInTokenWeiWithTs(_token, true);
         bool trustedPriceFresh = tokenTimestampTrusted + settings.maxTrustedPriceAgeSeconds >= tokenTimestamp
                 && assetTimestampTrusted + settings.maxTrustedPriceAgeSeconds >= assetTimestamp;
         _ftsoPrice = ftsoPrice;
@@ -106,15 +106,13 @@ library Conversion {
 
     function convertFromUSD5(
         uint256 _amountUSD5,
-        CollateralToken.Data storage _toToken
+        CollateralToken.Data storage _token
     )
         internal view
         returns (uint256)
     {
-        IFtsoRegistry ftsoRegistry = AssetManagerState.getSettings().ftsoRegistry;
-        IIFtso tokenFtso = ftsoRegistry.getFtsoBySymbol(_toToken.ftsoSymbol);
-        (uint256 tokenPrice,, uint256 tokenFtsoDec) = tokenFtso.getCurrentPriceWithDecimals();
-        uint256 expPlus = _toToken.decimals + tokenFtsoDec;
+        (uint256 tokenPrice,, uint256 tokenFtsoDec) = readFtsoPrice(_token.tokenFtsoSymbol, false);
+        uint256 expPlus = _token.decimals + tokenFtsoDec;
         // 1e10 in divisor: 5 for amount decimals, 5 for price decimals
         return _amountUSD5.mulDiv(tokenPrice * 10 ** expPlus, 1e10);
     }
@@ -126,11 +124,8 @@ library Conversion {
         internal view
         returns (uint256 _multiplier, uint256 _divisor)
     {
-        IFtsoRegistry ftsoRegistry = AssetManagerState.getSettings().ftsoRegistry;
-        IIFtso token1Ftso = ftsoRegistry.getFtsoBySymbol(_token1.ftsoSymbol);
-        IIFtso token2Ftso = ftsoRegistry.getFtsoBySymbol(_token2.ftsoSymbol);
-        (uint256 token1Price,, uint256 token1FtsoDec) = token1Ftso.getCurrentPriceWithDecimals();
-        (uint256 token2Price,, uint256 token2FtsoDec) = token2Ftso.getCurrentPriceWithDecimals();
+        (uint256 token1Price,, uint256 token1FtsoDec) = readFtsoPrice(_token1.tokenFtsoSymbol, false);
+        (uint256 token2Price,, uint256 token2FtsoDec) = readFtsoPrice(_token2.tokenFtsoSymbol, false);
         uint256 expPlus = _token2.decimals + token2FtsoDec;
         uint256 expMinus = _token1.decimals + token1FtsoDec;
         expPlus -= Math.min(expPlus, expMinus);
@@ -139,34 +134,38 @@ library Conversion {
         _divisor = token2Price * 10 ** expMinus;
     }
 
-    function currentAmgPriceInTokenWeiWithTs(CollateralToken.Data storage _token)
-        private view
-        returns (uint256 /*_price*/, uint256 /*_assetTs*/, uint256 /*_tokenTs*/)
+    function currentAmgPriceInTokenWeiWithTs(
+        CollateralToken.Data storage _token,
+        bool _fromTrustedProviders
+    )
+        internal view
+        returns (uint256 /*_price*/, uint256 /*_assetTimestamp*/, uint256 /*_tokenTimestamp*/)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        IFtsoRegistry ftsoRegistry = settings.ftsoRegistry;
-        IIFtso assetFtso = ftsoRegistry.getFtsoBySymbol(settings.assetFtsoSymbol);
-        IIFtso tokenFtso = ftsoRegistry.getFtsoBySymbol(_token.ftsoSymbol);
-        (uint256 assetPrice, uint256 assetTs, uint256 assetFtsoDec) = assetFtso.getCurrentPriceWithDecimals();
-        (uint256 tokenPrice, uint256 tokenTs, uint256 tokenFtsoDec) = tokenFtso.getCurrentPriceWithDecimals();
-        uint256 price = calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDec, assetPrice, assetFtsoDec);
-        return (price, assetTs, tokenTs);
+        (uint256 assetPrice, uint256 assetTs, uint256 assetFtsoDec) =
+            readFtsoPrice(_token.assetFtsoSymbol, _fromTrustedProviders);
+        if (_token.directPricePair) {
+            uint256 price = calcAmgToTokenWeiPrice(_token.decimals, 1, 0, assetPrice, assetFtsoDec);
+            return (price, assetTs, assetTs);
+        } else {
+            (uint256 tokenPrice, uint256 tokenTs, uint256 tokenFtsoDec) =
+                readFtsoPrice(_token.tokenFtsoSymbol, _fromTrustedProviders);
+            uint256 price =
+                calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDec, assetPrice, assetFtsoDec);
+            return (price, assetTs, tokenTs);
+        }
     }
 
-    function currentTrustedAmgPriceInTokenWeiWithTs(CollateralToken.Data storage _token)
-        private view
-        returns (uint256 /*_price*/, uint256 /*_assetTs*/, uint256 /*_tokenTs*/)
+    function readFtsoPrice(string memory _symbol, bool _fromTrustedProviders)
+        internal view
+        returns (uint256, uint256, uint256)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        IFtsoRegistry ftsoRegistry = settings.ftsoRegistry;
-        IIFtso assetFtso = ftsoRegistry.getFtsoBySymbol(settings.assetFtsoSymbol);
-        IIFtso tokenFtso = ftsoRegistry.getFtsoBySymbol(_token.ftsoSymbol);
-        (uint256 assetPrice, uint256 assetTs, uint256 assetFtsoDec) =
-            assetFtso.getCurrentPriceWithDecimalsFromTrustedProviders();
-        (uint256 tokenPrice, uint256 tokenTs, uint256 tokenFtsoDec) =
-            tokenFtso.getCurrentPriceWithDecimalsFromTrustedProviders();
-        uint256 price = calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDec, assetPrice, assetFtsoDec);
-        return (price, assetTs, tokenTs);
+        IIFtso ftso = settings.ftsoRegistry.getFtsoBySymbol(_symbol);
+        if (_fromTrustedProviders) {
+            return ftso.getCurrentPriceWithDecimalsFromTrustedProviders();
+        } else {
+            return ftso.getCurrentPriceWithDecimals();
+        }
     }
 
     function calcAmgToTokenWeiPrice(

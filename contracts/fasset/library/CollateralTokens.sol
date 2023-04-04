@@ -172,13 +172,16 @@ library CollateralTokens {
             tokenClass: _data.tokenClass,
             decimals: _data.decimals.toUint8(),
             validUntil: _data.validUntil.toUint64(),
-            ftsoSymbol: _data.ftsoSymbol,
+            directPricePair: _data.directPricePair,
+            assetFtsoSymbol: _data.assetFtsoSymbol,
+            tokenFtsoSymbol: _data.tokenFtsoSymbol,
             minCollateralRatioBIPS: _data.minCollateralRatioBIPS.toUint32(),
             ccbMinCollateralRatioBIPS: _data.ccbMinCollateralRatioBIPS.toUint32(),
             safetyMinCollateralRatioBIPS: _data.safetyMinCollateralRatioBIPS.toUint32()
         }));
         state.collateralTokenIndex[tokenKey] = newTokenIndex + 1;   // 0 means empty
-        emit AMEvents.CollateralTokenAdded(uint8(_data.tokenClass), address(_data.token), _data.ftsoSymbol,
+        emit AMEvents.CollateralTokenAdded(uint8(_data.tokenClass), address(_data.token),
+            _data.directPricePair, _data.assetFtsoSymbol, _data.tokenFtsoSymbol,
             _data.minCollateralRatioBIPS, _data.ccbMinCollateralRatioBIPS, _data.safetyMinCollateralRatioBIPS);
         return newTokenIndex;
     }
@@ -199,7 +202,9 @@ library CollateralTokens {
             tokenClass: token.tokenClass,
             decimals: token.decimals,
             validUntil: token.validUntil,
-            ftsoSymbol: token.ftsoSymbol,
+            directPricePair: token.directPricePair,
+            assetFtsoSymbol: token.assetFtsoSymbol,
+            tokenFtsoSymbol: token.tokenFtsoSymbol,
             minCollateralRatioBIPS: token.minCollateralRatioBIPS,
             ccbMinCollateralRatioBIPS: token.ccbMinCollateralRatioBIPS,
             safetyMinCollateralRatioBIPS: token.safetyMinCollateralRatioBIPS

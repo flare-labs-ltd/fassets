@@ -387,7 +387,9 @@ library AMEvents {
     event CollateralTokenAdded(
         uint8 tokenClass,
         address tokenContract,
-        string ftsoSymbol,
+        bool directPricePair,
+        string assetFtsoSymbol,
+        string tokenFtsoSymbol,
         uint256 minCollateralRatioBIPS,
         uint256 ccbMinCollateralRatioBIPS,
         uint256 safetyMinCollateralRatioBIPS);

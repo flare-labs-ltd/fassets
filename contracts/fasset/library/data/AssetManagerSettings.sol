@@ -72,10 +72,6 @@ library AssetManagerSettings {
         // rate-limited
         uint32 mintingPoolHoldingsRequiredBIPS;
 
-        // FTSO contract for managed asset (symbol).
-        // immutable
-        string assetFtsoSymbol;
-
         // WNat is always used as pool collateral.
         // Collateral reservation fee is burned on successful minting.
         // immutable

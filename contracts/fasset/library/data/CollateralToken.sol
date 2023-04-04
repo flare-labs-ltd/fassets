@@ -25,8 +25,24 @@ library CollateralToken {
         // When the invalidation has not been announced, this value is 0.
         uint64 validUntil;
 
-        // FTSO symbol for token.
-        string ftsoSymbol;
+        // When `true`, the FTSO with symbol `assetFtsoSymbol` returns asset price relative to this token
+        // (such FTSO's will probably exist for major stablecoins).
+        // When `false`, the FTSOs with symbols `assetFtsoSymbol` and `tokenFtsoSymbol` give asset and token
+        // price relative to the same reference currency and the asset/token price is calculated as their ratio.
+        // immutable
+        bool directPricePair;
+
+        // FTSO symbol for the asset, relative to this token or a reference currency
+        // (it depends on the value of `directPricePair`).
+        // immutable
+        string assetFtsoSymbol;
+
+        // FTSO symbol for this token in reference currency.
+        // Used for asset/token price calculation when `directPricePair` is `false`.
+        // Otherwise it is irrelevant to asset/token price calculation, but is still used
+        // in calculation of challenger rewards, confirmation rewards and token burning.
+        // immutable
+        string tokenFtsoSymbol;
 
         // Minimum collateral ratio for healthy agents.
         // timelocked
