@@ -100,7 +100,6 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         // create asset manager
         collaterals = createTestCollaterals(contracts);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
-        settings.assetFtsoIndex = 3;
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
     });
 

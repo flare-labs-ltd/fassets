@@ -60,7 +60,6 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         agentWhitelist: contracts.agentWhitelist?.address ?? constants.ZERO_ADDRESS,
         ftsoRegistry: contracts.ftsoRegistry.address,
         assetFtsoSymbol: ci.symbol,
-        assetFtsoIndex: 0,                                  // set automatically in contract
         burnAddress: constants.ZERO_ADDRESS,
         burnWithSelfDestruct: false,
         chainId: ci.chainId,

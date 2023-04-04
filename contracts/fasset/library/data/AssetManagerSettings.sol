@@ -57,10 +57,6 @@ library AssetManagerSettings {
         // changed via address updater
         IFtsoRegistry ftsoRegistry;
 
-        // FTSO contract for managed asset (index).
-        // cannot be set directly - obtained from ftso registry for symbol assetFtsoSymbol
-        uint32 assetFtsoIndex;
-
         // Same as assetToken.decimals()
         // immutable
         uint8 assetDecimals;

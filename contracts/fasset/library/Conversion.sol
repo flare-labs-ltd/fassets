@@ -112,7 +112,7 @@ library Conversion {
         returns (uint256)
     {
         IFtsoRegistry ftsoRegistry = AssetManagerState.getSettings().ftsoRegistry;
-        IIFtso tokenFtso = ftsoRegistry.getFtso(_toToken.ftsoIndex);
+        IIFtso tokenFtso = ftsoRegistry.getFtsoBySymbol(_toToken.ftsoSymbol);
         (uint256 tokenPrice,, uint256 tokenFtsoDec) = tokenFtso.getCurrentPriceWithDecimals();
         uint256 expPlus = _toToken.decimals + tokenFtsoDec;
         // 1e10 in divisor: 5 for amount decimals, 5 for price decimals
@@ -127,8 +127,8 @@ library Conversion {
         returns (uint256 _multiplier, uint256 _divisor)
     {
         IFtsoRegistry ftsoRegistry = AssetManagerState.getSettings().ftsoRegistry;
-        IIFtso token1Ftso = ftsoRegistry.getFtso(_token1.ftsoIndex);
-        IIFtso token2Ftso = ftsoRegistry.getFtso(_token2.ftsoIndex);
+        IIFtso token1Ftso = ftsoRegistry.getFtsoBySymbol(_token1.ftsoSymbol);
+        IIFtso token2Ftso = ftsoRegistry.getFtsoBySymbol(_token2.ftsoSymbol);
         (uint256 token1Price,, uint256 token1FtsoDec) = token1Ftso.getCurrentPriceWithDecimals();
         (uint256 token2Price,, uint256 token2FtsoDec) = token2Ftso.getCurrentPriceWithDecimals();
         uint256 expPlus = _token2.decimals + token2FtsoDec;
@@ -145,8 +145,8 @@ library Conversion {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         IFtsoRegistry ftsoRegistry = settings.ftsoRegistry;
-        IIFtso assetFtso = ftsoRegistry.getFtso(settings.assetFtsoIndex);
-        IIFtso tokenFtso = ftsoRegistry.getFtso(_token.ftsoIndex);
+        IIFtso assetFtso = ftsoRegistry.getFtsoBySymbol(settings.assetFtsoSymbol);
+        IIFtso tokenFtso = ftsoRegistry.getFtsoBySymbol(_token.ftsoSymbol);
         (uint256 assetPrice, uint256 assetTs, uint256 assetFtsoDec) = assetFtso.getCurrentPriceWithDecimals();
         (uint256 tokenPrice, uint256 tokenTs, uint256 tokenFtsoDec) = tokenFtso.getCurrentPriceWithDecimals();
         uint256 price = calcAmgToTokenWeiPrice(_token.decimals, tokenPrice, tokenFtsoDec, assetPrice, assetFtsoDec);
@@ -159,8 +159,8 @@ library Conversion {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         IFtsoRegistry ftsoRegistry = settings.ftsoRegistry;
-        IIFtso assetFtso = ftsoRegistry.getFtso(settings.assetFtsoIndex);
-        IIFtso tokenFtso = ftsoRegistry.getFtso(_token.ftsoIndex);
+        IIFtso assetFtso = ftsoRegistry.getFtsoBySymbol(settings.assetFtsoSymbol);
+        IIFtso tokenFtso = ftsoRegistry.getFtsoBySymbol(_token.ftsoSymbol);
         (uint256 assetPrice, uint256 assetTs, uint256 assetFtsoDec) =
             assetFtso.getCurrentPriceWithDecimalsFromTrustedProviders();
         (uint256 tokenPrice, uint256 tokenTs, uint256 tokenFtsoDec) =

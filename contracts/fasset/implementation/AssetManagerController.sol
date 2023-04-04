@@ -81,24 +81,6 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Setters
 
-    // this is a safe operation, executor can call without prior governance call
-    function refreshAllFtsoIndexes(IAssetManager[] memory _assetManagers)
-        external
-        onlyGovernanceOrExecutor
-    {
-        _setValueOnManagers(_assetManagers,
-            SettingsUpdater.REFRESH_ALL_FTSO_INDEXES, abi.encode());
-    }
-
-    // this is a safe operation, executor can call without prior governance call
-    function refreshFtsoIndexes(IAssetManager[] memory _assetManagers, uint256 _start, uint256 _end)
-        external
-        onlyGovernanceOrExecutor
-    {
-        _setValueOnManagers(_assetManagers,
-            SettingsUpdater.REFRESH_FTSO_INDEXES, abi.encode(_start, _end));
-    }
-
     function setWhitelist(IAssetManager[] memory _assetManagers, address _value)
         external
         onlyGovernance

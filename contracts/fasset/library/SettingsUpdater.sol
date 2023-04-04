@@ -20,10 +20,6 @@ library SettingsUpdater {
 
     bytes32 internal constant UPDATE_CONTRACTS =
         keccak256("updateContracts(address,IAttestationClient,IFtsoRegistry)");
-    bytes32 internal constant REFRESH_ALL_FTSO_INDEXES =
-        keccak256("refreshAllFtsoIndexes()");
-    bytes32 internal constant REFRESH_FTSO_INDEXES =
-        keccak256("refreshFtsoIndexes(uint256,uint256)");
     bytes32 internal constant SET_TIME_FOR_PAYMENT =
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant SET_WHITELIST =
@@ -91,7 +87,6 @@ library SettingsUpdater {
         AssetManagerState.State storage state = AssetManagerState.get();
         _validateSettings(_settings);
         state.settings = _settings;
-        _refreshAllFtsoIndexes();
     }
 
     function callUpdate(
@@ -102,10 +97,6 @@ library SettingsUpdater {
     {
         if (_method == UPDATE_CONTRACTS) {
             _updateContracts(_params);
-        } else if (_method == REFRESH_ALL_FTSO_INDEXES) {
-            _refreshAllFtsoIndexes();
-        } else if (_method == REFRESH_FTSO_INDEXES) {
-            _refreshFtsoIndexes(_params);
         } else if (_method == SET_TIME_FOR_PAYMENT) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setTimeForPayment(_params);
@@ -242,36 +233,6 @@ library SettingsUpdater {
             settings.ftsoRegistry = ftsoRegistry;
             emit AMEvents.ContractChanged("ftsoRegistry", address(ftsoRegistry));
         }
-    }
-
-    function _refreshAllFtsoIndexes()
-        private
-    {
-        _refreshFtsoIndexesImpl(0, type(uint256).max);
-    }
-
-    function _refreshFtsoIndexes(bytes calldata _params)
-        private
-    {
-        (uint256 start, uint256 end) = abi.decode(_params, (uint256, uint256));
-        _refreshFtsoIndexesImpl(start, end);
-    }
-
-    function _refreshFtsoIndexesImpl(uint256 _start, uint256 _end)
-        private
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        _end = Math.min(_end, state.collateralTokens.length);
-        for (uint256 i = _start; i < _end; i++) {
-            CollateralToken.Data storage collateral = state.collateralTokens[i];
-            // do not update invalidated token types
-            if (collateral.validUntil != 0 && collateral.validUntil < block.timestamp) continue;
-            uint256 ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(collateral.ftsoSymbol);
-            collateral.ftsoIndex = ftsoIndex.toUint16();
-        }
-        // always refresh asset ftso index
-        AssetManagerSettings.Data storage settings = state.settings;
-        settings.assetFtsoIndex = settings.ftsoRegistry.getFtsoIndex(settings.assetFtsoSymbol).toUint16();
     }
 
     function _setTimeForPayment(

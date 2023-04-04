@@ -83,7 +83,7 @@ export class FuzzingState extends TrackedState {
         const actualSettings = await this.context.assetManager.getSettings();
         for (const [key, value] of Object.entries(actualSettings)) {
             if (/^\d+$/.test(key)) continue;   // all properties are both named and with index
-            if (['assetManagerController', 'natFtsoIndex', 'assetFtsoIndex'].includes(key)) continue;   // special properties, not changed in normal way
+            if (['assetManagerController'].includes(key)) continue;   // special properties, not changed in normal way
             checker.checkEquality(`settings.${key}`, value, (this.settings as any)[key]);
         }
         // check agents' state

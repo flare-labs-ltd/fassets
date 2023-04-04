@@ -166,13 +166,11 @@ library CollateralTokens {
             _data.ccbMinCollateralRatioBIPS <= _data.minCollateralRatioBIPS &&
             _data.minCollateralRatioBIPS <= _data.safetyMinCollateralRatioBIPS;
         require(ratiosValid, "invalid collateral ratios");
-        uint256 ftsoIndex = state.settings.ftsoRegistry.getFtsoIndex(_data.ftsoSymbol);
         uint256 newTokenIndex = state.collateralTokens.length;
         state.collateralTokens.push(CollateralToken.Data({
             token: _data.token,
             tokenClass: _data.tokenClass,
             decimals: _data.decimals.toUint8(),
-            ftsoIndex: ftsoIndex.toUint16(),
             validUntil: _data.validUntil.toUint64(),
             ftsoSymbol: _data.ftsoSymbol,
             minCollateralRatioBIPS: _data.minCollateralRatioBIPS.toUint32(),
