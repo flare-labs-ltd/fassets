@@ -15,6 +15,7 @@ import { TestChainInfo } from "../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
+import { ChainInfo } from "../../../lib/fasset/ChainInfo";
 
 const AgentVault = artifacts.require("AgentVault");
 const WNat = artifacts.require("WNat");
@@ -59,7 +60,6 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         whitelist: contracts.whitelist?.address ?? constants.ZERO_ADDRESS,
         agentWhitelist: contracts.agentWhitelist?.address ?? constants.ZERO_ADDRESS,
         ftsoRegistry: contracts.ftsoRegistry.address,
-        assetFtsoSymbol: ci.symbol,
         burnAddress: constants.ZERO_ADDRESS,
         burnWithSelfDestruct: false,
         chainId: ci.chainId,
@@ -98,13 +98,15 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
     return Object.assign(result, options ?? {});
 }
 
-export function createTestCollaterals(contracts: TestSettingsContracts): CollateralToken[] {
+export function createTestCollaterals(contracts: TestSettingsContracts, ci: ChainInfo): CollateralToken[] {
     const poolCollateral: CollateralToken = {
         tokenClass: CollateralTokenClass.POOL,
         token: contracts.wNat.address,
         decimals: 18,
         validUntil: 0,  // not deprecated
-        ftsoSymbol: "NAT",
+        directPricePair: false,
+        assetFtsoSymbol: ci.symbol,
+        tokenFtsoSymbol: "NAT",
         minCollateralRatioBIPS: toBIPS(2.0),
         ccbMinCollateralRatioBIPS: toBIPS(1.9),
         safetyMinCollateralRatioBIPS: toBIPS(2.1),
@@ -114,7 +116,9 @@ export function createTestCollaterals(contracts: TestSettingsContracts): Collate
         token: contracts.stablecoins.USDC.address,
         decimals: 18,
         validUntil: 0,  // not deprecated
-        ftsoSymbol: "USDC",
+        directPricePair: false,
+        assetFtsoSymbol: ci.symbol,
+        tokenFtsoSymbol: "USDC",
         minCollateralRatioBIPS: toBIPS(1.4),
         ccbMinCollateralRatioBIPS: toBIPS(1.3),
         safetyMinCollateralRatioBIPS: toBIPS(1.5),
@@ -124,7 +128,9 @@ export function createTestCollaterals(contracts: TestSettingsContracts): Collate
         token: contracts.stablecoins.USDT.address,
         decimals: 18,
         validUntil: 0,  // not deprecated
-        ftsoSymbol: "USDT",
+        directPricePair: false,
+        assetFtsoSymbol: ci.symbol,
+        tokenFtsoSymbol: "USDT",
         minCollateralRatioBIPS: toBIPS(1.5),
         ccbMinCollateralRatioBIPS: toBIPS(1.4),
         safetyMinCollateralRatioBIPS: toBIPS(1.6),

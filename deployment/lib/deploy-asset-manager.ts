@@ -161,7 +161,9 @@ function convertCollateralToken(contracts: ChainContracts, parameters: Collatera
         token: addressFromParameter(contracts, parameters.token),
         decimals: parameters.decimals,
         validUntil: 0,  // not deprecated
-        ftsoSymbol: parameters.ftsoSymbol,
+        directPricePair: parameters.directPricePair,
+        assetFtsoSymbol: parameters.assetFtsoSymbol,
+        tokenFtsoSymbol: parameters.tokenFtsoSymbol,
         minCollateralRatioBIPS: parameters.minCollateralRatioBIPS,
         ccbMinCollateralRatioBIPS: parameters.ccbMinCollateralRatioBIPS,
         safetyMinCollateralRatioBIPS: parameters.safetyMinCollateralRatioBIPS,
@@ -186,7 +188,6 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         whitelist: parameters.whitelist ? addressFromParameter(contracts, parameters.whitelist) : ZERO_ADDRESS,
         agentWhitelist: parameters.agentWhitelist ? addressFromParameter(contracts, parameters.agentWhitelist) : ZERO_ADDRESS,
         ftsoRegistry: contracts.FtsoRegistry.address,
-        assetFtsoSymbol: parameters.assetSymbol,
         burnAddress: parameters.burnAddress,
         burnWithSelfDestruct: parameters.burnWithSelfDestruct,
         chainId: parameters.chainId,

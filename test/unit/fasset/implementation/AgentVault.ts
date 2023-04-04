@@ -55,13 +55,13 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         // create asset manager controller (don't switch to production)
         assetManagerController = await AssetManagerController.new(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
         // create asset manager
-        collaterals = createTestCollaterals(contracts);
+        collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
         // create asset manager mock (for tests that use AgentVault.new)
         assetManagerMock = await AssetManagerMock.new(wNat.address);
-        assetManagerMock.setCommonOwner(owner);
+        await assetManagerMock.setCommonOwner(owner);
     });
 
     it("should deposit NAT from any address", async () => {

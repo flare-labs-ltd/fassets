@@ -54,7 +54,7 @@ contract(`UnderlyingFreeBalance.sol; ${getTestFile(__filename)};  UnderlyingFree
         stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
         // create asset manager
-        collaterals = createTestCollaterals(contracts);
+        collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
     });

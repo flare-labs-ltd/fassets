@@ -59,7 +59,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         // crate liquidation strategy settings
         liquidationStrategySettings = createTestLiquidationSettings();
         // create asset manager
-        collaterals = createTestCollaterals(contracts);
+        collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         const encodedLiquidationStrategySettings = encodeLiquidationStrategyImplSettings(liquidationStrategySettings);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, encodedLiquidationStrategySettings, updateExecutor);
@@ -127,15 +127,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should revert setting whitelist without governance", async () => {
             let res = assetManagerController.setWhitelist([assetManager.address], randomAddress());
             await expectRevert(res, "only governance")
-        });
-
-        it("should refresh ftso indexes", async () => {
-            await assetManagerController.refreshFtsoIndexes([assetManager.address], 0, collaterals.length, {from: updateExecutor });
-        });
-
-        it("should revert refreshing ftso indexes if asset manager not managed", async () => {
-            const promise = assetManagerController.refreshFtsoIndexes([assetManager.address, accounts[2]], 0, collaterals.length, {from: updateExecutor });
-            await expectRevert(promise, "Asset manager not managed");
         });
 
         it("should set whitelist address", async () => {

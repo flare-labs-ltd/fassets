@@ -5,6 +5,11 @@
         "CollateralTokenParameters": {
             "additionalProperties": false,
             "properties": {
+                "assetFtsoSymbol": {
+                    "description": "FTSO symbol for the asset, relative to this token or a reference currency\n(it depends on the value of `directPricePair`).",
+                    "pattern": "^\\w+$",
+                    "type": "string"
+                },
                 "ccbMinCollateralRatioBIPS": {
                     "description": "Minimum collateral ratio for agent in CCB (Collateral call band).\nIf the agent's collateral ratio is less than this, skip the CCB and go straight to liquidation.\nA bit smaller than minCollateralRatioBIPS.",
                     "minimum": 0,
@@ -15,10 +20,9 @@
                     "minimum": 0,
                     "type": "integer"
                 },
-                "ftsoSymbol": {
-                    "description": "FTSO symbol for token.",
-                    "pattern": "^\\w+$",
-                    "type": "string"
+                "directPricePair": {
+                    "description": "When `true`, the FTSO with symbol `assetFtsoSymbol` returns asset price relative to this token\n(such FTSO's will probably exist for major stablecoins).\nWhen `false`, the FTSOs with symbols `assetFtsoSymbol` and `tokenFtsoSymbol` give asset and token\nprice relative to the same reference currency and the asset/token price is calculated as their ratio.",
+                    "type": "boolean"
                 },
                 "minCollateralRatioBIPS": {
                     "description": "Minimum collateral ratio for healthy agents.",
@@ -34,15 +38,22 @@
                     "description": "The ERC20 token contract for this collateral type.\nCan be an address (0x...) or a name of a contract in contracts.json.",
                     "pattern": "^\\w+$",
                     "type": "string"
+                },
+                "tokenFtsoSymbol": {
+                    "description": "FTSO symbol for this token in reference currency.\nUsed for asset/token price calculation when `directPricePair` is `false`.\nOtherwise it is irrelevant to asset/token price calculation, but is still used\nin calculation of challenger rewards, confirmation rewards and token burning.",
+                    "pattern": "^\\w+$",
+                    "type": "string"
                 }
             },
             "required": [
+                "assetFtsoSymbol",
                 "ccbMinCollateralRatioBIPS",
                 "decimals",
-                "ftsoSymbol",
+                "directPricePair",
                 "minCollateralRatioBIPS",
                 "safetyMinCollateralRatioBIPS",
-                "token"
+                "token",
+                "tokenFtsoSymbol"
             ],
             "type": "object"
         }

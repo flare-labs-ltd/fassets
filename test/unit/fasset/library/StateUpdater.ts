@@ -39,7 +39,7 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
         stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
         // create asset manager
-        collaterals = createTestCollaterals(contracts);
+        collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
     });

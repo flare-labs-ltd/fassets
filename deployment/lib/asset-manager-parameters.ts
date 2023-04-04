@@ -16,10 +16,28 @@ export interface CollateralTokenParameters {
     decimals: integer;
 
     /**
-     * FTSO symbol for token.
+     * When `true`, the FTSO with symbol `assetFtsoSymbol` returns asset price relative to this token
+     * (such FTSO's will probably exist for major stablecoins).
+     * When `false`, the FTSOs with symbols `assetFtsoSymbol` and `tokenFtsoSymbol` give asset and token
+     * price relative to the same reference currency and the asset/token price is calculated as their ratio.
+     */
+    directPricePair: boolean;
+
+    /**
+     * FTSO symbol for the asset, relative to this token or a reference currency
+     * (it depends on the value of `directPricePair`).
      * @pattern ^\w+$
      */
-    ftsoSymbol: string;
+    assetFtsoSymbol: string;
+
+    /**
+     * FTSO symbol for this token in reference currency.
+     * Used for asset/token price calculation when `directPricePair` is `false`.
+     * Otherwise it is irrelevant to asset/token price calculation, but is still used
+     * in calculation of challenger rewards, confirmation rewards and token burning.
+     * @pattern ^\w+$
+     */
+    tokenFtsoSymbol: string;
 
     /**
      * Minimum collateral ratio for healthy agents.
@@ -80,7 +98,6 @@ export interface AssetManagerParameters {
 
     /**
      * Symbol for the original asset on the underlying chain.
-     * Must match the FTSO contract symbol for the asset.
      * @pattern ^\w+$
      */
     assetSymbol: string;

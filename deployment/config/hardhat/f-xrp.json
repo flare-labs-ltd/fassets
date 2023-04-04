@@ -25,7 +25,9 @@
     "poolCollateral": {
         "token": "WNat",
         "decimals": 18,
-        "ftsoSymbol": "NAT",
+        "directPricePair": false,
+        "assetFtsoSymbol": "XRP",
+        "tokenFtsoSymbol": "NAT",
         "minCollateralRatioBIPS": 20000,
         "ccbMinCollateralRatioBIPS": 19000,
         "safetyMinCollateralRatioBIPS": 21000
@@ -34,7 +36,9 @@
         {
             "token": "USDC",
             "decimals": 18,
-            "ftsoSymbol": "USDC",
+            "directPricePair": false,
+            "assetFtsoSymbol": "XRP",
+            "tokenFtsoSymbol": "USDC",
             "minCollateralRatioBIPS": 14000,
             "ccbMinCollateralRatioBIPS": 13000,
             "safetyMinCollateralRatioBIPS": 15000
@@ -42,7 +46,9 @@
         {
             "token": "USDT",
             "decimals": 18,
-            "ftsoSymbol": "USDT",
+            "directPricePair": false,
+            "assetFtsoSymbol": "XRP",
+            "tokenFtsoSymbol": "USDT",
             "minCollateralRatioBIPS": 15000,
             "ccbMinCollateralRatioBIPS": 14000,
             "safetyMinCollateralRatioBIPS": 16000

@@ -173,7 +173,7 @@ export class AssetContext implements IAssetContext {
         const testSettingsContracts = { ...common, addressValidator, liquidationStrategy };
         // create settings
         const settings = createTestSettings(testSettingsContracts, chainInfo, { burnWithSelfDestruct: options.burnWithSelfDestruct });
-        const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts);
+        const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts, chainInfo);
         const liquidationSettings = options.liquidationSettings ?? createTestLiquidationSettings();
         // create asset manager
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,

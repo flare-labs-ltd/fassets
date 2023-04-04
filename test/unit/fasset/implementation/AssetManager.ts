@@ -67,7 +67,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
         // create asset manager
-        collaterals = createTestCollaterals(contracts);
+        collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
     });
@@ -226,7 +226,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             let res2 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings2, collaterals, liquidationSettings);
             await expectRevert(res2, "cannot be zero");
 
-            let collaterals3 = createTestCollaterals(contracts);
+            let collaterals3 = createTestCollaterals(contracts, testChainInfo.eth);
             collaterals3[0].minCollateralRatioBIPS = 0;
             let res3 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals3, liquidationSettings);
             await expectRevert(res3, "invalid collateral ratios");
@@ -346,7 +346,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             let res8 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings8));
             await expectRevert(res8, "factor not above 1");
 
-            let collaterals6 = createTestCollaterals(contracts);
+            let collaterals6 = createTestCollaterals(contracts, testChainInfo.eth);
             collaterals6[0].minCollateralRatioBIPS = 1_8000;
             collaterals6[0].ccbMinCollateralRatioBIPS = 2_2000;
             collaterals6[0].safetyMinCollateralRatioBIPS = 2_4000;
