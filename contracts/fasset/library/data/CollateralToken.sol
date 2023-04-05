@@ -39,8 +39,9 @@ library CollateralToken {
 
         // FTSO symbol for this token in reference currency.
         // Used for asset/token price calculation when `directPricePair` is `false`.
-        // Otherwise it is irrelevant to asset/token price calculation, but is still used
-        // in calculation of challenger rewards, confirmation rewards and token burning.
+        // Otherwise it is irrelevant to asset/token price calculation, but if it is nonempty,
+        // it is still used in calculation of challenger and confirmation rewards
+        // (otherwise we assume it approximates the value of USD and pay directly the USD amount in class1).
         // immutable
         string tokenFtsoSymbol;
 

@@ -100,7 +100,8 @@ library Conversion {
         internal view
         returns (uint256)
     {
-        (uint256 priceMul, uint256 priceDiv) = currentWeiPriceRatio(_fromToken, _toToken);
+        uint256 priceMul = currentAmgPriceInTokenWei(_toToken);
+        uint256 priceDiv = currentAmgPriceInTokenWei(_fromToken);
         return _amount.mulDiv(priceMul, priceDiv);
     }
 
@@ -111,27 +112,15 @@ library Conversion {
         internal view
         returns (uint256)
     {
+        // if tokenFtsoSymbol is empty, it is assumed that the token is a USD-like stablecoin
+        // so `_amountUSD5` is (approximately) the correct amount of tokens
+        if (bytes(_token.tokenFtsoSymbol).length == 0) {
+            return _amountUSD5;
+        }
         (uint256 tokenPrice,, uint256 tokenFtsoDec) = readFtsoPrice(_token.tokenFtsoSymbol, false);
         uint256 expPlus = _token.decimals + tokenFtsoDec;
         // 1e10 in divisor: 5 for amount decimals, 5 for price decimals
         return _amountUSD5.mulDiv(tokenPrice * 10 ** expPlus, 1e10);
-    }
-
-    function currentWeiPriceRatio(
-        CollateralToken.Data storage _token1,
-        CollateralToken.Data storage _token2
-    )
-        internal view
-        returns (uint256 _multiplier, uint256 _divisor)
-    {
-        (uint256 token1Price,, uint256 token1FtsoDec) = readFtsoPrice(_token1.tokenFtsoSymbol, false);
-        (uint256 token2Price,, uint256 token2FtsoDec) = readFtsoPrice(_token2.tokenFtsoSymbol, false);
-        uint256 expPlus = _token2.decimals + token2FtsoDec;
-        uint256 expMinus = _token1.decimals + token1FtsoDec;
-        expPlus -= Math.min(expPlus, expMinus);
-        expMinus -= Math.min(expPlus, expMinus);
-        _multiplier = token1Price * 10 ** expPlus;
-        _divisor = token2Price * 10 ** expMinus;
     }
 
     function currentAmgPriceInTokenWeiWithTs(

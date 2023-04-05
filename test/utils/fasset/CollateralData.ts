@@ -63,9 +63,8 @@ export class CollateralDataFactory {
         const balance = await token.balanceOf(tokenHolder);
         const assetPrice = await TokenPrice.bySymbol(this.ftsoRegistry, collateral.assetFtsoSymbol);
         const tokenPrice = await TokenPrice.bySymbol(this.ftsoRegistry, collateral.tokenFtsoSymbol);
-        const amgToTokenWei = collateral.directPricePair
-            ? amgToTokenWeiPrice(this.settings, collateral.decimals, 1, 0, assetPrice.price, assetPrice.decimals)
-            : amgToTokenWeiPrice(this.settings, collateral.decimals, tokenPrice.price, tokenPrice.decimals, assetPrice.price, assetPrice.decimals);
+        const [tokPrice, tokPriceDecimals] = collateral.directPricePair ? [1, 0] : [tokenPrice.price, tokenPrice.decimals];
+        const amgToTokenWei = amgToTokenWeiPrice(this.settings, collateral.decimals, tokPrice, tokPriceDecimals, assetPrice.price, assetPrice.decimals);
         return new CollateralData(collateral, balance, assetPrice, tokenPrice, amgToTokenWei);
     }
 
