@@ -6,4 +6,5 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ICollateralPoolToken is IERC20 {
     function freeBalanceOf(address _account) external view returns (uint256);
+    function debtBalanceOf(address _account) external view returns (uint256);
 }

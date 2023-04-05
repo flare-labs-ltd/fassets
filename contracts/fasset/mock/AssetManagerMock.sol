@@ -8,7 +8,10 @@ import "./ERC20Mock.sol";
 
 contract AssetManagerMock {
     IWNat private wNat;
+    ERC20Mock public fasset;
     address private commonOwner;
+    bool private checkForValidAgentVaultAddress = true;
+    address private collateralPool;
 
     event AgentRedemptionInCollateral(uint256 _amountUBA);
     event AgentRedemption(uint256 _amountUBA);
@@ -46,7 +49,19 @@ contract AssetManagerMock {
 
     function collateralDeposited(IERC20 /*_token*/) external {
         commonOwner = commonOwner;  // just to prevent mutability warning
-        revert("invalid agent vault address");
+        require(!checkForValidAgentVaultAddress, "invalid agent vault address");
+    }
+
+    function setCheckForValidAgentVaultAddress(bool _check) external {
+        checkForValidAgentVaultAddress = _check;
+    }
+
+    function getCollateralPool(address /*_agentVault*/) external view returns (address) {
+        return collateralPool;
+    }
+
+    function setCollateralPool(address pool) external {
+        collateralPool = pool;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -65,13 +80,19 @@ contract AssetManagerMock {
         emit AgentRedemptionInCollateral(_amountUBA);
     }
 
-    ERC20Mock public fasset;
     function registerFAssetForCollateralPool(ERC20Mock _fasset) external {
         fasset = _fasset;
     }
 
     function getFAssetsBackedByPool(address /* _backer */) external view returns (uint256) {
         return fasset.totalSupply();
+    }
+
+    function fAsset()
+        external view
+        returns (IERC20)
+    {
+        return fasset;
     }
 
     function assetPriceNatWei() public pure returns (uint256, uint256) {
