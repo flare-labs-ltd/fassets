@@ -89,18 +89,17 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             assertWeb3Equal(agentInfo.totalPoolCollateralNATWei, toWei(1000));
         });
 
-        // test when agentVault has implemented `getFAssetsBackedByPool` function
-        it.skip("should withdraw pool fees", async () => {
+        it("should withdraw pool fees", async () => {
             // mock fAsset
             const ci = testChainInfo.eth;
-            const fAsset = await FAssetMock.new(governance, ci.name, ci.symbol, ci.decimals);
+            const fAsset = await ERC20Mock.new(ci.name, ci.symbol);
             // create agent with mocked fAsset
             await assetManagerMock.setCheckForValidAgentVaultAddress(false);
             await assetManagerMock.registerFAssetForCollateralPool(fAsset.address);
             const agentVault = await AgentVault.new(assetManagerMock.address);
             // create pool
             const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
-            const token = await CollateralPoolToken.at(pool.address);
+            const token = await CollateralPoolToken.new(pool.address);
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.setPoolToken(token.address).encodeABI());
             await assetManagerMock.setCollateralPool(pool.address);
             // deposit nat
@@ -439,11 +438,21 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     it("should destroy the agentVault contract with token used", async () => {
         await assetManagerMock.setCheckForValidAgentVaultAddress(false);
         const agentVault = await AgentVault.new(assetManagerMock.address);
-        await agentVault.depositNat({ from: owner, value: toBN(100) }); // use a token
+        // use a token and delegate
+        await agentVault.depositNat({ from: owner, value: toBN(100) });
+        await agentVault.delegate(wNat.address, owner, 10_000, { from: owner });
+        const delegatedBefore = await wNat.votePowerOf(owner);
+        assertWeb3Equal(delegatedBefore, toBN(100));
         // destroy contract
-        await assetManagerMock.callFunctionAt(agentVault.address, agentVault.contract.methods.destroy(owner).encodeABI(), { from: owner });
+        await assetManagerMock.callFunctionAt(agentVault.address, agentVault.contract.methods.destroy(accounts[80]).encodeABI(), { from: owner });
         const agentVaultCode = await web3.eth.getCode(agentVault.address);
         assert.equal(agentVaultCode, "0x");
+        // check that wnat was returned
+        const recipientWNat = await wNat.balanceOf(accounts[80]);
+        assertWeb3Equal(recipientWNat, toBN(100));
+        // check that delegation was removed
+        const delegatedAfter = await wNat.votePowerOf(owner);
+        assertWeb3Equal(delegatedAfter, toBN(0));
     });
 
     it("should payout from a given token", async () => {
