@@ -263,6 +263,22 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     /**
+     * Get (a part of) the list of all agents.
+     * The list must be retrieved in parts since retrieving the whole list can consume too much gas for one block.
+     * @param _start first index to return from the available agent's list
+     * @param _end end index (one above last) to return from the available agent's list
+     */
+    function getAllAgents(
+        uint256 _start,
+        uint256 _end
+    )
+        external view
+        returns (address[] memory _agents, uint256 _totalLength)
+    {
+        return AgentsExternal.getAllAgents(_start, _end);
+    }
+
+    /**
      * Agent is going to withdraw `_valueNATWei` amount of collateral from agent vault.
      * This has to be announced and agent must then wait `withdrawalWaitMinSeconds` time.
      * After that time, agent can call withdraw(_valueNATWei) on agent vault.

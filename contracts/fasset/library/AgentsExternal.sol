@@ -169,6 +169,23 @@ library AgentsExternal {
         agent.setClass1Collateral(_token);
     }
 
+    function getAllAgents(
+        uint256 _start,
+        uint256 _end
+    )
+        external view
+        returns (address[] memory _agents, uint256 _totalLength)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        _totalLength = state.allAgents.length;
+        _end = Math.min(_end, _totalLength);
+        _start = Math.min(_start, _end);
+        _agents = new address[](_end - _start);
+        for (uint256 i = _start; i < _end; i++) {
+            _agents[i - _start] = state.allAgents[i];
+        }
+    }
+
     function isCollateralToken(
         address _agentVault,
         IERC20 _token

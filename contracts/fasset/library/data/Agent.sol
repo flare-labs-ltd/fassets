@@ -161,6 +161,9 @@ library Agent {
         // The announced time when the agent is exiting available agents list.
         uint64 exitAvailableAfterTs;
 
+        // The position of the agent in the list of all agents.
+        uint32 allAgentsPos;
+
         // Agent's pending setting updates.
         mapping(bytes32 => SettingUpdate) settingUpdates;
 

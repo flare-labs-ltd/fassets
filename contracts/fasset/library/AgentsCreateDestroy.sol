@@ -126,6 +126,9 @@ library AgentsCreateDestroy {
         agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
         agent.setPoolTopupCollateralRatioBIPS(_settings.poolTopupCollateralRatioBIPS);
         agent.setPoolTopupTokenPriceFactorBIPS(_settings.poolTopupTokenPriceFactorBIPS);
+        // add to the list of all agents
+        agent.allAgentsPos = state.allAgents.length.toUint32();
+        state.allAgents.push(address(agentVault));
         // notify
         emit AMEvents.AgentCreated(ownerColdAddress, uint8(_agentType), address(agentVault),
             normalizedUnderlyingAddress, address(agent.collateralPool));
@@ -171,6 +174,14 @@ library AgentsCreateDestroy {
         agent.collateralPool.destroy(state.settings.burnAddress);
         // destroy agent vault
         IAgentVault(_agentVault).destroy(_recipient);
+        // remove from the list of all agents
+        uint256 ind = agent.allAgentsPos;
+        if (ind + 1 < state.allAgents.length) {
+            state.allAgents[ind] = state.allAgents[state.allAgents.length - 1];
+            Agent.State storage movedAgent = Agent.get(state.allAgents[ind]);
+            movedAgent.allAgentsPos = uint32(ind);
+        }
+        state.allAgents.pop();
         // delete agent data
         AgentSettingsUpdater.clearPendingUpdates(agent);
         Agent.deleteStorage(agent);

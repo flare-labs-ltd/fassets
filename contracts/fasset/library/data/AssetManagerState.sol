@@ -26,6 +26,10 @@ library AssetManagerState {
         mapping(address => address) ownerHotToCold;
         mapping(address => address) ownerColdToHot;
 
+        // A list of all agents (for use by monitoring or challengers).
+        // Type: array of agent vault addresses; when one is deleted, its position is filled with last
+        address[] allAgents;
+
         // A list of all agents that are available for minting.
         // Type: array of agent vault addresses; when one is deleted, its position is filled with last
         address[] availableAgents;
