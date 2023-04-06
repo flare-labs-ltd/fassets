@@ -6,6 +6,22 @@ import "./data/AssetManagerState.sol";
 
 // global state helpers
 library Globals {
+    // Make sure to guard against reentrancy or send to a safe address.
+    function transferNat(
+        address payable _recipient,
+        uint256 _amountNatWei
+    )
+        internal
+    {
+        if (_amountNatWei > 0) {
+            /* solhint-disable avoid-low-level-calls */
+            //slither-disable-next-line arbitrary-send-eth
+            (bool success, ) = _recipient.call{value: _amountNatWei}("");
+            /* solhint-enable avoid-low-level-calls */
+            require(success, "transfer failed");
+        }
+    }
+
     function getWNat()
         internal view
         returns (IWNat)

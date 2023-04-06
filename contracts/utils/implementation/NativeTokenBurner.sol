@@ -23,6 +23,11 @@ contract NativeTokenBurner {
         emit Received(msg.value);
     }
 
+    // easier to call from code than transfering
+    function transfer() external payable {
+        emit Received(msg.value);
+    }
+
     //slither-disable-next-line suicidal
     function die() external {
         emit Burned(burnAddress, address(this).balance);

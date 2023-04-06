@@ -236,10 +236,12 @@ library Agents {
                 .mulBips(settings.class1BuyForFlareFactorBIPS);
             // Transfer class1 collateral to the agent vault owner
             SafeERC20.safeTransfer(class1Collateral.token, _agent.ownerColdAddress, _amountClass1Wei);
-            // Burn the NAT equivalent from agent's vault.
-            // We could have the agent send NATs along with the external call instead, but that raises issues of
-            // returning overpaid NATs, so the agent should just deposit NATs to the vault and we pay from there.
-            burnCollateralNAT(_agent, amountNatWei);
+            // Burn the NAT equivalent (must be provided with the call).
+            burnDirectNAT(amountNatWei);
+            // If there is some overpaid NAT, just send it to the agent's vault.
+            if (msg.value > amountNatWei) {
+                IAgentVault(_agent.vaultAddress()).depositNat{ value: msg.value - amountNatWei }();
+            }
         }
     }
 
@@ -259,6 +261,23 @@ library Agents {
         } else {
             // burn directly to burn address
             vault.payoutNAT(settings.burnAddress, _amountNATWei);
+        }
+    }
+
+    function burnDirectNAT(
+        uint256 _amountNATWei
+    )
+        internal
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        if (settings.burnWithSelfDestruct) {
+            // burn by self-destructing a temporary burner contract
+            NativeTokenBurner burner = new NativeTokenBurner(settings.burnAddress);
+            burner.transfer{ value: _amountNATWei }();
+            burner.die();
+        } else {
+            // burn directly to burn address
+            settings.burnAddress.transfer(_amountNATWei);
         }
     }
 

@@ -48,7 +48,7 @@ library Minting {
         _performMinting(agent, _crtId, crt.minter, crt.valueAMG, receivedAmount,
             crt.underlyingFeeUBA.mulBips(agent.poolFeeShareBIPS));
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
-        AssetManagerState.getSettings().burnAddress.transfer(crt.reservationFeeNatWei);
+        Agents.burnDirectNAT(crt.reservationFeeNatWei);
         // cleanup
         CollateralReservations.releaseCollateralReservation(crt, _crtId);   // crt can't be used after this
     }

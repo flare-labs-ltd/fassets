@@ -542,6 +542,9 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * available. In this case agent can call this method, which burns reserved collateral at market price
      * and releases the remaining collateral (CRF is also burned).
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
+     * NOTE: the agent (cold address) receives the class1 collateral and NAT is burned instead. Therefore
+     *      this method is `payable` and the caller must provide enough NAT to cover the received class1 amount
+     *      multiplied by `class1BuyForFlareFactorBIPS`.
      * @param _proof proof that the attestation query window can not not contain
      *      the payment/non-payment proof anymore
      * @param _collateralReservationId collateral reservation id
@@ -550,7 +553,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
         uint256 _collateralReservationId
     )
-        external
+        external payable
         nonReentrant
     {
         CollateralReservations.unstickMinting(_proof, _collateralReservationId.toUint64());
@@ -936,11 +939,15 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * This method ONLY works when f-asset is terminated, which will only be done when AssetManager is already paused
      * at least for a month and most f-assets are already burned and the only ones remaining are unrecoverable.
      * NOTE: may only be called by the agent vault owner.
+     * NOTE: the agent (cold address) receives the class1 collateral and NAT is burned instead. Therefore
+     *      this method is `payable` and the caller must provide enough NAT to cover the received class1 amount
+     *      multiplied by `class1BuyForFlareFactorBIPS`.
      */
     function buybackAgentCollateral(
         address _agentVault
     )
-        external
+        external payable
+        nonReentrant
     {
         require(Globals.getFAsset().terminated(), "f-asset not terminated");
         AgentsCreateDestroy.buybackAgentCollateral(_agentVault);

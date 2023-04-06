@@ -109,7 +109,6 @@ library CollateralReservations {
     )
         external
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
@@ -120,7 +119,7 @@ library CollateralReservations {
             && _proof.lowestQueryWindowBlockTimestamp > crt.lastUnderlyingTimestamp,
             "cannot unstick minting yet");
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
-        state.settings.burnAddress.transfer(crt.reservationFeeNatWei);
+        Agents.burnDirectNAT(crt.reservationFeeNatWei);
         // burn reserved collateral at market price
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.class1CollateralIndex);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
