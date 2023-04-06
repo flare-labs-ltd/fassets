@@ -39,7 +39,8 @@ library LiquidationStrategyImplSettings {
 
     function getEncoded() internal view returns (bytes memory) {
         LiquidationStrategyImplSettings.Data storage settings = LiquidationStrategyImplSettings.get();
-        return abi.encode(settings.liquidationCollateralFactorBIPS, settings.liquidationFactorClass1BIPS);
+        return abi.encode(settings.liquidationStepSeconds, settings.liquidationCollateralFactorBIPS,
+            settings.liquidationFactorClass1BIPS);
     }
 
     function get()
