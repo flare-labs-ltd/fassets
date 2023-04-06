@@ -1,8 +1,8 @@
 import { AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
 import { amgToTokenWeiPrice } from "../../../lib/fasset/Conversions";
-import { TokenPrice } from "../../../lib/state/TokenPrice";
-import { BN_ZERO } from "../../../lib/utils/helpers";
+import { TokenPrice, TokenPriceReader } from "../../../lib/state/TokenPrice";
 import { CollateralPoolTokenInstance, IERC20Contract, IFtsoRegistryContract, IFtsoRegistryInstance } from "../../../typechain-truffle";
+import { AMGPrice, CollateralPrice } from "../../../lib/state/CollateralPrice";
 
 export const POOL_TOKEN_DECIMALS = 18;
 
@@ -16,8 +16,8 @@ export class CollateralData {
         public collateral: CollateralToken | null,
         public balance: BN,
         public assetPrice: TokenPrice,
-        public tokenPrice: TokenPrice,
-        public amgToTokenWei: BN,
+        public tokenPrice: TokenPrice | undefined,
+        public amgPrice: AMGPrice,
     ) {
     }
 
@@ -42,12 +42,13 @@ export class CollateralData {
 export class CollateralDataFactory {
     constructor(
         public settings: AssetManagerSettings,
-        public ftsoRegistry: IFtsoRegistryInstance
+        public priceReader: TokenPriceReader
     ) { }
 
     static async create(settings: AssetManagerSettings) {
         const ftsoRegistry = await IFtsoRegistry.at(settings.ftsoRegistry);
-        return new CollateralDataFactory(settings, ftsoRegistry);
+        const priceReader = new TokenPriceReader(ftsoRegistry);
+        return new CollateralDataFactory(settings, priceReader);
     }
 
     async class1(collateral: CollateralToken, agentVault: string) {
@@ -61,20 +62,17 @@ export class CollateralDataFactory {
     async forCollateral(collateral: CollateralToken, tokenHolder: string) {
         const token = await IERC20.at(collateral.token);
         const balance = await token.balanceOf(tokenHolder);
-        const assetPrice = await TokenPrice.bySymbol(this.ftsoRegistry, collateral.assetFtsoSymbol);
-        const tokenPrice = await TokenPrice.bySymbol(this.ftsoRegistry, collateral.tokenFtsoSymbol);
-        const [tokPrice, tokPriceDecimals] = collateral.directPricePair ? [1, 0] : [tokenPrice.price, tokenPrice.decimals];
-        const amgToTokenWei = amgToTokenWeiPrice(this.settings, collateral.decimals, tokPrice, tokPriceDecimals, assetPrice.price, assetPrice.decimals);
-        return new CollateralData(collateral, balance, assetPrice, tokenPrice, amgToTokenWei);
+        const collateralPrice = await CollateralPrice.forCollateral(this.priceReader, this.settings, collateral);
+        return new CollateralData(collateral, balance, collateralPrice.assetPrice, collateralPrice.tokenPrice, collateralPrice.amgPrice);
     }
 
     async agentPoolTokens(poolCollateral: CollateralData, poolToken: CollateralPoolTokenInstance, agentVault: string) {
         const agentPoolTokens = await poolToken.balanceOf(agentVault);
         const totalPoolTokens = await poolToken.totalSupply();
         // asset price and token price will be expressed in pool collateral (wnat)
-        const assetPrice = poolCollateral.collateral!.directPricePair ? poolCollateral.assetPrice : poolCollateral.assetPrice.priceInToken(poolCollateral.tokenPrice, 10);
+        const assetPrice = poolCollateral.collateral!.directPricePair ? poolCollateral.assetPrice : poolCollateral.assetPrice.priceInToken(poolCollateral.tokenPrice!, 10);
         const tokenPrice = TokenPrice.fromFraction(poolCollateral.balance, totalPoolTokens, poolCollateral.assetPrice.timestamp, 10);
         const amgToTokenWei = amgToTokenWeiPrice(this.settings, POOL_TOKEN_DECIMALS, tokenPrice.price, tokenPrice.decimals, assetPrice.price, assetPrice.decimals);
-        return new CollateralData(null, agentPoolTokens, assetPrice, tokenPrice, amgToTokenWei);
+        return new CollateralData(null, agentPoolTokens, assetPrice, tokenPrice, AMGPrice.forAmgPrice(this.settings, amgToTokenWei));
     }
 }

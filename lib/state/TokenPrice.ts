@@ -1,7 +1,7 @@
 import { IFtsoContract, IFtsoInstance, IFtsoRegistryInstance } from "../../typechain-truffle";
 import { AssetManagerSettings } from "../fasset/AssetManagerTypes";
 import { amgToTokenWeiPrice } from "../fasset/Conversions";
-import { BN_ZERO, BNish, minBN, toBN } from "../utils/helpers";
+import { BN_ZERO, BNish, getOrCreateAsync, minBN, requireNotNull, toBN } from "../utils/helpers";
 
 const IFtso = artifacts.require("flare-smart-contracts/contracts/userInterfaces/IFtso.sol:IFtso" as any) as any as IFtsoContract;
 
@@ -46,21 +46,41 @@ export class TokenPrice {
         const timestamp = minBN(this.timestamp, tokenPrice.timestamp);
         return new TokenPrice(price, timestamp, decimals);
     }
+}
 
-    static async bySymbol(ftsoRegistry: IFtsoRegistryInstance, tokenSymbol: string): Promise<TokenPrice> {
-        const ftsoAddress = await ftsoRegistry.getFtsoBySymbol(tokenSymbol);
-        const ftso = await IFtso.at(ftsoAddress);
-        return await TokenPrice.forFtso(ftso);
+export class TokenPriceReader {
+    ftsoCache: Map<string, IFtsoInstance> = new Map();
+    priceCache: Map<string, TokenPrice> = new Map();
+
+    constructor(
+        public ftsoRegistry: IFtsoRegistryInstance
+    ) { }
+
+    getFtso(symbol: string) {
+        return getOrCreateAsync(this.ftsoCache, symbol, async () => {
+            const ftsoAddress = await this.ftsoRegistry.getFtsoBySymbol(symbol);
+            return await IFtso.at(ftsoAddress);
+        });
     }
 
-    static async forFtso(ftso: IFtsoInstance): Promise<TokenPrice> {
-        const { 0: price, 1: timestamp, 2: decimals } = await ftso.getCurrentPriceWithDecimals();
-        return new TokenPrice(toBN(price), toBN(timestamp), toBN(decimals));
+    getRawPrice(symbol: string, trusted: boolean) {
+        return getOrCreateAsync(this.priceCache, `${symbol}::trusted=${trusted}`, async () => {
+            const ftso = await this.getFtso(symbol);
+            const { 0: price, 1: timestamp, 2: decimals } =
+                trusted ? await ftso.getCurrentPriceWithDecimals() : await ftso.getCurrentPriceWithDecimalsFromTrustedProviders();
+            return new TokenPrice(toBN(price), toBN(timestamp), toBN(decimals));
+        });
     }
 
-    static async forFtsoTrusted(ftso: IFtsoInstance, maxAge: BN, fallbackPrice: TokenPrice): Promise<TokenPrice> {
-        const { 0: price, 1: timestamp, 2: decimals } = await ftso.getCurrentPriceWithDecimalsFromTrustedProviders();
-        const trustedPrice = new TokenPrice(toBN(price), toBN(timestamp), toBN(decimals));
-        return trustedPrice.fresh(fallbackPrice, maxAge) ? trustedPrice : fallbackPrice;
+    async getPrice(symbol: string, trusted?: false): Promise<TokenPrice>;
+    async getPrice(symbol: string, trusted: boolean, trustedMaxAge: BNish): Promise<TokenPrice>;
+    async getPrice(symbol: string, trusted: boolean = false, trustedMaxAge?: BNish) {
+        const ftsoPrice = await this.getRawPrice(symbol, false);
+        if (trusted) {
+            const trustedPrice = await this.getRawPrice(symbol, true);
+            return trustedPrice.fresh(ftsoPrice, toBN(requireNotNull(trustedMaxAge))) ? trustedPrice : ftsoPrice;
+        } else {
+            return ftsoPrice;
+        }
     }
 }

@@ -1,5 +1,4 @@
 import { AgentInfo, AssetManagerSettings, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
-import { convertAmgToTokenWei, convertUBAToTokenWei } from "../../../lib/fasset/Conversions";
 import { BN_ZERO, MAX_BIPS, maxBN, minBN, toBN } from "../../../lib/utils/helpers";
 import { AssetManagerInstance } from "../../../typechain-truffle";
 import { CollateralData, CollateralDataFactory, CollateralKind } from "./CollateralData";
@@ -63,7 +62,7 @@ export class AgentCollateral {
 
     mintingLotCollateralWei(data: CollateralData): BN {
         const [mintingBIPS] = this.mintingCollateralRatio(data.kind());
-        const lotSizeWei = convertAmgToTokenWei(this.settings.lotSizeAMG, data.amgToTokenWei);
+        const lotSizeWei = data.amgPrice.convertAmgToTokenWei(this.settings.lotSizeAMG);
         return lotSizeWei.mul(mintingBIPS).divn(MAX_BIPS);
     }
 
@@ -89,6 +88,6 @@ export class AgentCollateral {
     }
 
     convertUBAToTokenWei(data: CollateralData, valueUBA: BN) {
-        return convertUBAToTokenWei(this.settings, valueUBA, data.amgToTokenWei);
+        return data.amgPrice.convertUBAToTokenWei(valueUBA);
     }
 }

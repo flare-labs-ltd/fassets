@@ -32,7 +32,6 @@ export interface IAssetContext {
     wNat: ContractWithEvents<WNatInstance, WNatEvents>;
     natFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>;
     fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>;
-    assetFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>;
     assetManager: ContractWithEvents<AssetManagerInstance, AssetManagerEvents>;
     stablecoins: Record<string, ContractWithEvents<ERC20MockInstance, ERC20Events>>;
     ftsos: Record<string, ContractWithEvents<FtsoMockInstance, FtsoMockEvents>>;

@@ -199,11 +199,23 @@ export function runAsyncMain(func: (args: string[]) => Promise<void>, errorExitC
 /**
  * Get value of key `key` for map. If it doesn't exists, create new value, add it to the map and return it.
  */
-export function getOrCreate<K, V>(map: Map<K, V>, key: K, create: () => V): V {
+export function getOrCreate<K, V>(map: Map<K, V>, key: K, create: (key: K) => V): V {
     if (map.has(key)) {
         return map.get(key)!;
     }
-    const value = create();
+    const value = create(key);
+    map.set(key, value);
+    return value;
+}
+
+/**
+ * Get value of key `key` for map. If it doesn't exists, create new value, add it to the map and return it.
+ */
+export async function getOrCreateAsync<K, V>(map: Map<K, V>, key: K, create: (key: K) => Promise<V>): Promise<V> {
+    if (map.has(key)) {
+        return map.get(key)!;
+    }
+    const value = await create(key);
     map.set(key, value);
     return value;
 }

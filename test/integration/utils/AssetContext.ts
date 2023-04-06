@@ -67,7 +67,6 @@ export class AssetContext implements IAssetContext {
     ftsos = this.common.ftsos;
 
     natFtso = requireNotNull(this.ftsos[this.natInfo.symbol]);
-    assetFtso = requireNotNull(this.ftsos[this.settings.assetFtsoSymbol]);
 
     usdc = this.stablecoins.USDC;
     usdt = this.stablecoins.USDT;
@@ -98,17 +97,6 @@ export class AssetContext implements IAssetContext {
         const proof = await this.attestationProvider.proveConfirmedBlockHeightExists();
         await this.assetManager.updateCurrentBlock(proof);
         return toNumber(proof.blockNumber) + toNumber(proof.numberOfConfirmations);
-    }
-
-    async currentAmgToNATWeiPrice() {
-        const prices = await Prices.getFtsoPrices(this, this.settings, this.collaterals, []);
-        return prices.amgToNatWei;
-    }
-
-    async currentAmgToNATWeiPriceWithTrusted(): Promise<[ftsoPrice: BN, trustedPrice: BN]> {
-        const prices = await Prices.getFtsoPrices(this, this.settings, this.collaterals, []);
-        const trustedPrices = await Prices.getTrustedPrices(this, this.settings, this.collaterals, prices, []);
-        return [prices.amgToNatWei, trustedPrices.amgToNatWei];
     }
 
     convertAmgToUBA(valueAMG: BNish) {
@@ -143,8 +131,8 @@ export class AssetContext implements IAssetContext {
         return this.convertAmgToNATWei(this.convertUBAToAmg(valueUBA), amgToNATWeiPrice);
     }
 
-    getPrices(selectedStablecoins?: string[]) {
-        return Prices.getPrices(this, this.settings, this.collaterals, selectedStablecoins);
+    getPrices() {
+        return Prices.getPrices(this, this.settings, this.collaterals);
     }
 
     async waitForUnderlyingTransaction(scope: EventScope | undefined, txHash: string, maxBlocksToWaitForTx?: number) {
