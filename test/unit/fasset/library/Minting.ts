@@ -6,6 +6,7 @@ import { TX_BLOCKED, TX_FAILED } from "../../../../lib/underlying-chain/interfac
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, MAX_BIPS, toBIPS, toBN, toWei } from "../../../../lib/utils/helpers";
+import { HardhatSnapshot } from "../../../../lib/utils/snapshots";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -33,6 +34,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
+    let snapshot: HardhatSnapshot;
 
     // addresses
     const agentOwner1 = accounts[20];
@@ -92,7 +94,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         chain.mine(chain.finalizationBlocks);
     }
 
-    beforeEach(async () => {
+    before(async () => {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
         // save some contracts as globals
@@ -109,6 +111,11 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        snapshot = await HardhatSnapshot.create({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset });
+    });
+
+    beforeEach(async () => {
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await snapshot.revert());
     });
 
     it("should execute minting (minter)", async () => {
