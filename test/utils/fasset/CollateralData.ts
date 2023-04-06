@@ -1,8 +1,8 @@
 import { AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
 import { amgToTokenWeiPrice } from "../../../lib/fasset/Conversions";
+import { AMGPrice, AMGPriceConverter, CollateralPrice } from "../../../lib/state/CollateralPrice";
 import { TokenPrice, TokenPriceReader } from "../../../lib/state/TokenPrice";
-import { CollateralPoolTokenInstance, IERC20Contract, IFtsoRegistryContract, IFtsoRegistryInstance } from "../../../typechain-truffle";
-import { AMGPrice, CollateralPrice } from "../../../lib/state/CollateralPrice";
+import { CollateralPoolTokenInstance, IERC20Contract, IFtsoRegistryContract } from "../../../typechain-truffle";
 
 export const POOL_TOKEN_DECIMALS = 18;
 
@@ -11,7 +11,7 @@ const IERC20 = artifacts.require('@openzeppelin/contracts/token/ERC20/IERC20.sol
 
 export enum CollateralKind { CLASS1, POOL, AGENT_POOL_TOKENS };
 
-export class CollateralData {
+export class CollateralData extends AMGPriceConverter {
     constructor(
         public collateral: CollateralToken | null,
         public balance: BN,
@@ -19,6 +19,7 @@ export class CollateralData {
         public tokenPrice: TokenPrice | undefined,
         public amgPrice: AMGPrice,
     ) {
+        super();
     }
 
     kind() {
@@ -36,6 +37,12 @@ export class CollateralData {
 
     tokenDecimals() {
         return this.collateral?.decimals ?? POOL_TOKEN_DECIMALS;
+    }
+
+    static async forCollateralPrice(collateralPrice: CollateralPrice, tokenHolder: string) {
+        const token = await IERC20.at(collateralPrice.collateral.token);
+        const balance = await token.balanceOf(tokenHolder);
+        return new CollateralData(collateralPrice.collateral, balance, collateralPrice.assetPrice, collateralPrice.tokenPrice, collateralPrice.amgPrice);
     }
 }
 
@@ -60,10 +67,8 @@ export class CollateralDataFactory {
     }
 
     async forCollateral(collateral: CollateralToken, tokenHolder: string) {
-        const token = await IERC20.at(collateral.token);
-        const balance = await token.balanceOf(tokenHolder);
         const collateralPrice = await CollateralPrice.forCollateral(this.priceReader, this.settings, collateral);
-        return new CollateralData(collateral, balance, collateralPrice.assetPrice, collateralPrice.tokenPrice, collateralPrice.amgPrice);
+        return CollateralData.forCollateralPrice(collateralPrice, tokenHolder);
     }
 
     async agentPoolTokens(poolCollateral: CollateralData, poolToken: CollateralPoolTokenInstance, agentVault: string) {

@@ -51,9 +51,9 @@ export class AgentCollateral {
     lockedCollateralWei(data: CollateralData): BN {
         const [mintingMinCollateralRatioBIPS, systemMinCollateralRatioBIPS] = this.mintingCollateralRatio(data.kind());
         const backedUBA = toBN(this.agentInfo.reservedUBA).add(toBN(this.agentInfo.mintedUBA));
-        const mintingCollateral = this.convertUBAToTokenWei(data, backedUBA).mul(mintingMinCollateralRatioBIPS).divn(MAX_BIPS);
+        const mintingCollateral = data.convertUBAToTokenWei(backedUBA).mul(mintingMinCollateralRatioBIPS).divn(MAX_BIPS);
         const redeemingUBA = data.kind() === CollateralKind.POOL ? toBN(this.agentInfo.poolRedeemingUBA) : toBN(this.agentInfo.redeemingUBA);
-        const redeemingCollateral = this.convertUBAToTokenWei(data, redeemingUBA).mul(systemMinCollateralRatioBIPS).divn(MAX_BIPS);
+        const redeemingCollateral = data.convertUBAToTokenWei(redeemingUBA).mul(systemMinCollateralRatioBIPS).divn(MAX_BIPS);
         // TODO: add announced withdrawal amounts to full agent info
         // const announcedWithdrawal =
         //     data.kind() !== CollateralKind.POOL ? this.agentInfo.announcedWithdrawal : 0;
@@ -62,7 +62,7 @@ export class AgentCollateral {
 
     mintingLotCollateralWei(data: CollateralData): BN {
         const [mintingBIPS] = this.mintingCollateralRatio(data.kind());
-        const lotSizeWei = data.amgPrice.convertAmgToTokenWei(this.settings.lotSizeAMG);
+        const lotSizeWei = data.convertAmgToTokenWei(this.settings.lotSizeAMG);
         return lotSizeWei.mul(mintingBIPS).divn(MAX_BIPS);
     }
 
@@ -85,9 +85,5 @@ export class AgentCollateral {
                 return [mintingBIPS, systemBIPS];
             }
         }
-    }
-
-    convertUBAToTokenWei(data: CollateralData, valueUBA: BN) {
-        return data.amgPrice.convertUBAToTokenWei(valueUBA);
     }
 }

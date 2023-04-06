@@ -3,8 +3,9 @@ import { AMGSettings, amgToTokenWeiPrice, convertAmgToTokenWei, convertAmgToUBA,
 import { BNish, toBN } from "../utils/helpers";
 import { TokenPrice, TokenPriceReader } from "./TokenPrice";
 
-export class AMGConverter implements AMGSettings {
+export class AMGPrice {
     constructor(
+        public amgToTokenWei: BN,
         public assetMintingDecimals: BN,
         public assetMintingGranularityUBA: BN,
     ) {
@@ -16,16 +17,6 @@ export class AMGConverter implements AMGSettings {
 
     convertUBAToAmg(valueUBA: BNish) {
         return convertUBAToAmg(this, valueUBA);
-    }
-}
-
-export class AMGPrice extends AMGConverter {
-    constructor(
-        public amgToTokenWei: BN,
-        assetMintingDecimals: BN,
-        assetMintingGranularityUBA: BN,
-    ) {
-        super(assetMintingDecimals, assetMintingGranularityUBA);
     }
 
     convertAmgToTokenWei(valueAMG: BNish) {
@@ -55,13 +46,15 @@ export class AMGPrice extends AMGConverter {
     }
 }
 
-export class CollateralPrice {
-    constructor(
-        public collateral: CollateralToken,
-        public assetPrice: TokenPrice,
-        public tokenPrice: TokenPrice | undefined,
-        public amgPrice: AMGPrice,
-    ) {
+export abstract class AMGPriceConverter {
+    abstract amgPrice: AMGPrice;
+
+    convertAmgToUBA(valueAMG: BNish) {
+        return this.amgPrice.convertAmgToUBA(valueAMG);
+    }
+
+    convertUBAToAmg(valueUBA: BNish) {
+        return this.amgPrice.convertUBAToAmg(valueUBA);
     }
 
     convertAmgToTokenWei(valueAMG: BNish) {
@@ -78,6 +71,17 @@ export class CollateralPrice {
 
     convertTokenWeiToUBA(valueWei: BNish) {
         return this.amgPrice.convertTokenWeiToUBA(valueWei);
+    }
+}
+
+export class CollateralPrice extends AMGPriceConverter {
+    constructor(
+        public collateral: CollateralToken,
+        public assetPrice: TokenPrice,
+        public tokenPrice: TokenPrice | undefined,
+        public amgPrice: AMGPrice,
+    ) {
+        super();
     }
 
     static forTokenPrices(settings: AMGSettings, collateral: CollateralToken, assetPrice: TokenPrice, tokenPrice: TokenPrice | undefined) {

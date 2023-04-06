@@ -22,8 +22,7 @@ export class Prices {
     //     return `(nat=${this.natUSD.toFixed(3)}$, asset=${this.assetUSD.toFixed(3)}$, asset/nat=${this.assetNatNum.toFixed(3)})`;
     // }
 
-    static async getFtsoPrices(context: IAssetContext, settings: AssetManagerSettings, collaterals: CollateralToken[], trusted: boolean = false): Promise<Prices> {
-        const priceReader = new TokenPriceReader(context.ftsoRegistry);
+    static async getFtsoPrices(priceReader: TokenPriceReader, settings: AssetManagerSettings, collaterals: CollateralToken[], trusted: boolean = false): Promise<Prices> {
         const collateralPrices: CollateralPrice[] = [];
         for (const collateral of collaterals) {
             const collateralPrice = await CollateralPrice.forCollateral(priceReader, settings, collateral, trusted);
@@ -33,8 +32,9 @@ export class Prices {
     }
 
     static async getPrices(context: IAssetContext, settings: AssetManagerSettings, collaterals: CollateralToken[]): Promise<[Prices, Prices]> {
-        const ftsoPrices = await this.getFtsoPrices(context, settings, collaterals, false);
-        const trustedPrices = await this.getFtsoPrices(context, settings, collaterals, true);
+        const priceReader = new TokenPriceReader(context.ftsoRegistry);
+        const ftsoPrices = await this.getFtsoPrices(priceReader, settings, collaterals, false);
+        const trustedPrices = await this.getFtsoPrices(priceReader, settings, collaterals, true);
         return [ftsoPrices, trustedPrices];
     }
 }
