@@ -96,6 +96,18 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     /**
+     * In update, all settings must be set (and some must stay unchanged), so the updater must call
+     * getSettings and then updateSettings with modified structure.
+     * @return the current settings
+     */
+    function getLiquidationSettings()
+        external view
+        returns (bytes memory)
+    {
+        return LiquidationStrategy.getSettings();
+    }
+
+    /**
      * Get the asset manager controller, the only address that can change settings.
      */
     function assetManagerController()
