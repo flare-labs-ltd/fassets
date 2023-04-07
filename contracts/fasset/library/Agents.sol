@@ -237,6 +237,7 @@ library Agents {
             // Transfer class1 collateral to the agent vault owner
             SafeERC20.safeTransfer(class1Collateral.token, _agent.ownerColdAddress, _amountClass1Wei);
             // Burn the NAT equivalent (must be provided with the call).
+            require(msg.value >= amountNatWei, "not enough funds provided");
             burnDirectNAT(amountNatWei);
             // If there is some overpaid NAT, just send it to the agent's vault.
             if (msg.value > amountNatWei) {
