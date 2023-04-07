@@ -108,6 +108,12 @@ library FullAgentInfo {
         // Note: the amount of agent's pool tokens only affects minting, not liquidation.
         uint256 totalAgentPoolTokensWei;
 
+        // The amount of class1 collateral that will be withdrawn by the agent.
+        uint256 announcedClass1WithdrawalWei;
+
+        // The amount of pool tokens that will be withdrawn by the agent.
+        uint256 announcedPoolTokensWithdrawalWei;
+
         // Free agent's pool tokens.
         uint256 freeAgentPoolTokensWei;
 
@@ -195,6 +201,10 @@ library FullAgentInfo {
         _info.poolCollateralRatioBIPS = cr.poolCR;
         _info.totalAgentPoolTokensWei = collateralData.agentPoolTokens.fullCollateral;
         _info.freeAgentPoolTokensWei = collateralData.agentPoolTokens.freeCollateralWei(agent);
+        _info.announcedClass1WithdrawalWei =
+            agent.withdrawalAnnouncement(Collateral.Kind.AGENT_CLASS1).amountWei;
+        _info.announcedPoolTokensWithdrawalWei =
+            agent.withdrawalAnnouncement(Collateral.Kind.AGENT_POOL).amountWei;
         _info.mintedUBA = Conversion.convertAmgToUBA(agent.mintedAMG);
         _info.reservedUBA = Conversion.convertAmgToUBA(agent.reservedAMG);
         _info.redeemingUBA = Conversion.convertAmgToUBA(agent.redeemingAMG);

@@ -54,10 +54,11 @@ export class AgentCollateral {
         const mintingCollateral = data.convertUBAToTokenWei(backedUBA).mul(mintingMinCollateralRatioBIPS).divn(MAX_BIPS);
         const redeemingUBA = data.kind() === CollateralKind.POOL ? toBN(this.agentInfo.poolRedeemingUBA) : toBN(this.agentInfo.redeemingUBA);
         const redeemingCollateral = data.convertUBAToTokenWei(redeemingUBA).mul(systemMinCollateralRatioBIPS).divn(MAX_BIPS);
-        // TODO: add announced withdrawal amounts to full agent info
-        // const announcedWithdrawal =
-        //     data.kind() !== CollateralKind.POOL ? this.agentInfo.announcedWithdrawal : 0;
-        return mintingCollateral.add(redeemingCollateral);
+        const announcedWithdrawal =
+            data.kind() === CollateralKind.CLASS1 ? toBN(this.agentInfo.announcedClass1WithdrawalWei) :
+            data.kind() === CollateralKind.AGENT_POOL_TOKENS ? toBN(this.agentInfo.announcedPoolTokensWithdrawalWei) :
+            BN_ZERO;
+        return mintingCollateral.add(redeemingCollateral).add(announcedWithdrawal);
     }
 
     mintingLotCollateralWei(data: CollateralData): BN {

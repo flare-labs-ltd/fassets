@@ -60,6 +60,7 @@ library AgentsExternal {
         }
     }
 
+    // _kind will always be AGENT_CLASS1 or AGENT_POOL (limited in AssetManager)
     function announceWithdrawal(
         Collateral.Kind _kind,
         address _agentVault,
