@@ -26,7 +26,7 @@ export function web3Normalize(x: any) {
             // }
             break;
     }
-    throw new Error("Unsupported object type");
+    throw new Error(`Unsupported object type ${typeof x === 'object' ? x.constructor?.name : typeof x}`);
 }
 
 /**

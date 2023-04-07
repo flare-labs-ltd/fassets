@@ -7,7 +7,9 @@ export type Nullable<T> = T | null | undefined;
 
 export type Dict<T> = { [key: string]: T };
 
-export const BN_ZERO = new BN(0);
+export const BN_ZERO = Web3.utils.toBN(0);
+export const BN_ONE = Web3.utils.toBN(1);
+export const BN_TEN = Web3.utils.toBN(10);
 
 export const MAX_BIPS = 10_000;
 
@@ -373,6 +375,7 @@ export function expectErrors(error: any, expectedErrors: ErrorFilter[]): undefin
     throw error;    // unexpected error
 }
 
+// Convert number or percentage string "x%" to BIPS.
 export function toBIPS(x: number | string) {
     if (typeof x === 'string' && x.endsWith('%')) {
         return toBNExp(x.slice(0, x.length - 1), 2);    // x is in percent, only multiply by 100
@@ -381,10 +384,19 @@ export function toBIPS(x: number | string) {
     }
 }
 
+// Calculate 10 ** n as BN.
+export function exp10(n: BNish) {
+    return BN_TEN.pow(toBN(n));
+}
+
+export function isBNLike(value: any) {
+    return BN.isBN(value) || (typeof value === 'string' && /^\d+$/.test(value));
+}
+
 // Some Web3 results are union of array and struct so console.log prints them as array.
 // This function converts it to struct nad also formats values.
 export function formatStruct(value: any): any {
-    if (BN.isBN(value) || (typeof value === 'string' && /^\d+$/.test(value))) {
+    if (isBNLike(value)) {
         return formatBN(value);
     } else if (Array.isArray(value)) {
         const structEntries = Object.entries(value).filter(([key, val]) => typeof key !== 'number' && !/^\d+$/.test(key));

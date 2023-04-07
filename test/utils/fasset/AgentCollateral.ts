@@ -1,5 +1,5 @@
 import { AgentInfo, AssetManagerSettings, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
-import { BN_ZERO, MAX_BIPS, maxBN, minBN, toBN } from "../../../lib/utils/helpers";
+import { BN_ZERO, MAX_BIPS, exp10, maxBN, minBN, toBN } from "../../../lib/utils/helpers";
 import { AssetManagerInstance } from "../../../typechain-truffle";
 import { CollateralData, CollateralDataFactory, CollateralKind } from "./CollateralData";
 
@@ -28,6 +28,17 @@ export class AgentCollateral {
         const poolCD = await collateralDataFactory.pool(poolCollateral, collateralPool.address);
         const agetPoolTokenCD = await collateralDataFactory.agentPoolTokens(poolCD, collateralPoolToken, agentVault);
         return new AgentCollateral(settings, agentInfo, class1CD, poolCD, agetPoolTokenCD);
+    }
+
+    ofKind(kind: CollateralKind) {
+        switch (kind) {
+            case CollateralKind.CLASS1:
+                return this.class1;
+            case CollateralKind.POOL:
+                return this.pool;
+            case CollateralKind.AGENT_POOL_TOKENS:
+                return this.agentPoolTokens;
+        }
     }
 
     freeCollateralLots() {
@@ -86,5 +97,12 @@ export class AgentCollateral {
                 return [mintingBIPS, systemBIPS];
             }
         }
+    }
+
+    collateralRatioBIPS(data: CollateralData) {
+        const totalBacked = toBN(this.agentInfo.mintedUBA).add(toBN(this.agentInfo.reservedUBA)).add(toBN(this.agentInfo.redeemingUBA))
+        if (totalBacked.isZero()) return exp10(10);    // nothing minted - ~infinite collateral ratio (but avoid overflows)
+        const backingTokenWei = data.convertUBAToTokenWei(totalBacked);
+        return data.balance.muln(MAX_BIPS).div(backingTokenWei);
     }
 }

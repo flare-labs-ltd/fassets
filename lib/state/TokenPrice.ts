@@ -1,7 +1,7 @@
 import { IFtsoContract, IFtsoInstance, IFtsoRegistryInstance } from "../../typechain-truffle";
 import { AssetManagerSettings } from "../fasset/AssetManagerTypes";
 import { amgToTokenWeiPrice } from "../fasset/Conversions";
-import { BN_ZERO, BNish, getOrCreateAsync, minBN, requireNotNull, toBN } from "../utils/helpers";
+import { BN_ZERO, BNish, exp10, getOrCreateAsync, minBN, requireNotNull, toBN } from "../utils/helpers";
 
 const IFtso = artifacts.require("flare-smart-contracts/contracts/userInterfaces/IFtso.sol:IFtso" as any) as any as IFtsoContract;
 
@@ -35,13 +35,13 @@ export class TokenPrice {
 
     static fromFraction(multiplier: BN, divisor: BN, timestamp: BN, decimals: BNish) {
         decimals = toBN(decimals);
-        const price = multiplier.isZero() ? BN_ZERO : multiplier.mul(toBN(10).pow(decimals)).div(divisor);
+        const price = multiplier.isZero() ? BN_ZERO : multiplier.mul(exp10(decimals)).div(divisor);
         return new TokenPrice(price, timestamp, decimals);
     }
 
     priceInToken(tokenPrice: TokenPrice, decimals: BNish) {
         decimals = toBN(decimals);
-        const multiplier = toBN(10).pow(decimals.add(tokenPrice.decimals).sub(this.decimals));
+        const multiplier = exp10(decimals.add(tokenPrice.decimals).sub(this.decimals));
         const price = this.price.mul(multiplier).div(tokenPrice.price);
         const timestamp = minBN(this.timestamp, tokenPrice.timestamp);
         return new TokenPrice(price, timestamp, decimals);

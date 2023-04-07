@@ -13,26 +13,26 @@ export function web3ResultStruct<T>(value: T): T {
     return result;
 }
 
-export function assertWeb3Equal(x: any, y: any, message?: string) {
-    assert.strictEqual(web3Normalize(x), web3Normalize(y), message);
+export function assertWeb3Equal(actual: any, expected: any, message?: string) {
+    assert.strictEqual(web3Normalize(actual), web3Normalize(expected), message);
 }
 
-export function assertWeb3DeepEqual(x: any, y: any, message?: string) {
-    assert.deepStrictEqual(web3DeepNormalize(x), web3DeepNormalize(y), message);
+export function assertWeb3DeepEqual(actual: any, expected: any, message?: string) {
+    assert.deepStrictEqual(web3DeepNormalize(actual), web3DeepNormalize(expected), message);
 }
 
-export function assertWeb3ArrayEqual(a: any[], b: any[], message?: string) {
-    assert.equal(a.length, b.length, message ?? `Expected array length ${a.length} to equal ${b.length}`);
-    const an: any[] = web3DeepNormalize(a);
-    const bn: any[] = web3DeepNormalize(b);
+export function assertWeb3ArrayEqual(actual: any[], expected: any[], message?: string) {
+    assert.equal(actual.length, expected.length, message ?? `Expected array length ${actual.length} to equal ${expected.length}`);
+    const an: any[] = web3DeepNormalize(actual);
+    const bn: any[] = web3DeepNormalize(expected);
     for (let i = 0; i < an.length; i++) {
-        assert.equal(an[i], bn[i], message ?? `Expected ${a[i]} to equal ${b[i]} at index ${i}`);
+        assert.equal(an[i], bn[i], message ?? `Expected ${actual[i]} to equal ${expected[i]} at index ${i}`);
     }
 }
 
-export function assertWeb3SetEqual(a: any[] | Iterable<any>, b: any[] | Iterable<any>, message?: string) {
-    const aset = new Set(web3DeepNormalize(a));
-    const bset = new Set(web3DeepNormalize(b));
+export function assertWeb3SetEqual(actual: any[] | Iterable<any>, expected: any[] | Iterable<any>, message?: string) {
+    const aset = new Set(web3DeepNormalize(actual));
+    const bset = new Set(web3DeepNormalize(expected));
     for (const elt of aset) {
         assert.isTrue(bset.has(elt), message ?? `Element ${elt} missing in second set`);
     }

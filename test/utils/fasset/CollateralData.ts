@@ -29,10 +29,10 @@ export class CollateralData extends AMGPriceConverter {
             } else if (Number(this.collateral.tokenClass) === CollateralTokenClass.POOL) {
                 return CollateralKind.POOL;
             }
+            throw new Error("Invalid collateral kind");
         } else {
             return CollateralKind.AGENT_POOL_TOKENS;
         }
-        throw new Error("Invalid collateral kind");
     }
 
     tokenDecimals() {
@@ -75,8 +75,8 @@ export class CollateralDataFactory {
         const agentPoolTokens = await poolToken.balanceOf(agentVault);
         const totalPoolTokens = await poolToken.totalSupply();
         // asset price and token price will be expressed in pool collateral (wnat)
-        const assetPrice = poolCollateral.collateral!.directPricePair ? poolCollateral.assetPrice : poolCollateral.assetPrice.priceInToken(poolCollateral.tokenPrice!, 10);
-        const tokenPrice = TokenPrice.fromFraction(poolCollateral.balance, totalPoolTokens, poolCollateral.assetPrice.timestamp, 10);
+        const assetPrice = poolCollateral.collateral!.directPricePair ? poolCollateral.assetPrice : poolCollateral.assetPrice.priceInToken(poolCollateral.tokenPrice!, 18);
+        const tokenPrice = TokenPrice.fromFraction(poolCollateral.balance, totalPoolTokens, poolCollateral.assetPrice.timestamp, 18);
         const amgToTokenWei = amgToTokenWeiPrice(this.settings, POOL_TOKEN_DECIMALS, tokenPrice.price, tokenPrice.decimals, assetPrice.price, assetPrice.decimals);
         return new CollateralData(null, agentPoolTokens, assetPrice, tokenPrice, AMGPrice.forAmgPrice(this.settings, amgToTokenWei));
     }

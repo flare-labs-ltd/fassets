@@ -13,10 +13,20 @@ import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../..
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
+import { AgentInfo } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentCollateral } from "../../utils/fasset/AgentCollateral";
 
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
+
+export type CheckAgentInfo = { [K in keyof AgentInfo]?: AgentInfo[K] extends BN ? BNish : AgentInfo[K] }
+    & { actualUnderlyingBalance?: BNish };
+
+export const CHECK_DEFAULTS: CheckAgentInfo = {
+    status: 0, mintedUBA: 0, reservedUBA: 0, redeemingUBA: 0,
+    announcedClass1WithdrawalWei: 0, announcedPoolTokensWithdrawalWei: 0, announcedUnderlyingWithdrawalId: 0
+};
 
 export class Agent extends AssetContextClient {
     constructor(
@@ -341,15 +351,15 @@ export class Agent extends AssetContextClient {
         return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference, options);
     }
 
-    async getCollateralRatioBIPS(fullCollateral: BNish, mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0) {
-        const [amgToNATWeiPrice, amgToNATWeiPriceTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
-        const mintedAMG = this.context.convertUBAToAmg(mintedUBA);
-        const reservedAMG = this.context.convertUBAToAmg(reservedUBA);
-        const redeemingAMG = this.context.convertUBAToAmg(redeemingUBA);
-        const ratio = await this.collateralRatio(fullCollateral, amgToNATWeiPrice, mintedAMG, reservedAMG, redeemingAMG);
-        const ratioTrusted = await this.collateralRatio(fullCollateral, amgToNATWeiPriceTrusted, mintedAMG, reservedAMG, redeemingAMG);
-        return ratio.gt(ratioTrusted) ? ratio : ratioTrusted;
-    }
+    // async getCollateralRatioBIPS(fullCollateral: BNish, mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0) {
+    //     const [amgToNATWeiPrice, amgToNATWeiPriceTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
+    //     const mintedAMG = this.context.convertUBAToAmg(mintedUBA);
+    //     const reservedAMG = this.context.convertUBAToAmg(reservedUBA);
+    //     const redeemingAMG = this.context.convertUBAToAmg(redeemingUBA);
+    //     const ratio = await this.collateralRatio(fullCollateral, amgToNATWeiPrice, mintedAMG, reservedAMG, redeemingAMG);
+    //     const ratioTrusted = await this.collateralRatio(fullCollateral, amgToNATWeiPriceTrusted, mintedAMG, reservedAMG, redeemingAMG);
+    //     return ratio.gt(ratioTrusted) ? ratio : ratioTrusted;
+    // }
 
     private async collateralRatio(fullCollateral: BNish, amgToNATWeiPrice: BNish, mintedAMG: BNish, reservedAMG: BNish = 0, redeemingAMG: BNish = 0) {
         const totalAMG = toBN(reservedAMG).add(toBN(mintedAMG)).add(toBN(redeemingAMG));
@@ -387,16 +397,16 @@ export class Agent extends AssetContextClient {
         await this.assetManager.buybackAgentCollateral(this.agentVault.address, { from: this.ownerAddress });
     }
 
-    async getBuybackAgentCollateralValue(mintedUBA: BNish, reservedUBA: BNish = 0) {
-        const mintedAMG = this.context.convertUBAToAmg(mintedUBA);
-        const reservedAMG = this.context.convertUBAToAmg(reservedUBA);
-        return this.context.convertAmgToNATWei(
-                toBN(mintedAMG.add(reservedAMG))
-                .mul(toBN(this.context.settings.buybackCollateralFactorBIPS))
-                .divn(10_000),
-                await this.context.currentAmgToNATWeiPrice()
-            );
-    }
+    // async getBuybackAgentCollateralValue(mintedUBA: BNish, reservedUBA: BNish = 0) {
+    //     const mintedAMG = this.context.convertUBAToAmg(mintedUBA);
+    //     const reservedAMG = this.context.convertUBAToAmg(reservedUBA);
+    //     return this.context.convertAmgToNATWei(
+    //             toBN(mintedAMG.add(reservedAMG))
+    //             .mul(toBN(this.context.settings.buybackCollateralFactorBIPS))
+    //             .divn(10_000),
+    //             await this.context.currentAmgToNATWeiPrice()
+    //         );
+    // }
 
     // async calculateFreeCollateralLots(freeCollateralUBA: BNish) {
     //     const settings = await this.context.assetManager.getSettings();
@@ -408,7 +418,8 @@ export class Agent extends AssetContextClient {
     //     return toBN(freeCollateralUBA).div(lotCollateral);
     // }
 
-    async checkAgentInfo(fullAgentCollateral: BNish, freeUnderlyingBalanceUBA: BNish, lockedUnderlyingBalanceUBA: BNish, mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0, withdrawalAnnouncedNATWei: BNish = 0, status: BNish = 0) {
+    async checkAgentInfoOld(fullAgentCollateral: BNish, freeUnderlyingBalanceUBA: BNish, lockedUnderlyingBalanceUBA: BNish, mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0, withdrawalAnnouncedNATWei: BNish = 0, status: BNish = 0) {
+        throw new Error("Use checkAgentInfo");
         const info = await this.assetManager.getAgentInfo(this.agentVault.address);
         // const lockedAgentCollateral = await this.lockedCollateralWei(mintedUBA, reservedUBA, redeemingUBA, withdrawalAnnouncedNATWei);
         // assertWeb3Equal(info.totalCollateralNATWei, fullAgentCollateral);
@@ -421,6 +432,37 @@ export class Agent extends AssetContextClient {
         assert.equal(info.underlyingAddressString, this.underlyingAddress);
         // assertWeb3Equal(info.collateralRatioBIPS, await this.getCollateralRatioBIPS(fullAgentCollateral, mintedUBA, reservedUBA, redeemingUBA));
         return info;
+    }
+
+    lastAgentInfoCheck: CheckAgentInfo = CHECK_DEFAULTS;
+
+    async checkAgentInfo(check: CheckAgentInfo, keepPreviousChecks: boolean = true) {
+        const agentCollateral = await AgentCollateral.create(this.assetManager, this.context.settings, this.vaultAddress);
+        const agentInfo = agentCollateral.agentInfo;
+        // collateral calculation checks
+        assertWeb3Equal(agentCollateral.class1.balance, agentInfo.totalClass1CollateralWei);
+        assertWeb3Equal(agentCollateral.pool.balance, agentInfo.totalPoolCollateralNATWei);
+        assertWeb3Equal(agentCollateral.agentPoolTokens.balance, agentInfo.totalAgentPoolTokensWei);
+        assertWeb3Equal(agentCollateral.freeCollateralLots(), agentInfo.freeCollateralLots);
+        assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.class1), agentInfo.freeClass1CollateralWei);
+        assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.pool), agentInfo.freePoolCollateralNATWei);
+        assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.agentPoolTokens), agentInfo.freeAgentPoolTokensWei);
+        assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.class1), agentInfo.class1CollateralRatioBIPS);
+        assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.pool), agentInfo.poolCollateralRatioBIPS);
+        // keep the check from prevous
+        if (keepPreviousChecks) {
+            check = { ...this.lastAgentInfoCheck, ...check };
+        }
+        for (const key of Object.keys(check) as Array<keyof CheckAgentInfo>) {
+            let value: any;
+            if (key === 'actualUnderlyingBalance') {
+                value = await this.chain.getBalance(this.underlyingAddress);
+            } else {
+                value = agentInfo[key];
+            }
+            assertWeb3Equal(value, check[key], `Agent info mismatch at '${key}'`);
+        }
+        this.lastAgentInfoCheck = check;
     }
 
     async getAgentInfo() {

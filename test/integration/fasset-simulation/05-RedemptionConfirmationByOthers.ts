@@ -80,9 +80,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // others can confirm redemption payment after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
             const startBalance = await context.wNat.balanceOf(challenger.address);
-            await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
+            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
             await challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent);
-            await agent.checkAgentInfo(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)), crt.feeUBA.add(request.feeUBA), 0, 0);
+            await agent.checkAgentInfoOld(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)), crt.feeUBA.add(request.feeUBA), 0, 0);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
             const endBalance = await context.wNat.balanceOf(challenger.address);
             // test rewarding
@@ -125,9 +125,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // others can confirm redemption payment after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
             const startBalance = await context.wNat.balanceOf(challenger.address);
-            await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
+            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
             await challenger.confirmBlockedRedemptionPayment(request, tx1Hash, agent);
-            await agent.checkAgentInfo(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)), crt.feeUBA.add(request.valueUBA).subn(100), 0, 0);
+            await agent.checkAgentInfoOld(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)), crt.feeUBA.add(request.valueUBA).subn(100), 0, 0);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
             const endBalance = await context.wNat.balanceOf(challenger.address);
             // test rewarding
@@ -169,7 +169,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             await expectRevert(agent.destroy(), "destroy not announced");
             // others can confirm redemption payment after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
-            await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
+            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
             const startBalanceChallenger = await context.wNat.balanceOf(challenger.address);
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
@@ -181,7 +181,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // test rewarding
             assertWeb3Equal(endBalanceChallenger.sub(startBalanceChallenger), context.settings.confirmationByOthersRewardNATWei);
             // test rewarding for redemption payment default
-            await agent.checkAgentInfo(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)).sub(res[1].redeemedCollateralWei), crt.feeUBA.add(request.valueUBA).subn(100), 0, 0);
+            await agent.checkAgentInfoOld(fullAgentCollateral.sub(toBN(context.settings.confirmationByOthersRewardNATWei)).sub(res[1].redeemedCollateralWei), crt.feeUBA.add(request.valueUBA).subn(100), 0, 0);
             assertWeb3Equal(res[1].redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
             assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), res[1].redeemedCollateralWei);
             assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), toBN(context.settings.confirmationByOthersRewardNATWei).add(res[1].redeemedCollateralWei));
@@ -222,9 +222,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // test rewarding for redemption payment default
             const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
-            await agent.checkAgentInfo(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
+            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
             const res = await redeemer.redemptionPaymentDefault(request);
-            await agent.checkAgentInfo(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA, 0, 0);
+            await agent.checkAgentInfoOld(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA, 0, 0);
             const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
@@ -235,9 +235,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // others can confirm redemption payment after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
             const startBalance = await context.wNat.balanceOf(challenger.address);
-            await agent.checkAgentInfo(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA, 0, 0);
+            await agent.checkAgentInfoOld(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA, 0, 0);
             await challenger.confirmDefaultedRedemptionPayment(request, tx1Hash, agent);
-            await agent.checkAgentInfo(fullAgentCollateral.sub(res.redeemedCollateralWei).sub(toBN(context.settings.confirmationByOthersRewardNATWei)), crt.feeUBA.add(request.feeUBA), 0, 0);
+            await agent.checkAgentInfoOld(fullAgentCollateral.sub(res.redeemedCollateralWei).sub(toBN(context.settings.confirmationByOthersRewardNATWei)), crt.feeUBA.add(request.feeUBA), 0, 0);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
             const endBalance = await context.wNat.balanceOf(challenger.address);
             // test rewarding

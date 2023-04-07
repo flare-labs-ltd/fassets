@@ -65,7 +65,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test rewarding for mint default
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             await agent.mintingPaymentDefault(crt);
-            await agent.checkAgentInfo(fullAgentCollateral.add(crFee), 0, 0, 0);
+            await agent.checkAgentInfoOld(fullAgentCollateral.add(crFee), 0, 0, 0);
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee);
             // check that executing minting after calling mintingPaymentDefault will revert
@@ -97,7 +97,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test rewarding for mint default
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             await agent.mintingPaymentDefault(crt);
-            await agent.checkAgentInfo(fullAgentCollateral.add(crFee), 0, 0, 0);
+            await agent.checkAgentInfoOld(fullAgentCollateral.add(crFee), 0, 0, 0);
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee);
             // check that executing minting after calling mintingPaymentDefault will revert
@@ -131,7 +131,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             for (let i = 0; i <= mockStateConnectorClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
                 mockChain.mine();
             }
-            await agent.checkAgentInfo(fullAgentCollateral, 0, 0, 0, await context.convertLotsToUBA(lots));
+            await agent.checkAgentInfoOld(fullAgentCollateral, 0, 0, 0, await context.convertLotsToUBA(lots));
             // test rewarding for unstick default
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
@@ -146,7 +146,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(reservedCollateral.gt(BN_ZERO));
             // check that fee and collateral was burned
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee.add(reservedCollateral));
-            await agent.checkAgentInfo(fullAgentCollateral.sub(reservedCollateral), 0, 0, 0);
+            await agent.checkAgentInfoOld(fullAgentCollateral.sub(reservedCollateral), 0, 0, 0);
             // check that executing minting after calling unstickMinting will revert
             const txHash = await minter.performMintingPayment(crt);
             await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");

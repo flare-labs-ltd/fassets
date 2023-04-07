@@ -1,4 +1,4 @@
-import { BNish, toBN, toBNExp } from "../utils/helpers";
+import { BNish, exp10, toBN, toBNExp } from "../utils/helpers";
 import { AssetManagerSettings } from "./AssetManagerTypes";
 
 export const AMG_TOKENWEI_PRICE_SCALE = toBNExp(1, 9);
@@ -12,10 +12,9 @@ export interface AMGSettings {
 }
 
 export function amgToTokenWeiPrice(settings: AMGSettings, tokenDecimals: BNish, tokenUSD: BNish, tokenFtsoDecimals: BNish, assetUSD: BNish, assetFtsoDecimals: BNish) {
-    const ten = toBN(10);
     // the scale by which token/asset price is divided
-    const tokenScale = ten.pow(toBN(tokenDecimals).add(toBN(tokenFtsoDecimals)));
-    const assetScale = ten.pow(toBN(settings.assetMintingDecimals).add(toBN(assetFtsoDecimals)));
+    const tokenScale = exp10(toBN(tokenDecimals).add(toBN(tokenFtsoDecimals)));
+    const assetScale = exp10(toBN(settings.assetMintingDecimals).add(toBN(assetFtsoDecimals)));
     return toBN(assetUSD).mul(tokenScale).mul(AMG_TOKENWEI_PRICE_SCALE)
         .div(toBN(tokenUSD).mul(assetScale));
 }
