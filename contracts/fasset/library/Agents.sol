@@ -3,7 +3,6 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/implementation/NativeTokenBurner.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "./data/AssetManagerState.sol";
@@ -230,18 +229,19 @@ library Agents {
             burnCollateralNAT(_agent, _amountClass1Wei);
         } else {
             AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+            IAgentVault vault = IAgentVault(_agent.vaultAddress());
             // Calculate NAT amount the agent has to pay to receive the "burned" class1 tokens.
             // The price is FTSO price plus configurable premium (class1BuyForFlarePremiumBIPS).
             uint256 amountNatWei = Conversion.convert(_amountClass1Wei, class1Collateral, poolCollateral)
                 .mulBips(settings.class1BuyForFlareFactorBIPS);
             // Transfer class1 collateral to the agent vault owner
-            SafeERC20.safeTransfer(class1Collateral.token, _agent.ownerColdAddress, _amountClass1Wei);
+            vault.payout(class1Collateral.token, _agent.ownerColdAddress, _amountClass1Wei);
             // Burn the NAT equivalent (must be provided with the call).
             require(msg.value >= amountNatWei, "not enough funds provided");
             burnDirectNAT(amountNatWei);
             // If there is some overpaid NAT, just send it to the agent's vault.
             if (msg.value > amountNatWei) {
-                IAgentVault(_agent.vaultAddress()).depositNat{ value: msg.value - amountNatWei }();
+                vault.depositNat{ value: msg.value - amountNatWei }();
             }
         }
     }

@@ -232,6 +232,28 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         await expectRevert(promise, "minting payment too small");
     });
 
+    it("should unstick minting", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const crt = await reserveCollateral(agentVault.address, 1);
+        const queryWindow = stateConnectorClient.queryWindowSeconds + 100;
+        const queryBlock = Math.round(queryWindow / chain.secondsPerBlock);
+        chain.skipTimeTo(Number(crt.lastUnderlyingTimestamp) + queryWindow);
+        chain.mine(Number(crt.lastUnderlyingBlock) + queryBlock);
+        // assert
+        const proof = await attestationProvider.proveConfirmedBlockHeightExists();
+        const agentCollateral = await AgentCollateral.create(assetManager, settings, agentVault.address);
+        const burnNats = agentCollateral.pool.convertUBAToTokenWei(crt.valueUBA)
+            .mul(toBN(settings.class1BuyForFlareFactorBIPS)).divn(MAX_BIPS);
+        // should provide enough funds
+        await expectRevert(assetManager.unstickMinting(proof, crt.collateralReservationId, { from: agentOwner1, value: burnNats.muln(0.99) }),
+            "not enough funds provided");
+        // succeed when there is enough
+        await assetManager.unstickMinting(proof, crt.collateralReservationId, { from: agentOwner1, value: burnNats });
+    });
+
     it("should execute minting and burn crf to protected address", async () => {
         // create asset manager with special burn address
         const options: TestSettingOptions = {
