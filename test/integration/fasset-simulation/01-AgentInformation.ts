@@ -42,39 +42,51 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         it("get agent info", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { feeBIPS: 0, mintingClass1CollateralRatioBIPS: 1_7500 });
             // before making agent public available
-            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: 0, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
-            assert.isFalse(info.publiclyAvailable);
-            assertWeb3Equal(info.dustUBA, 0);
-            assertWeb3Equal(info.ccbStartTimestamp, 0);
-            assertWeb3Equal(info.liquidationStartTimestamp, 0);
-            assertWeb3Equal(info.feeBIPS, 0);
-            assertWeb3Equal(info.announcedUnderlyingWithdrawalId, 0);
-            assertWeb3Equal(info.mintingClass1CollateralRatioBIPS, 1_7500);
+            await agent.checkAgentInfo({
+                totalClass1CollateralWei: 0,
+                totalPoolCollateralNATWei: 0,
+                totalAgentPoolTokensWei: 0,
+                publiclyAvailable: false,
+                dustUBA: 0,
+                ccbStartTimestamp: 0,
+                liquidationStartTimestamp: 0,
+                feeBIPS: 0,
+                announcedUnderlyingWithdrawalId: 0,
+                mintingClass1CollateralRatioBIPS: 1_7500,
+            });
             // make agent available
             await agent.changeSettings({ feeBIPS: 500, mintingClass1CollateralRatioBIPS: 1_8000, mintingPoolCollateralRatioBIPS: 2_8000 });
             const fullClass1Collateral = toWei(3e8);
             const fullPoolCollateral = toWei(5e8);
             await agent.depositCollateralsAndMakeAvailable(fullClass1Collateral, fullPoolCollateral);
-            const info2 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullClass1Collateral, totalPoolCollateralNATWei: fullPoolCollateral, totalAgentPoolTokensWei: fullPoolCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
-            assert.isTrue(info2.publiclyAvailable);
-            assertWeb3Equal(info2.dustUBA, 0);
-            assertWeb3Equal(info2.ccbStartTimestamp, 0);
-            assertWeb3Equal(info2.liquidationStartTimestamp, 0);
-            assertWeb3Equal(info2.feeBIPS, 500);
-            assertWeb3Equal(info2.announcedUnderlyingWithdrawalId, 0);
-            assertWeb3Equal(info2.mintingClass1CollateralRatioBIPS, 1_8000);
-            assertWeb3Equal(info2.mintingPoolCollateralRatioBIPS, 2_8000);
+            await agent.checkAgentInfo({
+                totalClass1CollateralWei: fullClass1Collateral,
+                totalPoolCollateralNATWei: fullPoolCollateral,
+                totalAgentPoolTokensWei: fullPoolCollateral,
+                publiclyAvailable: true,
+                dustUBA: 0,
+                ccbStartTimestamp: 0,
+                liquidationStartTimestamp: 0,
+                feeBIPS: 500,
+                announcedUnderlyingWithdrawalId: 0,
+                mintingClass1CollateralRatioBIPS: 1_8000,
+                mintingPoolCollateralRatioBIPS: 2_8000,
+            });
             // make agent unavailable
             await agent.exitAvailable();
-            const info3 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullClass1Collateral, totalPoolCollateralNATWei: fullPoolCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
-            assert.isFalse(info3.publiclyAvailable);
-            assertWeb3Equal(info3.dustUBA, 0);
-            assertWeb3Equal(info3.ccbStartTimestamp, 0);
-            assertWeb3Equal(info3.liquidationStartTimestamp, 0);
-            assertWeb3Equal(info3.feeBIPS, 500);
-            assertWeb3Equal(info3.announcedUnderlyingWithdrawalId, 0);
-            assertWeb3Equal(info3.mintingClass1CollateralRatioBIPS, 1_8000);
-            assertWeb3Equal(info3.mintingPoolCollateralRatioBIPS, 2_8000);
+            await agent.checkAgentInfo({
+                totalClass1CollateralWei: fullClass1Collateral,
+                totalPoolCollateralNATWei: fullPoolCollateral,
+                totalAgentPoolTokensWei: fullPoolCollateral,
+                publiclyAvailable: false,
+                dustUBA: 0,
+                ccbStartTimestamp: 0,
+                liquidationStartTimestamp: 0,
+                feeBIPS: 500,
+                announcedUnderlyingWithdrawalId: 0,
+                mintingClass1CollateralRatioBIPS: 1_8000,
+                mintingPoolCollateralRatioBIPS: 2_9000,
+            });
         });
 
         it("get available agents", async () => {
