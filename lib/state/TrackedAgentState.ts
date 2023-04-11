@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import { AgentInfo } from "../fasset/AssetManagerTypes";
+import { AgentInfo, AgentStatus } from "../fasset/AssetManagerTypes";
 import { convertUBAToTokenWei } from "../fasset/Conversions";
 import { Prices } from "./Prices";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
@@ -10,15 +10,6 @@ import {
     RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/AssetManager";
 import { TrackedState } from "./TrackedState";
-
-// status as returned from getAgentInfo
-export enum AgentStatus {
-    NORMAL = 0,             // agent is operating normally
-    CCB = 1,                // agent in collateral call band
-    LIQUIDATION = 2,        // liquidation due to collateral ratio - ends when agent is healthy
-    FULL_LIQUIDATION = 3,   // illegal payment liquidation - always liquidates all and then agent must close vault
-    DESTROYING = 4,         // agent announced destroy, cannot mint again; all existing mintings have been redeemed before
-}
 
 const MAX_UINT256 = toBN(1).shln(256).subn(1);
 

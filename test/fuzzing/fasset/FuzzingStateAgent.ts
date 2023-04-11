@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import { AgentInfo } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentInfo, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { NAT_WEI } from "../../../lib/fasset/Conversions";
 import { Prices } from "../../../lib/state/Prices";
 import { EvmEvent } from "../../../lib/utils/events/common";
@@ -10,7 +10,7 @@ import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/AssetManager";
-import { AgentStatus, TrackedAgentState } from "../../../lib/state/TrackedAgentState";
+import { TrackedAgentState } from "../../../lib/state/TrackedAgentState";
 import { FuzzingState, FuzzingStateLogRecord } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
 import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";

@@ -1,5 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AgentSettings } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
@@ -24,7 +24,7 @@ export type CheckAgentInfo = { [K in keyof AgentInfo]?: AgentInfo[K] extends BN 
     & { actualUnderlyingBalance?: BNish };
 
 export const CHECK_DEFAULTS: CheckAgentInfo = {
-    status: 0, mintedUBA: 0, reservedUBA: 0, redeemingUBA: 0,
+    status: AgentStatus.NORMAL, mintedUBA: 0, reservedUBA: 0, redeemingUBA: 0,
     announcedClass1WithdrawalWei: 0, announcedPoolTokensWithdrawalWei: 0, announcedUnderlyingWithdrawalId: 0
 };
 

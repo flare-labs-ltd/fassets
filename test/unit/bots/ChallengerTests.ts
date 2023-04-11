@@ -1,6 +1,6 @@
 import { Challenger } from "../../../lib/actors/Challenger";
+import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { AgentStatus } from "../../../lib/state/TrackedAgentState";
 import { TrackedState } from "../../../lib/state/TrackedState";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { EventArgs } from "../../../lib/utils/events/common";

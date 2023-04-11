@@ -1,4 +1,4 @@
-import { AssetManagerSettings } from "../fasset/AssetManagerTypes";
+import { AgentStatus, AssetManagerSettings } from "../fasset/AssetManagerTypes";
 import { AssetManagerEvents, IAssetContext } from "../fasset/IAssetContext";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
 import { EventFormatter } from "../utils/events/EventFormatter";
@@ -9,7 +9,7 @@ import { BN_ZERO, toBN } from "../utils/helpers";
 import { stringifyJson } from "../utils/json-bn";
 import { ILogger } from "../utils/logging";
 import { web3DeepNormalize, web3Normalize } from "../utils/web3normalize";
-import { AgentStatus, TrackedAgentState } from "./TrackedAgentState";
+import { TrackedAgentState } from "./TrackedAgentState";
 import { Prices } from "./Prices";
 
 export class TrackedState {

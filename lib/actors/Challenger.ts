@@ -1,6 +1,7 @@
 import { RedemptionFinished, RedemptionRequested } from "../../typechain-truffle/AssetManager";
+import { AgentStatus } from "../fasset/AssetManagerTypes";
 import { PaymentReference } from "../fasset/PaymentReference";
-import { AgentStatus, TrackedAgentState } from "../state/TrackedAgentState";
+import { TrackedAgentState } from "../state/TrackedAgentState";
 import { TrackedState } from "../state/TrackedState";
 import { AttestationClientError } from "../underlying-chain/AttestationHelper";
 import { ITransaction } from "../underlying-chain/interfaces/IBlockChain";
@@ -58,7 +59,7 @@ export class Challenger extends ActorBase {
         const agent = this.state.getAgent(agentVault);
         if (agent) this.checkForNegativeFreeBalance(agent);
     }
-    
+
     handleRedemptionRequested(args: EvmEventArgs<RedemptionRequested>): void {
         this.activeRedemptions.set(args.paymentReference, { agentAddress: args.agentVault, amount: toBN(args.valueUBA) });
     }
@@ -69,11 +70,11 @@ export class Challenger extends ActorBase {
         this.transactionForPaymentReference.delete(reference);
         this.activeRedemptions.delete(reference);
     }
-    
+
     // illegal transactions
-    
+
     checkForIllegalTransaction(transaction: ITransaction, agent: TrackedAgentState) {
-        const transactionValid = PaymentReference.isValid(transaction.reference) 
+        const transactionValid = PaymentReference.isValid(transaction.reference)
             && (this.isValidRedemptionReference(agent, transaction.reference) || this.isValidAnnouncedPaymentReference(agent, transaction.reference));
         // if the challenger starts tracking later, activeRedemptions might not hold all active redemeptions,
         // but that just means there will be a few unnecessary illegal transaction challenges, which is perfectly safe
@@ -91,7 +92,7 @@ export class Challenger extends ActorBase {
                 .catch(e => scope.exitOnExpectedError(e, ['chlg: already liquidating', 'chlg: transaction confirmed', 'matching redemption active', 'matching ongoing announced pmt']));
         });
     }
-    
+
     // double payments
 
     checkForDoublePayment(transaction: ITransaction, agent: TrackedAgentState) {
@@ -115,9 +116,9 @@ export class Challenger extends ActorBase {
                 .catch(e => scope.exitOnExpectedError(e, ['chlg dbl: already liquidating']));
         });
     }
-    
+
     // free balance negative
-    
+
     checkForNegativeFreeBalance(agent: TrackedAgentState) {
         const agentTransactions = this.unconfirmedTransactions.get(agent.address);
         if (agentTransactions == null) return;
@@ -156,9 +157,9 @@ export class Challenger extends ActorBase {
                 .catch(e => scope.exitOnExpectedError(e, ['mult chlg: already liquidating', 'mult chlg: enough free balance', 'mult chlg: payment confirmed']));
         });
     }
-    
+
     // utils
-    
+
     isValidRedemptionReference(agent: TrackedAgentState, reference: string) {
         const redemption = this.activeRedemptions.get(reference);
         if (redemption == null) return false;
@@ -186,7 +187,7 @@ export class Challenger extends ActorBase {
         return await this.context.attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAddressString)
             .catch(e => scope.exitOnExpectedError(e, [AttestationClientError]));
     }
-    
+
     async singleChallengePerAgent(agent: TrackedAgentState, body: () => Promise<void>) {
         while (this.challengedAgents.has(agent.address)) {
             await sleep(1);

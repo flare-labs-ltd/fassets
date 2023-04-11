@@ -9,7 +9,7 @@ import { foreachAsyncParallel, randomChoice, randomInt } from "../../utils/fuzzi
 import { expectErrors, formatBN, promiseValue } from "../../../lib/utils/helpers";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { AgentStatus } from "../../../lib/state/TrackedAgentState";
+import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 
 // debug state
 let mintedLots = 0;
@@ -17,7 +17,7 @@ let mintedLots = 0;
 export class FuzzingCustomer extends FuzzingActor {
     minter: Minter;
     redeemer: Redeemer;
-    
+
     constructor(
         runner: FuzzingRunner,
         public address: string,
@@ -28,7 +28,7 @@ export class FuzzingCustomer extends FuzzingActor {
         this.minter = new Minter(runner.context, address, underlyingAddress, wallet);
         this.redeemer = new Redeemer(runner.context, address, underlyingAddress);
     }
-    
+
     static async createTest(runner: FuzzingRunner, address: string, underlyingAddress: string, underlyingBalance: BN) {
         const chain = runner.context.chain;
         if (!(chain instanceof MockChain)) assert.fail("only for mock chains");
@@ -36,7 +36,7 @@ export class FuzzingCustomer extends FuzzingActor {
         const wallet = new MockChainWallet(chain);
         return new FuzzingCustomer(runner, address, underlyingAddress, wallet);
     }
-    
+
     get name() {
         return this.formatAddress(this.address);
     }
@@ -62,7 +62,7 @@ export class FuzzingCustomer extends FuzzingActor {
             .catch(e => scope.exitOnExpectedError(e, ['payment failed']));  // 'payment failed' can happen if there are several simultaneous payments and this one makes balance negative
         mintedLots += lots;
     }
-    
+
     async redemption(scope: EventScope) {
         const lotSize = await this.context.lotSize();
         // request redemption
@@ -124,7 +124,7 @@ export class FuzzingCustomer extends FuzzingActor {
             .catch(e => scope.exitOnExpectedError(e, []));
         return result;
     }
-    
+
     async liquidate(scope: EventScope) {
         const agentsInLiquidation = Array.from(this.state.agents.values())
             .filter(agent => agent.status === AgentStatus.LIQUIDATION || agent.status === AgentStatus.FULL_LIQUIDATION)

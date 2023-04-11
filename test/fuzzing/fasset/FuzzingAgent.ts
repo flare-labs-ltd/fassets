@@ -1,6 +1,5 @@
 import BN from "bn.js";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { AgentStatus } from "../../../lib/state/TrackedAgentState";
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
@@ -12,6 +11,7 @@ import { MockChain } from "../../utils/fasset/MockChain";
 import { coinFlip, randomBN, randomChoice, randomInt } from "../../utils/fuzzing-utils";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
+import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 
 export class FuzzingAgent extends FuzzingActor {
     constructor(

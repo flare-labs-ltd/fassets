@@ -15,6 +15,7 @@ import { Liquidator } from "../utils/Liquidator";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
+import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -78,7 +79,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), reward);
             // test full liquidation started
-            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
+            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.FULL_LIQUIDATION });
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
@@ -119,7 +120,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), reward);
             // test full liquidation started
-            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
+            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.FULL_LIQUIDATION });
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
@@ -157,7 +158,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), reward);
             // test full liquidation started
-            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
+            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.FULL_LIQUIDATION });
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
@@ -247,7 +248,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const challengerReward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), challengerReward);
             // test full liquidation started
-            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerReward), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
+            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerReward), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.FULL_LIQUIDATION });
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
@@ -269,7 +270,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const liquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS1, liquidationStarted.timestamp, liquidationTimestamp1);
             const liquidationReward1 = await liquidator.getLiquidationReward(liquidatedUBA1, liquidationFactorBIPS1);
             assertWeb3Equal(endBalanceLiquidator1.sub(startBalanceLiquidator1), liquidationReward1);
-            const info2 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1), freeUnderlyingBalanceUBA: crt.feeUBA.add(liquidateMaxUBA), mintedUBA: minted.mintedAmountUBA.sub(liquidateMaxUBA), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
+            const info2 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1), freeUnderlyingBalanceUBA: crt.feeUBA.add(liquidateMaxUBA), mintedUBA: minted.mintedAmountUBA.sub(liquidateMaxUBA), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.FULL_LIQUIDATION });
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, liquidationStarted.timestamp);
             // wait some time to get next premium
@@ -289,7 +290,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const liquidationFactorBIPS2 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS2, liquidationStarted.timestamp, liquidationTimestamp2);
             const liquidationReward2 = await liquidator.getLiquidationReward(liquidatedUBA2, liquidationFactorBIPS2);
             assertWeb3Equal(endBalanceLiquidator2.sub(startBalanceLiquidator2), liquidationReward2);
-            const info3 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2), freeUnderlyingBalanceUBA: crt.feeUBA.add(liquidateMaxUBA.muln(2)), mintedUBA: minted.mintedAmountUBA.sub(liquidateMaxUBA.muln(2)), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
+            const info3 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2), freeUnderlyingBalanceUBA: crt.feeUBA.add(liquidateMaxUBA.muln(2)), mintedUBA: minted.mintedAmountUBA.sub(liquidateMaxUBA.muln(2)), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.FULL_LIQUIDATION });
             assertWeb3Equal(info3.ccbStartTimestamp, 0);
             assertWeb3Equal(info3.liquidationStartTimestamp, liquidationStarted.timestamp);
             // wait some time to get next premium
@@ -309,7 +310,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const liquidationFactorBIPS3 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS3, liquidationStarted.timestamp, liquidationTimestamp3);
             const liquidationReward3 = await liquidator.getLiquidationReward(liquidatedUBA3, liquidationFactorBIPS3);
             assertWeb3Equal(endBalanceLiquidator3.sub(startBalanceLiquidator3), liquidationReward3);
-            const info4 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2).sub(liquidationReward3), freeUnderlyingBalanceUBA: crt.feeUBA.add(liquidateMaxUBA.muln(3)), mintedUBA: minted.mintedAmountUBA.sub(liquidateMaxUBA.muln(3)), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
+            const info4 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2).sub(liquidationReward3), freeUnderlyingBalanceUBA: crt.feeUBA.add(liquidateMaxUBA.muln(3)), mintedUBA: minted.mintedAmountUBA.sub(liquidateMaxUBA.muln(3)), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.FULL_LIQUIDATION });
             assertWeb3Equal(info4.ccbStartTimestamp, 0);
             assertWeb3Equal(info4.liquidationStartTimestamp, liquidationStarted.timestamp);
             // final tests
