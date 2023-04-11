@@ -56,8 +56,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const challenger = await Challenger.create(context, challengerAddress1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -65,7 +64,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // perform illegal payment
             const tx1Hash = await agent.performPayment("IllegalPayment1", 100);
             // challenge agent for illegal payment
@@ -79,7 +78,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), reward);
             // test full liquidation started
-            const info = await agent.checkAgentInfoOld(fullAgentCollateral.sub(reward), crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA, 0, 0, 0, 3);
+            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
@@ -93,8 +92,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const challenger = await Challenger.create(context, challengerAddress1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -102,7 +100,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // perform double payment
             const tx1Hash = await agent.performPayment(underlyingRedeemer1, 100, PaymentReference.redemption(5));
             const tx2Hash = await agent.performPayment(underlyingRedeemer1, 100, PaymentReference.redemption(5));
@@ -121,7 +119,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), reward);
             // test full liquidation started
-            const info = await agent.checkAgentInfoOld(fullAgentCollateral.sub(reward), crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA, 0, 0, 0, 3);
+            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
@@ -135,8 +133,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const challenger = await Challenger.create(context, challengerAddress1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -144,9 +141,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // perform some payments
-            const tx1Hash = await agent.performPayment(underlyingRedeemer1, await context.convertLotsToUBA(lots));
+            const tx1Hash = await agent.performPayment(underlyingRedeemer1, context.convertLotsToUBA(lots));
             // check that we cannot use the same transaction multiple times
             await expectRevert(challenger.freeBalanceNegativeChallenge(agent, [tx1Hash, tx1Hash]), "mult chlg: repeated transaction");
             // challenge agent for negative underlying balance
@@ -160,7 +157,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), reward);
             // test full liquidation started
-            const info = await agent.checkAgentInfoOld(fullAgentCollateral.sub(reward), crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA, 0, 0, 0, 3);
+            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
@@ -178,8 +175,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const challenger = await Challenger.create(context, challengerAddress1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -187,7 +183,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
                 const txHash = await minter.performMintingPayment(crt);
                 const minted = await minter.executeMinting(crt, txHash);
-                assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+                assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             }
             // find free balance
             const agentInfo = await context.assetManager.getAgentInfo(agent.agentVault.address);
@@ -205,7 +201,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // perform some payments
             const txHashes: string[] = [];
             for (const request of requests) {
-                const amount = (await context.convertLotsToUBA(lots)).add(payGas);
+                const amount = (context.convertLotsToUBA(lots)).add(payGas);
                 const txHash = await agent.performPayment(request.paymentAddress, amount, request.paymentReference);
                 txHashes.push(txHash);
             }
@@ -232,8 +228,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const liquidator = await Liquidator.create(context, liquidatorAddress1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -241,7 +236,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // perform illegal payment
             const tx1Hash = await agent.performPayment("IllegalPayment1", 100);
             // challenge agent for illegal payment
@@ -252,7 +247,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const challengerReward = await challenger.getChallengerReward(minted.mintedAmountUBA);
             assertWeb3Equal(endBalance.sub(startBalance), challengerReward);
             // test full liquidation started
-            const info = await agent.checkAgentInfoOld(fullAgentCollateral.sub(challengerReward), crt.feeUBA, crt.valueUBA, minted.mintedAmountUBA, 0, 0, 0, 3);
+            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerReward), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
@@ -274,7 +269,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const liquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS1, liquidationStarted.timestamp, liquidationTimestamp1);
             const liquidationReward1 = await liquidator.getLiquidationReward(liquidatedUBA1, liquidationFactorBIPS1);
             assertWeb3Equal(endBalanceLiquidator1.sub(startBalanceLiquidator1), liquidationReward1);
-            const info2 = await agent.checkAgentInfoOld(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1), crt.feeUBA.add(liquidateMaxUBA), crt.valueUBA.sub(liquidateMaxUBA), minted.mintedAmountUBA.sub(liquidateMaxUBA), 0, 0, 0, 3);
+            const info2 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1), freeUnderlyingBalanceUBA: crt.feeUBA.add(liquidateMaxUBA), mintedUBA: minted.mintedAmountUBA.sub(liquidateMaxUBA), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, liquidationStarted.timestamp);
             // wait some time to get next premium
@@ -294,7 +289,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const liquidationFactorBIPS2 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS2, liquidationStarted.timestamp, liquidationTimestamp2);
             const liquidationReward2 = await liquidator.getLiquidationReward(liquidatedUBA2, liquidationFactorBIPS2);
             assertWeb3Equal(endBalanceLiquidator2.sub(startBalanceLiquidator2), liquidationReward2);
-            const info3 = await agent.checkAgentInfoOld(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2), crt.feeUBA.add(liquidateMaxUBA.muln(2)), crt.valueUBA.sub(liquidateMaxUBA.muln(2)), minted.mintedAmountUBA.sub(liquidateMaxUBA.muln(2)), 0, 0, 0, 3);
+            const info3 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2), freeUnderlyingBalanceUBA: crt.feeUBA.add(liquidateMaxUBA.muln(2)), mintedUBA: minted.mintedAmountUBA.sub(liquidateMaxUBA.muln(2)), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
             assertWeb3Equal(info3.ccbStartTimestamp, 0);
             assertWeb3Equal(info3.liquidationStartTimestamp, liquidationStarted.timestamp);
             // wait some time to get next premium
@@ -314,7 +309,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const liquidationFactorBIPS3 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS3, liquidationStarted.timestamp, liquidationTimestamp3);
             const liquidationReward3 = await liquidator.getLiquidationReward(liquidatedUBA3, liquidationFactorBIPS3);
             assertWeb3Equal(endBalanceLiquidator3.sub(startBalanceLiquidator3), liquidationReward3);
-            const info4 = await agent.checkAgentInfoOld(fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2).sub(liquidationReward3), crt.feeUBA.add(liquidateMaxUBA.muln(3)), crt.valueUBA.sub(liquidateMaxUBA.muln(3)), minted.mintedAmountUBA.sub(liquidateMaxUBA.muln(3)), 0, 0, 0, 3);
+            const info4 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerReward).sub(liquidationReward1).sub(liquidationReward2).sub(liquidationReward3), freeUnderlyingBalanceUBA: crt.feeUBA.add(liquidateMaxUBA.muln(3)), mintedUBA: minted.mintedAmountUBA.sub(liquidateMaxUBA.muln(3)), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: 3 });
             assertWeb3Equal(info4.ccbStartTimestamp, 0);
             assertWeb3Equal(info4.liquidationStartTimestamp, liquidationStarted.timestamp);
             // final tests

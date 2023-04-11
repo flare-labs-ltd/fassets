@@ -418,22 +418,6 @@ export class Agent extends AssetContextClient {
     //     return toBN(freeCollateralUBA).div(lotCollateral);
     // }
 
-    async checkAgentInfoOld(fullAgentCollateral: BNish, freeUnderlyingBalanceUBA: BNish, lockedUnderlyingBalanceUBA: BNish, mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0, withdrawalAnnouncedNATWei: BNish = 0, status: BNish = 0) {
-        throw new Error("Use checkAgentInfo");
-        const info = await this.assetManager.getAgentInfo(this.agentVault.address);
-        // const lockedAgentCollateral = await this.lockedCollateralWei(mintedUBA, reservedUBA, redeemingUBA, withdrawalAnnouncedNATWei);
-        // assertWeb3Equal(info.totalCollateralNATWei, fullAgentCollateral);
-        // assertWeb3Equal(info.freeCollateralNATWei, lockedAgentCollateral.gt(toBN(fullAgentCollateral)) ? 0 : toBN(fullAgentCollateral).sub(lockedAgentCollateral));
-        assertWeb3Equal(info.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
-        assertWeb3Equal(info.mintedUBA, mintedUBA);
-        assertWeb3Equal(info.reservedUBA, reservedUBA);
-        assertWeb3Equal(info.redeemingUBA, redeemingUBA);
-        assert.equal(info.status, status);
-        assert.equal(info.underlyingAddressString, this.underlyingAddress);
-        // assertWeb3Equal(info.collateralRatioBIPS, await this.getCollateralRatioBIPS(fullAgentCollateral, mintedUBA, reservedUBA, redeemingUBA));
-        return info;
-    }
-
     lastAgentInfoCheck: CheckAgentInfo = CHECK_DEFAULTS;
 
     async checkAgentInfo(check: CheckAgentInfo, keepPreviousChecks: boolean = true) {
@@ -463,6 +447,7 @@ export class Agent extends AssetContextClient {
             assertWeb3Equal(value, check[key], `Agent info mismatch at '${key}'`);
         }
         this.lastAgentInfoCheck = check;
+        return agentInfo;
     }
 
     async getAgentInfo() {

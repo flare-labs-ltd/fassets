@@ -63,7 +63,7 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
         const txHash = await minter.performMintingPayment(crt);
         const minted = await minter.executeMinting(crt, txHash);
-        assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+        assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
         // redeemer "buys" f-assets
         await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
         // perform redemption
@@ -98,7 +98,7 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
         const txHash = await minter.performMintingPayment(crt);
         const minted = await minter.executeMinting(crt, txHash);
-        assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+        assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
         // redeemer "buys" f-assets
         await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
         // perform redemption

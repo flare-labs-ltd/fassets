@@ -48,7 +48,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         it("get agent info", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             // before making agent public available
-            const info = await agent.checkAgentInfoOld(0, 0, 0, 0);
+            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: 0, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             assert.isFalse(info.publiclyAvailable);
             assertWeb3Equal(info.dustUBA, 0);
             assertWeb3Equal(info.ccbStartTimestamp, 0);
@@ -60,7 +60,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const fullAgentCollateral = toWei(3e8);
             await agent.depositCollateral(fullAgentCollateral);
             await agent.makeAvailable(500, 5_2000);
-            const info2 = await agent.checkAgentInfoOld(fullAgentCollateral, 0, 0, 0);
+            const info2 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             assert.isTrue(info2.publiclyAvailable);
             assertWeb3Equal(info2.dustUBA, 0);
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
@@ -70,7 +70,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info2.agentMinCollateralRatioBIPS, 5_2000);
             // make agent unavailable
             await agent.exitAvailable();
-            const info3 = await agent.checkAgentInfoOld(fullAgentCollateral, 0, 0, 0);
+            const info3 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             assert.isFalse(info3.publiclyAvailable);
             assertWeb3Equal(info3.dustUBA, 0);
             assertWeb3Equal(info3.ccbStartTimestamp, 0);

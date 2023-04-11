@@ -52,8 +52,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // mine a block to skip the agent creation time
             mockChain.mine();
             // update block
@@ -66,21 +65,21 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const crFee = await minter.getCollateralReservationFee(lots);
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
-            const lotsUBA = await context.convertLotsToUBA(lots);
-            await agent.checkAgentInfoOld(fullAgentCollateral, 0, 0, 0, lotsUBA);
+            const lotsUBA = context.convertLotsToUBA(lots);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0, reservedUBA: lotsUBA });
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             const minted = await minter.executeMinting(crt, txHash);
             const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             assertWeb3Equal(minted.mintedAmountUBA, lotsUBA);
-            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, crt.valueUBA, lotsUBA);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: lotsUBA });
             // check that fee was burned
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
             const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
-            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, 0, 0, 0, lotsUBA);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0, reservedUBA: 0, redeemingUBA: lotsUBA });
             assertWeb3Equal(remainingLots, 0);
             assert.equal(dustChanges.length, 0);
             assert.equal(redemptionRequests.length, 1);
@@ -88,7 +87,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             assert.equal(request.agentVault, agent.vaultAddress);
             const tx1Hash = await agent.performRedemptionPayment(request, { status: TX_BLOCKED });
             await agent.confirmBlockedRedemptionPayment(request, tx1Hash);
-            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA.add(request.valueUBA), 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA.add(request.valueUBA), mintedUBA: 0 });
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
@@ -99,8 +98,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -108,7 +106,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             assertWeb3Equal(minted.mintedAmountUBA, crt.valueUBA);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
@@ -123,14 +121,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
-            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0, reservedUBA: 0, redeemingUBA: request.valueUBA });
             // test rewarding for redemption payment default
             const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const res = await agent.redemptionPaymentDefault(request);
-            await agent.checkAgentInfoOld(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA, 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(res.redeemedCollateralWei), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0 });
             const [redFin, redDef] = await agent.finishRedemptionWithoutPayment(request);
-            await agent.checkAgentInfoOld(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA.add(crt.valueUBA), 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(res.redeemedCollateralWei), freeUnderlyingBalanceUBA: crt.feeUBA.add(crt.valueUBA), mintedUBA: 0 });
             const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(redFin.requestId, request.requestId);
@@ -151,8 +149,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -160,7 +157,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
@@ -170,7 +167,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
-            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0, reservedUBA: 0, redeemingUBA: request.valueUBA });
             // perform some (failed) payment with correct redemption reference
             const tx1Hash = await agent.performRedemptionPayment(request, { status: TX_FAILED, gasLimit: 10, gasPrice: 10 });
             const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
@@ -183,7 +180,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // check that calling finishRedemptionWithoutPayment after failed redemption payment will revert
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
             // test rewarding for redemption payment default
-            await agent.checkAgentInfoOld(fullAgentCollateral.sub(res[1].redeemedCollateralWei), crt.feeUBA.add(request.valueUBA).subn(100), 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(res[1].redeemedCollateralWei), freeUnderlyingBalanceUBA: crt.feeUBA.add(request.valueUBA).subn(100), mintedUBA: 0 });
             const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res[0].failureReason, "transaction failed");
@@ -200,8 +197,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -209,7 +205,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
@@ -219,7 +215,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
-            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0, reservedUBA: 0, redeemingUBA: request.valueUBA });
             // perform some (failed) payment with correct redemption reference
             const tx1Hash = await agent.performPayment(minter.underlyingAddress, request.valueUBA, request.paymentReference);
             const proof = await context.attestationProvider.provePayment(tx1Hash, agent.underlyingAddress, minter.underlyingAddress);
@@ -236,7 +232,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // check that calling finishRedemptionWithoutPayment after failed redemption payment will revert
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
             // test rewarding for redemption payment default
-            await agent.checkAgentInfoOld(fullAgentCollateral.sub(resDefault.redeemedCollateralWei), crt.feeUBA, 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(resDefault.redeemedCollateralWei), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0 });
             const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(resFailed.failureReason, "not redeemer's address");
@@ -253,8 +249,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -262,7 +257,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
@@ -272,7 +267,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
-            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0, reservedUBA: 0, redeemingUBA: request.valueUBA });
             // perform some (failed) payment with correct redemption reference
             const tx1Hash = await agent.performPayment(request.paymentAddress, 100, request.paymentReference);
             const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
@@ -285,7 +280,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // check that calling finishRedemptionWithoutPayment after failed redemption payment will revert
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
             // test rewarding for redemption payment default
-            await agent.checkAgentInfoOld(fullAgentCollateral.sub(res[1].redeemedCollateralWei), crt.feeUBA.add(request.valueUBA).subn(100), 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(res[1].redeemedCollateralWei), freeUnderlyingBalanceUBA: crt.feeUBA.add(request.valueUBA).subn(100), mintedUBA: 0 });
             const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res[0].failureReason, "redemption payment too small");
@@ -302,8 +297,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -311,7 +305,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
@@ -321,7 +315,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
-            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0, reservedUBA: 0, redeemingUBA: request.valueUBA });
             // perform some (failed) payment with correct redemption reference
             const tx1Hash = await agent.wallet.addTransaction(minter.underlyingAddress, request.paymentAddress, 1, request.paymentReference);
             const proof = await context.attestationProvider.provePayment(tx1Hash, minter.underlyingAddress, request.paymentAddress);
@@ -336,14 +330,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const res = await redeemer.redemptionPaymentDefault(request);
-            await agent.checkAgentInfoOld(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA, 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(res.redeemedCollateralWei), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0 });
             const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
             assertWeb3Equal(endBalanceRedeemer.sub(startBalanceRedeemer), res.redeemedCollateralWei);
             assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), res.redeemedCollateralWei);
             const [redFin, redDef] = await agent.finishRedemptionWithoutPayment(request);
-            await agent.checkAgentInfoOld(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA.add(crt.valueUBA), 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(res.redeemedCollateralWei), freeUnderlyingBalanceUBA: crt.feeUBA.add(crt.valueUBA), mintedUBA: 0 });
             assertWeb3Equal(redFin.requestId, request.requestId);
             assert.isUndefined(redDef);
             // agent can exit now
@@ -357,8 +351,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -366,7 +359,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
@@ -376,7 +369,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             assert.equal(redemptionRequests.length, 1);
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
-            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0, reservedUBA: 0, redeemingUBA: request.valueUBA });
             // mine some blocks to create overflow block
             for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
@@ -391,7 +384,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const [redFin, redDef] = await agent.finishRedemptionWithoutPayment(request);
-            await agent.checkAgentInfoOld(fullAgentCollateral.sub(redDef.redeemedCollateralWei), crt.feeUBA.add(request.valueUBA), 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(redDef.redeemedCollateralWei), freeUnderlyingBalanceUBA: crt.feeUBA.add(request.valueUBA), mintedUBA: 0 });
             const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(redFin.requestId, request.requestId);
@@ -412,8 +405,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -421,7 +413,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
-            assertWeb3Equal(minted.mintedAmountUBA, await context.convertLotsToUBA(lots));
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
@@ -438,9 +430,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // test rewarding for redemption payment default
             const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
-            await agent.checkAgentInfoOld(fullAgentCollateral, crt.feeUBA, 0, 0, 0, request.valueUBA);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0, reservedUBA: 0, redeemingUBA: request.valueUBA });
             const res = await redeemer.redemptionPaymentDefault(request);
-            await agent.checkAgentInfoOld(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA, 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(res.redeemedCollateralWei), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0 });
             const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
@@ -449,7 +441,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // perform too late redemption payment
             const tx1Hash = await agent.performRedemptionPayment(request);
             await agent.confirmDefaultedRedemptionPayment(request, tx1Hash);
-            await agent.checkAgentInfoOld(fullAgentCollateral.sub(res.redeemedCollateralWei), crt.feeUBA.add(request.feeUBA), 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(res.redeemedCollateralWei), freeUnderlyingBalanceUBA: crt.feeUBA.add(request.feeUBA), mintedUBA: 0 });
             // check that calling finishRedemptionWithoutPayment after confirming redemption payment will revert
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
             // agent can exit now

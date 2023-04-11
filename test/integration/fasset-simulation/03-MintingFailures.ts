@@ -48,8 +48,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // mine a block to skip the agent creation time
             mockChain.mine();
             // update block
@@ -65,7 +64,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test rewarding for mint default
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             await agent.mintingPaymentDefault(crt);
-            await agent.checkAgentInfoOld(fullAgentCollateral.add(crFee), 0, 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.add(crFee), freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee);
             // check that executing minting after calling mintingPaymentDefault will revert
@@ -80,8 +79,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform collateral
@@ -97,7 +95,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test rewarding for mint default
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             await agent.mintingPaymentDefault(crt);
-            await agent.checkAgentInfoOld(fullAgentCollateral.add(crFee), 0, 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.add(crFee), freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee);
             // check that executing minting after calling mintingPaymentDefault will revert
@@ -113,8 +111,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform collateral
@@ -131,7 +128,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             for (let i = 0; i <= mockStateConnectorClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
                 mockChain.mine();
             }
-            await agent.checkAgentInfoOld(fullAgentCollateral, 0, 0, 0, await context.convertLotsToUBA(lots));
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0, reservedUBA: context.convertLotsToUBA(lots) });
             // test rewarding for unstick default
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
@@ -146,7 +143,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(reservedCollateral.gt(BN_ZERO));
             // check that fee and collateral was burned
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee.add(reservedCollateral));
-            await agent.checkAgentInfoOld(fullAgentCollateral.sub(reservedCollateral), 0, 0, 0);
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(reservedCollateral), freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             // check that executing minting after calling unstickMinting will revert
             const txHash = await minter.performMintingPayment(crt);
             await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
@@ -160,8 +157,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform collateral
@@ -207,8 +203,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateral(fullAgentCollateral);
-            await agent.makeAvailable(500, 2_2000);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform collateral
