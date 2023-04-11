@@ -1,10 +1,10 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AgentSettings, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentSetting, AgentSettings, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { checkEventNotEmited, eventArgs, filterEvents, findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BNish, MAX_BIPS, randomAddress, requireNotNull, toBN } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish, MAX_BIPS, maxBN, randomAddress, requireNotNull, toBN } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionFinished, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/AssetManager";
@@ -84,6 +84,20 @@ export class Agent extends AssetContextClient {
         const collateralPoolToken = await CollateralPoolToken.at(poolTokenAddress);
         // creater object
         return new Agent(ctx, ownerAddress, agentVault, collateralPool, collateralPoolToken, wallet, settings);
+    }
+
+    async changeSettings(changes: Record<AgentSetting, BNish>) {
+        let validAt = BN_ZERO;
+        for (const [name, value] of Object.entries(changes)) {
+            const res = await this.assetManager.announceAgentSettingUpdate(this.vaultAddress, name, value, { from: this.ownerAddress });
+            const announcement = requiredEventArgs(res, 'AgentSettingChangeAnnounced');
+            validAt = maxBN(validAt, toBN(announcement.validAt));
+        }
+        if (validAt.isZero()) return;   // no execute needed
+        await time.increaseTo(validAt);
+        for (const [name, value] of Object.entries(changes)) {
+            return await this.assetManager.executeAgentSettingUpdate(this.vaultAddress, name, { from: this.ownerAddress });
+        }
     }
 
     async depositClass1Collateral(amountTokenWei: BNish) {
