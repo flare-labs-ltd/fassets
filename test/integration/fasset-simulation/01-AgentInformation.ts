@@ -85,7 +85,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 feeBIPS: 500,
                 announcedUnderlyingWithdrawalId: 0,
                 mintingClass1CollateralRatioBIPS: 1_8000,
-                mintingPoolCollateralRatioBIPS: 2_9000,
+                mintingPoolCollateralRatioBIPS: 2_8000,
             });
         });
 
