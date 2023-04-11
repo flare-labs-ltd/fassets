@@ -109,9 +109,9 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             const underlyingAddress = "underlying_agent_" + i;
             const ownerUnderlyingAddress = "underlying_owner_agent_" + i;
             const fa = await FuzzingAgent.createTest(runner, accounts[firstAgentAddress + i], underlyingAddress, ownerUnderlyingAddress);
-            eventDecoder.addAddress(`OWNER_${i}`, fa.agent.ownerAddress);
+            eventDecoder.addAddress(`OWNER_${i}`, fa.agent.ownerHotAddress);
             interceptor.captureEventsFrom(`AGENT_${i}`, fa.agent.agentVault, 'AgentVault');
-            await fa.agent.agentVault.deposit({ from: fa.agent.ownerAddress, value: toWei(10_000_000) });
+            await fa.agent.agentVault.deposit({ from: fa.agent.ownerHotAddress, value: toWei(10_000_000) });
             const agentCR = toBN(context.settings.minCollateralRatioBIPS).muln(randomNum(1, 1.5));
             await fa.agent.makeAvailable(500, agentCR);
             agents.push(fa);

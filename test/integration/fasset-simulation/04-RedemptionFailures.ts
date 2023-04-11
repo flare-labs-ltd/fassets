@@ -221,7 +221,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const proof = await context.attestationProvider.provePayment(tx1Hash, agent.underlyingAddress, minter.underlyingAddress);
             const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
-            const res = await context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerAddress })
+            const res = await context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerHotAddress })
             findRequiredEvent(res, 'RedemptionFinished');
             const resFailed = requiredEventArgs(res, 'RedemptionPaymentFailed');
             const resDefault = requiredEventArgs(res, 'RedemptionDefault');
@@ -319,7 +319,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // perform some (failed) payment with correct redemption reference
             const tx1Hash = await agent.wallet.addTransaction(minter.underlyingAddress, request.paymentAddress, 1, request.paymentReference);
             const proof = await context.attestationProvider.provePayment(tx1Hash, minter.underlyingAddress, request.paymentAddress);
-            await expectRevert(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerAddress }), "confirm failed payment only from agent's address");
+            await expectRevert(context.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: agent.ownerHotAddress }), "confirm failed payment only from agent's address");
             // mine some blocks to create overflow block
             for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);

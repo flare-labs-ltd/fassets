@@ -73,10 +73,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: withdrawalAmount });
             await expectRevert(agent.withdrawClass1Collateral(withdrawalAmount), "withdrawal: not allowed yet");
             await time.increase(300);
-            const startBalance = toBN(await web3.eth.getBalance(agent.ownerAddress));
+            const startBalance = toBN(await web3.eth.getBalance(agent.ownerHotAddress));
             const tx = await agent.withdrawClass1Collateral(withdrawalAmount);
             await agent.checkAgentInfo({ totalClass1CollateralWei: reservedCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA });
-            const endBalance = toBN(await web3.eth.getBalance(agent.ownerAddress));
+            const endBalance = toBN(await web3.eth.getBalance(agent.ownerHotAddress));
             assertWeb3Equal(endBalance.sub(startBalance).add(await calcGasCost(tx)), withdrawalAmount);
             await expectRevert(agent.announceClass1CollateralWithdrawal(1), "withdrawal: value too high");
         });
@@ -204,7 +204,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(minter1.reserveCollateral(agent.vaultAddress, lots1), "minting paused");
             await expectRevert(agent.selfMint(context.convertLotsToUBA(lots1), lots1), "minting paused");
             // agent and redeemer "buys" f-assets
-            await context.fAsset.transfer(agent.ownerAddress, minted1.mintedAmountUBA, { from: minter1.address });
+            await context.fAsset.transfer(agent.ownerHotAddress, minted1.mintedAmountUBA, { from: minter1.address });
             await context.fAsset.transfer(redeemer.address, minted2.mintedAmountUBA, { from: minter2.address });
             // perform redemption
             const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots2 / 2);
