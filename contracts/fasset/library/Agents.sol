@@ -132,6 +132,7 @@ library Agents {
         if (!_poolSelfCloseRedemption) {
             _agent.poolRedeemingAMG += _valueAMG;
         }
+        _agent.underlyingRedeemingAMG += _valueAMG;
         _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
     }
 
@@ -146,6 +147,16 @@ library Agents {
         if (!_poolSelfCloseRedemption) {
             _agent.poolRedeemingAMG = SafeMath64.sub64(_agent.poolRedeemingAMG, _valueAMG, "not enough redeeming");
         }
+    }
+
+    function endUnderlyingRedeemingAssets(
+        Agent.State storage _agent,
+        uint64 _valueAMG
+    )
+        internal
+    {
+        _agent.underlyingRedeemingAMG =
+            SafeMath64.sub64(_agent.underlyingRedeemingAMG, _valueAMG, "not enough redeeming");
     }
 
     function changeDust(

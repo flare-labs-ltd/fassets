@@ -14,7 +14,7 @@ import "./TransactionAttestation.sol";
 
 
 library Challenges {
-    using SafeCast for uint256;
+    using SafeCast for *;
     using SafePct for *;
     using PaymentConfirmations for PaymentConfirmations.State;
 
@@ -123,11 +123,14 @@ library Challenges {
             }
         }
         // check that total spent free balance is more than actual free underlying balance
-        require(total > agent.freeUnderlyingBalanceUBA, "mult chlg: enough free balance");
+        int256 balanceAfterPayments = agent.underlyingBalanceUBA.toInt256() - total;
+        int256 requiredBalance = UnderlyingBalance.requiredUnderlyingUBA(agent).toInt256();
+        require(balanceAfterPayments < requiredBalance,
+            "mult chlg: enough balance");
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events
-        emit AMEvents.UnderlyingFreeBalanceNegative(_agentVault, total - agent.freeUnderlyingBalanceUBA);
+        emit AMEvents.UnderlyingFreeBalanceNegative(_agentVault, balanceAfterPayments - requiredBalance);
     }
 
     function _liquidateAndRewardChallenger(

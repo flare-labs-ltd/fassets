@@ -49,10 +49,12 @@ library RedemptionConfirmations {
                 // notify
                 if (_payment.status == TransactionAttestation.PAYMENT_SUCCESS) {
                     emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
-                        _payment.transactionHash, request.underlyingValueUBA, _redemptionRequestId);
+                        _payment.transactionHash, request.underlyingValueUBA,
+                        -_payment.spentAmount,  _redemptionRequestId);
                 } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
                     emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,
-                        _payment.transactionHash, request.underlyingValueUBA, _redemptionRequestId);
+                        _payment.transactionHash, request.underlyingValueUBA,
+                        -_payment.spentAmount, _redemptionRequestId);
                 }
             } else {
                 // we only need failure reports from agent's underlying address, so disallow others to
@@ -63,12 +65,13 @@ library RedemptionConfirmations {
                 RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
                 // notify
                 emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer,
-                    _payment.transactionHash, _redemptionRequestId, failureReason);
+                    _payment.transactionHash, -_payment.spentAmount, _redemptionRequestId, failureReason);
             }
         }
         // agent has finished with redemption - account for used underlying balance and free the remainder
-        int256 freeBalanceChangeUBA = _updateFreeBalanceAfterPayment(agent, _payment, request);
-        emit AMEvents.RedemptionFinished(request.agentVault, freeBalanceChangeUBA, _redemptionRequestId);
+        Agents.endUnderlyingRedeemingAssets(agent, request.valueAMG);
+        UnderlyingBalance.updateBalance(agent, -_payment.spentAmount);
+        emit AMEvents.RedemptionFinished(request.agentVault, _redemptionRequestId);
         // record source decreasing transaction so that it cannot be challenged
         AssetManagerState.State storage state = AssetManagerState.get();
         state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
@@ -81,21 +84,6 @@ library RedemptionConfirmations {
         Liquidation.endLiquidationIfHealthy(agent);
         // delete redemption request at end
         delete state.redemptionRequests[_redemptionRequestId];
-    }
-
-    function _updateFreeBalanceAfterPayment(
-        Agent.State storage _agent,
-        IAttestationClient.Payment calldata _payment,
-        Redemption.Request storage _request
-    )
-        private
-        returns (int256 _freeBalanceChangeUBA)
-    {
-        _freeBalanceChangeUBA = SafeCast.toInt256(_request.underlyingValueUBA);
-        if (_payment.sourceAddressHash == _agent.underlyingAddressHash) {
-            _freeBalanceChangeUBA -= _payment.spentAmount;
-        }
-        UnderlyingFreeBalance.updateFreeBalance(_agent, _freeBalanceChangeUBA);
     }
 
     function _othersCanConfirmPayment(

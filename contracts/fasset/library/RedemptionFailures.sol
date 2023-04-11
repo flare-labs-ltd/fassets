@@ -71,9 +71,8 @@ library RedemptionFailures {
         // request is in defaulted state, but underlying balance is not freed, since we are
         // still waiting for the agent to possibly present late or failed payment
         // with this method, the agent asserts there was no payment and frees underlying balance
-        int256 freeBalanceChangeUBA = SafeCast.toInt256(request.underlyingValueUBA);
-        UnderlyingFreeBalance.updateFreeBalance(agent, freeBalanceChangeUBA);
-        emit AMEvents.RedemptionFinished(request.agentVault, freeBalanceChangeUBA, _redemptionRequestId);
+        Agents.endUnderlyingRedeemingAssets(agent, request.valueAMG);
+        emit AMEvents.RedemptionFinished(request.agentVault, _redemptionRequestId);
         // delete redemption request - not needed any more
         AssetManagerState.State storage state = AssetManagerState.get();
         delete state.redemptionRequests[_redemptionRequestId];

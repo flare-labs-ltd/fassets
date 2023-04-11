@@ -6,7 +6,7 @@ import "../../generated/interface/IAttestationClient.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
-import "./UnderlyingFreeBalance.sol";
+import "./UnderlyingBalance.sol";
 import "./TransactionAttestation.sol";
 
 
@@ -58,7 +58,7 @@ library UnderlyingWithdrawalAnnouncements {
         // clear active withdrawal announcement
         agent.announcedUnderlyingWithdrawalId = 0;
         // update free underlying balance and trigger liquidation if negative
-        UnderlyingFreeBalance.updateFreeBalance(agent, -_payment.spentAmount);
+        UnderlyingBalance.updateBalance(agent, -_payment.spentAmount);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
             Agents.payoutClass1(agent, msg.sender,

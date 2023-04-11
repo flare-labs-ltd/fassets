@@ -107,6 +107,9 @@ library AssetManagerSettings {
         // timelocked
         uint64 lotSizeAMG;
 
+        // The percentage of minted f-assets that the agent must hold in his underlying address.
+        uint16 minUnderlyingBackingBIPS;
+
         // Maximum minted amount of the f-asset.
         // rate-limited
         uint64 mintingCapAMG;

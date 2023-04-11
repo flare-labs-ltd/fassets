@@ -121,17 +121,23 @@ library Agent {
         // must only be accounte for / locked for class1 collateral.
         // On redemption payment failure, redeemer will be paid only in class1 in this case
         // (and will be paid less if there isn't enough - small extra risk for pool token holders).
+        // There will always be `poolRedeemingAMG <= redeemingAMG`.
         uint64 poolRedeemingAMG;
+
+        // The amount of underlying balance that is backing the assets during redemption.
+        // Is mostly equal to redeemingAMG, except when the redeemer calls default and until
+        // the agent presents proof of failed payment or calls finish without payment.
+        // There will always be `redeemingAMG <= underlyingRedeemingAMG`.
+        uint64 underlyingRedeemingAMG;
 
         // When lot size changes, there may be some leftover after redemption that doesn't fit
         // a whole lot size. It is added to dustAMG and can be recovered via self-close.
         // Unlike redeemingAMG, dustAMG is still counted in the mintedAMG.
         uint64 dustAMG;
 
-        // The amount of underlying funds that may be withdrawn by the agent
-        // (fees, self-close, and amount released by liquidation).
-        // May become negative (due to high underlying gas costs), in which case topup is required.
-        int128 freeUnderlyingBalanceUBA;
+        // The amount of funds that on the agent's underlying address.
+        // If it is higher than the amount neded to back mintings, it can be withdrawn after announcement.
+        uint128 underlyingBalanceUBA;
 
         // There can be only one announced underlying withdrawal per agent active at any time.
         // This variable holds the id, or 0 if there is no announced underlying withdrawal going on.

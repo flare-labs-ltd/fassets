@@ -25,7 +25,7 @@ import "../library/RedemptionFailures.sol";
 import "../library/Challenges.sol";
 import "../library/Liquidation.sol";
 import "../library/UnderlyingWithdrawalAnnouncements.sol";
-import "../library/UnderlyingFreeBalance.sol";
+import "../library/UnderlyingBalance.sol";
 import "../library/FullAgentInfo.sol";
 import "../library/CollateralTokens.sol";
 import "../library/AgentSettingsUpdater.sol";
@@ -778,7 +778,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     )
         external
     {
-        UnderlyingFreeBalance.confirmTopupPayment(_payment, _agentVault);
+        UnderlyingBalance.confirmTopupPayment(_payment, _agentVault);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

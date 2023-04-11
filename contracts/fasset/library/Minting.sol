@@ -6,7 +6,7 @@ import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
-import "./UnderlyingFreeBalance.sol";
+import "./UnderlyingBalance.sol";
 import "./CollateralReservations.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
@@ -89,7 +89,7 @@ library Minting {
         if (_lots > 0) {
             _performMinting(agent, 0, msg.sender, valueAMG, receivedAmount, poolFeeUBA);
         } else {
-            UnderlyingFreeBalance.increaseFreeBalance(agent, receivedAmount);
+            UnderlyingBalance.increaseBalance(agent, receivedAmount);
             emit AMEvents.MintingExecuted(_agentVault, 0, 0, 0, receivedAmount, 0);
         }
     }
@@ -134,11 +134,11 @@ library Minting {
         uint64 redemptionTicketId =
             state.redemptionQueue.createRedemptionTicket(_agent.vaultAddress(), ticketValueAMG);
         Agents.changeDust(_agent, newDustAMG);
-        // update agent free balance with agent's fee
+        // update agent balance with deposited amount
+        UnderlyingBalance.increaseBalance(_agent, _receivedAmountUBA);
+        // perform minting
         uint256 mintValueUBA = Conversion.convertAmgToUBA(_mintValueAMG);
         uint256 agentFeeUBA = _receivedAmountUBA - mintValueUBA - _poolFeeUBA;
-        UnderlyingFreeBalance.increaseFreeBalance(_agent, agentFeeUBA);
-        // perform minting
         state.settings.fAsset.mint(_minter, mintValueUBA);
         state.settings.fAsset.mint(address(_agent.collateralPool), _poolFeeUBA);
         // notify

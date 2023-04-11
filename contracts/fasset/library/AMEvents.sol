@@ -171,7 +171,8 @@ library AMEvents {
         address indexed agentVault,
         address indexed redeemer,
         bytes32 transactionHash,
-        uint256 valueUBA,
+        uint256 redemptionAmountUBA,
+        int256 underlyingBalanceChangeUBA,
         uint64 requestId);
 
     /**
@@ -200,16 +201,18 @@ library AMEvents {
         address indexed redeemer,
         bytes32 transactionHash,
         uint256 redemptionAmountUBA,
+        int256 underlyingBalanceChangeUBA,
         uint64 requestId);
 
     /**
      * Agent provided the proof that redemption payment was attempted, but failed due to
-     * his own error. We only account for gas here, but the redeemer can later trigger payment default.
+     * his own error. Also triggers payment default, unless the redeemer has done it already.
      */
     event RedemptionPaymentFailed(
         address indexed agentVault,
         address indexed redeemer,
         bytes32 transactionHash,
+        int256 underlyingBalanceChangeUBA,
         uint64 requestId,
         string failureReason);
 
@@ -219,7 +222,6 @@ library AMEvents {
      */
     event RedemptionFinished(
         address indexed agentVault,
-        int256 freedUnderlyingBalanceUBA,
         uint64 requestId);
 
     /**

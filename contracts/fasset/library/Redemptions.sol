@@ -10,7 +10,7 @@ import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./Agents.sol";
-import "./UnderlyingFreeBalance.sol";
+import "./UnderlyingBalance.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
 import "./Liquidation.sol";
@@ -47,11 +47,9 @@ library Redemptions {
             removeFromTicket(ticketId, ticketValueAMG);
             _valueAMG += ticketValueAMG;
         }
+        _valueUBA = Conversion.convertAmgToUBA(_valueAMG);
         // self-close or liquidation is one step, so we can release minted assets without redeeming step
         Agents.releaseMintedAssets(_agent, _valueAMG);
-        // all the redeemed amount is added to free balance
-        _valueUBA = Conversion.convertAmgToUBA(_valueAMG);
-        UnderlyingFreeBalance.increaseFreeBalance(_agent, _valueUBA);
     }
 
     function removeFromTicket(
