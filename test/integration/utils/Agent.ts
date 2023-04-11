@@ -1,5 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AgentSetting, AgentSettings, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentInfo, AgentSetting, AgentSettings, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
@@ -9,12 +9,11 @@ import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionFinished, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/AssetManager";
 import { createTestAgentSettings } from "../../unit/fasset/test-settings";
+import { AgentCollateral } from "../../utils/fasset/AgentCollateral";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
-import { AgentInfo } from "../../../lib/fasset/AssetManagerTypes";
-import { AgentCollateral } from "../../utils/fasset/AgentCollateral";
 
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
@@ -107,7 +106,7 @@ export class Agent extends AssetContextClient {
         return new Agent(ctx, ownerColdAddress, agentVault, collateralPool, collateralPoolToken, wallet, settings);
     }
 
-    async changeSettings(changes: Record<AgentSetting, BNish>) {
+    async changeSettings(changes: Partial<Record<AgentSetting, BNish>>) {
         let validAt = BN_ZERO;
         for (const [name, value] of Object.entries(changes)) {
             const res = await this.assetManager.announceAgentSettingUpdate(this.vaultAddress, name, value, { from: this.ownerHotAddress });
@@ -117,7 +116,7 @@ export class Agent extends AssetContextClient {
         if (validAt.isZero()) return;   // no execute needed
         await time.increaseTo(validAt);
         for (const [name, value] of Object.entries(changes)) {
-            return await this.assetManager.executeAgentSettingUpdate(this.vaultAddress, name, { from: this.ownerHotAddress });
+            await this.assetManager.executeAgentSettingUpdate(this.vaultAddress, name, { from: this.ownerHotAddress });
         }
     }
 
@@ -156,7 +155,11 @@ export class Agent extends AssetContextClient {
         return args.exitAllowedAt;
     }
 
-    async exitAvailable() {
+    async exitAvailable(announceFirst: boolean = true) {
+        if (announceFirst) {
+            const exitAllowedAt = await this.announceExitAvailable();
+            await time.increaseTo(exitAllowedAt);
+        }
         const res = await this.assetManager.exitAvailableAgentList(this.vaultAddress, { from: this.ownerHotAddress });
         const args = requiredEventArgs(res, 'AvailableAgentExited');
         assert.equal(args.agentVault, this.vaultAddress);
@@ -164,8 +167,6 @@ export class Agent extends AssetContextClient {
 
     async exitAndDestroy(collateral: BNish) {
         // exit available
-        const exitAllowedAt = await this.announceExitAvailable();
-        await time.increaseTo(exitAllowedAt);
         await this.exitAvailable();
         // withdraw pool fees
         const poolFeeBalance = await this.poolFeeBalance();
@@ -456,7 +457,7 @@ export class Agent extends AssetContextClient {
     lastAgentInfoCheck: CheckAgentInfo = CHECK_DEFAULTS;
 
     async checkAgentInfo(check: CheckAgentInfo, keepPreviousChecks: boolean = true) {
-        const agentCollateral = await AgentCollateral.create(this.assetManager, this.context.settings, this.vaultAddress);
+        const agentCollateral = await this.getAgentCollateral();
         const agentInfo = agentCollateral.agentInfo;
         // collateral calculation checks
         assertWeb3Equal(agentCollateral.class1.balance, agentInfo.totalClass1CollateralWei);
@@ -483,6 +484,10 @@ export class Agent extends AssetContextClient {
         }
         this.lastAgentInfoCheck = check;
         return agentInfo;
+    }
+
+    async getAgentCollateral() {
+        return await AgentCollateral.create(this.assetManager, this.context.settings, this.vaultAddress);
     }
 
     async getAgentInfo() {

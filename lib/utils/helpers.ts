@@ -393,23 +393,36 @@ export function isBNLike(value: any) {
     return BN.isBN(value) || (typeof value === 'string' && /^\d+$/.test(value));
 }
 
-// Some Web3 results are union of array and struct so console.log prints them as array.
-// This function converts it to struct nad also formats values.
-export function formatStruct(value: any): any {
+/**
+ * Some Web3 results are union of array and struct so console.log prints them as array.
+ * This function converts it to struct nad also formats values.
+ */
+export function deepFormat(value: any): any {
     if (isBNLike(value)) {
         return formatBN(value);
     } else if (Array.isArray(value)) {
         const structEntries = Object.entries(value).filter(([key, val]) => typeof key !== 'number' && !/^\d+$/.test(key));
         if (structEntries.length > 0 && structEntries.length >= value.length) {
-            const formattedEntries = structEntries.map(([key, val]) => [key, formatStruct(val)]);
+            const formattedEntries = structEntries.map(([key, val]) => [key, deepFormat(val)]);
             return Object.fromEntries(formattedEntries);
         } else {
-            return value.map(v => formatStruct(v));
+            return value.map(v => deepFormat(v));
         }
     } else if (typeof value === 'object') {
-        const formattedEntries = Object.entries(value).map(([key, val]) => [key, formatStruct(val)]);
+        const formattedEntries = Object.entries(value).map(([key, val]) => [key, deepFormat(val)]);
         return Object.fromEntries(formattedEntries);
     } else {
         return value;
+    }
+}
+
+/**
+ * Print `name = value` pairs for a dict of format `{name: value, name: value, ...}`
+ */
+export function trace(items: Record<string, any>) {
+    for (const [key, value] of Object.entries(items)) {
+        const serialize = typeof value === 'object' && [Array, Object].includes(value.constructor);
+        const valueS = serialize ? JSON.stringify(deepFormat(value)) : deepFormat(value);
+        console.log(`${key} = ${valueS}`);
     }
 }

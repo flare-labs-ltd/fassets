@@ -94,6 +94,8 @@ library AgentSettingsUpdater {
             Agents.setPoolTopupCollateralRatioBIPS(_agent, _value);
         } else if (_hash == POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS) {
             Agents.setPoolTopupTokenPriceFactorBIPS(_agent, _value);
+        } else {
+            assert(false);
         }
     }
 
