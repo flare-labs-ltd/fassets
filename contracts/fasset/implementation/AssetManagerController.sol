@@ -137,6 +137,14 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_LOT_SIZE_AMG, abi.encode(_value));
     }
 
+    function setMinUnderlyingBackingBips(IAssetManager[] memory _assetManagers, uint256 _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_MIN_UNDERLYING_BACKING_BIPS, abi.encode(_value));
+    }
+
     function setTimeForPayment(
         IAssetManager[] memory _assetManagers,
         uint256 _underlyingBlocks,

@@ -36,6 +36,8 @@ library SettingsUpdater {
         keccak256("setMinUpdateRepeatTimeSeconds(uint256)");
     bytes32 internal constant SET_LOT_SIZE_AMG =
         keccak256("setLotSizeAmg(uint256)");
+    bytes32 internal constant SET_MIN_UNDERLYING_BACKING_BIPS =
+        keccak256("setMinUnderlyingBackingBips(uint256)");
     bytes32 internal constant SET_MAX_TRUSTED_PRICE_AGE_SECONDS =
         keccak256("setMaxTrustedPriceAgeSeconds(uint256)");
     bytes32 internal constant SET_PAYMENT_CHALLENGE_REWARD =
@@ -124,6 +126,9 @@ library SettingsUpdater {
         } else if (_method == SET_LOT_SIZE_AMG) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setLotSizeAmg(_params);
+        } else if (_method == SET_MIN_UNDERLYING_BACKING_BIPS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setMinUnderlyingBackingBips(_params);
         } else if (_method == SET_COLLATERAL_RESERVATION_FEE_BIPS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setCollateralReservationFeeBips(_params);
@@ -367,6 +372,25 @@ library SettingsUpdater {
         // update
         settings.lotSizeAMG = value.toUint64();
         emit AMEvents.SettingChanged("lotSizeAMG", value);
+    }
+
+    function _setMinUnderlyingBackingBips(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        // huge lot size increase is very dangerous, because it breaks redemption
+        // (converts all tickets to dust)
+        require(value > 0, "cannot be zero");
+        require(value <= SafePct.MAX_BIPS, "must be below 1");
+        require(value <= settings.minUnderlyingBackingBIPS * 2, "increase too big");
+        require(value >= settings.minUnderlyingBackingBIPS / 2, "decrease too big");
+        // update
+        settings.minUnderlyingBackingBIPS = value.toUint16();
+        emit AMEvents.SettingChanged("minUnderlyingBackingBIPS", value);
     }
 
     function _setMaxTrustedPriceAgeSeconds(
@@ -694,6 +718,8 @@ library SettingsUpdater {
         require(_settings.buybackCollateralFactorBIPS > 0, "cannot be zero");
         require(_settings.withdrawalWaitMinSeconds > 0, "cannot be zero");
         require(_settings.lotSizeAMG > 0, "cannot be zero");
+        require(_settings.minUnderlyingBackingBIPS > 0, "cannot be zero");
+        require(_settings.minUnderlyingBackingBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         uint256 redemptionFactorBIPS =
