@@ -4,6 +4,7 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../../utils/lib/SafePct.sol";
+import "../../utils/lib/MathUtils.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
@@ -123,14 +124,13 @@ library Challenges {
             }
         }
         // check that total spent free balance is more than actual free underlying balance
-        int256 balanceAfterPayments = agent.underlyingBalanceUBA.toInt256() - total;
-        int256 requiredBalance = UnderlyingBalance.requiredUnderlyingUBA(agent).toInt256();
-        require(balanceAfterPayments < requiredBalance,
-            "mult chlg: enough balance");
+        uint256 balanceAfterPayments = MathUtils.positivePart(agent.underlyingBalanceUBA.toInt256() - total);
+        uint256 requiredBalance = UnderlyingBalance.requiredUnderlyingUBA(agent);
+        require(balanceAfterPayments < requiredBalance, "mult chlg: enough balance");
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events
-        emit AMEvents.UnderlyingFreeBalanceNegative(_agentVault, balanceAfterPayments - requiredBalance);
+        emit AMEvents.UnderlyingBalanceTooLow(_agentVault, balanceAfterPayments, requiredBalance);
     }
 
     function _liquidateAndRewardChallenger(

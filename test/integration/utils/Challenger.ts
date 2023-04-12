@@ -12,12 +12,12 @@ export class Challenger extends AssetContextClient {
     ) {
         super(context);
     }
-    
+
     static async create(ctx: AssetContext, address: string) {
         // creater object
         return new Challenger(ctx, address);
     }
-    
+
     async illegalPaymentChallenge(agent: Agent, txHash: string): Promise<EventArgs<FullLiquidationStarted>> {
         const proof = await this.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent.underlyingAddress);
         const res = await this.assetManager.illegalPaymentChallenge(proof, agent.agentVault.address, { from: this.address });
@@ -39,7 +39,7 @@ export class Challenger extends AssetContextClient {
             proofs.push(await this.attestationProvider.proveBalanceDecreasingTransaction(txHash, agent.underlyingAddress));
         }
         const res = await this.assetManager.freeBalanceNegativeChallenge(proofs, agent.agentVault.address, { from: this.address });
-        findRequiredEvent(res, 'UnderlyingFreeBalanceNegative');
+        findRequiredEvent(res, 'UnderlyingBalanceTooLow');
         return eventArgs(res, 'FullLiquidationStarted');
     }
 
@@ -49,7 +49,7 @@ export class Challenger extends AssetContextClient {
         findRequiredEvent(res, 'RedemptionFinished');
         return requiredEventArgs(res, 'RedemptionPerformed');
     }
-    
+
     async confirmDefaultedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent: Agent) {
         const proof = await this.attestationProvider.provePayment(transactionHash, agent.underlyingAddress, request.paymentAddress);
         const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.address });
@@ -72,7 +72,7 @@ export class Challenger extends AssetContextClient {
         findRequiredEvent(res, 'RedemptionFinished');
         return requiredEventArgs(res, 'RedemptionPaymentBlocked');
     }
-    
+
     async confirmUnderlyingWithdrawal(request: EventArgs<UnderlyingWithdrawalAnnounced>, transactionHash: string, agent: Agent) {
         const proof = await this.attestationProvider.provePayment(transactionHash, agent.underlyingAddress, null);
         const res = await this.assetManager.confirmUnderlyingWithdrawal(proof, request.agentVault, { from: this.address });

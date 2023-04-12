@@ -289,7 +289,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             // successful challenge
             let res1 = await assetManager.freeBalanceNegativeChallenge(
                 [agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
-            expectEvent(res1, 'UnderlyingFreeBalanceNegative', {agentVault: agentVault.address});
+            expectEvent(res1, 'UnderlyingBalanceTooLow', {agentVault: agentVault.address});
        });
     });
 

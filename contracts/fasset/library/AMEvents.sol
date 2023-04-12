@@ -354,13 +354,13 @@ library AMEvents {
         bytes32 transactionHash2);
 
     /**
-     * Two transaction with same payment reference, both from the agent's underlying address, were proved.
-     * Whole agent's position goes into liquidation.
-     * Original challenger and prover are paid reward from the agent's collateral.
+     * Agent's underlying balance became lower than rewuired for backing f-assets (either through payment or via
+     * a challenge. Agent goes to full liquidation.
      */
-    event UnderlyingFreeBalanceNegative(
+    event UnderlyingBalanceTooLow(
         address indexed agentVault,
-        int256 freeBalance);
+        uint256 balance,
+        uint256 requiredBalance);
 
     /**
      * A setting has changed.

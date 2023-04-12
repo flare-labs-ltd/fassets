@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../../utils/lib/SafePct.sol";
+import "../../utils/lib/MathUtils.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
@@ -18,31 +19,6 @@ library UnderlyingBalance {
     using SafePct for *;
     using PaymentConfirmations for PaymentConfirmations.State;
     using Agent for Agent.State;
-
-    function updateBalance(
-        Agent.State storage _agent,
-        int256 _balanceChange
-    )
-        internal
-    {
-        int256 newBalance = _agent.underlyingBalanceUBA.toInt256() + _balanceChange;
-        if (newBalance < requiredUnderlyingUBA(_agent).toInt256()) {
-            emit AMEvents.UnderlyingFreeBalanceNegative(_agent.vaultAddress(), newBalance);
-            Liquidation.startFullLiquidation(_agent);
-        }
-        _agent.underlyingBalanceUBA = newBalance.toUint256().toUint128();
-    }
-
-    // Like updateBalance, but it can never make balance negative and trigger liquidation.
-    // Separate implementation to avoid dependency on liquidation for balance increases.
-    function increaseBalance(
-        Agent.State storage _agent,
-        uint256 _balanceIncrease
-    )
-        internal
-    {
-        _agent.underlyingBalanceUBA += _balanceIncrease.toUint128();
-    }
 
     function confirmTopupPayment(
         IAttestationClient.Payment calldata _payment,
@@ -64,6 +40,32 @@ library UnderlyingBalance {
         uint256 amountUBA = SafeCast.toUint256(_payment.receivedAmount);
         increaseBalance(agent, amountUBA.toUint128());
         emit AMEvents.UnderlyingBalanceToppedUp(_agentVault, amountUBA);
+    }
+
+    function updateBalance(
+        Agent.State storage _agent,
+        int256 _balanceChange
+    )
+        internal
+    {
+        uint256 newBalance = MathUtils.positivePart(_agent.underlyingBalanceUBA.toInt256() + _balanceChange);
+        uint256 requiredBalance = requiredUnderlyingUBA(_agent);
+        if (newBalance < requiredBalance) {
+            emit AMEvents.UnderlyingBalanceTooLow(_agent.vaultAddress(), newBalance, requiredBalance);
+            Liquidation.startFullLiquidation(_agent);
+        }
+        _agent.underlyingBalanceUBA = newBalance.toUint128();
+    }
+
+    // Like updateBalance, but it can never make balance negative and trigger liquidation.
+    // Separate implementation to avoid dependency on liquidation for balance increases.
+    function increaseBalance(
+        Agent.State storage _agent,
+        uint256 _balanceIncrease
+    )
+        internal
+    {
+        _agent.underlyingBalanceUBA += _balanceIncrease.toUint128();
     }
 
     // Underlying balance not backing anything (can be used for gas/fees or withdrawn after announcement).
