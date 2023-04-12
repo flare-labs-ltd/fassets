@@ -61,7 +61,7 @@ export async function linkAssetManager() {
     const CollateralReservations = await deployLibrary('CollateralReservations');
     const Liquidation = await deployLibrary('Liquidation');
     const Minting = await deployLibrary('Minting');
-    const UnderlyingFreeBalance = await deployLibrary('UnderlyingFreeBalance');
+    const UnderlyingBalance = await deployLibrary('UnderlyingBalance');
     const RedemptionRequests = await deployLibrary('RedemptionRequests');
     const RedemptionConfirmations = await deployLibrary('RedemptionConfirmations');
     const RedemptionFailures = await deployLibrary('RedemptionFailures');
@@ -71,7 +71,7 @@ export async function linkAssetManager() {
     // link AssetManagerContract
     return linkDependencies(artifacts.require('AssetManager'), {
         SettingsUpdater, StateUpdater, CollateralTokens, AgentsExternal, AgentsCreateDestroy, AgentSettingsUpdater, AvailableAgents, CollateralReservations, Liquidation, Minting,
-        UnderlyingFreeBalance, RedemptionRequests, RedemptionConfirmations, RedemptionFailures, UnderlyingWithdrawalAnnouncements, Challenges, FullAgentInfo
+        UnderlyingBalance, RedemptionRequests, RedemptionConfirmations, RedemptionFailures, UnderlyingWithdrawalAnnouncements, Challenges, FullAgentInfo
     });
 }
 

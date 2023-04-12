@@ -4,7 +4,7 @@ import { encodeLiquidationStrategyImplSettings, LiquidationStrategyImplSettings 
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../../lib/utils/events/truffle";
-import { DAYS, HOURS, MINUTES, toBIPS, toBNExp } from "../../../lib/utils/helpers";
+import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance,
@@ -68,6 +68,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         assetUnitUBA: toBNExp(1, ci.decimals),
         assetMintingDecimals: ci.amgDecimals,
         assetMintingGranularityUBA: toBNExp(1, ci.decimals - ci.amgDecimals),
+        minUnderlyingBackingBIPS: MAX_BIPS,
         mintingCapAMG: 0,                                   // minting cap disabled
         lotSizeAMG: toBNExp(ci.lotSize, ci.amgDecimals),
         requireEOAAddressProof: ci.requireEOAProof,

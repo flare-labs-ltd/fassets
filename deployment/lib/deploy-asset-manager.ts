@@ -9,6 +9,7 @@ import { ILiquidationStrategyFactory } from "./liquidationStrategyFactory/ILiqui
 import { LiquidationStrategyImpl } from "./liquidationStrategyFactory/LiquidationStrategyImpl";
 import { FAssetInstance } from "../../typechain-truffle";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
+import { MAX_BIPS } from "../../lib/utils/helpers";
 
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
 
@@ -195,6 +196,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         assetUnitUBA: assetUnitUBA,
         assetMintingDecimals: parameters.assetMintingDecimals,
         assetMintingGranularityUBA: assetMintingGranularityUBA,
+        minUnderlyingBackingBIPS: parameters.minUnderlyingBackingBIPS,
         mintingCapAMG: parseBN(parameters.mintingCap).div(assetMintingGranularityUBA),
         lotSizeAMG: parseBN(parameters.lotSize).div(assetMintingGranularityUBA),
         requireEOAAddressProof: parameters.requireEOAAddressProof,

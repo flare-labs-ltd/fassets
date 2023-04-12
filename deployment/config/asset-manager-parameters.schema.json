@@ -106,7 +106,7 @@
             "type": "string"
         },
         "assetSymbol": {
-            "description": "Symbol for the original asset on the underlying chain.\nMust match the FTSO contract symbol for the asset.",
+            "description": "Symbol for the original asset on the underlying chain.",
             "pattern": "^\\w+$",
             "type": "string"
         },
@@ -195,6 +195,12 @@
         },
         "maxTrustedPriceAgeSeconds": {
             "description": "Maximum age that trusted price feed is valid.\nOtherwise (if there were no trusted votes for that long) just use generic ftso price feed.",
+            "minimum": 0,
+            "type": "integer"
+        },
+        "minUnderlyingBackingBIPS": {
+            "description": "The percentage of minted f-assets that the agent must hold in his underlying address.",
+            "maximum": 10000,
             "minimum": 0,
             "type": "integer"
         },
@@ -318,6 +324,7 @@
         "lotSize",
         "maxRedeemedTickets",
         "maxTrustedPriceAgeSeconds",
+        "minUnderlyingBackingBIPS",
         "minUpdateRepeatTimeSeconds",
         "mintingCap",
         "mintingPoolHoldingsRequiredBIPS",
