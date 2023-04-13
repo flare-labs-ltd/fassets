@@ -15,6 +15,7 @@ library AgentCollateral {
     using SafeMath for uint256;
     using SafePct for uint256;
     using Agent for Agent.State;
+    using Agents for Agent.State;
 
     function combinedData(
         Agent.State storage _agent
@@ -52,8 +53,7 @@ library AgentCollateral {
         internal view
         returns (Collateral.Data memory)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralToken.Data storage collateral = state.collateralTokens[_agent.class1CollateralIndex];
+        CollateralToken.Data storage collateral = _agent.getClass1Collateral();
         return Collateral.Data({
             kind: Collateral.Kind.AGENT_CLASS1,
             fullCollateral: collateral.token.balanceOf(_agent.vaultAddress()),
@@ -67,8 +67,7 @@ library AgentCollateral {
         internal view
         returns (Collateral.Data memory)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralToken.Data storage collateral = state.collateralTokens[_agent.poolCollateralIndex];
+        CollateralToken.Data storage collateral = _agent.getPoolCollateral();
         return Collateral.Data({
             kind: Collateral.Kind.POOL,
             fullCollateral: collateral.token.balanceOf(address(_agent.collateralPool)),
@@ -152,7 +151,7 @@ library AgentCollateral {
         uint256 redeemingCollateral = Conversion.convertAmgToTokenWei(redeemingAMG, _data.amgToTokenWeiPrice)
             .mulBips(systemMinCollateralRatioBIPS);
         uint256 announcedWithdrawal =
-            _data.kind != Collateral.Kind.POOL ? Agents.withdrawalAnnouncement(_agent, _data.kind).amountWei : 0;
+            _data.kind != Collateral.Kind.POOL ? _agent.withdrawalAnnouncement(_data.kind).amountWei : 0;
         return mintingCollateral + redeemingCollateral + announcedWithdrawal;
     }
 
@@ -163,9 +162,9 @@ library AgentCollateral {
         internal view
         returns (uint256)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         (uint256 minCollateralRatio,) = mintingMinCollateralRatio(_agent, _data.kind);
-        return Conversion.convertAmgToTokenWei(state.settings.lotSizeAMG, _data.amgToTokenWeiPrice)
+        return Conversion.convertAmgToTokenWei(settings.lotSizeAMG, _data.amgToTokenWeiPrice)
             .mulBips(minCollateralRatio);
     }
 
@@ -176,21 +175,17 @@ library AgentCollateral {
         internal view
         returns (uint256 _mintingMinCollateralRatioBIPS, uint256 _systemMinCollateralRatioBIPS)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
         if (_kind == Collateral.Kind.AGENT_POOL) {
             (uint256 mintingPoolMin, uint256 systemPoolMin) = mintingMinCollateralRatio(_agent, Collateral.Kind.POOL);
-            _systemMinCollateralRatioBIPS =
-                uint256(state.settings.mintingPoolHoldingsRequiredBIPS).mulBips(systemPoolMin);
-            _mintingMinCollateralRatioBIPS =
-                uint256(state.settings.mintingPoolHoldingsRequiredBIPS).mulBips(mintingPoolMin);
+            uint256 mintingPoolHoldingsRequiredBIPS = AssetManagerState.getSettings().mintingPoolHoldingsRequiredBIPS;
+            _systemMinCollateralRatioBIPS = mintingPoolHoldingsRequiredBIPS.mulBips(systemPoolMin);
+            _mintingMinCollateralRatioBIPS = mintingPoolHoldingsRequiredBIPS.mulBips(mintingPoolMin);
         } else if (_kind == Collateral.Kind.POOL) {
-            _systemMinCollateralRatioBIPS =
-                state.collateralTokens[_agent.poolCollateralIndex].minCollateralRatioBIPS;
+            _systemMinCollateralRatioBIPS = _agent.getPoolCollateral().minCollateralRatioBIPS;
             _mintingMinCollateralRatioBIPS =
                 Math.max(_agent.mintingPoolCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         } else {
-            _systemMinCollateralRatioBIPS =
-                state.collateralTokens[_agent.class1CollateralIndex].minCollateralRatioBIPS;
+            _systemMinCollateralRatioBIPS = _agent.getClass1Collateral().minCollateralRatioBIPS;
             // agent's minCollateralRatioBIPS must be greater than minCollateralRatioBIPS when set, but
             // minCollateralRatioBIPS can change later so we always use the max of both
             _mintingMinCollateralRatioBIPS =
