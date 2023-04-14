@@ -3,7 +3,7 @@ import { AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/As
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings, decodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, randomAddress, toBN, toStringExp } from "../../../../lib/utils/helpers";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
 import { AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager, waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
@@ -12,6 +12,9 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
 import { createTestLiquidationSettings, createEncodedTestLiquidationSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
+import { ERC20Mock__factory, SafePctMock__factory } from "../../../../typechain";
+import { getAddress } from "ethers/lib/utils";
+import { ethers } from "hardhat";
 
 const Whitelist = artifacts.require('Whitelist');
 const AssetManagerController = artifacts.require('AssetManagerController');
@@ -651,6 +654,305 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(newSettings.underlyingBlocksForPayment, settings.underlyingBlocksForPayment);
             assertWeb3Equal(newSettings.underlyingSecondsForPayment, settings.underlyingSecondsForPayment);
         });
+
+        it("should revert setting minting pool holdings required BIPS when increase is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let mintingPoolHoldingsRequiredBIPS_tooBig = toBN(currentSettings.mintingPoolHoldingsRequiredBIPS).muln(5).add(toBN(MAX_BIPS));
+            const res = assetManagerController.setMintingPoolHoldingsRequiredBIPS([assetManager.address], mintingPoolHoldingsRequiredBIPS_tooBig, { from: governance });
+            await expectRevert(res, "value too big");
+        });
+
+        it("should set minting pool holdings required BIPS", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let mintingPoolHoldingsRequiredBIPS_new = toBN(currentSettings.mintingPoolHoldingsRequiredBIPS).muln(3).add(toBN(MAX_BIPS));
+            const res = await assetManagerController.setMintingPoolHoldingsRequiredBIPS([assetManager.address], mintingPoolHoldingsRequiredBIPS_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "mintingPoolHoldingsRequiredBIPS", value: toBN(mintingPoolHoldingsRequiredBIPS_new) });
+        });
+
+        it("should set minting cap AMG", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let mintingCapAMG_new = toBN(currentSettings.mintingCapAMG).add(toBN(1));
+            const res = await assetManagerController.setMintingCapAmg([assetManager.address], mintingCapAMG_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "mintingCapAMG", value: toBN(mintingCapAMG_new) });
+        });
+
+        it("should set token invalidation time min seconds after timelock", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let tokenInvalidationTimeMinSeconds = DAYS;
+            const res = await assetManagerController.setTokenInvalidationTimeMinSeconds([assetManager.address], tokenInvalidationTimeMinSeconds, { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "SettingChanged", { name: "tokenInvalidationTimeMinSeconds", value: toBN(tokenInvalidationTimeMinSeconds) });
+        });
+
+        it("should revert setting Class1 buy for flare factor BIPS when value is too low after timelock", async () => {
+            let class1BuyForFlareFactorBIPS_tooSmall = toBN(MAX_BIPS).divn(2);
+            const res = assetManagerController.setClass1BuyForFlareFactorBIPS([assetManager.address], class1BuyForFlareFactorBIPS_tooSmall, { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert(timelock_info, "value too small");
+        });
+
+        it("should set Class1 buy for flare factor BIPS after timelock", async () => {
+            let class1BuyForFlareFactorBIPS_new = toBN(MAX_BIPS).muln(2);
+            const res = await assetManagerController.setClass1BuyForFlareFactorBIPS([assetManager.address], class1BuyForFlareFactorBIPS_new, { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "SettingChanged", { name: "class1BuyForFlareFactorBIPS", value: toBN(class1BuyForFlareFactorBIPS_new) });
+        });
+
+        it("should revert setting agent exit available timelock seconds when value is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let agentExitAvailableTimelockSeconds_tooBig = toBN(currentSettings.agentExitAvailableTimelockSeconds).muln(5).addn(WEEKS);
+            const res = assetManagerController.setAgentExitAvailableTimelockSeconds([assetManager.address], agentExitAvailableTimelockSeconds_tooBig, { from: governance });
+            await expectRevert.unspecified(res);
+        });
+
+        it("should set agent exit available timelock seconds", async () => {
+            let agentExitAvailableTimelockSeconds_new = DAYS;
+            const res = await assetManagerController.setAgentExitAvailableTimelockSeconds([assetManager.address], agentExitAvailableTimelockSeconds_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "agentExitAvailableTimelockSeconds", value: toBN(agentExitAvailableTimelockSeconds_new) });
+        });
+
+        it("should revert setting agent fee change timelock seconds when value is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let agentFeeChangeTimelockSeconds_tooBig = toBN(currentSettings.agentFeeChangeTimelockSeconds).muln(5).addn(WEEKS);
+            const res = assetManagerController.setAgentFeeChangeTimelockSeconds([assetManager.address], agentFeeChangeTimelockSeconds_tooBig, { from: governance });
+            await expectRevert.unspecified(res);
+        });
+
+        it("should set agent exit available timelock seconds", async () => {
+            let agentFeeChangeTimelockSeconds_new = DAYS;
+            const res = await assetManagerController.setAgentFeeChangeTimelockSeconds([assetManager.address], agentFeeChangeTimelockSeconds_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "agentFeeChangeTimelockSeconds", value: toBN(agentFeeChangeTimelockSeconds_new) });
+        });
+
+        it("should revert setting agent collateral ratio change timelock seconds when value is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let agentCollateralRatioChangeTimelockSeconds_tooBig = toBN(currentSettings.agentCollateralRatioChangeTimelockSeconds).muln(5).addn(WEEKS);
+            const res = assetManagerController.setAgentCollateralRatioChangeTimelockSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_tooBig, { from: governance });
+            await expectRevert.unspecified(res);
+        });
+
+        it("should set agent collateral ratio change timelock seconds", async () => {
+            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
+            const res = await assetManagerController.setAgentCollateralRatioChangeTimelockSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "agentCollateralRatioChangeTimelockSeconds", value: toBN(agentCollateralRatioChangeTimelockSeconds_new) });
+        });
+
+        it("should set agent whitelist after timelock", async () => {
+            const addr = randomAddress();
+            const res = await assetManagerController.setAgentWhitelist([assetManager.address], addr, { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "ContractChanged", { name: "agentWhitelist", value: addr });
+        });
+
+        it("should revert setting underlying address validator after timelock when address 0 is provided", async () => {
+            const res = assetManagerController.setUnderlyingAddressValidator([assetManager.address], ethers.constants.AddressZero, { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert(timelock_info, "address zero");
+        });
+
+        it("should set underlying address validator after timelock", async () => {
+            const addr = randomAddress();
+            const res = await assetManagerController.setUnderlyingAddressValidator([assetManager.address], addr, { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "ContractChanged", { name: "underlyingAddressValidator", value: addr });
+        });
+
+        it("should revert setting min update repeat time when 0 seconds is provided", async () => {
+            const res = assetManagerController.setMinUpdateRepeatTimeSeconds([assetManager.address], 0, { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert(timelock_info, "cannot be zero");
+        });
+
+        it("should set min update repeat time", async () => {
+            const res = await assetManagerController.setMinUpdateRepeatTimeSeconds([assetManager.address], toBN(DAYS), { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "SettingChanged", { name: "minUpdateRepeatTimeSeconds", value: toBN(DAYS) });
+        });
+
+        it("should revert setting min underlying backing bips if value is 0", async () => {
+            let minUnderlyingBackingBIPS_zero = toBIPS(0);
+            const res = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], minUnderlyingBackingBIPS_zero, { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert(timelock_info, "cannot be zero");
+        });
+
+        it("should revert setting min underlying backing bips if value is above 1", async () => {
+            let minUnderlyingBackingBIPS_zero = toBIPS("110%");
+            const res = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], minUnderlyingBackingBIPS_zero, { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert(timelock_info, "must be below 1");
+        });
+
+        it("should revert setting min underlying backing bips if decrease is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let minUnderlyingBackingBIPS_decreaseTooBig = toBN(currentSettings.minUnderlyingBackingBIPS).divn(3);
+            const res = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], minUnderlyingBackingBIPS_decreaseTooBig, { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert(timelock_info, "decrease too big");
+        });
+
+        it("should revert setting min underlying backing bips if increase is too big", async () => {
+            //First we need to lower the setting to 30% so we can multiply by 3 and still be below 100%
+            const res_prev1 = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], toBIPS("50%"), { from: governance });
+            await waitForTimelock(res_prev1, assetManagerController, updateExecutor);
+            await time.increase(WEEKS);
+
+            const res_prev2 = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], toBIPS("30%"), { from: governance });
+            await waitForTimelock(res_prev2, assetManagerController, updateExecutor);
+            await time.increase(WEEKS);
+
+            const currentSettings = await assetManager.getSettings();
+            let minUnderlyingBackingBIPS_increaseTooBig = toBN(currentSettings.minUnderlyingBackingBIPS).muln(3);
+            const res = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], minUnderlyingBackingBIPS_increaseTooBig, { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert(timelock_info, "increase too big");
+        });
+
+        it("should set min underlying backing bips", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let minUnderlyingBackingBIPS_new = toBN(currentSettings.minUnderlyingBackingBIPS).divn(2);
+            const res = assetManagerController.setMinUnderlyingBackingBips([assetManager.address], minUnderlyingBackingBIPS_new, { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "SettingChanged", { name: "minUnderlyingBackingBIPS", value: minUnderlyingBackingBIPS_new });
+        });
+
+        it("should add Collateral token", async () => {
+            const newToken = {
+                ...collaterals[0],
+                token: accounts[82],
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "20000",
+                ccbMinCollateralRatioBIPS: "18000",
+                safetyMinCollateralRatioBIPS: "21000",
+                tokenClass: 2,
+            };
+            await assetManagerController.addCollateralToken([assetManager.address], newToken, { from: governance });
+            const getToken = await assetManager.getCollateralToken(newToken.tokenClass, newToken.token);
+            assertWeb3Equal(getToken.token, accounts[82]);
+        });
+
+        it("should revert adding Collateral token when address 0", async () => {
+            const newToken = {
+                ...collaterals[0],
+                token: ethers.constants.AddressZero,
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "20000",
+                ccbMinCollateralRatioBIPS: "18000",
+                safetyMinCollateralRatioBIPS: "21000",
+                tokenClass: 2,
+            };
+            const res = assetManagerController.addCollateralToken([assetManager.address], newToken, { from: governance });
+            await expectRevert(res, "token zero");
+        });
+
+        it("should revert adding Collateral token when class is wrong", async () => {
+            const newToken = {
+                ...collaterals[0],
+                token: ethers.constants.AddressZero,
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "20000",
+                ccbMinCollateralRatioBIPS: "18000",
+                safetyMinCollateralRatioBIPS: "21000",
+            };
+            const res = assetManagerController.addCollateralToken([assetManager.address], newToken, { from: governance });
+            await expectRevert(res, "not a class1 collateral");
+        });
+
+        it("should revert adding Collateral token when token exists", async () => {
+            const newToken = {
+                ...collaterals[0],
+                token: accounts[82],
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "20000",
+                ccbMinCollateralRatioBIPS: "18000",
+                safetyMinCollateralRatioBIPS: "21000",
+                tokenClass: 2,
+            };
+            const copyToken = {
+                ...collaterals[0],
+                token: accounts[82],
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "20000",
+                ccbMinCollateralRatioBIPS: "18000",
+                safetyMinCollateralRatioBIPS: "21000",
+                tokenClass: 2,
+            };
+            await assetManagerController.addCollateralToken([assetManager.address], newToken, { from: governance });
+            const res = assetManagerController.addCollateralToken([assetManager.address], copyToken, { from: governance });
+            await expectRevert(res, "token already exists");
+        });
+
+        it("should revert adding Collateral token when collateral ratios are invalid", async () => {
+            const newToken_invalidCCBRatio = {
+                ...collaterals[0],
+                token: accounts[82],
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "20000",
+                ccbMinCollateralRatioBIPS: "180",
+                safetyMinCollateralRatioBIPS: "21000",
+                tokenClass: 2,
+            };
+            const res1 = assetManagerController.addCollateralToken([assetManager.address], newToken_invalidCCBRatio, { from: governance });
+            await expectRevert(res1, "invalid collateral ratios");
+
+            const newToken_invalidMinColRatio = {
+                ...collaterals[0],
+                token: accounts[81],
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "17000",
+                ccbMinCollateralRatioBIPS: "18000",
+                safetyMinCollateralRatioBIPS: "21000",
+                tokenClass: 2,
+            };
+            const res2 = assetManagerController.addCollateralToken([assetManager.address], newToken_invalidMinColRatio, { from: governance });
+            await expectRevert(res2, "invalid collateral ratios");
+
+            const newToken_invalidSafetyMinColRatio = {
+                ...collaterals[0],
+                token: accounts[80],
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "20000",
+                ccbMinCollateralRatioBIPS: "18000",
+                safetyMinCollateralRatioBIPS: "19000",
+                tokenClass: 2,
+            };
+            const res3 = assetManagerController.addCollateralToken([assetManager.address], newToken_invalidSafetyMinColRatio, { from: governance });
+            await expectRevert(res3, "invalid collateral ratios");
+        });
+
+        it("should revert deprecating token", async () => {
+            const currentSettings = await assetManager.getSettings();
+            const invalidToken = {
+                ...collaterals[0],
+                token: accounts[81],
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "20000",
+                ccbMinCollateralRatioBIPS: "18000",
+                safetyMinCollateralRatioBIPS: "21000",
+                tokenClass: 2,
+            };
+
+            const newToken = {
+                ...collaterals[0],
+                token: accounts[82],
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "20000",
+                ccbMinCollateralRatioBIPS: "18000",
+                safetyMinCollateralRatioBIPS: "21000",
+                tokenClass: 2,
+            };
+            await assetManagerController.addCollateralToken([assetManager.address], newToken, { from: governance });
+            await assetManagerController.addCollateralToken([assetManager.address], invalidToken, { from: governance });
+            await assetManagerController.deprecateCollateralToken([assetManager.address],2, invalidToken.token,currentSettings.tokenInvalidationTimeMinSeconds ,{ from: governance });
+            await time.increase(WEEKS);
+            const res = assetManagerController.deprecateCollateralToken([assetManager.address],2, invalidToken.token,currentSettings.tokenInvalidationTimeMinSeconds ,{ from: governance });
+            await expectRevert(res, "token not valid");
+
+            const res2 = assetManagerController.deprecateCollateralToken([assetManager.address],2, newToken.token,toBN(currentSettings.tokenInvalidationTimeMinSeconds).subn(1) ,{ from: governance });
+            await expectRevert(res2, "deprecation time to short");
+        });
+
+
     });
 
     describe("pause, unpause and terminate", () => {
