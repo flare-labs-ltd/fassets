@@ -12,7 +12,7 @@ contract FAsset is IFAsset, VPToken {
     address public override assetManager;
 
     /**
-     * Nonzero if f-asset is terminated (in that case it's value is terminate timestamp).
+     * Nonzero if f-asset is terminated (in that case its value is terminate timestamp).
      * Stopped f-asset can never be re-enabled.
      *
      * When f-asset is terminated, no transfers can be made anymore.
