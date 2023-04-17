@@ -39,7 +39,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
     let mockStateConnectorClient: MockStateConnectorClient;
 
     beforeEach(async () => {
-        commonContext = await CommonContext.createTest(governance, testNatInfo);
+        commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.eth);
         mockChain = context.chain as MockChain;
         mockStateConnectorClient = context.stateConnectorClient as MockStateConnectorClient;
