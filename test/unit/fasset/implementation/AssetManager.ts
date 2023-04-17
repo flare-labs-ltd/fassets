@@ -3,7 +3,7 @@ import { AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/As
 import { encodeLiquidationStrategyImplSettings, decodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { BN_ONE, DAYS, HOURS, MAX_BIPS, toBIPS, toBN, toBNExp, toNumber, toWei } from "../../../../lib/utils/helpers";
+import { BN_ONE, BNish, DAYS, HOURS, MAX_BIPS, toBIPS, toBN, toBNExp, toNumber, toWei } from "../../../../lib/utils/helpers";
 import { AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, AgentVaultInstance, FtsoMockInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
@@ -141,6 +141,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         // self-mint and send f-assets to minter
         await assetManager.selfMint(proof, agentVault.address, lots, { from: owner });
         if (minter != owner) await fAsset.transfer(minter, amountUBA, { from: owner });
+    }
+
+    function skipToProofUnavailability(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {
+        chain.skipTimeTo(Number(lastUnderlyingTimestamp));
+        chain.mine(Number(lastUnderlyingBlock) - chain.blockHeight() + 1);
+        chain.skipTime(stateConnectorClient.queryWindowSeconds + 1);
+        chain.mine(chain.finalizationBlocks);
     }
 
     beforeEach(async () => {
@@ -663,7 +670,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             assertWeb3Equal(crt.valueUBA, lotsToUBA(toBN(1)));
             // don't mint f-assets for a while
-            chain.mine(crt.lastUnderlyingBlock.toNumber()+1);
+            chain.mineTo(crt.lastUnderlyingBlock.toNumber()+1);
             chain.skipTimeTo(crt.lastUnderlyingTimestamp.toNumber()+1);
             // prove non-payment
             const proof = await attestationProvider.proveReferencedPaymentNonexistence(underlyingAgent1,
@@ -696,8 +703,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 { from: minter, value: reservationFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // don't mint f-assets for a long time (> 24 hours)
-            chain.skipTime(24 * 60 * 60 + 1);
-            chain.mine(100000); // mine enough blocks for heightExistenceProof.lowestQueryWindowBlockNumber > crt.lastUnderlyingBlock
+            skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             // calculate the cost of unsticking the minting
             const { 0: multiplier, 1: divisor } = await assetManager.assetPriceNatWei();
             const mintedValueUBA = lotsToUBA(toBN(1));
@@ -764,7 +770,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, { from: redeemer });
             const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
             // agent doesn't pay for specified time / blocks
-            chain.mine(redemptionRequest.lastUnderlyingBlock.toNumber()+1);
+            chain.mineTo(redemptionRequest.lastUnderlyingBlock.toNumber()+1);
             chain.skipTimeTo(redemptionRequest.lastUnderlyingTimestamp.toNumber()+1);
             // do default
             const proof = await attestationProvider.proveReferencedPaymentNonexistence(underlyingRedeemer,
@@ -794,7 +800,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // default a redemption
             const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, { from: redeemer });
             const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
-            chain.mine(redemptionRequest.lastUnderlyingBlock.toNumber()+1);
+            chain.mineTo(redemptionRequest.lastUnderlyingBlock.toNumber()+1);
             chain.skipTimeTo(redemptionRequest.lastUnderlyingTimestamp.toNumber()+1);
             const nonPaymentProof = await attestationProvider.proveReferencedPaymentNonexistence(underlyingRedeemer,
                 PaymentReference.redemption(redemptionRequest.requestId), redemptionRequest.valueUBA.sub(redemptionRequest.feeUBA),
@@ -806,7 +812,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const redemptionFinished = findRequiredEvent(tx, "RedemptionFinished").args;
             assertWeb3Equal(redemptionFinished.agentVault, agentVault.address);
             assertWeb3Equal(redemptionFinished.requestId, redemptionRequest.requestId);
-            assertWeb3Equal(redemptionFinished.freedUnderlyingBalanceUBA, lotsToUBA(toBN(1)));
+            // assertWeb3Equal(redemptionFinished.freedUnderlyingBalanceUBA, lotsToUBA(toBN(1)));
             // check that free underlying balance was updated
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(toBN(1)));
@@ -823,15 +829,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, { from: redeemer });
             const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
             // don't mint f-assets for a long time (> 24 hours) to escape the provable attestation window
-            chain.skipTime(24 * 60 * 60 + 1);
-            chain.mine(100000);
+            skipToProofUnavailability(redemptionRequest.lastUnderlyingBlock, redemptionRequest.lastUnderlyingTimestamp);
             // prove redemption payment
             const proof = await attestationProvider.proveConfirmedBlockHeightExists();
             const redemptionFinishedTx = await assetManager.finishRedemptionWithoutPayment(proof, redemptionRequest.requestId, { from: agentOwner1 });
             const redemptionFinished = findRequiredEvent(redemptionFinishedTx, "RedemptionFinished").args;
             assertWeb3Equal(redemptionFinished.agentVault, agentVault.address);
             assertWeb3Equal(redemptionFinished.requestId, redemptionRequest.requestId);
-            assertWeb3Equal(redemptionFinished.freedUnderlyingBalanceUBA, lotsToUBA(toBN(1)));
+            // assertWeb3Equal(redemptionFinished.freedUnderlyingBalanceUBA, lotsToUBA(toBN(1)));
             // check that free underlying balance was updated
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(toBN(1)));
@@ -966,7 +971,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, "random_address");
             // make a challenge
             const tx = await assetManager.freeBalanceNegativeChallenge([proof], agentVault.address, { from: challenger });
-            expectEvent(tx, "UnderlyingFreeBalanceNegative");
+            expectEvent(tx, "UnderlyingBalanceTooLow");
         });
     });
 

@@ -157,14 +157,23 @@ export class MockAttestationProver {
             throw new MockAttestationProverError(`AttestationProver.confirmedBlockHeightExists: finalization block height too low (${finalizationBlockNumber})`);
         }
         const block = this.chain.blocks[finalizationBlockNumber - this.chain.finalizationBlocks];
+        const windowStartTimestamp = block.timestamp - this.queryWindowSeconds;
+        let startBlockInd = this.chain.blocks.length - 1;
+        while (startBlockInd >= 0 && this.chain.blocks[startBlockInd].timestamp >= windowStartTimestamp) {
+            --startBlockInd;
+        }
+        // By specification, we should fail if `startBlockInd < 0`, i.e. if lowest window block is not found,
+        // but mock chain doesn't have much history, so this would fail many tests.
+        // So we just return lqbNumber = lqbTimestamp = 0 in this case.
+        const lowestQueryWindowBlock = startBlockInd >= 0 ? this.chain.blocks[startBlockInd] : null;
         const proof: DHConfirmedBlockHeightExists = {
             stateConnectorRound: 0, // filled later
             blockNumber: toBN(block.number),
             blockTimestamp: toBN(block.timestamp),
             numberOfConfirmations: toBN(this.chain.finalizationBlocks),
             averageBlockProductionTimeMs: toBN(Math.round(this.chain.secondsPerBlock * 1000)),
-            lowestQueryWindowBlockNumber: toBN(Math.max(0, block.number - Math.round(this.queryWindowSeconds / this.chain.secondsPerBlock))),
-            lowestQueryWindowBlockTimestamp: toBN(Math.max(0, block.timestamp - this.queryWindowSeconds)),
+            lowestQueryWindowBlockNumber: toBN(lowestQueryWindowBlock?.number ?? 0),
+            lowestQueryWindowBlockTimestamp: toBN(lowestQueryWindowBlock?.timestamp ?? 0),
         };
         return web3DeepNormalize(proof);
     }

@@ -143,6 +143,15 @@ export class AssetContext implements IAssetContext {
         return this.chainEvents.waitForUnderlyingTransactionFinalization(scope, txHash, maxBlocksToWaitForTx);
     }
 
+    skipToProofUnavailability(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {
+        const chain = this.chain as MockChain;
+        const stateConnectorClient = this.stateConnectorClient as MockStateConnectorClient;
+        chain.skipTimeTo(Number(lastUnderlyingTimestamp) + 1);
+        chain.mineTo(Number(lastUnderlyingBlock) + 1);
+        chain.skipTime(stateConnectorClient.queryWindowSeconds + 1);
+        chain.mine(chain.finalizationBlocks);
+    }
+
     static async createTest(common: CommonContext, chainInfo: TestChainInfo, options: SettingsOptions = {}): Promise<AssetContext> {
         // create mock chain
         const chain = new MockChain(await time.latest());

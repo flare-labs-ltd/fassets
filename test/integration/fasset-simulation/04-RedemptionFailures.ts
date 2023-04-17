@@ -377,9 +377,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // check that calling finishRedemptionWithoutPayment after no redemption payment will revert if called too soon
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "should default first");
             await time.increase(DAYS);
-            for (let i = 0; i <= mockStateConnectorClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
-                mockChain.mine();
-            }
+            context.skipToProofUnavailability(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
             // test rewarding for redemption payment default
             const startBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);

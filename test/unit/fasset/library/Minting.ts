@@ -85,6 +85,13 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         return fee.mul(poolFeeShareBIPS).divn(MAX_BIPS);
     }
 
+    function skipToProofUnavailability(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {
+        chain.skipTimeTo(Number(lastUnderlyingTimestamp) + 1);
+        chain.mineTo(Number(lastUnderlyingBlock) + 1);
+        chain.skipTime(stateConnectorClient.queryWindowSeconds + 1);
+        chain.mine(chain.finalizationBlocks);
+    }
+
     beforeEach(async () => {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
@@ -238,10 +245,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const crt = await reserveCollateral(agentVault.address, 1);
-        const queryWindow = stateConnectorClient.queryWindowSeconds + 100;
-        const queryBlock = Math.round(queryWindow / chain.secondsPerBlock);
-        chain.skipTimeTo(Number(crt.lastUnderlyingTimestamp) + queryWindow);
-        chain.mine(Number(crt.lastUnderlyingBlock) + queryBlock);
+        skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
         // assert
         const proof = await attestationProvider.proveConfirmedBlockHeightExists();
         const agentCollateral = await AgentCollateral.create(assetManager, settings, agentVault.address);

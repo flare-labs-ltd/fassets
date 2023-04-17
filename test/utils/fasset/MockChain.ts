@@ -119,6 +119,10 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
         }
     }
 
+    mineTo(lastBlock: number) {
+        this.mine(lastBlock - this.blockHeight());
+    }
+
     createTransactionHash(inputs: TxInputOutput[], outputs: TxInputOutput[], reference: string | null): string {
         // build data structure to hash
         const data = {

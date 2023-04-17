@@ -125,9 +125,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that calling unstickMinting after no payment will revert if called too soon
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
             await time.increase(DAYS);
-            for (let i = 0; i <= mockStateConnectorClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
-                mockChain.mine();
-            }
+            context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0, reservedUBA: context.convertLotsToUBA(lots) });
             // test rewarding for unstick default
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
@@ -173,9 +171,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that calling unstickMinting after failed minting payment will revert if called too soon
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
             await time.increase(DAYS);
-            for (let i = 0; i <= mockStateConnectorClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
-                mockChain.mine();
-            }
+            context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             // test rewarding for unstick default
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
@@ -220,9 +216,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that calling unstickMinting after unconfirmed payment will revert if called too soon
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
             await time.increase(DAYS);
-            for (let i = 0; i <= mockStateConnectorClient.queryWindowSeconds / mockChain.secondsPerBlock + 1; i++) {
-                mockChain.mine();
-            }
+            context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             // test rewarding for unstick default
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
