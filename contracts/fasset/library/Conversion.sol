@@ -119,8 +119,7 @@ library Conversion {
         }
         (uint256 tokenPrice,, uint256 tokenFtsoDec) = readFtsoPrice(_token.tokenFtsoSymbol, false);
         uint256 expPlus = _token.decimals + tokenFtsoDec;
-        // 1e10 in divisor: 5 for amount decimals, 5 for price decimals
-        return _amountUSD5.mulDiv(tokenPrice * 10 ** expPlus, 1e10);
+        return _amountUSD5.mulDiv(10 ** expPlus, tokenPrice);
     }
 
     function currentAmgPriceInTokenWeiWithTs(
