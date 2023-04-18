@@ -15,6 +15,7 @@ import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../..
 import { createEncodedTestLiquidationSettings, createTestLiquidationSettings, createTestCollaterals, createTestContracts,
     createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts, createTestAgentSettings } from "../test-settings";
 import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
+import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -23,26 +24,11 @@ const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
 const ERC20Mock = artifacts.require('ERC20Mock');
 
-function mulBIPS(x: BN, y: BN) {
-    return x.mul(y).div(toBN(10000));
-}
+const mulBIPS = (x: BN, y: BN) => x.mul(y).div(toBN(MAX_BIPS));
+const divBIPS = (x: BN, y: BN) => x.mul(toBN(MAX_BIPS)).div(y);
 
 function assertEqualWithNumError(x: BN, y: BN, err: BN) {
     assert.isTrue(x.sub(y).abs().lte(err), `Expected ${x} to be within ${err} of ${y}`);
-}
-
-// passing BN's produces errors - convert all setting field to string
-function createTestAgentSettings_(underlyingAgent: string, class1TokenAddress: string) {
-    const settings = createTestAgentSettings(underlyingAgent, class1TokenAddress);
-    settings.mintingClass1CollateralRatioBIPS = settings.mintingClass1CollateralRatioBIPS.toString();
-    settings.mintingPoolCollateralRatioBIPS = settings.mintingPoolCollateralRatioBIPS.toString();
-    settings.poolExitCollateralRatioBIPS = settings.poolExitCollateralRatioBIPS.toString();
-    settings.buyFAssetByAgentFactorBIPS = settings.buyFAssetByAgentFactorBIPS.toString();
-    settings.poolTopupCollateralRatioBIPS = settings.poolTopupCollateralRatioBIPS.toString();
-    settings.poolTopupTokenPriceFactorBIPS = settings.poolTopupTokenPriceFactorBIPS.toString();
-    settings.poolFeeShareBIPS = settings.poolFeeShareBIPS.toString();
-    settings.feeBIPS = settings.feeBIPS.toString();
-    return settings;
 }
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic tests`, async accounts => {
@@ -67,8 +53,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
     const whitelistedAccount = accounts[1];
 
-    function lotsToUBA(lots: BN): BN {
-        return lots
+    function lotsToUBA(lots: BNish): BN {
+        return toBN(lots)
             .mul(toBN(settings.lotSizeAMG))
             .mul(toBN(settings.assetUnitUBA))
             .div(toBN(settings.assetMintingGranularityUBA));
@@ -79,14 +65,23 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         return CollateralPoolToken.at(await pool.token());
     }
 
-    async function assetPrice(amount: BN, ftso: FtsoMockInstance): Promise<BN> {
-        const { 0: assetPrice, 1: _, } = await ftso.getCurrentPrice();
-        return mulBIPS(amount, assetPrice);
+    // price of ftso-asset in uba/wei/base units
+    async function ubaToUSDWei(uba: BN, ftso: FtsoMockInstance) {
+        const { 0: assetPrice, 2: decimals } = await ftso.getCurrentPriceWithDecimals();
+        return uba.mul(assetPrice).div(toBN(10**decimals.toNumber()));
     }
-
-    async function assetValueUBA(uba: BN, ftso: FtsoMockInstance): Promise<BN> {
-        const { 0: assetPrice, 1: _, 2: decimals } = await ftso.getCurrentPriceWithDecimals();
-        return mulBIPS(uba, assetPrice).div(toBN(10**decimals.toNumber()));
+    async function ubaToC1Wei(uba: BN) {
+        const { 0: assetPrice } = await ftsos.asset.getCurrentPrice();
+        const { 0: usdcPrice } = await ftsos.usdc.getCurrentPrice();
+        return uba.mul(assetPrice).div(usdcPrice);
+    }
+    async function ubaToPoolWei(uba: BN) {
+        const { 0: assetPriceMul, 1: assetPriceDiv } = await assetManager.assetPriceNatWei();
+        return uba.mul(assetPriceMul).div(assetPriceDiv);
+    }
+    async function usd5ToClass1Wei(usd5: BN) {
+        const { 0: usdcPrice, 2: usdcDecimals } = await ftsos.usdc.getCurrentPriceWithDecimals();
+        return usd5.mul(toWei(10**usdcDecimals.toNumber())).div(usdcPrice);
     }
 
     async function depositUnderlyingAsset(agentVault: AgentVaultInstance, owner: string, underlyingAgent: string, amount: BN) {
@@ -112,8 +107,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         const txHash = await wallet.addTransaction(underlyingAddress, underlyingBurnAddr, 1, PaymentReference.addressOwnership(owner));
         const proof = await attestationProvider.provePayment(txHash, underlyingAddress, underlyingBurnAddr);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
-        const settings = createTestAgentSettings_(underlyingAddress, usdc.address);
-        const response = await assetManager.createAgent(settings, { from: owner });
+        const settings = createTestAgentSettings(underlyingAddress, usdc.address);
+        const response = await assetManager.createAgent(web3DeepNormalize(settings), { from: owner });
         return AgentVault.at(findRequiredEvent(response, 'AgentCreated').args.agentVault);
     }
 
@@ -131,16 +126,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     async function mintFassets(agentVault: AgentVaultInstance, owner: string, underlyingAgent: string, minter: string, lots: BN) {
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const amountUBA = lotsToUBA(lots);
-        const poolFeeShare = mulBIPS(mulBIPS(amountUBA, toBN(agentInfo.feeBIPS)), toBN(agentInfo.poolFeeShareBIPS));
-        const paymentAmount = amountUBA.add(poolFeeShare);
+        const agentFeeShareUBA = mulBIPS(amountUBA, toBN(agentInfo.feeBIPS));
+        const poolFeeShareUBA = mulBIPS(agentFeeShareUBA, toBN(agentInfo.poolFeeShareBIPS));
+        const paymentAmountUBA = amountUBA.add(agentFeeShareUBA).add(poolFeeShareUBA);
         // make and prove payment transaction
-        chain.mint("random_address", paymentAmount);
-        const txHash = await wallet.addTransaction("random_address", underlyingAgent, paymentAmount,
+        chain.mint("random_address", paymentAmountUBA);
+        const txHash = await wallet.addTransaction("random_address", underlyingAgent, paymentAmountUBA,
             PaymentReference.selfMint(agentVault.address));
         const proof = await attestationProvider.provePayment(txHash, "random_address", underlyingAgent);
         // self-mint and send f-assets to minter
         await assetManager.selfMint(proof, agentVault.address, lots, { from: owner });
         if (minter != owner) await fAsset.transfer(minter, amountUBA, { from: owner });
+        return { underlyingPaymentUBA: paymentAmountUBA, underlyingTxHash: txHash }
     }
 
     function skipToProofUnavailability(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {
@@ -261,11 +258,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
     describe("collateral tokens", () => {
 
-        // invalid big number value
-        it.skip("should correctly add collateral token", async () => {
-            await assetManager.addCollateralToken(collaterals[2], { from: assetManagerController });
+        it("should correctly add collateral token", async () => {
+            const collateral = JSON.parse(JSON.stringify(web3DeepNormalize(collaterals[1]))); // make a deep copy
+            collateral.token = (await ERC20Mock.new("New Token", "NT")).address;
+            collateral.tokenFtsoSymbol = "NT";
+            collateral.assetFtsoSymbol = "NT";
+            await assetManager.addCollateralToken(web3DeepNormalize(collateral), { from: assetManagerController });
             const resCollaterals = await assetManager.getCollateralTokens();
-            assertWeb3DeepEqual(collaterals, resCollaterals);
+            assertWeb3DeepEqual(collateral.token, resCollaterals[3].token);
         });
 
         it("should set collateral ratios for token", async () => {
@@ -285,14 +285,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(collateralToken.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
         });
 
-        // invalid big number value 4e20
-        it.skip("should set pool collateral token", async () => {
+        it("should set pool collateral token", async () => {
             const newWnat = await ERC20Mock.new("Wrapped NAT", "WNAT");
             const tokenInfo = collaterals[0];
             tokenInfo.token = newWnat.address;
             tokenInfo.assetFtsoSymbol = "WNAT";
-            await assetManager.setPoolCollateralToken(tokenInfo, { from: assetManagerController });
+            await assetManager.setPoolCollateralToken(web3DeepNormalize(tokenInfo), { from: assetManagerController });
             const token = await assetManager.getCollateralToken(tokenInfo.tokenClass, tokenInfo.token);
+            assertWeb3Equal(token.token, newWnat.address);
         });
     });
 
@@ -309,14 +309,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
                 { from: assetManagerController });
             // assert
-            const settings = createTestAgentSettings_(underlyingAgent1, usdc.address);
-            await expectRevert(assetManager.createAgent(settings, { from: agentOwner1 }),
+            const settings = createTestAgentSettings(underlyingAgent1, usdc.address);
+            await expectRevert(assetManager.createAgent(web3DeepNormalize(settings), { from: agentOwner1 }),
                 "not whitelisted");
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(whitelistedAccount));
             const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
             await assetManager.proveUnderlyingAddressEOA(proof, { from: whitelistedAccount });
-            expectEvent(await assetManager.createAgent(settings, { from: whitelistedAccount}), "AgentCreated");
+            expectEvent(await assetManager.createAgent(web3DeepNormalize(settings), { from: whitelistedAccount}), "AgentCreated");
         });
     });
 
@@ -369,7 +369,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isFalse(await fAsset.terminated());
         });
 
-        it.skip("should buy back agent collateral", async () => {
+        it("should buy back agent collateral", async () => {
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e8));
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(1));
             // terminate f-asset
@@ -377,8 +377,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.pause({ from: assetManagerController });
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP);
             await assetManager.terminate({ from: assetManagerController });
-            // buy back the collateral (TODO)
-            //await assetManager.buybackAgentCollateral(agentVault.address, { from: agentOwner1 });
+            // buy back the collateral
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const mintedUSD = await ubaToC1Wei(toBN(agentInfo.mintedUBA));
+            await assetManager.buybackAgentCollateral(agentVault.address, { from: agentOwner1, value: toWei(3e6) });
+            const buybackPriceUSD = mulBIPS(mintedUSD, toBN(settings.buybackCollateralFactorBIPS));
+            assertEqualWithNumError(await usdc.balanceOf(agentOwner1), buybackPriceUSD, toBN(1));
         });
     });
 
@@ -668,7 +672,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
                 { from: minter, value: reservationFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
-            assertWeb3Equal(crt.valueUBA, lotsToUBA(toBN(1)));
+            assertWeb3Equal(crt.valueUBA, lotsToUBA(1));
             // don't mint f-assets for a while
             chain.mineTo(crt.lastUnderlyingBlock.toNumber()+1);
             chain.skipTimeTo(crt.lastUnderlyingTimestamp.toNumber()+1);
@@ -706,9 +710,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             // calculate the cost of unsticking the minting
             const { 0: multiplier, 1: divisor } = await assetManager.assetPriceNatWei();
-            const mintedValueUBA = lotsToUBA(toBN(1));
-            const lockedMintValue = mintedValueUBA.mul(multiplier).div(divisor);
-            const unstickMintingCost = mulBIPS(lockedMintValue, toBN(settings.class1BuyForFlareFactorBIPS));
+            const mintedValueUBA = lotsToUBA(1);
+            const mintedValueNAT = mintedValueUBA.mul(multiplier).div(divisor);
+            const unstickMintingCost = mulBIPS(mintedValueNAT, toBN(settings.class1BuyForFlareFactorBIPS));
             // unstick minting
             const heightExistenceProof = await attestationProvider.proveConfirmedBlockHeightExists();
             const tx2 = await assetManager.unstickMinting(heightExistenceProof, crt.collateralReservationId,
@@ -722,7 +726,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             // calculate payment amount (as amount >= one lot => include pool fee)
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            const amountUBA = lotsToUBA(toBN(1));
+            const amountUBA = lotsToUBA(1);
             const poolFeeShare = mulBIPS(mulBIPS(amountUBA, toBN(agentInfo.feeBIPS)), toBN(agentInfo.poolFeeShareBIPS));
             const paymentAmount = amountUBA.add(poolFeeShare);
             // make and prove payment transaction
@@ -783,11 +787,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             expect(redemptionDefault.redeemer).to.equal(redeemer);
             assertWeb3Equal(redemptionDefault.requestId, redemptionRequest.requestId);
             // expect usdc / wnat balance changes
-            const redeemedAssetValue = await assetValueUBA(redemptionRequest.valueUBA, ftsos.asset);
-            const redeemerUSDCBalanceValue = await assetValueUBA(await usdc.balanceOf(redeemer), ftsos.usdc);
-            const redeemerWNatBalanceValue = await assetValueUBA(await wNat.balanceOf(redeemer), ftsos.nat);
-            assertEqualWithNumError(redeemerUSDCBalanceValue, mulBIPS(redeemedAssetValue, toBN(settings.redemptionDefaultFactorAgentC1BIPS)), toBN(1));
-            assertEqualWithNumError(redeemerWNatBalanceValue, mulBIPS(redeemedAssetValue, toBN(settings.redemptionDefaultFactorPoolBIPS)), toBN(1));
+            const redeemedAssetUSD = await ubaToUSDWei(redemptionRequest.valueUBA, ftsos.asset);
+            const redeemerUSDCBalanceUSD = await ubaToUSDWei(await usdc.balanceOf(redeemer), ftsos.usdc);
+            const redeemerWNatBalanceUSD = await ubaToUSDWei(await wNat.balanceOf(redeemer), ftsos.nat);
+            assertEqualWithNumError(redeemerUSDCBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorAgentC1BIPS)), toBN(1));
+            assertEqualWithNumError(redeemerWNatBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorPoolBIPS)), toBN(1));
         });
 
         it("should finish defaulted redemption payment", async () => {
@@ -812,10 +816,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const redemptionFinished = findRequiredEvent(tx, "RedemptionFinished").args;
             assertWeb3Equal(redemptionFinished.agentVault, agentVault.address);
             assertWeb3Equal(redemptionFinished.requestId, redemptionRequest.requestId);
-            // assertWeb3Equal(redemptionFinished.freedUnderlyingBalanceUBA, lotsToUBA(toBN(1)));
+            // assertWeb3Equal(redemptionFinished.freedUnderlyingBalanceUBA, lotsToUBA(1));
             // check that free underlying balance was updated
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(toBN(1)));
+            assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(1));
         });
 
         it("should finish non-defaulted redemption payment", async () => {
@@ -836,10 +840,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const redemptionFinished = findRequiredEvent(redemptionFinishedTx, "RedemptionFinished").args;
             assertWeb3Equal(redemptionFinished.agentVault, agentVault.address);
             assertWeb3Equal(redemptionFinished.requestId, redemptionRequest.requestId);
-            // assertWeb3Equal(redemptionFinished.freedUnderlyingBalanceUBA, lotsToUBA(toBN(1)));
+            // assertWeb3Equal(redemptionFinished.freedUnderlyingBalanceUBA, lotsToUBA(1));
             // check that free underlying balance was updated
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(toBN(1)));
+            assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(1));
         });
     });
 
@@ -848,15 +852,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("should self-close", async () => {
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, agentOwner1, toBN(1));
-            const tx = await assetManager.selfClose(agentVault.address, lotsToUBA(toBN(1)), { from: agentOwner1 });
+            const tx = await assetManager.selfClose(agentVault.address, lotsToUBA(1), { from: agentOwner1 });
             const selfClosed = findRequiredEvent(tx, "SelfClose").args;
             assertWeb3Equal(selfClosed.agentVault, agentVault.address);
-            assertWeb3Equal(selfClosed.valueUBA, lotsToUBA(toBN(1)));
+            assertWeb3Equal(selfClosed.valueUBA, lotsToUBA(1));
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(toBN(1)));
+            assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(1));
         });
 
-        it.skip("should announce underlying withdraw and confirm (from agent owner)", async () => {
+        it("should announce underlying withdraw and confirm (from agent owner)", async () => {
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             // deposit underlying asset to not trigger liquidation by making balance negative
             await depositUnderlyingAsset(agentVault, agentOwner1, underlyingAgent1, toWei(10));
@@ -867,8 +871,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // withdraw
             const txHash = await wallet.addTransaction(underlyingAgent1, "random_address", 1, underlyingWithdrawalAnnouncement.paymentReference);
             const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, "random_address");
-            // try to prove balance decreasing transaction
-            await assetManager.illegalPaymentChallenge(proof, agentVault.address, { from: accounts[83] });
             // wait until confirmation
             await time.increase(settings.announcedUnderlyingConfirmationMinSeconds);
             // confirm
@@ -914,7 +916,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     });
 
     describe("challenges", () => {
-        it.skip("should make an illegal payment challenge", async () => {
+        it("should make an illegal payment challenge", async () => {
             const challenger = accounts[83];
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             await depositUnderlyingAsset(agentVault, agentOwner1, underlyingAgent1, toWei(10));
@@ -928,12 +930,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // check that agent went into full liquidation
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(agentInfo.status, 3); // full-liquidation status
-            // TODO: check that challenger was rewarded
-            /* const paymentChallangeRewardValue = await assetPrice(toBN(settings.paymentChallengeRewardUSD5), ftsos.usdc);
-            assertWeb3Equal(await usdc.balanceOf(challenger), paymentChallangeRewardValue); */
-            /* const usdcDecimals = (await usdc.decimals()).toNumber();
-            const challengerRewardUSDC = (await usdc.balanceOf(challenger)).div(toBN(10 ** usdcDecimals));
-            assertWeb3Equal(challengerRewardUSDC, toBN(settings.paymentChallengeRewardUSD5)); */
+            // check that challenger was rewarded
+            const expectedChallengerReward = await usd5ToClass1Wei(toBN(settings.paymentChallengeRewardUSD5));
+            assertWeb3Equal(await usdc.balanceOf(challenger), expectedChallengerReward);
         });
 
         it("should make an illegal double payment challenge", async () => {
@@ -954,24 +953,34 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // check that agent went into full liquidation
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(agentInfo.status, 3); // full-liquidation status
-            // TODO: check that challenger was rewarded
+            // check that challenger was rewarded
+            const expectedChallengerReward = await usd5ToClass1Wei(toBN(settings.paymentChallengeRewardUSD5));
+            assertWeb3Equal(await usdc.balanceOf(challenger), expectedChallengerReward);
         });
 
-        it.skip("should make a free-balance negative challenge", async () => {
+        it("should make a free-balance negative challenge", async () => {
             const challenger = accounts[83];
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             // mint one lot of f-assets
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, agentVault.address, toBN(1));
+            const lots = toBN(1);
+            const { underlyingPaymentUBA } = await mintFassets(agentVault, agentOwner1, underlyingAgent1, agentVault.address, lots);
             // announce withdrawal
             const _tx = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
             const underlyingWithdrawalAnnouncement = findRequiredEvent(_tx, "UnderlyingWithdrawalAnnounced").args;
             // make payment that would make free balance negative
-            const txHash = await wallet.addTransaction(underlyingAgent1, "random_address", 1,
+            const txHash = await wallet.addTransaction(underlyingAgent1, "random_address", lotsToUBA(lots),
                 underlyingWithdrawalAnnouncement.paymentReference);
-            const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, "random_address");
+            const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
             // make a challenge
             const tx = await assetManager.freeBalanceNegativeChallenge([proof], agentVault.address, { from: challenger });
-            expectEvent(tx, "UnderlyingBalanceTooLow");
+            const underlyingBalanceTooLow = findRequiredEvent(tx, "UnderlyingBalanceTooLow").args;
+            assertWeb3Equal(underlyingBalanceTooLow.agentVault, agentVault.address);
+            assertWeb3Equal(underlyingBalanceTooLow.balance, underlyingPaymentUBA.sub(lotsToUBA(lots)));
+            assertWeb3Equal(underlyingBalanceTooLow.requiredBalance,
+                mulBIPS(await fAsset.totalSupply(), toBN(settings.minUnderlyingBackingBIPS)));
+            // check that challenger was rewarded
+            const expectedChallengerReward = await usd5ToClass1Wei(toBN(settings.paymentChallengeRewardUSD5));
+            assertWeb3Equal(await usdc.balanceOf(challenger), expectedChallengerReward);
         });
     });
 
@@ -992,7 +1001,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(agentInfo.status, 2);
         });
 
-        it.skip("should liquidate", async () => {
+        it("should liquidate", async () => {
             const liquidator = accounts[83];
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e8), toWei(3e8))
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, liquidator, toBN(2));
@@ -1000,12 +1009,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await ftsos.asset.setCurrentPrice(toBNExp(10, 12), 0);
             await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(10, 12), 0);
             await assetManager.startLiquidation(agentVault.address, { from: liquidator });
-            // liquidate
-            const tx = await assetManager.liquidate(agentVault.address, lotsToUBA(toBN(2)), { from: liquidator });
+            // calculate liquidation value and liquidate liquidate
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const liquidationUBA = lotsToUBA(2);
+            const liquidationUSDC = await ubaToC1Wei(mulBIPS(liquidationUBA, toBN(agentInfo.class1CollateralRatioBIPS)));
+            const liquidationPool = await ubaToPoolWei(mulBIPS(liquidationUBA, toBN(agentInfo.poolCollateralRatioBIPS)));
+            const tx = await assetManager.liquidate(agentVault.address, lotsToUBA(2), { from: liquidator });
             expectEvent(tx, "LiquidationPerformed");
-            // check that liquidator got all agent collateral
-            assertWeb3Equal(await usdc.balanceOf(liquidator), toWei(3e8));
-            assertWeb3Equal(await wNat.balanceOf(liquidator), toWei(3e8));
+            assertWeb3Equal(await usdc.balanceOf(liquidator), liquidationUSDC);
+            assertWeb3Equal(await wNat.balanceOf(liquidator), liquidationPool);
         });
 
         it("should start and then end liquidation", async () => {
