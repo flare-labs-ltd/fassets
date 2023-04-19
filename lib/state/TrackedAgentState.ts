@@ -7,7 +7,7 @@ import { BN_ZERO, formatBN, MAX_BIPS, toBN } from "../utils/helpers";
 import { ILogger } from "../utils/logging";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
-    RedemptionDefault, RedemptionFinished, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/AssetManager";
 import { TrackedState } from "./TrackedState";
 
@@ -37,7 +37,18 @@ export class TrackedAgentState {
     mintedUBA: BN = BN_ZERO;
     redeemingUBA: BN = BN_ZERO;
     dustUBA: BN = BN_ZERO;
-    freeUnderlyingBalanceUBA: BN = BN_ZERO;
+    underlyingBalanceUBA: BN = BN_ZERO;
+
+    // calculated getters
+
+    get requiredUnderlyingBalanceUBA() {
+        const backedUBA = this.mintedUBA.add(this.redeemingUBA);
+        return backedUBA.mul(toBN(this.parent.settings.minUnderlyingBackingBIPS)).divn(MAX_BIPS);
+    }
+
+    get freeUnderlyingBalanceUBA() {
+        return this,this.underlyingBalanceUBA.sub(this.requiredUnderlyingBalanceUBA);
+    }
 
     // init
 
@@ -54,7 +65,7 @@ export class TrackedAgentState {
         this.mintedUBA = toBN(agentInfo.mintedUBA);
         this.redeemingUBA = toBN(agentInfo.redeemingUBA);
         this.dustUBA = toBN(agentInfo.dustUBA);
-        this.freeUnderlyingBalanceUBA = toBN(agentInfo.freeUnderlyingBalanceUBA);
+        this.underlyingBalanceUBA = toBN(agentInfo.underlyingBalanceUBA);
     }
 
     // handlers: agent availability
@@ -76,14 +87,17 @@ export class TrackedAgentState {
     }
 
     handleMintingExecuted(args: EvmEventArgs<MintingExecuted>) {
+        const mintedAmountUBA = toBN(args.mintedAmountUBA);
+        const agentFeeUBA = toBN(args.agentFeeUBA);
+        const poolFeeUBA = toBN(args.poolFeeUBA);
         // update underlying free balance
-        this.freeUnderlyingBalanceUBA = this.freeUnderlyingBalanceUBA.add(toBN(args.receivedFeeUBA));
+        this.underlyingBalanceUBA = this.underlyingBalanceUBA.add(mintedAmountUBA).add(agentFeeUBA).add(poolFeeUBA);
         // create redemption ticket
-        this.mintedUBA = this.mintedUBA.add(toBN(args.mintedAmountUBA));
+        this.mintedUBA = this.mintedUBA.add(mintedAmountUBA).add(poolFeeUBA);
         // delete collateral reservation
         const collateralReservationId = Number(args.collateralReservationId);
         if (collateralReservationId > 0) {  // collateralReservationId == 0 for self-minting
-            this.reservedUBA = this.reservedUBA.sub(toBN(args.mintedAmountUBA));
+            this.reservedUBA = this.reservedUBA.sub(mintedAmountUBA);
         }
     }
 
@@ -103,28 +117,25 @@ export class TrackedAgentState {
     }
 
     handleRedemptionPerformed(args: EvmEventArgs<RedemptionPerformed>): void {
-        this.redeemingUBA = this.redeemingUBA.sub(toBN(args.valueUBA));
+        this.redeemingUBA = this.redeemingUBA.sub(toBN(args.redemptionAmountUBA));
+        this.underlyingBalanceUBA = this.underlyingBalanceUBA.sub(args.spentUnderlyingUBA);
     }
 
     handleRedemptionPaymentFailed(args: EvmEventArgs<RedemptionPaymentFailed>): void {
-        // irrelevant to agent
+        this.underlyingBalanceUBA = this.underlyingBalanceUBA.sub(args.spentUnderlyingUBA);
     }
 
     handleRedemptionPaymentBlocked(args: EvmEventArgs<RedemptionPaymentBlocked>): void {
         this.redeemingUBA = this.redeemingUBA.sub(toBN(args.redemptionAmountUBA));
+        this.underlyingBalanceUBA = this.underlyingBalanceUBA.sub(args.spentUnderlyingUBA);
     }
 
     handleRedemptionDefault(args: EvmEventArgs<RedemptionDefault>): void {
         this.redeemingUBA = this.redeemingUBA.sub(toBN(args.redemptionAmountUBA));
     }
 
-    handleRedemptionFinished(args: EvmEventArgs<RedemptionFinished>): void {
-        this.freeUnderlyingBalanceUBA = this.freeUnderlyingBalanceUBA.add(toBN(args.freedUnderlyingBalanceUBA));
-    }
-
     handleSelfClose(args: EvmEventArgs<SelfClose>): void {
         this.mintedUBA = this.mintedUBA.sub(toBN(args.valueUBA));
-        this.freeUnderlyingBalanceUBA = this.freeUnderlyingBalanceUBA.add(toBN(args.valueUBA));
     }
 
     // handlers: dust
@@ -156,7 +167,7 @@ export class TrackedAgentState {
     }
 
     handleUnderlyingWithdrawalConfirmed(args: EvmEventArgs<UnderlyingWithdrawalConfirmed>): void {
-        this.freeUnderlyingBalanceUBA = this.freeUnderlyingBalanceUBA.add(toBN(args.spentUBA).neg());
+        this.underlyingBalanceUBA = this.underlyingBalanceUBA.sub(args.spentUBA);
         this.announcedUnderlyingWithdrawalId = BN_ZERO;
     }
 
@@ -168,7 +179,6 @@ export class TrackedAgentState {
 
     handleLiquidationPerformed(args: EvmEventArgs<LiquidationPerformed>): void {
         this.mintedUBA = this.mintedUBA.sub(toBN(args.valueUBA));
-        this.freeUnderlyingBalanceUBA = this.freeUnderlyingBalanceUBA.add(toBN(args.valueUBA));
     }
 
     // agent state changing

@@ -124,7 +124,6 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
         let res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-        expectEvent(res, 'RedemptionFinished');
         expectEvent(res, 'RedemptionPerformed');
     });
 
@@ -138,7 +137,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const tx1Hash = await wallet.addTransaction(underlyingAgent2, request.paymentAddress, paymentAmt, request.paymentReference);
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent2, request.paymentAddress);
         let res = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
-        expectEvent(res, 'RedemptionFinished');
+        expectEvent(res, 'RedemptionPerformed');
     });
 
     it("should not confirm redemption payment - only agent vault owner", async () => {

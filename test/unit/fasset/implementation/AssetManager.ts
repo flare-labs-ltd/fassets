@@ -758,9 +758,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 PaymentReference.redemption(redemptionRequest.requestId));
             const proof = await attestationProvider.provePayment(txhash, underlyingAgent1, underlyingRedeemer);
             const redemptionFinishedTx = await assetManager.confirmRedemptionPayment(proof, redemptionRequest.requestId, { from: agentOwner1 });
-            const redemptionFinished = findRequiredEvent(redemptionFinishedTx, "RedemptionFinished").args;
+            const redemptionPerformed = findRequiredEvent(redemptionFinishedTx, "RedemptionPerformed").args;
             // assert (should also check that ticket was burned)
-            assertWeb3Equal(redemptionFinished.requestId, redemptionRequest.requestId);
+            assertWeb3Equal(redemptionPerformed.requestId, redemptionRequest.requestId);
         });
 
         it("should do a redemption payment default", async () => {
@@ -794,34 +794,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertEqualWithNumError(redeemerWNatBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorPoolBIPS)), toBN(1));
         });
 
-        it("should finish defaulted redemption payment", async () => {
-            // define redeemer and its underlying address
-            const redeemer = accounts[83];
-            const underlyingRedeemer = "redeemer"
-            // create available agentVault and mint f-assets
-            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
-            // default a redemption
-            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, { from: redeemer });
-            const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
-            chain.mineTo(redemptionRequest.lastUnderlyingBlock.toNumber()+1);
-            chain.skipTimeTo(redemptionRequest.lastUnderlyingTimestamp.toNumber()+1);
-            const nonPaymentProof = await attestationProvider.proveReferencedPaymentNonexistence(underlyingRedeemer,
-                PaymentReference.redemption(redemptionRequest.requestId), redemptionRequest.valueUBA.sub(redemptionRequest.feeUBA),
-                chain.blockHeight()-1, chain.lastBlockTimestamp()-1);
-            await assetManager.redemptionPaymentDefault(nonPaymentProof, redemptionRequest.requestId, { from: agentOwner1 });
-            // finish redemption without payment
-            const proof = await attestationProvider.proveConfirmedBlockHeightExists();
-            const tx = await assetManager.finishRedemptionWithoutPayment(proof, redemptionRequest.requestId, { from: agentOwner1 });
-            const redemptionFinished = findRequiredEvent(tx, "RedemptionFinished").args;
-            assertWeb3Equal(redemptionFinished.agentVault, agentVault.address);
-            assertWeb3Equal(redemptionFinished.requestId, redemptionRequest.requestId);
-            // assertWeb3Equal(redemptionFinished.freedUnderlyingBalanceUBA, lotsToUBA(1));
-            // check that free underlying balance was updated
-            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(1));
-        });
-
         it("should finish non-defaulted redemption payment", async () => {
             // define redeemer and its underlying address
             const redeemer = accounts[83];
@@ -837,9 +809,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // prove redemption payment
             const proof = await attestationProvider.proveConfirmedBlockHeightExists();
             const redemptionFinishedTx = await assetManager.finishRedemptionWithoutPayment(proof, redemptionRequest.requestId, { from: agentOwner1 });
-            const redemptionFinished = findRequiredEvent(redemptionFinishedTx, "RedemptionFinished").args;
-            assertWeb3Equal(redemptionFinished.agentVault, agentVault.address);
-            assertWeb3Equal(redemptionFinished.requestId, redemptionRequest.requestId);
+            const redemptionDefault = findRequiredEvent(redemptionFinishedTx, "RedemptionDefault").args;
+            assertWeb3Equal(redemptionDefault.agentVault, agentVault.address);
+            assertWeb3Equal(redemptionDefault.requestId, redemptionRequest.requestId);
             // assertWeb3Equal(redemptionFinished.freedUnderlyingBalanceUBA, lotsToUBA(1));
             // check that free underlying balance was updated
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);

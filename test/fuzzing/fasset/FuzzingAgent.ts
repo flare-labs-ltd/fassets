@@ -53,7 +53,11 @@ export class FuzzingAgent extends FuzzingActor {
             this.runner.assetManagerEvent('LiquidationStarted', { agentVault: agentVaultAddress })
                 .subscribe((args) => this.topupCollateral('liquidation', args.timestamp)),
             // handle all possible full liquidation ends: Redemption*???, LiquidationPerformed, SelfClose
-            this.runner.assetManagerEvent('RedemptionFinished', { agentVault: agentVaultAddress })
+            this.runner.assetManagerEvent('RedemptionPerformed', { agentVault: agentVaultAddress })
+                .subscribe((args) => this.checkForFullLiquidationEnd()),
+            this.runner.assetManagerEvent('RedemptionPaymentFailed', { agentVault: agentVaultAddress })
+                .subscribe((args) => this.checkForFullLiquidationEnd()),
+            this.runner.assetManagerEvent('RedemptionPaymentBlocked', { agentVault: agentVaultAddress })
                 .subscribe((args) => this.checkForFullLiquidationEnd()),
             this.runner.assetManagerEvent('RedemptionDefault', { agentVault: agentVaultAddress })
                 .subscribe((args) => this.checkForFullLiquidationEnd()),
