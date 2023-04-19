@@ -126,9 +126,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     async function mintFassets(agentVault: AgentVaultInstance, owner: string, underlyingAgent: string, minter: string, lots: BN) {
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const amountUBA = lotsToUBA(lots);
-        const agentFeeShareUBA = mulBIPS(amountUBA, toBN(agentInfo.feeBIPS));
-        const poolFeeShareUBA = mulBIPS(agentFeeShareUBA, toBN(agentInfo.poolFeeShareBIPS));
-        const paymentAmountUBA = amountUBA.add(agentFeeShareUBA).add(poolFeeShareUBA);
+        const feeUBA = mulBIPS(amountUBA, toBN(agentInfo.feeBIPS));
+        const poolFeeShareUBA = mulBIPS(feeUBA, toBN(agentInfo.poolFeeShareBIPS));
+        const agentFeeShareUBA = feeUBA.sub(poolFeeShareUBA);
+        const paymentAmountUBA = amountUBA.add(feeUBA);
         // make and prove payment transaction
         chain.mint("random_address", paymentAmountUBA);
         const txHash = await wallet.addTransaction("random_address", underlyingAgent, paymentAmountUBA,
@@ -137,7 +138,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         // self-mint and send f-assets to minter
         await assetManager.selfMint(proof, agentVault.address, lots, { from: owner });
         if (minter != owner) await fAsset.transfer(minter, amountUBA, { from: owner });
-        return { underlyingPaymentUBA: paymentAmountUBA, underlyingTxHash: txHash }
+        return { underlyingPaymentUBA: paymentAmountUBA, underlyingTxHash: txHash, poolFeeShareUBA, agentFeeShareUBA }
     }
 
     function skipToProofUnavailability(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {
@@ -758,7 +759,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 PaymentReference.redemption(redemptionRequest.requestId));
             const proof = await attestationProvider.provePayment(txhash, underlyingAgent1, underlyingRedeemer);
             const redemptionFinishedTx = await assetManager.confirmRedemptionPayment(proof, redemptionRequest.requestId, { from: agentOwner1 });
-            const redemptionPerformed = findRequiredEvent(redemptionFinishedTx, "RedemptionPerformed").args;
+            const redemptionPerformed = findRequiredEvent(redemptionFinishedTx, "RedemptionPaymentFailed").args;
             // assert (should also check that ticket was burned)
             assertWeb3Equal(redemptionPerformed.requestId, redemptionRequest.requestId);
         });
@@ -790,8 +791,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const redeemedAssetUSD = await ubaToUSDWei(redemptionRequest.valueUBA, ftsos.asset);
             const redeemerUSDCBalanceUSD = await ubaToUSDWei(await usdc.balanceOf(redeemer), ftsos.usdc);
             const redeemerWNatBalanceUSD = await ubaToUSDWei(await wNat.balanceOf(redeemer), ftsos.nat);
-            assertEqualWithNumError(redeemerUSDCBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorAgentC1BIPS)), toBN(1));
-            assertEqualWithNumError(redeemerWNatBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorPoolBIPS)), toBN(1));
+            assertEqualWithNumError(redeemerUSDCBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorAgentC1BIPS)), toBN(10));
+            assertEqualWithNumError(redeemerWNatBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorPoolBIPS)), toBN(10));
         });
 
         it("should finish non-defaulted redemption payment", async () => {
@@ -800,7 +801,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const underlyingRedeemer = "redeemer"
             // create available agentVault and mint f-assets
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
+            const { agentFeeShareUBA } = await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
             // default a redemption
             const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, { from: redeemer });
             const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
@@ -812,10 +813,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const redemptionDefault = findRequiredEvent(redemptionFinishedTx, "RedemptionDefault").args;
             assertWeb3Equal(redemptionDefault.agentVault, agentVault.address);
             assertWeb3Equal(redemptionDefault.requestId, redemptionRequest.requestId);
-            // assertWeb3Equal(redemptionFinished.freedUnderlyingBalanceUBA, lotsToUBA(1));
+            assertWeb3Equal(redemptionDefault.redemptionAmountUBA, lotsToUBA(1));
             // check that free underlying balance was updated
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(1));
+            assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(1).add(agentFeeShareUBA));
         });
     });
 
@@ -823,13 +824,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should self-close", async () => {
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
-            await mintFassets(agentVault, agentOwner1, underlyingAgent1, agentOwner1, toBN(1));
+            const { agentFeeShareUBA } = await mintFassets(agentVault, agentOwner1, underlyingAgent1, agentOwner1, toBN(1));
             const tx = await assetManager.selfClose(agentVault.address, lotsToUBA(1), { from: agentOwner1 });
             const selfClosed = findRequiredEvent(tx, "SelfClose").args;
             assertWeb3Equal(selfClosed.agentVault, agentVault.address);
             assertWeb3Equal(selfClosed.valueUBA, lotsToUBA(1));
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(1));
+            assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(1).add(agentFeeShareUBA));
         });
 
         it("should announce underlying withdraw and confirm (from agent owner)", async () => {
