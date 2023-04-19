@@ -172,7 +172,7 @@ interface IAssetManagerEvents {
         address indexed redeemer,
         bytes32 transactionHash,
         uint256 redemptionAmountUBA,
-        int256 underlyingBalanceChangeUBA,
+        int256 spentUnderlyingUBA,
         uint64 requestId);
 
     /**
@@ -201,7 +201,7 @@ interface IAssetManagerEvents {
         address indexed redeemer,
         bytes32 transactionHash,
         uint256 redemptionAmountUBA,
-        int256 underlyingBalanceChangeUBA,
+        int256 spentUnderlyingUBA,
         uint64 requestId);
 
     /**
@@ -212,17 +212,9 @@ interface IAssetManagerEvents {
         address indexed agentVault,
         address indexed redeemer,
         bytes32 transactionHash,
-        int256 underlyingBalanceChangeUBA,
+        int256 spentUnderlyingUBA,
         uint64 requestId,
         string failureReason);
-
-    /**
-     * Agent finished the redemption (even if it was defaulted already).
-     * Agent's free underlying balance was updated.
-     */
-    event RedemptionFinished(
-        address indexed agentVault,
-        uint64 requestId);
 
     /**
      * Agent self-closed valueUBA of backing fassets.

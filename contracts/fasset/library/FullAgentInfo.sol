@@ -132,11 +132,6 @@ library FullAgentInfo {
         // collateral in the pool can be less than the amount of locked class1 collateral.)
         uint256 poolRedeemingUBA;
 
-        // The amount of underlying balance that is backing the assets during redemption.
-        // Is mostly equal to redeemingUBA, except when the redeemer calls default and until
-        // the agent presents proof of failed payment or calls finishWithoutPayment.
-        uint256 underlyingRedeemingUBA;
-
         // Total amount of dust (unredeemable minted f-assets).
         // Note: dustUBA is part of mintedUBA, so the amount of redeemable f-assets is calculated as
         // `mintedUBA - dustUBA`
@@ -155,11 +150,11 @@ library FullAgentInfo {
         // Total underlying balance (backing and free).
         uint256 underlyingBalanceUBA;
 
-        // Underlying balance not backing anything (can be used for gas/fees or withdrawn after announcement).
-        uint256 freeUnderlyingBalanceUBA;
-
         // The minimum underlying balance that has to be held by the agent. Below this, agent is liquidated.
         uint256 requiredUnderlyingBalanceUBA;
+
+        // Underlying balance not backing anything (can be used for gas/fees or withdrawn after announcement).
+        int256 freeUnderlyingBalanceUBA;
 
         // Current underlying withdrawal announcement (or 0 if no announcement was made).
         uint256 announcedUnderlyingWithdrawalId;
@@ -221,13 +216,13 @@ library FullAgentInfo {
         _info.reservedUBA = Conversion.convertAmgToUBA(agent.reservedAMG);
         _info.redeemingUBA = Conversion.convertAmgToUBA(agent.redeemingAMG);
         _info.poolRedeemingUBA = Conversion.convertAmgToUBA(agent.poolRedeemingAMG);
-        _info.underlyingRedeemingUBA = Conversion.convertAmgToUBA(agent.underlyingRedeemingAMG);
         _info.dustUBA = Conversion.convertAmgToUBA(agent.dustAMG);
         _info.ccbStartTimestamp = _getCCBStartTime(agent);
         _info.liquidationStartTimestamp = _getLiquidationStartTime(agent);
         _info.underlyingBalanceUBA = agent.underlyingBalanceUBA;
-        _info.freeUnderlyingBalanceUBA = UnderlyingBalance.freeUnderlyingUBA(agent);
         _info.requiredUnderlyingBalanceUBA = UnderlyingBalance.requiredUnderlyingUBA(agent);
+        _info.freeUnderlyingBalanceUBA =
+            _info.underlyingBalanceUBA.toInt256() - _info.requiredUnderlyingBalanceUBA.toInt256();
         _info.announcedUnderlyingWithdrawalId = agent.announcedUnderlyingWithdrawalId;
         _info.buyFAssetByAgentFactorBIPS = agent.buyFAssetByAgentFactorBIPS;
         _info.poolExitCollateralRatioBIPS = agent.collateralPool.exitCollateralRatioBIPS();

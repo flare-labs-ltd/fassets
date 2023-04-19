@@ -42,11 +42,17 @@ library Challenges {
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.REDEMPTION)) {
                 uint256 redemptionId = PaymentReference.decodeId(_payment.paymentReference);
                 Redemption.Request storage redemption = state.redemptionRequests[redemptionId];
-                // redemption must be for the correct agent and
-                // only statuses ACTIVE and DEFAULTED mean that redemption is still missing a payment proof
+                // Redemption must be for the correct agent and
+                // only statuses ACTIVE and DEFAULTED mean that redemption is still missing a payment proof.
+                // Also, payment can be a bit late, but must not be later than twice the time for successful
+                // redemption payment (therefore we use lastBlock + maxBlocks and likewise for timestamp).
                 bool redemptionActive = redemption.agentVault == _agentVault
                     && (redemption.status == Redemption.Status.ACTIVE ||
-                        redemption.status == Redemption.Status.DEFAULTED);
+                        redemption.status == Redemption.Status.DEFAULTED)
+                    && (_payment.blockNumber <=
+                            redemption.lastUnderlyingBlock + state.settings.underlyingBlocksForPayment ||
+                        _payment.blockTimestamp <=
+                            redemption.lastUnderlyingTimestamp + state.settings.underlyingSecondsForPayment);
                 require(!redemptionActive, "matching redemption active");
             }
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {

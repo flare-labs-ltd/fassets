@@ -68,11 +68,6 @@ library RedemptionFailures {
                 "should default first");
             executeDefaultPayment(agent, request, _redemptionRequestId);
         }
-        // request is in defaulted state, but underlying balance is not freed, since we are
-        // still waiting for the agent to possibly present late or failed payment
-        // with this method, the agent asserts there was no payment and frees underlying balance
-        Agents.endUnderlyingRedeemingAssets(agent, request.valueAMG);
-        emit AMEvents.RedemptionFinished(request.agentVault, _redemptionRequestId);
         // delete redemption request - not needed any more
         AssetManagerState.State storage state = AssetManagerState.get();
         delete state.redemptionRequests[_redemptionRequestId];

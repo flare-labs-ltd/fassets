@@ -68,26 +68,14 @@ library UnderlyingBalance {
         _agent.underlyingBalanceUBA += _balanceIncrease.toUint128();
     }
 
-    // Underlying balance not backing anything (can be used for gas/fees or withdrawn after announcement).
-    function freeUnderlyingUBA(Agent.State storage _agent)
-        internal view
-        returns (uint256)
-    {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        uint256 backedUBA = uint256(_agent.mintedAMG + _agent.underlyingRedeemingAMG) *
-            settings.assetMintingGranularityUBA;
-        uint256 lockedUBA = backedUBA.mulBips(settings.minUnderlyingBackingBIPS);
-        (, uint256 freeUBA) = uint256(_agent.underlyingBalanceUBA).trySub(lockedUBA);
-        return freeUBA;
-    }
-
     // The minimum underlying balance that has to be held by the agent. Below this, agent is liquidated.
+    // The only exception is that outstanding redemption payments can push the balance below by the redeemed amount.
     function requiredUnderlyingUBA(Agent.State storage _agent)
         internal view
         returns (uint256)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        uint256 backedUBA = uint256(_agent.mintedAMG) * settings.assetMintingGranularityUBA;
+        uint256 backedUBA = uint256(_agent.mintedAMG + _agent.redeemingAMG) * settings.assetMintingGranularityUBA;
         return backedUBA.mulBips(settings.minUnderlyingBackingBIPS);
     }
 }

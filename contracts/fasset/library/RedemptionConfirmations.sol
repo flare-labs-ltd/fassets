@@ -34,44 +34,35 @@ library RedemptionConfirmations {
         // the payment reference, which is good for nothing except attack attempts
         require(_payment.blockNumber >= request.firstUnderlyingBlock,
             "redemption payment too old");
-        // When status is active, agent has either paid in time / was blocked and agent's collateral is released
-        // or the payment failed and the default is called.
-        // Otherwise, agent has already defaulted on payment and this method is only needed for proper
-        // accounting of underlying balance. It still has to be called in time, otherwise it can be
-        // called by 3rd party and in this case, the caller gets some reward from agent's vault.
-        if (request.status == Redemption.Status.ACTIVE) {
-            // Valid payments are to correct destination ands must have value at least the request payment value.
-            // If payment is valid, agent's collateral is released, otherwise the collateral payment is done.
-            (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
-            if (paymentValid) {
-                // release agent collateral
-                Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
-                // notify
-                if (_payment.status == TransactionAttestation.PAYMENT_SUCCESS) {
-                    emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
-                        _payment.transactionHash, request.underlyingValueUBA,
-                        -_payment.spentAmount,  _redemptionRequestId);
-                } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
-                    emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,
-                        _payment.transactionHash, request.underlyingValueUBA,
-                        -_payment.spentAmount, _redemptionRequestId);
-                }
-            } else {
-                // we only need failure reports from agent's underlying address, so disallow others to
-                // lower the attack surface in case of hijacked agent's address
-                require(_payment.sourceAddressHash == agent.underlyingAddressHash,
-                    "confirm failed payment only from agent's address");
-                // we do not allow retrying failed payments, so just default here
-                RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
-                // notify
-                emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer,
-                    _payment.transactionHash, -_payment.spentAmount, _redemptionRequestId, failureReason);
+        // Valid payments are to correct destination, in time, and must have value at least the request payment value.
+        (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
+        if (paymentValid) {
+            // release agent collateral
+            Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
+            // notify
+            if (_payment.status == TransactionAttestation.PAYMENT_SUCCESS) {
+                emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer, _payment.transactionHash,
+                    request.underlyingValueUBA, _payment.spentAmount,  _redemptionRequestId);
+            } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
+                emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer, _payment.transactionHash,
+                    request.underlyingValueUBA, _payment.spentAmount, _redemptionRequestId);
             }
+        } else {
+            // We only need failure reports from agent's underlying address, so disallow others to
+            // lower the attack surface in case of report from other address.
+            require(_payment.sourceAddressHash == agent.underlyingAddressHash,
+                "confirm failed payment only from agent's address");
+            // We do not allow retrying failed payments, so just default here if not defaulted already.
+            // This will also release the remaining agent's collateral.
+            if (request.status == Redemption.Status.ACTIVE) {
+                RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
+            }
+            // notify
+            emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer, _payment.transactionHash,
+                _payment.spentAmount, _redemptionRequestId, failureReason);
         }
         // agent has finished with redemption - account for used underlying balance and free the remainder
-        Agents.endUnderlyingRedeemingAssets(agent, request.valueAMG);
         UnderlyingBalance.updateBalance(agent, -_payment.spentAmount);
-        emit AMEvents.RedemptionFinished(request.agentVault, _redemptionRequestId);
         // record source decreasing transaction so that it cannot be challenged
         AssetManagerState.State storage state = AssetManagerState.get();
         state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
@@ -124,6 +115,14 @@ library RedemptionConfirmations {
             if (_payment.status != TransactionAttestation.PAYMENT_BLOCKED) {
                 return (false, "redemption payment too small");
             }
+        } else if (_payment.blockNumber > request.lastUnderlyingBlock &&
+            _payment.blockTimestamp > request.lastUnderlyingTimestamp) {
+            return (false, "redemption payment too late");
+        } else if (request.status == Redemption.Status.DEFAULTED) {
+            // Redemption is already defaulted, although the payment was not too late.
+            // This indicates a problem in state connector, which gives proofs of both valid payment and nonpayment,
+            // but we cannot solve it here. So we just return as failed and the off-chain code should alert.
+            return (false, "redemption payment too late");
         }
         return (true, "");
     }

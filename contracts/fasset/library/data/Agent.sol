@@ -124,12 +124,6 @@ library Agent {
         // There will always be `poolRedeemingAMG <= redeemingAMG`.
         uint64 poolRedeemingAMG;
 
-        // The amount of underlying balance that is backing the assets during redemption.
-        // Is mostly equal to redeemingAMG, except when the redeemer calls default and until
-        // the agent presents proof of failed payment or calls finish without payment.
-        // There will always be `redeemingAMG <= underlyingRedeemingAMG`.
-        uint64 underlyingRedeemingAMG;
-
         // When lot size changes, there may be some leftover after redemption that doesn't fit
         // a whole lot size. It is added to dustAMG and can be recovered via self-close.
         // Unlike redeemingAMG, dustAMG is still counted in the mintedAMG.
