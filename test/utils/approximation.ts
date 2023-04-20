@@ -3,7 +3,7 @@ import { BNish, toBN } from "../../lib/utils/helpers";
 
 export abstract class Approximation {
     constructor(
-        public value: BN,
+        public expected: BN,
     ) { }
 
     abstract matches(value: BNish): boolean;
@@ -11,12 +11,12 @@ export abstract class Approximation {
     abstract assertMatches(value: BNish, message?: string): void;
 
     absoluteError(value: BNish) {
-        return toBN(value).sub(this.value).abs();
+        return toBN(value).sub(this.expected).abs();
     }
 
     relativeError(value: BNish) {
         const error = this.absoluteError(value);
-        return error.isZero() ? 0 : Number(error) / Number(BN.max(toBN(value), this.value));
+        return error.isZero() ? 0 : Number(error) / Number(BN.max(toBN(value), this.expected));
     }
 
     static absolute(value: BNish, error: BNish) {
@@ -30,40 +30,41 @@ export abstract class Approximation {
 
 class AbsoluteApproximation extends Approximation {
     constructor(
-        value: BN,
-        public maxError: BN | number,
+        expected: BN,
+        public maxError: BN,
     ) {
-        super(value);
+        super(expected);
     }
 
     override matches(value: BNish) {
-        return this.absoluteError(value).lte(toBN(this.maxError));
+        return this.absoluteError(value).lte(this.maxError);
     }
 
     override assertMatches(value: BNish, message?: string) {
         const error = this.absoluteError(value);
-        if (error.gt(toBN(this.maxError))) {
-            assert.fail(value, this.value, `${message ? message + ' - ' : ''}error is ${error}, expected below ${this.maxError}`);
+        if (error.gt(this.maxError)) {
+            // should use assert.fail, but it doesn't display expected and actual value
+            assert.equal(String(value), String(this.expected), `${message ?? 'Values too different'} - absolute error is ${error}, should be below ${this.maxError}`);
         }
     }
 }
 
 class RelativeApproximation extends Approximation {
     constructor(
-        value: BN,
-        public maxError: BN | number,
+        expected: BN,
+        public maxError: number,
     ) {
-        super(value);
+        super(expected);
     }
 
     override matches(value: BNish) {
-        return this.relativeError(value) <= Number(this.maxError)
+        return this.relativeError(value) <= this.maxError;
     }
 
     override assertMatches(value: BNish, message?: string) {
         const error = this.relativeError(value);
-        if (error > Number(this.maxError)) {
-            assert.fail(value, this.value, `${message ? message + ' - ' : ''}relative error is ${error.toExponential(3)}, expected below ${this.maxError}`);
+        if (error > this.maxError) {
+            assert.equal(String(value), String(this.expected), `${message ?? 'Values too different'} - relative error is ${error.toExponential(3)}, should be below ${this.maxError}`);
         }
     }
 }
