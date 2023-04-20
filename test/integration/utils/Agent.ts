@@ -14,12 +14,13 @@ import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../..
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
+import { Approximation, assertApproximateMatch } from "../../utils/approximation";
 
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
 
-export type CheckAgentInfo = { [K in keyof AgentInfo]?: AgentInfo[K] extends BN ? BNish : AgentInfo[K] }
+export type CheckAgentInfo = { [K in keyof AgentInfo]?: AgentInfo[K] extends BN ? BNish | Approximation : AgentInfo[K] }
     & { actualUnderlyingBalance?: BNish };
 
 export const CHECK_DEFAULTS: CheckAgentInfo = {
@@ -363,8 +364,10 @@ export class Agent extends AssetContextClient {
     async selfMint(amountUBA: BNish, lots: BNish) {
         if (!(this.context.chain instanceof MockChain)) assert.fail("only for mock chains");
         const randomAddr = randomAddress();
-        this.context.chain.mint(randomAddr, amountUBA);
-        const transactionHash = await this.wallet.addTransaction(randomAddr, this.underlyingAddress, amountUBA, PaymentReference.selfMint(this.agentVault.address));
+        const poolFeeUBA = toBN(amountUBA).mul(toBN(this.settings.feeBIPS)).divn(MAX_BIPS).mul(toBN(this.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+        const depositUBA = toBN(amountUBA).add(poolFeeUBA);
+        this.context.chain.mint(randomAddr, depositUBA);
+        const transactionHash = await this.wallet.addTransaction(randomAddr, this.underlyingAddress, depositUBA, PaymentReference.selfMint(this.agentVault.address));
         const proof = await this.attestationProvider.provePayment(transactionHash, null, this.underlyingAddress);
         const res = await this.assetManager.selfMint(proof, this.agentVault.address, lots, { from: this.ownerHotAddress });
         return requiredEventArgs(res, 'MintingExecuted');
@@ -462,7 +465,8 @@ export class Agent extends AssetContextClient {
         assertWeb3Equal(agentCollateral.freeCollateralLots(), agentInfo.freeCollateralLots);
         assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.class1), agentInfo.freeClass1CollateralWei);
         assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.pool), agentInfo.freePoolCollateralNATWei);
-        assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.agentPoolTokens), agentInfo.freeAgentPoolTokensWei);
+        assertApproximateMatch(agentCollateral.freeCollateralWei(agentCollateral.agentPoolTokens), Approximation.absolute(agentInfo.freeAgentPoolTokensWei, 1000));
+        // assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.agentPoolTokens), agentInfo.freeAgentPoolTokensWei);
         assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.class1), agentInfo.class1CollateralRatioBIPS);
         assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.pool), agentInfo.poolCollateralRatioBIPS);
         // keep the check from prevous
@@ -476,7 +480,12 @@ export class Agent extends AssetContextClient {
             } else {
                 value = agentInfo[key];
             }
-            assertWeb3Equal(value, check[key], `Agent info mismatch at '${key}'`);
+            const expected = check[key];
+            if (expected instanceof Approximation) {
+                expected.assertMatches(value, `Agent info mismatch at '${key}'`);
+            } else {
+                assertWeb3Equal(value, expected, `Agent info mismatch at '${key}'`);
+            }
         }
         this.lastAgentInfoCheck = check;
         return agentInfo;

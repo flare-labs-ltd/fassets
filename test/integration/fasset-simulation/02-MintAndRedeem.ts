@@ -1,5 +1,5 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
-import { BN_ZERO, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { BN_ZERO, MAX_BIPS, toBN, toWei, trace } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../utils/test-helpers";
@@ -10,6 +10,7 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
+import { Approximation } from "../../utils/approximation";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -37,7 +38,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
     beforeEach(async () => {
         commonContext = await CommonContext.createTest(governance);
-        context = await AssetContext.createTest(commonContext, testChainInfo.eth);
+        context = await AssetContext.createTest(commonContext, testChainInfo.btc);
         mockChain = context.chain as MockChain;
     });
 
@@ -179,13 +180,20 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(request1.agentVault, agent1.vaultAddress);
             const tx3Hash = await agent1.performRedemptionPayment(request1);
             await agent1.confirmActiveRedemptionPayment(request1, tx3Hash);
-            await agent1.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(request1.feeUBA), mintedUBA: minted1.poolFeeUBA,
-                freeClass1CollateralWei: fullAgentCollateral.sub(minted1.poolFeeUBA.mul(toBN(agent1.settings.mintingClass1CollateralRatioBIPS)).divn(MAX_BIPS)) });
+            const cc = await agent1.getAgentCollateral();
+            // do full calculation once, normally just need to calculate `poolFeeCollateral = cc.lockedCollateralWei(minted1.poolFeeUBA, cc.class1)`
+            const poolFeeCollateral = cc.class1.convertUBAToTokenWei(minted1.poolFeeUBA.mul(toBN(agent1.settings.mintingClass1CollateralRatioBIPS)).divn(MAX_BIPS));
+            await agent1.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(request1.feeUBA),
+                mintedUBA: minted1.poolFeeUBA,
+                freeClass1CollateralWei: Approximation.absolute(fullAgentCollateral.sub(poolFeeCollateral), 10) });
             const request2 = redemptionRequests[1];
             assert.equal(request2.agentVault, agent2.vaultAddress);
             const tx4Hash = await agent2.performRedemptionPayment(request2);
             await agent2.confirmActiveRedemptionPayment(request2, tx4Hash);
-            await agent2.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted2.agentFeeUBA.add(request2.feeUBA), mintedUBA: minted2.poolFeeUBA });
+            await agent2.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: minted2.agentFeeUBA.add(request2.feeUBA),
+                mintedUBA: context.convertLotsToUBA(3).add(minted2.poolFeeUBA) });
             await expectRevert(agent2.announceClass1CollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
         });
 
@@ -242,12 +250,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             const minted = await agent.selfMint(context.convertLotsToUBA(lots), lots);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: minted.mintedAmountUBA });
+            await agent.checkAgentInfo({ mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA) });
             // perform self close
             const [dustChanges, selfClosedUBA] = await agent.selfClose(minted.mintedAmountUBA);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.mintedAmountUBA, mintedUBA: 0 });
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted.mintedAmountUBA, mintedUBA: minted.poolFeeUBA });
             assertWeb3Equal(selfClosedUBA, minted.mintedAmountUBA);
-            assert.equal(dustChanges.length, 0);
+            assert.equal(dustChanges.length, 2);    // initially dust is cleared and then re-created
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
