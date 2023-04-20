@@ -74,7 +74,7 @@ library RedemptionConfirmations {
         // redemption can make agent healthy, so check and pull out of liquidation
         Liquidation.endLiquidationIfHealthy(agent);
         // delete redemption request at end
-        delete state.redemptionRequests[_redemptionRequestId];
+        Redemptions.deleteRedemptionRequest(_redemptionRequestId);
     }
 
     function _othersCanConfirmPayment(

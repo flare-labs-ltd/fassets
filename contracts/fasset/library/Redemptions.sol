@@ -82,6 +82,13 @@ library Redemptions {
         settings.fAsset.burn(_owner, _amountUBA);
     }
 
+    function deleteRedemptionRequest(uint64 _redemptionRequestId)
+        internal
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        delete state.redemptionRequests[_redemptionRequestId];
+    }
+
     function getRedemptionRequest(uint64 _redemptionRequestId)
         internal view
         returns (Redemption.Request storage _request)

@@ -69,8 +69,7 @@ library RedemptionFailures {
             executeDefaultPayment(agent, request, _redemptionRequestId);
         }
         // delete redemption request - not needed any more
-        AssetManagerState.State storage state = AssetManagerState.get();
-        delete state.redemptionRequests[_redemptionRequestId];
+        Redemptions.deleteRedemptionRequest(_redemptionRequestId);
     }
 
     function executeDefaultPayment(
