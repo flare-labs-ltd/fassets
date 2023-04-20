@@ -154,6 +154,7 @@ library Agents {
     )
         internal
     {
+        if (_agent.dustAMG == _newDustAMG) return;
         _agent.dustAMG = _newDustAMG;
         uint256 dustUBA = Conversion.convertAmgToUBA(_newDustAMG);
         emit AMEvents.DustChanged(_agent.vaultAddress(), dustUBA);
@@ -165,10 +166,7 @@ library Agents {
     )
         internal
     {
-        uint64 newDustAMG = _agent.dustAMG + _dustIncreaseAMG;
-        _agent.dustAMG = newDustAMG;
-        uint256 dustUBA = Conversion.convertAmgToUBA(newDustAMG);
-        emit AMEvents.DustChanged(_agent.vaultAddress(), dustUBA);
+        changeDust(_agent, _agent.dustAMG + _dustIncreaseAMG);
     }
 
     function decreaseDust(
@@ -178,9 +176,7 @@ library Agents {
         internal
     {
         uint64 newDustAMG = SafeMath64.sub64(_agent.dustAMG, _dustDecreaseAMG, "not enough dust");
-        _agent.dustAMG = newDustAMG;
-        uint256 dustUBA = Conversion.convertAmgToUBA(newDustAMG);
-        emit AMEvents.DustChanged(_agent.vaultAddress(), dustUBA);
+        changeDust(_agent, newDustAMG);
     }
 
     function payoutClass1(

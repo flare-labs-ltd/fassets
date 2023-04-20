@@ -25,31 +25,31 @@ library Redemptions {
         uint64 _amountAMG
     )
         internal
-        returns (uint64 _valueAMG, uint256 _valueUBA)
+        returns (uint64 _closedAMG, uint256 _closedUBA)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         // dust first
-        _valueAMG = SafeMath64.min64(_amountAMG, _agent.dustAMG);
-        if (_valueAMG > 0) {
-            Agents.decreaseDust(_agent, _valueAMG);
+        _closedAMG = SafeMath64.min64(_amountAMG, _agent.dustAMG);
+        if (_closedAMG > 0) {
+            Agents.decreaseDust(_agent, _closedAMG);
         }
         // redemption tickets
         uint256 maxRedeemedTickets = state.settings.maxRedeemedTickets;
-        for (uint256 i = 0; i < maxRedeemedTickets && _valueAMG < _amountAMG; i++) {
+        for (uint256 i = 0; i < maxRedeemedTickets && _closedAMG < _amountAMG; i++) {
             // each loop, firstTicketId will change since we delete the first ticket
             uint64 ticketId = state.redemptionQueue.agents[_agent.vaultAddress()].firstTicketId;
             if (ticketId == 0) {
                 break;  // no more tickets for this agent
             }
             RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(ticketId);
-            uint64 ticketValueAMG = SafeMath64.min64(_amountAMG - _valueAMG, ticket.valueAMG);
+            uint64 ticketValueAMG = SafeMath64.min64(_amountAMG - _closedAMG, ticket.valueAMG);
             // only remove from tickets and add to total, do everything else after the loop
             removeFromTicket(ticketId, ticketValueAMG);
-            _valueAMG += ticketValueAMG;
+            _closedAMG += ticketValueAMG;
         }
-        _valueUBA = Conversion.convertAmgToUBA(_valueAMG);
+        _closedUBA = Conversion.convertAmgToUBA(_closedAMG);
         // self-close or liquidation is one step, so we can release minted assets without redeeming step
-        Agents.releaseMintedAssets(_agent, _valueAMG);
+        Agents.releaseMintedAssets(_agent, _closedAMG);
     }
 
     function removeFromTicket(

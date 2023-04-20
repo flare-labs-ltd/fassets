@@ -266,14 +266,18 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA });
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: crt.feeUBA.sub(minted.poolFeeUBA),
+                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA) });
             // agent "buys" f-assets
             await context.fAsset.transfer(agent.ownerHotAddress, minted.mintedAmountUBA, { from: minter.address });
             // perform self close
             const [dustChanges, selfClosedUBA] = await agent.selfClose(minted.mintedAmountUBA);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA.add(crt.valueUBA), mintedUBA: 0 });
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: crt.feeUBA.sub(minted.poolFeeUBA).add(crt.valueUBA),
+                mintedUBA: minted.poolFeeUBA });
             assertWeb3Equal(selfClosedUBA, minted.mintedAmountUBA);
-            assert.equal(dustChanges.length, 0);
+            assert.equal(dustChanges.length, 2);    // initially dust is cleared and then re-created
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
