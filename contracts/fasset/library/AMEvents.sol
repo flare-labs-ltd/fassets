@@ -98,6 +98,14 @@ library AMEvents {
         uint256 value);
 
     /**
+     * Agent or agent's collateral pool has changed token contract.
+     */
+    event AgentCollateralTokenChanged(
+        address agentVault,
+        uint8 tokenClass,
+        address token);
+
+    /**
      * Minter reserved collateral, paid the reservation fee, and is expected to pay the underlying funds.
      * Agent's collateral was reserved.
      */
@@ -332,7 +340,7 @@ library AMEvents {
      */
     event UnderlyingBalanceToppedUp(
         address agentVault,
-        uint256 freeBalanceChangeUBA);
+        uint256 underlyingBalanceChangeUBA);
 
     /**
      * An unexpected transaction from the agent's underlying address was proved.
@@ -388,7 +396,8 @@ library AMEvents {
      */
     event CollateralTokenAdded(
         uint8 tokenClass,
-        address tokenContract,
+        address token,
+        uint256 decimals,
         bool directPricePair,
         string assetFtsoSymbol,
         string tokenFtsoSymbol,

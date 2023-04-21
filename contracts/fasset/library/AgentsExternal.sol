@@ -137,6 +137,8 @@ library AgentsExternal {
         if (agent.poolCollateralIndex != state.poolCollateralIndex) {
             agent.poolCollateralIndex = state.poolCollateralIndex;
             agent.collateralPool.upgradeWNatContract(wNat);
+            emit AMEvents.AgentCollateralTokenChanged(_agentVault,
+                uint8(IAssetManager.CollateralTokenClass.POOL), address(wNat));
         }
         // upgrade agent vault wnat
         IWNat vaultWNat = IAgentVault(_agentVault).wNat();
@@ -148,6 +150,8 @@ library AgentsExternal {
                     CollateralTokens.tryGetIndex(IAssetManager.CollateralTokenClass.CLASS1, vaultWNat);
                 if (wnatIsCollateralToken) {
                     agent.class1CollateralIndex = uint16(index);
+                    emit AMEvents.AgentCollateralTokenChanged(_agentVault,
+                        uint8(IAssetManager.CollateralTokenClass.CLASS1), address(wNat));
                 }
             }
         }

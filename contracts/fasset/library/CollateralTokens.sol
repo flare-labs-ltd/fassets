@@ -180,7 +180,7 @@ library CollateralTokens {
             safetyMinCollateralRatioBIPS: _data.safetyMinCollateralRatioBIPS.toUint32()
         }));
         state.collateralTokenIndex[tokenKey] = newTokenIndex + 1;   // 0 means empty
-        emit AMEvents.CollateralTokenAdded(uint8(_data.tokenClass), address(_data.token),
+        emit AMEvents.CollateralTokenAdded(uint8(_data.tokenClass), address(_data.token), _data.decimals,
             _data.directPricePair, _data.assetFtsoSymbol, _data.tokenFtsoSymbol,
             _data.minCollateralRatioBIPS, _data.ccbMinCollateralRatioBIPS, _data.safetyMinCollateralRatioBIPS);
         return newTokenIndex;
