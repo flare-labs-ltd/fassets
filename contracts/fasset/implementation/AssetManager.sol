@@ -183,7 +183,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
         onlyAttached
     {
-        AgentsCreateDestroy.createAgent(Agent.Type.AGENT_100, this, _settings);
+        AgentsCreateDestroy.createAgent(this, _settings);
     }
 
     /**

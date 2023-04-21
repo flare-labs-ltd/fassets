@@ -74,14 +74,12 @@ library AgentsCreateDestroy {
     }
 
     function createAgent(
-        Agent.Type _agentType,
         IAssetManager _assetManager,
         IAssetManager.InitialAgentSettings calldata _settings
     )
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        assert(_agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         // can be called from cold or hot owner address
         address ownerColdAddress = _getColdAddress(msg.sender);
         // cold address must be whitelisted
@@ -95,7 +93,7 @@ library AgentsCreateDestroy {
         // set initial status
         Agent.State storage agent = Agent.getWithoutCheck(address(agentVault));
         assert(agent.agentType == Agent.Type.NONE);     // state should be empty on creation
-        agent.agentType = _agentType;
+        agent.agentType = Agent.Type.AGENT_100;
         agent.status = Agent.Status.NORMAL;
         agent.ownerColdAddress = ownerColdAddress;
         // set collateral token types
@@ -130,8 +128,8 @@ library AgentsCreateDestroy {
         agent.allAgentsPos = state.allAgents.length.toUint32();
         state.allAgents.push(address(agentVault));
         // notify
-        emit AMEvents.AgentCreated(ownerColdAddress, uint8(_agentType), address(agentVault),
-            normalizedUnderlyingAddress, address(agent.collateralPool));
+        emitAgentCreated(ownerColdAddress, address(agentVault), address(agent.collateralPool),
+            normalizedUnderlyingAddress, _settings);
     }
 
     function announceDestroy(
@@ -215,6 +213,24 @@ library AgentsCreateDestroy {
         agent.mintedAMG = 0;
         state.totalReservedCollateralAMG -= agent.reservedAMG;
         agent.reservedAMG = 0;
+    }
+
+    // Basically the same as `emit AMEvents.AgentCreated`.
+    // Must be a separate method as workaround for EVM 16 stack variables limit.
+    function emitAgentCreated(
+        address _ownerColdAddress,
+        address _agentVault,
+        address _collateralPool,
+        string memory _underlyingAddress,
+        IAssetManager.InitialAgentSettings calldata _settings
+    )
+        private
+    {
+        emit AMEvents.AgentCreated(_ownerColdAddress, _agentVault, _collateralPool, _underlyingAddress,
+            address(_settings.class1CollateralToken), _settings.feeBIPS, _settings.poolFeeShareBIPS,
+            _settings.mintingClass1CollateralRatioBIPS, _settings.mintingPoolCollateralRatioBIPS,
+            _settings.buyFAssetByAgentFactorBIPS, _settings.poolExitCollateralRatioBIPS,
+            _settings.poolTopupCollateralRatioBIPS, _settings.poolTopupTokenPriceFactorBIPS);
     }
 
     // Returns cold owner's address, given either hot or cold address.

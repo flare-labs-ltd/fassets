@@ -8,10 +8,18 @@ library AMEvents {
      */
     event AgentCreated(
         address indexed owner,
-        uint8 agentType,
         address agentVault,
+        address collateralPool,
         string underlyingAddress,
-        address collateralPool);
+        address class1CollateralToken,
+        uint256 feeBIPS,
+        uint256 poolFeeShareBIPS,
+        uint256 mintingClass1CollateralRatioBIPS,
+        uint256 mintingPoolCollateralRatioBIPS,
+        uint256 buyFAssetByAgentFactorBIPS,
+        uint256 poolExitCollateralRatioBIPS,
+        uint256 poolTopupCollateralRatioBIPS,
+        uint256 poolTopupTokenPriceFactorBIPS);
 
     /**
      * Agent has announced destroy (close) of agent vault and will be able to
