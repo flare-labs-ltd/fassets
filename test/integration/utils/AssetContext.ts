@@ -3,6 +3,7 @@ import { AssetManagerSettings, CollateralToken } from "../../../lib/fasset/Asset
 import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../../lib/fasset/Conversions";
 import { AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
+import { Prices } from "../../../lib/state/Prices";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { IBlockChain } from "../../../lib/underlying-chain/interfaces/IBlockChain";
@@ -136,6 +137,10 @@ export class AssetContext implements IAssetContext {
 
     async waitForUnderlyingTransactionFinalization(scope: EventScope | undefined, txHash: string, maxBlocksToWaitForTx?: number) {
         return this.chainEvents.waitForUnderlyingTransactionFinalization(scope, txHash, maxBlocksToWaitForTx);
+    }
+
+    getPrices() {
+        return Prices.getPrices(this, this.settings, this.collaterals);
     }
 
     skipToProofUnavailability(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {

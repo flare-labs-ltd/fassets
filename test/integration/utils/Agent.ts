@@ -413,14 +413,10 @@ export class Agent extends AssetContextClient {
         return toBN(fullCollateral).muln(MAX_BIPS).div(backingNATWei);
     }
 
-    // async getPrices() {
-    //     return await this.context.getPrices([this.class1Collateral.ftsoSymbol]);
-    // }
-
 //     async lockedCollateralWei(mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0, withdrawalAnnouncedNATWei: BNish = 0) {
 //         const settings = await this.assetManager.getSettings();
 //         const agentInfo = await this.assetManager.getAgentInfo(this.agentVault.address);
-//         const prices = await this.getPrices();
+//         const prices = await this.context.getPrices();
 //         const mintedAMG = this.context.convertUBAToAmg(mintedUBA);
 //         const reservedAMG = this.context.convertUBAToAmg(reservedUBA);
 //         const redeemingAMG = this.context.convertUBAToAmg(redeemingUBA);
