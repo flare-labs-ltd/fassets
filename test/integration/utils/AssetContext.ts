@@ -18,6 +18,8 @@ import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
+import { TokenPriceReader } from "../../../lib/state/TokenPrice";
+import { CollateralPrice } from "../../../lib/state/CollateralPrice";
 
 const TrivialAddressValidatorMock = artifacts.require('TrivialAddressValidatorMock');
 
@@ -137,6 +139,11 @@ export class AssetContext implements IAssetContext {
 
     async waitForUnderlyingTransactionFinalization(scope: EventScope | undefined, txHash: string, maxBlocksToWaitForTx?: number) {
         return this.chainEvents.waitForUnderlyingTransactionFinalization(scope, txHash, maxBlocksToWaitForTx);
+    }
+
+    getCollateralPrice(collateral: CollateralToken, trusted: boolean = false) {
+        const priceReader = new TokenPriceReader(this.ftsoRegistry);
+        return CollateralPrice.forCollateral(priceReader, this.settings, collateral, trusted);
     }
 
     getPrices() {
