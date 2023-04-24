@@ -62,13 +62,17 @@ export class FuzzingStateAgent extends TrackedAgentState {
         underlyingAddressString: string,
     ) {
         super(parent, address, owner, underlyingAddressString);
+        void CollateralPool.at(data.collateralPool).then(cp => cp.poolToken()).then(poolToken => this.poolTokenAddress = poolToken);
         this.parent = parent;   // override parent type
     }
 
     override parent: FuzzingState;
 
+    poolTokenAddress: string;
+
     // aggregates
     calculatedDustUBA: BN = BN_ZERO;
+    totalAgentPoolTokensWei: BN = BN_ZERO;
 
     // collections
     collateralReservations: Map<number, CollateralReservation> = new Map();
@@ -81,9 +85,10 @@ export class FuzzingStateAgent extends TrackedAgentState {
 
     // init
 
-    override initialize(agentInfo: AgentInfo) {
-        super.initialize(agentInfo);
+    override initializeState(agentInfo: AgentInfo) {
+        super.initializeState(agentInfo);
         this.calculatedDustUBA = toBN(agentInfo.dustUBA);
+        this.totalAgentPoolTokensWei = toBN(agentInfo.totalAgentPoolTokensWei);
     }
 
     // handlers: agent availability
@@ -234,6 +239,22 @@ export class FuzzingStateAgent extends TrackedAgentState {
 
     handleTransactionToUnderlying(transaction: ITransaction) {
         this.logAction(`underlying deposit amount=${formatBN(transaction.outputs[0][1])} from=${transaction.inputs[0][0]}`, "UNDERLYING_TRANSACTION");
+    }
+
+    // handlers: collateral deposit/withdraw (agent pool tokens)
+
+    depositCollateral(token: string, value: BN) {
+        super.depositCollateral(token, value);
+        if (token === this.poolTokenAddress) {
+            this.totalAgentPoolTokensWei = this.totalAgentPoolTokensWei.add(value);
+        }
+    }
+
+    withdrawCollateral(token: string, value: BN) {
+        super.depositCollateral(token, value);
+        if (token === this.poolTokenAddress) {
+            this.totalAgentPoolTokensWei = this.totalAgentPoolTokensWei.sub(value);
+        }
     }
 
     // agent state changing

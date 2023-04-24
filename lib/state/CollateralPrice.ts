@@ -84,6 +84,10 @@ export class CollateralPrice extends AMGPriceConverter {
         super();
     }
 
+    assetToTokenPriceNum() {
+        return this.collateral.directPricePair ? this.assetPrice.toNumber() : this.assetPrice.toNumber() / this.tokenPrice!.toNumber();
+    }
+
     static forTokenPrices(settings: AMGSettings, collateral: CollateralToken, assetPrice: TokenPrice, tokenPrice: TokenPrice | undefined) {
         const amgPrice = AMGPrice.forTokenPrices(settings, collateral, assetPrice, tokenPrice);
         return new CollateralPrice(collateral, assetPrice, tokenPrice, amgPrice);

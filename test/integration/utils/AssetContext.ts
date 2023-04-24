@@ -2,12 +2,11 @@ import { time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralToken } from "../../../lib/fasset/AssetManagerTypes";
 import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../../lib/fasset/Conversions";
 import { AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
-import { encodeLiquidationStrategyImplSettings, LiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
-import { Prices } from "../../../lib/state/Prices";
+import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
+import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { IBlockChain } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
-import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
@@ -129,10 +128,6 @@ export class AssetContext implements IAssetContext {
 
     convertUBAToNATWei(valueUBA: BNish, amgToNATWeiPrice: BNish) {
         return this.convertAmgToNATWei(this.convertUBAToAmg(valueUBA), amgToNATWeiPrice);
-    }
-
-    getPrices() {
-        return Prices.getPrices(this, this.settings, this.collaterals);
     }
 
     async waitForUnderlyingTransaction(scope: EventScope | undefined, txHash: string, maxBlocksToWaitForTx?: number) {

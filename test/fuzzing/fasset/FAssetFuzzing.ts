@@ -60,8 +60,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
 
     before(async () => {
         // create context
-        commonContext = await CommonContext.createTest(governance, testNatInfo);
-        chainInfo = testChainInfo[CHAIN] ?? assert.fail(`Invalid chain ${CHAIN}`);
+        commonContext = await CommonContext.createTest(governance);
+        chainInfo = testChainInfo[CHAIN as keyof typeof testChainInfo] ?? assert.fail(`Invalid chain ${CHAIN}`);
         context = await AssetContext.createTest(commonContext, chainInfo);
         chain = context.chain as MockChain;
         // create interceptor
@@ -111,8 +111,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             const fa = await FuzzingAgent.createTest(runner, accounts[firstAgentAddress + i], underlyingAddress, ownerUnderlyingAddress);
             eventDecoder.addAddress(`OWNER_${i}`, fa.agent.ownerHotAddress);
             interceptor.captureEventsFrom(`AGENT_${i}`, fa.agent.agentVault, 'AgentVault');
-            await fa.agent.agentVault.deposit({ from: fa.agent.ownerHotAddress, value: toWei(10_000_000) });
             const agentCR = toBN(context.settings.minCollateralRatioBIPS).muln(randomNum(1, 1.5));
+            await fa.agent.agentVault.deposit({ from: fa.agent.ownerHotAddress, value: toWei(10_000_000) });
             await fa.agent.makeAvailable(500, agentCR);
             agents.push(fa);
         }

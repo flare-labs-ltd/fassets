@@ -880,7 +880,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const tx = await assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
             const underlyingBalanceToppedUp = findRequiredEvent(tx, "UnderlyingBalanceToppedUp").args;
             assertWeb3Equal(underlyingBalanceToppedUp.agentVault, agentVault.address);
-            assertWeb3Equal(underlyingBalanceToppedUp.freeBalanceChangeUBA, 1000);
+            assertWeb3Equal(underlyingBalanceToppedUp.underlyingBalanceChangeUBA, 1000);
             // check that change was logged in agentInfo
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, 1000)

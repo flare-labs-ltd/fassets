@@ -28,6 +28,8 @@ export const CHECK_DEFAULTS: CheckAgentInfo = {
     announcedClass1WithdrawalWei: 0, announcedPoolTokensWithdrawalWei: 0, announcedUnderlyingWithdrawalId: 0
 };
 
+export type AgentCreateOptions = Partial<Omit<AgentSettings, 'underlyingAddressString'>>;
+
 export class Agent extends AssetContextClient {
     constructor(
         context: AssetContext,
@@ -43,9 +45,6 @@ export class Agent extends AssetContextClient {
 
     vaultAddress = this.agentVault.address;
     underlyingAddress = this.settings.underlyingAddressString;
-
-    class1Token = requireNotNull(Object.values(this.context.stablecoins).find(token => token.address === this.settings.class1CollateralToken));
-    class1Collateral = requireNotNull(this.context.collaterals.find(c => c.token === this.settings.class1CollateralToken));
 
     static coldToHotOwnerAddress: Map<string, string> = new Map();
     static hotToColdOwnerAddress: Map<string, string> = new Map();
@@ -67,7 +66,7 @@ export class Agent extends AssetContextClient {
         return Agent.getHotAddress(this.ownerColdAddress);
     }
 
-    static async createTest(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+    static async createTest(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, options?: AgentCreateOptions) {
         if (!(ctx.chain instanceof MockChain)) assert.fail("only for mock chains");
         // mint some funds on underlying address (just enough to make EOA proof)
         if (ctx.chainInfo.requireEOAProof) {
@@ -107,6 +106,14 @@ export class Agent extends AssetContextClient {
         return new Agent(ctx, ownerColdAddress, agentVault, collateralPool, collateralPoolToken, wallet, settings);
     }
 
+    class1Token() {
+        return requireNotNull(Object.values(this.context.stablecoins).find(token => token.address === this.settings.class1CollateralToken));
+    }
+
+    class1Collateral() {
+        return requireNotNull(this.context.collaterals.find(c => c.token === this.settings.class1CollateralToken));
+    }
+
     async changeSettings(changes: Partial<Record<AgentSetting, BNish>>) {
         let validAt = BN_ZERO;
         for (const [name, value] of Object.entries(changes)) {
@@ -122,9 +129,10 @@ export class Agent extends AssetContextClient {
     }
 
     async depositClass1Collateral(amountTokenWei: BNish) {
-        await this.class1Token.mintAmount(this.ownerHotAddress, amountTokenWei);
-        await this.class1Token.approve(this.agentVault.address, amountTokenWei, { from: this.ownerHotAddress });
-        return await this.agentVault.depositCollateral(this.class1Token.address, amountTokenWei, { from: this.ownerHotAddress });
+        const class1Token = this.class1Token();
+        await class1Token.mintAmount(this.ownerHotAddress, amountTokenWei);
+        await class1Token.approve(this.agentVault.address, amountTokenWei, { from: this.ownerHotAddress });
+        return await this.agentVault.depositCollateral(class1Token.address, amountTokenWei, { from: this.ownerHotAddress });
     }
 
     // adds pool collateral and agent pool tokens
@@ -187,12 +195,14 @@ export class Agent extends AssetContextClient {
         const { withdrawalAllowedAt } = await this.announcePoolTokenRedemption(poolTokenBalance);
         await time.increaseTo(withdrawalAllowedAt);
         await this.redeemCollateralPoolTokens(poolTokenBalance);
-        // destroy (no need to pool out class1 collateral first, it will be withdrawn automatically during destroy)
+        // ... now the agent should wait for all poll token holders to exit ...
+        // destroy (no need to pull out class1 collateral first, it will be withdrawn automatically during destroy)
         const destroyAllowedAt = await this.announceDestroy();
         await time.increaseTo(destroyAllowedAt);
-        const ownerClass1Balance = await this.class1Token.balanceOf(this.ownerHotAddress);
+        const class1Token = this.class1Token();
+        const ownerClass1Balance = await class1Token.balanceOf(this.ownerHotAddress);
         await this.destroy();
-        const ownerClass1BalanceAfterDestroy = await this.class1Token.balanceOf(this.ownerHotAddress);
+        const ownerClass1BalanceAfterDestroy = await class1Token.balanceOf(this.ownerHotAddress);
         assertWeb3Equal(ownerClass1BalanceAfterDestroy.sub(ownerClass1Balance), collateral);
     }
 
@@ -201,7 +211,7 @@ export class Agent extends AssetContextClient {
     }
 
     async withdrawClass1Collateral(amountWei: BNish) {
-        return await this.agentVault.withdrawCollateral(this.class1Token.address, amountWei, this.ownerHotAddress, { from: this.ownerHotAddress });
+        return await this.agentVault.withdrawCollateral(this.settings.class1CollateralToken, amountWei, this.ownerHotAddress, { from: this.ownerHotAddress });
     }
 
     async poolTokenBalance() {

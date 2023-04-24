@@ -6,7 +6,7 @@ import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedE
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
-import { Agent } from "../../integration/utils/Agent";
+import { Agent, AgentCreateOptions } from "../../integration/utils/Agent";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { coinFlip, randomBN, randomChoice, randomInt } from "../../utils/fuzzing-utils";
 import { FuzzingActor } from "./FuzzingActor";
@@ -19,6 +19,7 @@ export class FuzzingAgent extends FuzzingActor {
         public agent: Agent,
         public ownerAddress: string,
         public ownerUnderlyingAddress: string,
+        public creationOptions: AgentCreateOptions,
     ) {
         super(runner);
         this.registerForEvents(agent.agentVault.address);
@@ -37,9 +38,9 @@ export class FuzzingAgent extends FuzzingActor {
         return this.state.getAgent(address) ?? assert.fail(`Invalid agent address ${address}`);
     }
 
-    static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string) {
-        const agent = await Agent.createTest(runner.context, ownerAddress, underlyingAddress);
-        return new FuzzingAgent(runner, agent, ownerAddress, ownerUnderlyingAddress);
+    static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string, options?: AgentCreateOptions) {
+        const agent = await Agent.createTest(runner.context, ownerAddress, underlyingAddress, options);
+        return new FuzzingAgent(runner, agent, ownerAddress, ownerUnderlyingAddress, options ?? {});
     }
 
     eventSubscriptions: EventSubscription[] = [];
@@ -102,7 +103,7 @@ export class FuzzingAgent extends FuzzingActor {
     async selfMint(scope: EventScope) {
         const agent = this.agent;   // save in case it is destroyed and re-created
         const agentInfo = await this.context.assetManager.getAgentInfo(agent.vaultAddress);
-        const lotSize = await this.context.lotSize();
+        const lotSize = this.context.lotSize();
         const lots = randomInt(Number(agentInfo.freeCollateralLots));
         if (this.avoidErrors && lots === 0) return;
         const miningUBA = toBN(lots).mul(lotSize);
@@ -255,17 +256,19 @@ export class FuzzingAgent extends FuzzingActor {
             this.destroying = true;
         }
         // const collateral = agentState.totalCollateralNATWei;
-        const feeBIPS = agentState.feeBIPS;
-        const agentMinCollateralRatioBIPS = agentState.agentMinCollateralRatioBIPS;
+        const createOptions: AgentCreateOptions = {
+            ...this.creationOptions,
+            feeBIPS: agentState.feeBIPS,
+            mintingClass1CollateralRatioBIPS: agentState.agentMinCollateralRatioBIPS
+        };
         const underlyingAddress = this.agent.underlyingAddress;
         // destroy old agent vault
         await this.destroyAgent(scope);
         // create the agent again
-        this.agent = await Agent.createTest(this.runner.context, this.ownerAddress, underlyingAddress + '*');
+        this.agent = await Agent.createTest(this.runner.context, this.ownerAddress, underlyingAddress + '*', createOptions);
         this.registerForEvents(this.agent.agentVault.address);
         this.runner.interceptor.captureEventsFrom(name + '*', this.agent.agentVault, 'AgentVault');
-        await this.agent.agentVault.deposit({ from: this.ownerAddress, value: toWei(10_000_000) });
-        await this.agent.makeAvailable(feeBIPS, agentMinCollateralRatioBIPS);
+        await this.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
         // make all working again
         this.destroying = false;
     }
