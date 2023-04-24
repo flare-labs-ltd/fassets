@@ -1,6 +1,6 @@
 import { AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../fasset/AssetManagerTypes";
 import { IAssetContext } from "../fasset/IAssetContext";
-import { CollateralIndexedList } from "./CollateralIndexedList";
+import { CollateralIndexedList, CollateralTokenId } from "./CollateralIndexedList";
 import { CollateralPrice } from "./CollateralPrice";
 import { TokenPrice, TokenPriceReader } from "./TokenPrice";
 
@@ -12,11 +12,15 @@ export class Prices {
     ) {
     }
 
-    forClass1(token: string) {
+    get(token: CollateralTokenId) {
+        return this.collateralPrices.get(token);
+    }
+
+    getClass1(token: string) {
         return this.collateralPrices.get(CollateralTokenClass.CLASS1, token);
     }
 
-    forPool(token: string) {
+    getPool(token: string) {
         return this.collateralPrices.get(CollateralTokenClass.POOL, token);
     }
 

@@ -261,7 +261,7 @@ export class TrackedAgentState {
         const redeemingUBA = collateral.tokenClass === CollateralTokenClass.CLASS1 ? this.redeemingUBA : this.poolRedeemingUBA;
         const totalUBA = this.reservedUBA.add(this.mintedUBA).add(redeemingUBA);
         if (totalUBA.isZero()) return MAX_UINT256;
-        const price = prices.collateralPrices.get(collateral);
+        const price = prices.get(collateral);
         const backingCollateralWei = price.convertUBAToTokenWei(totalUBA);
         const totalCollateralWei = collateral.tokenClass === CollateralTokenClass.CLASS1 ? this.totalClass1CollateralWei : this.totalPoolCollateralNATWei;
         return totalCollateralWei.muln(MAX_BIPS).div(backingCollateralWei);
