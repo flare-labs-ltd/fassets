@@ -133,6 +133,19 @@ export class AssetContext implements IAssetContext {
         return this.convertAmgToNATWei(this.convertUBAToAmg(valueUBA), amgToNATWeiPrice);
     }
 
+    tokenName(address: string) {
+        if (address === this.wNat.address) {
+            return "NAT";
+        } else if (address === this.fAsset.address) {
+            return 'f' + this.chainInfo.symbol;
+        } else {
+            for (const [name, token] of Object.entries(this.stablecoins)) {
+                if (address === token.address) return name.toUpperCase();
+            }
+        }
+        return '?TOKEN?';
+    }
+
     async waitForUnderlyingTransaction(scope: EventScope | undefined, txHash: string, maxBlocksToWaitForTx?: number) {
         return this.chainEvents.waitForUnderlyingTransaction(scope, txHash, maxBlocksToWaitForTx);
     }

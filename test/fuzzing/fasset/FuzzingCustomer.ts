@@ -64,7 +64,7 @@ export class FuzzingCustomer extends FuzzingActor {
     }
 
     async redemption(scope: EventScope) {
-        const lotSize = await this.context.lotSize();
+        const lotSize = this.context.lotSize();
         // request redemption
         const holdingUBA = await this.fAssetBalance();
         const holdingLots = Number(holdingUBA.div(lotSize));
@@ -97,7 +97,7 @@ export class FuzzingCustomer extends FuzzingActor {
                         await this.redemptionDefault(scope, ticket);
                     }
                     const result = await redemptionDefaultPromise; // now it must be fulfiled, by agent or by customer's default call
-                    this.comment(`${this.name}, req=${ticket.requestId}: default received ${formatBN(result.redeemedCollateralWei)}`);
+                    this.comment(`${this.name}, req=${ticket.requestId}: default received class1=${formatBN(result.redeemedClass1CollateralWei)} pool=${formatBN(result.redeemedPoolCollateralWei)}`);
                 }
             } else {
                 this.comment(`${this.name}, req=${ticket.requestId}: Missing redemption, reference=${ticket.paymentReference}`);

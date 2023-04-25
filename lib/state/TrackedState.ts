@@ -1,21 +1,19 @@
-import { IERC20Instance } from "../../typechain-truffle";
 import { AgentStatus, AssetManagerSettings, CollateralToken } from "../fasset/AssetManagerTypes";
-import { AssetManagerEvents, ERC20Events, IAssetContext } from "../fasset/IAssetContext";
+import { AssetManagerEvents, IAssetContext } from "../fasset/IAssetContext";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
 import { EventFormatter } from "../utils/events/EventFormatter";
 import { IEvmEvents } from "../utils/events/IEvmEvents";
 import { EventExecutionQueue, TriggerableEvent } from "../utils/events/ScopedEvents";
 import { EvmEvent, ExtractedEventArgs } from "../utils/events/common";
-import { ContractWithEvents } from "../utils/events/truffle";
 import { BN_ZERO, toBN } from "../utils/helpers";
 import { stringifyJson } from "../utils/json-bn";
 import { ILogger } from "../utils/logging";
 import { web3DeepNormalize, web3Normalize } from "../utils/web3normalize";
 import { CollateralList, isPoolCollateral } from "./CollateralIndexedList";
 import { Prices } from "./Prices";
+import { tokenContract } from "./TokenPrice";
 import { InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
 
-const IERC20 = artifacts.require("IERC20");
 const CollateralPool = artifacts.require("CollateralPool");
 
 export class TrackedState {
@@ -180,7 +178,7 @@ export class TrackedState {
     }
 
     private async registerCollateralHandlers(tokenAddress: string) {
-        const token: ContractWithEvents<IERC20Instance, ERC20Events> = await IERC20.at(tokenAddress);
+        const token = await tokenContract(tokenAddress);
         this.truffleEvents.event(token, 'Transfer').immediate().subscribe(args => {
             this.agents.get(args.from)?.withdrawCollateral(tokenAddress, toBN(args.value));
             this.agents.get(args.to)?.depositCollateral(tokenAddress, toBN(args.value));

@@ -1,14 +1,11 @@
 import { AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
 import { amgToTokenWeiPrice } from "../../../lib/fasset/Conversions";
 import { AMGPrice, AMGPriceConverter, CollateralPrice } from "../../../lib/state/CollateralPrice";
-import { TokenPrice, TokenPriceReader } from "../../../lib/state/TokenPrice";
+import { TokenPrice, TokenPriceReader, tokenBalance } from "../../../lib/state/TokenPrice";
 import { exp10 } from "../../../lib/utils/helpers";
-import { CollateralPoolTokenInstance, IERC20Contract, IFtsoRegistryContract } from "../../../typechain-truffle";
+import { CollateralPoolTokenInstance } from "../../../typechain-truffle";
 
 export const POOL_TOKEN_DECIMALS = 18;
-
-const IFtsoRegistry = artifacts.require("flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol:IFtsoRegistry" as any) as any as IFtsoRegistryContract;
-const IERC20 = artifacts.require('@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20' as any) as any as IERC20Contract;
 
 export enum CollateralKind { CLASS1, POOL, AGENT_POOL_TOKENS };
 
@@ -41,8 +38,7 @@ export class CollateralData extends AMGPriceConverter {
     }
 
     static async forCollateralPrice(collateralPrice: CollateralPrice, tokenHolder: string) {
-        const token = await IERC20.at(collateralPrice.collateral.token);
-        const balance = await token.balanceOf(tokenHolder);
+        const balance = await tokenBalance(collateralPrice.collateral.token, tokenHolder);
         return new CollateralData(collateralPrice.collateral, balance, collateralPrice.assetPrice, collateralPrice.tokenPrice, collateralPrice.amgPrice);
     }
 }
@@ -54,8 +50,7 @@ export class CollateralDataFactory {
     ) { }
 
     static async create(settings: AssetManagerSettings) {
-        const ftsoRegistry = await IFtsoRegistry.at(settings.ftsoRegistry);
-        const priceReader = new TokenPriceReader(ftsoRegistry);
+        const priceReader = await TokenPriceReader.create(settings);
         return new CollateralDataFactory(settings, priceReader);
     }
 

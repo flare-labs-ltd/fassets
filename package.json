@@ -24,7 +24,7 @@
     "test_integration_hh": "env TEST_PATH=./test/integration yarn hardhat test --network hardhat",
     "fuzzing_fasset": "yarn test test/fuzzing/fasset/FAssetFuzzing.ts",
     "---------COMPILE---SCRIPTS": "",
-    "clean": "env rm -rf cache artifacts typechain typechain-truffle",
+    "clean": "env rm -rf cache artifacts flattened typechain typechain-truffle",
     "clean-all": "yarn clean && env rm -rf node_modules",
     "compile": "yarn hardhat compile --config hardhatSetup.config.ts && yarn typechain-prepare && yarn typechain-ethers-v5 && yarn typechain-truffle-v5",
     "c": "yarn compile",

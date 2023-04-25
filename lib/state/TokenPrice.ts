@@ -1,9 +1,21 @@
-import { IFtsoContract, IFtsoInstance, IFtsoRegistryInstance } from "../../typechain-truffle";
-import { AssetManagerSettings } from "../fasset/AssetManagerTypes";
-import { amgToTokenWeiPrice } from "../fasset/Conversions";
+import { IERC20Contract, IERC20Instance, IFtsoContract, IFtsoInstance, IFtsoRegistryContract, IFtsoRegistryInstance } from "../../typechain-truffle";
+import { AMGSettings, amgToTokenWeiPrice } from "../fasset/Conversions";
+import { ERC20Events } from "../fasset/IAssetContext";
+import { ContractWithEvents } from "../utils/events/truffle";
 import { BN_ZERO, BNish, exp10, getOrCreateAsync, minBN, requireNotNull, toBN } from "../utils/helpers";
 
 const IFtso = artifacts.require("flare-smart-contracts/contracts/userInterfaces/IFtso.sol:IFtso" as any) as any as IFtsoContract;
+const IFtsoRegistry = artifacts.require("flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol:IFtsoRegistry" as any) as any as IFtsoRegistryContract;
+const IERC20 = artifacts.require('@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20' as any) as any as IERC20Contract;
+
+export async function tokenContract(tokenAddress: string) {
+    return await IERC20.at(tokenAddress) as ContractWithEvents<IERC20Instance, ERC20Events>;
+}
+
+export async function tokenBalance(tokenAddress: string, owner: string) {
+    const token = await IERC20.at(tokenAddress);
+    return await token.balanceOf(owner);
+}
 
 export class TokenPrice {
     constructor(
@@ -29,7 +41,7 @@ export class TokenPrice {
         return this.toNumber().toFixed(3);
     }
 
-    amgToTokenWei(settings: AssetManagerSettings, tokenDecimals: BNish, assetUSD: TokenPrice) {
+    amgToTokenWei(settings: AMGSettings, tokenDecimals: BNish, assetUSD: TokenPrice) {
         return amgToTokenWeiPrice(settings, tokenDecimals, this.price, this.decimals, assetUSD.price, assetUSD.decimals);
     }
 
@@ -55,6 +67,11 @@ export class TokenPriceReader {
     constructor(
         public ftsoRegistry: IFtsoRegistryInstance
     ) { }
+
+    static async create(settings: { ftsoRegistry: string }) {
+        const ftsoRegistry = await IFtsoRegistry.at(settings.ftsoRegistry);
+        return new TokenPriceReader(ftsoRegistry);
+    }
 
     getFtso(symbol: string) {
         return getOrCreateAsync(this.ftsoCache, symbol, async () => {

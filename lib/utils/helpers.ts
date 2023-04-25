@@ -144,6 +144,21 @@ function groupIntegerDigits(x: string) {
 }
 
 /**
+ * Like `a.muln(b)`, but while muln actualy works with non-integer numbers, it is very imprecise,
+ * i.e. `BN(1e30).muln(1e-20) = BN(0)` and `BN(1e10).muln(0.15) = BN(1476511897)`.
+ * This function gives as exact results as possible.
+ */
+export function mulDecimal(a: BN, b: number) {
+    if (Math.round(b) === b && Math.abs(b) < 1e16) {
+        return a.mul(toBN(b));
+    }
+    const exp = 15 - Math.ceil(Math.log10(b));
+    const bm = Math.round(b * (10 ** exp));
+    const m = a.mul(toBN(bm));
+    return exp >= 0 ? m.div(exp10(exp)) : m.mul(exp10(-exp));
+}
+
+/**
  * Convert value to hex with 0x prefix and optional padding.
  */
 export function toHex(x: string | number | BN, padToBytes?: number) {

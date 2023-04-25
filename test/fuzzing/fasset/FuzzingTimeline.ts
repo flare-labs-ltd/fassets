@@ -1,10 +1,10 @@
 import { time } from "@openzeppelin/test-helpers";
-import { MockChain } from "../../utils/fasset/MockChain";
-import { ITimer } from "./Timer";
-import { randomShuffle } from "../../utils/fuzzing-utils";
+import { ClearableSubscription, EventEmitter, EventExecutionQueue, EventHandler, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
 import { latestBlockTimestamp, runAsync } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
-import { ClearableSubscription, EventEmitter, EventExecutionQueue, EventHandler, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
+import { MockChain } from "../../utils/fasset/MockChain";
+import { randomShuffle } from "../../utils/fuzzing-utils";
+import { ITimer } from "./Timer";
 
 type TimelineEventType = 'FlareTime' | 'UnderlyingBlock' | 'UnderlyingTime';
 
@@ -25,11 +25,11 @@ export class TriggerList {
         public eventType: TimelineEventType,
         public eventQueue: EventExecutionQueue | null,
     ) { }
-    
+
     triggers: TimedTrigger[] = [];
-    
+
     static lastSubscriptionId = 0;
-    
+
     event(triggerAt: number) {
         return new EventEmitter<TimelineEvent>(this.eventQueue, handler => {
             const id = ++TriggerList.lastSubscriptionId;
@@ -37,7 +37,7 @@ export class TriggerList {
             return ClearableSubscription.of(() => this.removeTrigger(id));
         });
     }
-    
+
     insertTrigger(trigger: TimedTrigger) {
         let i = this.triggers.length;
         while (i > 0 && trigger.at < this.triggers[i - 1].at) i--;
@@ -50,13 +50,13 @@ export class TriggerList {
             this.triggers.splice(index, 1);
         }
     }
-    
+
     popUntil(maxTimeInclusive: number) {
         let i = 0;
         while (i < this.triggers.length && this.triggers[i].at <= maxTimeInclusive) i++;
         return this.triggers.splice(0, i);
     }
-    
+
     firstTime() {
         if (this.triggers.length === 0) return Number.MAX_VALUE;
         return this.triggers[0].at;
@@ -72,11 +72,11 @@ export class FuzzingTimelineTimer implements ITimer<FuzzingTimelineTimerId> {
         private timeline: TriggerList,
         private getCurrentTime: () => Promise<number>,
     ) { }
-    
+
     currentTime(): Promise<number> {
         return this.getCurrentTime();
     }
-    
+
     after(seconds: number, handler: () => void): FuzzingTimelineTimerId {
         const timerId = new FuzzingTimelineTimerId();
         runAsync(async () => {
@@ -85,7 +85,7 @@ export class FuzzingTimelineTimer implements ITimer<FuzzingTimelineTimerId> {
         });
         return timerId;
     }
-    
+
     every(seconds: number, handler: () => void): FuzzingTimelineTimerId {
         const timerId = new FuzzingTimelineTimerId();
         runAsync(async () => {
@@ -100,7 +100,7 @@ export class FuzzingTimelineTimer implements ITimer<FuzzingTimelineTimerId> {
         });
         return timerId;
     }
-    
+
     cancel(timerId: FuzzingTimelineTimerId): void {
         timerId.subscription?.unsubscribe();
     }
@@ -125,37 +125,37 @@ export class FuzzingTimeline {
         }
     }
 
-    flareTimestamp(timestamp: number) {
-        return this.flareTimeTriggers.event(timestamp);
+    flareTimestamp(timestamp: number | BN) {
+        return this.flareTimeTriggers.event(Number(timestamp));
     }
 
-    underlyingBlockNumber(blockNumber: number) {
-        return this.underlyingBlockTriggers.event(blockNumber);
+    underlyingBlockNumber(blockNumber: number | BN) {
+        return this.underlyingBlockTriggers.event(Number(blockNumber));
     }
 
-    underlyingTimestamp(timestamp: number) {
-        return this.underlyingTimeTriggers.event(timestamp);
+    underlyingTimestamp(timestamp: number | BN) {
+        return this.underlyingTimeTriggers.event(Number(timestamp));
     }
-    
-    async flareSeconds(seconds: number) {
-        const triggerTime = await latestBlockTimestamp() + seconds;
+
+    async flareSeconds(seconds: number | BN) {
+        const triggerTime = await latestBlockTimestamp() + Number(seconds);
         return this.flareTimeTriggers.event(triggerTime);
     }
 
-    underlyingBlocks(blocks: number) {
-        const triggerBlock = this.chain.blockHeight() + blocks;
+    underlyingBlocks(blocks: number | BN) {
+        const triggerBlock = this.chain.blockHeight() + Number(blocks);
         return this.underlyingBlockTriggers.event(triggerBlock);
     }
 
-    underlyingSeconds(seconds: number) {
-        const triggerTime = this.chain.currentTimestamp() + seconds;
+    underlyingSeconds(seconds: number | BN) {
+        const triggerTime = this.chain.currentTimestamp() + Number(seconds);
         return this.underlyingTimeTriggers.event(triggerTime);
     }
-    
+
     flareTimer() {
         return new FuzzingTimelineTimer(this.flareTimeTriggers, latestBlockTimestamp);
     }
-    
+
     // Skip `seconds` of time unless a triggger is reached before.
     // While skipping, mines underlying blocks at the rate of chain.secondsPerBlock.
     async skipTime(seconds: number) {
@@ -194,7 +194,7 @@ export class FuzzingTimeline {
         }
         this.logger?.log(`***** SKIPPED TIME  flare=${newFlareTime - startFlareTime}  chain=${this.chain.currentTimestamp() - startUnderlyingTime}`);
     }
-    
+
     async executeTriggers() {
         const flareTimestamp = await latestBlockTimestamp();
         const triggers = [

@@ -1,16 +1,16 @@
 import BN from "bn.js";
-import { AgentInfo, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentInfo, AgentStatus, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
 import { NAT_WEI } from "../../../lib/fasset/Conversions";
 import { Prices } from "../../../lib/state/Prices";
 import { EvmEvent } from "../../../lib/utils/events/common";
 import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
-import { BN_ZERO, formatBN, latestBlockTimestamp, sumBN, toBN } from "../../../lib/utils/helpers";
+import { BN_ZERO, formatBN, latestBlockTimestamp, minBN, sumBN, toBN } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
-    RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/AssetManager";
-import { TrackedAgentState } from "../../../lib/state/TrackedAgentState";
+import { InitialAgentData, TrackedAgentState } from "../../../lib/state/TrackedAgentState";
 import { FuzzingState, FuzzingStateLogRecord } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
 import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";
@@ -47,28 +47,28 @@ export interface RedemptionRequest {
     underlyingReleased: boolean;
 }
 
-type FreeUnderlyingBalanceChangeType = 'minting' | 'redemption' | 'self-close' | 'topup' | 'withdrawal';
+type UnderlyingBalanceChangeType = 'minting' | 'redemption' | 'topup' | 'withdrawal';
 
-export interface FreeUnderlyingBalanceChange {
-    type: FreeUnderlyingBalanceChangeType,
+export interface UnderlyingBalanceChange {
+    type: UnderlyingBalanceChangeType,
     amountUBA: BN,
 }
+
+const CollateralPool = artifacts.require("CollateralPool");
 
 export class FuzzingStateAgent extends TrackedAgentState {
     constructor(
         parent: FuzzingState,
-        address: string,
-        owner: string,
-        underlyingAddressString: string,
+        data: InitialAgentData,
     ) {
-        super(parent, address, owner, underlyingAddressString);
+        super(parent, data);
         void CollateralPool.at(data.collateralPool).then(cp => cp.poolToken()).then(poolToken => this.poolTokenAddress = poolToken);
         this.parent = parent;   // override parent type
     }
 
     override parent: FuzzingState;
 
-    poolTokenAddress: string;
+    poolTokenAddress?: string;
 
     // aggregates
     calculatedDustUBA: BN = BN_ZERO;
@@ -78,7 +78,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
     collateralReservations: Map<number, CollateralReservation> = new Map();
     redemptionTickets: Map<number, RedemptionTicket> = new Map();
     redemptionRequests: Map<number, RedemptionRequest> = new Map();
-    freeUnderlyingBalanceChanges: FreeUnderlyingBalanceChange[] = [];
+    underlyingBalanceChanges: UnderlyingBalanceChange[] = [];
 
     // log
     actionLog: FuzzingStateLogRecord[] = [];
@@ -111,7 +111,8 @@ export class FuzzingStateAgent extends TrackedAgentState {
     override handleMintingExecuted(args: EvmEventArgs<MintingExecuted>) {
         super.handleMintingExecuted(args);
         // update underlying free balance
-        this.addFreeUnderlyingBalanceChange(args.$event, 'minting', toBN(args.receivedFeeUBA));
+        const depositUBA = toBN(args.mintedAmountUBA).add(args.agentFeeUBA).add(args.poolFeeUBA);
+        this.addUnderlyingBalanceChange(args.$event, 'minting', depositUBA);
         // create redemption ticket
         this.addRedemptionTicket(args.$event, Number(args.redemptionTicketId), toBN(args.mintedAmountUBA));
         // delete collateral reservation
@@ -143,46 +144,31 @@ export class FuzzingStateAgent extends TrackedAgentState {
 
     override handleRedemptionPerformed(args: EvmEventArgs<RedemptionPerformed>): void {
         super.handleRedemptionPerformed(args);
-        // release request
-        const request = this.getRedemptionRequest(Number(args.requestId));
-        this.releaseRedemptionCollateral(request);
-        this.releaseClosedRedemptionRequests(args.$event, request);
+        this.confirmRedemptionPayment('performed', args)
     }
 
     override handleRedemptionPaymentFailed(args: EvmEventArgs<RedemptionPaymentFailed>): void {
         super.handleRedemptionPaymentFailed(args);
+        this.confirmRedemptionPayment('failed', args)
     }
 
     override handleRedemptionPaymentBlocked(args: EvmEventArgs<RedemptionPaymentBlocked>): void {
         super.handleRedemptionPaymentBlocked(args);
-        // release request
-        const request = this.getRedemptionRequest(Number(args.requestId));
-        this.releaseRedemptionCollateral(request);
-        this.releaseClosedRedemptionRequests(args.$event, request);
+        this.confirmRedemptionPayment('blocked', args)
     }
 
     override handleRedemptionDefault(args: EvmEventArgs<RedemptionDefault>): void {
         super.handleRedemptionDefault(args);
         // release request
         const request = this.getRedemptionRequest(Number(args.requestId));
-        this.releaseRedemptionCollateral(request);
+        request.collateralReleased = true;
         this.releaseClosedRedemptionRequests(args.$event, request);
-    }
-
-    override handleRedemptionFinished(args: EvmEventArgs<RedemptionFinished>): void {
-        super.handleRedemptionFinished(args);
-        // release request, update free balance
-        const request = this.getRedemptionRequest(Number(args.requestId));
-        request.underlyingReleased = true;
-        this.releaseClosedRedemptionRequests(args.$event, request);
-        this.addFreeUnderlyingBalanceChange(args.$event, 'redemption', toBN(args.freedUnderlyingBalanceUBA));
     }
 
     override handleSelfClose(args: EvmEventArgs<SelfClose>): void {
         super.handleSelfClose(args);
         // close tickets, update free balance
         this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.valueUBA));
-        this.addFreeUnderlyingBalanceChange(args.$event, 'self-close', toBN(args.valueUBA));
     }
 
     // handlers: dust
@@ -214,12 +200,17 @@ export class FuzzingStateAgent extends TrackedAgentState {
     override handleUnderlyingWithdrawalConfirmed(args: EvmEventArgs<UnderlyingWithdrawalConfirmed>): void {
         this.expect(this.announcedUnderlyingWithdrawalId.eq(args.announcementId), `underlying withdrawal id mismatch`, args.$event);
         super.handleUnderlyingWithdrawalConfirmed(args);
-        this.addFreeUnderlyingBalanceChange(args.$event, 'withdrawal', toBN(args.spentUBA).neg());
+        this.addUnderlyingBalanceChange(args.$event, 'withdrawal', toBN(args.spentUBA).neg());
     }
 
     override handleUnderlyingWithdrawalCancelled(args: EvmEventArgs<UnderlyingWithdrawalCancelled>): void {
         this.expect(this.announcedUnderlyingWithdrawalId.eq(args.announcementId), `underlying withdrawal id mismatch`, args.$event);
         super.handleUnderlyingWithdrawalCancelled(args);
+    }
+
+    override handleUnderlyingBalanceToppedUp(args: EvmEventArgs<UnderlyingBalanceToppedUp>): void {
+        super.handleUnderlyingBalanceToppedUp(args);
+        this.addUnderlyingBalanceChange(args.$event, 'topup', toBN(args.underlyingBalanceChangeUBA));
     }
 
     // handlers: liquidation
@@ -228,7 +219,6 @@ export class FuzzingStateAgent extends TrackedAgentState {
         super.handleLiquidationPerformed(args);
         // close tickets, update free balance
         this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.valueUBA));
-        this.addFreeUnderlyingBalanceChange(args.$event, 'self-close', toBN(args.valueUBA));
     }
 
     // handlers: underlying transactions
@@ -310,7 +300,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
         for (const ticket of tickets) {
             if (remainingLots.isZero()) break;
             const ticketLots = ticket.amountUBA.div(lotSize);
-            const redeemLots = BN.min(remainingLots, ticketLots);
+            const redeemLots = minBN(remainingLots, ticketLots);
             const redeemUBA = redeemLots.mul(lotSize);
             remainingLots = remainingLots.sub(redeemLots);
             const newTicketAmountUBA = ticket.amountUBA.sub(redeemUBA);
@@ -337,14 +327,14 @@ export class FuzzingStateAgent extends TrackedAgentState {
         tickets.sort((a, b) => a.id - b.id);    // sort by ticketId, so that we close them in correct order
         let remainingUBA = amountUBA;
         // redeem dust
-        const redeemedDust = BN.min(remainingUBA, this.calculatedDustUBA);
+        const redeemedDust = minBN(remainingUBA, this.calculatedDustUBA);
         this.calculatedDustUBA = this.calculatedDustUBA.sub(redeemedDust);
         remainingUBA = remainingUBA.sub(redeemedDust);
         // redeem tickets
         let count = 0;
         for (const ticket of tickets) {
             if (remainingUBA.isZero()) break;
-            const redeemUBA = BN.min(remainingUBA, ticket.amountUBA);
+            const redeemUBA = minBN(remainingUBA, ticket.amountUBA);
             remainingUBA = remainingUBA.sub(redeemUBA);
             const newTicketAmountUBA = ticket.amountUBA.sub(redeemUBA);
             if (newTicketAmountUBA.lt(lotSize)) {
@@ -387,8 +377,16 @@ export class FuzzingStateAgent extends TrackedAgentState {
         return this.redemptionRequests.get(requestId) ?? assert.fail(`Invalid redemption request id ${requestId}`);
     }
 
-    releaseRedemptionCollateral(request: RedemptionRequest) {
-        request.collateralReleased = true;
+    confirmRedemptionPayment(type: 'performed' | 'failed' | 'blocked', args: { $event: EvmEvent, requestId: BN, spentUnderlyingUBA: BN }) {
+        // update underlying balance
+        this.addUnderlyingBalanceChange(args.$event, 'redemption', toBN(args.spentUnderlyingUBA).neg());
+        // release request
+        const request = this.getRedemptionRequest(Number(args.requestId));
+        if (type === 'performed' || type === 'blocked') {
+            request.collateralReleased = true;
+        }
+        request.underlyingReleased = true;
+        this.releaseClosedRedemptionRequests(args.$event, request);
     }
 
     releaseClosedRedemptionRequests(event: EvmEvent, request: RedemptionRequest) {
@@ -398,10 +396,10 @@ export class FuzzingStateAgent extends TrackedAgentState {
         }
     }
 
-    addFreeUnderlyingBalanceChange(event: EvmEvent, type: FreeUnderlyingBalanceChangeType, amountUBA: BN) {
-        const change: FreeUnderlyingBalanceChange = { type, amountUBA };
-        this.freeUnderlyingBalanceChanges.push(change);
-        this.logAction(`new FreeUnderlyingBalanceChange(${type}): amount=${formatBN(amountUBA)}`, event);
+    addUnderlyingBalanceChange(event: EvmEvent, type: UnderlyingBalanceChangeType, amountUBA: BN) {
+        const change: UnderlyingBalanceChange = { type, amountUBA };
+        this.underlyingBalanceChanges.push(change);
+        this.logAction(`new UnderlyingBalanceChange(${type}): amount=${formatBN(amountUBA)}`, event);
     }
 
     // totals
@@ -414,24 +412,36 @@ export class FuzzingStateAgent extends TrackedAgentState {
         return sumBN(this.redemptionTickets.values(), ticket => ticket.amountUBA).add(this.dustUBA);
     }
 
+    calculateRedeemingUBA() {
+        return sumBN(this.redemptionRequests.values(), request => request.collateralReleased ? BN_ZERO : request.valueUBA);
+    }
+
+    calculateUnderlyingBalanceUBA() {
+        return sumBN(this.underlyingBalanceChanges, change => change.amountUBA);
+    }
+
     calculateFreeUnderlyingBalanceUBA() {
-        return sumBN(this.freeUnderlyingBalanceChanges, change => change.amountUBA);
+        const mintedUBA = this.calculateMintedUBA();
+        const redeemingUBA = this.calculateRedeemingUBA();
+        return this.calculateUnderlyingBalanceUBA().sub(mintedUBA).sub(redeemingUBA);
     }
 
     // calculations
 
-    private collateralRatioForPrice(prices: Prices) {
-        const assetUnitUBA = Number(this.parent.settings.assetUnitUBA);
-        const backedAmount = (Number(this.reservedUBA) + Number(this.mintedUBA) + Number(this.redeemingUBA)) / assetUnitUBA;
+    private collateralRatioForPrice(prices: Prices, collateral: CollateralToken) {
+        const redeemingUBA = collateral.tokenClass === CollateralTokenClass.CLASS1 ? this.redeemingUBA : this.poolRedeemingUBA;
+        const backedAmount = (Number(this.reservedUBA) + Number(this.mintedUBA) + Number(redeemingUBA)) / Number(this.parent.settings.assetUnitUBA);
         if (backedAmount === 0) return Number.POSITIVE_INFINITY;
-        const totalCollateral = Number(this.totalCollateralNATWei) / Number(NAT_WEI);
-        const backingCollateral = Number(backedAmount) * prices.assetNatNum;
+        const totalCollateralWei = collateral.tokenClass === CollateralTokenClass.CLASS1 ? this.totalClass1CollateralWei : this.totalPoolCollateralNATWei;
+        const totalCollateral = Number(totalCollateralWei) / Number(NAT_WEI);
+        const assetToTokenPrice = prices.get(collateral).assetToTokenPriceNum();
+        const backingCollateral = Number(backedAmount) * assetToTokenPrice;
         return totalCollateral / backingCollateral;
     }
 
-    collateralRatio() {
-        const ratio = this.collateralRatioForPrice(this.parent.prices);
-        const ratioFromTrusted = this.collateralRatioForPrice(this.parent.trustedPrices);
+    collateralRatio(collateral: CollateralToken) {
+        const ratio = this.collateralRatioForPrice(this.parent.prices, collateral);
+        const ratioFromTrusted = this.collateralRatioForPrice(this.parent.trustedPrices, collateral);
         return Math.max(ratio, ratioFromTrusted);
     }
 

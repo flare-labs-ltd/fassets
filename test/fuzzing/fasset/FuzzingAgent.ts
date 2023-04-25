@@ -1,17 +1,17 @@
-import BN from "bn.js";
+import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
+import { tokenContract } from "../../../lib/state/TokenPrice";
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
-import { EventArgs } from "../../../lib/utils/events/common";
 import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
+import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, checkedCast, formatBN, latestBlockTimestamp, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { BN_ZERO, MAX_BIPS, checkedCast, formatBN, minBN, toBN, toWei } from "../../../lib/utils/helpers";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Agent, AgentCreateOptions } from "../../integration/utils/Agent";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { coinFlip, randomBN, randomChoice, randomInt } from "../../utils/fuzzing-utils";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 
 export class FuzzingAgent extends FuzzingActor {
     constructor(
@@ -152,23 +152,32 @@ export class FuzzingAgent extends FuzzingActor {
         }
         this.runner.startThread(async (scope) => {
             const agent = this.agent;   // save in case it is destroyed and re-created
-            const collateral = await this.context.wNat.balanceOf(agent.agentVault.address);
-            const [amgToNATWeiPrice, amgToNATWeiPriceTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
-            const amgToNATWei = BN.min(amgToNATWeiPrice, amgToNATWeiPriceTrusted);
             const agentState = this.agentState(agent);
-            const totalUBA = agentState.mintedUBA.add(agentState.reservedUBA).add(agentState.redeemingUBA).addn(1000 /* to be > */);
-            const requiredCR = type === 'liquidation' ? toBN(this.state.settings.safetyMinCollateralRatioBIPS) : toBN(this.state.settings.minCollateralRatioBIPS);
-            const requredCollateral = this.context.convertUBAToNATWei(totalUBA, amgToNATWei).mul(requiredCR).divn(MAX_BIPS);
-            const requiredTopup = requredCollateral.sub(collateral);
-            if (requiredTopup.lte(BN_ZERO)) {
-                this.runner.comment(`Too late for topup for ${this.name(agent)}`);
-                return; // perhaps we were liquidated already
+            const topups: string[] = [];
+            for (const collateral of [agentState.class1Collateral, agentState.poolWNatCollateral]) {
+                const collateralToken = await tokenContract(collateral.token);
+                const balance = await collateralToken.balanceOf(agent.agentVault.address);
+                const price = await this.context.getCollateralPrice(collateral, false);
+                const trustedPrice = await this.context.getCollateralPrice(collateral, true);
+                const totalUBA = agentState.mintedUBA.add(agentState.reservedUBA).add(agentState.redeemingUBA).addn(1000 /* to be > */);
+                const totalAsTokenWei = minBN(price.convertUBAToTokenWei(totalUBA), trustedPrice.convertUBAToTokenWei(totalUBA));
+                const requiredCR = type === 'liquidation' ? toBN(collateral.safetyMinCollateralRatioBIPS) : toBN(collateral.minCollateralRatioBIPS);
+                const requiredCollateral = totalAsTokenWei.mul(requiredCR).divn(MAX_BIPS);
+                const requiredTopup = requiredCollateral.sub(balance);
+                if (requiredTopup.lte(BN_ZERO)) continue;
+                const crBefore = agentState.collateralRatio(collateral);
+                await collateralToken.approve(agent.agentVault.address, requiredTopup, { from: this.ownerAddress })
+                    .catch(e => scope.exitOnExpectedError(e, []));
+                await agent.agentVault.depositCollateral(collateralToken.address, requiredTopup, { from: this.ownerAddress })
+                    .catch(e => scope.exitOnExpectedError(e, []));
+                const crAfter = agentState.collateralRatio(collateral);
+                topups.push(`Topped up ${this.name(agent)} by ${formatBN(requiredTopup)} ${this.context.tokenName(collateral.token)}  crBefore=${crBefore.toFixed(3)}  crAfter=${crAfter.toFixed(3)}`);
             }
-            const crBefore = agentState.collateralRatio();
-            await agent.agentVault.deposit({ value: requiredTopup })
-                .catch(e => scope.exitOnExpectedError(e, []));
-            const crAfter = agentState.collateralRatio();
-            this.runner.comment(`Topped up ${this.name(agent)} by ${formatBN(requiredTopup)}  crBefore=${crBefore.toFixed(3)}  crAfter=${crAfter.toFixed(3)}`);
+            if (topups.length > 0) {
+                topups.forEach(topup => this.runner.comment(topup));
+            } else {
+                this.runner.comment(`Too late for topup for ${this.name(agent)}`);
+            }
         });
     }
 
@@ -234,14 +243,27 @@ export class FuzzingAgent extends FuzzingActor {
             this.destroying = true;
         }
         this.comment(`Destroying agent ${this.name(this.agent)}`);
+        // exit available if needed
         if (agentState.publiclyAvailable) {
+            const exitAllowedAt = await this.agent.announceExitAvailable();
+            await this.timeline.flareTimestamp(exitAllowedAt).wait(scope);
             await this.agent.exitAvailable()
                 .catch(e => scope.exitOnExpectedError(e, ['agent not available']));
         }
-        await this.agent.announceDestroy();
-        const timestamp = await latestBlockTimestamp();
-        const waitTime = Number(this.state.settings.withdrawalWaitMinSeconds);
-        await this.timeline.flareTimestamp(timestamp + waitTime).wait(scope);
+        // pull out fees
+        const poolFeeBalance = await this.agent.poolFeeBalance();
+        await this.agent.withdrawPoolFees(poolFeeBalance);
+        // TODO: somehow self-close all backed f-assets
+        await this.agent.selfClose(poolFeeBalance);
+        // redeem pool tokens
+        // TODO: all other pool token holders must also redeem
+        const poolTokenBalance = await this.agent.poolTokenBalance();
+        const { withdrawalAllowedAt } = await this.agent.announcePoolTokenRedemption(poolTokenBalance);
+        await this.timeline.flareTimestamp(withdrawalAllowedAt).wait(scope);
+        await this.agent.redeemCollateralPoolTokens(poolTokenBalance);
+        // destroy agent vault
+        const destroyAllowedAt = await this.agent.announceDestroy();
+        await this.timeline.flareTimestamp(destroyAllowedAt).wait(scope);
         await this.agent.destroy();
         this.unregisterEvents();
     }
@@ -258,8 +280,15 @@ export class FuzzingAgent extends FuzzingActor {
         // const collateral = agentState.totalCollateralNATWei;
         const createOptions: AgentCreateOptions = {
             ...this.creationOptions,
+            class1CollateralToken: agentState.class1Collateral.token,
             feeBIPS: agentState.feeBIPS,
-            mintingClass1CollateralRatioBIPS: agentState.agentMinCollateralRatioBIPS
+            poolFeeShareBIPS: agentState.poolFeeShareBIPS,
+            mintingClass1CollateralRatioBIPS: agentState.mintingClass1CollateralRatioBIPS,
+            mintingPoolCollateralRatioBIPS: agentState.mintingPoolCollateralRatioBIPS,
+            buyFAssetByAgentFactorBIPS: agentState.buyFAssetByAgentFactorBIPS,
+            poolExitCollateralRatioBIPS: agentState.poolExitCollateralRatioBIPS,
+            poolTopupCollateralRatioBIPS: agentState.poolTopupCollateralRatioBIPS,
+            poolTopupTokenPriceFactorBIPS: agentState.poolTopupTokenPriceFactorBIPS,
         };
         const underlyingAddress = this.agent.underlyingAddress;
         // destroy old agent vault

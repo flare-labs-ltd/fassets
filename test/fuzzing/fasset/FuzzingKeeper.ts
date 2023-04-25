@@ -1,14 +1,10 @@
 import { time } from "@openzeppelin/test-helpers";
-import { MintingExecuted } from "../../../typechain-truffle/AssetManager";
-import { findRequiredEvent } from "../../../lib/utils/events/truffle";
-import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 import { expectErrors } from "../../../lib/utils/helpers";
+import { MintingExecuted } from "../../../typechain-truffle/AssetManager";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingStateAgent } from "./FuzzingStateAgent";
-import { EventScope } from "../../../lib/utils/events/ScopedEvents";
-import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
-import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 
 export class FuzzingKeeper extends FuzzingActor {
     constructor(
@@ -22,21 +18,21 @@ export class FuzzingKeeper extends FuzzingActor {
     get name() {
         return this.formatAddress(this.address);
     }
-    
+
     registerForEvents() {
         // check for liquidations when prices change
         this.state.pricesUpdated.subscribe(() => this.checkAllAgentsForLiquidation());
         // also check for liquidation after every minting
         this.assetManagerEvent('MintingExecuted').subscribe(args => this.handleMintingExecuted(args));
     }
-    
+
     async checkAllAgentsForLiquidation() {
         for (const agent of this.state.agents.values()) {
             await this.checkAgentForLiquidation(agent)
-                .catch(e => expectErrors(e, []));
+                .catch(e => expectErrors(e, ["cannot stop liquidation"]));
         }
     }
-    
+
     handleMintingExecuted(args: EvmEventArgs<MintingExecuted>) {
         const agent = this.state.getAgent(args.agentVault);
         if (!agent) {
@@ -45,10 +41,10 @@ export class FuzzingKeeper extends FuzzingActor {
         }
         this.runner.startThread(async (scope) => {
             await this.checkAgentForLiquidation(agent)
-                .catch(e => scope.exitOnExpectedError(e, []));
+                .catch(e => scope.exitOnExpectedError(e, ["cannot stop liquidation"]));
         })
     }
-    
+
     private async checkAgentForLiquidation(agent: FuzzingStateAgent) {
         const timestamp = await time.latest();
         const newStatus = agent.possibleLiquidationTransition(timestamp);

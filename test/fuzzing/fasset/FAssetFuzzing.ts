@@ -1,18 +1,20 @@
 import { time } from "@openzeppelin/test-helpers";
 import { Challenger } from "../../../lib/actors/Challenger";
+import { isClass1Collateral, isPoolCollateral } from "../../../lib/state/CollateralIndexedList";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
-import { expectErrors, formatBN, latestBlockTimestamp, sleep, systemTimestamp, toBN, toWei } from "../../../lib/utils/helpers";
+import { expectErrors, formatBN, latestBlockTimestamp, mulDecimal, sleep, systemTimestamp, toBIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { LogFile } from "../../../lib/utils/logging";
 import { FtsoMockInstance } from "../../../typechain-truffle";
+import { AgentCreateOptions } from "../../integration/utils/Agent";
 import { AssetContext } from "../../integration/utils/AssetContext";
 import { CommonContext } from "../../integration/utils/CommonContext";
-import { TestChainInfo, testChainInfo, testNatInfo } from "../../integration/utils/TestChainInfo";
+import { TestChainInfo, testChainInfo } from "../../integration/utils/TestChainInfo";
+import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { currentRealTime, getEnv, InclusionIterable, randomChoice, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
+import { InclusionIterable, currentRealTime, getEnv, randomChoice, randomInt, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
 import { getTestFile } from "../../utils/test-helpers";
-import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingKeeper } from "./FuzzingKeeper";
@@ -37,7 +39,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     const CHANGE_LOT_SIZE_AT = getEnv('CHANGE_LOT_SIZE_AT', 'range', null);
     const CHANGE_LOT_SIZE_FACTOR = getEnv('CHANGE_LOT_SIZE_FACTOR', 'number[]', []);
     const CHANGE_PRICE_AT = getEnv('CHANGE_PRICE_AT', 'range', null);
-    const CHANGE_PRICE_FACTOR = getEnv('CHANGE_PRICE_FACTOR', 'json', null) as { nat?: [number, number], asset?: [number, number] };
+    const CHANGE_PRICE_FACTOR = getEnv('CHANGE_PRICE_FACTOR', 'json', null) as { [key: string]: [number, number] };
     const ILLEGAL_PROB = getEnv('ILLEGAL_PROB', 'number', 1);     // likelihood of illegal operations (not normalized)
 
     let commonContext: CommonContext;
@@ -108,12 +110,12 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         for (let i = 0; i < N_AGENTS; i++) {
             const underlyingAddress = "underlying_agent_" + i;
             const ownerUnderlyingAddress = "underlying_owner_agent_" + i;
-            const fa = await FuzzingAgent.createTest(runner, accounts[firstAgentAddress + i], underlyingAddress, ownerUnderlyingAddress);
-            eventDecoder.addAddress(`OWNER_${i}`, fa.agent.ownerHotAddress);
+            const options = createAgentOptions();
+            const fa = await FuzzingAgent.createTest(runner, accounts[firstAgentAddress + i], underlyingAddress, ownerUnderlyingAddress, options);
+            eventDecoder.addAddress(`OWNER_HOT_${i}`, fa.agent.ownerHotAddress);
+            eventDecoder.addAddress(`OWNER_COLD_${i}`, fa.agent.ownerColdAddress);
             interceptor.captureEventsFrom(`AGENT_${i}`, fa.agent.agentVault, 'AgentVault');
-            const agentCR = toBN(context.settings.minCollateralRatioBIPS).muln(randomNum(1, 1.5));
-            await fa.agent.agentVault.deposit({ from: fa.agent.ownerHotAddress, value: toWei(10_000_000) });
-            await fa.agent.makeAvailable(500, agentCR);
+            await fa.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
             agents.push(fa);
         }
         // create customers
@@ -226,6 +228,24 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         assert.isTrue(fuzzingState.failedExpectations.length === 0, "fuzzing state has expectation failures");
     });
 
+    function createAgentOptions(): AgentCreateOptions {
+        const class1Collateral = randomChoice(context.collaterals.filter(isClass1Collateral));
+        const poolCollateral = context.collaterals.filter(isPoolCollateral)[0];
+        const mintingClass1CollateralRatioBIPS = mulDecimal(toBN(class1Collateral.minCollateralRatioBIPS), randomNum(1, 1.5));
+        const mintingPoolCollateralRatioBIPS = mulDecimal(toBN(poolCollateral.minCollateralRatioBIPS), randomNum(1, 1.5));
+        return {
+            class1CollateralToken: class1Collateral.token,
+            feeBIPS: toBIPS("5%"),
+            poolFeeShareBIPS: toBIPS("40%"),
+            mintingClass1CollateralRatioBIPS: mintingClass1CollateralRatioBIPS,
+            mintingPoolCollateralRatioBIPS: mintingPoolCollateralRatioBIPS,
+            poolExitCollateralRatioBIPS: mulDecimal(mintingPoolCollateralRatioBIPS, randomNum(1, 1.25)),
+            buyFAssetByAgentFactorBIPS: toBIPS(0.9),
+            poolTopupCollateralRatioBIPS: randomInt(Number(poolCollateral.minCollateralRatioBIPS), Number(mintingPoolCollateralRatioBIPS)),
+            poolTopupTokenPriceFactorBIPS: toBIPS(0.8),
+        };
+    }
+
     async function timeInfo() {
         return `block=${await time.latestBlock()} timestamp=${await latestBlockTimestamp() - startTimestamp}  ` +
                `underlyingBlock=${chain.blockHeight()} underlyingTimestamp=${chain.lastBlockTimestamp() - startTimestamp}  ` +
@@ -291,23 +311,23 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     async function testChangeLotSize(index: number) {
         const lotSizeAMG = toBN(fuzzingState.settings.lotSizeAMG);
         const factor = CHANGE_LOT_SIZE_FACTOR.length > 0 ? CHANGE_LOT_SIZE_FACTOR[index % CHANGE_LOT_SIZE_FACTOR.length] : randomNum(0.5, 2);
-        const newLotSizeAMG = lotSizeAMG.muln(factor);
+        const newLotSizeAMG = mulDecimal(lotSizeAMG, factor);
         interceptor.comment(`Changing lot size by factor ${factor}, old=${formatBN(lotSizeAMG)}, new=${formatBN(newLotSizeAMG)}`);
         await context.setLotSizeAmg(newLotSizeAMG)
             .catch(e => expectErrors(e, ['too close to previous update']));
     }
 
     async function testChangePrices(index: number) {
-        const [natMinF, natMaxF] = CHANGE_PRICE_FACTOR?.nat ?? [0.9, 1.1];
-        await _changePriceOnFtso(context.natFtso, randomNum(natMinF, natMaxF));
-        const [assetMinF, assetMaxF] = CHANGE_PRICE_FACTOR?.asset ?? [0.9, 1.1];
-        await _changePriceOnFtso(context.assetFtso, randomNum(assetMinF, assetMaxF));
+        for (const [symbol, ftso] of Object.entries(context.ftsos)) {
+            const [minFactor, maxFactor] = CHANGE_PRICE_FACTOR[symbol] ?? CHANGE_PRICE_FACTOR['default'] ?? [0.9, 1.1];
+            await _changePriceOnFtso(ftso, randomNum(minFactor, maxFactor));
+        }
         await context.ftsoManager.mockFinalizePriceEpoch();
     }
 
     async function _changePriceOnFtso(ftso: FtsoMockInstance, factor: number) {
         const { 0: price } = await ftso.getCurrentPrice();
-        const newPrice = price.muln(factor);
+        const newPrice = mulDecimal(price, factor);
         await ftso.setCurrentPrice(newPrice, 0);
         await ftso.setCurrentPriceFromTrustedProviders(newPrice, 0);
     }
