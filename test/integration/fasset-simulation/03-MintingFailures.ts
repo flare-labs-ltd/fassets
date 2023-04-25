@@ -1,5 +1,5 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { BN_ZERO, DAYS, toBN, toWei } from "../../../lib/utils/helpers";
+import { BN_ZERO, DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../utils/test-helpers";
@@ -63,15 +63,19 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             }
             // test rewarding for mint default
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
+            const startBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
             await agent.mintingPaymentDefault(crt);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.add(crFee), freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
-            assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee);
+            const endBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
+            const poolFee = crFee.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+            assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee.sub(poolFee));
+            assertWeb3Equal(endBalancePool.sub(startBalancePool), poolFee);
             // check that executing minting after calling mintingPaymentDefault will revert
             const txHash = await minter.performMintingPayment(crt);
             await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
             // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral.add(crFee));
+            await agent.exitAndDestroy(fullAgentCollateral);
         });
 
         it("mint defaults - failed underlying payment", async () => {
@@ -94,15 +98,19 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             }
             // test rewarding for mint default
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
+            const startBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
             await agent.mintingPaymentDefault(crt);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.add(crFee), freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
-            assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee);
+            const endBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
+            const poolFee = crFee.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+            assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee.sub(poolFee));
+            assertWeb3Equal(endBalancePool.sub(startBalancePool), poolFee);
             // check that executing minting after calling mintingPaymentDefault will revert
             const txHash = await minter.performMintingPayment(crt);
             await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
             // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral.add(crFee));
+            await agent.exitAndDestroy(fullAgentCollateral);
         });
 
         it("mint unstick - no underlying payment", async () => {
@@ -128,20 +136,23 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0, reservedUBA: context.convertLotsToUBA(lots) });
             // test rewarding for unstick default
+            const class1Token = agent.class1Token();
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
-            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
+            const startBalanceAgent = await class1Token.balanceOf(agent.agentVault.address);
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             await agent.unstickMinting(crt);
-            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
+            const endBalanceAgent = await class1Token.balanceOf(agent.agentVault.address);
             const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
-            const reservedCollateral = context.convertAmgToNATWei(
-                await context.convertLotsToAMG(lots),
-                await context.currentAmgToNATWeiPrice());
+            // check that class1 collateral was unreserved and given to agent owner
+            const class1CollateralPrice = await context.getCollateralPrice(agent.class1Collateral());
+            const reservedCollateral = class1CollateralPrice.convertAmgToTokenWei(context.convertLotsToAMG(lots));
             assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), reservedCollateral);
+            assertWeb3Equal(await class1Token.balanceOf(agent.ownerHotAddress), reservedCollateral);
             assert(reservedCollateral.gt(BN_ZERO));
-            // check that fee and collateral was burned
-            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee.add(reservedCollateral));
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(reservedCollateral), freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
+            // check that fee and nat worth of reserved collateral (plus premium) were burned
+            const burnedNAT = await agent.class1ToNatBurned(reservedCollateral);
+            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), burnedNAT.add(crFee));
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(reservedCollateral), freeUnderlyingBalanceUBA: 0, mintedUBA: 0, reservedUBA: 0 });
             // check that executing minting after calling unstickMinting will revert
             const txHash = await minter.performMintingPayment(crt);
             await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
@@ -173,19 +184,22 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await time.increase(DAYS);
             context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             // test rewarding for unstick default
+            const class1Token = agent.class1Token();
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
-            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
+            const startBalanceAgent = await class1Token.balanceOf(agent.agentVault.address);
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             await agent.unstickMinting(crt);
-            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
+            const endBalanceAgent = await class1Token.balanceOf(agent.agentVault.address);
             const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
-            const reservedCollateral = context.convertAmgToNATWei(
-                await context.convertLotsToAMG(lots),
-                await context.currentAmgToNATWeiPrice());
+            // check that class1 collateral was unreserved and given to agent owner
+            const class1CollateralPrice = await context.getCollateralPrice(agent.class1Collateral());
+            const reservedCollateral = class1CollateralPrice.convertAmgToTokenWei(context.convertLotsToAMG(lots));
             assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), reservedCollateral);
+            assertWeb3Equal(await class1Token.balanceOf(agent.ownerHotAddress), reservedCollateral);
             assert(reservedCollateral.gt(BN_ZERO));
-            // check that fee and collateral was burned
-            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee.add(reservedCollateral));
+            // check that fee and nat worth of reserved collateral (plus premium) were burned
+            const burnedNAT = await agent.class1ToNatBurned(reservedCollateral);
+            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), burnedNAT.add(crFee));
             // check that executing minting after calling unstickMinting will revert
             const txHash = await minter.performMintingPayment(crt);
             await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
@@ -218,19 +232,22 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await time.increase(DAYS);
             context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
             // test rewarding for unstick default
+            const class1Token = agent.class1Token();
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
-            const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
+            const startBalanceAgent = await class1Token.balanceOf(agent.agentVault.address);
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             await agent.unstickMinting(crt);
-            const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
+            const endBalanceAgent = await class1Token.balanceOf(agent.agentVault.address);
             const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
-            const reservedCollateral = context.convertAmgToNATWei(
-                await context.convertLotsToAMG(lots),
-                await context.currentAmgToNATWeiPrice());
+            // check that class1 collateral was unreserved and given to agent owner
+            const class1CollateralPrice = await context.getCollateralPrice(agent.class1Collateral());
+            const reservedCollateral = class1CollateralPrice.convertAmgToTokenWei(context.convertLotsToAMG(lots));
             assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), reservedCollateral);
+            assertWeb3Equal(await class1Token.balanceOf(agent.ownerHotAddress), reservedCollateral);
             assert(reservedCollateral.gt(BN_ZERO));
-            // check that fee and collateral was burned
-            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee.add(reservedCollateral));
+            // check that fee and nat worth of reserved collateral (plus premium) were burned
+            const burnedNAT = await agent.class1ToNatBurned(reservedCollateral);
+            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), burnedNAT.add(crFee));
             // check that executing minting after calling unstickMinting will revert
             await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
             // agent can exit now
