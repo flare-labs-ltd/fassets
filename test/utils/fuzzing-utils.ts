@@ -1,4 +1,3 @@
-import BN from "bn.js";
 import { BN_ZERO, toBN } from "../../lib/utils/helpers";
 import { stringifyJson } from "../../lib/utils/json-bn";
 
@@ -172,7 +171,7 @@ export function truffleResultAsDict(result: any): any {
     const stringKeys = keys.filter(k => !/^\d+/.test(k));
     if (stringKeys.length === 0) {  // result is really an array
         return result.map(v => truffleResultAsDict(v));
-    } else { // result is bot array and dict as 
+    } else { // result is bot array and dict as
         const res: any = {};
         for (const key of stringKeys) res[key] = truffleResultAsDict((result as any)[key]);
         return res;

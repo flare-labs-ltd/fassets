@@ -1,4 +1,3 @@
-import BN from "bn.js";
 import {
     AgentAvailable, AgentCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
@@ -6,7 +5,7 @@ import {
 import { AgentInfo, AgentSetting, AgentStatus, CollateralToken, CollateralTokenClass } from "../fasset/AssetManagerTypes";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
 import { EventArgs } from "../utils/events/common";
-import { BN_ZERO, BNish, MAX_BIPS, formatBN, toBN } from "../utils/helpers";
+import { BN_ZERO, BNish, MAX_BIPS, formatBN, maxBN, toBN } from "../utils/helpers";
 import { ILogger } from "../utils/logging";
 import { Prices } from "./Prices";
 import { TrackedState } from "./TrackedState";
@@ -270,7 +269,7 @@ export class TrackedAgentState {
     collateralRatioBIPS(collateral: CollateralToken) {
         const ratio = this.collateralRatioForPriceBIPS(this.parent.prices, collateral);
         const ratioFromTrusted = this.collateralRatioForPriceBIPS(this.parent.trustedPrices, collateral);
-        return BN.max(ratio, ratioFromTrusted);
+        return maxBN(ratio, ratioFromTrusted);
     }
 
     private possibleLiquidationTransitionForCollateral(collateral: CollateralToken, timestamp: BN) {

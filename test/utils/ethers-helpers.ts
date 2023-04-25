@@ -1,4 +1,3 @@
-import BN from "bn.js";
 import { BigNumber } from "ethers";
 import { toStringExp } from "../../lib/utils/helpers";
 
@@ -10,7 +9,7 @@ export function toBigNumberExp(x: number | string, exponent: number): BigNumber 
 }
 
 /**
- * Helper wrapper to convert number to Ethers' BigNumber 
+ * Helper wrapper to convert number to Ethers' BigNumber
  * @param x number expressed in any reasonable type
  * @returns same number as BigNumber
  */

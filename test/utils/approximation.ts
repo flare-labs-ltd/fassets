@@ -1,4 +1,3 @@
-import BN from "bn.js";
 import { BNish, toBN } from "../../lib/utils/helpers";
 
 export abstract class Approximation {
@@ -16,7 +15,7 @@ export abstract class Approximation {
 
     relativeError(value: BNish) {
         const error = this.absoluteError(value);
-        return error.isZero() ? 0 : Number(error) / Number(BN.max(toBN(value), this.expected));
+        return error.isZero() ? 0 : Number(error) / Math.max(Math.abs(Number(value)), Math.abs(Number(this.expected)));
     }
 
     static absolute(value: BNish, error: BNish) {
