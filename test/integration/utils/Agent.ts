@@ -180,13 +180,13 @@ export class Agent extends AssetContextClient {
         // withdraw pool fees
         const poolFeeBalance = await this.poolFeeBalance();
         const ownerFAssetBalance = await this.fAsset.balanceOf(this.ownerHotAddress);
-        await this.withdrawPoolFees(poolFeeBalance);
+        if (poolFeeBalance.gt(BN_ZERO)) await this.withdrawPoolFees(poolFeeBalance);
         const ownerFAssetBalanceAfter = await this.fAsset.balanceOf(this.ownerHotAddress);
         // check that we recived exactly the agent vault's fees in fasset
         assertWeb3Equal(await this.poolFeeBalance(), 0);
         assertWeb3Equal(ownerFAssetBalanceAfter.sub(ownerFAssetBalance), poolFeeBalance);
         // self close all received pool fees - otherwise we cannot withdraw all pool collateral
-        await this.selfClose(poolFeeBalance);
+        if (poolFeeBalance.gt(BN_ZERO)) await this.selfClose(poolFeeBalance);
         // nothing must be minted now
         const info = await this.getAgentInfo();
         assertWeb3Equal(info.mintedUBA, 0);
@@ -195,7 +195,7 @@ export class Agent extends AssetContextClient {
         const { withdrawalAllowedAt } = await this.announcePoolTokenRedemption(poolTokenBalance);
         await time.increaseTo(withdrawalAllowedAt);
         await this.redeemCollateralPoolTokens(poolTokenBalance);
-        // ... now the agent should wait for all poll token holders to exit ...
+        // ... now the agent should wait for all pool token holders to exit ...
         // destroy (no need to pull out class1 collateral first, it will be withdrawn automatically during destroy)
         const destroyAllowedAt = await this.announceDestroy();
         await time.increaseTo(destroyAllowedAt);
@@ -366,9 +366,24 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'MintingPaymentDefault');
     }
 
+    async class1ToNatBurned(burnedWei: BNish) {
+        const class1Price = await this.context.getCollateralPrice(this.class1Collateral())
+        const burnedUBA = class1Price.convertTokenWeiToUBA(burnedWei);
+        const natPrice = await this.context.getCollateralPrice(this.context.collaterals[0]);
+        const reservedCollateralNAT = natPrice.convertAmgToTokenWei(this.context.convertUBAToAmg(burnedUBA));
+        return reservedCollateralNAT.mul(toBN(this.context.settings.class1BuyForFlareFactorBIPS)).divn(MAX_BIPS);
+    }
+
+    async unstickMintingCostNAT(crt: EventArgs<CollateralReserved>): Promise<BN> {
+        const class1Price = await this.context.getCollateralPrice(this.class1Collateral());
+        const burnedWei = class1Price.convertUBAToTokenWei(crt.valueUBA);
+        return this.class1ToNatBurned(burnedWei);
+    }
+
     async unstickMinting(crt: EventArgs<CollateralReserved>) {
         const proof = await this.attestationProvider.proveConfirmedBlockHeightExists();
-        await this.assetManager.unstickMinting(proof, crt.collateralReservationId, { from: this.ownerHotAddress });
+        const unstickMintingCost = await this.unstickMintingCostNAT(crt);
+        await this.assetManager.unstickMinting(proof, crt.collateralReservationId, { from: this.ownerHotAddress, value: unstickMintingCost });
     }
 
     async selfMint(amountUBA: BNish, lots: BNish) {
