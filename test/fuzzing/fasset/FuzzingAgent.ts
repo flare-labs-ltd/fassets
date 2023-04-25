@@ -94,8 +94,8 @@ export class FuzzingAgent extends FuzzingActor {
                 // Error 'Missing event RedemptionPerformed' happens when payment is too late or transaction is failed
             } else {
                 await agent.confirmFailedRedemptionPayment(request, txHash)
-                    .catch(e => scope.exitOnExpectedError(e, ['Missing event RedemptionPaymentFailed']));
-                // Error 'Missing event RedemptionPaymentFailed' happens when redeemer defaults before confirm
+                    .catch(e => scope.exitOnExpectedError(e, ['Missing event RedemptionDefault']));
+                // Error 'Missing event RedemptionDefault' happens when redeemer defaults before confirm
             }
         });
     }

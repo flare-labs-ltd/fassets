@@ -80,7 +80,7 @@ export class TrackedAgentState {
     }
 
     get freeUnderlyingBalanceUBA() {
-        return this,this.underlyingBalanceUBA.sub(this.requiredUnderlyingBalanceUBA);
+        return this.underlyingBalanceUBA.sub(this.requiredUnderlyingBalanceUBA);
     }
 
     // init

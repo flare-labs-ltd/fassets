@@ -487,7 +487,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
 
     expect(condition: boolean, message: string, event: EvmEvent) {
         if (!condition) {
-            const text = `expectation failed for ${this.name}: ${message}`;
+            const text = `expectation failed for ${this.name()}: ${message}`;
             this.parent.failedExpectations.push({ text, event });
         }
     }
