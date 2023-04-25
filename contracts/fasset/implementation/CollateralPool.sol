@@ -162,7 +162,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         require(assetData.poolNatBalance == natShare ||
             assetData.poolNatBalance - natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
             "collateral left after exit is too low and non-zero");
-        require(_isAboveCR(assetData, assetData.poolNatBalance - natShare, exitCollateralRatioBIPS),
+        require(_staysAboveCR(assetData, natShare, exitCollateralRatioBIPS),
             "collateral ratio falls below exitCR");
         (uint256 debtFassetShare, uint256 freeFassetShare) = _getDebtAndFreeFassetShareFromTokenShare(
             msg.sender, _tokenShare, _exitType, assetData);
@@ -209,17 +209,31 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
             "collateral left after exit is too low and non-zero");
         (uint256 debtFassetShare, uint256 freeFassetShare) = _getDebtAndFreeFassetShareFromTokenShare(
             msg.sender, _tokenShare, _exitType, assetData);
-        uint256 fassetsRequired = _fAssetRequiredToKeepCR(
-            assetData, natShare, Math.min(exitCollateralRatioBIPS, _poolCRBIPS(assetData)));
-        uint256 additionallyRequiredFassets;
-        if (freeFassetShare < fassetsRequired) {
-            additionallyRequiredFassets = fassetsRequired - freeFassetShare;
-            require(fAsset.allowance(msg.sender, address(this)) >= additionallyRequiredFassets,
-                "f-asset allowance too small");
-            fAsset.transferFrom(msg.sender, address(this), additionallyRequiredFassets);
+        // calculate f-assets required to keep CR above min(exitCR, poolCR)
+        // if pool is below exitCR we shouldn't require it be increased above exitCR, only preserved
+        // if pool is above exitCR, we require only for it to stay that way (like in the normal exit)
+        uint256 requiredFAssets;
+        if (_staysAboveCR(assetData, 0, exitCollateralRatioBIPS)) {
+            // f-assets required for CR to stay above exitCR (might not be needed)
+            uint256 _auxDiv = assetData.assetPriceMul.mulBips(exitCollateralRatioBIPS);
+            uint256 _auxMul = assetData.assetPriceDiv * (assetData.poolNatBalance - natShare);
+            uint256 _aux = _auxMul / _auxDiv;
+            requiredFAssets = assetData.backedFAssets > _aux ? assetData.backedFAssets - _aux : 0;
+        } else {
+            // f-assets that preserve CR
+            requiredFAssets = assetData.backedFAssets.mulDiv(
+                natShare, assetData.poolNatBalance); // poolNatBalance >= natShare > 0
         }
-        // agent redemption (note: fassetToRedeem can be larger than fassetsRequired)
-        uint256 fassetsToRedeem = freeFassetShare + additionallyRequiredFassets;
+        // if required f-assets are larger than f-asset fees, calculate additionally required f-assets
+        uint256 additionallyRequiredFAssets;
+        if (freeFassetShare < requiredFAssets) {
+            additionallyRequiredFAssets = requiredFAssets - freeFassetShare;
+            require(fAsset.allowance(msg.sender, address(this)) >= additionallyRequiredFAssets,
+                "f-asset allowance too small");
+            fAsset.transferFrom(msg.sender, address(this), additionallyRequiredFAssets);
+        }
+        // agent redemption (note: fassetToRedeem can be larger than requiredFAssets)
+        uint256 fassetsToRedeem = freeFassetShare + additionallyRequiredFAssets;
         if (fassetsToRedeem > 0) {
             if (fassetsToRedeem < assetManager.getLotSize() || _redeemToCollateral) {
                 assetManager.redeemFromAgentInCollateral(
@@ -343,36 +357,15 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         }
     }
 
-    function _fAssetRequiredToKeepCR(
+    function _staysAboveCR(
         AssetData memory _assetData,
         uint256 _withdrawnNat,
         uint256 _crBIPS
     )
         internal pure
-        returns (uint256)
-    {
-        uint256 _aux = ((_assetData.poolNatBalance - _withdrawnNat) * _assetData.assetPriceDiv) /
-            (_assetData.assetPriceMul.mulBips(_crBIPS));
-        return _assetData.backedFAssets > _aux ? _assetData.backedFAssets - _aux : 0;
-    }
-
-    function _poolCRBIPS(AssetData memory _assetData)
-        internal pure
-        returns (uint256)
-    {
-        return SafePct.MAX_BIPS * _assetData.poolNatBalance * _assetData.assetPriceDiv /
-            (_assetData.backedFAssets * _assetData.assetPriceMul);
-    }
-
-    function _isAboveCR(
-        AssetData memory _assetData,
-        uint256 _poolBalanceNat,
-        uint256 _crBIPS
-    )
-        internal pure
         returns (bool)
     {
-        return _poolBalanceNat * _assetData.assetPriceDiv >=
+        return (_assetData.poolNatBalance - _withdrawnNat) * _assetData.assetPriceDiv >=
             (_assetData.backedFAssets * _assetData.assetPriceMul).mulBips(_crBIPS);
     }
 
