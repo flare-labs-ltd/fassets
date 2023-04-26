@@ -205,9 +205,9 @@ library AgentCollateral {
         returns (uint256)
     {
         if (_valueAMG == 0) return 0;
-        // Assumption is that redemption is NOT a pool self close redemption,
-        // otherwise the below formula would not be correct.
-        uint64 redeemingAMG = _data.kind == Collateral.Kind.POOL ? _agent.poolRedeemingAMG : _agent.redeemingAMG;
+        // Assume: collateral kind is CLASS1 or redemption is NOT a pool self close redemption.
+        // For pool self close redemptions, pool collateral is never paid, so this method is not used.
+        uint256 redeemingAMG = _data.kind == Collateral.Kind.POOL ? _agent.poolRedeemingAMG : _agent.redeemingAMG;
         assert(_valueAMG <= redeemingAMG);
         uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(redeemingAMG);
         return _data.fullCollateral.mulDiv(_valueAMG, totalAMG); // totalAMG > 0 (guarded by assert)
@@ -222,7 +222,8 @@ library AgentCollateral {
         internal view
         returns (uint256)
     {
-        uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(_agent.redeemingAMG);
+        uint256 redeemingAMG = _data.kind == Collateral.Kind.POOL ? _agent.poolRedeemingAMG : _agent.redeemingAMG;
+        uint256 totalAMG = uint256(_agent.mintedAMG) + uint256(_agent.reservedAMG) + uint256(redeemingAMG);
         if (totalAMG == 0) return 1e10;    // nothing minted - ~infinite collateral ratio (but avoid overflows)
         uint256 backingTokenWei = Conversion.convertAmgToTokenWei(totalAMG, _data.amgToTokenWeiPrice);
         return _data.fullCollateral.mulDiv(SafePct.MAX_BIPS, backingTokenWei);
