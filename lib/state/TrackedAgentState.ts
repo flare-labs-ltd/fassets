@@ -307,7 +307,8 @@ export class TrackedAgentState {
     writeAgentSummary(logger: ILogger) {
         const class1CR = Number(this.collateralRatioBIPS(this.class1Collateral)) / MAX_BIPS;
         const poolCR = Number(this.collateralRatioBIPS(this.poolWNatCollateral)) / MAX_BIPS;
-        logger.log(`    ${this.name()}:  minted=${formatBN(this.mintedUBA)}  class1CR=${class1CR.toFixed(3)}  poolCR=${poolCR.toFixed(3)}  status=${AgentStatus[this.status]}  available=${this.publiclyAvailable}` +
+        const formatCR = (cr: number) => cr >= 1e10 ? "'INF'" : cr.toFixed(3);
+        logger.log(`    ${this.name()}:  minted=${formatBN(this.mintedUBA)}  class1CR=${formatCR(class1CR)}  poolCR=${formatCR(poolCR)}  status=${AgentStatus[this.status]}  available=${this.publiclyAvailable}` +
             `  (reserved=${formatBN(this.reservedUBA)}  redeeming=${formatBN(this.redeemingUBA)}  dust=${formatBN(this.dustUBA)}  freeUnderlying=${formatBN(this.freeUnderlyingBalanceUBA)})`)
     }
 }

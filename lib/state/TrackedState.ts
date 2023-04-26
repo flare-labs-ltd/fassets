@@ -72,7 +72,7 @@ export class TrackedState {
     registerHandlers() {
         // track total supply of fAsset
         this.assetManagerEvent('MintingExecuted').subscribe(args => {
-            this.fAssetSupply = this.fAssetSupply.add(toBN(args.mintedAmountUBA));
+            this.fAssetSupply = this.fAssetSupply.add(toBN(args.mintedAmountUBA).add(toBN(args.poolFeeUBA)));
         });
         this.assetManagerEvent('RedemptionRequested').subscribe(args => {
             this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));

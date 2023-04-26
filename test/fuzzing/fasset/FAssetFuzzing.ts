@@ -28,7 +28,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     const startTimestamp = systemTimestamp();
     const governance = accounts[1];
 
-    const CHAIN = getEnv('CHAIN', 'string', 'eth');
+    const CHAIN = getEnv('CHAIN', 'string', 'xrp');
     const LOOPS = getEnv('LOOPS', 'number', 100);
     const AUTOMINE = getEnv('AUTOMINE', 'boolean', true);
     const N_AGENTS = getEnv('N_AGENTS', 'number', 10);

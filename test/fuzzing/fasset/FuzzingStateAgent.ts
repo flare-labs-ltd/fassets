@@ -113,8 +113,13 @@ export class FuzzingStateAgent extends TrackedAgentState {
         // update underlying free balance
         const depositUBA = toBN(args.mintedAmountUBA).add(args.agentFeeUBA).add(args.poolFeeUBA);
         this.addUnderlyingBalanceChange(args.$event, 'minting', depositUBA);
+        // only whole number of lots will be created as ticket, the remainder is accounted as dust
+        const mintedAmount = toBN(args.mintedAmountUBA).add(toBN(args.poolFeeUBA));
+        const amountWithDust = mintedAmount.add(this.calculatedDustUBA);
+        this.calculatedDustUBA = amountWithDust.mod(this.parent.lotSize());
+        const ticketAmountUBA = amountWithDust.sub(this.calculatedDustUBA);
         // create redemption ticket
-        this.addRedemptionTicket(args.$event, Number(args.redemptionTicketId), toBN(args.mintedAmountUBA));
+        this.addRedemptionTicket(args.$event, Number(args.redemptionTicketId), ticketAmountUBA);
         // delete collateral reservation
         const collateralReservationId = Number(args.collateralReservationId);
         if (collateralReservationId > 0) {  // collateralReservationId == 0 for self-minting
