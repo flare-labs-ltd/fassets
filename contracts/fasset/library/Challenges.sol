@@ -115,10 +115,10 @@ library Challenges {
             for (uint256 j = 0; j < i; j++) {
                 require(_payments[j].transactionHash != pmi.transactionHash, "mult chlg: repeated transaction");
             }
-            require(pmi.sourceAddressHash == agent.underlyingAddressHash,
-                "mult chlg: not agent's address");
-            require(!state.paymentConfirmations.transactionConfirmed(pmi),
-                "mult chlg: payment confirmed");
+            require(pmi.sourceAddressHash == agent.underlyingAddressHash, "mult chlg: not agent's address");
+            if (state.paymentConfirmations.transactionConfirmed(pmi)) {
+                continue;   // ignore payments that have already been confirmed
+            }
             if (PaymentReference.isValid(pmi.paymentReference, PaymentReference.REDEMPTION)) {
                 // for redemption, we don't count the value that should be paid to free balance deduction
                 uint256 redemptionId = PaymentReference.decodeId(pmi.paymentReference);

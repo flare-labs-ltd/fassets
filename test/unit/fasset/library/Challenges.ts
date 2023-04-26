@@ -3,14 +3,14 @@ import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../.
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../../utils/test-helpers";
-import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
+import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../test-settings";
 
 const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
@@ -58,12 +58,12 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
 
     async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string) {
         // depositCollateral
-        const fullAgentCollateral = toWei(3e8);
-        await agentVault.depositNat({ from: owner, value: toBN(fullAgentCollateral) });
-        await usdc.mintAmount(owner, toBNExp(10000, 18));
-        await usdc.increaseAllowance(agentVault.address, toBNExp(10000, 18), { from: owner });
-        await agentVault.depositCollateral(usdc.address, toBNExp(10000, 18), { from: owner });
-        await depositPoolTokens(agentVault, owner, fullAgentCollateral);
+        const agentPoolTokens = toWei(3e8);
+        const class1Collateral = toBNExp(240_000, 18);
+        await usdc.mintAmount(owner, class1Collateral);
+        await usdc.increaseAllowance(agentVault.address, class1Collateral, { from: owner });
+        await agentVault.depositCollateral(usdc.address, class1Collateral, { from: owner });
+        await depositPoolTokens(agentVault, owner, agentPoolTokens);
         await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 
@@ -72,12 +72,10 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         await assetManager.updateCurrentBlock(proof);
     }
 
-    async function mintAndRedeem(agentVault: AgentVaultInstance, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, underlyingRedeemerAddress: string, redeemerAddress: string, updateBlock: boolean) {
-        // minter
+    async function mint(agentVault: AgentVaultInstance, lots: number, minterAddress: string, chain: MockChain, underlyingMinterAddress: string, updateBlock: boolean) {
         chain.mint(underlyingMinterAddress, toBNExp(10000, 18));
         if (updateBlock) await updateUnderlyingBlock();
         // perform minting
-        const lots = 3;
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
         const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress, value: crFee });
@@ -86,7 +84,13 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
         const proof = await attestationProvider.provePayment(txHash, underlyingMinterAddress, crt.paymentAddress);
         const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress });
-        const minted = requiredEventArgs(res, 'MintingExecuted');
+        return requiredEventArgs(res, 'MintingExecuted');
+    }
+
+    async function mintAndRedeem(agentVault: AgentVaultInstance, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, underlyingRedeemerAddress: string, redeemerAddress: string, updateBlock: boolean) {
+        const lots = 3;
+        // minter
+        const minted = await mint(agentVault, lots, minterAddress, chain, underlyingMinterAddress, updateBlock);
         // redeemer "buys" f-assets
         await fAsset.transfer(redeemerAddress, minted.mintedAmountUBA, { from: minterAddress });
         // redemption request
@@ -124,9 +128,8 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         agentVault = await createAgent(agentOwner1, underlyingAgent1);
         agentVault2 = await createAgent(agentOwner2, underlyingAgent2);
 
-        agentTxHash = await wallet.addTransaction(
-            underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(1));
-            agentTxProof = await attestationProvider.proveBalanceDecreasingTransaction(agentTxHash, underlyingAgent1);
+        agentTxHash = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer, toWei(1), PaymentReference.redemption(1));
+        agentTxProof = await attestationProvider.proveBalanceDecreasingTransaction(agentTxHash, underlyingAgent1);
     });
 
   describe("illegal payment challenge", () => {
@@ -248,7 +251,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             await expectRevert(prmsW, "mult chlg: not agent's address");
         });
 
-        it("should revert - mult chlg: payment confirmed", async () => {
+        it("should revert - already confirmed payments should be ignored", async () => {
             // init
             await depositAndMakeAgentAvailable(agentVault, agentOwner1);
             const request = await mintAndRedeem(agentVault, chain, underlyingMinterAddress, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
@@ -261,10 +264,10 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             let proof2 = await attestationProvider.proveBalanceDecreasingTransaction(tx1Hash, underlyingAgent1);
 
             let res = assetManager.freeBalanceNegativeChallenge([agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
-            await expectRevert(res, "mult chlg: payment confirmed");
+            await expectRevert(res, "mult chlg: enough balance");
         });
 
-        it("should revert - mult chlg: enough free balance", async () => {
+        it("should revert - mult chlg: enough balance", async () => {
             // init
             await depositAndMakeAgentAvailable(agentVault, agentOwner1);
             const request = await mintAndRedeem(agentVault, chain, underlyingMinterAddress, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
@@ -278,13 +281,16 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             let proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
 
             let res = assetManager.freeBalanceNegativeChallenge([agentTxProof, proof2], agentVault.address, { from: whitelistedAccount });
-            await expectRevert(res, "mult chlg: enough free balance");
+            await expectRevert(res, "mult chlg: enough balance");
         });
 
         it("should succeed in challenging payments if they make balance negative", async() => {
-            const info = await assetManager.getAgentInfo(agentVault.address);
+            await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+            await mint(agentVault, 1, minterAddress1, chain, underlyingMinterAddress, true);
+            // const info = await assetManager.getAgentInfo(agentVault.address);
+            // console.log(deepFormat(info));
             let txHash2 = await wallet.addTransaction(
-                underlyingAgent1, underlyingRedeemer, 1, PaymentReference.announcedWithdrawal(2));
+                underlyingAgent1, underlyingRedeemer, toWei(1.5), PaymentReference.announcedWithdrawal(2));
             let proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
             // successful challenge
             let res1 = await assetManager.freeBalanceNegativeChallenge(

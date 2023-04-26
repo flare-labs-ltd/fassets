@@ -211,7 +211,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 await expectRevert(challenger.illegalPaymentChallenge(agent, txHash), "matching redemption active");
             }
             // check that N-1 payments doesn't make free underlying balance negative
-            await expectRevert(challenger.freeBalanceNegativeChallenge(agent, txHashes.slice(0, N - 1)), "mult chlg: enough free balance");
+            await expectRevert(challenger.freeBalanceNegativeChallenge(agent, txHashes.slice(0, N - 1)), "mult chlg: enough balance");
             // check that N payments do make the transaction negative
             const liquidationStarted = await challenger.freeBalanceNegativeChallenge(agent, txHashes);
             // check that full liquidation started
