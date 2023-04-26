@@ -127,6 +127,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const res = await agent.redemptionPaymentDefault(request);
             await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(res.redeemedCollateralWei), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: 0 });
+            const redDef = await agent.finishRedemptionWithoutPayment(request);
+            assert.isUndefined(redDef);
             const endBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             assertWeb3Equal(res.redeemedCollateralWei, await agent.getRedemptionPaymentDefaultValue(lots));
