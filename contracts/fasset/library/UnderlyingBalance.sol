@@ -39,7 +39,7 @@ library UnderlyingBalance {
         state.paymentConfirmations.confirmIncomingPayment(_payment);
         uint256 amountUBA = SafeCast.toUint256(_payment.receivedAmount);
         increaseBalance(agent, amountUBA.toUint128());
-        emit AMEvents.UnderlyingBalanceToppedUp(_agentVault, amountUBA);
+        emit AMEvents.UnderlyingBalanceToppedUp(_agentVault, _payment.transactionHash, amountUBA);
     }
 
     function updateBalance(
@@ -55,6 +55,7 @@ library UnderlyingBalance {
             Liquidation.startFullLiquidation(_agent);
         }
         _agent.underlyingBalanceUBA = newBalance.toInt128();
+        emit AMEvents.UnderlyingBalanceChanged(_agent.vaultAddress(), _agent.underlyingBalanceUBA);
     }
 
     // Like updateBalance, but it can never make balance negative and trigger liquidation.
@@ -66,6 +67,7 @@ library UnderlyingBalance {
         internal
     {
         _agent.underlyingBalanceUBA += _balanceIncrease.toInt256().toInt128();
+        emit AMEvents.UnderlyingBalanceChanged(_agent.vaultAddress(), _agent.underlyingBalanceUBA);
     }
 
     // The minimum underlying balance that has to be held by the agent. Below this, agent is liquidated.

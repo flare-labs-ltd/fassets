@@ -215,7 +215,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
 
     override handleUnderlyingBalanceToppedUp(args: EvmEventArgs<UnderlyingBalanceToppedUp>): void {
         super.handleUnderlyingBalanceToppedUp(args);
-        this.addUnderlyingBalanceChange(args.$event, 'topup', toBN(args.underlyingBalanceChangeUBA));
+        this.addUnderlyingBalanceChange(args.$event, 'topup', toBN(args.depositedUBA));
     }
 
     // handlers: liquidation

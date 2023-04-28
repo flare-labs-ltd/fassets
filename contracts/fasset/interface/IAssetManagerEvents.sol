@@ -340,7 +340,15 @@ interface IAssetManagerEvents {
      */
     event UnderlyingBalanceToppedUp(
         address agentVault,
-        uint256 underlyingBalanceChangeUBA);
+        bytes32 transactionHash,
+        uint256 depositedUBA);
+
+    /**
+     * Emitted whenever the tracked underlying balance changes.
+     */
+    event UnderlyingBalanceChanged(
+        address agentVault,
+        int256 underlyingBalanceUBA);
 
     /**
      * An unexpected transaction from the agent's underlying address was proved.

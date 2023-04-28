@@ -202,7 +202,7 @@ export class TrackedAgentState {
     // handlers: underlying withdrawal
 
     handleUnderlyingBalanceToppedUp(args: EvmEventArgs<UnderlyingBalanceToppedUp>): void {
-        this.underlyingBalanceUBA = this.underlyingBalanceUBA.add(args.underlyingBalanceChangeUBA);
+        this.underlyingBalanceUBA = this.underlyingBalanceUBA.add(args.depositedUBA);
     }
 
     handleUnderlyingWithdrawalAnnounced(args: EvmEventArgs<UnderlyingWithdrawalAnnounced>): void {
