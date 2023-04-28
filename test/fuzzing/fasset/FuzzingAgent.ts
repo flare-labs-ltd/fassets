@@ -106,10 +106,12 @@ export class FuzzingAgent extends FuzzingActor {
         const lotSize = this.context.lotSize();
         const lots = randomInt(Number(agentInfo.freeCollateralLots));
         if (this.avoidErrors && lots === 0) return;
-        const miningUBA = toBN(lots).mul(lotSize);
-        checkedCast(this.context.chain, MockChain).mint(this.ownerUnderlyingAddress, miningUBA);
+        const mintedAmountUBA = toBN(lots).mul(lotSize);
+        const poolFeeUBA = mintedAmountUBA.mul(toBN(agentInfo.feeBIPS)).divn(MAX_BIPS).mul(toBN(agentInfo.poolFeeShareBIPS)).divn(MAX_BIPS);
+        const mintingUBA = mintedAmountUBA.add(poolFeeUBA);
         // perform payment
-        const txHash = await agent.wallet.addTransaction(this.ownerUnderlyingAddress, agent.underlyingAddress, miningUBA, PaymentReference.selfMint(agent.vaultAddress));
+        checkedCast(this.context.chain, MockChain).mint(this.ownerUnderlyingAddress, mintingUBA);
+        const txHash = await agent.wallet.addTransaction(this.ownerUnderlyingAddress, agent.underlyingAddress, mintingUBA, PaymentReference.selfMint(agent.vaultAddress));
         // wait for finalization
         await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
         // execute
