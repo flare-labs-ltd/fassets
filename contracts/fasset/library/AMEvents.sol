@@ -367,7 +367,7 @@ library AMEvents {
      */
     event UnderlyingBalanceTooLow(
         address indexed agentVault,
-        uint256 balance,
+        int256 balance,
         uint256 requiredBalance);
 
     /**

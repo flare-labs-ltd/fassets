@@ -48,13 +48,13 @@ library UnderlyingBalance {
     )
         internal
     {
-        uint256 newBalance = MathUtils.positivePart(_agent.underlyingBalanceUBA.toInt256() + _balanceChange);
+        int256 newBalance = _agent.underlyingBalanceUBA + _balanceChange;
         uint256 requiredBalance = requiredUnderlyingUBA(_agent);
-        if (newBalance < requiredBalance) {
+        if (newBalance < requiredBalance.toInt256()) {
             emit AMEvents.UnderlyingBalanceTooLow(_agent.vaultAddress(), newBalance, requiredBalance);
             Liquidation.startFullLiquidation(_agent);
         }
-        _agent.underlyingBalanceUBA = newBalance.toUint128();
+        _agent.underlyingBalanceUBA = newBalance.toInt128();
     }
 
     // Like updateBalance, but it can never make balance negative and trigger liquidation.
@@ -65,7 +65,7 @@ library UnderlyingBalance {
     )
         internal
     {
-        _agent.underlyingBalanceUBA += _balanceIncrease.toUint128();
+        _agent.underlyingBalanceUBA += _balanceIncrease.toInt256().toInt128();
     }
 
     // The minimum underlying balance that has to be held by the agent. Below this, agent is liquidated.

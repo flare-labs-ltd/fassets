@@ -130,9 +130,9 @@ library Challenges {
             }
         }
         // check that total spent free balance is more than actual free underlying balance
-        uint256 balanceAfterPayments = MathUtils.positivePart(agent.underlyingBalanceUBA.toInt256() - total);
+        int256 balanceAfterPayments = agent.underlyingBalanceUBA - total;
         uint256 requiredBalance = UnderlyingBalance.requiredUnderlyingUBA(agent);
-        require(balanceAfterPayments < requiredBalance, "mult chlg: enough balance");
+        require(balanceAfterPayments < requiredBalance.toInt256(), "mult chlg: enough balance");
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events

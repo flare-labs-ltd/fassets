@@ -131,7 +131,10 @@ library Agent {
 
         // The amount of funds that on the agent's underlying address.
         // If it is higher than the amount neded to back mintings, it can be withdrawn after announcement.
-        uint128 underlyingBalanceUBA;
+        // It is signed int, because unreported deposits combined with other operations can in principle
+        // make it negative. We could truncate it at 0, but if deposit report comes later, this would make
+        // the value wrong.
+        int128 underlyingBalanceUBA;
 
         // There can be only one announced underlying withdrawal per agent active at any time.
         // This variable holds the id, or 0 if there is no announced underlying withdrawal going on.

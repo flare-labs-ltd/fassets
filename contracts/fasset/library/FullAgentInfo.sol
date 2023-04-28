@@ -148,7 +148,7 @@ library FullAgentInfo {
         uint256 liquidationStartTimestamp;
 
         // Total underlying balance (backing and free).
-        uint256 underlyingBalanceUBA;
+        int256 underlyingBalanceUBA;
 
         // The minimum underlying balance that has to be held by the agent. Below this, agent is liquidated.
         uint256 requiredUnderlyingBalanceUBA;
@@ -222,7 +222,7 @@ library FullAgentInfo {
         _info.underlyingBalanceUBA = agent.underlyingBalanceUBA;
         _info.requiredUnderlyingBalanceUBA = UnderlyingBalance.requiredUnderlyingUBA(agent);
         _info.freeUnderlyingBalanceUBA =
-            _info.underlyingBalanceUBA.toInt256() - _info.requiredUnderlyingBalanceUBA.toInt256();
+            _info.underlyingBalanceUBA - _info.requiredUnderlyingBalanceUBA.toInt256();
         _info.announcedUnderlyingWithdrawalId = agent.announcedUnderlyingWithdrawalId;
         _info.buyFAssetByAgentFactorBIPS = agent.buyFAssetByAgentFactorBIPS;
         _info.poolExitCollateralRatioBIPS = agent.collateralPool.exitCollateralRatioBIPS();
