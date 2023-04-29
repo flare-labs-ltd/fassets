@@ -25,7 +25,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const promise = fAsset.setAssetManager(constants.ZERO_ADDRESS, { from: governance });
             await expectRevert(promise, "zero asset manager")
         });
-        
+
         it('should not replace asset manager', async function () {
             await fAsset.setAssetManager(assetManager, { from: governance });
             const promise = fAsset.setAssetManager(assetManager, { from: governance });
@@ -44,6 +44,42 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             await fAsset.terminate({ from: assetManager });
             const terminatedAt2 = await fAsset.terminatedAt();
             assertWeb3Equal(terminatedAt, terminatedAt2);
+        });
+
+        it('should mint FAsset', async function () {
+            await fAsset.setAssetManager(assetManager, { from: governance });
+            const amount = 100;
+            await fAsset.mint(accounts[1], amount,{ from: assetManager });
+            const balance = await fAsset.balanceOf(accounts[1]);
+            assertWeb3Equal(balance.toNumber(), amount);
+        });
+
+        it('should burn FAsset', async function () {
+            await fAsset.setAssetManager(assetManager, { from: governance });
+            const mint_amount = 100;
+            const burn_amount = 20;
+            await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
+            await fAsset.burn(accounts[1], burn_amount,{ from: assetManager } )
+            const balance = await fAsset.balanceOf(accounts[1]);
+            assertWeb3Equal(balance.toNumber(), mint_amount-burn_amount);
+        });
+
+        it('should not burn FAsset', async function () {
+            await fAsset.setAssetManager(assetManager, { from: governance });
+            const mint_amount = 10;
+            const burn_amount = 20;
+            await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
+            const res = fAsset.burn(accounts[1], burn_amount,{ from: assetManager } )
+            await expectRevert(res, "Burn too big for owner");
+        });
+
+        it('should not be able to transfer if terminated', async function () {
+            await fAsset.setAssetManager(assetManager, { from: governance });
+            const mint_amount = 100;
+            await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
+            await fAsset.terminate({ from: assetManager });
+            const res = fAsset.transfer(accounts[2], 50, { from: accounts[1]});
+            await expectRevert(res, "f-asset terminated");
         });
     });
 });

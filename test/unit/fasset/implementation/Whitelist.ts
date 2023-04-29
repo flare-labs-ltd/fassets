@@ -2,6 +2,8 @@ import { expectRevert } from "@openzeppelin/test-helpers";
 import { WhitelistInstance } from "../../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { getTestFile } from "../../../utils/test-helpers";
+import { waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
+import { ethers } from "hardhat";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -24,8 +26,13 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
 
         it('should not add addresses if not governance', async function () {
             let res = whitelist.addAddressesToWhitelist(whitelistedAddresses);
-            await expectRevert(res, "only governance")
+            await expectRevert(res, "only governance");
           });
+
+        it('should not add address 0', async function () {
+            let res = whitelist.addAddressToWhitelist(ethers.constants.AddressZero, {from: governance});
+            await expectRevert(res, "address zero");
+        });
 
         it('should add addresses to the whitelist', async function () {
             let res = await whitelist.addAddressesToWhitelist(whitelistedAddresses, {from: governance});
@@ -35,5 +42,20 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
             assert.equal(isWhitelisted0, true);
             assert.equal(isWhitelisted1, true);
           });
+
+        it('should revoke addresses from the whitelist', async function () {
+            let res_1 = await whitelist.addAddressToWhitelist(whitelistedAddresses[0], {from: governance});
+            let res_2 = await whitelist.addAddressToWhitelist(whitelistedAddresses[1], {from: governance});
+            const isWhitelisted0 = await whitelist.isWhitelisted(whitelistedAddresses[0]);
+            const isWhitelisted1 = await whitelist.isWhitelisted(whitelistedAddresses[1]);
+
+            assert.equal(isWhitelisted0, true);
+            assert.equal(isWhitelisted1, true);
+
+            let rev = await whitelist.revokeAddress(whitelistedAddresses[0], {from: governance});
+            await waitForTimelock(rev, whitelist, governance);
+            const isRevoked = await whitelist.isWhitelisted(whitelistedAddresses[0]);
+            assert.equal(isRevoked, false);
+        });
     });
 });
