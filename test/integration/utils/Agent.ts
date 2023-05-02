@@ -218,6 +218,13 @@ export class Agent extends AssetContextClient {
         return await this.collateralPoolToken.balanceOf(this.vaultAddress);
     }
 
+    async poolCollateralBalance() {
+        const tokens = await this.poolTokenBalance();
+        const tokenSupply = await this.collateralPoolToken.totalSupply();
+        const poolCollateral = await this.context.wNat.balanceOf(this.collateralPool.address);
+        return poolCollateral.mul(tokens).div(tokenSupply);
+    }
+
     async announcePoolTokenRedemption(amountWei: BNish) {
         const res = await this.assetManager.announceAgentPoolTokenRedemption(this.vaultAddress, amountWei, { from: this.ownerHotAddress });
         const args = requiredEventArgs(res, 'PoolTokenRedemptionAnnounced');
@@ -299,8 +306,7 @@ export class Agent extends AssetContextClient {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
         const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerHotAddress });
         checkEventNotEmited(res, 'RedemptionPerformed');
-        checkEventNotEmited(res, 'RedemptionPaymentFailed');
-        checkEventNotEmited(res, 'RedemptionPaymentBlocked');
+        return res;
     }
 
     async confirmFailedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string): Promise<[redemptionPaymentFailed: EventArgs<RedemptionPaymentFailed>, redemptionDefault: EventArgs<RedemptionDefault>]>  {
@@ -332,15 +338,22 @@ export class Agent extends AssetContextClient {
         return eventArgs(res, "RedemptionDefault");
     }
 
-    // async getRedemptionPaymentDefaultValue(lots: BNish) {
-    //     return this.context.convertAmgToNATWei(
-    //         toBN(await this.context.convertLotsToAMG(lots))
-    //             .mul(toBN(this.context.settings.redemptionDefaultFactorBIPS))
-    //             .divn(10_000),
-    //         await this.context.currentAmgToNATWeiPrice()
-    //     );
-    //     // TODO collateral share
-    // }
+    async getRedemptionPaymentDefaultValue(lots: BNish): Promise<[BN, BN]> {
+        const uba = this.context.convertLotsToUBA(lots);
+        const agentInfo = await this.getAgentInfo();
+        const totalUBA = toBN(agentInfo.mintedUBA).add(toBN(agentInfo.reservedUBA)).add(toBN(agentInfo.redeemingUBA));
+        const maxRedemptionCollateral = toBN(agentInfo.totalClass1CollateralWei).mul(uba).div(totalUBA);
+        const priceClass1 = await this.context.getCollateralPrice(this.class1Collateral());
+        const redemptionDefaultAgent = priceClass1.convertUBAToTokenWei(uba).mul(
+            toBN(this.context.settings.redemptionDefaultFactorAgentC1BIPS)).divn(MAX_BIPS);
+        const priceNat = await this.context.getCollateralPrice(this.context.collaterals[0]);
+        const redemptionDefaultPool = priceNat.convertUBAToTokenWei(uba).mul(
+            toBN(this.context.settings.redemptionDefaultFactorPoolBIPS)).divn(MAX_BIPS);
+        if (redemptionDefaultAgent.gt(maxRedemptionCollateral)) {
+            // TODO: additional funds taken from pool
+        }
+        return [redemptionDefaultAgent, redemptionDefaultPool];
+    }
 
     async executeMinting(crt: EventArgs<CollateralReserved>, transactionHash: string, minter?: Minter) {
         let sourceAddress: string;
