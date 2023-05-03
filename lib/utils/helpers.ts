@@ -133,7 +133,10 @@ export function formatBN(x: BN | string | number) {
     }
 }
 
-function groupIntegerDigits(x: string) {
+/**
+ * Put '_' characters between 3-digit groups in integer part of a number.
+ */
+export function groupIntegerDigits(x: string) {
     let startp = x.indexOf('.');
     if (startp < 0) startp = x.length;
     const endp = x[0] === '-' ? 1 : 0;

@@ -50,7 +50,7 @@ export class Agent extends AssetContextClient {
     static coldToHotOwnerAddress: Map<string, string> = new Map();
     static hotToColdOwnerAddress: Map<string, string> = new Map();
 
-    static changeHotAddress(coldAddress: string, hotAddress: string) {
+    static setHotAddressMapping(coldAddress: string, hotAddress: string) {
         Agent.coldToHotOwnerAddress.set(coldAddress, hotAddress);
         Agent.hotToColdOwnerAddress.set(hotAddress, coldAddress);
     }
@@ -65,6 +65,11 @@ export class Agent extends AssetContextClient {
 
     get ownerHotAddress() {
         return Agent.getHotAddress(this.ownerColdAddress);
+    }
+
+    static async changeHotAddress(ctx: AssetContext, coldAddress: string, hotAddress: string) {
+        await ctx.assetManager.setOwnerHotAddress(hotAddress, { from: coldAddress });
+        this.setHotAddressMapping(coldAddress, hotAddress);
     }
 
     static async createTest(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, options?: AgentCreateOptions) {

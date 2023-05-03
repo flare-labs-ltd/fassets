@@ -6,14 +6,14 @@ import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { expectErrors, formatBN, latestBlockTimestamp, mulDecimal, sleep, systemTimestamp, toBIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { LogFile } from "../../../lib/utils/logging";
 import { FtsoMockInstance } from "../../../typechain-truffle";
-import { AgentCreateOptions } from "../../integration/utils/Agent";
+import { Agent, AgentCreateOptions } from "../../integration/utils/Agent";
 import { AssetContext } from "../../integration/utils/AssetContext";
 import { CommonContext } from "../../integration/utils/CommonContext";
 import { TestChainInfo, testChainInfo } from "../../integration/utils/TestChainInfo";
 import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { InclusionIterable, currentRealTime, getEnv, randomChoice, randomInt, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
+import { InclusionIterable, coinFlip, currentRealTime, getEnv, randomChoice, randomInt, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
 import { getTestFile } from "../../utils/test-helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
@@ -110,16 +110,20 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         for (let i = 0; i < N_AGENTS; i++) {
             const underlyingAddress = "underlying_agent_" + i;
             const ownerUnderlyingAddress = "underlying_owner_agent_" + i;
+            const ownerColdAddress = accounts[firstAgentAddress + i];
+            const ownerHotAddress = accounts[firstAgentAddress + N_AGENTS + i];
+            eventDecoder.addAddress(`OWNER_HOT_${i}`, ownerHotAddress);
+            eventDecoder.addAddress(`OWNER_COLD_${i}`, ownerColdAddress);
+            await Agent.changeHotAddress(context, ownerColdAddress, ownerHotAddress);
             const options = createAgentOptions();
-            const fa = await FuzzingAgent.createTest(runner, accounts[firstAgentAddress + i], underlyingAddress, ownerUnderlyingAddress, options);
-            eventDecoder.addAddress(`OWNER_HOT_${i}`, fa.agent.ownerHotAddress);
-            eventDecoder.addAddress(`OWNER_COLD_${i}`, fa.agent.ownerColdAddress);
+            const ownerAddress = coinFlip() ? ownerHotAddress : ownerColdAddress;
+            const fa = await FuzzingAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
             interceptor.captureEventsFrom(`AGENT_${i}`, fa.agent.agentVault, 'AgentVault');
             await fa.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
             agents.push(fa);
         }
         // create customers
-        const firstCustomerAddress = firstAgentAddress + N_AGENTS;
+        const firstCustomerAddress = firstAgentAddress + 3 * N_AGENTS;
         for (let i = 0; i < N_CUSTOMERS; i++) {
             const underlyingAddress = "underlying_customer_" + i;
             const customer = await FuzzingCustomer.createTest(runner, accounts[firstCustomerAddress + i], underlyingAddress, CUSTOMER_BALANCE);
@@ -128,14 +132,14 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             eventDecoder.addAddress(`CUSTOMER_${i}`, customer.address);
         }
         // create liquidators
-        const firstKeeperAddress = firstAgentAddress + N_AGENTS + N_CUSTOMERS;
+        const firstKeeperAddress = firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS;
         for (let i = 0; i < N_KEEPERS; i++) {
             const keeper = new FuzzingKeeper(runner, accounts[firstKeeperAddress + i]);
             keepers.push(keeper);
             eventDecoder.addAddress(`KEEPER_${i}`, keeper.address);
         }
         // create challenger
-        const challengerAddress = accounts[firstAgentAddress + N_AGENTS + N_CUSTOMERS + N_KEEPERS];
+        const challengerAddress = accounts[firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS + N_KEEPERS];
         challenger = new Challenger(runner, fuzzingState, challengerAddress);
         eventDecoder.addAddress(`CHALLENGER`, challenger.address);
         // await context.wnat.send("1000", { from: governance });

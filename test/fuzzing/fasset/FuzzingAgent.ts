@@ -17,7 +17,7 @@ export class FuzzingAgent extends FuzzingActor {
     constructor(
         public runner: FuzzingRunner,
         public agent: Agent,
-        public ownerAddress: string,
+        public ownerColdAddress: string,
         public ownerUnderlyingAddress: string,
         public creationOptions: AgentCreateOptions,
     ) {
@@ -25,8 +25,12 @@ export class FuzzingAgent extends FuzzingActor {
         this.registerForEvents(agent.agentVault.address);
     }
 
-    ownerName() {
-        return this.formatAddress(this.ownerAddress);
+    get ownerName() {
+        return this.formatAddress(this.ownerColdAddress);
+    }
+
+    get ownerHotAddress() {
+        return Agent.getHotAddress(this.ownerColdAddress);
     }
 
     name(agent: Agent) {
@@ -40,7 +44,7 @@ export class FuzzingAgent extends FuzzingActor {
 
     static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string, options?: AgentCreateOptions) {
         const agent = await Agent.createTest(runner.context, ownerAddress, underlyingAddress, options);
-        return new FuzzingAgent(runner, agent, ownerAddress, ownerUnderlyingAddress, options ?? {});
+        return new FuzzingAgent(runner, agent, agent.ownerColdAddress, ownerUnderlyingAddress, options ?? {});
     }
 
     eventSubscriptions: EventSubscription[] = [];
@@ -116,7 +120,7 @@ export class FuzzingAgent extends FuzzingActor {
         await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
         // execute
         const proof = await this.context.attestationProvider.provePayment(txHash, null, agent.underlyingAddress);
-        const res = await this.context.assetManager.selfMint(proof, agent.vaultAddress, lots, { from: this.ownerAddress })
+        const res = await this.context.assetManager.selfMint(proof, agent.vaultAddress, lots, { from: this.ownerHotAddress })
             .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral', 'self-mint payment too small',
                 'self-mint invalid agent status', 'invalid self-mint reference', 'self-mint payment too old']));
         // 'self-mint payment too small' can happen after lot size change
@@ -132,7 +136,7 @@ export class FuzzingAgent extends FuzzingActor {
         if (agentState.status !== AgentStatus.NORMAL) return;   // reduce noise in case of (full) liquidation
         const mintedAssets = agentState.mintedUBA;
         if (mintedAssets.isZero()) return;
-        const ownersAssets = await this.context.fAsset.balanceOf(this.ownerAddress);
+        const ownersAssets = await this.context.fAsset.balanceOf(this.ownerHotAddress);
         if (ownersAssets.isZero()) return;
         // TODO: buy fassets
         const amountUBA = randomBN(ownersAssets);
@@ -298,7 +302,7 @@ export class FuzzingAgent extends FuzzingActor {
         // destroy old agent vault
         await this.destroyAgent(scope);
         // create the agent again
-        this.agent = await Agent.createTest(this.runner.context, this.ownerAddress, underlyingAddress + '*', createOptions);
+        this.agent = await Agent.createTest(this.runner.context, this.ownerHotAddress, underlyingAddress + '*', createOptions);
         this.registerForEvents(this.agent.agentVault.address);
         this.runner.interceptor.captureEventsFrom(name + '*', this.agent.agentVault, 'AgentVault');
         await this.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
