@@ -1,6 +1,6 @@
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { tokenContract } from "../../../lib/state/TokenPrice";
+import { isClass1Collateral } from "../../../lib/state/CollateralIndexedList";
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
 import { EventArgs } from "../../../lib/utils/events/common";
@@ -157,10 +157,9 @@ export class FuzzingAgent extends FuzzingActor {
             const agentState = this.agentState(agent);
             const topups: string[] = [];
             for (const collateral of [agentState.class1Collateral, agentState.poolWNatCollateral]) {
-                const collateralToken = await tokenContract(collateral.token);
-                const balance = await collateralToken.balanceOf(agent.agentVault.address);
-                const price = await this.context.getCollateralPrice(collateral, false);
-                const trustedPrice = await this.context.getCollateralPrice(collateral, true);
+                const balance = agentState.collateralBalance(collateral);
+                const price = this.state.prices.get(collateral);
+                const trustedPrice = this.state.trustedPrices.get(collateral);
                 const totalUBA = agentState.mintedUBA.add(agentState.reservedUBA).add(agentState.redeemingUBA).addn(1000 /* to be > */);
                 const totalAsTokenWei = minBN(price.convertUBAToTokenWei(totalUBA), trustedPrice.convertUBAToTokenWei(totalUBA));
                 const requiredCR = type === 'liquidation' ? toBN(collateral.safetyMinCollateralRatioBIPS) : toBN(collateral.minCollateralRatioBIPS);
@@ -168,10 +167,13 @@ export class FuzzingAgent extends FuzzingActor {
                 const requiredTopup = requiredCollateral.sub(balance);
                 if (requiredTopup.lte(BN_ZERO)) continue;
                 const crBefore = agentState.collateralRatio(collateral);
-                await collateralToken.approve(agent.agentVault.address, requiredTopup, { from: this.ownerAddress })
-                    .catch(e => scope.exitOnExpectedError(e, []));
-                await agent.agentVault.depositCollateral(collateralToken.address, requiredTopup, { from: this.ownerAddress })
-                    .catch(e => scope.exitOnExpectedError(e, []));
+                if (isClass1Collateral(collateral)) {
+                    await agent.depositClass1Collateral(requiredTopup)
+                        .catch(e => scope.exitOnExpectedError(e, []));
+                } else {
+                    await agent.buyCollateralPoolTokens(requiredTopup)
+                        .catch(e => scope.exitOnExpectedError(e, []));
+                }
                 const crAfter = agentState.collateralRatio(collateral);
                 topups.push(`Topped up ${this.name(agent)} by ${formatBN(requiredTopup)} ${this.context.tokenName(collateral.token)}  crBefore=${crBefore.toFixed(3)}  crAfter=${crAfter.toFixed(3)}`);
             }

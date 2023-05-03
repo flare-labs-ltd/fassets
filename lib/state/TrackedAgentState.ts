@@ -256,13 +256,17 @@ export class TrackedAgentState {
         return this.parent.eventFormatter.formatAddress(this.address);
     }
 
+    collateralBalance(collateral: CollateralToken) {
+        return collateral.tokenClass === CollateralTokenClass.CLASS1 ? this.totalClass1CollateralWei : this.totalPoolCollateralNATWei;
+    }
+
     private collateralRatioForPriceBIPS(prices: Prices, collateral: CollateralToken) {
         const redeemingUBA = collateral.tokenClass === CollateralTokenClass.CLASS1 ? this.redeemingUBA : this.poolRedeemingUBA;
         const totalUBA = this.reservedUBA.add(this.mintedUBA).add(redeemingUBA);
         if (totalUBA.isZero()) return MAX_UINT256;
         const price = prices.get(collateral);
         const backingCollateralWei = price.convertUBAToTokenWei(totalUBA);
-        const totalCollateralWei = collateral.tokenClass === CollateralTokenClass.CLASS1 ? this.totalClass1CollateralWei : this.totalPoolCollateralNATWei;
+        const totalCollateralWei = this.collateralBalance(collateral);
         return totalCollateralWei.muln(MAX_BIPS).div(backingCollateralWei);
     }
 
