@@ -304,7 +304,10 @@ export class FuzzingAgent extends FuzzingActor {
         // create the agent again
         this.agent = await Agent.createTest(this.runner.context, this.ownerHotAddress, underlyingAddress + '*', createOptions);
         this.registerForEvents(this.agent.agentVault.address);
-        this.runner.interceptor.captureEventsFrom(name + '*', this.agent.agentVault, 'AgentVault');
+        const newName = name + '*';
+        this.runner.interceptor.captureEventsFrom(newName, this.agent.agentVault, 'AgentVault');
+        this.runner.interceptor.captureEventsFrom(`${newName}_POOL`, this.agent.collateralPool, 'CollateralPool');
+        this.runner.interceptor.captureEventsFrom(`${newName}_LPTOKEN`, this.agent.collateralPoolToken, 'CollateralPoolToken');
         await this.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
         // make all working again
         this.destroying = false;

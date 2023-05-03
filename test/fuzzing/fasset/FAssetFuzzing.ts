@@ -76,6 +76,9 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             wnat: context.wNat,
             ftsoManager: context.ftsoManager,
         });
+        for (const [key, token] of Object.entries(context.stablecoins)) {
+            interceptor.captureEventsFrom(key, token, "ERC20");
+        }
         // uniform event handlers
         eventQueue = new EventExecutionQueue();
         context.chainEvents.executionQueue = eventQueue;
@@ -119,6 +122,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             const ownerAddress = coinFlip() ? ownerHotAddress : ownerColdAddress;
             const fa = await FuzzingAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
             interceptor.captureEventsFrom(`AGENT_${i}`, fa.agent.agentVault, 'AgentVault');
+            interceptor.captureEventsFrom(`AGENT_${i}_POOL`, fa.agent.collateralPool, 'CollateralPool');
+            interceptor.captureEventsFrom(`AGENT_${i}_LPTOKEN`, fa.agent.collateralPoolToken, 'CollateralPoolToken');
             await fa.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
             agents.push(fa);
         }
