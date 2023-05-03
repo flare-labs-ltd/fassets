@@ -138,8 +138,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const endClass1BalanceAgent = await class1Token.balanceOf(agent.agentVault.address);
             const endPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endPoolBalanceAgent = await agent.poolCollateralBalance();
-            const [redemptionDefaultValueAgent, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
-            assertWeb3Equal(res.redeemedClass1CollateralWei, redemptionDefaultValueAgent);
+            const [redemptionDefaultValueClass1, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
+            assertWeb3Equal(res.redeemedClass1CollateralWei, redemptionDefaultValueClass1);
             assertWeb3Equal(res.redeemedPoolCollateralWei, redemptionDefaultValuePool);
             assertWeb3Equal(endClass1BalanceRedeemer.sub(startClass1BalanceRedeemer), res.redeemedClass1CollateralWei);
             assertWeb3Equal(startClass1BalanceAgent.sub(endClass1BalanceAgent), res.redeemedClass1CollateralWei);
@@ -199,9 +199,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const endPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endPoolBalanceAgent = await agent.poolCollateralBalance();
             //
-            const [redemptionDefaultValueAgent, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
+            const [redemptionDefaultValueClass1, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
             assertWeb3Equal(res[0].failureReason, "transaction failed");
-            assertWeb3Equal(res[1].redeemedClass1CollateralWei, redemptionDefaultValueAgent);
+            assertWeb3Equal(res[1].redeemedClass1CollateralWei, redemptionDefaultValueClass1);
             assertWeb3Equal(endClass1BalanceRedeemer.sub(startClass1BalanceRedeemer), res[1].redeemedClass1CollateralWei);
             assertWeb3Equal(startClass1BalanceAgent.sub(endClass1BalanceAgent), res[1].redeemedClass1CollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res[1].redeemedPoolCollateralWei);
@@ -260,10 +260,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const endClass1BalanceAgent = await class1Token.balanceOf(agent.agentVault.address);
             const endPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endPoolBalanceAgent = await agent.poolCollateralBalance();
-            const [redemptionDefaultValueAgent, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
+            const [redemptionDefaultValueClass1, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
             assertWeb3Equal(resFailed.failureReason, "not redeemer's address");
             assertWeb3Equal(resDefault.redeemedPoolCollateralWei, redemptionDefaultValuePool);
-            assertWeb3Equal(resDefault.redeemedClass1CollateralWei, redemptionDefaultValueAgent);
+            assertWeb3Equal(resDefault.redeemedClass1CollateralWei, redemptionDefaultValueClass1);
             assertWeb3Equal(endClass1BalanceRedeemer.sub(startClass1BalanceRedeemer), resDefault.redeemedClass1CollateralWei);
             assertWeb3Equal(startClass1BalanceAgent.sub(endClass1BalanceAgent), resDefault.redeemedClass1CollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), resDefault.redeemedPoolCollateralWei);
@@ -319,10 +319,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const endClass1BalanceAgent = await class1Token.balanceOf(agent.agentVault.address);
             const endPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endPoolBalanceAgent = await agent.poolCollateralBalance();
-            const [redemptionDefaultValueAgent, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
+            const [redemptionDefaultValueClass1, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
             assertWeb3Equal(res[0].failureReason, "redemption payment too small");
             assertWeb3Equal(res[1].redeemedPoolCollateralWei, redemptionDefaultValuePool);
-            assertWeb3Equal(res[1].redeemedClass1CollateralWei, redemptionDefaultValueAgent);
+            assertWeb3Equal(res[1].redeemedClass1CollateralWei, redemptionDefaultValueClass1);
             assertWeb3Equal(endClass1BalanceRedeemer.sub(startClass1BalanceRedeemer), res[1].redeemedClass1CollateralWei);
             assertWeb3Equal(startClass1BalanceAgent.sub(endClass1BalanceAgent), res[1].redeemedClass1CollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res[1].redeemedPoolCollateralWei);
@@ -380,9 +380,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const endClass1BalanceAgent = await class1Token.balanceOf(agent.agentVault.address);
             const endPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endPoolBalanceAgent = await agent.poolCollateralBalance();
-            const [redemptionDefaultValueAgent, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
+            const [redemptionDefaultValueClass1, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
             assertWeb3Equal(res.redeemedPoolCollateralWei, redemptionDefaultValuePool);
-            assertWeb3Equal(res.redeemedClass1CollateralWei, redemptionDefaultValueAgent);
+            assertWeb3Equal(res.redeemedClass1CollateralWei, redemptionDefaultValueClass1);
             assertWeb3Equal(endClass1BalanceRedeemer.sub(startClass1BalanceRedeemer), res.redeemedClass1CollateralWei);
             assertWeb3Equal(startClass1BalanceAgent.sub(endClass1BalanceAgent), res.redeemedClass1CollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res.redeemedPoolCollateralWei);
@@ -444,9 +444,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const endPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endPoolBalanceAgent = await agent.poolCollateralBalance();
             assertWeb3Equal(redDef.requestId, request.requestId);
-            const [redemptionDefaultValueAgent, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
+            const [redemptionDefaultValueClass1, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
             assertWeb3Equal(redDef.redeemedPoolCollateralWei, redemptionDefaultValuePool);
-            assertWeb3Equal(redDef.redeemedClass1CollateralWei, redemptionDefaultValueAgent);
+            assertWeb3Equal(redDef.redeemedClass1CollateralWei, redemptionDefaultValueClass1);
             assertWeb3Equal(endClass1BalanceRedeemer.sub(startClass1BalanceRedeemer), redDef.redeemedClass1CollateralWei);
             assertWeb3Equal(startClass1BalanceAgent.sub(endClass1BalanceAgent), redDef.redeemedClass1CollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), redDef.redeemedPoolCollateralWei);
@@ -500,9 +500,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const endClass1BalanceAgent = await class1Token.balanceOf(agent.agentVault.address);
             const endPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endPoolBalanceAgent = await agent.poolCollateralBalance();
-            const [redemptionDefaultValueAgent, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
+            const [redemptionDefaultValueClass1, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
             assertWeb3Equal(res.redeemedPoolCollateralWei, redemptionDefaultValuePool);
-            assertWeb3Equal(res.redeemedClass1CollateralWei, redemptionDefaultValueAgent);
+            assertWeb3Equal(res.redeemedClass1CollateralWei, redemptionDefaultValueClass1);
             assertWeb3Equal(endClass1BalanceRedeemer.sub(startClass1BalanceRedeemer), res.redeemedClass1CollateralWei);
             assertWeb3Equal(startClass1BalanceAgent.sub(endClass1BalanceAgent), res.redeemedClass1CollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res.redeemedPoolCollateralWei);

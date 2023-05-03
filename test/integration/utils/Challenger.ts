@@ -1,7 +1,7 @@
 import { UnderlyingWithdrawalAnnounced, FullLiquidationStarted, RedemptionRequested, RedemptionPaymentFailed, RedemptionDefault } from "../../../typechain-truffle/AssetManager";
 import { checkEventNotEmited, eventArgs, findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { EventArgs } from "../../../lib/utils/events/common";
-import { BNish, toBN } from "../../../lib/utils/helpers";
+import { BNish, toBN, toBNExp } from "../../../lib/utils/helpers";
 import { Agent } from "./Agent";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
@@ -53,8 +53,6 @@ export class Challenger extends AssetContextClient {
         const proof = await this.attestationProvider.provePayment(transactionHash, agent.underlyingAddress, request.paymentAddress);
         const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.address });
         checkEventNotEmited(res, 'RedemptionPerformed');
-        checkEventNotEmited(res, 'RedemptionPaymentFailed');
-        checkEventNotEmited(res, 'RedemptionPaymentBlocked');
     }
 
     async confirmFailedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string, agent: Agent): Promise<[redemptionPaymentFailed: EventArgs<RedemptionPaymentFailed>, redemptionDefault: EventArgs<RedemptionDefault>]>  {
@@ -75,16 +73,16 @@ export class Challenger extends AssetContextClient {
         return requiredEventArgs(res, 'UnderlyingWithdrawalConfirmed');
     }
 
-    async getChallengerReward(backingAtChallengeUBA: BNish) {
+    async getChallengerReward(backingAtChallengeUBA: BNish, agent: Agent) {
+        const class1Collateral = agent.class1Collateral();
+        const priceClass1 = await this.context.getCollateralPrice(class1Collateral);
         const backingAtChallengeAMG = this.context.convertUBAToAmg(backingAtChallengeUBA);
-        return toBN(this.context.settings.paymentChallengeRewardNATWei)
-            .add(
-                this.context.convertAmgToNATWei(
-                    toBN(backingAtChallengeAMG)
-                    .mul(toBN(this.context.settings.paymentChallengeRewardBIPS))
-                    .divn(10_000),
-                    await this.context.currentAmgToNATWeiPrice()
-                )
-            );
+        // assuming class1 is usd-pegged
+        return toBNExp(this.context.settings.paymentChallengeRewardUSD5.toString(), Number(class1Collateral.decimals)  - 5)
+            .add(priceClass1
+                .convertAmgToTokenWei(backingAtChallengeAMG)
+                .mul(toBN(this.context.settings.paymentChallengeRewardBIPS))
+                .divn(10_000)
+        )
     }
 }

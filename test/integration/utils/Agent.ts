@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { checkEventNotEmited, eventArgs, filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, MAX_BIPS, maxBN, randomAddress, requireNotNull, toBN } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish, MAX_BIPS, maxBN, randomAddress, requireNotNull, toBN, toWei } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/AssetManager";
@@ -19,6 +19,7 @@ import { Approximation, assertApproximateMatch } from "../../utils/approximation
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
+const Ftso = artifacts.require('FtsoMock');
 
 export type CheckAgentInfo = { [K in keyof AgentInfo]?: AgentInfo[K] extends BN ? BNish | Approximation : AgentInfo[K] }
     & { actualUnderlyingBalance?: BNish };
@@ -112,6 +113,13 @@ export class Agent extends AssetContextClient {
 
     class1Collateral() {
         return requireNotNull(this.context.collaterals.find(c => c.token === this.settings.class1CollateralToken));
+    }
+
+    async usd5ToClass1Wei(usd5: BN) {
+        const ftsoAddress = await this.context.ftsoRegistry.getFtsoBySymbol(this.class1Collateral().tokenFtsoSymbol);
+        const ftso = await Ftso.at(ftsoAddress);
+        const { 0: class1Price, 2: class1Decimals } = await ftso.getCurrentPriceWithDecimals();
+        return usd5.mul(toWei(10**class1Decimals.toNumber())).div(class1Price);
     }
 
     async changeSettings(changes: Partial<Record<AgentSetting, BNish>>) {
