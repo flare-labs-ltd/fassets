@@ -8,7 +8,7 @@ import { ITransaction } from "../underlying-chain/interfaces/IBlockChain";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
 import { EventScope } from "../utils/events/ScopedEvents";
 import { ScopedRunner } from "../utils/events/ScopedRunner";
-import { getOrCreate, sleep, sumBN, toBN } from "../utils/helpers";
+import { formatBN, getOrCreate, sleep, sumBN, toBN } from "../utils/helpers";
 import { ActorBase } from "./ActorBase";
 
 const MAX_NEGATIVE_BALANCE_REPORT = 50;  // maximum number of transactions to report in freeBalanceNegativeChallenge to avoid breaking block gas limit
@@ -47,6 +47,7 @@ export class Challenger extends ActorBase {
 
     handleUnderlyingTransaction(transaction: ITransaction): void {
         for (const [address, amount] of transaction.inputs) {
+            this.log(`Challenger ${this.formatAddress(this.address)}: Detected transaction of ${formatBN(amount)} from ${address}`);
             const agent = this.state.agentsByUnderlying.get(address);
             if (agent == null) continue;
             // add to list of transactions
@@ -99,6 +100,7 @@ export class Challenger extends ActorBase {
     }
 
     async illegalTransactionChallenge(scope: EventScope, transaction: ITransaction, agent: TrackedAgentState) {
+        this.log(`Challenger ${this.formatAddress(this.address)}: ISSUE illegalTransactionChallenge for ${this.formatAddress(agent.address)}`);
         await this.singleChallengePerAgent(agent, async () => {
             const proof = await this.waitForDecreasingBalanceProof(scope, transaction.hash, agent.underlyingAddressString);
             // due to async nature of challenging (and the fact that challenger might start tracking agent later), there may be some false challenges which will be rejected
@@ -121,6 +123,7 @@ export class Challenger extends ActorBase {
     }
 
     async doublePaymentChallenge(scope: EventScope, tx1hash: string, tx2hash: string, agent: TrackedAgentState) {
+        this.log(`Challenger ${this.formatAddress(this.address)}: ISSUE doublePaymentChallenge for ${this.formatAddress(agent.address)}`);
         await this.singleChallengePerAgent(agent, async () => {
             const [proof1, proof2] = await Promise.all([
                 this.waitForDecreasingBalanceProof(scope, tx1hash, agent.underlyingAddressString),
@@ -164,6 +167,7 @@ export class Challenger extends ActorBase {
     }
 
     async freeBalanceNegativeChallenge(scope: EventScope, transactionHashes: string[], agent: TrackedAgentState) {
+        this.log(`Challenger ${this.formatAddress(this.address)}: ISSUE freeBalanceNegativeChallenge for ${this.formatAddress(agent.address)}`);
         await this.singleChallengePerAgent(agent, async () => {
             const proofs = await Promise.all(transactionHashes.map(txHash =>
                 this.waitForDecreasingBalanceProof(scope, txHash, agent.underlyingAddressString)));

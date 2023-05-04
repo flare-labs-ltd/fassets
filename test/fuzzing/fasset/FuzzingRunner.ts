@@ -43,7 +43,7 @@ export class FuzzingRunner extends ScopedRunner {
     log(text: string) {
         this.interceptor.log(text);
     }
-    
+
     comment(text: string) {
         this.interceptor.comment(text);
     }

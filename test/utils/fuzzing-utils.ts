@@ -1,6 +1,21 @@
 import { BN_ZERO, toBN } from "../../lib/utils/helpers";
 import { stringifyJson } from "../../lib/utils/json-bn";
 
+export class AsyncLock {
+    locked: boolean = false;
+
+    async run(func: () => Promise<void>) {
+        if (this.locked) return false;
+        this.locked = true;
+        try {
+            await func();
+        } finally {
+            this.locked = false;
+        }
+        return true;
+    }
+}
+
 export class Statistics {
     min?: number;
     max?: number;

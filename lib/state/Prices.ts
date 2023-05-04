@@ -1,6 +1,7 @@
 import { AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../fasset/AssetManagerTypes";
 import { IAssetContext } from "../fasset/IAssetContext";
-import { CollateralIndexedList, CollateralTokenId } from "./CollateralIndexedList";
+import { requireNotNull } from "../utils/helpers";
+import { CollateralIndexedList, CollateralTokenId, isPoolCollateral } from "./CollateralIndexedList";
 import { CollateralPrice } from "./CollateralPrice";
 import { TokenPrice, TokenPriceReader } from "./TokenPrice";
 
@@ -14,6 +15,10 @@ export class Prices {
 
     get(token: CollateralTokenId) {
         return this.collateralPrices.get(token);
+    }
+
+    getNat() {
+        return requireNotNull(this.collateralPrices.list.find(p => isPoolCollateral(p.collateral)));
     }
 
     getClass1(token: string) {

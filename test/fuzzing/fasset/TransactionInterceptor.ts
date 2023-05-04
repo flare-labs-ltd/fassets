@@ -64,7 +64,7 @@ export class TransactionInterceptor {
     increaseEventCount(event: EvmEvent) {
         this.eventCounts.set(event.event, (this.eventCounts.get(event.event) ?? 0) + 1);
     }
-    
+
     collectEvents(handlerName: string = 'EventCollector') {
         return new EventCollector(this, handlerName);
     }
@@ -72,7 +72,7 @@ export class TransactionInterceptor {
 
 export class EventCollector {
     public events: EvmEvent[] = [];
-    
+
     constructor(
         interceptor: TransactionInterceptor,
         handlerName: string = 'EventCollector',
@@ -81,7 +81,7 @@ export class EventCollector {
             this.events.push(event);
         });
     }
-    
+
     popCollectedEvents() {
         const events = this.events;
         this.events = [];
@@ -95,7 +95,8 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
     private handledPromises: Promise<void>[] = [];
     private startRealTime = currentRealTime();
     private contractTypeName: Map<string, string> = new Map();  // address => type name
-    
+    private addressToContract: Map<string, Truffle.ContractInstance> = new Map();
+
     private miningMode: MiningMode = 'auto';
     private usedNonces: Map<string, number> = new Map();
 
@@ -105,8 +106,14 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
     constructor(
         private eventDecoder: Web3EventDecoder,
         private defaultAccount: string,
-    ) { 
+    ) {
         super();
+    }
+
+    getContract<T extends Truffle.ContractInstance>(address: string) {
+        const contract = this.addressToContract.get(address);
+        if (contract == null) throw new Error("Unknown contract address");
+        return contract as T;
     }
 
     captureEvents(contracts: { [name: string]: Truffle.ContractInstance; }, filter?: string[]) {
@@ -114,6 +121,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
         for (const [name, contract] of Object.entries(contracts)) {
             this.instrumentContractForEventCapture(contract);
             this.contractTypeName.set(contract.address, name);
+            this.addressToContract.set(contract.address, contract);
         }
     }
 
@@ -123,7 +131,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             this.contractTypeName.set(contract.address, typeName);
         }
     }
-    
+
     async setMiningMode(miningMode: MiningMode, interval: number = 0) {
         this.miningMode = miningMode;
         if (miningMode === 'manual') {
@@ -134,7 +142,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             await network.provider.send('evm_setAutomine', [true]);
         }
     }
-    
+
     async mine() {
         if (this.miningMode !== 'auto') {
             await network.provider.send('evm_mine');
@@ -176,7 +184,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             }
         }
     }
-    
+
     private callMethod(contract: Truffle.ContractInstance, name: string, originalMethod: Function, args: unknown[], methodAbi: AbiItem) {
         const txLog: string[] = [];
         const callStartTime = currentRealTime();
@@ -243,7 +251,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             }
         }
     }
-    
+
     private getTransactionReceipt(result: any): TransactionReceipt | null {
         // (approximately) detect if the returned result is either TransactionResponse or TransactionReceipt and in this case extract receipt
         if (result == null) {
@@ -294,7 +302,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             txLog.push(`???? ERROR decoding/handling view method call ${method}: ${e}`);
         }
     }
-    
+
     async allHandled() {
         await Promise.all(this.handledPromises);
         this.handledPromises = [];

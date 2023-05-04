@@ -21,4 +21,9 @@ export class ActorBase {
     formatAddress(address: string) {
         return this.state.eventFormatter.formatAddress(address);
     }
-}    
+
+    log(text: string) {
+        if (!this.state.logger) return;
+        this.state.logger.log(text);
+    }
+}

@@ -23,6 +23,7 @@ import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
 import { InterceptorEvmEvents } from "./InterceptorEvmEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
+import { FuzzingPoolTokenHolder } from "./FuzzingPoolTokenHolder";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
     const startTimestamp = systemTimestamp();
@@ -34,6 +35,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     const N_AGENTS = getEnv('N_AGENTS', 'number', 10);
     const N_CUSTOMERS = getEnv('N_CUSTOMERS', 'number', 10);     // minters and redeemers
     const N_KEEPERS = getEnv('N_KEEPERS', 'number', 1);
+    const N_POOL_TOKEN_HOLDERS = getEnv('N_POOL_TOKEN_HOLDERS', 'number', 20);
     const CUSTOMER_BALANCE = toWei(getEnv('CUSTOMER_BALANCE', 'number', 10_000));  // initial underlying balance
     const AVOID_ERRORS = getEnv('AVOID_ERRORS', 'boolean', true);
     const CHANGE_LOT_SIZE_AT = getEnv('CHANGE_LOT_SIZE_AT', 'range', null);
@@ -48,6 +50,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let agents: FuzzingAgent[] = [];
     let customers: FuzzingCustomer[] = [];
     let keepers: FuzzingKeeper[] = [];
+    let poolTokenHolders: FuzzingPoolTokenHolder[] = [];
     let challenger: Challenger;
     let chainInfo: TestChainInfo;
     let chain: MockChain;
@@ -147,6 +150,13 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         const challengerAddress = accounts[firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS + N_KEEPERS];
         challenger = new Challenger(runner, fuzzingState, challengerAddress);
         eventDecoder.addAddress(`CHALLENGER`, challenger.address);
+        // create pool token holders
+        const firstPoolTokenHolderAddress = firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS + N_KEEPERS + 1;
+        for (let i = 0; i < N_POOL_TOKEN_HOLDERS; i++) {
+            const lpholder = new FuzzingPoolTokenHolder(runner, accounts[firstPoolTokenHolderAddress + i]);
+            poolTokenHolders.push(lpholder);
+            eventDecoder.addAddress(`POOL_TOKEN_HOLDER_${i}`, lpholder.address);
+        }
         // await context.wnat.send("1000", { from: governance });
         await interceptor.allHandled();
         // init some state
@@ -162,6 +172,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             [testUnderlyingWithdrawal, 5],
             [refreshAvailableAgents, 1],
             [updateUnderlyingBlock, 10],
+            [testEnterPool, 10],
+            [testExitPool, 10],
             [testIllegalTransaction, ILLEGAL_PROB],
             [testDoublePayment, ILLEGAL_PROB],
         ];
@@ -315,6 +327,17 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     async function testLiquidate() {
         const customer = randomChoice(customers);
         runner.startThread((scope) => customer.liquidate(scope));
+    }
+
+    async function testEnterPool() {
+        const lpholder = randomChoice(poolTokenHolders);
+        runner.startThread((scope) => lpholder.enter(scope));
+    }
+
+    async function testExitPool() {
+        const lpholder = randomChoice(poolTokenHolders);
+        const fullExit = coinFlip();
+        runner.startThread((scope) => lpholder.exit(scope, fullExit));
     }
 
     async function testChangeLotSize(index: number) {
