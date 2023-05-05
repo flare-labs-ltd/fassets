@@ -122,7 +122,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
         const settings = await assetManager.getSettings();
         await time.increase(settings.confirmationByOthersAfterSeconds);
-        const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
+        const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: accounts[12] });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
         assert.isAbove(Number(eventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);

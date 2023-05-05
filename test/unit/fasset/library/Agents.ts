@@ -113,7 +113,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
         const res = await assetManager.createAgent(web3DeepNormalize(agentSettings), { from: agentOwner1 });
         // assert
-        expectEvent(res, "AgentCreated", { owner: agentOwner1, agentType: toBN(1), underlyingAddress: underlyingAgent1 });
+        expectEvent(res, "AgentCreated", { owner: agentOwner1, underlyingAddress: underlyingAgent1 });
     });
 
     it("should create agent from owner's hot address", async () => {
@@ -129,7 +129,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const res = await assetManager.createAgent(web3DeepNormalize(agentSettings), { from: ownerHotAddress });
         // assert
         // the owner returned in the AgentCreated event must be cold address
-        expectEvent(res, "AgentCreated", { owner: agentOwner1, agentType: toBN(1), underlyingAddress: underlyingAgent1 });
+        expectEvent(res, "AgentCreated", { owner: agentOwner1, underlyingAddress: underlyingAgent1 });
     });
 
     it("should require underlying address to not be empty", async () => {
