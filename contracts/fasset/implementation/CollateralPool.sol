@@ -10,6 +10,7 @@ import "../interface/IWNat.sol";
 import "../interface/IAssetManager.sol";
 import "../interface/IAgentVault.sol";
 import "../interface/ICollateralPool.sol";
+import "../interface/IFAsset.sol";
 import "./CollateralPoolToken.sol";
 
 contract CollateralPool is ICollateralPool, ReentrancyGuard {
@@ -33,7 +34,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
 
     address public immutable agentVault;
     IAssetManager public immutable assetManager;
-    IERC20 public immutable fAsset;
+    IFAsset public immutable fAsset;
     CollateralPoolToken public token; // practically immutable
 
     IWNat public wNat;
@@ -65,7 +66,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     ) {
         agentVault = _agentVault;
         assetManager = IAssetManager(_assetManager);
-        fAsset = IERC20(_fAsset);
+        fAsset = IFAsset(_fAsset);
         wNat = assetManager.getWNat();
         exitCollateralRatioBIPS = _exitCollateralRatioBIPS;
         topupCollateralRatioBIPS = _topupCollateralRatioBIPS;
@@ -586,6 +587,18 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         returns (bool)
     {
         return assetManager.isAgentVaultOwner(agentVault, _address);
+    }
+
+    // in case of f-asset termination
+
+    function withdrawCollateral()
+        external
+    {
+        require(fAsset.terminatedAt != 0, "f-asset not terminated");
+        uint256 tokens = token.balanceOf(msg.sender);
+        require(tokens > 0, "nothing to withdraw");
+        uint256 natShare = tokens.mulDiv(wNat.balanceOf(address(this)), token.totalSupply());
+        wNat.transfer(msg.sender, natShare);
     }
 
 }
