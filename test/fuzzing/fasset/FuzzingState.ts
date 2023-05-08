@@ -1,16 +1,16 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { IAssetContext } from "../../../lib/fasset/IAssetContext";
+import { InitialAgentData } from "../../../lib/state/TrackedAgentState";
 import { TrackedState } from "../../../lib/state/TrackedState";
-import { SparseArray } from "../../utils/SparseMatrix";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { EventFormatter } from "../../../lib/utils/events/EventFormatter";
-import { EvmEvent } from "../../../lib/utils/events/common";
 import { IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
-import { sumBN } from "../../../lib/utils/helpers";
+import { EvmEvent } from "../../../lib/utils/events/common";
+import { sumBN, toBN } from "../../../lib/utils/helpers";
+import { SparseArray } from "../../utils/SparseMatrix";
 import { FuzzingStateAgent } from "./FuzzingStateAgent";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
-import { InitialAgentData } from "../../../lib/state/TrackedAgentState";
 
 export type FuzzingStateLogRecord = {
     text: string;
@@ -45,9 +45,11 @@ export class FuzzingState extends TrackedState {
         this.truffleEvents.event(this.context.fAsset, 'Transfer').immediate().subscribe(args => {
             if (args.from !== constants.ZERO_ADDRESS) {
                 this.fAssetBalance.addTo(args.from, args.value.neg());
+                this.agentsByPool.get(args.from)?.handlePoolFeeWithdrawal(args.to, toBN(args.value));
             }
             if (args.to !== constants.ZERO_ADDRESS) {
                 this.fAssetBalance.addTo(args.to, args.value);
+                this.agentsByPool.get(args.to)?.handlePoolFeeDeposit(args.from, toBN(args.value));
             }
         });
         // track underlying transactions

@@ -19,6 +19,9 @@ export type FtsoManagerMockEvents = import('../../typechain-truffle/FtsoManagerM
 export type AssetManagerEvents = import('../../typechain-truffle/AssetManager').AllEvents;
 export type FAssetEvents = import('../../typechain-truffle/FAsset').AllEvents;
 export type ERC20Events = import('../../typechain-truffle/IERC20').AllEvents;
+export type AgentVaultEvents = import('../../typechain-truffle/AgentVault').AllEvents;
+export type CollateralPoolEvents = import('../../typechain-truffle/CollateralPool').AllEvents;
+export type CollateralPoolTokenEvents = import('../../typechain-truffle/CollateralPoolToken').AllEvents;
 
 export interface IAssetContext {
     chainInfo: ChainInfo;

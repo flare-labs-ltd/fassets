@@ -1,19 +1,24 @@
+import { constants } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
 import { AgentInfo, AgentStatus, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
 import { NAT_WEI } from "../../../lib/fasset/Conversions";
+import { CollateralPoolTokenEvents } from "../../../lib/fasset/IAssetContext";
 import { Prices } from "../../../lib/state/Prices";
-import { EvmEvent } from "../../../lib/utils/events/common";
+import { InitialAgentData, TrackedAgentState } from "../../../lib/state/TrackedAgentState";
+import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
-import { BN_ZERO, formatBN, latestBlockTimestamp, minBN, sumBN, toBN } from "../../../lib/utils/helpers";
+import { EvmEvent } from "../../../lib/utils/events/common";
+import { ContractWithEvents } from "../../../lib/utils/events/truffle";
+import { BN_ZERO, formatBN, latestBlockTimestamp, minBN, requireNotNull, sumBN, toBN } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
+import { CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/AssetManager";
-import { InitialAgentData, TrackedAgentState } from "../../../lib/state/TrackedAgentState";
+import { SparseArray } from "../../utils/SparseMatrix";
 import { FuzzingState, FuzzingStateLogRecord } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
-import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 
 export interface CollateralReservation {
     id: number;
@@ -55,6 +60,7 @@ export interface UnderlyingBalanceChange {
 }
 
 const CollateralPool = artifacts.require("CollateralPool");
+const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 
 export class FuzzingStateAgent extends TrackedAgentState {
     constructor(
@@ -62,17 +68,15 @@ export class FuzzingStateAgent extends TrackedAgentState {
         data: InitialAgentData,
     ) {
         super(parent, data);
-        void CollateralPool.at(data.collateralPool).then(cp => cp.poolToken()).then(poolToken => this.poolTokenAddress = poolToken);
-        this.parent = parent;   // override parent type
+        void this.initializePoolState();    // must be called async
     }
 
-    override parent: FuzzingState;
+    override parent!: FuzzingState;
 
     poolTokenAddress?: string;
 
     // aggregates
     calculatedDustUBA: BN = BN_ZERO;
-    totalAgentPoolTokensWei: BN = BN_ZERO;
 
     // collections
     collateralReservations: Map<number, CollateralReservation> = new Map();
@@ -80,15 +84,39 @@ export class FuzzingStateAgent extends TrackedAgentState {
     redemptionRequests: Map<number, RedemptionRequest> = new Map();
     underlyingBalanceChanges: UnderlyingBalanceChange[] = [];
 
+    // pool data
+    poolTokenBalances = new SparseArray();
+    poolFeeDebt = new SparseArray();
+
     // log
     actionLog: FuzzingStateLogRecord[] = [];
+
+    // getters
+
+    get totalPoolFee() {
+        return this.parent.fAssetBalance.get(this.collateralPoolAddress);
+    }
+
+    get totalAgentPoolTokensWei() {
+        return this.poolTokenBalances.get(this.address);
+    }
 
     // init
 
     override initializeState(agentInfo: AgentInfo) {
         super.initializeState(agentInfo);
         this.calculatedDustUBA = toBN(agentInfo.dustUBA);
-        this.totalAgentPoolTokensWei = toBN(agentInfo.totalAgentPoolTokensWei);
+        this.poolTokenBalances.set(this.address, agentInfo.totalAgentPoolTokensWei);
+    }
+
+    async initializePoolState() {
+        const collateralPool = await CollateralPool.at(this.collateralPoolAddress);
+        this.poolTokenAddress = await collateralPool.poolToken();
+        const collateralPoolToken: ContractWithEvents<CollateralPoolTokenInstance, CollateralPoolTokenEvents> = await CollateralPoolToken.at(this.poolTokenAddress);
+        // pool token transfer event
+        this.parent.truffleEvents.event(collateralPoolToken, 'Transfer').subscribe(args => {
+            this.handlePoolTokenTransfer(args.from, args.to, toBN(args.value));
+        });
     }
 
     // handlers: agent availability
@@ -236,19 +264,43 @@ export class FuzzingStateAgent extends TrackedAgentState {
         this.logAction(`underlying deposit amount=${formatBN(transaction.outputs[0][1])} from=${transaction.inputs[0][0]}`, "UNDERLYING_TRANSACTION");
     }
 
-    // handlers: collateral deposit/withdraw (agent pool tokens)
+    // handlers: pool token transfer
 
-    depositCollateral(token: string, value: BN) {
-        super.depositCollateral(token, value);
-        if (token === this.poolTokenAddress) {
-            this.totalAgentPoolTokensWei = this.totalAgentPoolTokensWei.add(value);
+    handlePoolTokenTransfer(from: string, to: string, amount: BN) {
+        if (from !== constants.ZERO_ADDRESS) {
+            if (to === constants.ZERO_ADDRESS) {
+                this.updateFeeDebtOnEnterOrExit(from, amount.neg());
+            }
+            this.poolTokenBalances.addTo(from, amount.neg());
+        }
+        if (to !== constants.ZERO_ADDRESS) {
+            if (from === constants.ZERO_ADDRESS) {
+                this.updateFeeDebtOnEnterOrExit(to, amount);
+            }
+            this.poolTokenBalances.addTo(to, amount);
         }
     }
 
-    withdrawCollateral(token: string, value: BN) {
-        super.depositCollateral(token, value);
-        if (token === this.poolTokenAddress) {
-            this.totalAgentPoolTokensWei = this.totalAgentPoolTokensWei.sub(value);
+    updateFeeDebtOnEnterOrExit(user: string, amount: BN) {
+        const totalVirtualFee = this.calculateTotalVirtualPoolFees();
+        if (totalVirtualFee.isZero()) return;     // no debt change (should also prevent div by 0 below)
+        const debtChange = totalVirtualFee.mul(amount).div(this.poolTokenBalances.total());
+        this.poolFeeDebt.addTo(user, debtChange);
+    }
+
+    // handlers: pool fasset fee transfer
+
+    handlePoolFeeDeposit(from: string, amount: BN) {
+        if (from !== constants.ZERO_ADDRESS) {
+            // TODO: this will be wrong for pool fee exits
+            this.poolFeeDebt.addTo(from, amount.neg());
+        }
+    }
+
+    handlePoolFeeWithdrawal(to: string, amount: BN) {
+        if (to !== constants.ZERO_ADDRESS) {
+            // TODO: this will be wrong for pool fee exits
+            this.poolFeeDebt.addTo(to, amount);
         }
     }
 
@@ -450,6 +502,22 @@ export class FuzzingStateAgent extends TrackedAgentState {
         return Math.max(ratio, ratioFromTrusted);
     }
 
+    // pool calculations
+
+    calculateTotalPoolFeeDebt() {
+        return this.poolFeeDebt.total();
+    }
+
+    calculateTotalVirtualPoolFees() {
+        const totalDebt = this.poolFeeDebt.total();
+        return this.totalPoolFee.add(totalDebt);
+    }
+
+    calculateVirtualFeesOf(address: string) {
+        const totalVirtualFees = this.calculateTotalVirtualPoolFees();
+        return totalVirtualFees.isZero() ? BN_ZERO : totalVirtualFees.mul(this.poolTokenBalances.get(address)).div(this.poolTokenBalances.total());
+    }
+
     // checking
 
     async checkInvariants(checker: FuzzingStateComparator) {
@@ -469,6 +537,18 @@ export class FuzzingStateAgent extends TrackedAgentState {
         const freeUnderlyingBalanceUBA = this.calculateFreeUnderlyingBalanceUBA();
         problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
         problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA.cumulative`, this.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
+        // pool fees
+        const collateralPool = await CollateralPool.at(this.collateralPoolAddress);
+        const collateralPoolToken = await CollateralPoolToken.at(requireNotNull(this.poolTokenAddress));
+        problems += checker.checkEquality(`${agentName}.totalPoolFees`, await this.parent.context.fAsset.balanceOf(this.collateralPoolAddress), this.totalPoolFee);
+        problems += checker.checkEquality(`${agentName}.totalPoolTokens`, await collateralPoolToken.totalSupply(), this.poolTokenBalances.total());
+        problems += checker.checkEquality(`${agentName}.totalPoolFeeDebt`, await collateralPool.poolFassetDebt(), this.poolFeeDebt.total());
+        for (const tokenHolder of this.poolTokenBalances.keys()) {
+            const tokenHolderName = this.parent.eventFormatter.formatAddress(tokenHolder);
+            problems += checker.checkEquality(`${agentName}.poolTokensOf(${tokenHolderName})`, await collateralPoolToken.balanceOf(tokenHolder), this.poolTokenBalances.get(tokenHolder));
+            problems += checker.checkEquality(`${agentName}.poolFeeDebtOf(${tokenHolderName})`, await collateralPool.fassetDebtOf(tokenHolder), this.poolFeeDebt.get(tokenHolder));
+            problems += checker.checkEquality(`${agentName}.virtualPoolFeesOf(${tokenHolderName})`, await collateralPool.virtualFassetOf(tokenHolder), this.calculateVirtualFeesOf(tokenHolder));
+        }
         // minimum underlying backing (unless in full liquidation)
         if (this.status !== AgentStatus.FULL_LIQUIDATION) {
             const underlyingBalanceUBA = await this.parent.context.chain.getBalance(this.underlyingAddressString);
