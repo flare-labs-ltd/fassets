@@ -215,9 +215,9 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         uint256 requiredFAssets;
         if (_staysAboveCR(assetData, 0, exitCollateralRatioBIPS)) {
             // f-assets required for CR to stay above exitCR (might not be needed)
-            uint256 _auxDiv = assetData.assetPriceMul.mulBips(exitCollateralRatioBIPS);
-            uint256 _auxMul = assetData.assetPriceDiv * (assetData.poolNatBalance - natShare);
-            uint256 _aux = _auxMul / _auxDiv;
+            // If price is positive, we divide by a positive number as exitCollateralRatioBIPS >= 1
+            uint256 _aux = assetData.assetPriceDiv * (assetData.poolNatBalance - natShare) /
+                assetData.assetPriceMul.mulBips(exitCollateralRatioBIPS);
             requiredFAssets = assetData.backedFAssets > _aux ? assetData.backedFAssets - _aux : 0;
         } else {
             // f-assets that preserve CR
