@@ -34,7 +34,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
 
     address public immutable agentVault;
     IAssetManager public immutable assetManager;
-    IFAsset public immutable fAsset;
+    IERC20 public immutable fAsset;
     CollateralPoolToken public token; // practically immutable
 
     IWNat public wNat;
@@ -66,7 +66,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     ) {
         agentVault = _agentVault;
         assetManager = IAssetManager(_assetManager);
-        fAsset = IFAsset(_fAsset);
+        fAsset = IERC20(_fAsset);
         wNat = assetManager.getWNat();
         exitCollateralRatioBIPS = _exitCollateralRatioBIPS;
         topupCollateralRatioBIPS = _topupCollateralRatioBIPS;
@@ -594,7 +594,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     function withdrawCollateral()
         external
     {
-        require(fAsset.terminatedAt != 0, "f-asset not terminated");
+        require(IFAsset(address(fAsset)).terminated(), "f-asset not terminated");
         uint256 tokens = token.balanceOf(msg.sender);
         require(tokens > 0, "nothing to withdraw");
         uint256 natShare = tokens.mulDiv(wNat.balanceOf(address(this)), token.totalSupply());
