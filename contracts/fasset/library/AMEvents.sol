@@ -84,7 +84,7 @@ library AMEvents {
      * The setting change can be executed after the timestamp `validAt`.
      */
     event AgentSettingChangeAnnounced(
-        address agentVault,
+        address indexed agentVault,
         string name,
         uint256 value,
         uint256 validAt);
@@ -93,7 +93,7 @@ library AMEvents {
      * Agent has executed setting change (fee or some agent collateral ratio change).
      */
     event AgentSettingChanged(
-        address agentVault,
+        address indexed agentVault,
         string name,
         uint256 value);
 
@@ -101,7 +101,7 @@ library AMEvents {
      * Agent or agent's collateral pool has changed token contract.
      */
     event AgentCollateralTokenChanged(
-        address agentVault,
+        address indexed agentVault,
         uint8 tokenClass,
         address token);
 
@@ -310,7 +310,7 @@ library AMEvents {
      * before starting a new one.
      */
     event UnderlyingWithdrawalAnnounced(
-        address agentVault,
+        address indexed agentVault,
         uint64 announcementId,
         bytes32 paymentReference);
 
@@ -321,7 +321,7 @@ library AMEvents {
      * Failed payments must also be confirmed.
      */
     event UnderlyingWithdrawalConfirmed(
-        address agentVault,
+        address indexed agentVault,
         int256 spentUBA,
         bytes32 transactionHash,
         uint64 announcementId);
@@ -332,14 +332,14 @@ library AMEvents {
      * withdrawal - in order to prevent others to confirm withdrawal before agent and get some of his collateral.
      */
     event UnderlyingWithdrawalCancelled(
-        address agentVault,
+        address indexed agentVault,
         uint64 announcementId);
 
     /**
      * Emitted when the agent tops up the underlying address balance.
      */
     event UnderlyingBalanceToppedUp(
-        address agentVault,
+        address indexed agentVault,
         bytes32 transactionHash,
         uint256 depositedUBA);
 
@@ -347,7 +347,7 @@ library AMEvents {
      * Emitted whenever the tracked underlying balance changes.
      */
     event UnderlyingBalanceChanged(
-        address agentVault,
+        address indexed agentVault,
         int256 underlyingBalanceUBA);
 
     /**

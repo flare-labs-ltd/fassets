@@ -8,6 +8,22 @@ import "./IWNat.sol";
 interface ICollateralPool {
     enum TokenExitType { MAXIMIZE_FEE_WITHDRAWAL, MINIMIZE_FEE_DEBT, KEEP_RATIO }
 
+    // Also emitted in case of fee debt payment - in this case `amountNatWei = receivedTokensWei = 0`.
+    event Enter(
+        address indexed tokenHolder,
+        uint256 amountNatWei,
+        uint256 receivedTokensWei,
+        uint256 addedFAssetFeesUBA);
+
+    // In case of self-close exit, `closedFAssetsUBA` is nonzero and includes `receviedFAssetFeesUBA`.
+    // Also emitted in case of fee withdrawal - in this case `burnedTokensWei = receivedNatWei = 0`.
+    event Exit(
+        address indexed tokenHolder,
+        uint256 burnedTokensWei,
+        uint256 receivedNatWei,
+        uint256 receviedFAssetFeesUBA,
+        uint256 closedFAssetsUBA);
+
     function enter(uint256 _fassets, bool _enterWithFullFassets) external payable;
     function exit(uint256 _tokenShare, TokenExitType _exitType)
         external

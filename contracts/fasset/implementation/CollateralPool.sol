@@ -139,6 +139,8 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         _mintFassetDebt(msg.sender, fassetShare - freeFassetShare);
         wNat.deposit{value: msg.value}();
         token.mint(msg.sender, tokenShare);
+        // emit event
+        emit Enter(msg.sender, msg.value, tokenShare, freeFassetShare);
     }
 
     /**
@@ -175,6 +177,8 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         }
         token.burn(msg.sender, _tokenShare);
         wNat.transfer(msg.sender, natShare);
+        // emit event
+        emit Exit(msg.sender, _tokenShare, natShare, freeFassetShare, 0);
         return (natShare, freeFassetShare);
     }
 
@@ -248,8 +252,10 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         if (debtFassetShare > 0) {
             _burnFassetDebt(msg.sender, debtFassetShare);
         }
-        wNat.transfer(msg.sender, natShare);
         token.burn(msg.sender, _tokenShare);
+        wNat.transfer(msg.sender, natShare);
+        // emit event
+        emit Exit(msg.sender, _tokenShare, natShare, freeFassetShare, fassetsToRedeem);
     }
 
     /**
@@ -266,6 +272,8 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         require(_fassets <= freeFassetShare, "free f-asset balance too small");
         _mintFassetDebt(msg.sender, _fassets);
         fAsset.transfer(msg.sender, _fassets);
+        // emit event
+        emit Exit(msg.sender, 0, 0, freeFassetShare, 0);
     }
 
     /**
@@ -281,6 +289,8 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
             "f-asset allowance too small");
         _burnFassetDebt(msg.sender, _fassets);
         fAsset.transferFrom(msg.sender, address(this), _fassets);
+        // emit event
+        emit Enter(msg.sender, 0, 0, _fassets);
     }
 
     /**
