@@ -281,11 +281,12 @@ export class FuzzingStateAgent extends TrackedAgentState {
     }
 
     calculatePoolFeeDebtChange(receivedPoolTokens: BN, sentFAssets: BN) {
-        // calculate the totals before pool tokens were issued and f-assets were sent in
+        // pool enter and exit events happen after pool tokens and fees are sent or recieved, so we have to
+        // calculate the totals before pool tokens were issued/burned and f-assets were sent in/out
         const totalPoolTokens = this.poolTokenBalances.total().sub(receivedPoolTokens);
         const totalPoolFees = this.totalPoolFee.sub(sentFAssets);
         const totalFeeDebt = this.poolFeeDebt.total();
-        //
+        // calculate virtual fee
         const totalVirtualFees = totalPoolFees.add(totalFeeDebt);
         const virtualFeeDebtChange = totalVirtualFees.isZero() ? BN_ZERO : totalVirtualFees.mul(receivedPoolTokens).div(totalPoolTokens);
         return virtualFeeDebtChange.sub(sentFAssets);   // part is paid by sent f-assets
@@ -300,13 +301,6 @@ export class FuzzingStateAgent extends TrackedAgentState {
         if (to !== constants.ZERO_ADDRESS) {
             this.poolTokenBalances.addTo(to, amount);
         }
-    }
-
-    updateFeeDebtOnEnterOrExit(user: string, amount: BN) {
-        const totalVirtualFee = this.calculateTotalVirtualPoolFees();
-        if (totalVirtualFee.isZero()) return;     // no debt change (should also prevent div by 0 below)
-        const debtChange = totalVirtualFee.mul(amount).div(this.poolTokenBalances.total());
-        this.poolFeeDebt.addTo(user, debtChange);
     }
 
     // handlers: pool fasset fee transfer
