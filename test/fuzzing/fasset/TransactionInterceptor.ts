@@ -159,6 +159,7 @@ export class TruffleTransactionInterceptor extends TransactionInterceptor {
             if (!name) continue;   // constructor or fallback/receive function
             // view/pure function?
             if (!this.interceptViewMethods && item.constant) continue;
+            if (item.type === 'event') continue;
             // check method
             const method = contractObject[name];
             if (method == null) {

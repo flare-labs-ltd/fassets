@@ -53,7 +53,7 @@ export class FuzzingState extends TrackedState {
             }
         });
         // track underlying transactions
-        this.chainEvents.transactionEvent().subscribe(transaction => {
+        this.chainEvents.transactionEvent().immediate().subscribe(transaction => {
             for (const [address, amount] of transaction.inputs) {
                 this.agentsByUnderlying.get(address)?.handleTransactionFromUnderlying(transaction);
             }
@@ -124,6 +124,14 @@ export class FuzzingState extends TrackedState {
         this.logger.log("\nAGENT ACTIONS");
         for (const agent of this.agents.values()) {
             agent.writeActionLog(this.logger);
+        }
+    }
+
+    logAllPoolSummaries() {
+        if (!this.logger) return;
+        this.logger.log("\nCOLLATERAL POOL SUMMARIES");
+        for (const agent of this.agents.values()) {
+            agent.writePoolSummary(this.logger);
         }
     }
 }

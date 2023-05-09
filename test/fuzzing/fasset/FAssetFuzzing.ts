@@ -62,6 +62,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     let fuzzingState: FuzzingState;
     let logger: LogFile;
     let runner: FuzzingRunner;
+    let checkedInvariants = false;
 
     before(async () => {
         // create context
@@ -102,9 +103,13 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         fuzzingState.logger = logger;
     });
 
-    after(() => {
+    after(async () => {
         // fuzzingState.logAllAgentActions();
+        if (!checkedInvariants) {
+            await fuzzingState.checkInvariants(false).catch(e => {});
+        }
         fuzzingState.logAllAgentSummaries();
+        fuzzingState.logAllPoolSummaries();
         fuzzingState.logExpectationFailures();
         interceptor.logGasUsage();
         logger.close();
@@ -245,6 +250,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             throw runner.uncaughtErrors[0];
         }
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
+        checkedInvariants = true;
         await fuzzingState.checkInvariants(true);  // all events are flushed, state must match
         assert.isTrue(fuzzingState.failedExpectations.length === 0, "fuzzing state has expectation failures");
     });

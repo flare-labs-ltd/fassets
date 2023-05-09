@@ -2,7 +2,7 @@ import { constants } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
 import { AgentInfo, AgentStatus, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
 import { NAT_WEI } from "../../../lib/fasset/Conversions";
-import { CollateralPoolTokenEvents } from "../../../lib/fasset/IAssetContext";
+import { CollateralPoolEvents, CollateralPoolTokenEvents } from "../../../lib/fasset/IAssetContext";
 import { Prices } from "../../../lib/state/Prices";
 import { InitialAgentData, TrackedAgentState } from "../../../lib/state/TrackedAgentState";
 import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";
@@ -11,11 +11,12 @@ import { EvmEvent } from "../../../lib/utils/events/common";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, formatBN, latestBlockTimestamp, minBN, requireNotNull, sumBN, toBN } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
-import { CollateralPoolTokenInstance } from "../../../typechain-truffle";
+import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/AssetManager";
+import { Enter, Exit } from "../../../typechain-truffle/CollateralPool";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { FuzzingState, FuzzingStateLogRecord } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
@@ -110,11 +111,14 @@ export class FuzzingStateAgent extends TrackedAgentState {
     }
 
     async initializePoolState() {
-        const collateralPool = await CollateralPool.at(this.collateralPoolAddress);
+        const collateralPool: ContractWithEvents<CollateralPoolInstance, CollateralPoolEvents> = await CollateralPool.at(this.collateralPoolAddress);
         this.poolTokenAddress = await collateralPool.poolToken();
         const collateralPoolToken: ContractWithEvents<CollateralPoolTokenInstance, CollateralPoolTokenEvents> = await CollateralPoolToken.at(this.poolTokenAddress);
+        // pool eneter and exit event
+        this.parent.truffleEvents.event(collateralPool, 'Enter').immediate().subscribe(args => this.handlePoolEnter(args));
+        this.parent.truffleEvents.event(collateralPool, 'Exit').immediate().subscribe(args => this.handlePoolExit(args));
         // pool token transfer event
-        this.parent.truffleEvents.event(collateralPoolToken, 'Transfer').subscribe(args => {
+        this.parent.truffleEvents.event(collateralPoolToken, 'Transfer').immediate().subscribe(args => {
             this.handlePoolTokenTransfer(args.from, args.to, toBN(args.value));
         });
     }
@@ -264,19 +268,36 @@ export class FuzzingStateAgent extends TrackedAgentState {
         this.logAction(`underlying deposit amount=${formatBN(transaction.outputs[0][1])} from=${transaction.inputs[0][0]}`, "UNDERLYING_TRANSACTION");
     }
 
+    // handlers: pool enter and exit
+
+    handlePoolEnter(args: EvmEventArgs<Enter>): void {
+        const debtChange = this.calculatePoolFeeDebtChange(toBN(args.receivedTokensWei), toBN(args.addedFAssetFeesUBA));
+        this.poolFeeDebt.addTo(args.tokenHolder, debtChange);
+    }
+
+    handlePoolExit(args: EvmEventArgs<Exit>): void {
+        const debtChange = this.calculatePoolFeeDebtChange(toBN(args.burnedTokensWei).neg(), toBN(args.receviedFAssetFeesUBA).neg());
+        this.poolFeeDebt.addTo(args.tokenHolder, debtChange);
+    }
+
+    calculatePoolFeeDebtChange(receivedPoolTokens: BN, sentFAssets: BN) {
+        // calculate the totals before pool tokens were issued and f-assets were sent in
+        const totalPoolTokens = this.poolTokenBalances.total().sub(receivedPoolTokens);
+        const totalPoolFees = this.totalPoolFee.sub(sentFAssets);
+        const totalFeeDebt = this.poolFeeDebt.total();
+        //
+        const totalVirtualFees = totalPoolFees.add(totalFeeDebt);
+        const virtualFeeDebtChange = totalVirtualFees.isZero() ? BN_ZERO : totalVirtualFees.mul(receivedPoolTokens).div(totalPoolTokens);
+        return virtualFeeDebtChange.sub(sentFAssets);   // part is paid by sent f-assets
+    }
+
     // handlers: pool token transfer
 
     handlePoolTokenTransfer(from: string, to: string, amount: BN) {
         if (from !== constants.ZERO_ADDRESS) {
-            if (to === constants.ZERO_ADDRESS) {
-                this.updateFeeDebtOnEnterOrExit(from, amount.neg());
-            }
             this.poolTokenBalances.addTo(from, amount.neg());
         }
         if (to !== constants.ZERO_ADDRESS) {
-            if (from === constants.ZERO_ADDRESS) {
-                this.updateFeeDebtOnEnterOrExit(to, amount);
-            }
             this.poolTokenBalances.addTo(to, amount);
         }
     }
@@ -291,17 +312,9 @@ export class FuzzingStateAgent extends TrackedAgentState {
     // handlers: pool fasset fee transfer
 
     handlePoolFeeDeposit(from: string, amount: BN) {
-        if (from !== constants.ZERO_ADDRESS) {
-            // TODO: this will be wrong for pool fee exits
-            this.poolFeeDebt.addTo(from, amount.neg());
-        }
     }
 
     handlePoolFeeWithdrawal(to: string, amount: BN) {
-        if (to !== constants.ZERO_ADDRESS) {
-            // TODO: this will be wrong for pool fee exits
-            this.poolFeeDebt.addTo(to, amount);
-        }
     }
 
     // agent state changing
@@ -485,6 +498,10 @@ export class FuzzingStateAgent extends TrackedAgentState {
 
     // calculations
 
+    poolName() {
+        return this.parent.eventFormatter.formatAddress(this.collateralPoolAddress);
+    }
+
     private collateralRatioForPrice(prices: Prices, collateral: CollateralToken) {
         const redeemingUBA = collateral.tokenClass === CollateralTokenClass.CLASS1 ? this.redeemingUBA : this.poolRedeemingUBA;
         const backedAmount = (Number(this.reservedUBA) + Number(this.mintedUBA) + Number(redeemingUBA)) / Number(this.parent.settings.assetUnitUBA);
@@ -540,14 +557,18 @@ export class FuzzingStateAgent extends TrackedAgentState {
         // pool fees
         const collateralPool = await CollateralPool.at(this.collateralPoolAddress);
         const collateralPoolToken = await CollateralPoolToken.at(requireNotNull(this.poolTokenAddress));
-        problems += checker.checkEquality(`${agentName}.totalPoolFees`, await this.parent.context.fAsset.balanceOf(this.collateralPoolAddress), this.totalPoolFee);
-        problems += checker.checkEquality(`${agentName}.totalPoolTokens`, await collateralPoolToken.totalSupply(), this.poolTokenBalances.total());
-        problems += checker.checkEquality(`${agentName}.totalPoolFeeDebt`, await collateralPool.poolFassetDebt(), this.poolFeeDebt.total());
+        const collateralPoolName = this.poolName();
+        problems += checker.checkEquality(`${collateralPoolName}.totalPoolFees`, await this.parent.context.fAsset.balanceOf(this.collateralPoolAddress), this.totalPoolFee);
+        problems += checker.checkEquality(`${collateralPoolName}.totalPoolTokens`, await collateralPoolToken.totalSupply(), this.poolTokenBalances.total());
+        problems += checker.checkEquality(`${collateralPoolName}.totalPoolFeeDebt`, await collateralPool.poolFassetDebt(), this.poolFeeDebt.total());
         for (const tokenHolder of this.poolTokenBalances.keys()) {
             const tokenHolderName = this.parent.eventFormatter.formatAddress(tokenHolder);
-            problems += checker.checkEquality(`${agentName}.poolTokensOf(${tokenHolderName})`, await collateralPoolToken.balanceOf(tokenHolder), this.poolTokenBalances.get(tokenHolder));
-            problems += checker.checkEquality(`${agentName}.poolFeeDebtOf(${tokenHolderName})`, await collateralPool.fassetDebtOf(tokenHolder), this.poolFeeDebt.get(tokenHolder));
-            problems += checker.checkEquality(`${agentName}.virtualPoolFeesOf(${tokenHolderName})`, await collateralPool.virtualFassetOf(tokenHolder), this.calculateVirtualFeesOf(tokenHolder));
+            problems += checker.checkEquality(`${collateralPoolName}.poolTokensOf(${tokenHolderName})`, await collateralPoolToken.balanceOf(tokenHolder), this.poolTokenBalances.get(tokenHolder));
+            const poolFeeDebt = await collateralPool.fassetDebtOf(tokenHolder);
+            problems += checker.checkEquality(`${collateralPoolName}.poolFeeDebtOf(${tokenHolderName})`, poolFeeDebt, this.poolFeeDebt.get(tokenHolder));
+            const virtualFees = await collateralPool.virtualFassetOf(tokenHolder);
+            problems += checker.checkEquality(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName})`, virtualFees, this.calculateVirtualFeesOf(tokenHolder));
+            problems += checker.checkNumericDifference(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName}) >= debt`, virtualFees, 'gte', poolFeeDebt);
         }
         // minimum underlying backing (unless in full liquidation)
         if (this.status !== AgentStatus.FULL_LIQUIDATION) {
@@ -587,4 +608,17 @@ export class FuzzingStateAgent extends TrackedAgentState {
             logger.log(`        ${log.text}  ${typeof log.event === 'string' ? log.event : this.parent.eventInfo(log.event)}`);
         }
     }
+
+    // info
+
+    writePoolSummary(logger: ILogger) {
+        logger.log(`    ${this.poolName()}:  wnat=${formatBN(this.totalPoolCollateralNATWei)}  poolTokens=${formatBN(this.poolTokenBalances.total())}` +
+            `  fassetFees=${formatBN(this.totalPoolFee)}  feeDebt=${formatBN(this.poolFeeDebt.total())}  virtualFees=${formatBN(this.calculateTotalVirtualPoolFees())}`);
+        for (const tokenHolder of this.poolTokenBalances.keys()) {
+            const tokenHolderName = this.parent.eventFormatter.formatAddress(tokenHolder);
+            logger.log(`        ${tokenHolderName}:  poolTokens=${formatBN(this.poolTokenBalances.get(tokenHolder))}  feeDebt=${formatBN(this.poolFeeDebt.get(tokenHolder))}` +
+                `  virtualPoolFees=${formatBN(this.calculateVirtualFeesOf(tokenHolder))}`);
+        }
+    }
+
 }
