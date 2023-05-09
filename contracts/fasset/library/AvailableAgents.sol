@@ -36,7 +36,6 @@ library AvailableAgents {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
-        assert(agent.agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         require(agent.status == Agent.Status.NORMAL, "invalid agent status");
         require(agent.availableAgentsPos == 0, "agent already available");
         // check that there is enough free collateral for at least one lot

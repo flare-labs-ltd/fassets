@@ -5,13 +5,8 @@ import "../../interface/ICollateralPool.sol";
 
 
 library Agent {
-    enum Type {
-        NONE,
-        AGENT_100,
-        AGENT_0
-    }
-
     enum Status {
+        EMPTY,              // agent does not exist
         NORMAL,
         LIQUIDATION,        // CCB or liquidation due to CR - ends when agent is healthy
         FULL_LIQUIDATION,   // illegal payment liquidation - must liquidate all and close vault
@@ -56,9 +51,6 @@ library Agent {
         // `underlyingAddressString` is only used for sending the minter a correct payment address;
         // for matching payment addresses we always use `underlyingAddressHash = keccak256(underlyingAddressString)`
         bytes32 underlyingAddressHash;
-
-        // agent's type; EMPTY if agent doesn't exists
-        Agent.Type agentType;
 
         // Current status of the agent (changes for liquidation).
         Agent.Status status;
@@ -191,7 +183,7 @@ library Agent {
         assembly {
             _agent.slot := position
         }
-        require(_agent.agentType != Agent.Type.NONE, "invalid agent vault address");
+        require(_agent.status != Agent.Status.EMPTY, "invalid agent vault address");
     }
 
     function getWithoutCheck(address _address) internal pure returns (Agent.State storage _agent) {

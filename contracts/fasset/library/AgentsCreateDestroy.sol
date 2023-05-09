@@ -92,8 +92,7 @@ library AgentsCreateDestroy {
         IAgentVault agentVault = agentVaultFactory.create(_assetManager);
         // set initial status
         Agent.State storage agent = Agent.getWithoutCheck(address(agentVault));
-        assert(agent.agentType == Agent.Type.NONE);     // state should be empty on creation
-        agent.agentType = Agent.Type.AGENT_100;
+        assert(agent.status == Agent.Status.EMPTY);     // state should be empty on creation
         agent.status = Agent.Status.NORMAL;
         agent.ownerColdAddress = ownerColdAddress;
         // set collateral token types

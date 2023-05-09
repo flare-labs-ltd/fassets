@@ -65,7 +65,6 @@ library Minting {
         Agents.requireAgentVaultOwner(agent);
         Agents.requireWhitelistedAgentVaultOwner(agent);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
-        assert(agent.agentType == Agent.Type.AGENT_100); // AGENT_0 not supported yet
         TransactionAttestation.verifyPaymentSuccess(_payment);
         require(state.pausedAt == 0, "minting paused");
         require(agent.status == Agent.Status.NORMAL, "self-mint invalid agent status");
