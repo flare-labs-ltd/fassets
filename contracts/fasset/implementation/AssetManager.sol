@@ -314,7 +314,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     /**
      * Called by AgentVault when agent calls `withdraw()`.
-     * NOTE: may not be called directly from any EOA address (only through a registered agent vault).
+     * NOTE: may only be called from an agent vault, not from an EOA address.
      * @param _valueNATWei the withdrawn amount
      */
     function withdrawCollateral(
@@ -330,15 +330,16 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     /**
      * Called by AgentVault when there was a deposit.
      * May pull agent out of liquidation.
-     * NOTE: may not be called directly from any EOA address (only through a registered agent vault).
+     * NOTE: may only be called from an agent vault or collateral pool, not from an EOA address.
      */
     function collateralDeposited(
+        address _agentVault,
         IERC20 _token
     )
         external override
     {
-        // AgentsExternal.depositExecuted makes sure that only a registered agent vault can call
-        AgentsExternal.depositExecuted(_token, msg.sender);
+        // AgentsExternal.depositExecuted makes sure that only agent vault or pool can call
+        AgentsExternal.depositExecuted(_agentVault, _token);
     }
 
     /**

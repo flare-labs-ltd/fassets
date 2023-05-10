@@ -49,7 +49,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     // without "onlyOwner" to allow owner to send funds from any source
     function depositNat() external payable override {
         wNat.deposit{value: msg.value}();
-        assetManager.collateralDeposited(wNat);
+        assetManager.collateralDeposited(address(this), wNat);
         _tokenUsed(wNat, TOKEN_DEPOSIT);
     }
 
@@ -86,7 +86,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         onlyOwner
     {
         _token.transferFrom(msg.sender, address(this), _amount);
-        assetManager.collateralDeposited(_token);
+        assetManager.collateralDeposited(address(this), _token);
         _tokenUsed(_token, TOKEN_DEPOSIT);
     }
 
@@ -95,7 +95,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         external
         onlyOwner
     {
-        assetManager.collateralDeposited(_token);
+        assetManager.collateralDeposited(address(this), _token);
         _tokenUsed(_token, TOKEN_DEPOSIT);
     }
 
@@ -104,7 +104,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         onlyOwner
         nonReentrant
     {
-        // check that enough was announced and reduce announcement
+        // if NAT is class1 collateral token, check that enough was announced and reduce announcement
         assetManager.withdrawCollateral(wNat, _amount);
         // withdraw from wNat contract and transfer it to _recipient
         _withdrawWNatTo(_recipient, _amount);

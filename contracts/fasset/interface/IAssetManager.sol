@@ -109,7 +109,7 @@ interface IAssetManager {
     function unpause() external;
     function terminate() external;
     function withdrawCollateral(IERC20 _token, uint256 _amountWei) external;
-    function collateralDeposited(IERC20 _token) external;
+    function collateralDeposited(address _agentVault, IERC20 _token) external;
     // collateral pool redemptions
     function redeemFromAgent(
         address _agentVault, address _receiver, uint256 _amountUBA, string memory _receiverUnderlyingAddress) external;

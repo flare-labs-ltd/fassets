@@ -138,6 +138,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         }
         _mintFassetDebt(msg.sender, fassetShare - freeFassetShare);
         wNat.deposit{value: msg.value}();
+        assetManager.collateralDeposited(agentVault, wNat);
         token.mint(msg.sender, tokenShare);
         // emit event
         emit Enter(msg.sender, msg.value, tokenShare, freeFassetShare);
@@ -534,6 +535,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         _newWNat.deposit{value: balance}();
         // set new WNat contract
         wNat = _newWNat;
+        assetManager.collateralDeposited(agentVault, wNat);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

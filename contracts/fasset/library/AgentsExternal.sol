@@ -48,12 +48,14 @@ library AgentsExternal {
     }
 
     function depositExecuted(
-        IERC20 _token,
-        address _agentVault
+        address _agentVault,
+        IERC20 _token
     )
         external
     {
         Agent.State storage agent = Agent.get(_agentVault);
+        require(msg.sender == _agentVault || msg.sender == address(agent.collateralPool),
+            "only agent vault or pool");
         // try to pull agent out of liquidation
         if (agent.isCollateralToken(_token)) {
             Liquidation.endLiquidationIfHealthy(agent);
