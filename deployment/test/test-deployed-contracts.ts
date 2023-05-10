@@ -49,7 +49,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         for (const mgrAddress of managers) {
             const assetManager = await AssetManager.at(mgrAddress);
             const settings = await assetManager.getSettings();
-            const collaterals = await assetManager.getCollateralTokens();
+            const collaterals = await assetManager.getCollateralTypes();
             // create agent
             const underlyingAddress = "TESTADDRESS";    // address doesn't matter - won't do anything on underlying chain
             const agentVault = await createTestAgent({ assetManager, settings }, owner, underlyingAddress, collaterals[1].token);

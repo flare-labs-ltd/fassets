@@ -1,7 +1,7 @@
-import { AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType, CollateralClass } from "../fasset/AssetManagerTypes";
 import { IAssetContext } from "../fasset/IAssetContext";
 import { requireNotNull } from "../utils/helpers";
-import { CollateralIndexedList, CollateralTokenId, isPoolCollateral } from "./CollateralIndexedList";
+import { CollateralIndexedList, CollateralTypeId, isPoolCollateral } from "./CollateralIndexedList";
 import { CollateralPrice } from "./CollateralPrice";
 import { TokenPrice, TokenPriceReader } from "./TokenPrice";
 
@@ -13,7 +13,7 @@ export class Prices {
     ) {
     }
 
-    get(token: CollateralTokenId) {
+    get(token: CollateralTypeId) {
         return this.collateralPrices.get(token);
     }
 
@@ -22,11 +22,11 @@ export class Prices {
     }
 
     getClass1(token: string) {
-        return this.collateralPrices.get(CollateralTokenClass.CLASS1, token);
+        return this.collateralPrices.get(CollateralClass.CLASS1, token);
     }
 
     getPool(token: string) {
-        return this.collateralPrices.get(CollateralTokenClass.POOL, token);
+        return this.collateralPrices.get(CollateralClass.POOL, token);
     }
 
     toString() {
@@ -41,7 +41,7 @@ export class Prices {
         return '(' + Array.from(prices.entries()).map(([symbol, value]) => `${symbol}=${value.toFixed(3)}`).join(', ') + ')';
     }
 
-    static async getFtsoPrices(priceReader: TokenPriceReader, settings: AssetManagerSettings, collaterals: Iterable<CollateralToken>, trusted: boolean = false): Promise<Prices> {
+    static async getFtsoPrices(priceReader: TokenPriceReader, settings: AssetManagerSettings, collaterals: Iterable<CollateralType>, trusted: boolean = false): Promise<Prices> {
         const collateralPrices = new CollateralIndexedList<CollateralPrice>();
         for (const collateral of collaterals) {
             const collateralPrice = await CollateralPrice.forCollateral(priceReader, settings, collateral, trusted);
@@ -50,7 +50,7 @@ export class Prices {
         return new Prices(collateralPrices);
     }
 
-    static async getPrices(context: IAssetContext, settings: AssetManagerSettings, collaterals: Iterable<CollateralToken>): Promise<[Prices, Prices]> {
+    static async getPrices(context: IAssetContext, settings: AssetManagerSettings, collaterals: Iterable<CollateralType>): Promise<[Prices, Prices]> {
         const priceReader = new TokenPriceReader(context.ftsoRegistry);
         const ftsoPrices = await this.getFtsoPrices(priceReader, settings, collaterals, false);
         const trustedPrices = await this.getFtsoPrices(priceReader, settings, collaterals, true);

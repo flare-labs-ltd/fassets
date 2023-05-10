@@ -1,5 +1,5 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
@@ -23,7 +23,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
-    let collaterals: CollateralToken[];
+    let collaterals: CollateralType[];
     let chain: MockChain;
     let chainInfo: TestChainInfo;
     let wallet: MockChainWallet;

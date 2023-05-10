@@ -32,7 +32,7 @@ library Globals {
 
     function getPoolCollateral()
         internal view
-        returns (CollateralToken.Data storage)
+        returns (CollateralType.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         return state.collateralTokens[state.poolCollateralIndex];

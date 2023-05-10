@@ -1,7 +1,7 @@
 // Mapped to integer in JSON schema.
 type integer = number;
 
-export interface CollateralTokenParameters {
+export interface CollateralTypeParameters {
     /**
      * The ERC20 token contract for this collateral type.
      * Can be an address (0x...) or a name of a contract in contracts.json.
@@ -166,12 +166,12 @@ export interface AssetManagerParameters {
     /**
      * Data about the collateral used in the collateral pool, token is always WNat (FLR/SGB).
      */
-    poolCollateral: CollateralTokenParameters;
+    poolCollateral: CollateralTypeParameters;
 
     /**
      * The data about allowed class1 collateral types.
      */
-    class1Collaterals: CollateralTokenParameters[];
+    class1Collaterals: CollateralTypeParameters[];
 
     /**
      * The percentage of minted f-assets that the agent must hold in his underlying address.

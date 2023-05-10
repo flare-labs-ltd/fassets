@@ -2,7 +2,7 @@ import {
     AgentAvailable, AgentCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/AssetManager";
-import { AgentInfo, AgentSetting, AgentStatus, CollateralToken, CollateralTokenClass } from "../fasset/AssetManagerTypes";
+import { AgentInfo, AgentSetting, AgentStatus, CollateralType, CollateralClass } from "../fasset/AssetManagerTypes";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
 import { EventArgs } from "../utils/events/common";
 import { BN_ZERO, BNish, MAX_BIPS, formatBN, maxBN, toBN } from "../utils/helpers";
@@ -23,8 +23,8 @@ export class TrackedAgentState {
         this.owner = data.owner;
         this.underlyingAddressString = data.underlyingAddress;
         this.collateralPoolAddress = data.collateralPool;
-        this.class1Collateral = parent.collaterals.get(CollateralTokenClass.CLASS1, data.class1CollateralToken);
-        this.poolWNatCollateral = parent.collaterals.get(CollateralTokenClass.POOL, data.poolWNat);
+        this.class1Collateral = parent.collaterals.get(CollateralClass.CLASS1, data.class1CollateralToken);
+        this.poolWNatCollateral = parent.collaterals.get(CollateralClass.POOL, data.poolWNat);
         this.feeBIPS = toBN(data.feeBIPS);
         this.poolFeeShareBIPS = toBN(data.poolFeeShareBIPS);
         this.mintingClass1CollateralRatioBIPS = toBN(data.mintingClass1CollateralRatioBIPS);
@@ -42,8 +42,8 @@ export class TrackedAgentState {
     collateralPoolAddress: string;
 
     // agent's settings
-    class1Collateral: CollateralToken;
-    poolWNatCollateral: CollateralToken;
+    class1Collateral: CollateralType;
+    poolWNatCollateral: CollateralType;
     feeBIPS: BN;
     poolFeeShareBIPS: BN;
     mintingClass1CollateralRatioBIPS: BN;
@@ -256,12 +256,12 @@ export class TrackedAgentState {
         return this.parent.eventFormatter.formatAddress(this.address);
     }
 
-    collateralBalance(collateral: CollateralToken) {
-        return collateral.tokenClass === CollateralTokenClass.CLASS1 ? this.totalClass1CollateralWei : this.totalPoolCollateralNATWei;
+    collateralBalance(collateral: CollateralType) {
+        return collateral.collateralClass === CollateralClass.CLASS1 ? this.totalClass1CollateralWei : this.totalPoolCollateralNATWei;
     }
 
-    private collateralRatioForPriceBIPS(prices: Prices, collateral: CollateralToken) {
-        const redeemingUBA = collateral.tokenClass === CollateralTokenClass.CLASS1 ? this.redeemingUBA : this.poolRedeemingUBA;
+    private collateralRatioForPriceBIPS(prices: Prices, collateral: CollateralType) {
+        const redeemingUBA = collateral.collateralClass === CollateralClass.CLASS1 ? this.redeemingUBA : this.poolRedeemingUBA;
         const totalUBA = this.reservedUBA.add(this.mintedUBA).add(redeemingUBA);
         if (totalUBA.isZero()) return MAX_UINT256;
         const price = prices.get(collateral);
@@ -270,13 +270,13 @@ export class TrackedAgentState {
         return totalCollateralWei.muln(MAX_BIPS).div(backingCollateralWei);
     }
 
-    collateralRatioBIPS(collateral: CollateralToken) {
+    collateralRatioBIPS(collateral: CollateralType) {
         const ratio = this.collateralRatioForPriceBIPS(this.parent.prices, collateral);
         const ratioFromTrusted = this.collateralRatioForPriceBIPS(this.parent.trustedPrices, collateral);
         return maxBN(ratio, ratioFromTrusted);
     }
 
-    private possibleLiquidationTransitionForCollateral(collateral: CollateralToken, timestamp: BN) {
+    private possibleLiquidationTransitionForCollateral(collateral: CollateralType, timestamp: BN) {
         const cr = this.collateralRatioBIPS(collateral);
         const settings = this.parent.settings;
         if (this.status === AgentStatus.NORMAL) {

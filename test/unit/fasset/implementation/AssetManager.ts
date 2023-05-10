@@ -1,5 +1,5 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { encodeLiquidationStrategyImplSettings, decodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -41,7 +41,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
-    let collaterals: CollateralToken[];
+    let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
@@ -264,26 +264,26 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             collateral.token = (await ERC20Mock.new("New Token", "NT")).address;
             collateral.tokenFtsoSymbol = "NT";
             collateral.assetFtsoSymbol = "NT";
-            await assetManager.addCollateralToken(web3DeepNormalize(collateral), { from: assetManagerController });
-            const resCollaterals = await assetManager.getCollateralTokens();
+            await assetManager.addCollateralType(web3DeepNormalize(collateral), { from: assetManagerController });
+            const resCollaterals = await assetManager.getCollateralTypes();
             assertWeb3DeepEqual(collateral.token, resCollaterals[3].token);
         });
 
         it("should set collateral ratios for token", async () => {
-            await assetManager.setCollateralRatiosForToken(collaterals[0].tokenClass, collaterals[0].token,
+            await assetManager.setCollateralRatiosForToken(collaterals[0].collateralClass, collaterals[0].token,
                 toBIPS(1.5), toBIPS(1.4), toBIPS(1.6), { from: assetManagerController });
-            const collateralToken = await assetManager.getCollateralToken(collaterals[0].tokenClass, collaterals[0].token);
-            assertWeb3Equal(collateralToken.minCollateralRatioBIPS, toBIPS(1.5));
-            assertWeb3Equal(collateralToken.ccbMinCollateralRatioBIPS, toBIPS(1.4));
-            assertWeb3Equal(collateralToken.safetyMinCollateralRatioBIPS, toBIPS(1.6));
+            const collateralType = await assetManager.getCollateralType(collaterals[0].collateralClass, collaterals[0].token);
+            assertWeb3Equal(collateralType.minCollateralRatioBIPS, toBIPS(1.5));
+            assertWeb3Equal(collateralType.ccbMinCollateralRatioBIPS, toBIPS(1.4));
+            assertWeb3Equal(collateralType.safetyMinCollateralRatioBIPS, toBIPS(1.6));
         });
 
         it("should deprecate collateral token", async () => {
-            const tx = await assetManager.deprecateCollateralToken(collaterals[0].tokenClass, collaterals[0].token,
+            const tx = await assetManager.deprecateCollateralType(collaterals[0].collateralClass, collaterals[0].token,
                 settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
-            expectEvent(tx, "CollateralTokenDeprecated");
-            const collateralToken = await assetManager.getCollateralToken(collaterals[0].tokenClass, collaterals[0].token);
-            assertWeb3Equal(collateralToken.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
+            expectEvent(tx, "CollateralTypeDeprecated");
+            const collateralType = await assetManager.getCollateralType(collaterals[0].collateralClass, collaterals[0].token);
+            assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
         });
 
         it("should set pool collateral token", async () => {
@@ -291,8 +291,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const tokenInfo = collaterals[0];
             tokenInfo.token = newWnat.address;
             tokenInfo.assetFtsoSymbol = "WNAT";
-            await assetManager.setPoolCollateralToken(web3DeepNormalize(tokenInfo), { from: assetManagerController });
-            const token = await assetManager.getCollateralToken(tokenInfo.tokenClass, tokenInfo.token);
+            await assetManager.setPoolCollateralType(web3DeepNormalize(tokenInfo), { from: assetManagerController });
+            const token = await assetManager.getCollateralType(tokenInfo.collateralClass, tokenInfo.token);
             assertWeb3Equal(token.token, newWnat.address);
         });
     });

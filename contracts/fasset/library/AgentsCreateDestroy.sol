@@ -204,7 +204,7 @@ library AgentsCreateDestroy {
         //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
         // - mintedAMG must be burned and cleared
         uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
-        CollateralToken.Data storage collateral = agent.getClass1Collateral();
+        CollateralType.Data storage collateral = agent.getClass1Collateral();
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
         uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
             .mulBips(state.settings.buybackCollateralFactorBIPS);

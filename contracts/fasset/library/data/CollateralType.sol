@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interface/IAssetManager.sol";
 
 
-library CollateralToken {
+library CollateralType {
     struct Data {
         // The ERC20 token contract for this collateral type.
         // immutable
@@ -13,7 +13,7 @@ library CollateralToken {
 
         // The kind of collateral for this token.
         // immutable
-        IAssetManager.CollateralTokenClass tokenClass;
+        IAssetManager.CollateralClass collateralClass;
 
         // Same as token.decimals(), when that exists.
         // immutable

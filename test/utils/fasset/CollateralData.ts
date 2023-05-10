@@ -1,4 +1,4 @@
-import { AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType, CollateralClass } from "../../../lib/fasset/AssetManagerTypes";
 import { amgToTokenWeiPrice } from "../../../lib/fasset/Conversions";
 import { AMGPrice, AMGPriceConverter, CollateralPrice } from "../../../lib/state/CollateralPrice";
 import { TokenPrice, TokenPriceReader, tokenBalance } from "../../../lib/state/TokenPrice";
@@ -11,7 +11,7 @@ export enum CollateralKind { CLASS1, POOL, AGENT_POOL_TOKENS };
 
 export class CollateralData extends AMGPriceConverter {
     constructor(
-        public collateral: CollateralToken | null,
+        public collateral: CollateralType | null,
         public balance: BN,
         public assetPrice: TokenPrice,
         public tokenPrice: TokenPrice | undefined,
@@ -22,9 +22,9 @@ export class CollateralData extends AMGPriceConverter {
 
     kind() {
         if (this.collateral != null) {
-            if (Number(this.collateral.tokenClass) === CollateralTokenClass.CLASS1) {
+            if (Number(this.collateral.collateralClass) === CollateralClass.CLASS1) {
                 return CollateralKind.CLASS1;
-            } else if (Number(this.collateral.tokenClass) === CollateralTokenClass.POOL) {
+            } else if (Number(this.collateral.collateralClass) === CollateralClass.POOL) {
                 return CollateralKind.POOL;
             }
             throw new Error("Invalid collateral kind");
@@ -54,15 +54,15 @@ export class CollateralDataFactory {
         return new CollateralDataFactory(settings, priceReader);
     }
 
-    async class1(collateral: CollateralToken, agentVault: string) {
+    async class1(collateral: CollateralType, agentVault: string) {
         return await this.forCollateral(collateral, agentVault);
     }
 
-    async pool(collateral: CollateralToken, collateralPoolAddress: string) {
+    async pool(collateral: CollateralType, collateralPoolAddress: string) {
         return await this.forCollateral(collateral, collateralPoolAddress);
     }
 
-    async forCollateral(collateral: CollateralToken, tokenHolder: string) {
+    async forCollateral(collateral: CollateralType, tokenHolder: string) {
         const collateralPrice = await CollateralPrice.forCollateral(this.priceReader, this.settings, collateral);
         return CollateralData.forCollateralPrice(collateralPrice, tokenHolder);
     }

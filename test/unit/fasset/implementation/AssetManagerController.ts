@@ -1,5 +1,5 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings, decodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
@@ -30,7 +30,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
-    let collaterals: CollateralToken[];
+    let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
@@ -536,7 +536,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 ccbMinCollateralRatioBIPS: "19000",
                 safetyMinCollateralRatioBIPS: "21000",
             };
-            const prms = assetManagerController.setPoolCollateralToken([assetManager.address], newWNat, { from: governance });
+            const prms = assetManagerController.setPoolCollateralType([assetManager.address], newWNat, { from: governance });
             await waitForTimelock(prms, assetManagerController, updateExecutor);
             assertWeb3Equal(await assetManager.getWNat(), accounts[82]);
         });
@@ -595,19 +595,19 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should change collateral settings after timelock", async () => {
             // change settings
             for (const collateral of collaterals) {
-                const res = await assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.tokenClass, collateral.token, 2_2000, 1_8000, 2_4000, { from: governance });
+                const res = await assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.collateralClass, collateral.token, 2_2000, 1_8000, 2_4000, { from: governance });
                 await waitForTimelock(res, assetManagerController, updateExecutor);
                 // assert
-                const tokenInfo = await assetManager.getCollateralToken(collateral.tokenClass, collateral.token);
-                assertWeb3Equal(tokenInfo.minCollateralRatioBIPS, 2_2000);
-                assertWeb3Equal(tokenInfo.ccbMinCollateralRatioBIPS, 1_8000);
-                assertWeb3Equal(tokenInfo.safetyMinCollateralRatioBIPS, 2_4000);
+                const collateralInfo = await assetManager.getCollateralType(collateral.collateralClass, collateral.token);
+                assertWeb3Equal(collateralInfo.minCollateralRatioBIPS, 2_2000);
+                assertWeb3Equal(collateralInfo.ccbMinCollateralRatioBIPS, 1_8000);
+                assertWeb3Equal(collateralInfo.safetyMinCollateralRatioBIPS, 2_4000);
             }
         });
 
         it("should not set collateral", async () => {
             for (const collateral of collaterals) {
-                let res_invalid = waitForTimelock(assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.tokenClass, collateral.token, 1_8000, 2_2000, 2_4000, { from: governance }),
+                let res_invalid = waitForTimelock(assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.collateralClass, collateral.token, 1_8000, 2_2000, 2_4000, { from: governance }),
                     assetManagerController, updateExecutor);
                 await expectRevert(res_invalid, "invalid collateral ratios");
             }
@@ -616,7 +616,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("settings change should be executed by executor", async () => {
             // change settings
             for (const collateral of collaterals) {
-                const res = await assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.tokenClass, collateral.token, 2_2000, 1_8000, 2_4000, { from: governance });
+                const res = await assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.collateralClass, collateral.token, 2_2000, 1_8000, 2_4000, { from: governance });
                 const timelock = requiredEventArgs(res, 'GovernanceCallTimelocked');
                 await expectRevert(assetManagerController.executeGovernanceCall(timelock.selector), "only executor");
                 const res1 = await assetManagerController.setTimeForPayment([assetManager.address], 10, 120, { from: governance });
@@ -628,15 +628,15 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("shouldn't change collateral settings without timelock", async () => {
             // change settings
             for (const collateral of collaterals) {
-                const res = await assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.tokenClass, collateral.token, 2_2000, 1_8000, 2_4000, { from: governance });
+                const res = await assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.collateralClass, collateral.token, 2_2000, 1_8000, 2_4000, { from: governance });
                 const timelock = requiredEventArgs(res, 'GovernanceCallTimelocked');
                 await expectRevert(assetManagerController.executeGovernanceCall(timelock.selector, { from: updateExecutor }),
                     "timelock: not allowed yet");
                 // assert no changes
-                const tokenInfo = await assetManager.getCollateralToken(collateral.tokenClass, collateral.token);
-                assertWeb3Equal(tokenInfo.minCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
-                assertWeb3Equal(tokenInfo.ccbMinCollateralRatioBIPS, collateral.ccbMinCollateralRatioBIPS);
-                assertWeb3Equal(tokenInfo.safetyMinCollateralRatioBIPS, collateral.safetyMinCollateralRatioBIPS);
+                const collateralInfo = await assetManager.getCollateralType(collateral.collateralClass, collateral.token);
+                assertWeb3Equal(collateralInfo.minCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
+                assertWeb3Equal(collateralInfo.ccbMinCollateralRatioBIPS, collateral.ccbMinCollateralRatioBIPS);
+                assertWeb3Equal(collateralInfo.safetyMinCollateralRatioBIPS, collateral.safetyMinCollateralRatioBIPS);
             }
         });
 
@@ -824,11 +824,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 minCollateralRatioBIPS: "20000",
                 ccbMinCollateralRatioBIPS: "18000",
                 safetyMinCollateralRatioBIPS: "21000",
-                tokenClass: 2,
+                collateralClass: 2,
             };
-            await assetManagerController.addCollateralToken([assetManager.address], newToken, { from: governance });
-            const getToken = await assetManager.getCollateralToken(newToken.tokenClass, newToken.token);
-            assertWeb3Equal(getToken.token, accounts[82]);
+            await assetManagerController.addCollateralType([assetManager.address], newToken, { from: governance });
+            const getCollateral = await assetManager.getCollateralType(newToken.collateralClass, newToken.token);
+            assertWeb3Equal(getCollateral.token, accounts[82]);
         });
 
         it("should revert adding Collateral token when address 0", async () => {
@@ -839,9 +839,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 minCollateralRatioBIPS: "20000",
                 ccbMinCollateralRatioBIPS: "18000",
                 safetyMinCollateralRatioBIPS: "21000",
-                tokenClass: 2,
+                collateralClass: 2,
             };
-            const res = assetManagerController.addCollateralToken([assetManager.address], newToken, { from: governance });
+            const res = assetManagerController.addCollateralType([assetManager.address], newToken, { from: governance });
             await expectRevert(res, "token zero");
         });
 
@@ -854,7 +854,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 ccbMinCollateralRatioBIPS: "18000",
                 safetyMinCollateralRatioBIPS: "21000",
             };
-            const res = assetManagerController.addCollateralToken([assetManager.address], newToken, { from: governance });
+            const res = assetManagerController.addCollateralType([assetManager.address], newToken, { from: governance });
             await expectRevert(res, "not a class1 collateral");
         });
 
@@ -866,7 +866,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 minCollateralRatioBIPS: "20000",
                 ccbMinCollateralRatioBIPS: "18000",
                 safetyMinCollateralRatioBIPS: "21000",
-                tokenClass: 2,
+                collateralClass: 2,
             };
             const copyToken = {
                 ...collaterals[0],
@@ -875,10 +875,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 minCollateralRatioBIPS: "20000",
                 ccbMinCollateralRatioBIPS: "18000",
                 safetyMinCollateralRatioBIPS: "21000",
-                tokenClass: 2,
+                collateralClass: 2,
             };
-            await assetManagerController.addCollateralToken([assetManager.address], newToken, { from: governance });
-            const res = assetManagerController.addCollateralToken([assetManager.address], copyToken, { from: governance });
+            await assetManagerController.addCollateralType([assetManager.address], newToken, { from: governance });
+            const res = assetManagerController.addCollateralType([assetManager.address], copyToken, { from: governance });
             await expectRevert(res, "token already exists");
         });
 
@@ -890,9 +890,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 minCollateralRatioBIPS: "20000",
                 ccbMinCollateralRatioBIPS: "180",
                 safetyMinCollateralRatioBIPS: "21000",
-                tokenClass: 2,
+                collateralClass: 2,
             };
-            const res1 = assetManagerController.addCollateralToken([assetManager.address], newToken_invalidCCBRatio, { from: governance });
+            const res1 = assetManagerController.addCollateralType([assetManager.address], newToken_invalidCCBRatio, { from: governance });
             await expectRevert(res1, "invalid collateral ratios");
 
             const newToken_invalidMinColRatio = {
@@ -902,9 +902,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 minCollateralRatioBIPS: "17000",
                 ccbMinCollateralRatioBIPS: "18000",
                 safetyMinCollateralRatioBIPS: "21000",
-                tokenClass: 2,
+                collateralClass: 2,
             };
-            const res2 = assetManagerController.addCollateralToken([assetManager.address], newToken_invalidMinColRatio, { from: governance });
+            const res2 = assetManagerController.addCollateralType([assetManager.address], newToken_invalidMinColRatio, { from: governance });
             await expectRevert(res2, "invalid collateral ratios");
 
             const newToken_invalidSafetyMinColRatio = {
@@ -914,9 +914,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 minCollateralRatioBIPS: "20000",
                 ccbMinCollateralRatioBIPS: "18000",
                 safetyMinCollateralRatioBIPS: "19000",
-                tokenClass: 2,
+                collateralClass: 2,
             };
-            const res3 = assetManagerController.addCollateralToken([assetManager.address], newToken_invalidSafetyMinColRatio, { from: governance });
+            const res3 = assetManagerController.addCollateralType([assetManager.address], newToken_invalidSafetyMinColRatio, { from: governance });
             await expectRevert(res3, "invalid collateral ratios");
         });
 
@@ -929,7 +929,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 minCollateralRatioBIPS: "20000",
                 ccbMinCollateralRatioBIPS: "18000",
                 safetyMinCollateralRatioBIPS: "21000",
-                tokenClass: 2,
+                collateralClass: 2,
             };
 
             const newToken = {
@@ -939,16 +939,16 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 minCollateralRatioBIPS: "20000",
                 ccbMinCollateralRatioBIPS: "18000",
                 safetyMinCollateralRatioBIPS: "21000",
-                tokenClass: 2,
+                collateralClass: 2,
             };
-            await assetManagerController.addCollateralToken([assetManager.address], newToken, { from: governance });
-            await assetManagerController.addCollateralToken([assetManager.address], invalidToken, { from: governance });
-            await assetManagerController.deprecateCollateralToken([assetManager.address],2, invalidToken.token,currentSettings.tokenInvalidationTimeMinSeconds ,{ from: governance });
+            await assetManagerController.addCollateralType([assetManager.address], newToken, { from: governance });
+            await assetManagerController.addCollateralType([assetManager.address], invalidToken, { from: governance });
+            await assetManagerController.deprecateCollateralType([assetManager.address],2, invalidToken.token,currentSettings.tokenInvalidationTimeMinSeconds ,{ from: governance });
             await time.increase(WEEKS);
-            const res = assetManagerController.deprecateCollateralToken([assetManager.address],2, invalidToken.token,currentSettings.tokenInvalidationTimeMinSeconds ,{ from: governance });
+            const res = assetManagerController.deprecateCollateralType([assetManager.address],2, invalidToken.token,currentSettings.tokenInvalidationTimeMinSeconds ,{ from: governance });
             await expectRevert(res, "token not valid");
 
-            const res2 = assetManagerController.deprecateCollateralToken([assetManager.address],2, newToken.token,toBN(currentSettings.tokenInvalidationTimeMinSeconds).subn(1) ,{ from: governance });
+            const res2 = assetManagerController.deprecateCollateralType([assetManager.address],2, newToken.token,toBN(currentSettings.tokenInvalidationTimeMinSeconds).subn(1) ,{ from: governance });
             await expectRevert(res2, "deprecation time to short");
         });
 

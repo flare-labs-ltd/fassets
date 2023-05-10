@@ -1,5 +1,5 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { toBN, toBNExp, toWei, toNumber } from "../../../../lib/utils/helpers";
@@ -25,7 +25,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
-    let collaterals: CollateralToken[];
+    let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;

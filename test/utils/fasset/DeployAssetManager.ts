@@ -1,5 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralToken } from "../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { findEvent } from "../../../lib/utils/events/truffle";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance } from "../../../typechain-truffle";
@@ -12,7 +12,7 @@ export async function newAssetManager(
     symbol: string,
     decimals: number,
     assetManagerSettings: AssetManagerSettings,
-    collateralTokens: CollateralToken[],
+    collateralTokens: CollateralType[],
     encodedLiquidationStrategySettings: string,
     updateExecutor: string = governanceAddress
 ): Promise<[AssetManagerInstance, FAssetInstance]> {
@@ -53,7 +53,7 @@ export async function linkAssetManager() {
     // deploy all libraries
     const SettingsUpdater = await deployLibrary('SettingsUpdater');
     const StateUpdater = await deployLibrary('StateUpdater');
-    const CollateralTokens = await deployLibrary('CollateralTokens');
+    const CollateralTypes = await deployLibrary('CollateralTypes');
     const AgentsExternal = await deployLibrary('AgentsExternal');
     const AgentsCreateDestroy = await deployLibrary('AgentsCreateDestroy');
     const AgentSettingsUpdater = await deployLibrary('AgentSettingsUpdater');
@@ -70,7 +70,7 @@ export async function linkAssetManager() {
     const FullAgentInfo = await deployLibrary('FullAgentInfo');
     // link AssetManagerContract
     return linkDependencies(artifacts.require('AssetManager'), {
-        SettingsUpdater, StateUpdater, CollateralTokens, AgentsExternal, AgentsCreateDestroy, AgentSettingsUpdater, AvailableAgents, CollateralReservations, Liquidation, Minting,
+        SettingsUpdater, StateUpdater, CollateralTypes, AgentsExternal, AgentsCreateDestroy, AgentSettingsUpdater, AvailableAgents, CollateralReservations, Liquidation, Minting,
         UnderlyingBalance, RedemptionRequests, RedemptionConfirmations, RedemptionFailures, UnderlyingWithdrawalAnnouncements, Challenges, FullAgentInfo
     });
 }

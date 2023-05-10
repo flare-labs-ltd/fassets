@@ -1,8 +1,8 @@
 import BN from "bn.js";
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { AssetManagerSettings, CollateralToken, CollateralTokenClass } from '../../lib/fasset/AssetManagerTypes';
+import { AssetManagerSettings, CollateralType, CollateralClass } from '../../lib/fasset/AssetManagerTypes';
 import { JsonParameterSchema } from "./JsonParameterSchema";
-import { AssetManagerParameters, CollateralTokenParameters } from './asset-manager-parameters';
+import { AssetManagerParameters, CollateralTypeParameters } from './asset-manager-parameters';
 import { ChainContracts, loadContracts, newContract, saveContracts } from "./contracts";
 import { loadDeployAccounts, ZERO_ADDRESS } from './deploy-utils';
 import { ILiquidationStrategyFactory } from "./liquidationStrategyFactory/ILiquidationStrategyFactory";
@@ -113,9 +113,9 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const AddressValidator = hre.artifacts.require(addressValidatorArtifact);
     const addressValidator = await AddressValidator.new(...addressValidatorConstructorArgs) as Truffle.ContractInstance;
 
-    const poolCollateralToken = convertCollateralToken(contracts, parameters.poolCollateral, CollateralTokenClass.POOL);
-    const class1CollateralTokens = parameters.class1Collaterals.map(p => convertCollateralToken(contracts, p, CollateralTokenClass.CLASS1));
-    const collateralTokens = [poolCollateralToken, ...class1CollateralTokens];
+    const poolCollateral = convertCollateralType(contracts, parameters.poolCollateral, CollateralClass.POOL);
+    const class1Collateral = parameters.class1Collaterals.map(p => convertCollateralType(contracts, p, CollateralClass.CLASS1));
+    const collateralTypes = [poolCollateral, ...class1Collateral];
 
     const liquidationStrategyFactory = liquidationStrategyFactories[parameters.liquidationStrategy]();
     const liquidationStrategy = await liquidationStrategyFactory.deployLibrary(hre, contracts);
@@ -126,7 +126,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     // console.log(JSON.stringify(assetManagerSettings, null, 4));
 
-    const assetManager = await AssetManager.new(assetManagerSettings, collateralTokens, liquidationStrategySettingsEnc);
+    const assetManager = await AssetManager.new(assetManagerSettings, collateralTypes, liquidationStrategySettingsEnc);
 
     await fAsset.setAssetManager(assetManager.address, { from: deployer });
 
@@ -156,9 +156,9 @@ function parseBN(s: string) {
     return new BN(s.replace(/_/g, ''), 10);
 }
 
-function convertCollateralToken(contracts: ChainContracts, parameters: CollateralTokenParameters, tokenClass: CollateralTokenClass): CollateralToken {
+function convertCollateralType(contracts: ChainContracts, parameters: CollateralTypeParameters, collateralClass: CollateralClass): CollateralType {
     return {
-        tokenClass: tokenClass,
+        collateralClass: collateralClass,
         token: addressFromParameter(contracts, parameters.token),
         decimals: parameters.decimals,
         validUntil: 0,  // not deprecated

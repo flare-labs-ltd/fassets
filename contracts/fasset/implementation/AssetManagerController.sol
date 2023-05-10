@@ -339,21 +339,21 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Collateral tokens
 
-    function addCollateralToken(
+    function addCollateralType(
         IAssetManager[] memory _assetManagers,
-        IAssetManager.CollateralTokenInfo calldata _data
+        IAssetManager.CollateralType calldata _data
     )
         external
         onlyImmediateGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).addCollateralToken(_data);
+            _checkAssetManager(_assetManagers[i]).addCollateralType(_data);
         }
     }
 
     function setCollateralRatiosForToken(
         IAssetManager[] memory _assetManagers,
-        IAssetManager.CollateralTokenClass _tokenClass,
+        IAssetManager.CollateralClass _class,
         IERC20 _token,
         uint256 _minCollateralRatioBIPS,
         uint256 _ccbMinCollateralRatioBIPS,
@@ -363,14 +363,14 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         onlyGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).setCollateralRatiosForToken(_tokenClass, _token,
+            _checkAssetManager(_assetManagers[i]).setCollateralRatiosForToken(_class, _token,
                 _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
         }
     }
 
-    function deprecateCollateralToken(
+    function deprecateCollateralType(
         IAssetManager[] memory _assetManagers,
-        IAssetManager.CollateralTokenClass _tokenClass,
+        IAssetManager.CollateralClass _class,
         IERC20 _token,
         uint256 _invalidationTimeSec
     )
@@ -378,19 +378,19 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         onlyImmediateGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).deprecateCollateralToken(_tokenClass, _token, _invalidationTimeSec);
+            _checkAssetManager(_assetManagers[i]).deprecateCollateralType(_class, _token, _invalidationTimeSec);
         }
     }
 
-    function setPoolCollateralToken(
+    function setPoolCollateralType(
         IAssetManager[] memory _assetManagers,
-        IAssetManager.CollateralTokenInfo calldata _data
+        IAssetManager.CollateralType calldata _data
     )
         external
         onlyGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).setPoolCollateralToken(_data);
+            _checkAssetManager(_assetManagers[i]).setPoolCollateralType(_data);
         }
     }
 

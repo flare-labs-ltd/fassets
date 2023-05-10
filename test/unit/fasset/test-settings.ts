@@ -1,5 +1,5 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerSettings, CollateralType, CollateralClass } from "../../../lib/fasset/AssetManagerTypes";
 import { encodeLiquidationStrategyImplSettings, LiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
@@ -99,9 +99,9 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
     return Object.assign(result, options ?? {});
 }
 
-export function createTestCollaterals(contracts: TestSettingsContracts, ci: ChainInfo): CollateralToken[] {
-    const poolCollateral: CollateralToken = {
-        tokenClass: CollateralTokenClass.POOL,
+export function createTestCollaterals(contracts: TestSettingsContracts, ci: ChainInfo): CollateralType[] {
+    const poolCollateral: CollateralType = {
+        collateralClass: CollateralClass.POOL,
         token: contracts.wNat.address,
         decimals: 18,
         validUntil: 0,  // not deprecated
@@ -112,8 +112,8 @@ export function createTestCollaterals(contracts: TestSettingsContracts, ci: Chai
         ccbMinCollateralRatioBIPS: toBIPS(1.9),
         safetyMinCollateralRatioBIPS: toBIPS(2.1),
     };
-    const usdcCollateral: CollateralToken = {
-        tokenClass: CollateralTokenClass.CLASS1,
+    const usdcCollateral: CollateralType = {
+        collateralClass: CollateralClass.CLASS1,
         token: contracts.stablecoins.USDC.address,
         decimals: 18,
         validUntil: 0,  // not deprecated
@@ -124,8 +124,8 @@ export function createTestCollaterals(contracts: TestSettingsContracts, ci: Chai
         ccbMinCollateralRatioBIPS: toBIPS(1.3),
         safetyMinCollateralRatioBIPS: toBIPS(1.5),
     };
-    const usdtCollateral: CollateralToken = {
-        tokenClass: CollateralTokenClass.CLASS1,
+    const usdtCollateral: CollateralType = {
+        collateralClass: CollateralClass.CLASS1,
         token: contracts.stablecoins.USDT.address,
         decimals: 18,
         validUntil: 0,  // not deprecated

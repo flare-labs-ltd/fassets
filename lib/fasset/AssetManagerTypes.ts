@@ -3,13 +3,13 @@ import { AssetManagerContract, AssetManagerInstance } from "../../typechain-truf
 type _AssetManagerSettings = Parameters<AssetManagerContract['new']>[0];
 export interface AssetManagerSettings extends _AssetManagerSettings {}
 
-export enum CollateralTokenClass {
+export enum CollateralClass {
     POOL = 1,
     CLASS1 = 2,
 }
 
-type _CollateralToken = Parameters<AssetManagerContract['new']>[1][0];
-export interface CollateralToken extends _CollateralToken {}
+type _CollateralType = Parameters<AssetManagerContract['new']>[1][0];
+export interface CollateralType extends _CollateralType {}
 
 type _AgentSettings = Parameters<AssetManagerInstance['createAgent']>[0];
 export interface AgentSettings extends _AgentSettings {}

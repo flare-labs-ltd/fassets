@@ -27,7 +27,7 @@ import "../library/Liquidation.sol";
 import "../library/UnderlyingWithdrawalAnnouncements.sol";
 import "../library/UnderlyingBalance.sol";
 import "../library/FullAgentInfo.sol";
-import "../library/CollateralTokens.sol";
+import "../library/CollateralTypes.sol";
 import "../library/AgentSettingsUpdater.sol";
 
 
@@ -57,11 +57,11 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
 
     constructor(
         AssetManagerSettings.Data memory _settings,
-        IAssetManager.CollateralTokenInfo[] memory _initialCollateralTypes,
+        IAssetManager.CollateralType[] memory _initialCollateralTypes,
         bytes memory _initialLiquidationSettings
     ) {
         SettingsUpdater.validateAndSet(_settings);
-        CollateralTokens.initialize(_initialCollateralTypes);
+        CollateralTypes.initialize(_initialCollateralTypes);
         LiquidationStrategy.initialize(_initialLiquidationSettings);
     }
 
@@ -981,19 +981,19 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Collateral token handling
+    // Collateral type management
 
-    function addCollateralToken(
-        IAssetManager.CollateralTokenInfo calldata _data
+    function addCollateralType(
+        IAssetManager.CollateralType calldata _data
     )
         external
         onlyAssetManagerController
     {
-        CollateralTokens.add(_data);
+        CollateralTypes.add(_data);
     }
 
     function setCollateralRatiosForToken(
-        IAssetManager.CollateralTokenClass _tokenClass,
+        IAssetManager.CollateralClass _collateralClass,
         IERC20 _token,
         uint256 _minCollateralRatioBIPS,
         uint256 _ccbMinCollateralRatioBIPS,
@@ -1002,19 +1002,19 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
         external
         onlyAssetManagerController
     {
-        CollateralTokens.setCollateralRatios(_tokenClass, _token,
+        CollateralTypes.setCollateralRatios(_collateralClass, _token,
             _minCollateralRatioBIPS, _ccbMinCollateralRatioBIPS, _safetyMinCollateralRatioBIPS);
     }
 
-    function deprecateCollateralToken(
-        IAssetManager.CollateralTokenClass _tokenClass,
+    function deprecateCollateralType(
+        IAssetManager.CollateralClass _collateralClass,
         IERC20 _token,
         uint256 _invalidationTimeSec
     )
         external
         onlyAssetManagerController
     {
-        CollateralTokens.deprecate(_tokenClass, _token, _invalidationTimeSec);
+        CollateralTypes.deprecate(_collateralClass, _token, _invalidationTimeSec);
     }
 
     /**
@@ -1022,17 +1022,17 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
      * Instead, it has to be added as a new collateral token of type POOL by this method.
      * Note that existing pools must switch afterwards using `upgradeWNat` method.
      */
-    function setPoolCollateralToken(
-        IAssetManager.CollateralTokenInfo calldata _data
+    function setPoolCollateralType(
+        IAssetManager.CollateralType calldata _data
     )
         external
         onlyAssetManagerController
     {
-        CollateralTokens.setPoolCollateralToken(_data);
+        CollateralTypes.setPoolCollateralType(_data);
     }
 
     /**
-     * When current pool collateral token contract (WNat) is replaced by the method setPoolCollateralToken,
+     * When current pool collateral token contract (WNat) is replaced by the method setPoolCollateralType,
      * pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for
      * new ones and sets it for use by the pool.
      */
@@ -1048,24 +1048,24 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     /**
      * Get collateral  information about a token.
      */
-    function getCollateralToken(
-        IAssetManager.CollateralTokenClass _tokenClass,
+    function getCollateralType(
+        IAssetManager.CollateralClass _collateralClass,
         IERC20 _token
     )
         external view
-        returns (IAssetManager.CollateralTokenInfo memory)
+        returns (IAssetManager.CollateralType memory)
     {
-        return CollateralTokens.getInfo(_tokenClass, _token);
+        return CollateralTypes.getInfo(_collateralClass, _token);
     }
 
     /**
      * Get the list of all available and deprecated tokens used for collateral.
      */
-    function getCollateralTokens()
+    function getCollateralTypes()
         external view
-        returns (IAssetManager.CollateralTokenInfo[] memory)
+        returns (IAssetManager.CollateralType[] memory)
     {
-        return CollateralTokens.getAllTokenInfos();
+        return CollateralTypes.getAllInfos();
     }
 
     /**

@@ -8,7 +8,7 @@ import "./PaymentConfirmations.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./CollateralReservation.sol";
 import "./Redemption.sol";
-import "./CollateralToken.sol";
+import "./CollateralType.sol";
 
 
 library AssetManagerState {
@@ -17,9 +17,9 @@ library AssetManagerState {
 
         // All collateral types, used for class 1 or pool.
         // Pool collateral (always WNat) has index 0.
-        CollateralToken.Data[] collateralTokens;
+        CollateralType.Data[] collateralTokens;
 
-        // mapping((tokenClass, tokenAddress) => collateralTokens index + 1)
+        // mapping((collateralClass, tokenAddress) => collateralTokens index + 1)
         mapping(bytes32 => uint256) collateralTokenIndex;
 
         // bidirectional mapping between owner's hot and cold addresses

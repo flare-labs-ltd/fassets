@@ -1,4 +1,4 @@
-import { AgentStatus, AssetManagerSettings, CollateralToken } from "../fasset/AssetManagerTypes";
+import { AgentStatus, AssetManagerSettings, CollateralType } from "../fasset/AssetManagerTypes";
 import { AssetManagerEvents, IAssetContext } from "../fasset/IAssetContext";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
 import { EventFormatter } from "../utils/events/EventFormatter";
@@ -36,7 +36,7 @@ export class TrackedState {
     // settings
     settings!: AssetManagerSettings;
     collaterals = new CollateralList();
-    poolWNatColateral!: CollateralToken;
+    poolWNatColateral!: CollateralType;
 
     // agent state
     agents: Map<string, TrackedAgentState> = new Map();                // map agent_address => agent state
@@ -52,9 +52,9 @@ export class TrackedState {
     // async initialization part
     async initialize() {
         this.settings = await this.context.assetManager.getSettings();
-        const collateralTokens = await this.context.assetManager.getCollateralTokens();
-        for (const collateralToken of collateralTokens) {
-            const collateral = await this.addCollateralToken(collateralToken);
+        const collateralTypes = await this.context.assetManager.getCollateralTypes();
+        for (const collateralToken of collateralTypes) {
+            const collateral = await this.addCollateralType(collateralToken);
             // poolColateral will be the last active collateral of class pool
             if (isPoolCollateral(collateral)) {
                 this.poolWNatColateral = collateral;
@@ -95,17 +95,17 @@ export class TrackedState {
             (this.settings as any)[args.name] = web3DeepNormalize(args.value);
         });
         // track collateral token changes
-        this.assetManagerEvent('CollateralTokenAdded').subscribe(args => {
-            void this.addCollateralToken({ ...args, validUntil: BN_ZERO });
+        this.assetManagerEvent('CollateralTypeAdded').subscribe(args => {
+            void this.addCollateralType({ ...args, validUntil: BN_ZERO });
         });
-        this.assetManagerEvent('CollateralTokenRatiosChanged').subscribe(args => {
-            const collateral = this.collaterals.get(args.tokenClass, args.tokenContract);
+        this.assetManagerEvent('CollateralRatiosChanged').subscribe(args => {
+            const collateral = this.collaterals.get(args.collateralClass, args.collateralToken);
             collateral.minCollateralRatioBIPS = toBN(args.minCollateralRatioBIPS);
             collateral.ccbMinCollateralRatioBIPS = toBN(args.ccbMinCollateralRatioBIPS);
             collateral.safetyMinCollateralRatioBIPS = toBN(args.safetyMinCollateralRatioBIPS);
         });
-        this.assetManagerEvent('CollateralTokenDeprecated').subscribe(args => {
-            const collateral = this.collaterals.get(args.tokenClass, args.tokenContract);
+        this.assetManagerEvent('CollateralTypeDeprecated').subscribe(args => {
+            const collateral = this.collaterals.get(args.collateralClass, args.collateralToken);
             collateral.validUntil = toBN(args.validUntil);
         });
         // track price changes
@@ -159,9 +159,9 @@ export class TrackedState {
         this.assetManagerEvent('LiquidationPerformed').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleLiquidationPerformed(args));
     }
 
-    private async addCollateralToken(data: CollateralToken) {
-        const collateral: CollateralToken = {
-            tokenClass: toBN(data.tokenClass),
+    private async addCollateralType(data: CollateralType) {
+        const collateral: CollateralType = {
+            collateralClass: toBN(data.collateralClass),
             token: data.token,
             decimals: toBN(data.decimals),
             validUntil: data.validUntil,

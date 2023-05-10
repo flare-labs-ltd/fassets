@@ -137,8 +137,8 @@ library AgentsExternal {
         if (agent.poolCollateralIndex != state.poolCollateralIndex) {
             agent.poolCollateralIndex = state.poolCollateralIndex;
             agent.collateralPool.upgradeWNatContract(wNat);
-            emit AMEvents.AgentCollateralTokenChanged(_agentVault,
-                uint8(IAssetManager.CollateralTokenClass.POOL), address(wNat));
+            emit AMEvents.AgentCollateralTypeChanged(_agentVault,
+                uint8(IAssetManager.CollateralClass.POOL), address(wNat));
         }
         // upgrade agent vault wnat
         IWNat vaultWNat = IAgentVault(_agentVault).wNat();
@@ -147,11 +147,11 @@ library AgentsExternal {
             // should also switch collateral if agent uses WNat as class1 collateral
             if (vaultWNat == agent.getClass1Token()) {
                 (bool wnatIsCollateralToken, uint256 index) =
-                    CollateralTokens.tryGetIndex(IAssetManager.CollateralTokenClass.CLASS1, vaultWNat);
+                    CollateralTypes.tryGetIndex(IAssetManager.CollateralClass.CLASS1, vaultWNat);
                 if (wnatIsCollateralToken) {
                     agent.class1CollateralIndex = uint16(index);
-                    emit AMEvents.AgentCollateralTokenChanged(_agentVault,
-                        uint8(IAssetManager.CollateralTokenClass.CLASS1), address(wNat));
+                    emit AMEvents.AgentCollateralTypeChanged(_agentVault,
+                        uint8(IAssetManager.CollateralClass.CLASS1), address(wNat));
                 }
             }
         }
@@ -168,7 +168,7 @@ library AgentsExternal {
         // check that old collateral is deprecated
         // TODO: could work without this check, but would need timelock, otherwise there can be
         //       withdrawal without announcement by switching, withdrawing and switching back
-        CollateralToken.Data storage currentCollateral = agent.getClass1Collateral();
+        CollateralType.Data storage currentCollateral = agent.getClass1Collateral();
         require(currentCollateral.validUntil != 0, "current collateral not deprecated");
         // set new collateral
         agent.setClass1Collateral(_token);

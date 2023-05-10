@@ -25,7 +25,7 @@ library Conversion {
     }
 
     function currentAmgPriceInTokenWei(
-        CollateralToken.Data storage _token
+        CollateralType.Data storage _token
     )
         internal view
         returns (uint256 _price)
@@ -34,7 +34,7 @@ library Conversion {
     }
 
     function currentAmgPriceInTokenWeiWithTrusted(
-        CollateralToken.Data storage _token
+        CollateralType.Data storage _token
     )
         internal view
         returns (uint256 _ftsoPrice, uint256 _trustedPrice)
@@ -94,8 +94,8 @@ library Conversion {
 
     function convert(
         uint256 _amount,
-        CollateralToken.Data storage _fromToken,
-        CollateralToken.Data storage _toToken
+        CollateralType.Data storage _fromToken,
+        CollateralType.Data storage _toToken
     )
         internal view
         returns (uint256)
@@ -107,7 +107,7 @@ library Conversion {
 
     function convertFromUSD5(
         uint256 _amountUSD5,
-        CollateralToken.Data storage _token
+        CollateralType.Data storage _token
     )
         internal view
         returns (uint256)
@@ -123,7 +123,7 @@ library Conversion {
     }
 
     function currentAmgPriceInTokenWeiWithTs(
-        CollateralToken.Data storage _token,
+        CollateralType.Data storage _token,
         bool _fromTrustedProviders
     )
         internal view

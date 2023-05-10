@@ -1,5 +1,5 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { toBN, toWei } from "../../../../lib/utils/helpers";
 import { AssetManagerControllerInstance, AssetManagerInstance, AssetManagerMockInstance, ERC20MockInstance, FAssetInstance, WNatInstance, CollateralPoolInstance, CollateralPoolTokenInstance, AgentVaultInstance, FAssetMockInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -27,7 +27,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     let settings: AssetManagerSettings;
     let assetManager: AssetManagerInstance;
     let assetManagerMock: AssetManagerMockInstance;
-    let collaterals: CollateralToken[];
+    let collaterals: CollateralType[];
     let fAsset: FAssetInstance;
 
     const owner = accounts[1];

@@ -1,5 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { AssetManagerInstance, FAssetInstance } from "../../../../typechain-truffle";
@@ -18,7 +18,7 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
     let fAsset: FAssetInstance;
     let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
-    let collaterals: CollateralToken[];
+    let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;

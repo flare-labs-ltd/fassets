@@ -1,5 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralToken } from "../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../../lib/fasset/Conversions";
 import { AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
@@ -26,7 +26,7 @@ const TrivialAddressValidatorMock = artifacts.require('TrivialAddressValidatorMo
 export interface SettingsOptions {
     // optional settings
     burnWithSelfDestruct?: boolean;
-    collaterals?: CollateralToken[];
+    collaterals?: CollateralType[];
     liquidationSettings?: LiquidationStrategyImplSettings;
     // optional contracts
     whitelist?: ContractWithEvents<WhitelistInstance, WhitelistEvents>;
@@ -49,7 +49,7 @@ export class AssetContext implements IAssetContext {
         public fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>,
         // following three settings are initial and may not be fresh
         public settings: AssetManagerSettings,
-        public collaterals: CollateralToken[],
+        public collaterals: CollateralType[],
         public liquidationSettings: LiquidationStrategyImplSettings,
     ) {
     }
@@ -154,7 +154,7 @@ export class AssetContext implements IAssetContext {
         return this.chainEvents.waitForUnderlyingTransactionFinalization(scope, txHash, maxBlocksToWaitForTx);
     }
 
-    getCollateralPrice(collateral: CollateralToken, trusted: boolean = false) {
+    getCollateralPrice(collateral: CollateralType, trusted: boolean = false) {
         const priceReader = new TokenPriceReader(this.ftsoRegistry);
         return CollateralPrice.forCollateral(priceReader, this.settings, collateral, trusted);
     }

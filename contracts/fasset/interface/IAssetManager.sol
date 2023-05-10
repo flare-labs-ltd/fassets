@@ -5,16 +5,16 @@ import "./IWNat.sol";
 
 // Asset Manager methods used in AgentVault and AssetManagerController
 interface IAssetManager {
-    enum CollateralTokenClass {
+    enum CollateralClass {
         NONE,   // unused
         POOL,   // pool collateral type
         CLASS1  // usable as class 1 collateral
     }
 
-    // Collateral token is uniquely identified by the pair (tokenClass, token).
-    struct CollateralTokenInfo {
+    // Collateral token is uniquely identified by the pair (collateralClass, token).
+    struct CollateralType {
         // The kind of collateral for this token.
-        CollateralTokenClass tokenClass;
+        CollateralClass collateralClass;
 
         // The ERC20 token contract for this collateral type.
         IERC20 token;
@@ -59,7 +59,7 @@ interface IAssetManager {
         // Full address on the underlying chain (not hash).
         string underlyingAddressString;
 
-        // The token used as class1 collateral. Must be one of the tokens obtained by `getCollateralTokens()`,
+        // The token used as class1 collateral. Must be one of the tokens obtained by `getCollateralTypes()`,
         // with class CLASS1.
         IERC20 class1CollateralToken;
 
@@ -116,13 +116,13 @@ interface IAssetManager {
     function redeemFromAgentInCollateral(
         address _agentVault, address _receiver, uint256 _amountUBA) external;
     // collateral tokens
-    function addCollateralToken(IAssetManager.CollateralTokenInfo calldata _data) external;
-    function setCollateralRatiosForToken(CollateralTokenClass _tokenClass, IERC20 _token,
+    function addCollateralType(IAssetManager.CollateralType calldata _data) external;
+    function setCollateralRatiosForToken(CollateralClass _collateralClass, IERC20 _token,
         uint256 _minCollateralRatioBIPS, uint256 _ccbMinCollateralRatioBIPS, uint256 _safetyMinCollateralRatioBIPS)
         external;
-    function deprecateCollateralToken(CollateralTokenClass _tokenClass, IERC20 _token,
+    function deprecateCollateralType(CollateralClass _collateralClass, IERC20 _token,
         uint256 _invalidationTimeSec) external;
-    function setPoolCollateralToken(IAssetManager.CollateralTokenInfo calldata _data) external;
+    function setPoolCollateralType(IAssetManager.CollateralType calldata _data) external;
     // view methods
     function isCollateralToken(address _agentVault, IERC20 _token) external view returns (bool);
     function fAsset() external view returns (IERC20);

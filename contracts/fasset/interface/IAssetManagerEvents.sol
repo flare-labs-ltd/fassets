@@ -100,9 +100,9 @@ interface IAssetManagerEvents {
     /**
      * Agent or agent's collateral pool has changed token contract.
      */
-    event AgentCollateralTokenChanged(
+    event AgentCollateralTypeChanged(
         address indexed agentVault,
-        uint8 tokenClass,
+        uint8 collateralClass,
         address token);
 
     /**
@@ -402,8 +402,8 @@ interface IAssetManagerEvents {
     /**
      * New collateral token has been added.
      */
-    event CollateralTokenAdded(
-        uint8 tokenClass,
+    event CollateralTypeAdded(
+        uint8 collateralClass,
         address token,
         uint256 decimals,
         bool directPricePair,
@@ -416,9 +416,9 @@ interface IAssetManagerEvents {
     /**
      * System defined collateral ratios for the token have changed (minimal, CCB and safety collateral ratio).
      */
-    event CollateralTokenRatiosChanged(
-        uint8 tokenClass,
-        address tokenContract,
+    event CollateralRatiosChanged(
+        uint8 collateralClass,
+        address collateralToken,
         uint256 minCollateralRatioBIPS,
         uint256 ccbMinCollateralRatioBIPS,
         uint256 safetyMinCollateralRatioBIPS);
@@ -427,8 +427,8 @@ interface IAssetManagerEvents {
      * Collateral token has been marked as deprecated. After timestamp `validUntil` passes, it will be
      * considered invalid and the agent who haven't switched their collateral before will be liquidated.
      */
-    event CollateralTokenDeprecated(
-        uint8 tokenClass,
-        address tokenContract,
+    event CollateralTypeDeprecated(
+        uint8 collateralClass,
+        address collateralToken,
         uint256 validUntil);
 }

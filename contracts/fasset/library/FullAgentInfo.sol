@@ -65,7 +65,7 @@ library FullAgentInfo {
         uint256 poolFeeShareBIPS;
 
         // The token identifier of the agent's current class 1 collateral.
-        // Token identifier can be used to call AssetManager.getCollateralTokenInfo().
+        // Token identifier can be used to call AssetManager.getCollateralType().
         IERC20 class1CollateralToken;
 
         // Amount, set by agent, at which locked and free collateral are calculated for new mintings.
@@ -184,8 +184,8 @@ library FullAgentInfo {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
-        CollateralToken.Data storage collateral = agent.getClass1Collateral();
-        CollateralToken.Data storage poolCollateral = agent.getPoolCollateral();
+        CollateralType.Data storage collateral = agent.getClass1Collateral();
+        CollateralType.Data storage poolCollateral = agent.getPoolCollateral();
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
         _info.status = _getAgentStatusInfo(agent);
         (_info.ownerColdWalletAddress, _info.ownerHotWalletAddress) = Agents.vaultOwner(agent);

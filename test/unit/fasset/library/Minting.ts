@@ -1,6 +1,6 @@
 import { balance, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { ethers } from "hardhat";
-import { AgentSettings, AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { TX_BLOCKED, TX_FAILED } from "../../../../lib/underlying-chain/interfaces/IBlockChain";
@@ -28,7 +28,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
-    let collaterals: CollateralToken[];
+    let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;

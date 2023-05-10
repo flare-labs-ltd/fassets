@@ -1,5 +1,5 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralToken } from "../../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings, decodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
@@ -32,7 +32,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Agent whitelist tests`, asy
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
-    let collaterals: CollateralToken[];
+    let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
@@ -114,7 +114,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Agent whitelist tests`, asy
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const ownerHotAddress = accounts[21];
             await agentWhitelist.addAddressesToWhitelist([agentOwner1], {from: governance});
-            assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
+            await assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
             const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
             const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
             await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
@@ -132,7 +132,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Agent whitelist tests`, asy
         it("should not allow proving underlying address eoa if address not whitelisted", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const ownerHotAddress = accounts[21];
-            assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
+            await assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
             const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
             const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
             const res = assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });

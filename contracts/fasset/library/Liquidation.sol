@@ -260,7 +260,7 @@ library Liquidation {
         returns (Agent.LiquidationPhase)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralToken.Data storage collateral = state.collateralTokens[_collateralIndex];
+        CollateralType.Data storage collateral = state.collateralTokens[_collateralIndex];
         if (_collateralRatioBIPS >= collateral.minCollateralRatioBIPS) {
             return Agent.LiquidationPhase.NONE;
         } else if (_collateralRatioBIPS >= collateral.ccbMinCollateralRatioBIPS) {
@@ -300,7 +300,7 @@ library Liquidation {
         private view
         returns (uint256)
     {
-        CollateralToken.Data storage collateral = _agent.getCollateral(_collateralKind);
+        CollateralType.Data storage collateral = _agent.getCollateral(_collateralKind);
         if (_currentPhase == Agent.LiquidationPhase.CCB || !_agent.collateralUnderwater(_collateralKind)) {
             return collateral.minCollateralRatioBIPS;
         } else {
@@ -365,13 +365,13 @@ library Liquidation {
         private view
         returns (Collateral.Data memory _data, Collateral.Data memory _trustedData)
     {
-        CollateralToken.Data storage collateral = _agent.getCollateral(_kind);
+        CollateralType.Data storage collateral = _agent.getCollateral(_kind);
         address owner = _agent.getCollateralOwner(_kind);
         // A simple way to force agents still holding expired collateral tokens into liquidation is just to
         // set fullCollateral for expired types to 0.
         // This will also make all liquidation payments in the other collateral type.
         // TODO: 1) is this ok?  2) test if it works.
-        uint256 fullCollateral = CollateralTokens.isValid(collateral) ? collateral.token.balanceOf(owner) : 0;
+        uint256 fullCollateral = CollateralTypes.isValid(collateral) ? collateral.token.balanceOf(owner) : 0;
         (uint256 price, uint256 trusted) = Conversion.currentAmgPriceInTokenWeiWithTrusted(collateral);
         _data = Collateral.Data({ kind: _kind, fullCollateral: fullCollateral, amgToTokenWeiPrice: price });
         _trustedData = Collateral.Data({ kind: _kind, fullCollateral: fullCollateral, amgToTokenWeiPrice: trusted });

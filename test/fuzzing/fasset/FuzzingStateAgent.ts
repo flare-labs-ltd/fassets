@@ -1,6 +1,6 @@
 import { constants } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
-import { AgentInfo, AgentStatus, CollateralToken, CollateralTokenClass } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentInfo, AgentStatus, CollateralType, CollateralClass } from "../../../lib/fasset/AssetManagerTypes";
 import { NAT_WEI } from "../../../lib/fasset/Conversions";
 import { CollateralPoolEvents, CollateralPoolTokenEvents } from "../../../lib/fasset/IAssetContext";
 import { Prices } from "../../../lib/state/Prices";
@@ -496,18 +496,18 @@ export class FuzzingStateAgent extends TrackedAgentState {
         return this.parent.eventFormatter.formatAddress(this.collateralPoolAddress);
     }
 
-    private collateralRatioForPrice(prices: Prices, collateral: CollateralToken) {
-        const redeemingUBA = collateral.tokenClass === CollateralTokenClass.CLASS1 ? this.redeemingUBA : this.poolRedeemingUBA;
+    private collateralRatioForPrice(prices: Prices, collateral: CollateralType) {
+        const redeemingUBA = collateral.collateralClass === CollateralClass.CLASS1 ? this.redeemingUBA : this.poolRedeemingUBA;
         const backedAmount = (Number(this.reservedUBA) + Number(this.mintedUBA) + Number(redeemingUBA)) / Number(this.parent.settings.assetUnitUBA);
         if (backedAmount === 0) return Number.POSITIVE_INFINITY;
-        const totalCollateralWei = collateral.tokenClass === CollateralTokenClass.CLASS1 ? this.totalClass1CollateralWei : this.totalPoolCollateralNATWei;
+        const totalCollateralWei = collateral.collateralClass === CollateralClass.CLASS1 ? this.totalClass1CollateralWei : this.totalPoolCollateralNATWei;
         const totalCollateral = Number(totalCollateralWei) / Number(NAT_WEI);
         const assetToTokenPrice = prices.get(collateral).assetToTokenPriceNum();
         const backingCollateral = Number(backedAmount) * assetToTokenPrice;
         return totalCollateral / backingCollateral;
     }
 
-    collateralRatio(collateral: CollateralToken) {
+    collateralRatio(collateral: CollateralType) {
         const ratio = this.collateralRatioForPrice(this.parent.prices, collateral);
         const ratioFromTrusted = this.collateralRatioForPrice(this.parent.trustedPrices, collateral);
         return Math.max(ratio, ratioFromTrusted);
