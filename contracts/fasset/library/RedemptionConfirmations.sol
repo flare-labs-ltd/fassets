@@ -6,6 +6,8 @@ import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Redemptions.sol";
 import "./RedemptionFailures.sol";
+import "./Liquidation.sol";
+import "./UnderlyingBalance.sol";
 
 
 library RedemptionConfirmations {

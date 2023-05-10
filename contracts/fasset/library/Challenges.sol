@@ -4,7 +4,6 @@ pragma solidity 0.8.11;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../../utils/lib/SafePct.sol";
-import "../../utils/lib/MathUtils.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
@@ -12,6 +11,7 @@ import "./Agents.sol";
 import "./Liquidation.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
+import "./UnderlyingBalance.sol";
 
 
 library Challenges {

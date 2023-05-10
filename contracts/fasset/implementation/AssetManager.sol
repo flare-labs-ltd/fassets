@@ -84,8 +84,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     /**
-     * In update, all settings must be set (and some must stay unchanged), so the updater must call
-     * getSettings and then updateSettings with modified structure.
+     * Get complete current settings.
      * @return the current settings
      */
     function getSettings()
@@ -96,8 +95,7 @@ contract AssetManager is ReentrancyGuard, IAssetManager, IAssetManagerEvents {
     }
 
     /**
-     * In update, all settings must be set (and some must stay unchanged), so the updater must call
-     * getSettings and then updateSettings with modified structure.
+     * Get settings for current liquidation strategy. Format depends on the liquidation strategy implementation.
      * @return the current settings
      */
     function getLiquidationSettings()

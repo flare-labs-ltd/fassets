@@ -8,6 +8,7 @@ import "./AMEvents.sol";
 import "./Redemptions.sol";
 import "./Conversion.sol";
 import "./AgentCollateral.sol";
+import "./TransactionAttestation.sol";
 
 
 library RedemptionFailures {

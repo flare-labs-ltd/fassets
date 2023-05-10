@@ -8,6 +8,7 @@ import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./Redemptions.sol";
+import "./Liquidation.sol";
 
 library RedemptionRequests {
     using SafePct for *;
