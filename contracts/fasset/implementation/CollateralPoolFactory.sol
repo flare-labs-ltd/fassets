@@ -11,9 +11,9 @@ contract CollateralPoolFactory is ICollateralPoolFactory {
     using SafeCast for uint256;
 
     function create(
-        IAssetManager _assetManager,
+        IIAssetManager _assetManager,
         address _agentVault,
-        IAssetManager.InitialAgentSettings memory _settings
+        AgentCreateSettings.Data memory _settings
     )
         external
         returns (ICollateralPool)

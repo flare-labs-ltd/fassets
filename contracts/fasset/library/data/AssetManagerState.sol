@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "./AssetManagerSettings.sol";
+import "../../../userInterfaces/structures/AssetManagerSettings.sol";
 import "./Agent.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentConfirmations.sol";
@@ -17,7 +17,7 @@ library AssetManagerState {
 
         // All collateral types, used for class 1 or pool.
         // Pool collateral (always WNat) has index 0.
-        CollateralType.Data[] collateralTokens;
+        CollateralTypeInt.Data[] collateralTokens;
 
         // mapping((collateralClass, tokenAddress) => collateralTokens index + 1)
         mapping(bytes32 => uint256) collateralTokenIndex;

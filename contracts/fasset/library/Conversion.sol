@@ -25,7 +25,7 @@ library Conversion {
     }
 
     function currentAmgPriceInTokenWei(
-        CollateralType.Data storage _token
+        CollateralTypeInt.Data storage _token
     )
         internal view
         returns (uint256 _price)
@@ -34,7 +34,7 @@ library Conversion {
     }
 
     function currentAmgPriceInTokenWeiWithTrusted(
-        CollateralType.Data storage _token
+        CollateralTypeInt.Data storage _token
     )
         internal view
         returns (uint256 _ftsoPrice, uint256 _trustedPrice)
@@ -94,8 +94,8 @@ library Conversion {
 
     function convert(
         uint256 _amount,
-        CollateralType.Data storage _fromToken,
-        CollateralType.Data storage _toToken
+        CollateralTypeInt.Data storage _fromToken,
+        CollateralTypeInt.Data storage _toToken
     )
         internal view
         returns (uint256)
@@ -107,7 +107,7 @@ library Conversion {
 
     function convertFromUSD5(
         uint256 _amountUSD5,
-        CollateralType.Data storage _token
+        CollateralTypeInt.Data storage _token
     )
         internal view
         returns (uint256)
@@ -123,7 +123,7 @@ library Conversion {
     }
 
     function currentAmgPriceInTokenWeiWithTs(
-        CollateralType.Data storage _token,
+        CollateralTypeInt.Data storage _token,
         bool _fromTrustedProviders
     )
         internal view
@@ -148,7 +148,7 @@ library Conversion {
         returns (uint256, uint256, uint256)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        IIFtso ftso = settings.ftsoRegistry.getFtsoBySymbol(_symbol);
+        IIFtso ftso = IFtsoRegistry(settings.ftsoRegistry).getFtsoBySymbol(_symbol);
         if (_fromTrustedProviders) {
             return ftso.getCurrentPriceWithDecimalsFromTrustedProviders();
         } else {

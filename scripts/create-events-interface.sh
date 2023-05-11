@@ -1,7 +1,7 @@
 #!/bin/bash
 
 INFILE="contracts/fasset/library/AMEvents.sol"
-OUTFILE="contracts/fasset/interface/IAssetManagerEvents.sol"
+OUTFILE="contracts/userInterfaces/IAssetManagerEvents.sol"
 
 TMPFILE=$(mktemp)
 

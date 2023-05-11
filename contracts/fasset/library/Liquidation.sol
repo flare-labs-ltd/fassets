@@ -260,7 +260,7 @@ library Liquidation {
         returns (Agent.LiquidationPhase)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralType.Data storage collateral = state.collateralTokens[_collateralIndex];
+        CollateralTypeInt.Data storage collateral = state.collateralTokens[_collateralIndex];
         if (_collateralRatioBIPS >= collateral.minCollateralRatioBIPS) {
             return Agent.LiquidationPhase.NONE;
         } else if (_collateralRatioBIPS >= collateral.ccbMinCollateralRatioBIPS) {
@@ -300,7 +300,7 @@ library Liquidation {
         private view
         returns (uint256)
     {
-        CollateralType.Data storage collateral = _agent.getCollateral(_collateralKind);
+        CollateralTypeInt.Data storage collateral = _agent.getCollateral(_collateralKind);
         if (_currentPhase == Agent.LiquidationPhase.CCB || !_agent.collateralUnderwater(_collateralKind)) {
             return collateral.minCollateralRatioBIPS;
         } else {
@@ -365,7 +365,7 @@ library Liquidation {
         private view
         returns (Collateral.Data memory _data, Collateral.Data memory _trustedData)
     {
-        CollateralType.Data storage collateral = _agent.getCollateral(_kind);
+        CollateralTypeInt.Data storage collateral = _agent.getCollateral(_kind);
         address owner = _agent.getCollateralOwner(_kind);
         // A simple way to force agents still holding expired collateral tokens into liquidation is just to
         // set fullCollateral for expired types to 0.

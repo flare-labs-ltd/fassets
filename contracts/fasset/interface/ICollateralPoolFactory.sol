@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6 <0.9;
 
 import "./ICollateralPool.sol";
-import "./IAssetManager.sol";
+import "./IIAssetManager.sol";
 
 
 /**
@@ -10,9 +10,9 @@ import "./IAssetManager.sol";
  */
 interface ICollateralPoolFactory {
     function create(
-        IAssetManager _assetManager,
+        IIAssetManager _assetManager,
         address _agentVault,
-        IAssetManager.InitialAgentSettings memory _settings
+        AgentCreateSettings.Data memory _settings
     ) external returns (ICollateralPool);
 
     function createPoolToken(ICollateralPool pool)

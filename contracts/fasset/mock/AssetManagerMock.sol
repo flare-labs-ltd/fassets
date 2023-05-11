@@ -99,7 +99,7 @@ contract AssetManagerMock {
         return (1, 2);
     }
 
-    function getLotSize() public pure returns (uint256) {
+    function lotSize() public pure returns (uint256) {
         return 1;
     }
 

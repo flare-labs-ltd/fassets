@@ -53,7 +53,7 @@ library AgentCollateral {
         internal view
         returns (Collateral.Data memory)
     {
-        CollateralType.Data storage collateral = _agent.getClass1Collateral();
+        CollateralTypeInt.Data storage collateral = _agent.getClass1Collateral();
         return Collateral.Data({
             kind: Collateral.Kind.AGENT_CLASS1,
             fullCollateral: collateral.token.balanceOf(_agent.vaultAddress()),
@@ -67,7 +67,7 @@ library AgentCollateral {
         internal view
         returns (Collateral.Data memory)
     {
-        CollateralType.Data storage collateral = _agent.getPoolCollateral();
+        CollateralTypeInt.Data storage collateral = _agent.getPoolCollateral();
         return Collateral.Data({
             kind: Collateral.Kind.POOL,
             fullCollateral: collateral.token.balanceOf(address(_agent.collateralPool)),

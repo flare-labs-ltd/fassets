@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/lib/SafePct.sol";
 import "../interface/IWNat.sol";
-import "../interface/IAssetManager.sol";
+import "../interface/IIAssetManager.sol";
 import "../interface/IAgentVault.sol";
 import "../interface/ICollateralPool.sol";
 import "../interface/IFAsset.sol";
@@ -33,7 +33,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     uint256 public constant MIN_NAT_BALANCE_AFTER_EXIT = 1 ether;
 
     address public immutable agentVault;
-    IAssetManager public immutable assetManager;
+    IIAssetManager public immutable assetManager;
     IERC20 public immutable fAsset;
     CollateralPoolToken public token; // practically immutable
 
@@ -65,7 +65,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         uint16 _topupTokenPriceFactorBIPS
     ) {
         agentVault = _agentVault;
-        assetManager = IAssetManager(_assetManager);
+        assetManager = IIAssetManager(_assetManager);
         fAsset = IERC20(_fAsset);
         wNat = assetManager.getWNat();
         exitCollateralRatioBIPS = _exitCollateralRatioBIPS;
@@ -241,7 +241,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         // agent redemption (note: fassetToRedeem can be larger than requiredFAssets)
         uint256 fassetsToRedeem = freeFassetShare + additionallyRequiredFAssets;
         if (fassetsToRedeem > 0) {
-            if (fassetsToRedeem < assetManager.getLotSize() || _redeemToCollateral) {
+            if (fassetsToRedeem < assetManager.lotSize() || _redeemToCollateral) {
                 assetManager.redeemFromAgentInCollateral(
                     agentVault, msg.sender, fassetsToRedeem);
             } else {

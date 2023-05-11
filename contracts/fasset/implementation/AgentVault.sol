@@ -5,14 +5,14 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interface/IWNat.sol";
 import "../interface/IAgentVault.sol";
-import "../interface/IAssetManager.sol";
+import "../interface/IIAssetManager.sol";
 import "../interface/ICollateralPool.sol";
 
 
 contract AgentVault is ReentrancyGuard, IAgentVault {
     using SafeERC20 for IERC20;
 
-    IAssetManager public immutable assetManager;
+    IIAssetManager public immutable assetManager;
 
     IERC20[] private usedTokens;
 
@@ -36,7 +36,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         _;
     }
 
-    constructor(IAssetManager _assetManager) {
+    constructor(IIAssetManager _assetManager) {
         assetManager = _assetManager;
         wNat = _assetManager.getWNat();
     }

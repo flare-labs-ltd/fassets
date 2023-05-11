@@ -27,7 +27,8 @@ library TransactionAttestation {
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
-        require(_settings.attestationClient.verifyPayment(_settings.chainId, _attestationData),
+        IAttestationClient attestationClient = IAttestationClient(_settings.attestationClient);
+        require(attestationClient.verifyPayment(_settings.chainId, _attestationData),
             "legal payment not proved");
         require(_confirmationCannotBeCleanedUp(_attestationData.blockTimestamp), "verified transaction too old");
     }
@@ -38,7 +39,8 @@ library TransactionAttestation {
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
-        require(_settings.attestationClient.verifyBalanceDecreasingTransaction(_settings.chainId, _attestationData),
+        IAttestationClient attestationClient = IAttestationClient(_settings.attestationClient);
+        require(attestationClient.verifyBalanceDecreasingTransaction(_settings.chainId, _attestationData),
             "transaction not proved");
         require(_confirmationCannotBeCleanedUp(_attestationData.blockTimestamp), "verified transaction too old");
     }
@@ -49,7 +51,8 @@ library TransactionAttestation {
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
-        require(_settings.attestationClient.verifyConfirmedBlockHeightExists(_settings.chainId, _attestationData),
+        IAttestationClient attestationClient = IAttestationClient(_settings.attestationClient);
+        require(attestationClient.verifyConfirmedBlockHeightExists(_settings.chainId, _attestationData),
             "block height not proved");
     }
 
@@ -59,7 +62,8 @@ library TransactionAttestation {
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
-        require(_settings.attestationClient.verifyReferencedPaymentNonexistence(_settings.chainId, _attestationData),
+        IAttestationClient attestationClient = IAttestationClient(_settings.attestationClient);
+        require(attestationClient.verifyReferencedPaymentNonexistence(_settings.chainId, _attestationData),
             "non-payment not proved");
     }
 

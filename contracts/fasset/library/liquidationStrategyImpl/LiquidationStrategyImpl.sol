@@ -9,7 +9,7 @@ import "../CollateralTypes.sol";
 
 library LiquidationStrategyImpl {
     using Agents for Agent.State;
-    using CollateralTypes for CollateralType.Data;
+    using CollateralTypes for CollateralTypeInt.Data;
 
     function initialize(bytes memory _encodedSettings) external {
         LiquidationStrategyImplSettings.verifyAndUpdate(_encodedSettings);
@@ -44,8 +44,8 @@ library LiquidationStrategyImpl {
         _c1FactorBIPS = Math.min(settings.liquidationFactorClass1BIPS[step], factorBIPS);
         // prevent paying with invalid token (if there is enough of the other tokens)
         // TODO: should we remove this - is it better to pay with invalidated class1 then with pool?
-        CollateralType.Data storage class1Collateral = agent.getClass1Collateral();
-        CollateralType.Data storage poolCollateral = agent.getPoolCollateral();
+        CollateralTypeInt.Data storage class1Collateral = agent.getClass1Collateral();
+        CollateralTypeInt.Data storage poolCollateral = agent.getPoolCollateral();
         if (!class1Collateral.isValid() && poolCollateral.isValid()) {
             // class1 collateral invalid - pay everything with pool collateral
             _c1FactorBIPS = 0;

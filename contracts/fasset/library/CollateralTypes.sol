@@ -11,33 +11,33 @@ library CollateralTypes {
     using SafeCast for uint256;
 
     function initialize(
-        IAssetManager.CollateralType[] memory _data
+        CollateralType.Data[] memory _data
     )
         external
     {
         require(_data.length >= 2, "at least two collaterals required");
         // initial pool collateral token
-        require(_data[0].collateralClass == IAssetManager.CollateralClass.POOL, "not a pool collateral at 0");
+        require(_data[0].collateralClass == CollateralType.Class.POOL, "not a pool collateral at 0");
         _add(_data[0]);
         _setPoolCollateralTypeIndex(0);
         // initial class1 tokens
         for (uint256 i = 1; i < _data.length; i++) {
-            require(_data[i].collateralClass == IAssetManager.CollateralClass.CLASS1, "not a class1 collateral");
+            require(_data[i].collateralClass == CollateralType.Class.CLASS1, "not a class1 collateral");
             _add(_data[i]);
         }
     }
 
     function add(
-        IAssetManager.CollateralType memory _data
+        CollateralType.Data memory _data
     )
         external
     {
-        require(_data.collateralClass == IAssetManager.CollateralClass.CLASS1, "not a class1 collateral");
+        require(_data.collateralClass == CollateralType.Class.CLASS1, "not a class1 collateral");
         _add(_data);
     }
 
     function setCollateralRatios(
-        IAssetManager.CollateralClass _collateralClass,
+        CollateralType.Class _collateralClass,
         IERC20 _token,
         uint256 _minCollateralRatioBIPS,
         uint256 _ccbMinCollateralRatioBIPS,
@@ -51,7 +51,7 @@ library CollateralTypes {
             _minCollateralRatioBIPS <= _safetyMinCollateralRatioBIPS;
         require(ratiosValid, "invalid collateral ratios");
         // update
-        CollateralType.Data storage token = CollateralTypes.get(_collateralClass, _token);
+        CollateralTypeInt.Data storage token = CollateralTypes.get(_collateralClass, _token);
         token.minCollateralRatioBIPS = _minCollateralRatioBIPS.toUint32();
         token.ccbMinCollateralRatioBIPS = _ccbMinCollateralRatioBIPS.toUint32();
         token.safetyMinCollateralRatioBIPS = _safetyMinCollateralRatioBIPS.toUint32();
@@ -60,14 +60,14 @@ library CollateralTypes {
     }
 
     function deprecate(
-        IAssetManager.CollateralClass _collateralClass,
+        CollateralType.Class _collateralClass,
         IERC20 _token,
         uint256 _invalidationTimeSec
     )
         external
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        CollateralType.Data storage token = CollateralTypes.get(_collateralClass, _token);
+        CollateralTypeInt.Data storage token = CollateralTypes.get(_collateralClass, _token);
         require(isValid(token), "token not valid");
         require(_invalidationTimeSec >= settings.tokenInvalidationTimeMinSeconds, "deprecation time to short");
         uint256 validUntil = block.timestamp + _invalidationTimeSec;
@@ -76,44 +76,44 @@ library CollateralTypes {
     }
 
     function setPoolCollateralType(
-        IAssetManager.CollateralType memory _data
+        CollateralType.Data memory _data
     )
         external
     {
-        require(_data.collateralClass == IAssetManager.CollateralClass.POOL, "not a pool collateral");
+        require(_data.collateralClass == CollateralType.Class.POOL, "not a pool collateral");
         uint256 index = _add(_data);
         _setPoolCollateralTypeIndex(index);
     }
 
     function getInfo(
-        IAssetManager.CollateralClass _collateralClass,
+        CollateralType.Class _collateralClass,
         IERC20 _token
     )
         external view
-        returns (IAssetManager.CollateralType memory)
+        returns (CollateralType.Data memory)
     {
-        CollateralType.Data storage token = CollateralTypes.get(_collateralClass, _token);
+        CollateralTypeInt.Data storage token = CollateralTypes.get(_collateralClass, _token);
         return _getInfo(token);
     }
 
     function getAllInfos()
         external view
-        returns (IAssetManager.CollateralType[] memory _result)
+        returns (CollateralType.Data[] memory _result)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         uint256 length = state.collateralTokens.length;
-        _result = new IAssetManager.CollateralType[](length);
+        _result = new CollateralType.Data[](length);
         for (uint256 i = 0; i < length; i++) {
             _result[i] = _getInfo(state.collateralTokens[i]);
         }
     }
 
     function get(
-        IAssetManager.CollateralClass _collateralClass,
+        CollateralType.Class _collateralClass,
         IERC20 _token
     )
         internal view
-        returns (CollateralType.Data storage)
+        returns (CollateralTypeInt.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         uint256 index = state.collateralTokenIndex[_tokenKey(_collateralClass, _token)];
@@ -122,7 +122,7 @@ library CollateralTypes {
     }
 
     function getIndex(
-        IAssetManager.CollateralClass _collateralClass,
+        CollateralType.Class _collateralClass,
         IERC20 _token
     )
         internal view
@@ -135,7 +135,7 @@ library CollateralTypes {
     }
 
     function tryGetIndex(
-        IAssetManager.CollateralClass _collateralClass,
+        CollateralType.Class _collateralClass,
         IERC20 _token
     )
         internal view
@@ -147,14 +147,14 @@ library CollateralTypes {
         _index = _found ? index - 1 : 0;
     }
 
-    function isValid(CollateralType.Data storage _token)
+    function isValid(CollateralTypeInt.Data storage _token)
         internal view
         returns (bool)
     {
         return _token.validUntil == 0 || _token.validUntil > block.timestamp;
     }
 
-    function _add(IAssetManager.CollateralType memory _data) private returns (uint256) {
+    function _add(CollateralType.Data memory _data) private returns (uint256) {
         AssetManagerState.State storage state = AssetManagerState.get();
         // validation of collateralClass is done before call to _add
         require(address(_data.token) != address(0), "token zero");
@@ -167,7 +167,7 @@ library CollateralTypes {
             _data.minCollateralRatioBIPS <= _data.safetyMinCollateralRatioBIPS;
         require(ratiosValid, "invalid collateral ratios");
         uint256 newTokenIndex = state.collateralTokens.length;
-        state.collateralTokens.push(CollateralType.Data({
+        state.collateralTokens.push(CollateralTypeInt.Data({
             token: _data.token,
             collateralClass: _data.collateralClass,
             decimals: _data.decimals.toUint8(),
@@ -188,16 +188,16 @@ library CollateralTypes {
 
     function _setPoolCollateralTypeIndex(uint256 _index) private {
         AssetManagerState.State storage state = AssetManagerState.get();
-        CollateralType.Data storage token = state.collateralTokens[_index];
-        require(token.collateralClass == IAssetManager.CollateralClass.POOL, "not a pool collateral token");
+        CollateralTypeInt.Data storage token = state.collateralTokens[_index];
+        require(token.collateralClass == CollateralType.Class.POOL, "not a pool collateral token");
         state.poolCollateralIndex = _index.toUint16();
     }
 
-    function _getInfo(CollateralType.Data storage token)
+    function _getInfo(CollateralTypeInt.Data storage token)
         private view
-        returns (IAssetManager.CollateralType memory)
+        returns (CollateralType.Data memory)
     {
-        return IAssetManager.CollateralType({
+        return CollateralType.Data({
             token: token.token,
             collateralClass: token.collateralClass,
             decimals: token.decimals,
@@ -212,7 +212,7 @@ library CollateralTypes {
     }
 
     function _tokenKey(
-        IAssetManager.CollateralClass _collateralClass,
+        CollateralType.Class _collateralClass,
         IERC20 _token
     )
         private pure

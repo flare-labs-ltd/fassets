@@ -3,8 +3,9 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../interface/IAssetManager.sol";
+import "../interface/IIAssetManager.sol";
 import "../interface/ICollateralPoolFactory.sol";
+import "../interface/IAgentVaultFactory.sol";
 import "../../utils/implementation/NativeTokenBurner.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
@@ -74,8 +75,8 @@ library AgentsCreateDestroy {
     }
 
     function createAgent(
-        IAssetManager _assetManager,
-        IAssetManager.InitialAgentSettings calldata _settings
+        IIAssetManager _assetManager,
+        AgentCreateSettings.Data calldata _settings
     )
         external
     {
@@ -88,7 +89,7 @@ library AgentsCreateDestroy {
         (string memory normalizedUnderlyingAddress, bytes32 underlyingAddressHash) =
             Globals.validateAndNormalizeUnderlyingAddress(_settings.underlyingAddressString);
         // create agent vault
-        IAgentVaultFactory agentVaultFactory = state.settings.agentVaultFactory;
+        IAgentVaultFactory agentVaultFactory = IAgentVaultFactory(state.settings.agentVaultFactory);
         IAgentVault agentVault = agentVaultFactory.create(_assetManager);
         // set initial status
         Agent.State storage agent = Agent.getWithoutCheck(address(agentVault));
@@ -114,11 +115,9 @@ library AgentsCreateDestroy {
         uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(underlyingAddressHash);
         agent.underlyingBlockAtCreation = SafeMath64.max64(state.currentUnderlyingBlock, eoaProofBlock + 1);
         // add collateral pool
-        agent.collateralPool =
-            state.settings.collateralPoolFactory.create(_assetManager, address(agentVault), _settings);
-        address poolToken =
-            state.settings.collateralPoolFactory.createPoolToken(agent.collateralPool);
-        agent.collateralPool.setPoolToken(poolToken);
+        ICollateralPoolFactory collateralPoolFactory = ICollateralPoolFactory(state.settings.collateralPoolFactory);
+        agent.collateralPool = collateralPoolFactory.create(_assetManager, address(agentVault), _settings);
+        agent.collateralPool.setPoolToken(collateralPoolFactory.createPoolToken(agent.collateralPool));
         // run the pool setters just for validation
         agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
         agent.setPoolTopupCollateralRatioBIPS(_settings.poolTopupCollateralRatioBIPS);
@@ -204,7 +203,7 @@ library AgentsCreateDestroy {
         //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
         // - mintedAMG must be burned and cleared
         uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
-        CollateralType.Data storage collateral = agent.getClass1Collateral();
+        CollateralTypeInt.Data storage collateral = agent.getClass1Collateral();
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
         uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
             .mulBips(state.settings.buybackCollateralFactorBIPS);
@@ -221,7 +220,7 @@ library AgentsCreateDestroy {
         address _agentVault,
         address _collateralPool,
         string memory _underlyingAddress,
-        IAssetManager.InitialAgentSettings calldata _settings
+        AgentCreateSettings.Data calldata _settings
     )
         private
     {

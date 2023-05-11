@@ -19,7 +19,7 @@ library SettingsUpdater {
     bytes32 internal constant UPDATES_STATE_POSITION = keccak256("fasset.AssetManager.UpdaterState");
 
     bytes32 internal constant UPDATE_CONTRACTS =
-        keccak256("updateContracts(address,IAttestationClient,IFtsoRegistry)");
+        keccak256("updateContracts(address,address,address)");
     bytes32 internal constant SET_TIME_FOR_PAYMENT =
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant SET_WHITELIST =
@@ -223,8 +223,8 @@ library SettingsUpdater {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
 
-        (address controller, IAttestationClient attestationClient, IFtsoRegistry ftsoRegistry) =
-            abi.decode(_params, (address, IAttestationClient, IFtsoRegistry));
+        (address controller, address attestationClient, address ftsoRegistry) =
+            abi.decode(_params, (address, address, address));
 
         if (settings.assetManagerController != controller) {
             settings.assetManagerController = controller;
@@ -283,7 +283,7 @@ library SettingsUpdater {
         address value = abi.decode(_params, (address));
         // validate
         // update
-        settings.whitelist = IWhitelist(value);
+        settings.whitelist = value;
         emit AMEvents.ContractChanged("whitelist", value);
     }
 
@@ -296,7 +296,7 @@ library SettingsUpdater {
         address value = abi.decode(_params, (address));
         // validate
         // update
-        settings.agentWhitelist = IWhitelist(value);
+        settings.agentWhitelist = value;
         emit AMEvents.ContractChanged("agentWhitelist", value);
     }
 
@@ -310,7 +310,7 @@ library SettingsUpdater {
         // validate
         require(value != address(0), "address zero");
         // update
-        settings.agentVaultFactory = IAgentVaultFactory(value);
+        settings.agentVaultFactory = value;
         emit AMEvents.ContractChanged("agentVaultFactory", value);
     }
 
@@ -324,7 +324,7 @@ library SettingsUpdater {
         // validate
         require(value != address(0), "address zero");
         // update
-        settings.collateralPoolFactory = ICollateralPoolFactory(value);
+        settings.collateralPoolFactory = value;
         emit AMEvents.ContractChanged("collateralPoolFactory", value);
     }
 
@@ -338,7 +338,7 @@ library SettingsUpdater {
         // validate
         require(value != address(0), "address zero");
         // update
-        settings.underlyingAddressValidator = IAddressValidator(value);
+        settings.underlyingAddressValidator = value;
         emit AMEvents.ContractChanged("underlyingAddressValidator", value);
     }
 
@@ -695,14 +695,13 @@ library SettingsUpdater {
     )
         private pure
     {
-        require(address(_settings.fAsset) != address(0), "zero fAsset address");
-        require(address(_settings.agentVaultFactory) != address(0), "zero agentVaultFactory address");
-        require(address(_settings.collateralPoolFactory) != address(0), "zero collateralPoolFactory address");
-        require(address(_settings.attestationClient) != address(0), "zero attestationClient address");
-        require(address(_settings.underlyingAddressValidator) != address(0),
-            "zero underlyingAddressValidator address");
-        require(address(_settings.ftsoRegistry) != address(0), "zero ftsoRegistry address");
-        require(address(_settings.liquidationStrategy) != address(0), "zero liquidationStrategy address");
+        require(_settings.fAsset != address(0), "zero fAsset address");
+        require(_settings.agentVaultFactory != address(0), "zero agentVaultFactory address");
+        require(_settings.collateralPoolFactory != address(0), "zero collateralPoolFactory address");
+        require(_settings.attestationClient != address(0), "zero attestationClient address");
+        require(_settings.underlyingAddressValidator != address(0), "zero underlyingAddressValidator address");
+        require(_settings.ftsoRegistry != address(0), "zero ftsoRegistry address");
+        require(_settings.liquidationStrategy != address(0), "zero liquidationStrategy address");
 
         require(_settings.assetUnitUBA > 0, "cannot be zero");
         require(_settings.assetMintingGranularityUBA > 0, "cannot be zero");

@@ -1,61 +1,62 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
-import "../../../generated/interface/IAttestationClient.sol";
-import "../../interface/IFAsset.sol";
-import "../../interface/IAgentVaultFactory.sol";
-import "../../interface/IWNat.sol";
-import "../../interface/IWhitelist.sol";
-import "../../interface/ICollateralPoolFactory.sol";
-import "../../interface/IAddressValidator.sol";
-
 
 library AssetManagerSettings {
     struct Data {
         // Required contracts.
         // Only used to verify that calls come from assetManagerController.
+        // Type: AssetManagerController
         // changed via address updater
         address assetManagerController;
 
         // The f-asset contract managed by this asset manager.
+        // Type: IFAsset
         // immutable
-        IFAsset fAsset;
+        address fAsset;
 
         // Factory for creating new agent vaults.
+        // Type: IAgentVaultFactory
         // timelocked
-        IAgentVaultFactory agentVaultFactory;
+        address agentVaultFactory;
 
         // Factory for creating new agent collateral pools.
+        // Type: ICollateralPoolFactory
         // timelocked
-        ICollateralPoolFactory collateralPoolFactory;
+        address collateralPoolFactory;
 
         // If set, the whitelist contains a list of accounts that can call public methods
         // (minting, redeeming, challenging, etc.)
         // This can be `address(0)`, in which case no whitelist checks are done.
+        // Type: IWhitelist
         // timelocked
-        IWhitelist whitelist;
+        address whitelist;
 
         // If set, the whitelist contains a list of allowed agent owners.
         // This can be `address(0)`, in which case no whitelist checks are done.
+        // Type: IWhitelist
         // timelocked
-        IWhitelist agentWhitelist;
+        address agentWhitelist;
 
         // Attestation client verifies and decodes attestation proofs.
+        // Type: IAttestationClient
         // changed via address updater
-        IAttestationClient attestationClient;
+        address attestationClient;
 
         // Pluggable validator for underlying addresses (typically, each chain has different rules).
+        // Type: IAddressValidator
         // timelocked
-        IAddressValidator underlyingAddressValidator;
+        address underlyingAddressValidator;
 
         // External (dynamically loaded) library for calculation liquidation factors.
+        // Type: ILiquidationStrategy (as library)
         // timelocked
         address liquidationStrategy;
 
         // FTSO registry from which the system obtains ftso's for nat and asset.
+        // Type: IFtsoRegistry
         // changed via address updater
-        IFtsoRegistry ftsoRegistry;
+        address ftsoRegistry;
 
         // Same as assetToken.decimals()
         // immutable

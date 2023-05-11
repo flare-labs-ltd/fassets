@@ -69,8 +69,7 @@ library Redemptions {
     )
         internal
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        settings.fAsset.burn(_owner, _amountUBA);
+        Globals.getFAsset().burn(_owner, _amountUBA);
     }
 
     function deleteRedemptionRequest(uint64 _redemptionRequestId)

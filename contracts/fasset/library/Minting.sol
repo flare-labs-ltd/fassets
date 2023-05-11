@@ -101,7 +101,7 @@ library Minting {
         AssetManagerState.State storage state = AssetManagerState.get();
         uint256 mintingCapAMG = state.settings.mintingCapAMG;
         if (mintingCapAMG == 0) return;     // minting cap disabled
-        uint256 totalMintedUBA = IERC20(address(state.settings.fAsset)).totalSupply();
+        uint256 totalMintedUBA = IERC20(state.settings.fAsset).totalSupply();
         uint256 totalAMG = state.totalReservedCollateralAMG + Conversion.convertUBAToAmg(totalMintedUBA);
         require(totalAMG + _increaseAMG <= mintingCapAMG, "minting cap exceeded");
     }
@@ -138,8 +138,8 @@ library Minting {
         // perform minting
         uint256 mintValueUBA = Conversion.convertAmgToUBA(_mintValueAMG);
         uint256 agentFeeUBA = _receivedAmountUBA - mintValueUBA - _poolFeeUBA;
-        state.settings.fAsset.mint(_minter, mintValueUBA);
-        state.settings.fAsset.mint(address(_agent.collateralPool), _poolFeeUBA);
+        Globals.getFAsset().mint(_minter, mintValueUBA);
+        Globals.getFAsset().mint(address(_agent.collateralPool), _poolFeeUBA);
         // notify
         emit AMEvents.MintingExecuted(_agent.vaultAddress(), _crtId, redemptionTicketId,
             mintValueUBA, agentFeeUBA, _poolFeeUBA);
