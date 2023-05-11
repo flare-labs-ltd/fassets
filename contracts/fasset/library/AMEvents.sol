@@ -2,6 +2,9 @@
 pragma solidity 0.8.11;
 
 
+/**
+ * All asset manager events.
+ */
 library AMEvents {
     /**
      * A new agent vault was created.

@@ -2,6 +2,9 @@
 pragma solidity 0.8.11;
 
 
+/**
+ * All asset manager events.
+ */
 interface IAssetManagerEvents {
     /**
      * A new agent vault was created.

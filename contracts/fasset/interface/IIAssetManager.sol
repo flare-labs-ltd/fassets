@@ -130,15 +130,6 @@ interface IIAssetManager is IAssetManager {
         uint256 _amountUBA
     ) external;
 
-    /**
-     * Returns the number of f-assets that the agent's pool identified by `_agentVault` is backing.
-     * This is the same as the number of f-assets the agent is backing, but excluding
-     * f-assets being redeemed by pool self-close redemptions.
-     */
-    function getFAssetsBackedByPool(address _agentVault)
-        external view
-        returns (uint256);
-
     ////////////////////////////////////////////////////////////////////////////////////
     // Functions, used by agent vault during collateral deposit/withdraw
 
@@ -181,6 +172,16 @@ interface IIAssetManager is IAssetManager {
     function assetPriceNatWei()
         external view
         returns (uint256 _multiplier, uint256 _divisor);
+
+    /**
+     * Returns the number of f-assets that the agent's pool identified by `_agentVault` is backing.
+     * This is the same as the number of f-assets the agent is backing, but excluding
+     * f-assets being redeemed by pool self-close redemptions.
+     * Used internally by collateral pool.
+     */
+    function getFAssetsBackedByPool(address _agentVault)
+        external view
+        returns (uint256);
 
     /**
      * Check if `_token` is one of the collateral tokens for `_agentVault`.

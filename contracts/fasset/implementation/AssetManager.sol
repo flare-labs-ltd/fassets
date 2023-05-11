@@ -924,7 +924,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager {
         onlyAssetManagerController
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        require(!Globals.getFAsset().terminated(), "f-asset terminated");
+        require(!terminated(), "f-asset terminated");
         state.pausedAt = 0;
     }
 
@@ -962,7 +962,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager {
         external payable override
         nonReentrant
     {
-        require(Globals.getFAsset().terminated(), "f-asset not terminated");
+        require(terminated(), "f-asset not terminated");
         AgentsCreateDestroy.buybackAgentCollateral(_agentVault);
     }
 
@@ -975,6 +975,16 @@ contract AssetManager is ReentrancyGuard, IIAssetManager {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         return state.pausedAt != 0;
+    }
+
+    /**
+     * True if asset manager is terminated.
+     */
+    function terminated()
+        public view override
+        returns (bool)
+    {
+        return Globals.getFAsset().terminated();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
