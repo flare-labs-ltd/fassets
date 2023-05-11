@@ -215,7 +215,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 encodeLiquidationStrategyImplSettings(liquidationSettings),
                 { from: assetManagerController });
             const newLiquidationSettings = decodeLiquidationStrategyImplSettings(await assetManager.getLiquidationSettings());
-            assertWeb3DeepEqual(newLiquidationSettings, newLiquidationSettings);
+            assertWeb3DeepEqual(newLiquidationSettings, liquidationSettings);
         });
     });
 
