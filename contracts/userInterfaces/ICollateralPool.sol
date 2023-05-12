@@ -68,7 +68,7 @@ interface ICollateralPool {
     ) external payable;
 
     // in case of f-asset termination
-    function withdrawCollateral() external;
+    function withdrawCollateralWhenFAssetTerminated() external;
 
     /**
      * @notice Make pool tokens transferable by paying f-asset fee debt.
