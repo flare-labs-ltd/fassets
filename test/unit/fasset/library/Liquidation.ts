@@ -173,4 +173,44 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         assertWeb3Equal(info2.status, 2);
         assertWeb3Equal(info3.status, 0);
     });
+
+    it("should transition from CCB to liquidation phase because of price changes", async () => {
+        // init
+        chain.mint(underlyingAgent1, 200);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
+        await mint(agentVault, underlyingMinter1, minterAddress1);
+        // act
+        await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        chain.skipTimeTo(toBN(info1.ccbStartTimestamp).toNumber());
+        await ftsos.asset.setCurrentPrice(toBNExp(8, 10), 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(8, 10), 0);
+        await assetManager.startLiquidation(agentVault.address);
+        const info2 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info1.status, 1);
+        assertWeb3Equal(info2.status, 2);
+    });
+
+    it("agent should be able to get from ccb to normal by depositing more collateral", async () => {
+        // init
+        chain.mint(underlyingAgent1, 200);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
+        await mint(agentVault, underlyingMinter1, minterAddress1);
+        // act
+        await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+
+        //Deposit more collateral
+        await depositCollateral(agentOwner1, agentVault, toWei(3e10));
+        await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: toWei(3e10) });
+        const info2 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info1.status, 1);
+        assertWeb3Equal(info2.status, 0);
+    });
 });
