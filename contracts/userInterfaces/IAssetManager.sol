@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "./IAssetManagerEvents.sol";
-import "./IAssetManagerSystem.sol";
-import "./IAssetManagerAgent.sol";
-import "./IAssetManagerAvailableAgents.sol";
-import "./IAssetManagerChallenges.sol";
-import "./IAssetManagerLiquidation.sol";
-import "./IAssetManagerMinting.sol";
-import "./IAssetManagerRedemption.sol";
+import "./assetManager/IAssetManagerEvents.sol";
+import "./assetManager/IAssetManagerSystem.sol";
+import "./assetManager/IAssetManagerAgent.sol";
+import "./assetManager/IAssetManagerAvailableAgents.sol";
+import "./assetManager/IAssetManagerChallenges.sol";
+import "./assetManager/IAssetManagerLiquidation.sol";
+import "./assetManager/IAssetManagerMinting.sol";
+import "./assetManager/IAssetManagerRedemption.sol";
 
 
 /**

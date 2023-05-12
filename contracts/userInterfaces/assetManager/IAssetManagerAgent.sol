@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "../generated/interface/IAttestationClient.sol";
-import "./data/AgentInfo.sol";
-import "./data/AgentCreateSettings.sol";
+import "../../generated/interface/IAttestationClient.sol";
+import "../data/AgentInfo.sol";
+import "../data/AgentCreateSettings.sol";
 
 
 /**
