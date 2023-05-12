@@ -44,8 +44,6 @@ interface IAgentVault {
         address payable _recipient
     ) external returns(uint256);
 
-    function withdrawNat(uint256 _amount, address payable _recipient) external;
-
     function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient) external;
 
     function upgradeWNatContract(IWNat newWNat) external;

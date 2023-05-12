@@ -46,7 +46,7 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
         require(internalWithdrawal, "internal use only");
     }
 
-    // without "onlyOwner" to allow owner to send funds from any source
+    // only supposed to be used from asset manager, but safe to be used by anybody
     function depositNat() external payable override {
         wNat.deposit{value: msg.value}();
         assetManager.collateralDeposited(address(this), wNat);
@@ -97,17 +97,6 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     {
         assetManager.collateralDeposited(address(this), _token);
         _tokenUsed(_token, TOKEN_DEPOSIT);
-    }
-
-    function withdrawNat(uint256 _amount, address payable _recipient)
-        external override
-        onlyOwner
-        nonReentrant
-    {
-        // if NAT is class1 collateral token, check that enough was announced and reduce announcement
-        assetManager.withdrawCollateral(wNat, _amount);
-        // withdraw from wNat contract and transfer it to _recipient
-        _withdrawWNatTo(_recipient, _amount);
     }
 
     function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient)
