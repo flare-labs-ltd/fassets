@@ -213,4 +213,27 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         assertWeb3Equal(info1.status, 1);
         assertWeb3Equal(info2.status, 0);
     });
+
+    it("agent should be able to get from ccb to normal if the price rises", async () => {
+        // init
+        chain.mint(underlyingAgent1, 200);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
+        await mint(agentVault, underlyingMinter1, minterAddress1);
+        const initial_price = await ftsos.asset.getCurrentPrice();
+        const price = initial_price[0];
+        // Change price to put agent in ccb
+        await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
+        //Change phase to ccb
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        //Set price back to initial value
+        await ftsos.asset.setCurrentPrice(price, 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(price, 0);
+        await assetManager.endLiquidation(agentVault.address);
+        const info2 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info1.status, 1);
+        assertWeb3Equal(info2.status, 0);
+    });
 });

@@ -12,6 +12,7 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
+import { AssetManagerController__factory } from "../../../../typechain";
 
 contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; UnderlyingWithdrawalAnnouncements basic tests`, async accounts => {
     const governance = accounts[10];
@@ -56,6 +57,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        settings.announcedUnderlyingConfirmationMinSeconds = toBN(60);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
     });
 
@@ -104,6 +106,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
         const blockId = (await chain.getTransactionBlock(txHash))!.number;
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
+        await time.increase(settings.announcedUnderlyingConfirmationMinSeconds);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
@@ -190,6 +193,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const announceRes = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announceArgs = requiredEventArgs(announceRes, "UnderlyingWithdrawalAnnounced");
         // act
+        await time.increase(settings.announcedUnderlyingConfirmationMinSeconds);
         const res = await assetManager.cancelUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         // assert
         expectEvent(res, "UnderlyingWithdrawalCancelled", {agentVault: agentVault.address, announcementId: announceArgs.announcementId})
@@ -220,5 +224,28 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         await expectRevert(promise, "no active announcement");
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.announcedUnderlyingWithdrawalId, 0);
+    });
+
+    it("should not be able to cancel underlying withdrawal if called to soon", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        chain.mint(underlyingAgent1, 500);
+        const announceRes = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+        const promise = assetManager.cancelUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+        await expectRevert(promise,"cancel too soon");
+    });
+
+    it("should not confirm underlying withdrawal if called too soon", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        chain.mint(underlyingAgent1, 500);
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+        const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
+        // act
+        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
+        const blockId = (await chain.getTransactionBlock(txHash))!.number;
+        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
+        const res = assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
+        await expectRevert(res,"confirmation too soon");
     });
 });
