@@ -33,19 +33,19 @@ contract CollateralPoolToken is ICollateralPoolToken, ERC20 {
         selfdestruct(_recipient);
     }
 
-    function freeBalanceOf(address _account) public view returns (uint256) {
-        return CollateralPool(payable(collateralPool)).freeTokensOf(_account);
+    function transferableBalanceOf(address _account) public view returns (uint256) {
+        return CollateralPool(payable(collateralPool)).transferableTokensOf(_account);
     }
 
-    function debtBalanceOf(address _account) public view returns (uint256) {
-        return CollateralPool(payable(collateralPool)).debtTokensOf(_account);
+    function lockedBalanceOf(address _account) public view returns (uint256) {
+        return CollateralPool(payable(collateralPool)).lockedTokensOf(_account);
     }
 
     function _beforeTokenTransfer(
         address from, address /* to */, uint256 amount
     ) internal view override {
         if (msg.sender != collateralPool) { // collateral pool can mint and burn locked tokens
-            require(amount <= freeBalanceOf(from), "free balance too low");
+            require(amount <= transferableBalanceOf(from), "free balance too low");
         }
     }
 }

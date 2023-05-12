@@ -75,7 +75,7 @@ interface ICollateralPool {
      * @param _fassets  Amount of payed f-assets
      *                  _fassets must be positive and smaller or equal to the sender's debt f-assets
      */
-    function payFeeDebt(uint256 _fassets) external;
+    function payFAssetFeeDebt(uint256 _fassets) external;
 
     function poolToken()
         external view
@@ -101,7 +101,7 @@ interface ICollateralPool {
      * @notice Returns the f-asset fees belonging to this user.
      * @param _account User address
      */
-    function freeFassetOf(address _account)
+    function fassetFeesOf(address _account)
         external view
         returns (uint256);
 
@@ -112,7 +112,7 @@ interface ICollateralPool {
      * to the share of the f-asset fees already in the pool.
      * @param _account User address
      */
-    function fassetDebtOf(address _account)
+    function fassetFeeDebtOf(address _account)
         external view
         returns (uint256);
 }

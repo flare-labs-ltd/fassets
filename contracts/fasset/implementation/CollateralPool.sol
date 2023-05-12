@@ -282,7 +282,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
      * @param _fassets  Amount of payed f-assets
      *                  _fassets must be positive and smaller or equal to the sender's debt f-assets
      */
-    function payFeeDebt(uint256 _fassets)
+    function payFAssetFeeDebt(uint256 _fassets)
         external override
     {
         require(_fassets <= _fassetDebtOf[msg.sender], "debt f-asset balance too small");
@@ -452,7 +452,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
      * @notice Returns user's reward f-assets
      * @param _account  User address
      */
-    function freeFassetOf(address _account)
+    function fassetFeesOf(address _account)
         external view override
         returns (uint256)
     {
@@ -464,7 +464,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
      * @notice Returns user's f-asset debt
      * @param _account  User address
      */
-    function fassetDebtOf(address _account)
+    function fassetFeeDebtOf(address _account)
         external view override
         returns (uint256)
     {
@@ -475,7 +475,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
      * @notice Returns user's debt tokens
      * @param _account  User address
      */
-    function debtTokensOf(address _account)
+    function lockedTokensOf(address _account)
         external view
         returns (uint256)
     {
@@ -487,7 +487,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
      * @notice Returns user's free tokens
      * @param _account  User address
      */
-    function freeTokensOf(address _account)
+    function transferableTokensOf(address _account)
         external view
         returns (uint256)
     {

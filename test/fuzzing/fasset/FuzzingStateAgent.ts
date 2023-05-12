@@ -558,7 +558,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
         for (const tokenHolder of this.poolTokenBalances.keys()) {
             const tokenHolderName = this.parent.eventFormatter.formatAddress(tokenHolder);
             problems += checker.checkEquality(`${collateralPoolName}.poolTokensOf(${tokenHolderName})`, await collateralPoolToken.balanceOf(tokenHolder), this.poolTokenBalances.get(tokenHolder));
-            const poolFeeDebt = await collateralPool.fassetDebtOf(tokenHolder);
+            const poolFeeDebt = await collateralPool.fassetFeeDebtOf(tokenHolder);
             problems += checker.checkEquality(`${collateralPoolName}.poolFeeDebtOf(${tokenHolderName})`, poolFeeDebt, this.poolFeeDebt.get(tokenHolder));
             const virtualFees = await collateralPool.virtualFassetOf(tokenHolder);
             problems += checker.checkEquality(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName})`, virtualFees, this.calculateVirtualFeesOf(tokenHolder));

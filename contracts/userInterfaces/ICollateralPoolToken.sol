@@ -9,11 +9,11 @@ interface ICollateralPoolToken is IERC20 {
         external view
         returns (address);
 
-    function freeBalanceOf(address _account)
+    function transferableBalanceOf(address _account)
         external view
         returns (uint256);
 
-    function debtBalanceOf(address _account)
+    function lockedBalanceOf(address _account)
         external view
         returns (uint256);
 }
