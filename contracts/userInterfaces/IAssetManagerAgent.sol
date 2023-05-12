@@ -2,8 +2,8 @@
 pragma solidity >=0.7.6 <0.9;
 
 import "../generated/interface/IAttestationClient.sol";
-import "./structures/AgentInfo.sol";
-import "./structures/AgentCreateSettings.sol";
+import "./data/AgentInfo.sol";
+import "./data/AgentCreateSettings.sol";
 
 
 /**

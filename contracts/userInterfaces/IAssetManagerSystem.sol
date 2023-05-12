@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "./structures/AssetManagerSettings.sol";
-import "./structures/CollateralType.sol";
+import "./data/AssetManagerSettings.sol";
+import "./data/CollateralType.sol";
 
 
 /**

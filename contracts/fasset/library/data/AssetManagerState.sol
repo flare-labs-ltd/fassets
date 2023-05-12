@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 
-import "../../../userInterfaces/structures/AssetManagerSettings.sol";
+import "../../../userInterfaces/data/AssetManagerSettings.sol";
 import "./Agent.sol";
 import "./RedemptionQueue.sol";
 import "./PaymentConfirmations.sol";
