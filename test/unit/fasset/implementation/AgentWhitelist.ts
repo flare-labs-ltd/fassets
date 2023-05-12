@@ -131,8 +131,6 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Agent whitelist tests`, asy
 
         it("should not allow proving underlying address eoa if address not whitelisted", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const ownerHotAddress = accounts[21];
-            await assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
             const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
             const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
             const res = assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });

@@ -393,7 +393,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             let attestationClientNewAddress = accounts[22];
             let ftsoRegistryNewAddress = accounts[23];
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAttestationClient,IFtsoRegistry)")),
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,address)")),
                 web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, attestationClientNewAddress, ftsoRegistryNewAddress]),
                 { from: assetManagerController });
             await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentVaultFactory(address)")),
@@ -406,7 +406,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should not update contract addresses", async () => {
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IAttestationClient,IFtsoRegistry)")),
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,address)")),
             web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, contracts.attestationClient.address, contracts.ftsoRegistry.address]),
                 { from: assetManagerController });
             await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentVaultFactory(address)")),
