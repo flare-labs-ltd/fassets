@@ -1076,13 +1076,15 @@ contract AssetManager is ReentrancyGuard, IIAssetManager {
     }
 
     /**
-     * Check if `_token` is one of the collateral tokens for `_agentVault`.
+     * Check if `_token` is either class1 collateral token for `_agentVault` or the pool token.
+     * These types of tokens cannot be simply transfered from the agent vault, but can only be
+     * withdrawn after announcement if they are not backing any f-assets.
      */
-    function isCollateralToken(address _agentVault, IERC20 _token)
+    function isLockedVaultToken(address _agentVault, IERC20 _token)
         external view override
         returns (bool)
     {
-        return AgentsExternal.isCollateralToken(_agentVault, _token);
+        return AgentsExternal.isLockedVaultToken(_agentVault, _token);
     }
 
     function getCollateralPool(address _agentVault)

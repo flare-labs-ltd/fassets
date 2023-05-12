@@ -192,7 +192,7 @@ library AgentsExternal {
         }
     }
 
-    function isCollateralToken(
+    function isLockedVaultToken(
         address _agentVault,
         IERC20 _token
     )
@@ -200,7 +200,7 @@ library AgentsExternal {
         returns (bool)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        return agent.isCollateralToken(_token);
+        return _token == agent.getClass1Token() || _token == agent.collateralPool.poolToken();
     }
 
     function getFAssetsBackedByPool(address _agentVault)

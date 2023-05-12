@@ -184,10 +184,12 @@ interface IIAssetManager is IAssetManager {
         returns (uint256);
 
     /**
-     * Check if `_token` is one of the collateral tokens for `_agentVault`.
+     * Check if `_token` is either class1 collateral token for `_agentVault` or the pool token.
+     * These types of tokens cannot be simply transfered from the agent vault, but can only be
+     * withdrawn after announcement if they are not backing any f-assets.
      * Used internally by agent vault.
      */
-    function isCollateralToken(address _agentVault, IERC20 _token)
+    function isLockedVaultToken(address _agentVault, IERC20 _token)
         external view
         returns (bool);
 
