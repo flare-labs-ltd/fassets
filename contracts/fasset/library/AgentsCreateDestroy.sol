@@ -90,7 +90,7 @@ library AgentsCreateDestroy {
             Globals.validateAndNormalizeUnderlyingAddress(_settings.underlyingAddressString);
         // create agent vault
         IAgentVaultFactory agentVaultFactory = IAgentVaultFactory(state.settings.agentVaultFactory);
-        IAgentVault agentVault = agentVaultFactory.create(_assetManager);
+        IIAgentVault agentVault = agentVaultFactory.create(_assetManager);
         // set initial status
         Agent.State storage agent = Agent.getWithoutCheck(address(agentVault));
         assert(agent.status == Agent.Status.EMPTY);     // state should be empty on creation
@@ -169,7 +169,7 @@ library AgentsCreateDestroy {
         // destroy pool - just burn the remaining nat
         agent.collateralPool.destroy(state.settings.burnAddress);
         // destroy agent vault
-        IAgentVault(_agentVault).destroy(_recipient);
+        IIAgentVault(_agentVault).destroy(_recipient);
         // remove from the list of all agents
         uint256 ind = agent.allAgentsPos;
         if (ind + 1 < state.allAgents.length) {

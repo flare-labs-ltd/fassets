@@ -2,7 +2,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../interface/IAgentVault.sol";
+import "../interface/IIAgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
@@ -98,7 +98,7 @@ library CollateralReservations {
         // share collateral reservation fee between the agent's vault and pool
         uint256 poolFeeShare = crt.reservationFeeNatWei.mulBips(agent.poolFeeShareBIPS);
         Agents.getPoolWNat(agent).depositTo{value: poolFeeShare}(address(agent.collateralPool));
-        IAgentVault(crt.agentVault).depositNat{value: crt.reservationFeeNatWei - poolFeeShare}();
+        IIAgentVault(crt.agentVault).depositNat{value: crt.reservationFeeNatWei - poolFeeShare}();
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
     }

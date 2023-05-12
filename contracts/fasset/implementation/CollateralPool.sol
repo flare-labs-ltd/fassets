@@ -8,12 +8,12 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/lib/SafePct.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAssetManager.sol";
-import "../interface/IAgentVault.sol";
-import "../interface/ICollateralPool.sol";
+import "../interface/IIAgentVault.sol";
+import "../interface/IICollateralPool.sol";
 import "../interface/IFAsset.sol";
 import "./CollateralPoolToken.sol";
 
-contract CollateralPool is ICollateralPool, ReentrancyGuard {
+contract CollateralPool is IICollateralPool, ReentrancyGuard {
     using SafeCast for uint256;
     using SafePct for uint256;
 
@@ -78,7 +78,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     }
 
     function setPoolToken(address _poolToken)
-        external
+        external override
         onlyAssetManager
     {
         require(address(token) == address(0), "pool token already set");
@@ -86,7 +86,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     }
 
     function setExitCollateralRatioBIPS(uint256 _exitCollateralRatioBIPS)
-        external
+        external override
         onlyAssetManager
     {
         require(_exitCollateralRatioBIPS > topupCollateralRatioBIPS, "value too low");
@@ -94,7 +94,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     }
 
     function setTopupCollateralRatioBIPS(uint256 _topupCollateralRatioBIPS)
-        external
+        external override
         onlyAssetManager
     {
         require(_topupCollateralRatioBIPS < exitCollateralRatioBIPS, "value too high");
@@ -102,7 +102,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     }
 
     function setTopupTokenPriceFactorBIPS(uint256 _topupTokenPriceFactorBIPS)
-        external
+        external override
         onlyAssetManager
     {
         require(_topupTokenPriceFactorBIPS < SafePct.MAX_BIPS, "value too high");
@@ -115,7 +115,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
      * @param _enterWithFullFassets    Specifies whether "required" f-assets should be calculated automatically
      */
     function enter(uint256 _fassets, bool _enterWithFullFassets)
-        external payable
+        external payable override
     {
         AssetData memory assetData = _getAssetData();
         require(assetData.poolTokenSupply <= assetData.poolNatBalance * MAX_NAT_TO_POOL_TOKEN_RATIO,
@@ -199,7 +199,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         bool _redeemToCollateral,
         string memory _redeemerUnderlyingAddress
     )
-        external
+        external override
     {
         require(_tokenShare > 0, "token share is zero");
         require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
@@ -265,7 +265,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
      *                  Must be positive and smaller or equal to the sender's reward f-assets
      */
     function withdrawFees(uint256 _fassets)
-        external
+        external override
     {
         require(_fassets > 0, "trying to withdraw zero f-assets");
         AssetData memory assetData = _getAssetData();
@@ -283,7 +283,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
      *                  _fassets must be positive and smaller or equal to the sender's debt f-assets
      */
     function payFeeDebt(uint256 _fassets)
-        external
+        external override
     {
         require(_fassets <= _fassetDebtOf[msg.sender], "debt f-asset balance too small");
         require(fAsset.allowance(msg.sender, address(this)) >= _fassets,
@@ -297,7 +297,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     /**
      * @notice Returns the collateral pool token contract used by this contract
      */
-    function poolToken() external view override returns (IERC20) {
+    function poolToken() external view override returns (ICollateralPoolToken) {
         return token;
     }
 
@@ -389,7 +389,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
         return AssetData({
             poolTokenSupply: token.totalSupply(),
-            backedFAssets: assetManager.getFAssetsBackedByPool(address(agentVault)),
+            backedFAssets: assetManager.getFAssetsBackedByPool(agentVault),
             poolNatBalance: wNat.balanceOf(address(this)),
             poolFassetBalance: poolFassetBalance,
             poolVirtualFassetBalance: poolFassetBalance + poolFassetDebt,
@@ -443,7 +443,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
      * @param _account  User address
      */
     function freeFassetOf(address _account)
-        external view
+        external view override
         returns (uint256)
     {
         AssetData memory assetData = _getAssetData();
@@ -455,7 +455,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
      * @param _account  User address
      */
     function fassetDebtOf(address _account)
-        external view
+        external view override
         returns (uint256)
     {
         return _fassetDebtOf[_account];
@@ -489,7 +489,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     // Methods to allow for liquidation/destruction of the pool by AssetManager or agent
 
     function destroy(address payable _recipient)
-        external
+        external override
         onlyAssetManager
     {
         uint256 poolBalanceNat = wNat.balanceOf(address(this));
@@ -523,7 +523,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     }
 
     function upgradeWNatContract(IWNat _newWNat)
-        external
+        external override
         onlyAssetManager
     {
         if (_newWNat == wNat) return;
@@ -545,7 +545,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         IDistributionToDelegators _distribution,
         uint256 _month
     )
-        external
+        external override
         onlyAgent
         returns(uint256)
     {
@@ -555,7 +555,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     function optOutOfAirdrop(
         IDistributionToDelegators _distribution
     )
-        external
+        external override
         onlyAgent
     {
         _distribution.optOutOfAirdrop();
@@ -565,7 +565,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         address[] memory _to,
         uint256[] memory _bips
     )
-        external
+        external override
         onlyAgent
     {
         wNat.batchDelegate(_to, _bips);
@@ -575,7 +575,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         IFtsoRewardManager _ftsoRewardManager,
         uint256 _lastRewardEpoch
     )
-        external
+        external override
         onlyAgent
     {
         _ftsoRewardManager.claim(address(this), payable(address(this)), _lastRewardEpoch, true);
@@ -587,7 +587,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
         IClaimSetupManager _claimSetupManager,
         address[] memory _executors
     )
-        external payable
+        external payable override
         onlyAgent
     {
         _claimSetupManager.setAutoClaiming{value: msg.value}(_executors, false);
@@ -604,7 +604,7 @@ contract CollateralPool is ICollateralPool, ReentrancyGuard {
     // in case of f-asset termination
 
     function withdrawCollateral()
-        external
+        external override
     {
         require(IFAsset(address(fAsset)).terminated(), "f-asset not terminated");
         uint256 tokens = token.balanceOf(msg.sender);

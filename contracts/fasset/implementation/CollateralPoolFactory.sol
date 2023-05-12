@@ -16,17 +16,17 @@ contract CollateralPoolFactory is ICollateralPoolFactory {
         AgentCreateSettings.Data memory _settings
     )
         external
-        returns (ICollateralPool)
+        returns (IICollateralPool)
     {
         address fAsset = address(_assetManager.fAsset());
-        ICollateralPool pool = new CollateralPool(_agentVault, address(_assetManager), fAsset,
+        IICollateralPool pool = new CollateralPool(_agentVault, address(_assetManager), fAsset,
             _settings.poolExitCollateralRatioBIPS.toUint32(),
             _settings.poolTopupCollateralRatioBIPS.toUint32(),
             _settings.poolTopupTokenPriceFactorBIPS.toUint16());
         return pool;
     }
 
-    function createPoolToken(ICollateralPool _pool)
+    function createPoolToken(IICollateralPool _pool)
         external
         returns (address)
     {

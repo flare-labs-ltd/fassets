@@ -2,8 +2,8 @@
 pragma solidity 0.8.11;
 
 import "../interface/IWNat.sol";
-import "../interface/IAgentVault.sol";
-import "../interface/ICollateralPool.sol";
+import "../interface/IIAgentVault.sol";
+import "../interface/IICollateralPool.sol";
 import "./ERC20Mock.sol";
 
 contract AssetManagerMock {
@@ -20,7 +20,7 @@ contract AssetManagerMock {
         wNat = _wNat;
     }
 
-    function payoutNAT(IAgentVault _agentVault, address payable _recipient, uint256 _amount) external {
+    function payoutNAT(IIAgentVault _agentVault, address payable _recipient, uint256 _amount) external {
         _agentVault.payoutNAT(_recipient, _amount);
     }
 

@@ -3,13 +3,13 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../../userInterfaces/ICollateralPool.sol";
 import "../interface/IWNat.sol";
-import "../interface/IAgentVault.sol";
+import "../interface/IIAgentVault.sol";
 import "../interface/IIAssetManager.sol";
-import "../interface/ICollateralPool.sol";
 
 
-contract AgentVault is ReentrancyGuard, IAgentVault {
+contract AgentVault is ReentrancyGuard, IIAgentVault {
     using SafeERC20 for IERC20;
 
     IIAssetManager public immutable assetManager;
@@ -83,7 +83,6 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     // must call `token.approve(vault, amount)` before for each token in _tokens
     function depositCollateral(IERC20 _token, uint256 _amount)
         external override
-        onlyOwner
     {
         _token.transferFrom(msg.sender, address(this), _amount);
         assetManager.collateralDeposited(address(this), _token);
@@ -93,7 +92,6 @@ contract AgentVault is ReentrancyGuard, IAgentVault {
     // update collateral after `transfer(vault, some amount)` was called (alternative to depositCollateral)
     function collateralDeposited(IERC20 _token)
         external
-        onlyOwner
     {
         assetManager.collateralDeposited(address(this), _token);
         _tokenUsed(_token, TOKEN_DEPOSIT);

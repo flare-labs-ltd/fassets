@@ -9,7 +9,7 @@ contract AgentVaultFactory is IAgentVaultFactory {
     /**
      * @notice Creates new agent vault
      */
-    function create(IIAssetManager _assetManager) external returns (IAgentVault) {
+    function create(IIAssetManager _assetManager) external returns (IIAgentVault) {
         return new AgentVault(_assetManager);
     }
 }

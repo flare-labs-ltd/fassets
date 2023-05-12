@@ -142,9 +142,9 @@ library AgentsExternal {
                 uint8(CollateralType.Class.POOL), address(wNat));
         }
         // upgrade agent vault wnat
-        IWNat vaultWNat = IAgentVault(_agentVault).wNat();
+        IWNat vaultWNat = IIAgentVault(_agentVault).wNat();
         if (vaultWNat != wNat) {
-            IAgentVault(_agentVault).upgradeWNatContract(wNat);
+            IIAgentVault(_agentVault).upgradeWNatContract(wNat);
             // should also switch collateral if agent uses WNat as class1 collateral
             if (vaultWNat == agent.getClass1Token()) {
                 (bool wnatIsCollateralToken, uint256 index) =

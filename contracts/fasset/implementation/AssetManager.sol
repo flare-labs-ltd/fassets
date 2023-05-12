@@ -2,7 +2,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "../interface/IAgentVault.sol";
+import "../interface/IIAgentVault.sol";
 import "../interface/IIAssetManager.sol";
 import "../../generated/interface/IAttestationClient.sol";
 import "../interface/IFAsset.sol";

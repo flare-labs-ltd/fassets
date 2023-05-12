@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "./IAgentVault.sol";
+import "./IIAgentVault.sol";
 import "./IIAssetManager.sol";
 
 
@@ -12,5 +12,5 @@ interface IAgentVaultFactory {
     /**
      * @notice Creates new agent vault
      */
-    function create(IIAssetManager _assetManager) external returns (IAgentVault);
+    function create(IIAssetManager _assetManager) external returns (IIAgentVault);
 }

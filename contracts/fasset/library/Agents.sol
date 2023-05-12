@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../utils/implementation/NativeTokenBurner.sol";
 import "../../utils/lib/SafeMath64.sol";
-import "../interface/IAgentVault.sol";
+import "../interface/IIAgentVault.sol";
 import "../interface/IWhitelist.sol";
 import "./data/AssetManagerState.sol";
 import "./data/Collateral.sol";
@@ -191,7 +191,7 @@ library Agents {
     {
         CollateralTypeInt.Data storage collateral = getClass1Collateral(_agent);
         // don't want the calling method to fail due to too small balance for payout
-        IAgentVault vault = IAgentVault(_agent.vaultAddress());
+        IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
         _amountPaid = Math.min(_amountWei, collateral.token.balanceOf(address(vault)));
         vault.payout(collateral.token, _receiver, _amountPaid);
     }
@@ -227,7 +227,7 @@ library Agents {
             burnCollateralNAT(_agent, _amountClass1Wei);
         } else {
             AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-            IAgentVault vault = IAgentVault(_agent.vaultAddress());
+            IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
             // Calculate NAT amount the agent has to pay to receive the "burned" class1 tokens.
             // The price is FTSO price plus configurable premium (class1BuyForFlarePremiumBIPS).
             uint256 amountNatWei = Conversion.convert(_amountClass1Wei, class1Collateral, poolCollateral)
@@ -251,7 +251,7 @@ library Agents {
         internal
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        IAgentVault vault = IAgentVault(_agent.vaultAddress());
+        IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
         if (settings.burnWithSelfDestruct) {
             // burn by self-destructing a temporary burner contract
             NativeTokenBurner burner = new NativeTokenBurner(settings.burnAddress);

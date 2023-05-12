@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "./ICollateralPool.sol";
+import "./IICollateralPool.sol";
 import "./IIAssetManager.sol";
 
 
@@ -13,8 +13,8 @@ interface ICollateralPoolFactory {
         IIAssetManager _assetManager,
         address _agentVault,
         AgentCreateSettings.Data memory _settings
-    ) external returns (ICollateralPool);
+    ) external returns (IICollateralPool);
 
-    function createPoolToken(ICollateralPool pool)
+    function createPoolToken(IICollateralPool pool)
         external returns (address);
 }
