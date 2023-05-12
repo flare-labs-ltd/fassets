@@ -43,4 +43,5 @@ interface ICollateralPool {
     function exitCollateralRatioBIPS() external view returns (uint32);
     function topupCollateralRatioBIPS() external view returns (uint32);
     function topupTokenPriceFactorBIPS() external view returns (uint16);
+    function withdrawCollateralWhenFAssetTerminated() external;
 }
