@@ -95,7 +95,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     async function getPoolVirtualFassets() {
         const poolFassetBalance = await fAsset.balanceOf(collateralPool.address);
-        const poolFassetDebt = await collateralPool.poolFassetDebt();
+        const poolFassetDebt = await collateralPool.totalFassetFeeDebt();
         return poolFassetBalance.add(poolFassetDebt);
     }
 
