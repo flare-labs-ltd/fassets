@@ -369,7 +369,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     it("should not transfer wnat tokens", async () => {
         const agentVault = await createAgent(owner, underlyingAgent1);
-        let res = agentVault.transferExternalToken(wNat.address, 1, { from: owner });
+        let res = agentVault.transferExternalToken(usdc.address, 1, { from: owner });
         await expectRevert(res, "only non-collateral tokens");
     });
 
