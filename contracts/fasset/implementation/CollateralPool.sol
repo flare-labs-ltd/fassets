@@ -192,6 +192,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
      * @param _tokenShare                   The amount of pool tokens to be liquidated
      *                                      Must be positive and smaller or equal to the sender's token balance
      * @param _redeemToCollateral           Specifies if agent should redeem f-assets in NAT from his collateral
+     * @param _exitType                     An enum describing the ratio used to liquidate debt and free tokens
      * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
      * @notice F-assets will be redeemed in collateral if their value does not exceed one lot
      * @notice All f-asset fees will be redeemed along with potential additionally required f-assets taken
@@ -199,6 +200,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
      */
     function selfCloseExit(
         uint256 _tokenShare,
+        TokenExitType _exitType,
         bool _redeemToCollateral,
         string memory _redeemerUnderlyingAddress
     )
@@ -217,8 +219,10 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         require(assetData.poolNatBalance == natShare ||
             assetData.poolNatBalance - natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
             "collateral left after exit is too low and non-zero");
-        uint256 requiredFAssets = _requiredFAssetForDisaffectedCR(assetData, natShare);
         uint256 fAssetFees = _fAssetFeesOf(assetData, msg.sender);
+        (uint256 debtFAssetFeeShare, uint256 freeFAssetFeeShare) = _getDebtAndFreeFAssetFeesFromTokenShare(
+            assetData, msg.sender, _tokenShare, _exitType);
+        uint256 requiredFAssets = _getFAssetRequiredToNotWorsenCR(assetData, natShare);
         // if there is more required f-assets than f-asset fees, calculate additionally required f-assets
         if (fAssetFees < requiredFAssets) {
             uint256 additionallyRequiredFAssets = requiredFAssets - fAssetFees;
@@ -247,11 +251,23 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         }
         uint256 spentFAssetFees = Math.min(requiredFAssets, fAssetFees);
         if (spentFAssetFees > 0) {
-            // if requiredFAssets consumed all free f-asset (fAssetFees) then they become debt
+            // fAssetFees consumed by requiredFAssets become debt
             totalFAssetFees -= spentFAssetFees;
             _mintFAssetFeeDebt(msg.sender, spentFAssetFees);
+            uint256 spentFreeFAssetFeeShare = Math.min(spentFAssetFees, freeFAssetFeeShare);
+            if (spentFreeFAssetFeeShare > 0) {
+                // move spent free f-asset share to debt f-asset share
+                freeFAssetFeeShare -= spentFreeFAssetFeeShare;
+                debtFAssetFeeShare += spentFreeFAssetFeeShare;
+            }
         }
-        // transfer/burn assets
+        // transfer/burn tokens
+        if (freeFAssetFeeShare > 0) {
+            _transferFAsset(address(this), msg.sender, freeFAssetFeeShare);
+        }
+        if (debtFAssetFeeShare > 0) {
+            _burnFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
+        }
         token.burn(msg.sender, _tokenShare);
         _transferWNat(address(this), msg.sender, natShare);
         // emit event
@@ -285,8 +301,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         external override
     {
         require(_fAssets <= _fAssetFeeDebtOf[msg.sender], "debt f-asset balance too small");
-        require(fAsset.allowance(msg.sender, address(this)) >= _fAssets,
-            "f-asset allowance too small");
+        require(fAsset.allowance(msg.sender, address(this)) >= _fAssets, "f-asset allowance too small");
         _burnFAssetFeeDebt(msg.sender, _fAssets);
         _transferFAsset(msg.sender, address(this), _fAssets);
         // emit event
@@ -356,7 +371,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         }
     }
 
-    function _requiredFAssetForDisaffectedCR(
+    function _getFAssetRequiredToNotWorsenCR(
         AssetData memory _assetData,
         uint256 _natShare
     )
@@ -487,6 +502,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         uint256 _amount
     )
         internal
+        nonReentrant
     {
         if (_from == address(this)) {
             totalFAssetFees -= _amount;
@@ -504,6 +520,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         uint256 _amount
     )
         internal
+        nonReentrant
     {
         if (_from == address(this)) {
             totalCollateral -= _amount;
