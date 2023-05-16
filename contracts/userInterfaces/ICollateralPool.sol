@@ -35,7 +35,6 @@ interface ICollateralPool {
 
     function selfCloseExit(
         uint256 _tokenShare,
-        TokenExitType _exitType,
         bool _redeemToCollateral,
         string memory _redeemerUnderlyingAddress
     ) external;
@@ -101,7 +100,7 @@ interface ICollateralPool {
      * @notice Returns the f-asset fees belonging to this user.
      * @param _account User address
      */
-    function fassetFeesOf(address _account)
+    function fAssetFeesOf(address _account)
         external view
         returns (uint256);
 
@@ -112,7 +111,7 @@ interface ICollateralPool {
      * to the share of the f-asset fees already in the pool.
      * @param _account User address
      */
-    function fassetFeeDebtOf(address _account)
+    function fAssetFeeDebtOf(address _account)
         external view
         returns (uint256);
 }

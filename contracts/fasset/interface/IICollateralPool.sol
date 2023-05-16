@@ -14,4 +14,5 @@ interface IICollateralPool is ICollateralPool {
     function setExitCollateralRatioBIPS(uint256 _value) external;
     function setTopupCollateralRatioBIPS(uint256 _value) external;
     function setTopupTokenPriceFactorBIPS(uint256 _value) external;
+    function fAssetFeeDeposited(uint256 _amount) external;
 }

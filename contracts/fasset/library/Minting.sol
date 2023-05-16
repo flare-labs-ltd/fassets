@@ -140,6 +140,7 @@ library Minting {
         uint256 agentFeeUBA = _receivedAmountUBA - mintValueUBA - _poolFeeUBA;
         Globals.getFAsset().mint(_minter, mintValueUBA);
         Globals.getFAsset().mint(address(_agent.collateralPool), _poolFeeUBA);
+        _agent.collateralPool.fAssetFeeDeposited(_poolFeeUBA);
         // notify
         emit AMEvents.MintingExecuted(_agent.vaultAddress(), _crtId, redemptionTicketId,
             mintValueUBA, agentFeeUBA, _poolFeeUBA);
