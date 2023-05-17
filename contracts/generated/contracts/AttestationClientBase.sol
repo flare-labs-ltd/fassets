@@ -3,7 +3,7 @@
 //////////////////////////////////////////////////////////////
 
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.11;
+pragma solidity 0.8.18;
 
 import "../interface/IAttestationClient.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
