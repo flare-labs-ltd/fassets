@@ -469,7 +469,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
     // totals
 
     calculateReservedUBA() {
-        return sumBN(this.collateralReservations.values(), ticket => ticket.valueUBA);
+        return sumBN(this.collateralReservations.values(), ticket => ticket.valueUBA.add(this.calculatePoolFee(ticket.feeUBA)));
     }
 
     calculateMintedUBA() {
@@ -554,13 +554,13 @@ export class FuzzingStateAgent extends TrackedAgentState {
         const collateralPoolName = this.poolName();
         problems += checker.checkEquality(`${collateralPoolName}.totalPoolFees`, await this.parent.context.fAsset.balanceOf(this.collateralPoolAddress), this.totalPoolFee);
         problems += checker.checkEquality(`${collateralPoolName}.totalPoolTokens`, await collateralPoolToken.totalSupply(), this.poolTokenBalances.total());
-        problems += checker.checkEquality(`${collateralPoolName}.totalPoolFeeDebt`, await collateralPool.totalFassetFeeDebt(), this.poolFeeDebt.total());
+        problems += checker.checkEquality(`${collateralPoolName}.totalPoolFeeDebt`, await collateralPool.totalFAssetFeeDebt(), this.poolFeeDebt.total());
         for (const tokenHolder of this.poolTokenBalances.keys()) {
             const tokenHolderName = this.parent.eventFormatter.formatAddress(tokenHolder);
             problems += checker.checkEquality(`${collateralPoolName}.poolTokensOf(${tokenHolderName})`, await collateralPoolToken.balanceOf(tokenHolder), this.poolTokenBalances.get(tokenHolder));
-            const poolFeeDebt = await collateralPool.fassetFeeDebtOf(tokenHolder);
+            const poolFeeDebt = await collateralPool.fAssetFeeDebtOf(tokenHolder);
             problems += checker.checkEquality(`${collateralPoolName}.poolFeeDebtOf(${tokenHolderName})`, poolFeeDebt, this.poolFeeDebt.get(tokenHolder));
-            const virtualFees = await collateralPool.virtualFassetOf(tokenHolder);
+            const virtualFees = await collateralPool.virtualFAssetOf(tokenHolder);
             problems += checker.checkEquality(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName})`, virtualFees, this.calculateVirtualFeesOf(tokenHolder));
             problems += checker.checkNumericDifference(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName}) >= debt`, virtualFees, 'gte', poolFeeDebt);
         }

@@ -94,7 +94,8 @@ library CollateralReservations {
         require(_nonPayment.lowerBoundaryBlockNumber <= crt.firstUnderlyingBlock,
             "minting request too old");
         // send event
-        emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, underlyingValueUBA);
+        uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFee(agent, crt.underlyingFeeUBA);
+        emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // share collateral reservation fee between the agent's vault and pool
         uint256 poolFeeShare = crt.reservationFeeNatWei.mulBips(agent.poolFeeShareBIPS);
         Agents.getPoolWNat(agent).depositTo{value: poolFeeShare}(address(agent.collateralPool));
@@ -125,7 +126,8 @@ library CollateralReservations {
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
         Agents.burnCollateralClass1(agent, reservedCollateral);
         // send event
-        uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
+        uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG) +
+            Minting.calculatePoolFee(agent, crt.underlyingFeeUBA);
         emit AMEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this

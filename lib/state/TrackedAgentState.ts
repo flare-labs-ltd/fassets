@@ -3,6 +3,7 @@ import {
     RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/AssetManager";
 import { AgentInfo, AgentSetting, AgentStatus, CollateralType, CollateralClass } from "../fasset/AssetManagerTypes";
+import { roundUBAToAmg } from "../fasset/Conversions";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
 import { EventArgs } from "../utils/events/common";
 import { BN_ZERO, BNish, MAX_BIPS, formatBN, maxBN, toBN } from "../utils/helpers";
@@ -122,7 +123,9 @@ export class TrackedAgentState {
     // handlers: minting
 
     handleCollateralReserved(args: EvmEventArgs<CollateralReserved>) {
-        this.reservedUBA = this.reservedUBA.add(toBN(args.valueUBA));
+        const mintingUBA = toBN(args.valueUBA);
+        const poolFeeUBA = this.calculatePoolFee(toBN(args.feeUBA));
+        this.reservedUBA = this.reservedUBA.add(mintingUBA).add(poolFeeUBA);
     }
 
     handleMintingExecuted(args: EvmEventArgs<MintingExecuted>) {
@@ -136,7 +139,7 @@ export class TrackedAgentState {
         // delete collateral reservation
         const collateralReservationId = Number(args.collateralReservationId);
         if (collateralReservationId > 0) {  // collateralReservationId == 0 for self-minting
-            this.reservedUBA = this.reservedUBA.sub(mintedAmountUBA);
+            this.reservedUBA = this.reservedUBA.sub(mintedAmountUBA).sub(poolFeeUBA);
         }
     }
 
@@ -304,6 +307,10 @@ export class TrackedAgentState {
         const poolTransition = this.possibleLiquidationTransitionForCollateral(this.poolWNatCollateral, timestamp);
         // return the higher status (more severe)
         return class1Transition >= poolTransition ? class1Transition : poolTransition;
+    }
+
+    calculatePoolFee(mintingFeeUBA: BN) {
+        return roundUBAToAmg(this.parent.settings, toBN(mintingFeeUBA).mul(this.poolFeeShareBIPS).divn(MAX_BIPS));
     }
 
     // info

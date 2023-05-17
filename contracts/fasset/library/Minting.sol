@@ -46,7 +46,7 @@ library Minting {
             "minting payment too old");
         // execute minting
         _performMinting(agent, _crtId, crt.minter, crt.valueAMG, receivedAmount,
-            crt.underlyingFeeUBA.mulBips(agent.poolFeeShareBIPS));
+            calculatePoolFee(agent, crt.underlyingFeeUBA));
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
         Agents.burnDirectNAT(crt.reservationFeeNatWei);
         // cleanup
@@ -72,7 +72,7 @@ library Minting {
         uint64 valueAMG = _lots * state.settings.lotSizeAMG;
         checkMintingCap(valueAMG);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
-        uint256 poolFeeUBA = _lots > 0 ? mintValueUBA.mulBips(agent.feeBIPS).mulBips(agent.poolFeeShareBIPS) : 0;
+        uint256 poolFeeUBA = calculatePoolFee(agent, mintValueUBA.mulBips(agent.feeBIPS));
         require(_payment.paymentReference == PaymentReference.selfMint(_agentVault),
             "invalid self-mint reference");
         require(_payment.receivingAddressHash == agent.underlyingAddressHash,
@@ -106,6 +106,17 @@ library Minting {
         require(totalAMG + _increaseAMG <= mintingCapAMG, "minting cap exceeded");
     }
 
+    function calculatePoolFee(
+        Agent.State storage _agent,
+        uint256 _mintingFee
+    )
+        internal view
+        returns (uint256)
+    {
+        // round to whole number of amg's to avoid rounding errors after minting (minted amount is in amg)
+        return Conversion.roundUBAToAmg(_mintingFee.mulBips(_agent.poolFeeShareBIPS));
+    }
+
     function _performMinting(
         Agent.State storage _agent,
         uint64 _crtId,
@@ -117,7 +128,6 @@ library Minting {
         private
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        _poolFeeUBA = Conversion.roundUBAToAmg(_poolFeeUBA);   // make sure we don't have rounding errors
         // Add pool fee to dust (usually less than 1 lot), but if dust exceeds 1 lot, add as much as possible
         // to the created ticket. At the end, there will always be less than 1 lot of dust left.
         uint64 poolFeeAMG = Conversion.convertUBAToAmg(_poolFeeUBA);
