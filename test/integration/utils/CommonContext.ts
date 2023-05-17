@@ -1,6 +1,6 @@
 import {
     AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents, AttestationClientSCEvents, CollateralPoolFactoryEvents,
-    ERC20Events, FtsoManagerMockEvents, FtsoMockEvents, FtsoRegistryMockEvents, StateConnectorMockEvents, WNatEvents
+    ERC20Events, FtsoManagerEvents, FtsoEvents, FtsoRegistryEvents, StateConnectorEvents, WNatEvents
 } from "../../../lib/fasset/IAssetContext";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import {
@@ -27,7 +27,7 @@ const GovernanceSettings = artifacts.require('GovernanceSettings');
 // common context shared between several asset managers
 
 // indexed by "key" (nat, usdc, etc.) or "ftso symbol" (NAT, USDC, etc.)
-export type TestContextFtsos = Record<string, ContractWithEvents<FtsoMockInstance, FtsoMockEvents>>;
+export type TestContextFtsos = Record<string, ContractWithEvents<FtsoMockInstance, FtsoEvents>>;
 
 export class CommonContext {
     constructor(
@@ -35,12 +35,12 @@ export class CommonContext {
         public governanceSettings: GovernanceSettingsInstance,
         public addressUpdater: ContractWithEvents<AddressUpdaterInstance, AddressUpdaterEvents>,
         public assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>,
-        public stateConnector: ContractWithEvents<StateConnectorMockInstance, StateConnectorMockEvents>,
+        public stateConnector: ContractWithEvents<StateConnectorMockInstance, StateConnectorEvents>,
         public agentVaultFactory: ContractWithEvents<AgentVaultFactoryInstance, AgentVaultFactoryEvents>,
         public collateralPoolFactory: ContractWithEvents<CollateralPoolFactoryInstance, CollateralPoolFactoryEvents>,
         public attestationClient: ContractWithEvents<AttestationClientSCInstance, AttestationClientSCEvents>,
-        public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryMockEvents>,
-        public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerMockEvents>,
+        public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryEvents>,
+        public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerEvents>,
         public natInfo: TestNatInfo,
         public wNat: ContractWithEvents<WNatInstance, WNatEvents>,
         public stablecoins: Record<string, ContractWithEvents<ERC20MockInstance, ERC20Events>>,

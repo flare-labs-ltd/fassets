@@ -1,4 +1,4 @@
-import { AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, WNatInstance } from "../../typechain-truffle";
+import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance, IERC20Instance, IFtsoInstance, IFtsoManagerInstance, IFtsoRegistryInstance, WNatInstance } from "../../typechain-truffle";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
 import { IBlockChain } from "../underlying-chain/interfaces/IBlockChain";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
@@ -8,20 +8,20 @@ import { ChainInfo } from "./ChainInfo";
 export type AddressUpdaterEvents = import('../../typechain-truffle/AddressUpdater').AllEvents;
 export type AssetManagerControllerEvents = import('../../typechain-truffle/AssetManagerController').AllEvents;
 export type WNatEvents = import('../../typechain-truffle/WNat').AllEvents;
-export type StateConnectorMockEvents = import('../../typechain-truffle/StateConnectorMock').AllEvents;
+export type StateConnectorEvents = import('../../typechain-truffle/IStateConnector').AllEvents;
 export type AgentVaultFactoryEvents = import('../../typechain-truffle/AgentVaultFactory').AllEvents;
 export type CollateralPoolFactoryEvents = import('../../typechain-truffle/CollateralPoolFactory').AllEvents;
 export type WhitelistEvents = import('../../typechain-truffle/Whitelist').AllEvents;
 export type AttestationClientSCEvents = import('../../typechain-truffle/AttestationClientSC').AllEvents;
-export type FtsoRegistryMockEvents = import('../../typechain-truffle/FtsoRegistryMock').AllEvents;
-export type FtsoMockEvents = import('../../typechain-truffle/FtsoMock').AllEvents;
-export type FtsoManagerMockEvents = import('../../typechain-truffle/FtsoManagerMock').AllEvents;
-export type AssetManagerEvents = import('../../typechain-truffle/AssetManager').AllEvents;
+export type FtsoRegistryEvents = import('../../typechain-truffle/IFtsoRegistry').AllEvents;
+export type FtsoEvents = import('../../typechain-truffle/IFtso').AllEvents;
+export type FtsoManagerEvents = import('../../typechain-truffle/IFtsoManager').AllEvents;
+export type AssetManagerEvents = import('../../typechain-truffle/IAssetManager').AllEvents;
 export type FAssetEvents = import('../../typechain-truffle/FAsset').AllEvents;
 export type ERC20Events = import('../../typechain-truffle/IERC20').AllEvents;
-export type AgentVaultEvents = import('../../typechain-truffle/AgentVault').AllEvents;
-export type CollateralPoolEvents = import('../../typechain-truffle/CollateralPool').AllEvents;
-export type CollateralPoolTokenEvents = import('../../typechain-truffle/CollateralPoolToken').AllEvents;
+export type AgentVaultEvents = import('../../typechain-truffle/IAgentVault').AllEvents;
+export type CollateralPoolEvents = import('../../typechain-truffle/ICollateralPool').AllEvents;
+export type CollateralPoolTokenEvents = import('../../typechain-truffle/ICollateralPoolToken').AllEvents;
 
 export interface IAssetContext {
     chainInfo: ChainInfo;
@@ -30,12 +30,12 @@ export interface IAssetContext {
     attestationProvider: AttestationHelper;
     // contracts
     assetManagerController: ContractWithEvents<AssetManagerControllerInstance, AssetManagerControllerEvents>;
-    ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryMockEvents>;
-    ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerMockEvents>;
+    ftsoRegistry: ContractWithEvents<IFtsoRegistryInstance, FtsoRegistryEvents>;
+    ftsoManager: ContractWithEvents<IFtsoManagerInstance, FtsoManagerEvents>;
     wNat: ContractWithEvents<WNatInstance, WNatEvents>;
-    natFtso: ContractWithEvents<FtsoMockInstance, FtsoMockEvents>;
+    natFtso: ContractWithEvents<IFtsoInstance, FtsoEvents>;
     fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>;
     assetManager: ContractWithEvents<AssetManagerInstance, AssetManagerEvents>;
-    stablecoins: Record<string, ContractWithEvents<ERC20MockInstance, ERC20Events>>;
-    ftsos: Record<string, ContractWithEvents<FtsoMockInstance, FtsoMockEvents>>;
+    stablecoins: Record<string, ContractWithEvents<IERC20Instance, ERC20Events>>;
+    ftsos: Record<string, ContractWithEvents<IFtsoInstance, FtsoEvents>>;
 }
