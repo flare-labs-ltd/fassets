@@ -118,6 +118,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
      */
     function enter(uint256 _fAssets, bool _enterWithFullFassets)
         external payable override
+        nonReentrant
     {
         AssetData memory assetData = _getAssetData();
         require(assetData.poolTokenSupply <= assetData.poolNatBalance * MAX_NAT_TO_POOL_TOKEN_RATIO,
@@ -154,6 +155,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
      */
     function exit(uint256 _tokenShare, TokenExitType _exitType)
         external override
+        nonReentrant
         returns (uint256, uint256)
     {
         require(_tokenShare > 0, "token share is zero");
@@ -205,6 +207,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         string memory _redeemerUnderlyingAddress
     )
         external override
+        nonReentrant
     {
         require(_tokenShare > 0, "token share is zero");
         uint256 tokenBalance = token.balanceOf(msg.sender);
@@ -281,6 +284,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
      */
     function withdrawFees(uint256 _fAssets)
         external override
+        nonReentrant
     {
         require(_fAssets > 0, "trying to withdraw zero f-assets");
         AssetData memory assetData = _getAssetData();
@@ -299,6 +303,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
      */
     function payFAssetFeeDebt(uint256 _fAssets)
         external override
+        nonReentrant
     {
         require(_fAssets <= _fAssetFeeDebtOf[msg.sender], "debt f-asset balance too small");
         require(fAsset.allowance(msg.sender, address(this)) >= _fAssets, "f-asset allowance too small");
@@ -502,7 +507,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         uint256 _amount
     )
         internal
-        nonReentrant
     {
         if (_from == address(this)) {
             totalFAssetFees -= _amount;
@@ -520,7 +524,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         uint256 _amount
     )
         internal
-        nonReentrant
     {
         if (_from == address(this)) {
             totalCollateral -= _amount;
@@ -717,6 +720,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
 
     function withdrawCollateralWhenFAssetTerminated()
         external override
+        nonReentrant
     {
         require(IFAsset(address(fAsset)).terminated(), "f-asset not terminated");
         uint256 tokens = token.balanceOf(msg.sender);

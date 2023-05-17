@@ -267,7 +267,7 @@ export class Agent extends AssetContextClient {
     }
 
     async poolFeeBalance() {
-        return await this.collateralPool.fassetFeesOf(this.vaultAddress);
+        return await this.collateralPool.fAssetFeesOf(this.vaultAddress);
     }
 
     async announceDestroy() {
