@@ -1,12 +1,9 @@
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-truffle5";
-import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
-import "@tenderly/hardhat-tenderly";
 import * as dotenv from "dotenv";
 import fs from "fs/promises";
 import "hardhat-contract-sizer";
-import 'hardhat-deploy';
 import "hardhat-gas-reporter";
 import { task } from "hardhat/config";
 import path from "path";
