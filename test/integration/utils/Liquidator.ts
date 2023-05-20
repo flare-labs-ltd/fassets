@@ -15,12 +15,12 @@ export class Liquidator extends AssetContextClient {
     ) {
         super(context);
     }
-    
+
     static async create(ctx: AssetContext, address: string) {
         // creater object
         return new Liquidator(ctx, address);
     }
-    
+
     async startLiquidation(agent: Agent): Promise<[ccb: boolean, blockTimestamp: BNish]> {
         const res = await this.assetManager.startLiquidation(agent.agentVault.address, { from: this.address });
         const liquidationStarted = findEvent(res, 'LiquidationStarted') ?? findEvent(res, 'AgentInCCB');
@@ -47,9 +47,9 @@ export class Liquidator extends AssetContextClient {
     }
 
     async getLiquidationReward(liquidatedAmountUBA: BNish, factorBIPS: BNish) {
-        const amgToNATWeiPrice = await this.context.currentAmgToNATWeiPrice();
         const liquidatedAmountAMG = this.context.convertUBAToAmg(liquidatedAmountUBA);
-        return this.context.convertAmgToNATWei(toBN(liquidatedAmountAMG).mul(toBN(factorBIPS)).divn(10_000), amgToNATWeiPrice);
+        const priceNAT = await this.context.getCollateralPrice(this.context.collaterals[0]);
+        return priceNAT.convertAmgToTokenWei(toBN(liquidatedAmountAMG).mul(toBN(factorBIPS)).divn(10_000));
     }
 
     async getLiquidationFactorBIPS(collateralRatioBIPS: BNish, liquidationStartedAt: BNish, liquidationPerformedAt: BNish, ccb: boolean = false) {
@@ -58,10 +58,10 @@ export class Liquidator extends AssetContextClient {
         const ccbTime = ccb ? toBN(settings.ccbTimeSeconds) : BN_ZERO;
         const liquidationStart = toBN(liquidationStartedAt).add(ccbTime);
         const startTs = toBN(liquidationPerformedAt);
-        const step = Math.min(settings.liquidationCollateralFactorBIPS.length - 1,
-            startTs.sub(liquidationStart).div(toBN(settings.liquidationStepSeconds)).toNumber());
+        const step = Math.min(this.context.liquidationSettings.liquidationCollateralFactorBIPS.length - 1,
+            startTs.sub(liquidationStart).div(toBN(this.context.liquidationSettings.liquidationStepSeconds)).toNumber());
         // premiums are expressed as percentage of minCollateralRatio
-        const factorBIPS = toBN(settings.liquidationCollateralFactorBIPS[step]);
+        const factorBIPS = toBN(this.context.liquidationSettings.liquidationCollateralFactorBIPS[step]);
         // max premium is equal to agents collateral ratio (so that all liquidators get at least this much)
         return factorBIPS.lt(toBN(collateralRatioBIPS)) ? factorBIPS : toBN(collateralRatioBIPS);
     }

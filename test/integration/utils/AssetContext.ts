@@ -69,6 +69,7 @@ export class AssetContext implements IAssetContext {
     ftsos = this.common.ftsos;
 
     natFtso = requireNotNull(this.ftsos[this.natInfo.symbol]);
+    assetFtso = requireNotNull(this.ftsos[this.chainInfo.symbol]);
 
     usdc = this.stablecoins.USDC;
     usdt = this.stablecoins.USDT;

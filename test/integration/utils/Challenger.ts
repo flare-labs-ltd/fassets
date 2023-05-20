@@ -1,7 +1,7 @@
 import { UnderlyingWithdrawalAnnounced, FullLiquidationStarted, RedemptionRequested, RedemptionPaymentFailed, RedemptionDefault } from "../../../typechain-truffle/AssetManager";
 import { checkEventNotEmited, eventArgs, findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { EventArgs } from "../../../lib/utils/events/common";
-import { BNish, toBN, toBNExp } from "../../../lib/utils/helpers";
+import { BNish, MAX_BIPS, toBN, toBNExp } from "../../../lib/utils/helpers";
 import { Agent } from "./Agent";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
@@ -74,15 +74,12 @@ export class Challenger extends AssetContextClient {
     }
 
     async getChallengerReward(backingAtChallengeUBA: BNish, agent: Agent) {
-        const class1Collateral = agent.class1Collateral();
-        const priceClass1 = await this.context.getCollateralPrice(class1Collateral);
+        const settings = await this.context.assetManager.getSettings();
         const backingAtChallengeAMG = this.context.convertUBAToAmg(backingAtChallengeUBA);
         // assuming class1 is usd-pegged
-        return toBNExp(this.context.settings.paymentChallengeRewardUSD5.toString(), Number(class1Collateral.decimals)  - 5)
-            .add(priceClass1
-                .convertAmgToTokenWei(backingAtChallengeAMG)
-                .mul(toBN(this.context.settings.paymentChallengeRewardBIPS))
-                .divn(10_000)
-        )
+        const rewardAMG = backingAtChallengeAMG.mul(toBN(settings.paymentChallengeRewardBIPS)).divn(MAX_BIPS);
+        const rewardClass1 = await agent.usd5ToClass1Wei(toBN(settings.paymentChallengeRewardUSD5));
+        const priceClass1 = await this.context.getCollateralPrice(agent.class1Collateral());
+        return priceClass1.convertAmgToTokenWei(rewardAMG).add(rewardClass1)
     }
 }

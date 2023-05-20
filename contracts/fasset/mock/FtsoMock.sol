@@ -14,7 +14,7 @@ contract FtsoMock is IIFtso {
     uint256 private priceFromTrustedProviders;
     uint256 private priceTimestampFromTrustedProviders;
 
-    uint256 private immutable decimals;
+    uint256 public immutable decimals;
 
     constructor(string memory _symbol, uint256 _decimals) {
         symbol = _symbol;

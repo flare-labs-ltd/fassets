@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { checkEventNotEmited, eventArgs, filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, MAX_BIPS, maxBN, randomAddress, requireNotNull, toBN, toWei } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish, MAX_BIPS, maxBN, randomAddress, requireNotNull, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { web3DeepNormalize, web3Normalize } from "../../../lib/utils/web3normalize";
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/AssetManager";
@@ -454,21 +454,30 @@ export class Agent extends AssetContextClient {
         return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference, options);
     }
 
-    // async getCollateralRatioBIPS(fullCollateral: BNish, mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0) {
-    //     const [amgToNATWeiPrice, amgToNATWeiPriceTrusted] = await this.context.currentAmgToNATWeiPriceWithTrusted();
-    //     const mintedAMG = this.context.convertUBAToAmg(mintedUBA);
-    //     const reservedAMG = this.context.convertUBAToAmg(reservedUBA);
-    //     const redeemingAMG = this.context.convertUBAToAmg(redeemingUBA);
-    //     const ratio = await this.collateralRatio(fullCollateral, amgToNATWeiPrice, mintedAMG, reservedAMG, redeemingAMG);
-    //     const ratioTrusted = await this.collateralRatio(fullCollateral, amgToNATWeiPriceTrusted, mintedAMG, reservedAMG, redeemingAMG);
-    //     return ratio.gt(ratioTrusted) ? ratio : ratioTrusted;
-    // }
+    async getCurrentClass1CollateralRatioBIPS() {
+        const agentInfo = await this.getAgentInfo();
+        const fullCollateral = agentInfo.totalClass1CollateralWei;
+        const mintedUBA = agentInfo.mintedUBA;
+        const reservedUBA = agentInfo.reservedUBA;
+        const redeemingUBA = agentInfo.redeemingUBA;
+        return this.getCollateralRatioBIPS(fullCollateral, mintedUBA, reservedUBA, redeemingUBA);
+    }
 
-    private async collateralRatio(fullCollateral: BNish, amgToNATWeiPrice: BNish, mintedAMG: BNish, reservedAMG: BNish = 0, redeemingAMG: BNish = 0) {
+    async getCollateralRatioBIPS(fullCollateral: BNish, mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0) {
+        const mintedAMG = this.context.convertUBAToAmg(mintedUBA);
+        const reservedAMG = this.context.convertUBAToAmg(reservedUBA);
+        const redeemingAMG = this.context.convertUBAToAmg(redeemingUBA);
+        const ratio = await this.collateralRatio(fullCollateral, mintedAMG, reservedAMG, redeemingAMG);
+        const ratioTrusted = await this.collateralRatio(fullCollateral, mintedAMG, reservedAMG, redeemingAMG);
+        return ratio.gt(ratioTrusted) ? ratio : ratioTrusted;
+    }
+
+    private async collateralRatio(fullCollateral: BNish, mintedAMG: BNish, reservedAMG: BNish = 0, redeemingAMG: BNish = 0) {
         const totalAMG = toBN(reservedAMG).add(toBN(mintedAMG)).add(toBN(redeemingAMG));
         if (totalAMG.eqn(0)) return toBN(2).pow(toBN(256)).subn(1);    // nothing minted - ~infinite collateral ratio
-        const backingNATWei = this.context.convertAmgToNATWei(totalAMG, amgToNATWeiPrice);
-        return toBN(fullCollateral).muln(MAX_BIPS).div(backingNATWei);
+        const priceClass1 = await this.context.getCollateralPrice(this.class1Collateral());
+        const backingClass1Wei = priceClass1.convertAmgToTokenWei(totalAMG);
+        return toBN(fullCollateral).muln(MAX_BIPS).div(backingClass1Wei);
     }
 
 //     async lockedCollateralWei(mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0, withdrawalAnnouncedNATWei: BNish = 0) {
@@ -561,5 +570,55 @@ export class Agent extends AssetContextClient {
 
     async getAgentInfo() {
         return await this.assetManager.getAgentInfo(this.agentVault.address);
+    }
+
+    async getTotalBackedAssetUBA() {
+        const agentInfo = await this.getAgentInfo();
+        return toBN(agentInfo.mintedUBA).add(toBN(agentInfo.reservedUBA)).add(toBN(agentInfo.redeemingUBA));
+    }
+
+    async setClass1CollateralRatioByChangingAssetPrice(ratioBIPS: number) {
+        const class1Collateral = this.class1Collateral();
+        const totalUBA = await this.getTotalBackedAssetUBA();
+        const agentInfo = await this.getAgentInfo();
+        const { 0: class1Price } = await this.context.ftsos[class1Collateral.tokenFtsoSymbol].getCurrentPrice();
+        const assetPriceUBA = class1Price.mul(toBN(agentInfo.totalClass1CollateralWei)).div(totalUBA).muln(MAX_BIPS).divn(ratioBIPS);
+        const assetPrice = assetPriceUBA.mul(toBNExp(1, this.context.chainInfo.decimals)).div(toBNExp(1, Number(class1Collateral.decimals)));
+        await this.context.assetFtso.setCurrentPrice(assetPrice, 0);
+        await this.context.assetFtso.setCurrentPriceFromTrustedProviders(assetPrice, 0);
+    }
+
+    async setPoolCollateralRatioByChangingAssetPrice(ratioBIPS: number) {
+        const poolCollateral = this.context.collaterals[0];
+        const totalUBA = await this.getTotalBackedAssetUBA();
+        const poolBalance = await this.collateralPool.totalCollateral();
+        const { 0: poolPrice } = await this.context.ftsos[poolCollateral.tokenFtsoSymbol].getCurrentPrice();
+        const assetPriceUBA = poolPrice.mul(poolBalance).div(totalUBA).divn(ratioBIPS).muln(MAX_BIPS);
+        const assetPrice = assetPriceUBA.mul(toBNExp(1, this.context.chainInfo.decimals)).div(toBNExp(1, Number(poolCollateral.decimals)));
+        await this.context.assetFtso.setCurrentPrice(assetPrice, 0);
+        await this.context.assetFtso.setCurrentPriceFromTrustedProviders(assetPrice, 0);
+    }
+
+    async getClass1CollateralToMakeCollateralRatioEqualTo(ratioBIPS: number, mintedUBA: BN) {
+        const class1Collateral = this.class1Collateral();
+        const { 0: class1Price } = await this.context.ftsos[class1Collateral.tokenFtsoSymbol].getCurrentPrice();
+        const { 0: assetPrice } = await this.context.assetFtso.getCurrentPrice();
+        return mintedUBA.mul(assetPrice).div(class1Price).muln(ratioBIPS).divn(MAX_BIPS)
+            .mul(toBNExp(1, Number(class1Collateral.decimals))).div(toBNExp(1, this.context.chainInfo.decimals));
+    }
+
+    async getPoolCollateralToMakeCollateralRatioEqualTo(ratioBIPS: number, mintedUBA: BN) {
+        const poolCollateral = this.context.collaterals[0];
+        const { 0: natPrice } = await this.context.natFtso.getCurrentPrice();
+        const { 0: assetPrice } = await this.context.assetFtso.getCurrentPrice();
+        return mintedUBA.mul(assetPrice).div(natPrice).muln(ratioBIPS).divn(MAX_BIPS)
+            .mul(toBNExp(1, Number(poolCollateral.decimals))).div(toBNExp(1, this.context.chainInfo.decimals));
+    }
+
+    async multiplyAssetPriceWithBIPS(factorBIPS: BNish) {
+        const { 0: assetPrice } = await this.context.assetFtso.getCurrentPrice();
+        const newAssetPrice = assetPrice.mul(toBN(factorBIPS)).divn(MAX_BIPS);
+        await this.context.assetFtso.setCurrentPrice(newAssetPrice, 0);
+        await this.context.assetFtso.setCurrentPriceFromTrustedProviders(newAssetPrice, 0);
     }
 }
