@@ -46,13 +46,13 @@ export class Liquidator extends AssetContextClient {
         assert.equal(requiredEventArgs(res, 'LiquidationEnded').agentVault, agent.agentVault.address);
     }
 
-    async getLiquidationReward(liquidatedAmountUBA: BNish, factorBIPS: BNish) {
+    async getLiquidationRewardPool(liquidatedAmountUBA: BNish, factorBIPS: BNish) {
         const liquidatedAmountAMG = this.context.convertUBAToAmg(liquidatedAmountUBA);
         const priceNAT = await this.context.getCollateralPrice(this.context.collaterals[0]);
         return priceNAT.convertAmgToTokenWei(toBN(liquidatedAmountAMG).mul(toBN(factorBIPS)).divn(10_000));
     }
 
-    async getLiquidationFactorBIPS(collateralRatioBIPS: BNish, liquidationStartedAt: BNish, liquidationPerformedAt: BNish, ccb: boolean = false) {
+    async getLiquidationFactorBIPS(liquidationStartedAt: BNish, liquidationPerformedAt: BNish, ccb: boolean = false) {
         // calculate premium step based on time since liquidation started
         const settings = await this.assetManager.getSettings();
         const ccbTime = ccb ? toBN(settings.ccbTimeSeconds) : BN_ZERO;
@@ -61,16 +61,13 @@ export class Liquidator extends AssetContextClient {
         const step = Math.min(this.context.liquidationSettings.liquidationCollateralFactorBIPS.length - 1,
             startTs.sub(liquidationStart).div(toBN(this.context.liquidationSettings.liquidationStepSeconds)).toNumber());
         // premiums are expressed as percentage of minCollateralRatio
-        const factorBIPS = toBN(this.context.liquidationSettings.liquidationCollateralFactorBIPS[step]);
-        // max premium is equal to agents collateral ratio (so that all liquidators get at least this much)
-        return factorBIPS.lt(toBN(collateralRatioBIPS)) ? factorBIPS : toBN(collateralRatioBIPS);
+        return toBN(this.context.liquidationSettings.liquidationCollateralFactorBIPS[step]);
     }
-
 
     async getLiquidationRewardClass1(liquidatedAmountUBA: BNish, factorBIPS: BNish) {
         const liquidatedAmountAMG = this.context.convertUBAToAmg(liquidatedAmountUBA);
-        const priceNAT = await this.context.getCollateralPrice(this.context.collaterals[1]);
-        return priceNAT.convertAmgToTokenWei(toBN(liquidatedAmountAMG).mul(toBN(factorBIPS)).divn(10_000));
+        const priceClass1 = await this.context.getCollateralPrice(this.context.collaterals[1]);
+        return priceClass1.convertAmgToTokenWei(toBN(liquidatedAmountAMG).mul(toBN(factorBIPS)).divn(10_000));
     }
 
     async getLiquidationFactorBIPSClass1(collateralRatioBIPS: BNish, liquidationStartedAt: BNish, liquidationPerformedAt: BNish, ccb: boolean = false) {
@@ -85,5 +82,12 @@ export class Liquidator extends AssetContextClient {
         const factorBIPS = toBN(this.context.liquidationSettings.liquidationFactorClass1BIPS[step]);
         // max premium is equal to agents collateral ratio (so that all liquidators get at least this much)
         return factorBIPS.lt(toBN(collateralRatioBIPS)) ? factorBIPS : toBN(collateralRatioBIPS);
+    }
+
+    // notice: doesn't cap the factor at pool's CR
+    async getLiquidationFactorBIPSPool(collateralRatioBIPS: BNish, liquidationStartedAt: BNish, liquidationPerformedAt: BNish, ccb: boolean = false) {
+        const liquidationFactor = await this.getLiquidationFactorBIPS(liquidationStartedAt, liquidationPerformedAt, ccb);
+        const liquidationFactorClass1 = await this.getLiquidationFactorBIPSClass1(collateralRatioBIPS, liquidationStartedAt, liquidationPerformedAt, ccb);
+        return liquidationFactor.sub(liquidationFactorClass1);
     }
 }
