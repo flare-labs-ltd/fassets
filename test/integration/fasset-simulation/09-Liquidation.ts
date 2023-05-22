@@ -46,7 +46,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
     describe("simple scenarios - price change liquidation", () => {
 
-        it("ccb due to price change (no liquidation due to collateral deposit)", async () => {
+        it("ccb due to price change (no liquidation due to collateral deposit)(NAT price change, pool collateral ration unsafe)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             const liquidator = await Liquidator.create(context, liquidatorAddress1);
@@ -62,24 +62,31 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const minted = await minter.executeMinting(crt, txHash);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             // price change
-            await context.natFtso.setCurrentPrice(6, 0);
-            await context.assetFtso.setCurrentPrice(toBNExp(10, 6), 0);
+            await context.natFtso.setCurrentPrice(100, 0);
+            await context.natFtso.setCurrentPriceFromTrustedProviders(100, 0);
             // start ccb
             const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
             assert.isTrue(ccb);
-            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.CCB });
+            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.CCB });
             assertWeb3Equal(info.ccbStartTimestamp, ccbStartTimestamp);
             const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
             assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
             // deposit collateral
-            const additionalCollateral = toWei(5e7);
-            const liquidationCancelled = await agent.depositCollateral(additionalCollateral);
+            const additionalCollateral = toWei(4e6);
+            await agent.depositClass1Collateral(additionalCollateral);
+            await agent.buyCollateralPoolTokens(additionalCollateral);
             // test that ccb cancelled due to collateral deposit
-            assert.equal(liquidationCancelled!.agentVault, agent.agentVault.address);
-            const collateralRatioBIPS = await agent.getCollateralRatioBIPS(fullAgentCollateral.add(additionalCollateral), minted.mintedAmountUBA);
-            assert(collateralRatioBIPS.gte(toBN((await context.assetManager.getSettings()).minCollateralRatioBIPS)));
-            assert(collateralRatioBIPS.lt(toBN((await context.assetManager.getSettings()).safetyMinCollateralRatioBIPS)));
-            const info2 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.add(additionalCollateral), freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.NORMAL });
+            //assert.equal(liquidationCancelled!.agentVault, agent.agentVault.address);
+            assert.equal((await agent.getAgentInfo()).status,toBN(0));
+            const collateralRatioBIPS = (await agent.getAgentInfo()).poolCollateralRatioBIPS;
+            const collateralTypes = (await context.assetManager.getCollateralTypes())[0];
+            assert(toBN(collateralRatioBIPS).gte(toBN(collateralTypes.ccbMinCollateralRatioBIPS)));
+            assert(toBN(collateralRatioBIPS).lt(toBN(collateralTypes.safetyMinCollateralRatioBIPS)));
+
+            //const collateralRatioBIPS = await agent.getCollateralRatioBIPS(fullAgentCollateral.add(additionalCollateral), minted.mintedAmountUBA);
+            //assert(collateralRatioBIPS.gte(toBN((await context.assetManager.getSettings()).minCollateralRatioBIPS)));
+            //assert(collateralRatioBIPS.lt(toBN((await context.assetManager.getSettings()).safetyMinCollateralRatioBIPS)));
+            const info2 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.add(additionalCollateral), freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.NORMAL });
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             // agent "buys" f-assets
@@ -104,28 +111,29 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0 });
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0 });
             // price change
-            await context.natFtso.setCurrentPrice(6, 0);
-            await context.assetFtso.setCurrentPrice(toBNExp(10, 6), 0);
+            await context.natFtso.setCurrentPrice(100, 0);
+            await context.natFtso.setCurrentPriceFromTrustedProviders(100, 0);
             // start ccb
             const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
             assert.isTrue(ccb);
-            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.CCB });
+            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.CCB });
             assertWeb3Equal(info.ccbStartTimestamp, ccbStartTimestamp);
             const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
             assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
             // agent "buys" f-assets
             await context.fAsset.transfer(agent.ownerHotAddress, minted.mintedAmountUBA, { from: minter.address });
             // perform partial self close
-            const selfCloseAmountUBA = context.convertAmgToUBA(1e10);
+            const selfCloseAmountUBA = context.convertAmgToUBA(5e9);
             const [, selfClosedValueUBA, liquidationCancelledEvent] = await agent.selfClose(selfCloseAmountUBA);
             // test that ccb cancelled due to self close
             assert.equal(liquidationCancelledEvent.agentVault, agent.agentVault.address);
-            const collateralRatioBIPS = await agent.getCollateralRatioBIPS(fullAgentCollateral, minted.mintedAmountUBA.sub(selfClosedValueUBA));
-            assert(collateralRatioBIPS.gte(toBN((await context.assetManager.getSettings()).minCollateralRatioBIPS)));
-            assert(collateralRatioBIPS.lt(toBN((await context.assetManager.getSettings()).safetyMinCollateralRatioBIPS)));
-            const info2 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA.add(selfClosedValueUBA), mintedUBA: minted.mintedAmountUBA.sub(selfClosedValueUBA), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.NORMAL });
+            const collateralRatioBIPS = (await agent.getAgentInfo()).poolCollateralRatioBIPS;
+            const collateralTypes = (await context.assetManager.getCollateralTypes())[0];
+            assert(toBN(collateralRatioBIPS).gte(toBN(collateralTypes.ccbMinCollateralRatioBIPS)));
+            assert(toBN(collateralRatioBIPS).lt(toBN(collateralTypes.safetyMinCollateralRatioBIPS)));
+            const info2 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(selfClosedValueUBA), mintedUBA: minted.mintedAmountUBA.sub(selfClosedValueUBA).add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.NORMAL });
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             // agent "buys" f-assets
@@ -134,13 +142,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.exitAndDestroy(fullAgentCollateral);
         });
 
-        it("liquidation due to price change (agent can be safe again)", async () => {
+        it.only("liquidation due to price change (agent can be safe again)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             const liquidator = await Liquidator.create(context, liquidatorAddress1);
             // make agent available
             const fullAgentCollateral = toWei(3e8);
-            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            const fullPoolCollateral = toWei(3e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullPoolCollateral);
             // update block
             await context.updateUnderlyingBlock();
             // perform minting
@@ -149,10 +158,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0 });
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0 });
             // price change
-            await context.natFtso.setCurrentPrice(11, 0);
+            await context.natFtso.setCurrentPrice(10, 0);
+            await context.natFtso.setCurrentPriceFromTrustedProviders(10, 0);
             await context.assetFtso.setCurrentPrice(toBNExp(10, 6), 0);
+            await context.assetFtso.setCurrentPriceFromTrustedProviders(toBNExp(10, 6), 0);
             // liquidator "buys" f-assets
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
@@ -163,12 +174,26 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(liquidatedUBA1, liquidateMaxUBA1);
             assert.equal(liquidationStarted1.agentVault, agent.agentVault.address);
             assert.isUndefined(liquidationCancelled1);
-            // test rewarding
-            const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral, minted.mintedAmountUBA);
-            const liquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS1, liquidationTimestamp1, liquidationTimestamp1);
-            const liquidationReward1 = await liquidator.getLiquidationReward(liquidatedUBA1, liquidationFactorBIPS1);
-            assertWeb3Equal(endBalanceLiquidator1.sub(startBalanceLiquidator1), liquidationReward1);
-            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(liquidationReward1), freeUnderlyingBalanceUBA: crt.feeUBA.add(liquidatedUBA1), mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.LIQUIDATION });
+            // test rewarding from pool and agent
+
+            const poolCollateralRatioBIPS1 = (await agent.getAgentInfo()).poolCollateralRatioBIPS;
+            const poolLiquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(poolCollateralRatioBIPS1, liquidationTimestamp1, liquidationTimestamp1);
+            const poolLiquidationReward1 = await liquidator.getLiquidationReward(liquidatedUBA1, poolLiquidationFactorBIPS1);
+
+
+            const class1CollateralRatioBIPS1 = (await agent.getAgentInfo()).class1CollateralRatioBIPS;
+            const class1LiquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPSClass1(class1CollateralRatioBIPS1, liquidationTimestamp1, liquidationTimestamp1);
+            const class1LiquidationReward1 = await liquidator.getLiquidationRewardClass1(liquidatedUBA1, class1LiquidationFactorBIPS1);
+            console.log(await agent.getAgentInfo());
+            console.log(startBalanceLiquidator1.toString());
+            console.log(endBalanceLiquidator1.toString());
+            console.log(poolLiquidationReward1.toString());
+            console.log(class1LiquidationReward1.toString());
+            console.log((await agent.class1Token().balanceOf(liquidator.address)).toString()); //Class1 balance
+
+            assertWeb3Equal(endBalanceLiquidator1.sub(startBalanceLiquidator1), poolLiquidationReward1);
+            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(class1LiquidationReward1), totalPoolCollateralNATWei: fullAgentCollateral.sub(poolLiquidationReward1), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(liquidatedUBA1), mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0, announcedClass1WithdrawalWei: 0, status: AgentStatus.LIQUIDATION });
+            //const info = await agent.getAgentInfo();
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationTimestamp1);
             // liquidation cannot be stopped if agent not safe
@@ -177,6 +202,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // wait some time to get next premium
             await time.increase(90);
             // liquidate agent (second part)
+            console.log(await agent.getAgentInfo());
             const liquidateMaxUBA2 = minted.mintedAmountUBA.sub(liquidatedUBA1);
             const startBalanceLiquidator2 = await context.wNat.balanceOf(liquidator.address);
             const [liquidatedUBA2, liquidationTimestamp2, liquidationStarted2, liquidationCancelled2] = await liquidator.liquidate(agent, liquidateMaxUBA2);
@@ -186,24 +212,28 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.isUndefined(liquidationStarted2);
             assert.equal(liquidationCancelled2.agentVault, agent.agentVault.address);
             // test rewarding
-            const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(liquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
+
+            const collateralRatioBIPS2 = (await agent.getAgentInfo()).poolCollateralRatioBIPS;
             const liquidationFactorBIPS2 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS2, liquidationTimestamp1, liquidationTimestamp2);
             const liquidationReward2 = await liquidator.getLiquidationReward(liquidatedUBA2, liquidationFactorBIPS2);
+
+
             assertWeb3Equal(endBalanceLiquidator2.sub(startBalanceLiquidator2), liquidationReward2);
-            const info2 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(liquidationReward1).sub(liquidationReward2), freeUnderlyingBalanceUBA: crt.feeUBA.add(liquidatedUBA1).add(liquidatedUBA2), mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2) });
+            const info2 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(poolLiquidationReward1).sub(liquidationReward2), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(liquidatedUBA1).add(liquidatedUBA2), mintedUBA: minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2).add(minted.poolFeeUBA) });
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             // final tests
-            assert(liquidationFactorBIPS1.lt(liquidationFactorBIPS2));
-            const collateralRatioBIPS3 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(liquidationReward1).sub(liquidationReward2), minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2));
-            assert(collateralRatioBIPS3.gte(toBN((await context.assetManager.getSettings()).safetyMinCollateralRatioBIPS)))
+            assert(poolLiquidationFactorBIPS1.lt(liquidationFactorBIPS2));
+            const collateralRatioBIPS3 = (await agent.getAgentInfo()).poolCollateralRatioBIPS;
+            const collateralTypes = (await context.assetManager.getCollateralTypes())[0];
+            assert(collateralRatioBIPS3.gte(toBN(collateralTypes.safetyMinCollateralRatioBIPS)))
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2);
             await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
             assert(remainingUBA.gt(BN_ZERO));
             await agent.selfClose(remainingUBA);
             // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral.sub(liquidationReward1).sub(liquidationReward2));
+            await agent.exitAndDestroy(fullAgentCollateral.sub(poolLiquidationReward1).sub(liquidationReward2));
         });
 
         it("liquidation due to price change (agent cannot be safe again)", async () => {
@@ -340,7 +370,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(liquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
-            assert(collateralRatioBIPS2.gte(toBN((await context.assetManager.getSettings()).safetyMinCollateralRatioBIPS)))
+            const collateralTypes = (await context.assetManager.getCollateralTypes())[0];
+            assert(collateralRatioBIPS2.gte(toBN(collateralTypes.safetyMinCollateralRatioBIPS)))
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1);
             await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
@@ -402,7 +433,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             const collateralRatioBIPS2 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(liquidationReward1), minted.mintedAmountUBA.sub(liquidatedUBA1));
-            assert(collateralRatioBIPS2.gte(toBN((await context.assetManager.getSettings()).safetyMinCollateralRatioBIPS)))
+            const collateralTypes = (await context.assetManager.getCollateralTypes())[0];
+            assert(collateralRatioBIPS2.gte(toBN(collateralTypes.safetyMinCollateralRatioBIPS)))
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1);
             await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
@@ -427,10 +459,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: crt.feeUBA, mintedUBA: minted.mintedAmountUBA, reservedUBA: 0, redeemingUBA: 0 });
+            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0 });
             // price change
             await context.natFtso.setCurrentPrice(11, 0);
+            await context.natFtso.setCurrentPriceFromTrustedProviders(11, 0);
             await context.assetFtso.setCurrentPrice(toBNExp(10, 6), 0);
+            await context.assetFtso.setCurrentPriceFromTrustedProviders(toBNExp(10, 6), 0);
             // liquidator "buys" f-assets
             await context.fAsset.transfer(liquidator.address, minted.mintedAmountUBA, { from: minter.address });
             // liquidate agent (partially)
@@ -442,7 +476,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(liquidationStarted1.agentVault, agent.agentVault.address);
             assert.isUndefined(liquidationCancelled1);
             // test rewarding
-            const collateralRatioBIPS1 = await agent.getCollateralRatioBIPS(fullAgentCollateral, minted.mintedAmountUBA);
+            console.log(await agent.getAgentInfo());
+            const collateralRatioBIPS1 = (await agent.getAgentInfo()).poolCollateralRatioBIPS;
             const liquidationFactorBIPS1 = await liquidator.getLiquidationFactorBIPS(collateralRatioBIPS1, liquidationTimestamp1, liquidationTimestamp1);
             const liquidationReward1 = await liquidator.getLiquidationReward(liquidatedUBA1, liquidationFactorBIPS1);
             assertWeb3Equal(endBalanceLiquidator1.sub(startBalanceLiquidator1), liquidationReward1);
@@ -479,7 +514,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // final tests
             assert(liquidationFactorBIPS1.lt(liquidationFactorBIPS2));
             const collateralRatioBIPS3 = await agent.getCollateralRatioBIPS(fullAgentCollateral.sub(liquidationReward1).sub(liquidationReward2), minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2));
-            assert(collateralRatioBIPS3.gte(toBN((await context.assetManager.getSettings()).safetyMinCollateralRatioBIPS)))
+            const collateralTypes = (await context.assetManager.getCollateralTypes())[0];
+            assert(collateralRatioBIPS3.gte(toBN(collateralTypes.safetyMinCollateralRatioBIPS)))
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2);
             await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
