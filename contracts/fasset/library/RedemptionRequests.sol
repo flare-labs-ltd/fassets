@@ -121,6 +121,16 @@ library RedemptionRequests {
         emit AMEvents.SelfClose(_agentVault, closedUBA);
     }
 
+    function maxRedemptionFromAgent(
+        address _agentVault
+    )
+        external view
+        returns (uint256)
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        return Redemptions.maxClosedFromAgentPerTransaction(agent);
+    }
+
     function _redeemFirstTicket(
         uint64 _lots,
         AgentRedemptionList memory _list

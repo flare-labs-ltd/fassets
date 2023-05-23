@@ -1149,6 +1149,20 @@ contract AssetManager is ReentrancyGuard, IIAssetManager {
         RedemptionRequests.redeemFromAgentInCollateral(_agentVault, _receiver, _amountUBA);
     }
 
+    /**
+     * To avoid unlimited work, the maximum number of redemption tickets closed in redemption, self close
+     * or liquidation is limited. This means that a single redemption/self close/liquidation is limited.
+     * This function calculates the maximum single rededemption amount.
+     */
+    function maxRedemptionFromAgent(
+        address _agentVault
+    )
+        external view
+        returns (uint256)
+    {
+        return RedemptionRequests.maxRedemptionFromAgent(_agentVault);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Other
 

@@ -130,6 +130,15 @@ interface IIAssetManager is IAssetManager {
         uint256 _amountUBA
     ) external;
 
+    /**
+     * To avoid unlimited work, the maximum number of redemption tickets closed in redemption, self close
+     * or liquidation is limited. This means that a single redemption/self close/liquidation is limited.
+     * This function calculates the maximum single rededemption amount.
+     */
+    function maxRedemptionFromAgent(address _agentVault)
+        external view
+        returns (uint256);
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Functions, used by agent vault during collateral deposit/withdraw
 
