@@ -74,7 +74,7 @@
     "@openzeppelin/test-helpers": "0.5.16",
     "@typechain/ethers-v5": "10.2.1",
     "@typechain/hardhat": "6.1.6",
-    "@typechain/truffle-v5": "8.0.2",
+    "@typechain/truffle-v5": "7.0.0",
     "@typechain/web3-v1": "6.0.2",
     "@types/chai": "4.3.5",
     "@types/mocha": "10.0.1",

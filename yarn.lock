@@ -2,9 +2,9 @@
 # yarn lockfile v1
 
 
-"@adraffy/ens-normalize@git+https://github.com/ricmoo/ens-normalize.js.git":
+"@adraffy/ens-normalize@https://github.com/ricmoo/ens-normalize.js":
   version "1.9.0"
-  resolved "git+https://github.com/ricmoo/ens-normalize.js.git#2d040533e57e4f25f9a7cc4715e219658ad454b5"
+  resolved "https://github.com/ricmoo/ens-normalize.js#2d040533e57e4f25f9a7cc4715e219658ad454b5"
 
 "@babel/code-frame@7.12.11":
   version "7.12.11"
@@ -1637,10 +1637,10 @@
   dependencies:
     fs-extra "^9.1.0"
 
-"@typechain/truffle-v5@8.0.2":
-  version "8.0.2"
-  resolved "https://registry.yarnpkg.com/@typechain/truffle-v5/-/truffle-v5-8.0.2.tgz#d899710b24705edb3eee5c3d8eb44ef68412d9a2"
-  integrity sha512-bjp1V/U0ow9lnqANcn8rfGf0yR+Ivogk6dMoY9gljLX3Vkd7jWfhvb4crKvvj92SpW65FQWsjoyZJnJzioOKiQ==
+"@typechain/truffle-v5@7.0.0":
+  version "7.0.0"
+  resolved "https://registry.yarnpkg.com/@typechain/truffle-v5/-/truffle-v5-7.0.0.tgz#f7ab68186de8b2ef0a3f932837f6380a6c481360"
+  integrity sha512-TeK3EjbWzRyvR7Ags6I05UmDnWDGOxZnfUkFEJf9e5bheipDqvaoMYThcw3AObVfYaC6VA6UdelwPRtK6BC8lg==
   dependencies:
     lodash "^4.17.15"
 
