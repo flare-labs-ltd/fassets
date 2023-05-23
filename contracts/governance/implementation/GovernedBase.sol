@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.11;
+pragma solidity 0.8.20;
 
 import "flare-smart-contracts/contracts/userInterfaces/IGovernanceSettings.sol";
 
@@ -18,26 +18,26 @@ abstract contract GovernedBase {
         uint256 allowedAfterTimestamp;
         bytes encodedCall;
     }
-    
+
     IGovernanceSettings public governanceSettings;
 
     bool private initialised;
-    
+
     bool public productionMode;
-    
+
     bool private executing;
-    
+
     address private initialGovernance;
 
     mapping(bytes4 => TimelockedCall) public timelockedCalls;
-    
+
     event GovernanceCallTimelocked(bytes4 selector, uint256 allowedAfterTimestamp, bytes encodedCall);
     event TimelockedGovernanceCallExecuted(bytes4 selector, uint256 timestamp);
     event TimelockedGovernanceCallCanceled(bytes4 selector, uint256 timestamp);
-    
+
     event GovernanceInitialised(address initialGovernance);
     event GovernedProductionModeEntered(address governanceSettings);
-    
+
     modifier onlyGovernance {
         if (executing || !productionMode) {
             _beforeExecute();
@@ -46,7 +46,7 @@ abstract contract GovernedBase {
             _recordTimelockedCall(msg.data);
         }
     }
-    
+
     modifier onlyImmediateGovernance () {
         _checkOnlyGovernance();
         _;
@@ -74,7 +74,7 @@ abstract contract GovernedBase {
         emit TimelockedGovernanceCallExecuted(_selector, block.timestamp);
         _passReturnOrRevert(success);
     }
-    
+
     /**
      * Cancel a timelocked governance call before it has been executed.
      * @dev Only governance can call this method.
@@ -85,11 +85,11 @@ abstract contract GovernedBase {
         emit TimelockedGovernanceCallCanceled(_selector, block.timestamp);
         delete timelockedCalls[_selector];
     }
-    
+
     /**
      * Enter the production mode after all the initial governance settings have been set.
-     * This enables timelocks and the governance is afterwards obtained by calling 
-     * governanceSettings.getGovernanceAddress(). 
+     * This enables timelocks and the governance is afterwards obtained by calling
+     * governanceSettings.getGovernanceAddress().
      */
     function switchToProductionMode() external {
         _checkOnlyGovernance();
@@ -111,21 +111,21 @@ abstract contract GovernedBase {
         initialGovernance = _initialGovernance;
         emit GovernanceInitialised(_initialGovernance);
     }
-    
+
     /**
      * Returns the current effective governance address.
      */
     function governance() public view returns (address) {
         return productionMode ? governanceSettings.getGovernanceAddress() : initialGovernance;
     }
-    
+
     /**
      * Internal function to check if an address is executor.
      */
     function isExecutor(address _address) public view returns (bool) {
         return initialised && governanceSettings.isExecutor(_address);
     }
-    
+
     function _beforeExecute() private {
         if (executing) {
             // can only be run from executeGovernanceCall(), where we check that only executor can call
@@ -154,7 +154,7 @@ abstract contract GovernedBase {
         });
         emit GovernanceCallTimelocked(selector, allowedAt, _data);
     }
-    
+
     function _checkOnlyGovernance() private view {
         require(msg.sender == governance(), "only governance");
     }

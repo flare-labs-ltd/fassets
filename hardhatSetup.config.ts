@@ -1,12 +1,9 @@
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-truffle5";
-import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-web3";
-import "@tenderly/hardhat-tenderly";
 import * as dotenv from "dotenv";
 import fs from "fs";
 import "hardhat-contract-sizer";
-import 'hardhat-deploy';
 import "hardhat-gas-reporter";
 import { TASK_COMPILE } from 'hardhat/builtin-tasks/task-names';
 import { HardhatUserConfig, task } from "hardhat/config";
@@ -95,8 +92,9 @@ const config: HardhatUserConfig = {
     solidity: {
         compilers: [
             {
-                version: "0.8.11",
+                version: "0.8.20",
                 settings: {
+                    evmVersion: "london",
                     optimizer: {
                         enabled: true,
                         runs: 200
@@ -124,27 +122,18 @@ const config: HardhatUserConfig = {
             }
         }
     },
-
     paths: {
         sources: "./contracts/",
         tests: process.env.TEST_PATH || "./test/{unit,integration}",
         cache: "./cache",
-        artifacts: "./artifacts",
-        deploy: 'deploy',
-        deployments: 'deployments',
-        imports: 'imports'
+        artifacts: "./artifacts"
     },
-
     mocha: {
         timeout: 1000000000
     },
     gasReporter: {
         showTimeSpent: true,
         outputFile: ".gas-report.txt"
-    },
-    tenderly: {
-        username: process.env.TENDERLY_USERNAME || "undefined",
-        project: "flare"
     }
 };
 

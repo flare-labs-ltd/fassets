@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.11;
+pragma solidity 0.8.20;
 
 import "../interface/IFAsset.sol";
 import "../interface/IAddressValidator.sol";

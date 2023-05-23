@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.11;
+pragma solidity 0.8.20;
 
 import "flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdatable.sol";
 
@@ -8,7 +8,7 @@ abstract contract AddressUpdatable is IIAddressUpdatable {
 
     // https://docs.soliditylang.org/en/v0.8.7/contracts.html#constant-and-immutable-state-variables
     // No storage slot is allocated
-    bytes32 internal constant ADDRESS_STORAGE_POSITION = 
+    bytes32 internal constant ADDRESS_STORAGE_POSITION =
         keccak256("flare.diamond.AddressUpdatable.ADDRESS_STORAGE_POSITION");
 
     modifier onlyAddressUpdater() {
@@ -80,7 +80,7 @@ abstract contract AddressUpdatable is IIAddressUpdatable {
     function setAddressUpdaterValue(address _addressUpdater) internal {
         // Only direct constants are allowed in inline assembly, so we assign it here
         bytes32 position = ADDRESS_STORAGE_POSITION;
-        // solhint-disable-next-line no-inline-assembly  
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             sstore(position, _addressUpdater)
         }

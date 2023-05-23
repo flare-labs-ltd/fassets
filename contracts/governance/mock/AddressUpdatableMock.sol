@@ -1,6 +1,6 @@
 
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.11;
+pragma solidity 0.8.20;
 
 import "../implementation/AddressUpdatable.sol";
 
@@ -22,11 +22,11 @@ contract AddressUpdatableMock is AddressUpdatable {
     {
         return (contractNameHashes, contractAddresses);
     }
-    
+
     function _updateContractAddresses(
         bytes32[] memory _contractNameHashes,
         address[] memory _contractAddresses
-    ) 
+    )
         internal override
     {
         contractNameHashes = _contractNameHashes;
