@@ -25,7 +25,6 @@ const TrivialAddressValidatorMock = artifacts.require('TrivialAddressValidatorMo
 
 export interface SettingsOptions {
     // optional settings
-    burnWithSelfDestruct?: boolean;
     collaterals?: CollateralType[];
     liquidationSettings?: LiquidationStrategyImplSettings;
     // optional contracts
@@ -190,7 +189,7 @@ export class AssetContext implements IAssetContext {
         // create collaterals
         const testSettingsContracts = { ...common, addressValidator, liquidationStrategy };
         // create settings
-        const settings = createTestSettings(testSettingsContracts, chainInfo, { burnWithSelfDestruct: options.burnWithSelfDestruct });
+        const settings = createTestSettings(testSettingsContracts, chainInfo);
         const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts, chainInfo);
         const liquidationSettings = options.liquidationSettings ?? createTestLiquidationSettings();
         // create asset manager

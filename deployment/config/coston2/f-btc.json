@@ -2,7 +2,6 @@
     "$schema": "../asset-manager-parameters.schema.json",
     "natSymbol": "C2FLR",
     "burnAddress": "0x000000000000000000000000000000000000dEaD",
-    "burnWithSelfDestruct": false,
     "chainId": 0,
     "assetName": "Test Bitcoin",
     "assetSymbol": "testBTC",

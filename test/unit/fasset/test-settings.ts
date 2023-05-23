@@ -61,7 +61,6 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         agentWhitelist: contracts.agentWhitelist?.address ?? constants.ZERO_ADDRESS,
         ftsoRegistry: contracts.ftsoRegistry.address,
         burnAddress: constants.ZERO_ADDRESS,
-        burnWithSelfDestruct: false,
         chainId: ci.chainId,
         collateralReservationFeeBIPS: toBIPS("1%"),
         assetDecimals: ci.decimals,

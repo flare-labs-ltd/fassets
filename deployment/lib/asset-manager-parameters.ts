@@ -76,12 +76,6 @@ export interface AssetManagerParameters {
      */
     burnAddress: string;
 
-    /**
-     * If true, the NAT burning is done indirectly via transfer to burner contract and then self-destruct.
-     * This is necessary on Songbird, where the burn address is unpayable.
-     */
-    burnWithSelfDestruct: boolean;
-
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     // F-asset (chain) specific parameters
 

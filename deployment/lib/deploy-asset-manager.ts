@@ -190,7 +190,6 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         agentWhitelist: parameters.agentWhitelist ? addressFromParameter(contracts, parameters.agentWhitelist) : ZERO_ADDRESS,
         ftsoRegistry: contracts.FtsoRegistry.address,
         burnAddress: parameters.burnAddress,
-        burnWithSelfDestruct: parameters.burnWithSelfDestruct,
         chainId: parameters.chainId,
         assetDecimals: parameters.assetDecimals,
         assetUnitUBA: assetUnitUBA,

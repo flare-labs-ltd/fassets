@@ -3,7 +3,6 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../../utils/implementation/NativeTokenBurner.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../interface/IIAgentVault.sol";
 import "../interface/IWhitelist.sol";
@@ -252,15 +251,7 @@ library Agents {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
-        if (settings.burnWithSelfDestruct) {
-            // burn by self-destructing a temporary burner contract
-            NativeTokenBurner burner = new NativeTokenBurner(settings.burnAddress);
-            vault.payoutNAT(payable(address(burner)), _amountNATWei);
-            burner.die();
-        } else {
-            // burn directly to burn address
-            vault.payoutNAT(settings.burnAddress, _amountNATWei);
-        }
+        vault.payoutNAT(settings.burnAddress, _amountNATWei);
     }
 
     function burnDirectNAT(
@@ -269,15 +260,7 @@ library Agents {
         internal
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        if (settings.burnWithSelfDestruct) {
-            // burn by self-destructing a temporary burner contract
-            NativeTokenBurner burner = new NativeTokenBurner(settings.burnAddress);
-            burner.transfer{ value: _amountNATWei }();
-            burner.die();
-        } else {
-            // burn directly to burn address
-            settings.burnAddress.transfer(_amountNATWei);
-        }
+        settings.burnAddress.transfer(_amountNATWei);
     }
 
     function setClass1Collateral(

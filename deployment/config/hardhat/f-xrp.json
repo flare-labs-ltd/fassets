@@ -1,7 +1,6 @@
 {
     "$schema": "../asset-manager-parameters.schema.json",
     "burnAddress": "0x000000000000000000000000000000000000dEaD",
-    "burnWithSelfDestruct": false,
     "chainId": 3,
     "assetName": "Ripple",
     "assetSymbol": "XRP",

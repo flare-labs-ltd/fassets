@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../interface/IIAssetManager.sol";
 import "../interface/ICollateralPoolFactory.sol";
 import "../interface/IAgentVaultFactory.sol";
-import "../../utils/implementation/NativeTokenBurner.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
