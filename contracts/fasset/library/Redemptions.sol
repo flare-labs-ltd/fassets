@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.18;
+pragma solidity 0.8.20;
 
 import "../../utils/lib/SafeMath64.sol";
 import "./data/AssetManagerState.sol";
