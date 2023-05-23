@@ -610,11 +610,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
     function destroy(address payable _recipient)
         external override
         onlyAssetManager
+        nonReentrant
     {
         require(totalCollateral == 0, "cannot destroy a pool holding collateral");
         require(totalFAssetFees == 0, "cannot destroy a pool holding f-assets");
         token.destroy(_recipient);
-        selfdestruct(_recipient);
+        // transfer native balance, if any (used to be done by selfdestruct)
+        _transferNAT(_recipient, address(this).balance);
     }
 
     function payout(
@@ -730,4 +732,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         _transferWNat(address(this), msg.sender, natShare);
     }
 
+    function _transferNAT(address payable _recipient, uint256 _amount) private {
+        if (_amount > 0) {
+            /* solhint-disable avoid-low-level-calls */
+            //slither-disable-next-line arbitrary-send-eth
+            (bool success, ) = _recipient.call{value: _amount}("");
+            /* solhint-enable avoid-low-level-calls */
+            require(success, "transfer failed");
+        }
+    }
 }

@@ -29,8 +29,7 @@ contract CollateralPoolToken is ICollateralPoolToken, ERC20 {
     }
 
     function destroy(address payable _recipient) external onlyCollateralPool {
-        // only used at pool destruct so the balance will be moved anyway
-        selfdestruct(_recipient);
+        // do nothing since selfdestruct is deprecated
     }
 
     function transferableBalanceOf(address _account) public view returns (uint256) {

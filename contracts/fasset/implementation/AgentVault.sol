@@ -207,6 +207,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault {
     function destroy(address payable _recipient)
         external override
         onlyAssetManager
+        nonReentrant
     {
         uint256 length = usedTokens.length;
         for (uint256 i = 0; i < length; i++) {
@@ -228,7 +229,8 @@ contract AgentVault is ReentrancyGuard, IIAgentVault {
                 }
             }
         }
-        selfdestruct(_recipient);
+        // transfer native balance, if any (used to be done by selfdestruct)
+        _transferNAT(_recipient, address(this).balance);
     }
 
     // Used by asset manager for liquidation and failed redemption.
