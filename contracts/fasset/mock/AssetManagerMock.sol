@@ -71,12 +71,14 @@ contract AssetManagerMock {
         address /* _agentVault */, address /* _redeemer */, uint256 _amountUBA,
         string memory /* _receiverUnderlyingAddress */
     ) external {
+        fasset.burnAmount(msg.sender, _amountUBA);
         emit AgentRedemption(_amountUBA);
     }
 
     function redeemFromAgentInCollateral(
         address /* _agentVault */, address /* _redeemer */, uint256 _amountUBA
     ) external {
+        fasset.burnAmount(msg.sender, _amountUBA);
         emit AgentRedemptionInCollateral(_amountUBA);
     }
 
@@ -101,6 +103,10 @@ contract AssetManagerMock {
 
     function lotSize() public pure returns (uint256) {
         return 1;
+    }
+
+    function maxRedemptionFromAgent(address /*agentVault*/) external pure returns (uint256) {
+        return 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     }
 
 }

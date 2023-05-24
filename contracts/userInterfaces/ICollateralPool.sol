@@ -28,6 +28,14 @@ interface ICollateralPool {
         uint256 closedFAssetsUBA);
 
     /**
+     * In the case of self-close exit, it can happen that not all tokens could be spent, as agent could
+     * not redeem all required f-asset in one transaction. In this case, the event is emitted.
+     */
+    event IncompleteSelfCloseExit(
+        uint256 burnedTokensWei,
+        uint256 redeemedFAssetUBA);
+
+    /**
      * Enters the collateral pool by depositing NAT and f-asset, obtaining pool tokens, allowing holder
      * to exit with NAT and f-asset fees later. If the user doesn't provide enough f-assets, they are
      * still able to collect future f-asset fees and exit with NAT, but their tokens are non-transferable.
@@ -59,7 +67,6 @@ interface ICollateralPool {
      * the other hand, collateral pool is below exit CR, then the method burns an amount of user's f-assets
      * that preserve pool's collateral ratio.
      * @param _tokenShare                   The amount of pool tokens to be liquidated
-     * @param _exitType                     the ratio used to redeem transferable and non-transferable tokens
      * @param _redeemToCollateral           Specifies if agent should redeem f-assets in NAT from his collateral
      * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
      * @notice F-assets will be redeemed in collateral if their value does not exceed one lot, regardless of
@@ -67,12 +74,10 @@ interface ICollateralPool {
      * @notice Method first tries to satisfy the condition by taking f-assets out of sender's f-asset fee share,
      *  specified by `_tokenShare`. If it is not enough it moves on to spending total sender's f-asset fees. If they
      *  are not enough, it takes from the sender's f-asset balance. Spending sender's f-asset fees means that
-     *  transferable tokens are converted to non-transferable, so at the end there might be less transferable tokens
-     *  than effectively specified by `_exitType`.
+     *  transferable tokens are converted to non-transferable.
      */
     function selfCloseExit(
         uint256 _tokenShare,
-        TokenExitType _exitType,
         bool _redeemToCollateral,
         string memory _redeemerUnderlyingAddress
     ) external;
