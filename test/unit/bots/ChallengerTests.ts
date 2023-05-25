@@ -6,7 +6,7 @@ import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingC
 import { EventArgs } from "../../../lib/utils/events/common";
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { ScopedRunner } from "../../../lib/utils/events/ScopedRunner";
-import { sleep, toBN, toBNExp } from "../../../lib/utils/helpers";
+import { sleep, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { ILogger, NullLog } from "../../../lib/utils/logging";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { InterceptorEvmEvents } from "../../fuzzing/fasset/InterceptorEvmEvents";
@@ -21,6 +21,7 @@ import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../utils/test-helpers";
 import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
+import { AgentVaultInstance, ERC20MockInstance } from "../../../typechain-truffle";
 
 contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit tests`, async accounts => {
     const governance = accounts[1];
@@ -45,6 +46,7 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
     let trackedState: TrackedState;
     let logger: ILogger;
     let runner: ScopedRunner;
+    let usdc: ERC20MockInstance;
 
     let agent: Agent;
     let minter: Minter;
@@ -72,7 +74,7 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
 
     beforeEach(async () => {
         // create context
-        commonContext = await CommonContext.createTest(governance, testNatInfo);
+        commonContext = await CommonContext.createTest(governance);
         chainInfo = testChainInfo.eth;
         context = await AssetContext.createTest(commonContext, chainInfo);
         chain = context.chain as MockChain;
@@ -107,8 +109,7 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
         trackedState.logger = logger;
         // actors
         agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
-        await agent.depositCollateral(toBNExp(100_000_000, 18));
-        await agent.makeAvailable(500, 3_0000);
+        await agent.depositCollateralsAndMakeAvailable(toWei(3e8),toWei(3e8));
         minter = await Minter.createTest(context, customerAddress1, underlyingCustomer1, toBNExp(100_000, 18));
         redeemer = await Redeemer.create(context, customerAddress1, underlyingCustomer1);
     });
