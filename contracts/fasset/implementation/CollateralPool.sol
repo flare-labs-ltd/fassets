@@ -451,6 +451,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         returns (uint256)
     {
         uint256 tokens = token.balanceOf(_account);
+        if (tokens == 0) return 0;
         return _assetData.poolVirtualFAssetFees.mulDiv(
             tokens, _assetData.poolTokenSupply);
     }
