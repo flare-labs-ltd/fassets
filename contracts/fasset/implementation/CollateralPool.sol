@@ -133,8 +133,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         }
         // calculate obtained pool tokens and free f-assets
         uint256 tokenShare = _collateralToTokenShare(assetData, msg.value);
-        uint256 fAssetShare = assetData.poolTokenSupply == 0 ?
-            0 : assetData.poolVirtualFAssetFees.mulDiv(tokenShare, assetData.poolTokenSupply);
+        uint256 fAssetShare = assetData.poolTokenSupply > 0 ?
+            assetData.poolVirtualFAssetFees.mulDiv(tokenShare, assetData.poolTokenSupply) : 0;
         uint256 depositedFAsset = _enterWithFullFAssets ? fAssetShare : Math.min(_fAssets, fAssetShare);
         // transfer/mint calculated assets
         if (depositedFAsset > 0) {
@@ -235,6 +235,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
             require(assetData.poolNatBalance == natShare ||
                 assetData.poolNatBalance - natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
                 "collateral left after exit is too low and non-zero");
+            // poolNatBalance >= previous natShare > 0
             _tokenShare = assetData.poolTokenSupply.mulDiv(natShare, assetData.poolNatBalance);
             emit IncompleteSelfCloseExit(_tokenShare, requiredFAssets);
         }
@@ -366,20 +367,22 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         internal view
         returns (uint256 debtFAssetFeeShare, uint256 freeFAssetFeeShare)
     {
-        uint256 virtualFasset = _virtualFAssetFeesOf(_assetData, _account);
-        uint256 debtFasset = _fAssetFeeDebtOf[_account];
-        uint256 fAssetShare = virtualFasset.mulDiv(_tokenShare, token.balanceOf(_account));
-        // note: it can happen that debtFasset = virtualFasset + 1 > virtualFasset
+        uint256 virtualFAsset = _virtualFAssetFeesOf(_assetData, _account);
+        uint256 debtFAsset = _fAssetFeeDebtOf[_account];
+        uint256 tokens = token.balanceOf(_account);
+        if (tokens == 0) return (0, 0);
+        uint256 fAssetShare = virtualFAsset.mulDiv(_tokenShare, tokens);
+        // note: it can happen that debtFAsset = virtualFAsset + 1 > virtualFAsset
         if (_exitType == TokenExitType.MAXIMIZE_FEE_WITHDRAWAL) {
-            uint256 freeFasset = debtFasset < virtualFasset ? virtualFasset - debtFasset : 0;
+            uint256 freeFasset = debtFAsset < virtualFAsset ? virtualFAsset - debtFAsset : 0;
             freeFAssetFeeShare = Math.min(fAssetShare, freeFasset);
             debtFAssetFeeShare = fAssetShare - freeFAssetFeeShare;
         } else if (_exitType == TokenExitType.MINIMIZE_FEE_DEBT) {
-            debtFAssetFeeShare = Math.min(fAssetShare, debtFasset);
+            debtFAssetFeeShare = Math.min(fAssetShare, debtFAsset);
             freeFAssetFeeShare = fAssetShare - debtFAssetFeeShare;
         } else { // KEEP_RATIO
-            debtFAssetFeeShare = debtFasset > 0 ? debtFasset.mulDiv(fAssetShare, virtualFasset) : 0;
-            // _tokenShare <= token.balanceOf(_account) implies fAssetShare <= virtualFasset
+            debtFAssetFeeShare = virtualFAsset > 0 ? debtFAsset.mulDiv(fAssetShare, virtualFAsset) : 0;
+            // _tokenShare <= token.balanceOf(_account) implies fAssetShare <= virtualFAsset
             // implies debtFAssetFeeShare <= fAssetShare
             freeFAssetFeeShare = fAssetShare - debtFAssetFeeShare;
         }
@@ -519,19 +522,19 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         totalFAssetFees += _amount;
     }
 
-    function _mintFAssetFeeDebt(address _account, uint256 _fassets)
+    function _mintFAssetFeeDebt(address _account, uint256 _fAssets)
         internal
     {
-        _fAssetFeeDebtOf[_account] += _fassets;
-        totalFAssetFeeDebt += _fassets;
+        _fAssetFeeDebtOf[_account] += _fAssets;
+        totalFAssetFeeDebt += _fAssets;
     }
 
-    // _fassets should be smaller or equal to _account's f-asset debt
-    function _burnFAssetFeeDebt(address _account, uint256 _fassets)
+    // _fAssets should be smaller or equal to _account's f-asset debt
+    function _burnFAssetFeeDebt(address _account, uint256 _fAssets)
         internal
     {
-        _fAssetFeeDebtOf[_account] -= _fassets;
-        totalFAssetFeeDebt -= _fassets;
+        _fAssetFeeDebtOf[_account] -= _fAssets;
+        totalFAssetFeeDebt -= _fAssets;
     }
 
     function _transferFAsset(
@@ -541,13 +544,15 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
     )
         internal
     {
-        if (_from == address(this)) {
-            totalFAssetFees -= _amount;
-            fAsset.transfer(_to, _amount);
-        } else if (_to == address(this)) {
-            /* solhint-disable reentrancy */
-            totalFAssetFees += _amount;
-            fAsset.transferFrom(_from, _to, _amount);
+        if (_amount > 0) {
+            if (_from == address(this)) {
+                totalFAssetFees -= _amount;
+                fAsset.transfer(_to, _amount);
+            } else if (_to == address(this)) {
+                /* solhint-disable reentrancy */
+                totalFAssetFees += _amount;
+                fAsset.transferFrom(_from, _to, _amount);
+            }
         }
     }
 
@@ -558,21 +563,25 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
     )
         internal
     {
-        if (_from == address(this)) {
-            totalCollateral -= _amount;
-            wNat.transfer(_to, _amount);
-        } else if (_to == address(this)) {
-            /* solhint-disable reentrancy */
-            totalCollateral += _amount;
-            wNat.transferFrom(_from, _to, _amount);
+        if (_amount > 0) {
+            if (_from == address(this)) {
+                totalCollateral -= _amount;
+                wNat.transfer(_to, _amount);
+            } else if (_to == address(this)) {
+                /* solhint-disable reentrancy */
+                totalCollateral += _amount;
+                wNat.transferFrom(_from, _to, _amount);
+            }
         }
     }
 
     function _depositWNat()
         internal
     {
-        totalCollateral += msg.value;
-        wNat.deposit{value: msg.value}();
+        if (msg.value > 0) {
+            totalCollateral += msg.value;
+            wNat.deposit{value: msg.value}();
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -669,12 +678,16 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
         AssetData memory assetData = _getAssetData();
         _transferWNat(address(this), _recipient, _amount);
         // slash agent vault's pool tokens worth _agentResponsibilityWei in FLR (or less if there is not enough)
-        uint256 toSlashTokenMax = assetData.poolTokenSupply.mulDiv(_agentResponsibilityWei, assetData.poolNatBalance);
-        uint256 toSlashToken = Math.min(toSlashTokenMax, token.balanceOf(agentVault));
-        (uint256 debtFAssetFeeShare,) = _getDebtAndFreeFAssetFeesFromTokenShare(
-            assetData, agentVault, toSlashToken, TokenExitType.KEEP_RATIO);
-        _burnFAssetFeeDebt(agentVault, debtFAssetFeeShare);
-        token.burn(agentVault, toSlashToken);
+        uint256 agentTokenBalance = token.balanceOf(agentVault);
+        uint256 toSlashTokenMax = assetData.poolNatBalance > 0 ?
+             assetData.poolTokenSupply.mulDiv(_agentResponsibilityWei, assetData.poolNatBalance) : agentTokenBalance;
+        uint256 toSlashToken = Math.min(toSlashTokenMax, agentTokenBalance);
+        if (toSlashToken > 0) {
+            (uint256 debtFAssetFeeShare,) = _getDebtAndFreeFAssetFeesFromTokenShare(
+                assetData, agentVault, toSlashToken, TokenExitType.KEEP_RATIO);
+            _burnFAssetFeeDebt(agentVault, debtFAssetFeeShare);
+            token.burn(agentVault, toSlashToken);
+        }
     }
 
     function upgradeWNatContract(IWNat _newWNat)
