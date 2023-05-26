@@ -48,6 +48,7 @@ export interface RedemptionRequest {
     lastUnderlyingTimestamp: BN;
     paymentAddress: string;
     paymentReference: string;
+    poolSelfClose: boolean;
     // stateful part
     collateralReleased: boolean;
     underlyingReleased: boolean;
@@ -426,6 +427,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
             lastUnderlyingTimestamp: toBN(args.lastUnderlyingTimestamp),
             paymentAddress: args.paymentAddress,
             paymentReference: args.paymentReference,
+            poolSelfClose: this.isPoolSelfCloseRedemption(args.requestId),
             collateralReleased: false,
             underlyingReleased: false,
         };
@@ -433,6 +435,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
 
     addRedemptionRequest(args: EvmEventArgs<RedemptionRequested>) {
         const request = this.newRedemptionRequest(args);
+        if (this.redemptionRequests.has(request.id)) assert.fail(`Duplicate redemption request id ${request.id}`);
         this.redemptionRequests.set(request.id, request);
         return request;
     }
@@ -478,6 +481,10 @@ export class FuzzingStateAgent extends TrackedAgentState {
 
     calculateRedeemingUBA() {
         return sumBN(this.redemptionRequests.values(), request => request.collateralReleased ? BN_ZERO : request.valueUBA);
+    }
+
+    calculatePoolRedeemingUBA() {
+        return sumBN(this.redemptionRequests.values(), request => request.collateralReleased || request.poolSelfClose ? BN_ZERO : request.valueUBA);
     }
 
     calculateUnderlyingBalanceUBA() {
@@ -544,6 +551,14 @@ export class FuzzingStateAgent extends TrackedAgentState {
         const mintedUBA = this.calculateMintedUBA();
         problems += checker.checkEquality(`${agentName}.mintedUBA`, agentInfo.mintedUBA, mintedUBA);
         problems += checker.checkEquality(`${agentName}.mintedUBA.cumulative`, this.mintedUBA, mintedUBA);
+        // redeeming
+        const redeemingUBA = this.calculateRedeemingUBA();
+        problems += checker.checkEquality(`${agentName}.redeemingUBA`, agentInfo.redeemingUBA, redeemingUBA);
+        problems += checker.checkEquality(`${agentName}.redeemingUBA.cumulative`, this.redeemingUBA, redeemingUBA);
+        // poolRedeeming
+        const poolRedeemingUBA = this.calculatePoolRedeemingUBA();
+        problems += checker.checkEquality(`${agentName}.poolRedeemingUBA`, agentInfo.poolRedeemingUBA, poolRedeemingUBA);
+        problems += checker.checkEquality(`${agentName}.poolRedeemingUBA.cumulative`, this.poolRedeemingUBA, poolRedeemingUBA);
         // free balance
         const freeUnderlyingBalanceUBA = this.calculateFreeUnderlyingBalanceUBA();
         problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);

@@ -6,7 +6,7 @@ import { AgentInfo, AgentSetting, AgentStatus, CollateralType, CollateralClass }
 import { roundUBAToAmg } from "../fasset/Conversions";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";
 import { EventArgs } from "../utils/events/common";
-import { BN_ZERO, BNish, MAX_BIPS, formatBN, maxBN, toBN } from "../utils/helpers";
+import { BN_ONE, BN_ZERO, BNish, MAX_BIPS, formatBN, maxBN, toBN } from "../utils/helpers";
 import { ILogger } from "../utils/logging";
 import { Prices } from "./Prices";
 import { TrackedState } from "./TrackedState";
@@ -155,11 +155,11 @@ export class TrackedAgentState {
 
     handleRedemptionRequested(args: EvmEventArgs<RedemptionRequested>): void {
         this.mintedUBA = this.mintedUBA.sub(toBN(args.valueUBA));
-        this.redeemingUBA = this.redeemingUBA.add(toBN(args.valueUBA));
+        this.updateRedeemingUBA(args.requestId, toBN(args.valueUBA));
     }
 
     handleRedemptionPerformed(args: EvmEventArgs<RedemptionPerformed>): void {
-        this.redeemingUBA = this.redeemingUBA.sub(toBN(args.redemptionAmountUBA));
+        this.updateRedeemingUBA(args.requestId, toBN(args.redemptionAmountUBA).neg());
         this.underlyingBalanceUBA = this.underlyingBalanceUBA.sub(args.spentUnderlyingUBA);
     }
 
@@ -168,16 +168,27 @@ export class TrackedAgentState {
     }
 
     handleRedemptionPaymentBlocked(args: EvmEventArgs<RedemptionPaymentBlocked>): void {
-        this.redeemingUBA = this.redeemingUBA.sub(toBN(args.redemptionAmountUBA));
+        this.updateRedeemingUBA(args.requestId, toBN(args.redemptionAmountUBA).neg());
         this.underlyingBalanceUBA = this.underlyingBalanceUBA.sub(args.spentUnderlyingUBA);
     }
 
     handleRedemptionDefault(args: EvmEventArgs<RedemptionDefault>): void {
-        this.redeemingUBA = this.redeemingUBA.sub(toBN(args.redemptionAmountUBA));
+        this.updateRedeemingUBA(args.requestId, toBN(args.redemptionAmountUBA).neg());
     }
 
     handleSelfClose(args: EvmEventArgs<SelfClose>): void {
         this.mintedUBA = this.mintedUBA.sub(toBN(args.valueUBA));
+    }
+
+    private updateRedeemingUBA(requestId: BNish, valueUBA: BN) {
+        this.redeemingUBA = this.redeemingUBA.add(valueUBA);
+        if (!this.isPoolSelfCloseRedemption(requestId)) {
+            this.poolRedeemingUBA = this.poolRedeemingUBA.add(valueUBA);
+        }
+    }
+
+    protected isPoolSelfCloseRedemption(requestId: BNish) {
+        return toBN(requestId).and(BN_ONE).isZero();
     }
 
     // handlers: dust

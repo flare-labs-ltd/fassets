@@ -177,8 +177,7 @@ library RedemptionRequests {
             Globals.validateAndNormalizeUnderlyingAddress(_redeemerUnderlyingAddressString);
         // create request
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
-        state.newRedemptionRequestId += PaymentReference.randomizedIdSkip();
-        uint64 requestId = state.newRedemptionRequestId;
+        uint64 requestId = _newRequestId(_poolSelfClose);
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
         uint128 redemptionFeeUBA = redeemedValueUBA.mulBips(state.settings.redemptionFeeBIPS).toUint128();
         state.redemptionRequests[requestId] = Redemption.Request({
@@ -207,6 +206,19 @@ library RedemptionRequests {
             lastUnderlyingBlock,
             lastUnderlyingTimestamp,
             PaymentReference.redemption(requestId));
+    }
+
+    function _newRequestId(bool _poolSelfClose)
+        private
+        returns (uint64)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint64 nextRequestId = state.newRedemptionRequestId + PaymentReference.randomizedIdSkip();
+        // the requestId will indicate in the lowest bit whether it is a pool self close redemption
+        // (+1 is added so that the request id still increases after clearing lowest bit)
+        uint64 requestId = ((nextRequestId + 1) & ~uint64(1)) | (_poolSelfClose ? 1 : 0);
+        state.newRedemptionRequestId = requestId;
+        return requestId;
     }
 
     function _lastPaymentBlock()
