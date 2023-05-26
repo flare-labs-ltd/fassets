@@ -100,7 +100,8 @@ export class AgentCollateral {
     }
 
     collateralRatioBIPS(data: CollateralData) {
-        const totalBacked = toBN(this.agentInfo.mintedUBA).add(toBN(this.agentInfo.reservedUBA)).add(toBN(this.agentInfo.redeemingUBA))
+        const redeemingUBA = data.kind() === CollateralKind.POOL ? this.agentInfo.poolRedeemingUBA : this.agentInfo.redeemingUBA;
+        const totalBacked = toBN(this.agentInfo.mintedUBA).add(toBN(this.agentInfo.reservedUBA)).add(toBN(redeemingUBA))
         if (totalBacked.isZero()) return exp10(10);    // nothing minted - ~infinite collateral ratio (but avoid overflows)
         const backingTokenWei = data.convertUBAToTokenWei(totalBacked);
         return data.balance.muln(MAX_BIPS).div(backingTokenWei);
