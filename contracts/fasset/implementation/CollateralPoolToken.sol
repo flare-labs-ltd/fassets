@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../userInterfaces/ICollateralPoolToken.sol";
 import "./CollateralPool.sol";
 
-contract CollateralPoolToken is ICollateralPoolToken, ERC20 {
+contract CollateralPoolToken is ICollateralPoolToken, ERC20, IERC165 {
     address public immutable collateralPool;
 
     modifier onlyCollateralPool {
@@ -46,5 +47,17 @@ contract CollateralPoolToken is ICollateralPoolToken, ERC20 {
         if (msg.sender != collateralPool) { // collateral pool can mint and burn locked tokens
             require(amount <= transferableBalanceOf(from), "free balance too low");
         }
+    }
+
+    /**
+     * Implementation of ERC-165 interface.
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        external pure override
+        returns (bool)
+    {
+        return _interfaceId == type(IERC165).interfaceId
+            || _interfaceId == type(IERC20).interfaceId
+            || _interfaceId == type(ICollateralPoolToken).interfaceId;
     }
 }

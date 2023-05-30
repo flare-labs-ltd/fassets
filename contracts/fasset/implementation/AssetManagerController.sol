@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAssetManager.sol";
@@ -10,7 +11,7 @@ import "../../governance/implementation/Governed.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
 import "../library/SettingsUpdater.sol";
 
-contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEvents {
+contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEvents, IERC165 {
     // New address in case this controller was replaced.
     // Note: this code contains no checks that replacedBy==0, because when replaced,
     // all calls to AssetManager's updateSettings/pause/terminate will fail anyway
@@ -436,6 +437,20 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         for (uint256 i = 0; i < _assetManagers.length; i++) {
             _assetManagers[i].terminate();
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // ERC 165
+
+    /**
+     * Implementation of ERC-165 interface.
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        external pure override
+        returns (bool)
+    {
+        return _interfaceId == type(IERC165).interfaceId
+            || _interfaceId == type(IIAddressUpdatable).interfaceId;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

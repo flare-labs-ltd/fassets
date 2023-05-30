@@ -3,13 +3,14 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../../userInterfaces/ICollateralPool.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAgentVault.sol";
 import "../interface/IIAssetManager.sol";
 
 
-contract AgentVault is ReentrancyGuard, IIAgentVault {
+contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
     using SafeERC20 for IERC20;
 
     IIAssetManager public immutable assetManager;
@@ -265,6 +266,18 @@ contract AgentVault is ReentrancyGuard, IIAgentVault {
         returns (bool)
     {
         return assetManager.isAgentVaultOwner(address(this), _address);
+    }
+
+    /**
+     * Implementation of ERC-165 interface.
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        external pure override
+        returns (bool)
+    {
+        return _interfaceId == type(IERC165).interfaceId
+            || _interfaceId == type(IAgentVault).interfaceId
+            || _interfaceId == type(IIAgentVault).interfaceId;
     }
 
     function _withdrawWNatTo(address payable _recipient, uint256 _amount) private {

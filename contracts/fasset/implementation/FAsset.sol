@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import { VPToken } from "../../../flattened/FlareSmartContracts.sol";
+import { IERC165, IERC20, IVPToken, IIVPToken, IICleanable, VPToken } from "../../../flattened/FlareSmartContracts.sol";
 import "../interface/IFAsset.sol";
 
-contract FAsset is IFAsset, VPToken {
+contract FAsset is IFAsset, VPToken, IERC165 {
     /**
      * Get the asset manager, corresponding to this fAsset.
      * fAssets and asset managers are in 1:1 correspondence.
@@ -113,5 +113,20 @@ contract FAsset is IFAsset, VPToken {
     {
         require(terminatedAt == 0, "f-asset terminated");
         VPToken._beforeTokenTransfer(_from, _to, _amount);
+    }
+
+    /**
+     * Implementation of ERC-165 interface.
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        external pure override
+        returns (bool)
+    {
+        return _interfaceId == type(IERC165).interfaceId
+            || _interfaceId == type(IERC20).interfaceId
+            || _interfaceId == type(IVPToken).interfaceId
+            || _interfaceId == type(IFAsset).interfaceId
+            || _interfaceId == type(IIVPToken).interfaceId
+            || _interfaceId == type(IICleanable).interfaceId;
     }
 }

@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../interface/IIAgentVault.sol";
 import "../interface/IIAssetManager.sol";
 import "../../generated/interface/IAttestationClient.sol";
@@ -33,7 +34,7 @@ import "../library/AgentSettingsUpdater.sol";
  * The contract that can mint and burn f-assets while managing collateral and backing funds.
  * There is one instance of AssetManager per f-asset type.
  */
-contract AssetManager is ReentrancyGuard, IIAssetManager {
+contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     using SafeCast for uint256;
 
     uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
@@ -1208,6 +1209,21 @@ contract AssetManager is ReentrancyGuard, IIAssetManager {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         _multiplier = Conversion.currentAmgPriceInTokenWei(Globals.getPoolCollateral());
         _divisor = Conversion.AMG_TOKEN_WEI_PRICE_SCALE * settings.assetMintingGranularityUBA;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // ERC 165
+
+    /**
+     * Implementation of ERC-165 interface.
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        external pure override
+        returns (bool)
+    {
+        return _interfaceId == type(IERC165).interfaceId
+            || _interfaceId == type(IAssetManager).interfaceId
+            || _interfaceId == type(IIAssetManager).interfaceId;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

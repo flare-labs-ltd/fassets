@@ -13,7 +13,7 @@
   "scripts": {
     "---------HOOKS": "",
     "postinstall": "echo Running install in flare-smart-contracts... && cd node_modules/flare-smart-contracts && yarn",
-    "prepare": "yarn flatten-dependencies node_modules/flare-smart-contracts scripts/flatten-files.txt flattened/FlareSmartContracts.sol",
+    "prepare": "yarn flatten-dependencies node_modules/flare-smart-contracts scripts/flatten-files.txt flattened/FlareSmartContracts.sol scripts/flatten-extra-imports.txt",
     "---------TEST---SCRIPTS": "",
     "test": "yarn hardhat test",
     "coverage": "env NODE_OPTIONS=\"--max_old_space_size=8192\" yarn hardhat coverage --testfiles",

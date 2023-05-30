@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -13,7 +14,7 @@ import "../interface/IFAsset.sol";
 import "./CollateralPoolToken.sol";
 
 
-contract CollateralPool is IICollateralPool, ReentrancyGuard {
+contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     using SafeCast for uint256;
     using SafePct for uint256;
 
@@ -791,5 +792,17 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard {
             /* solhint-enable avoid-low-level-calls */
             require(success, "transfer failed");
         }
+    }
+
+    /**
+     * Implementation of ERC-165 interface.
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        external pure override
+        returns (bool)
+    {
+        return _interfaceId == type(IERC165).interfaceId
+            || _interfaceId == type(ICollateralPool).interfaceId
+            || _interfaceId == type(IICollateralPool).interfaceId;
     }
 }

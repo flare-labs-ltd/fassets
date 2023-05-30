@@ -444,3 +444,21 @@ export function trace(items: Record<string, any>) {
         console.log(`${key} = ${valueS}`);
     }
 }
+
+/**
+ * Get ERC-165 interface id from interface ABI.
+ */
+export function erc165InterfaceId(abi: AbiItem[], inheritedAbis: AbiItem[][] = []) {
+    let result = BN_ZERO;
+    const inheritesSigs = new Set(inheritedAbis
+        .flat(1)
+        .filter(it => it.type === 'function')
+        .map(it => web3.eth.abi.encodeFunctionSignature(it)));
+    for (const item of abi) {
+        if (item.type !== 'function') continue;
+        const signature = web3.eth.abi.encodeFunctionSignature(item);
+        if (inheritesSigs.has(signature)) continue;
+        result = result.xor(web3.utils.toBN(signature));
+    }
+    return '0x' + result.toString(16, 8);
+}

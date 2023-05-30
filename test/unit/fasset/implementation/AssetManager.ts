@@ -1,10 +1,12 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
-import { encodeLiquidationStrategyImplSettings, decodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
+import { decodeLiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { BN_ONE, BNish, DAYS, HOURS, MAX_BIPS, toBIPS, toBN, toBNExp, toNumber, toWei } from "../../../../lib/utils/helpers";
-import { AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, AgentVaultInstance, FtsoMockInstance } from "../../../../typechain-truffle";
+import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
+import { BNish, DAYS, HOURS, MAX_BIPS, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
+import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
@@ -12,10 +14,8 @@ import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
-import { createEncodedTestLiquidationSettings, createTestLiquidationSettings, createTestCollaterals, createTestContracts,
-    createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts, createTestAgentSettings } from "../test-settings";
-import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
-import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
+import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgentSettings, createTestCollaterals, createTestContracts,
+    createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../test-settings";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -1048,4 +1048,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
     });
 
+    describe("ERC-165 interface identification", () => {
+        it("should properly respond to supportsInterface", async () => {
+            const IERC165 = artifacts.require("IERC165");
+            const IAssetManager = artifacts.require("IAssetManager");
+            const IIAssetManager = artifacts.require("IIAssetManager");
+            const iERC165 = await IERC165.at(assetManager.address);
+            const iAssetManager = await IAssetManager.at(assetManager.address);
+            const iiAssetManager = await IIAssetManager.at(assetManager.address);
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iERC165.abi)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iAssetManager.abi)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iiAssetManager.abi, [iAssetManager.abi])));
+            assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+        });
+    });
 });

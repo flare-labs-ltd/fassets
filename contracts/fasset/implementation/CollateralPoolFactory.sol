@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IFAsset.sol";
 import "../interface/ICollateralPoolFactory.sol";
 import "./CollateralPool.sol";
 
 
-contract CollateralPoolFactory is ICollateralPoolFactory {
+contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
     using SafeCast for uint256;
 
     function create(
@@ -32,5 +33,16 @@ contract CollateralPoolFactory is ICollateralPoolFactory {
     {
         CollateralPoolToken poolToken = new CollateralPoolToken(payable(address(_pool)));
         return address(poolToken);
+    }
+
+    /**
+     * Implementation of ERC-165 interface.
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        external pure override
+        returns (bool)
+    {
+        return _interfaceId == type(IERC165).interfaceId
+            || _interfaceId == type(ICollateralPoolFactory).interfaceId;
     }
 }

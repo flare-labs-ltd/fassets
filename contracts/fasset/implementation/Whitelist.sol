@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../../governance/implementation/Governed.sol";
 import "../interface/IWhitelist.sol";
 
-contract Whitelist is IWhitelist, Governed {
+contract Whitelist is IWhitelist, Governed, IERC165 {
     bool public immutable supportsRevoke;
     mapping(address => bool) private whitelist;
 
@@ -43,5 +44,16 @@ contract Whitelist is IWhitelist, Governed {
     function _removeAddressFromWhitelist(address _address) private {
         delete whitelist[_address];
         emit WhitelistingRevoked(_address);
+    }
+
+    /**
+     * Implementation of ERC-165 interface.
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        external pure override
+        returns (bool)
+    {
+        return _interfaceId == type(IERC165).interfaceId
+            || _interfaceId == type(IWhitelist).interfaceId;
     }
 }
