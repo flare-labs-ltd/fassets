@@ -291,7 +291,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const tokenInfo = collaterals[0];
             tokenInfo.token = newWnat.address;
             tokenInfo.assetFtsoSymbol = "WNAT";
-            await assetManager.setPoolCollateralType(web3DeepNormalize(tokenInfo), { from: assetManagerController });
+            await assetManager.setPoolWNatCollateralType(web3DeepNormalize(tokenInfo), { from: assetManagerController });
             const token = await assetManager.getCollateralType(tokenInfo.collateralClass, tokenInfo.token);
             assertWeb3Equal(token.token, newWnat.address);
         });
@@ -302,7 +302,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const tokenInfo = collaterals[0];
             tokenInfo.token = newWnat.address;
             tokenInfo.assetFtsoSymbol = "WNAT";
-            await assetManager.setPoolCollateralType(web3DeepNormalize(tokenInfo), { from: assetManagerController });
+            await assetManager.setPoolWNatCollateralType(web3DeepNormalize(tokenInfo), { from: assetManagerController });
             const res = assetManager.upgradeWNatContract(agentVault.address, {from: agentOwner1});
             expectEvent(await res, "AgentCollateralTypeChanged");
             const token = await assetManager.getCollateralType(tokenInfo.collateralClass, tokenInfo.token);

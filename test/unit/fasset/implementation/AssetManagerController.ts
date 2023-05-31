@@ -536,7 +536,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 ccbMinCollateralRatioBIPS: "19000",
                 safetyMinCollateralRatioBIPS: "21000",
             };
-            const prms = assetManagerController.setPoolCollateralType([assetManager.address], newWNat, { from: governance });
+            const prms = assetManagerController.setPoolWNatCollateralType([assetManager.address], newWNat, { from: governance });
             await waitForTimelock(prms, assetManagerController, updateExecutor);
             assertWeb3Equal(await assetManager.getWNat(), accounts[82]);
         });

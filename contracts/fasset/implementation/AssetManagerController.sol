@@ -383,7 +383,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         }
     }
 
-    function setPoolCollateralType(
+    function setPoolWNatCollateralType(
         IIAssetManager[] memory _assetManagers,
         CollateralType.Data calldata _data
     )
@@ -391,7 +391,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         onlyGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).setPoolCollateralType(_data);
+            _checkAssetManager(_assetManagers[i]).setPoolWNatCollateralType(_data);
         }
     }
 

@@ -8,7 +8,7 @@ import "./PaymentConfirmations.sol";
 import "./UnderlyingAddressOwnership.sol";
 import "./CollateralReservation.sol";
 import "./Redemption.sol";
-import "./CollateralType.sol";
+import "./CollateralTypeInt.sol";
 
 
 library AssetManagerState {

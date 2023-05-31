@@ -1030,13 +1030,13 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * Instead, it has to be added as a new collateral token of type POOL by this method.
      * Note that existing pools must switch afterwards using `upgradeWNat` method.
      */
-    function setPoolCollateralType(
+    function setPoolWNatCollateralType(
         CollateralType.Data calldata _data
     )
         external override
         onlyAssetManagerController
     {
-        CollateralTypes.setPoolCollateralType(_data);
+        CollateralTypes.setPoolWNatCollateralType(_data);
     }
 
     /**

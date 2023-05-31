@@ -75,7 +75,7 @@ library CollateralTypes {
         emit AMEvents.CollateralTypeDeprecated(uint8(_collateralClass), address(_token), validUntil);
     }
 
-    function setPoolCollateralType(
+    function setPoolWNatCollateralType(
         CollateralType.Data memory _data
     )
         external

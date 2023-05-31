@@ -100,7 +100,7 @@ interface IIAssetManager is IAssetManager {
      * NOTE: that existing pools must switch afterwards using `upgradeWNat` method.
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
-    function setPoolCollateralType(
+    function setPoolWNatCollateralType(
         CollateralType.Data calldata _data
     ) external;
 
