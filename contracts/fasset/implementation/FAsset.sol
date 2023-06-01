@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.6;
 
-import { IERC165, IERC20, IVPToken, IIVPToken, IICleanable, VPToken } from "../../../flattened/FlareSmartContracts.sol";
+import { IERC165, IERC20, IVPToken, IIVPToken, IICleanable, VPToken }
+    from "../../../flattened/FlareSmartContracts.sol";
 import "../interface/IFAsset.sol";
 
 contract FAsset is IFAsset, VPToken, IERC165 {
