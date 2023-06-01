@@ -4,7 +4,7 @@ pragma solidity >=0.7.6 <0.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
-library AgentCreateSettings {
+library AgentSettings {
     struct Data {
         // Full address on the underlying chain (not hash).
         string underlyingAddressString;

@@ -175,7 +175,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * NOTE: may only be called by a whitelisted agent
      */
     function createAgent(
-        AgentCreateSettings.Data calldata _settings
+        AgentSettings.Data calldata _settings
     )
         external override
         onlyAttached

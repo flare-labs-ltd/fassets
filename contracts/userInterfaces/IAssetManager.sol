@@ -5,7 +5,7 @@ import "../generated/interface/IAttestationClient.sol";
 import "./data/AssetManagerSettings.sol";
 import "./data/CollateralType.sol";
 import "./data/AgentInfo.sol";
-import "./data/AgentCreateSettings.sol";
+import "./data/AgentSettings.sol";
 import "./data/AvailableAgentInfo.sol";
 import "./IAssetManagerEvents.sol";
 
@@ -170,7 +170,7 @@ interface IAssetManager is IAssetManagerEvents {
      * NOTE: may only be called by a whitelisted agent (cold or hot owner address).
      */
     function createAgent(
-        AgentCreateSettings.Data calldata _settings
+        AgentSettings.Data calldata _settings
     ) external;
 
     /**

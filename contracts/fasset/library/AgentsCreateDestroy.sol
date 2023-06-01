@@ -75,7 +75,7 @@ library AgentsCreateDestroy {
 
     function createAgent(
         IIAssetManager _assetManager,
-        AgentCreateSettings.Data calldata _settings
+        AgentSettings.Data calldata _settings
     )
         external
     {
@@ -219,7 +219,7 @@ library AgentsCreateDestroy {
         address _agentVault,
         address _collateralPool,
         string memory _underlyingAddress,
-        AgentCreateSettings.Data calldata _settings
+        AgentSettings.Data calldata _settings
     )
         private
     {

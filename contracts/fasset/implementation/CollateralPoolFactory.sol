@@ -14,7 +14,7 @@ contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
     function create(
         IIAssetManager _assetManager,
         address _agentVault,
-        AgentCreateSettings.Data memory _settings
+        AgentSettings.Data memory _settings
     )
         external
         returns (IICollateralPool)
