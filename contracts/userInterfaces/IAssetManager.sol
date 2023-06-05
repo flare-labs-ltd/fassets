@@ -71,8 +71,8 @@ interface IAssetManager is IAssetManagerEvents {
     // Asset manager upgrading state
 
     /**
-     * True if asset manager is paused.
-     * In paused state, minting is disabled, but all other operations (e.g. redemptions, liquidation) still work.
+     * True if the asset manager is paused.
+     * In the paused state, minting is disabled, but all other operations (e.g. redemptions, liquidation) still work.
      * Paused asset manager can be later unpaused.
      */
     function paused()
@@ -80,13 +80,13 @@ interface IAssetManager is IAssetManagerEvents {
         returns (bool);
 
     /**
-     * True if asset manager is terminated.
+     * True if the asset manager is terminated.
      * In terminated state almost all operations (minting, redeeming, liquidation) are disabled and f-assets are
      * not transferable any more. The only operation still permitted is for agents to release the locked collateral
      * by calling `buybackAgentCollateral`.
-     * Asset manager can be terminated after being paused for at least a month
+     * An asset manager can be terminated after being paused for at least a month
      * (to redeem as many f-assets as possible).
-     * Terminated asset manager can not be revived anymore.
+     * The terminated asset manager can not be revived anymore.
      */
     function terminated()
         external view
@@ -97,7 +97,7 @@ interface IAssetManager is IAssetManagerEvents {
 
     /**
      * Prove that a block with given number and timestamp exists and
-     * update the current underlying block info if the provided data higher.
+     * update the current underlying block info if the provided data is higher.
      * This method should be called by minters before minting and by agent's regularly
      * to prevent current block being too outdated, which gives too short time for
      * minting or redemption payment.
@@ -138,10 +138,10 @@ interface IAssetManager is IAssetManagerEvents {
     // Agent owner cold and hot address management
 
     /**
-     * Associate a hot wallet address with agent owner's cold owner address.
+     * Associate a hot wallet address with the agent owner's cold owner address.
      * Every owner (cold address) can have only one hot address, so as soon as the new one is set, the old
      * one stops working.
-     * NOTE: May only be called by a whitelisted agent and only from the cold address.
+     * NOTE: May only be called by an agent on the allowed agent list and only from the cold wallet address.
      */
     function setOwnerHotAddress(address _ownerHotAddress) external;
 
@@ -164,17 +164,18 @@ interface IAssetManager is IAssetManagerEvents {
 
     /**
      * Create an agent.
-     * Agent will always be identified by `_agentVault` address.
-     * (Externally, same account may own several agent vaults,
+     * The agent will always be identified by `_agentVault` address.
+     * (Externally, one account may own several agent vaults,
      *  but in fasset system, each agent vault acts as an independent agent.)
-     * NOTE: may only be called by a whitelisted agent (cold or hot owner address).
+     * NOTE: may only be called by an agent on the allowed agent list.
+     * Can be called from the cold or the hot agent wallet address.
      */
     function createAgent(
         AgentSettings.Data calldata _settings
     ) external;
 
     /**
-     * Announce that the agent is going to be destroyed. At this time, agent must not have any mintings
+     * Announce that the agent is going to be destroyed. At this time, the agent must not have any mintings
      * or collateral reservations and must not be on the available agents list.
      * NOTE: may only be called by the agent vault owner.
      */
@@ -183,7 +184,7 @@ interface IAssetManager is IAssetManagerEvents {
     ) external;
 
     /**
-     * Delete all agent data, selfdestruct agent vault and send remaining collateral to the `_recipient`.
+     * Delete all agent data, self destruct agent vault and send remaining collateral to the `_recipient`.
      * Procedure for destroying agent:
      * - exit available agents list
      * - wait until all assets are redeemed or perform self-close
@@ -203,7 +204,7 @@ interface IAssetManager is IAssetManagerEvents {
     // Agent settings update
 
     /**
-     * Due to effect on the pool, all agent settings are timelocked.
+     * Due to the effect on the pool, all agent settings are timelocked.
      * This method announces a setting change. The change can be executed after the timelock expires.
      * NOTE: may only be called by the agent vault owner.
      */
@@ -214,8 +215,8 @@ interface IAssetManager is IAssetManagerEvents {
     ) external;
 
     /**
-     * Due to effect on the pool, all agent settings are timelocked.
-     * This method executes a setting change after the timelock expired.
+     * Due to the effect on the pool, all agent settings are timelocked.
+     * This method executes a setting change after the timelock expires.
      * NOTE: may only be called by the agent vault owner.
      */
     function executeAgentSettingUpdate(
@@ -237,9 +238,9 @@ interface IAssetManager is IAssetManagerEvents {
     // Collateral withdrawal announcement
 
     /**
-     * Agent is going to withdraw `_valueNATWei` amount of collateral from agent vault.
-     * This has to be announced and agent must then wait `withdrawalWaitMinSeconds` time.
-     * After that time, agent can call withdraw(_valueNATWei) on agent vault.
+     * The agent is going to withdraw `_valueNATWei` amount of collateral from the agent vault.
+     * This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time.
+     * After that time, the agent can call `withdrawCollateral(_class1Token, _valueNATWei)` on the agent vault.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _valueNATWei the amount to be withdrawn
@@ -250,9 +251,9 @@ interface IAssetManager is IAssetManagerEvents {
     ) external;
 
     /**
-     * Agent is going to withdraw `_valueNATWei` amount of collateral from agent vault.
-     * This has to be announced and agent must then wait `withdrawalWaitMinSeconds` time.
-     * After that time, agent can call withdraw(_valueNATWei) on agent vault.
+     * The agent is going to redeem `_valueWei` collateral pool tokens in the agent vault.
+     * This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time.
+     * After that time, the agent can call `redeemCollateralPoolTokens(_valueNATWei)` on the agent vault.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _valueNATWei the amount to be withdrawn
@@ -285,7 +286,7 @@ interface IAssetManager is IAssetManagerEvents {
      * Announce withdrawal of underlying currency.
      * In the event UnderlyingWithdrawalAnnounced the agent receives payment reference, which must be
      * added to the payment, otherwise it can be challenged as illegal.
-     * Until the announced withdrawal is performed and confirmed or cancelled, no other withdrawal can be announced.
+     * Until the announced withdrawal is performed and confirmed or canceled, no other withdrawal can be announced.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      */
@@ -296,7 +297,7 @@ interface IAssetManager is IAssetManagerEvents {
     /**
      * Agent must provide confirmation of performed underlying withdrawal, which updates free balance with used gas
      * and releases announcement so that a new one can be made.
-     * If the agent doesn't call this method, anyone can call it after a time (confirmationByOthersAfterSeconds).
+     * If the agent doesn't call this method, anyone can call it after a time (`confirmationByOthersAfterSeconds`).
      * NOTE: may only be called by the owner of the agent vault
      *   except if enough time has passed without confirmation - then it can be called by anybody.
      * @param _payment proof of the underlying payment
@@ -309,9 +310,9 @@ interface IAssetManager is IAssetManagerEvents {
 
     /**
      * Cancel ongoing withdrawal of underlying currency.
-     * Needed in order to reset announcement timestamp, so that others cannot front-run agent at
-     * confirmUnderlyingWithdrawal call. This could happen if withdrawal would be performed more
-     * than confirmationByOthersAfterSeconds seconds after announcement.
+     * Needed in order to reset announcement timestamp, so that others cannot front-run the agent at
+     * `confirmUnderlyingWithdrawal` call. This could happen if withdrawal would be performed more
+     * than `confirmationByOthersAfterSeconds` seconds after announcement.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      */
@@ -323,10 +324,11 @@ interface IAssetManager is IAssetManagerEvents {
     // Terminated asset manager support
 
     /**
-     * When f-asset is terminated, agent can burn the market price of backed f-assets with his collateral,
+     * When f-asset is terminated, an agent can burn the market price of backed f-assets with his collateral,
      * to release the remaining collateral (and, formally, underlying assets).
-     * This method ONLY works when f-asset is terminated, which will only be done when AssetManager is already paused
-     * at least for a month and most f-assets are already burned and the only ones remaining are unrecoverable.
+     * This method ONLY works when f-asset is terminated, which will only be done when the asset manager
+     * is already paused at least for a month and most f-assets are already burned and the only ones
+     * remaining are unrecoverable.
      * NOTE: may only be called by the agent vault owner.
      * NOTE: the agent (cold address) receives the class1 collateral and NAT is burned instead. Therefore
      *      this method is `payable` and the caller must provide enough NAT to cover the received class1 amount
@@ -367,7 +369,7 @@ interface IAssetManager is IAssetManagerEvents {
         returns (address);
 
     /**
-     * Return hot and cold address of the owner of the agent identified by `_agentVault`.
+     * Return the hot and the cold address of the owner of the agent identified by `_agentVault`.
      */
     function getAgentVaultOwner(address _agentVault)
         external view
@@ -419,7 +421,7 @@ interface IAssetManager is IAssetManagerEvents {
      * and available collateral (in lots).
      * The list must be retrieved in parts since retrieving the whole list can consume too much gas for one block.
      * NOTE: agent's available collateral can change anytime due to price changes, minting, or changes
-     * in agent's min collateral ratio, so it is only to be used as estimate.
+     * in agent's min collateral ratio, so it is only to be used as an estimate.
      * @param _start first index to return from the available agent's list
      * @param _end end index (one above last) to return from the available agent's list
      */
@@ -435,11 +437,11 @@ interface IAssetManager is IAssetManagerEvents {
      * pay collateral reservation fee. Collateral is reserved at ratio of agent's agentMinCollateralRatio
      * to requested lots NAT market price.
      * On success the minter receives instructions for underlying payment (value, fee and payment reference)
-     * in event CollateralReserved. Then the minter has to pay `value + fee` on the underlying chain.
-     * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains
+     * in event `CollateralReserved`. Then the minter has to pay `value + fee` on the underlying chain.
+     * If the minter pays the underlying amount, the collateral reservation fee is burned and the minter obtains
      * f-assets. Otherwise the agent collects the collateral reservation fee.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
-     * NOTE: the owner of the agent vault must be whitelisted agent.
+     * NOTE: the owner of the agent vault must be on the allowed agent list.
      * @param _agentVault agent vault address
      * @param _lots the number of lots for which to reserve collateral
      * @param _maxMintingFeeBIPS maximum minting fee (BIPS) that can be charged by the agent - best is just to
@@ -454,7 +456,7 @@ interface IAssetManager is IAssetManagerEvents {
     ) external payable;
 
     /**
-     * Return the collateral reservation fee amount that has to be passed to the reserveCollateral method.
+     * Return the collateral reservation fee amount that has to be passed to the `reserveCollateral` method.
      * @param _lots the number of lots for which to reserve collateral
      * @return _reservationFeeNATWei the amount of reservation fee in NAT wei
      */
@@ -477,8 +479,8 @@ interface IAssetManager is IAssetManagerEvents {
     ) external;
 
     /**
-     * When the time for minter to pay underlying amount is over (i.e. the last underlying block has passed),
-     * the agent can declare payment default. Then the agent collects collateral reservation fee
+     * When the time for the minter to pay the underlying amount is over (i.e. the last underlying block has passed),
+     * the agent can declare payment default. Then the agent collects the collateral reservation fee
      * (it goes directly to the vault), and the reserved collateral is unlocked.
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * @param _proof proof that the minter didn't pay with correct payment reference on the underlying chain
@@ -490,8 +492,8 @@ interface IAssetManager is IAssetManagerEvents {
     ) external;
 
     /**
-     * If collateral reservation request exists for more than 24 hours, payment or non-payment proof are no longer
-     * available. In this case agent can call this method, which burns reserved collateral at market price
+     * If a collateral reservation request exists for more than 24 hours, payment or non-payment proof are no longer
+     * available. In this case the agent can call this method, which burns reserved collateral at market price
      * and releases the remaining collateral (CRF is also burned).
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * NOTE: the agent (cold address) receives the class1 collateral and NAT is burned instead. Therefore
@@ -533,7 +535,8 @@ interface IAssetManager is IAssetManagerEvents {
      * NOTE: in some cases not all sent f-assets can be redeemed (either there are not enough tickets or
      * more than a fixed limit of tickets should be redeemed). In this case only part of the approved assets
      * are burned and redeemed and the redeemer can execute this method again for the remaining lots.
-     * In such case `RedemptionRequestIncomplete` event will be emitted, indicating the number of remaining lots.
+     * In such a case the `RedemptionRequestIncomplete` event will be emitted, indicating the number
+     * of remaining lots.
      * Agent receives redemption request id and instructions for underlying payment in
      * RedemptionRequested event and has to pay `value - fee` and use the provided payment reference.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
@@ -549,11 +552,11 @@ interface IAssetManager is IAssetManagerEvents {
      * After paying to the redeemer, the agent must call this method to unlock the collateral
      * and to make sure that the redeemer cannot demand payment in collateral on timeout.
      * The same method must be called for any payment status (SUCCESS, FAILED, BLOCKED).
-     * In case of FAILED, it just releases agent's underlying funds and the redeemer gets paid in collateral
+     * In case of FAILED, it just releases the agent's underlying funds and the redeemer gets paid in collateral
      * after calling redemptionPaymentDefault.
      * In case of SUCCESS or BLOCKED, remaining underlying funds and collateral are released to the agent.
-     * If the agent doesn't confirm payment in enough time (several hours, setting confirmationByOthersAfterSeconds),
-     * anybody can do it and get rewarded from agent's vault.
+     * If the agent doesn't confirm payment in enough time (several hours, setting
+     * `confirmationByOthersAfterSeconds`), anybody can do it and get rewarded from the agent's vault.
      * NOTE: may only be called by the owner of the agent vault in the redemption request
      *   except if enough time has passed without confirmation - then it can be called by anybody
      * @param _payment proof of the underlying payment (must contain exact `value - fee` amount and correct
@@ -582,7 +585,7 @@ interface IAssetManager is IAssetManagerEvents {
 
     /**
      * If the agent hasn't performed the payment, the agent can close the redemption request to free underlying funds.
-     * It can be done immediately after the redeemer or agent calls redemptionPaymentDefault,
+     * It can be done immediately after the redeemer or agent calls `redemptionPaymentDefault`,
      * or this method can trigger the default payment without proof, but only after enough time has passed so that
      * attestation proof of non-payment is not available any more.
      * NOTE: may only be called by the owner of the agent vault in the redemption request.
@@ -596,7 +599,7 @@ interface IAssetManager is IAssetManagerEvents {
     ) external;
 
     /**
-     * Agent can "redeem against himself" by calling selfClose, which burns agent's own f-assets
+     * Agent can "redeem against himself" by calling `selfClose`, which burns agent's own f-assets
      * and unlocks agent's collateral. The underlying funds backing the f-assets are released
      * as agent's free underlying funds and can be later withdrawn after announcement.
      * NOTE: may only be called by the agent vault owner.
@@ -612,7 +615,7 @@ interface IAssetManager is IAssetManagerEvents {
     // Dust
 
     /**
-     * Due to minting pool fees or after a lot size change by the governance,
+     * Due to the minting pool fees or after a lot size change by the governance,
      * it may happen that less than one lot remains on a redemption ticket. This is named "dust" and
      * can be self closed or liquidated, but not redeemed. However, after several additions,
      * the total dust can amount to more than one lot. Using this method, the amount, rounded down
@@ -631,7 +634,7 @@ interface IAssetManager is IAssetManagerEvents {
     // Liquidation
 
     /**
-     * Checks that the agent's collateral is too low and if true, starts agent's liquidation.
+     * Checks that the agent's collateral is too low and if true, starts the agent's liquidation.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _agentVault agent vault address
      */
@@ -659,7 +662,7 @@ interface IAssetManager is IAssetManagerEvents {
         returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidClass1, uint256 _amountPaidPool);
 
     /**
-     * When agent's collateral reaches safe level during liquidation, the liquidation
+     * When the agent's collateral reaches the safe level during liquidation, the liquidation
      * process can be stopped by calling this method.
      * Full liquidation (i.e. the liquidation triggered by illegal underlying payment)
      * cannot be stopped.
@@ -674,7 +677,7 @@ interface IAssetManager is IAssetManagerEvents {
     // Challenges
 
     /**
-     * Called with a proof of payment made from agent's underlying address, for which
+     * Called with a proof of payment made from the agent's underlying address, for which
      * no valid payment reference exists (valid payment references are from redemption and
      * underlying withdrawal announcement calls).
      * On success, immediately triggers full agent liquidation and rewards the caller.
@@ -688,7 +691,7 @@ interface IAssetManager is IAssetManagerEvents {
     ) external;
 
     /**
-     * Called with proofs of two payments made from agent's underlying address
+     * Called with proofs of two payments made from the agent's underlying address
      * with the same payment reference (each payment reference is valid for only one payment).
      * On success, immediately triggers full agent liquidation and rewards the caller.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
@@ -703,7 +706,7 @@ interface IAssetManager is IAssetManagerEvents {
     ) external;
 
     /**
-     * Called with proofs of several (otherwise legal) payments, which together make agent's
+     * Called with proofs of several (otherwise legal) payments, which together make the agent's
      * underlying free balance negative (i.e. the underlying address balance is less than
      * the total amount of backed f-assets).
      * On success, immediately triggers full agent liquidation and rewards the caller.
