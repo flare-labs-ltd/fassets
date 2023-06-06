@@ -32,6 +32,10 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     {
     }
 
+    /**
+     * Add an asset manager to this controller. The asset manager controller address in the settings of the
+     * asset manager must match this. This method automatically marks the asset manager as attached.
+     */
     function addAssetManager(IIAssetManager _assetManager)
         external
         onlyGovernance
@@ -45,6 +49,10 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         }
     }
 
+    /**
+     * Remove an asset manager from this controller, if it is attached to this controller.
+     * The asset manager won't be attached any more, so it will be unusable.
+     */
     function removeAssetManager(IIAssetManager _assetManager)
         external
         onlyGovernance

@@ -13,20 +13,20 @@ interface IAgentVault {
      * Deposit class1 collateral.
      * Parameter `_token` is explicit to allow depositing before collateral switch.
      * NOTE: owner must call `token.approve(vault, amount)` before calling this method.
-     * NOTE: anybody can call this method, to allow owner to deposit from any wallet.
+     * NOTE: anybody can call this method, to allow the owner to deposit from any wallet.
      */
     function depositCollateral(IERC20 _token, uint256 _amount) external;
 
     /**
      * Update collateral after `transfer(vault, some amount)` was called (alternative to depositCollateral).
      * Parameter `_token` is explicit to allow depositing before collateral switch.
-     * NOTE: anybody can call this method, to allow owner to deposit from any source.
+     * NOTE: anybody can call this method, to allow the owner to deposit from any source.
      */
     function collateralDeposited(IERC20 _token) external;
 
     /**
      * Withdraw class1 collateral. This method will work for any token, but for class1 and agent pool tokens
-     * (which are loked because they may be backing f-assets) there is a check that there was prior announcement
+     * (which are locked because they may be backing f-assets) there is a check that there was prior announcement
      * by calling `assetManager.announceClass1CollateralWithdrawal(...)`.
      * NOTE: only the owner of the agent vault may call this method.
      */
@@ -43,7 +43,7 @@ interface IAgentVault {
     /**
      * Buy collateral pool tokens for NAT.
      * Holding enough pool tokens in the vault is required for minting.
-     * NOTE: anybody can call this method, to allow owner to deposit from any source.
+     * NOTE: anybody can call this method, to allow the owner to deposit from any source.
      */
     function buyCollateralPoolTokens() external payable;
 
@@ -92,8 +92,8 @@ interface IAgentVault {
     function undelegateGovernance() external;
 
     /**
-     * Claim ftso rewards earned by delegating.
-     * Alternatively, you can set claim executor and then claim directly from FtsoRewardManager.
+     * Claim the FTSO rewards earned by delegating.
+     * Alternatively, you can set a claim executor and then claim directly from FtsoRewardManager.
      * NOTE: only the owner of the agent vault may call this method.
      */
     function claimFtsoRewards(

@@ -18,7 +18,7 @@ export interface LiquidationStrategyImplSettings {
      * to the liquidator.
      * Expressed in BIPS, e.g. [12000, 16000, 20000] means that the liquidator will be paid 1.2, 1.6 and 2.0
      * times the market price of the liquidated assets.
-     * Values in array must increase and be greater than 100%.
+     * Values in the array must increase and be greater than 100%.
      * @minItems 1
      */
     liquidationCollateralFactorBIPS: integer[];

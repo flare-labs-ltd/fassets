@@ -18,13 +18,13 @@ library LiquidationStrategyImplSettings {
         // Factor with which to multiply the asset price in native currency to obtain the payment
         // to the liquidator.
         // Expressed in BIPS, e.g. [12000, 16000, 20000] means that the liquidator will be paid 1.2, 1.6 and 2.0
-        // times the market price of the liquidated assets.
-        // Values in array must increase and be greater than 100%.
+        // times the market price of the liquidated assets after each `liquidationStepSeconds`.
+        // Values in the array must increase and be greater than 100%.
         // rate-limited
         uint32[] liquidationCollateralFactorBIPS;
 
-        // How much of the liquidation is paid in class1 token.
-        // The rest will be paid in pool tokens.
+        // How much of the liquidation is paid in class1 collateral.
+        // The remainder will be paid in pool NAT collateral.
         uint32[] liquidationFactorClass1BIPS;
     }
 

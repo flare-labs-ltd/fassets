@@ -50,7 +50,7 @@ library AMEvents {
 
     /**
      * Agent has announced a withdrawal of collateral and will be able to
-     * redeem the the announced amount of pool tokens after the timestamp `withdrawalAllowedAt`.
+     * redeem the announced amount of pool tokens after the timestamp `withdrawalAllowedAt`.
      * If withdrawal was canceled (announced with amount 0), amountWei and withdrawalAllowedAt are zero.
      */
     event PoolTokenRedemptionAnnounced(
@@ -70,7 +70,7 @@ library AMEvents {
 
     /**
      * Agent exited from available agents list.
-     * Agent can exit the available list after the timestamp `exitAllowedAt`.
+     * The agent can exit the available list after the timestamp `exitAllowedAt`.
      */
     event AvailableAgentExitAnnounced(
         address indexed agentVault,
@@ -125,7 +125,7 @@ library AMEvents {
 
     /**
      * Minter paid underlying funds in time and received the fassets.
-     * Agents collateral is locked.
+     * The agent's collateral is locked.
      * This event is also emitted for self-minting. In this case, `collateralReservationId` is 0.
      */
     event MintingExecuted(
@@ -157,11 +157,11 @@ library AMEvents {
         uint256 reservedAmountUBA);
 
     /**
-     * Redeemer started redemption process and provided fassets.
+     * Redeemer started the redemption process and provided fassets.
      * The amount of fassets corresponding to valueUBA was burned.
      * Several RedemptionRequested events are emitted, one for every agent redeemed against
      * (but multiple tickets for the same agent are combined).
-     * Agents collateral is still locked.
+     * The agent's collateral is still locked.
      */
     event RedemptionRequested(
         address indexed agentVault,
@@ -211,7 +211,7 @@ library AMEvents {
 
     /**
      * Agent provided the proof that redemption payment was attempted, but failed due to
-     * redeemer's address being blocked (or burning more than allowed amount of gas).
+     * the redeemer's address being blocked (or burning more than allowed amount of gas).
      * Redeemer is not paid and all of the agent's collateral is released.
      * The underlying currency is also released to the agent.
      */
@@ -254,7 +254,7 @@ library AMEvents {
 
     /**
      * The amount of dust was more than one lot, and the whole lot part of it
-     * it was converted to a redemption ticket.
+     * was converted to a redemption ticket.
      */
     event DustConvertedToTicket(
         address indexed agentVault,
@@ -271,7 +271,7 @@ library AMEvents {
 
     /**
      * Agent entered liquidation state due to unhealthy position.
-     * The liquidation ends when agent is again healthy or agent's position is fully liquidated.
+     * The liquidation ends when the agent is again healthy or the agent's position is fully liquidated.
      */
     event LiquidationStarted(
         address indexed agentVault,
@@ -279,7 +279,7 @@ library AMEvents {
 
     /**
      * Agent entered liquidation state due to illegal payment.
-     * Full liquidation will always liquidate whole agent's position and
+     * Full liquidation will always liquidate the whole agent's position and
      * the agent can never use the same vault and underlying address for minting again.
      */
     event FullLiquidationStarted(
@@ -287,7 +287,7 @@ library AMEvents {
         uint256 timestamp);
 
     /**
-     * Some of agent's position was liquidated, by burning liquidator's fassets.
+     * Some of the agent's position was liquidated, by burning liquidator's fassets.
      * Liquidator was paid in collateral with extra.
      * The corresponding amount of underlying currency, held by the agent, is released
      * and the agent can withdraw it (after underlying withdrawal announcement).
@@ -304,12 +304,12 @@ library AMEvents {
         address indexed agentVault);
 
     /**
-     * Part of balance the agent's underlying address is "free balance" that the agent can withdraw.
-     * Its is obtained from minting / redemption fees and self-closed fassets.
+     * Part of the balance in the agent's underlying address is "free balance" that the agent can withdraw.
+     * It is obtained from minting / redemption fees and self-closed fassets.
      * Some of this amount should be left for paying redemption (and withdrawal) gas fees,
      * and the rest can be withdrawn by the agent.
      * However, withdrawal has to be announced, otherwise it can be challenged as illegal payment.
-     * Only one announcement can exists per agent - agent has to present payment proof for withdrawal
+     * Only one announcement can exist per agent - agent has to present payment proof for withdrawal
      * before starting a new one.
      */
     event UnderlyingWithdrawalAnnounced(
@@ -356,16 +356,16 @@ library AMEvents {
     /**
      * An unexpected transaction from the agent's underlying address was proved.
      * Whole agent's position goes into liquidation.
-     * Original challenger and prover are paid reward from the agent's collateral.
+     * The challenger is rewarded from the agent's collateral.
      */
     event IllegalPaymentConfirmed(
         address indexed agentVault,
         bytes32 transactionHash);
 
     /**
-     * Two transaction with same payment reference, both from the agent's underlying address, were proved.
+     * Two transactions with the same payment reference, both from the agent's underlying address, were proved.
      * Whole agent's position goes into liquidation.
-     * Original challenger and prover are paid reward from the agent's collateral.
+     * The challenger is rewarded from the agent's collateral.
      */
     event DuplicatePaymentConfirmed(
         address indexed agentVault,
@@ -373,8 +373,9 @@ library AMEvents {
         bytes32 transactionHash2);
 
     /**
-     * Agent's underlying balance became lower than rewuired for backing f-assets (either through payment or via
-     * a challenge. Agent goes to full liquidation.
+     * Agent's underlying balance became lower than required for backing f-assets (either through payment or via
+     * a challenge. Agent goes to a full liquidation.
+     * The challenger is rewarded from the agent's collateral.
      */
     event UnderlyingBalanceTooLow(
         address indexed agentVault,
@@ -427,8 +428,8 @@ library AMEvents {
         uint256 safetyMinCollateralRatioBIPS);
 
     /**
-     * Collateral token has been marked as deprecated. After timestamp `validUntil` passes, it will be
-     * considered invalid and the agent who haven't switched their collateral before will be liquidated.
+     * Collateral token has been marked as deprecated. After the timestamp `validUntil` passes, it will be
+     * considered invalid and the agents who haven't switched their collateral before will be liquidated.
      */
     event CollateralTypeDeprecated(
         uint8 collateralClass,

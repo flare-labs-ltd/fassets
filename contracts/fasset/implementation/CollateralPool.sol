@@ -730,7 +730,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         _distribution.optOutOfAirdrop();
     }
 
-    function delegateCollateral(
+    function delegate(
         address[] memory _to,
         uint256[] memory _bips
     )

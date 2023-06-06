@@ -48,13 +48,13 @@ interface ICollateralPool {
 
     /**
      * Exits the pool by redeeming the given amount of pool tokens for a share of NAT and f-asset fees.
-     * Exiting with non-transferable tokens awards user with NAT only, while transferable tokens also entitle
+     * Exiting with non-transferable tokens awards the user with NAT only, while transferable tokens also entitle
      * one to a share of f-asset fees. As there are multiple ways to split spending transferable and
      * non-transferable tokens, the method also takes a parameter called `_exitType`.
+     * Exiting with collateral that sinks pool's collateral ratio below exit CR is not allowed and
+     *  will revert. In that case, see selfCloseExit.
      * @param _tokenShare   The amount of pool tokens to be redeemed
      * @param _exitType     The ratio used to redeem transferable and non-transferable tokens
-     * @notice Exiting with collateral that sinks pool's collateral ratio below exit CR is not allowed and
-     *  will revert. In that case, see selfCloseExit.
      */
     function exit(uint256 _tokenShare, TokenExitType _exitType)
         external
@@ -65,16 +65,16 @@ interface ICollateralPool {
      * endanger the pool collateral ratio. Specifically, if pool's collateral ratio is above exit CR, then
      * the method burns an amount of user's f-assets that do not lower collateral ratio below exit CR. If, on
      * the other hand, collateral pool is below exit CR, then the method burns an amount of user's f-assets
-     * that preserve pool's collateral ratio.
-     * @param _tokenShare                   The amount of pool tokens to be liquidated
-     * @param _redeemToCollateral           Specifies if agent should redeem f-assets in NAT from his collateral
-     * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
-     * @notice F-assets will be redeemed in collateral if their value does not exceed one lot, regardless of
-     *  `_redeemToCollateral` value
-     * @notice Method first tries to satisfy the condition by taking f-assets out of sender's f-asset fee share,
+     * that preserve the pool's collateral ratio.
+     * F-assets will be redeemed in collateral if their value does not exceed one lot, regardless of
+     *  `_redeemToCollateral` value.
+     * Method first tries to satisfy the condition by taking f-assets out of sender's f-asset fee share,
      *  specified by `_tokenShare`. If it is not enough it moves on to spending total sender's f-asset fees. If they
      *  are not enough, it takes from the sender's f-asset balance. Spending sender's f-asset fees means that
      *  transferable tokens are converted to non-transferable.
+     * @param _tokenShare                   The amount of pool tokens to be liquidated
+     * @param _redeemToCollateral           Specifies if agent should redeem f-assets in NAT from his collateral
+     * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
      */
     function selfCloseExit(
         uint256 _tokenShare,
@@ -94,26 +94,46 @@ interface ICollateralPool {
      */
     function payFAssetFeeDebt(uint256 _fassets) external;
 
+    /**
+     * Claim airdrops earned by holding wrapped native tokens in the pool.
+     * NOTE: only the owner of the pool's corresponding agent vault may call this method.
+     */
     function claimAirdropDistribution(
         IDistributionToDelegators _distribution,
         uint256 _month
     ) external
         returns(uint256);
 
+    /**
+     * Opt out of airdrops for wrapped native tokens in the pool.
+     * NOTE: only the owner of the pool's corresponding agent vault may call this method.
+     */
     function optOutOfAirdrop(
         IDistributionToDelegators _distribution
     ) external;
 
-    function delegateCollateral(
+    /**
+     * Delegate FTSO vote power for the wrapped native tokens held in this vault.
+     * NOTE: only the owner of the pool's corresponding agent vault may call this method.
+     */
+    function delegate(
         address[] memory _to,
         uint256[] memory _bips
     ) external;
 
+    /**
+     * Claim the FTSO rewards earned by delegating the vote power for the pool.
+     * NOTE: only the owner of the pool's corresponding agent vault may call this method.
+     */
     function claimFtsoRewards(
         IFtsoRewardManager _ftsoRewardManager,
         uint256 _lastRewardEpoch
     ) external;
 
+    /**
+     * Set executors that can then automatically claim rewards through FtsoRewardManager.
+     * NOTE: only the owner of the pool's corresponding agent vault may call this method.
+     */
     function setFtsoAutoClaiming(
         IClaimSetupManager _claimSetupManager,
         address[] memory _executors
@@ -139,7 +159,7 @@ interface ICollateralPool {
         returns (address);
 
     /**
-     * Get exit collateral ratio in BIPS
+     * Get the exit collateral ratio in BIPS
      * This is the collateral ratio below which exiting the pool is not allowed
      */
     function exitCollateralRatioBIPS()
@@ -147,7 +167,7 @@ interface ICollateralPool {
         returns (uint32);
 
     /**
-     * Get topup collateral ratio in BIPS
+     * Get the topup collateral ratio in BIPS.
      * If the pool's collateral ratio sinks below this value, users are encouraged to
      * buy collateral by making tokens have discount prices
      */
@@ -156,7 +176,7 @@ interface ICollateralPool {
         returns (uint32);
 
     /**
-     * Get token discount in BIPS
+     * Get the topup token discount in BIPS.
      * If the pool's collateral ratio sinks below topup collateral ratio, tokens are
      * discounted by this factor
      */
@@ -174,7 +194,7 @@ interface ICollateralPool {
         returns (uint256);
 
     /**
-     * Returns user's f-asset fee debt.
+     * Returns the user's f-asset fee debt.
      * This is the amount of f-assets the user has to pay to make all pool tokens transferable.
      * The debt is created on entering the pool if the user doesn't provide the f-assets corresponding
      * to the share of the f-asset fees already in the pool.
