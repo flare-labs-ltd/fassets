@@ -7,6 +7,7 @@ import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
+import { setBalance } from "@nomicfoundation/hardhat-network-helpers";
 
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AgentVault = artifacts.require("AgentVault");
@@ -105,6 +106,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             // mint fAssets to the pool
             await fAsset.mintAmount(pool.address, toWei(10));
+            await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.fAssetFeeDeposited(toWei(1000)).encodeABI());
             // withdraw pool fees
             await agentVault.withdrawPoolFees(toWei(10), owner, { from: owner });
             const ownerFassets = await fAsset.balanceOf(owner);
@@ -409,9 +411,10 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     it("should destroy the agentVault contract with with no token used", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
+        await setBalance(agentVault.address, 1000);
+        assert.equal(await web3.eth.getBalance(agentVault.address), "1000");
         await assetManagerMock.callFunctionAt(agentVault.address, agentVault.contract.methods.destroy(owner).encodeABI(), { from: owner });
-        const agentVaultCode = await web3.eth.getCode(agentVault.address);
-        assert.equal(agentVaultCode, "0x");
+        assert.equal(await web3.eth.getBalance(agentVault.address), "0");
     });
 
     it("should destroy the agentVault contract with token used", async () => {
@@ -425,9 +428,10 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const delegatedBefore = await wNat.votePowerOf(owner);
         assertWeb3Equal(delegatedBefore, toBN(100));
         // destroy contract
+        await setBalance(agentVault.address, 1000);
+        assert.equal(await web3.eth.getBalance(agentVault.address), "1000");
         await assetManagerMock.callFunctionAt(agentVault.address, agentVault.contract.methods.destroy(accounts[80]).encodeABI(), { from: owner });
-        const agentVaultCode = await web3.eth.getCode(agentVault.address);
-        assert.equal(agentVaultCode, "0x");
+        assert.equal(await web3.eth.getBalance(agentVault.address), "0");
         // check that wnat was returned
         const recipientWNat = await wNat.balanceOf(accounts[80]);
         assertWeb3Equal(recipientWNat, toBN(100));

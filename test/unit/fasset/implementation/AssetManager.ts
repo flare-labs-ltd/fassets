@@ -6,7 +6,7 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
 import { BNish, DAYS, HOURS, MAX_BIPS, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
@@ -697,10 +697,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const tx2 = await assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: agentOwner1 });
             const def = findRequiredEvent(tx2, "MintingPaymentDefault").args;
             // check that events were emitted correctly
-            assertWeb3Equal(def.collateralReservationId, crt.collateralReservationId);
-            assertWeb3Equal(def.reservedAmountUBA, crt.valueUBA);
-            // check that agent and pool got wNat
             const agentSettings = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(def.collateralReservationId, crt.collateralReservationId);
+            const poolFeeUBA = mulBIPS(toBN(crt.feeUBA), toBN(agentSettings.poolFeeShareBIPS));
+            assertWeb3Equal(def.reservedAmountUBA, toBN(crt.valueUBA).add(poolFeeUBA));
+            // check that agent and pool got wNat
             const poolShare = mulBIPS(reservationFee, toBN(agentSettings.poolFeeShareBIPS));
             const agentShare = reservationFee.sub(poolShare);
             const agentWnatBalance = await wNat.balanceOf(agentVault.address);
@@ -1050,7 +1051,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
     describe("ERC-165 interface identification", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("IERC165");
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
             const IAssetManager = artifacts.require("IAssetManager");
             const IIAssetManager = artifacts.require("IIAssetManager");
             const iERC165 = await IERC165.at(assetManager.address);

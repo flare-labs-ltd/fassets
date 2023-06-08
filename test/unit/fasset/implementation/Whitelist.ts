@@ -1,9 +1,8 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
+import { constants, expectRevert } from "@openzeppelin/test-helpers";
 import { WhitelistInstance } from "../../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
-import { getTestFile } from "../../../utils/test-helpers";
 import { waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
-import { ethers } from "hardhat";
+import { getTestFile } from "../../../utils/test-helpers";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -30,7 +29,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
           });
 
         it('should not add address 0', async function () {
-            let res = whitelist.addAddressToWhitelist(ethers.constants.AddressZero, {from: governance});
+            let res = whitelist.addAddressToWhitelist(constants.ZERO_ADDRESS, {from: governance});
             await expectRevert(res, "address zero");
         });
 

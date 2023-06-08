@@ -1,18 +1,17 @@
 import { expectRevert } from '@openzeppelin/test-helpers';
-import { ethers } from 'ethers';
 import { AddressUpdatableMockInstance } from "../../../../typechain-truffle";
 import { getTestFile } from "../../../utils/test-helpers";
 
 const AddressUpdatableMock = artifacts.require("AddressUpdatableMock");
 
 export function encodeContractNames(names: string[]): string[] {
-  return names.map(name => ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [name])));
+  return names.map(name => web3.utils.keccak256(web3.eth.abi.encodeParameters(["string"], [name])));
 }
 
 contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable contract unit tests`, async accounts => {
   let addressUpdatable: AddressUpdatableMockInstance;
   const ADDRESS_UPDATER_ADDRESS = accounts[10];
-  
+
   const ADDRESS_UPDATER_NAME = "AddressUpdater";
   const FTSO_MANAGER_NAME = "FtsoManager";
   const FTSO_MANAGER_ADDRESS = accounts[11];
@@ -34,7 +33,7 @@ contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable con
     const newAddressUpdaterAddress = accounts[12];
     // Act
     await addressUpdatable.updateContractAddresses(
-      encodeContractNames([FTSO_MANAGER_NAME, ADDRESS_UPDATER_NAME]), 
+      encodeContractNames([FTSO_MANAGER_NAME, ADDRESS_UPDATER_NAME]),
       [FTSO_MANAGER_ADDRESS, newAddressUpdaterAddress], { from: ADDRESS_UPDATER_ADDRESS });
     // Assert
     const {0: nameHashes, 1: addresses} = await addressUpdatable.getContractNameHashesAndAddresses();
@@ -50,7 +49,7 @@ contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable con
     // Assemble
     // Act
     const updatePromise = addressUpdatable.updateContractAddresses(
-      encodeContractNames([FTSO_MANAGER_NAME, ADDRESS_UPDATER_NAME]), 
+      encodeContractNames([FTSO_MANAGER_NAME, ADDRESS_UPDATER_NAME]),
     [FTSO_MANAGER_ADDRESS, ADDRESS_UPDATER_ADDRESS], { from: accounts[0] });
     // Assert
     await expectRevert(updatePromise, "only address updater")
@@ -60,10 +59,10 @@ contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable con
     // Assemble
     // Act
     const updatePromise = addressUpdatable.updateContractAddresses(
-      encodeContractNames([FTSO_MANAGER_NAME]), 
+      encodeContractNames([FTSO_MANAGER_NAME]),
     [FTSO_MANAGER_ADDRESS], { from: ADDRESS_UPDATER_ADDRESS });
     // Assert
     await expectRevert(updatePromise, "address zero")
   });
-  
+
 });

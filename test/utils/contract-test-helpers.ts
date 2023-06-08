@@ -1,5 +1,6 @@
 import { constants, time } from "@openzeppelin/test-helpers";
 import { network } from "hardhat";
+import * as rlp from "rlp";
 import { toBN } from "../../lib/utils/helpers";
 import { GovernedBaseContract } from "../../typechain-truffle";
 import { Web3EventDecoder } from "./Web3EventDecoder";
@@ -7,6 +8,13 @@ import { Web3EventDecoder } from "./Web3EventDecoder";
 const SuicidalMock = artifacts.require("SuicidalMock");
 const GovernanceSettings = artifacts.require("GovernanceSettings");
 const GovernedBase = artifacts.require("contracts/governance/implementation/GovernedBase.sol:GovernedBase" as any) as any as GovernedBaseContract;
+
+export function precomputeContractAddress(deployer: string, nonce: number) {
+    const rlpEnc = '0x' + rlp.encode([deployer, nonce]).toString('hex');
+    const hash = web3.utils.keccak256(rlpEnc);
+    const address = '0x' + hash.slice(hash.length - 40);
+    return web3.utils.toChecksumAddress(address);
+}
 
 export async function transferWithSuicide(amount: BN, from: string, to: string) {
     if (amount.lten(0)) throw new Error("Amount must be positive");

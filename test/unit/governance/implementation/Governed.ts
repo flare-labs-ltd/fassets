@@ -2,7 +2,7 @@ import { GovernanceSettingsInstance, GovernedMockInstance } from "../../../../ty
 
 import { constants, expectEvent, expectRevert } from '@openzeppelin/test-helpers';
 import { getTestFile } from "../../../utils/test-helpers";
-import { GENESIS_GOVERNANCE } from "../../fasset/test-settings";
+import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 
 const Governed = artifacts.require("GovernedMock");
 const GovernanceSettings = artifacts.require("GovernanceSettings");
@@ -22,7 +22,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
 
     beforeEach(async () => {
         governanceSettings = await GovernanceSettings.new();
-        await governanceSettings.initialise(productionGovernance, 10, [productionGovernance, productionExecutor], { from: GENESIS_GOVERNANCE });
+        await governanceSettings.initialise(productionGovernance, 10, [productionGovernance, productionExecutor], { from: GENESIS_GOVERNANCE_ADDRESS });
         governed = await Governed.new(governanceSettings.address, initialGovernance);
     });
 
@@ -78,7 +78,7 @@ contract(`Governed.sol; ${getTestFile(__filename)}; Governed unit tests`, async 
             // Assert
             await expectRevert(promiseTransfer2, "already in production mode");
         });
-        
+
         it("Should have new governance parameters after switching", async () => {
             // Assemble
             const startGovernance = await governed.governance();

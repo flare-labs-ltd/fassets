@@ -1,20 +1,17 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings, decodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
-import { AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WhitelistInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager, waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
-import { createTestLiquidationSettings, createEncodedTestLiquidationSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
-import { ERC20Mock__factory, SafePctMock__factory } from "../../../../typechain";
-import { getAddress } from "ethers/lib/utils";
-import { ethers } from "hardhat";
+import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../test-settings";
 
 const Whitelist = artifacts.require('Whitelist');
 const AssetManagerController = artifacts.require('AssetManagerController');
@@ -745,7 +742,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should revert setting underlying address validator after timelock when address 0 is provided", async () => {
-            const res = assetManagerController.setUnderlyingAddressValidator([assetManager.address], ethers.constants.AddressZero, { from: governance });
+            const res = assetManagerController.setUnderlyingAddressValidator([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "address zero");
         });
@@ -834,7 +831,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should revert adding Collateral token when address 0", async () => {
             const newToken = {
                 ...collaterals[0],
-                token: ethers.constants.AddressZero,
+                token: constants.ZERO_ADDRESS,
                 ftsoSymbol: "TOK",
                 minCollateralRatioBIPS: "20000",
                 ccbMinCollateralRatioBIPS: "18000",
@@ -848,7 +845,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should revert adding Collateral token when class is wrong", async () => {
             const newToken = {
                 ...collaterals[0],
-                token: ethers.constants.AddressZero,
+                token: constants.ZERO_ADDRESS,
                 ftsoSymbol: "TOK",
                 minCollateralRatioBIPS: "20000",
                 ccbMinCollateralRatioBIPS: "18000",

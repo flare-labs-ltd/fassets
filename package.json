@@ -56,15 +56,16 @@
     "gas": "cat .gas-report.txt"
   },
   "dependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
     "@openzeppelin/contracts": "4.8.3",
     "@typescript-eslint/eslint-plugin": "5.59.7",
     "@typescript-eslint/parser": "5.59.7",
     "dotenv": "16.0.3",
     "eslint": "8.41.0",
+    "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#flare-distribution-to-delegators",
     "hardhat": "2.14.0",
     "solhint": "3.4.1",
-    "solidity-coverage": "0.8.2",
-    "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#flare-distribution-to-delegators"
+    "solidity-coverage": "0.8.2"
   },
   "devDependencies": {
     "@gnosis.pm/mock-contract": "4.0.0",
@@ -87,7 +88,7 @@
     "ts-node": "10.9.1",
     "typechain": "8.1.1",
     "typescript": "5.0.4",
-    "yarn-audit-fix": "9.3.10",
-    "typescript-json-schema": "0.56.0"
+    "typescript-json-schema": "0.56.0",
+    "yarn-audit-fix": "9.3.10"
   }
 }

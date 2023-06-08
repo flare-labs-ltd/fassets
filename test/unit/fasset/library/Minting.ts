@@ -1,5 +1,4 @@
-import { balance, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { ethers } from "hardhat";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -10,13 +9,14 @@ import { BNish, MAX_BIPS, toBIPS, toBN, toWei } from "../../../../lib/utils/help
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
+import { precomputeContractAddress } from "../../../utils/contract-test-helpers";
 import { AgentCollateral } from "../../../utils/fasset/AgentCollateral";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { TestFtsos, TestSettingOptions, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../test-settings";
+import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../test-settings";
 
 contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async accounts => {
     const governance = accounts[10];
@@ -469,10 +469,11 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const poolFeeShareBIPS = toBIPS(0.4);
         const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
         chain.mint(underlyingRandomAddress, paymentAmount.add(poolFee));
-        const nonce = await ethers.provider.getTransactionCount(contracts.agentVaultFactory.address);
-        let agentVaultAddressCalc = ethers.utils.getContractAddress({ from: contracts.agentVaultFactory.address, nonce: nonce });
+        // const nonce = await ethers.provider.getTransactionCount(contracts.agentVaultFactory.address);
+        // let agentVaultAddressCalc = ethers.utils.getContractAddress({ from: contracts.agentVaultFactory.address, nonce: nonce });
+        const nonce = await web3.eth.getTransactionCount(contracts.agentVaultFactory.address);
+        const agentVaultAddressCalc = precomputeContractAddress(contracts.agentVaultFactory.address, nonce);
         const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount.add(poolFee), PaymentReference.selfMint(agentVaultAddressCalc));
-
         const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
         const amount = toWei(3e8);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);

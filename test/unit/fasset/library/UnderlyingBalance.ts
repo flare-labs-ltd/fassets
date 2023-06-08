@@ -12,6 +12,7 @@ import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../../utils/test-helpers";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
+import { precomputeContractAddress } from "../../../utils/contract-test-helpers";
 
 contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance unit tests`, async accounts => {
 
@@ -97,7 +98,7 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
     });
     it("should reject confirmation of top up payment - topup before agent created", async () => {
         chain.mint(underlyingRandomAddress,1000);
-        let agentVaultAddressCalc = ethers.utils.getContractAddress({from: contracts.agentVaultFactory.address, nonce: 1});
+        let agentVaultAddressCalc = precomputeContractAddress(contracts.agentVaultFactory.address, 1);
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, 500, PaymentReference.topup(agentVaultAddressCalc));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
