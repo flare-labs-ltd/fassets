@@ -14,8 +14,12 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
+import { createTestAgentSettings } from "../../unit/fasset/test-settings";
+import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 
 const AgentVault = artifacts.require('AgentVault');
+const CollateralPool = artifacts.require('CollateralPool');
+const CollateralPoolToken = artifacts.require('CollateralPoolToken');
 
 contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => {
     const governance = accounts[10];
@@ -42,7 +46,7 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
     let context: AssetContext;
 
     beforeEach(async () => {
-        commonContext = await CommonContext.createTest(governance, testNatInfo);
+        commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.eth);
     });
 
@@ -54,8 +58,7 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         const challenger = await Challenger.create(context, challengerAddress1);
         // make agent available
         const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateral(fullAgentCollateral);
-        await agent.makeAvailable(500, 2_2000);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
         // update block
         await context.updateUnderlyingBlock();
         // perform minting
@@ -89,8 +92,7 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         const challenger = await Challenger.create(context, challengerAddress1);
         // make agent available
         const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateral(fullAgentCollateral);
-        await agent.makeAvailable(500, 2_2000);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
         // update block
         await context.updateUnderlyingBlock();
         // perform minting
@@ -132,15 +134,18 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         const eoaProof = await context.attestationProvider.provePayment(eoaHash, underlyingAgent1, underlyingOwner1);
         await context.assetManager.proveUnderlyingAddressEOA(eoaProof, { from: agentOwner1 });
         // create agent
-        const response = await context.assetManager.createAgent(underlyingAgent1, { from: agentOwner1 });
+        const agentSettings = createTestAgentSettings(underlyingAgent1, context.usdc.address);
+        const response = await context.assetManager.createAgent(web3DeepNormalize(agentSettings), { from: agentOwner1 });
         const created = requiredEventArgs(response, 'AgentCreated');
         const agentVault = await AgentVault.at(created.agentVault);
+        const collateralPool = await CollateralPool.at(created.collateralPool);
+        const poolTokenAddress = await collateralPool.poolToken();
+        const collateralPoolToken = await CollateralPoolToken.at(poolTokenAddress);
         // create object
-        const agent = new Agent(context, agentOwner1, agentVault, underlyingAgent1, wallet);
+        const agent = new Agent(context, agentOwner1, agentVault, collateralPool, collateralPoolToken, wallet, agentSettings);
         // make agent available
         const fullAgentCollateral = toWei(3e8);
-        await agent.depositCollateral(fullAgentCollateral);
-        await agent.makeAvailable(500, 2_2000);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
         // reserve collateral
         await time.advanceBlockTo(guessBlock - 1);
         const minter = new Minter(context, agentOwner1, underlyingOwner1, wallet);

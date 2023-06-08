@@ -5,16 +5,16 @@ import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlo
 import { EventArgs } from "../../../lib/utils/events/common";
 import { checkEventNotEmited, eventArgs, filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, MAX_BIPS, maxBN, randomAddress, requireNotNull, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
-import { web3DeepNormalize, web3Normalize } from "../../../lib/utils/web3normalize";
+import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/AssetManager";
 import { createTestAgentSettings } from "../../unit/fasset/test-settings";
+import { Approximation, assertApproximateMatch } from "../../utils/approximation";
 import { AgentCollateral } from "../../utils/fasset/AgentCollateral";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
-import { Approximation, assertApproximateMatch } from "../../utils/approximation";
 
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
@@ -408,7 +408,7 @@ export class Agent extends AssetContextClient {
     async class1ToNatBurned(burnedWei: BNish): Promise<BN> {
         const class1Price = await this.context.getCollateralPrice(this.class1Collateral())
         const burnedUBA = class1Price.convertTokenWeiToUBA(burnedWei);
-        return this.class1ToNatBurned(burnedUBA);
+        return this.class1ToNatBurnedInUBA(burnedUBA);
     }
 
     async class1ToNatBurnedInUBA(uba: BNish): Promise<BN> {

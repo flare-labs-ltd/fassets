@@ -165,8 +165,8 @@ library AgentsCreateDestroy {
         // cannot have any minting when in destroying status
         assert(agent.mintedAMG == 0 && agent.reservedAMG == 0 &&
             agent.redeemingAMG == 0 && agent.poolRedeemingAMG == 0);
-        // destroy pool - just burn the remaining nat
-        agent.collateralPool.destroy(state.settings.burnAddress);
+        // destroy pool
+        agent.collateralPool.destroy(_recipient);
         // destroy agent vault
         IIAgentVault(_agentVault).destroy(_recipient);
         // remove from the list of all agents

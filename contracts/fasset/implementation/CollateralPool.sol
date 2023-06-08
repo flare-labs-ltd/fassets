@@ -655,6 +655,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         onlyAssetManager
         nonReentrant
     {
+        require(token.totalSupply() == 0, "cannot destroy a pool with issued tokens");
         require(totalCollateral == 0, "cannot destroy a pool holding collateral");
         require(totalFAssetFees == 0, "cannot destroy a pool holding f-assets");
         token.destroy(_recipient);

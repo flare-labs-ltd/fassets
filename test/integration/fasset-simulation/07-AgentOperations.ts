@@ -171,7 +171,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.exitAndDestroy(fullAgentCollateral.sub(challengerClass1Reward));
         });
 
-        it.only("try to redeem after pause, terminate, buybackAgentCollateral", async () => {
+        it("try to redeem after pause, terminate, buybackAgentCollateral", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter1 = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             const minter2 = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.underlyingAmount(10000));
