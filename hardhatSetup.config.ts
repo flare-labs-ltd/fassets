@@ -5,11 +5,17 @@ import * as dotenv from "dotenv";
 import fs from "fs";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
-import { TASK_COMPILE } from 'hardhat/builtin-tasks/task-names';
+import { TASK_COMPILE, TASK_TEST_GET_TEST_FILES } from 'hardhat/builtin-tasks/task-names';
 import { HardhatUserConfig, task } from "hardhat/config";
 import 'solidity-coverage';
 import "./type-extensions";
 const intercept = require('intercept-stdout');
+const glob = require('glob');
+
+// allow glob patterns in test file args
+task(TASK_TEST_GET_TEST_FILES, async ({ testFiles }) => {
+    return testFiles.map((pattern: string) => glob.sync(pattern)).flat();
+});
 
 // Override solc compile task and filter out useless warnings
 task(TASK_COMPILE)
