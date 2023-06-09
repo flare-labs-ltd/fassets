@@ -439,4 +439,14 @@ library Agents {
             ? _agent.class1WithdrawalAnnouncement
             : _agent.poolTokenWithdrawalAnnouncement;
     }
+
+    function totalBackedAMG(Agent.State storage _agent)
+        internal view
+        returns (uint64)
+    {
+        // this must always hold, so assert it is true, otherwise the following line
+        // would need `max(redeemingAMG, poolRedeemingAMG)`
+        assert(_agent.poolRedeemingAMG <= _agent.redeemingAMG);
+        return _agent.mintedAMG + _agent.reservedAMG + _agent.redeemingAMG;
+    }
 }

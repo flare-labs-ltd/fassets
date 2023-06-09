@@ -102,7 +102,7 @@ interface ICollateralPool {
         IDistributionToDelegators _distribution,
         uint256 _month
     ) external
-        returns(uint256);
+        returns(uint256 _claimedAmount);
 
     /**
      * Opt out of airdrops for wrapped native tokens in the pool.
@@ -128,7 +128,8 @@ interface ICollateralPool {
     function claimFtsoRewards(
         IFtsoRewardManager _ftsoRewardManager,
         uint256 _lastRewardEpoch
-    ) external;
+    ) external
+        returns(uint256 _claimedAmount);
 
     /**
      * Set executors that can then automatically claim rewards through FtsoRewardManager.

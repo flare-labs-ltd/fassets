@@ -719,7 +719,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         onlyAgent
         returns(uint256)
     {
-        return _distribution.claim(address(this), payable(address(this)), _month, true);
+        uint256 claimed = _distribution.claim(address(this), payable(address(this)), _month, true);
+        totalCollateral += claimed;
+        return claimed;
     }
 
     function optOutOfAirdrop(
@@ -747,8 +749,11 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     )
         external override
         onlyAgent
+        returns (uint256)
     {
-        _ftsoRewardManager.claim(address(this), payable(address(this)), _lastRewardEpoch, true);
+        uint256 claimed = _ftsoRewardManager.claim(address(this), payable(address(this)), _lastRewardEpoch, true);
+        totalCollateral += claimed;
+        return claimed;
     }
 
     // Set executors that can then automatically claim rewards through FtsoRewardManager.

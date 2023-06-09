@@ -289,7 +289,6 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // should not change destroy time
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
         await time.increase(150);
-        await expectRevert(agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 }), "withdrawal: invalid status");
         const startBalance = await usdc.balanceOf(agentOwner1);
         const tx = await assetManager.destroyAgent(agentVault.address, agentOwner1, { from: agentOwner1 });
         // assert
@@ -305,18 +304,6 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // assert
         await expectRevert(assetManager.announceClass1CollateralWithdrawal(agentVault.address, 100),
             "only agent vault owner");
-    });
-
-    it("cannot annouce collateral withdrawal if agent's status is not 'NORMAL'", async () => {
-        // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        const amount = ether('1');
-        await depositCollateral(agentOwner1, agentVault, amount);
-        await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
-        // act
-        // assert
-        await expectRevert(assetManager.announceClass1CollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 }),
-            "withdrawal ann: invalid status");
     });
 
     it("should announce collateral withdrawal", async () => {

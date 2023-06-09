@@ -139,8 +139,7 @@ library AgentsCreateDestroy {
         Agent.State storage agent = Agent.get(_agentVault);
         // all minting must stop and all minted assets must have been cleared
         require(agent.availableAgentsPos == 0, "agent still available");
-        require(agent.mintedAMG == 0 && agent.reservedAMG == 0 && agent.redeemingAMG == 0, "agent still active");
-        assert(agent.poolRedeemingAMG == 0);    // must be <= redeemingAMG
+        require(agent.totalBackedAMG() == 0, "agent still active");
         // if not destroying yet, start timing
         if (agent.status != Agent.Status.DESTROYING) {
             agent.status = Agent.Status.DESTROYING;
@@ -163,8 +162,7 @@ library AgentsCreateDestroy {
         require(agent.status == Agent.Status.DESTROYING, "destroy not announced");
         require(block.timestamp > agent.destroyAllowedAt, "destroy: not allowed yet");
         // cannot have any minting when in destroying status
-        assert(agent.mintedAMG == 0 && agent.reservedAMG == 0 &&
-            agent.redeemingAMG == 0 && agent.poolRedeemingAMG == 0);
+        assert(agent.totalBackedAMG() == 0);
         // destroy pool
         agent.collateralPool.destroy(_recipient);
         // destroy agent vault

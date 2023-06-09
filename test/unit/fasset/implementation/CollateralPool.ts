@@ -37,6 +37,7 @@ const AssetManager = artifacts.require("AssetManagerMock")
 const CollateralPool = artifacts.require("CollateralPool");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const DistributionToDelegators = artifacts.require("DistributionToDelegators");
+const MockContract = artifacts.require('MockContract');
 
 contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic tests`, async accounts => {
     let wNat: ERC20MockInstance;
@@ -848,8 +849,19 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectRevert(prms, "only internal use");
         });
 
-        it("should fail destroying a pool with collateral", async () => {
+        it("should fail destroying a pool with issued tokens", async () => {
             await collateralPool.enter(0, false, { value: ETH(1) });
+            const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
+            const prms = assetManager.callFunctionAt(collateralPool.address, payload);
+            await expectRevert(prms, "cannot destroy a pool with issued tokens");
+        });
+
+        it("should fail destroying a pool with collateral", async () => {
+            // give some collateral using mock airdrop
+            const mockAirdrop = await MockContract.new();
+            await mockAirdrop.givenAnyReturnUint(ETH(1));
+            await collateralPool.claimAirdropDistribution(mockAirdrop.address, 1, { from: agent });
+            // destroy
             const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
             await expectRevert(prms, "cannot destroy a pool holding collateral");

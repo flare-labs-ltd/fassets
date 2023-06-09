@@ -83,6 +83,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info.ccbStartTimestamp, 0);
             assertWeb3Equal(info.liquidationStartTimestamp, liquidationStarted.timestamp);
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
+            // check that agent cannot withdraw or even announce withdrawal when being fully liquidated
+            await expectRevert(agent.announceClass1CollateralWithdrawal(fullAgentCollateral), "withdrawal ann: invalid status");
+            await expectRevert(agent.withdrawClass1Collateral(fullAgentCollateral), "withdrawal: invalid status");
             // check that agent cannot exit
             await expectRevert(agent.exitAndDestroy(fullAgentCollateral.sub(reward)), "agent still backing f-assets");
         });
