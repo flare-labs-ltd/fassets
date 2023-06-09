@@ -204,7 +204,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const endBalanceLiquidator2NAT = await context.wNat.balanceOf(liquidator.address);
             const endBalanceLiquidator2Class1 = await agent.class1Token().balanceOf(liquidator.address);
             assert(liquidatedUBA2.lt(liquidateMaxUBA2)); // agent is safe again
-            assertWeb3Equal(context.convertLotsToUBA(await context.convertUBAToLots(liquidatedUBA2)), liquidatedUBA2);
+            assertWeb3Equal(context.convertLotsToUBA(context.convertUBAToLots(liquidatedUBA2)), liquidatedUBA2);
             assert.isUndefined(liquidationStarted2);
             assert.equal(liquidationCancelled2.agentVault, agent.agentVault.address);
             // test rewarding

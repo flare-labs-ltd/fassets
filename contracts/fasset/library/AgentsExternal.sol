@@ -70,7 +70,10 @@ library AgentsExternal {
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        require(agent.status == Agent.Status.NORMAL, "withdrawal ann: invalid status");
+        // only agents that are not being liquidated can withdraw
+        // however, if the agent is in FULL_LIQUIDATION and totally liquidated,
+        // the withdrawals must still be possible, otherwise the collateral gets locked forever
+        require(agent.status == Agent.Status.NORMAL || agent.mintedAMG == 0, "withdrawal ann: invalid status");
         Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(_kind);
         if (_amountWei > withdrawal.amountWei) {
             AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
@@ -113,7 +116,10 @@ library AgentsExternal {
             return;     // we don't care about other token withdrawals from agent vault
         }
         Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(kind);
-        require(agent.status == Agent.Status.NORMAL, "withdrawal: invalid status");
+        // only agents that are not being liquidated can withdraw
+        // however, if the agent is in FULL_LIQUIDATION and totally liquidated,
+        // the withdrawals must still be possible, otherwise the collateral gets locked forever
+        require(agent.status == Agent.Status.NORMAL || agent.mintedAMG == 0, "withdrawal: invalid status");
         require(withdrawal.allowedAt != 0, "withdrawal: not announced");
         require(_amountWei <= withdrawal.amountWei, "withdrawal: more than announced");
         require(block.timestamp > withdrawal.allowedAt, "withdrawal: not allowed yet");

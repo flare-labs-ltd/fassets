@@ -202,7 +202,9 @@ export class Agent extends AssetContextClient {
         if (poolFeeBalance.gt(BN_ZERO)) await this.selfClose(poolFeeBalance);
         // nothing must be minted now
         const info = await this.getAgentInfo();
-        assertWeb3Equal(info.mintedUBA, 0);
+        if (toBN(info.mintedUBA).gt(BN_ZERO)) {
+            throw new Error("agent still backing f-assets");
+        }
         // redeem pool tokens to empty the pool (this only works in tests where there are no other pool token holders)
         const poolTokenBalance = await this.poolTokenBalance();
         const { withdrawalAllowedAt } = await this.announcePoolTokenRedemption(poolTokenBalance);
