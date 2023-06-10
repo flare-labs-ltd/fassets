@@ -423,10 +423,11 @@ library Agents {
     {
         if (_kind == Collateral.Kind.AGENT_CLASS1) {
             return (_agent.collateralsUnderwater & Agent.LF_CLASS1) != 0;
-        } else if (_kind == Collateral.Kind.POOL) {
-            return (_agent.collateralsUnderwater & Agent.LF_POOL) != 0;
         } else {
-            return false;    // AGENT_POOL collateral cannot be underwater (it only affects minting)
+            // AGENT_POOL collateral cannot be underwater (it only affects minting),
+            // so this function will only be used for CLASS1 and POOL
+            assert(_kind == Collateral.Kind.POOL);
+            return (_agent.collateralsUnderwater & Agent.LF_POOL) != 0;
         }
     }
 

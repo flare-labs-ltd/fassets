@@ -40,7 +40,7 @@ library AgentCollateral {
     {
         if (_kind == Collateral.Kind.AGENT_CLASS1) {
             return agentClass1CollateralData(_agent);
-        } else if (_kind == Collateral.Kind.AGENT_CLASS1) {
+        } else if (_kind == Collateral.Kind.POOL) {
             return poolCollateralData(_agent);
         } else {
             return agentsPoolTokensCollateralData(_agent, poolCollateralData(_agent));
