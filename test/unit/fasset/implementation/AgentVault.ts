@@ -392,23 +392,6 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assert.equal(balance2, "7");
     });
 
-    it("should upgrade wnat contract", async () => {
-        const newWnat = await ERC20Mock.new("wNat", "new wNat");
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        await assetManagerMock.callFunctionAt(agentVault.address, agentVault.contract.methods.upgradeWNatContract(
-            newWnat.address).encodeABI(), { from: owner });
-        const agentVaultWNat = await agentVault.wNat();
-        assert.equal(newWnat.address, agentVaultWNat);
-    });
-
-    it("should not upgrade wnat contract if it has the same address", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        await assetManagerMock.callFunctionAt(agentVault.address, agentVault.contract.methods.upgradeWNatContract(
-            wNat.address).encodeABI(), { from: owner });
-        const agentVaultWNat = await agentVault.wNat();
-        assert.equal(agentVaultWNat, wNat.address);
-    });
-
     it("should destroy the agentVault contract with with no token used", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         await setBalance(agentVault.address, 1000);

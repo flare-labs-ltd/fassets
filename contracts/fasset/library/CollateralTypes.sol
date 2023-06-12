@@ -134,19 +134,6 @@ library CollateralTypes {
         return index - 1;
     }
 
-    function tryGetIndex(
-        CollateralType.Class _collateralClass,
-        IERC20 _token
-    )
-        internal view
-        returns (bool _found, uint256 _index)
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        uint256 index = state.collateralTokenIndex[_tokenKey(_collateralClass, _token)];
-        _found = index > 0;
-        _index = _found ? index - 1 : 0;
-    }
-
     function isValid(CollateralTypeInt.Data storage _token)
         internal view
         returns (bool)

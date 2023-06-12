@@ -26,8 +26,5 @@ interface IIAgentVault is IAgentVault {
 
     function isOwner(address _address) external view returns (bool);
 
-    // onlyAssetManager
-    function upgradeWNatContract(IWNat _newWNat) external;
-
     function wNat() external view returns (IWNat);
 }

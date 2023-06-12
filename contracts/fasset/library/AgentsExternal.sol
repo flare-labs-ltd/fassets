@@ -143,23 +143,7 @@ library AgentsExternal {
         if (agent.poolCollateralIndex != state.poolCollateralIndex) {
             agent.poolCollateralIndex = state.poolCollateralIndex;
             agent.collateralPool.upgradeWNatContract(wNat);
-            emit AMEvents.AgentCollateralTypeChanged(_agentVault,
-                uint8(CollateralType.Class.POOL), address(wNat));
-        }
-        // upgrade agent vault wnat
-        IWNat vaultWNat = IIAgentVault(_agentVault).wNat();
-        if (vaultWNat != wNat) {
-            IIAgentVault(_agentVault).upgradeWNatContract(wNat);
-            // should also switch collateral if agent uses WNat as class1 collateral
-            if (vaultWNat == agent.getClass1Token()) {
-                (bool wnatIsCollateralToken, uint256 index) =
-                    CollateralTypes.tryGetIndex(CollateralType.Class.CLASS1, vaultWNat);
-                if (wnatIsCollateralToken) {
-                    agent.class1CollateralIndex = uint16(index);
-                    emit AMEvents.AgentCollateralTypeChanged(_agentVault,
-                        uint8(CollateralType.Class.CLASS1), address(wNat));
-                }
-            }
+            emit AMEvents.AgentCollateralTypeChanged(_agentVault, uint8(CollateralType.Class.POOL), address(wNat));
         }
     }
 
@@ -178,6 +162,7 @@ library AgentsExternal {
         require(currentCollateral.validUntil != 0, "current collateral not deprecated");
         // set new collateral
         agent.setClass1Collateral(_token);
+        emit AMEvents.AgentCollateralTypeChanged(_agentVault, uint8(CollateralType.Class.CLASS1), address(_token));
     }
 
     function getAllAgents(
