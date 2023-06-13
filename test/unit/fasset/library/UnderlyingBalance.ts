@@ -1,5 +1,4 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { ethers } from "hardhat";
 import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -7,12 +6,12 @@ import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
 import { randomAddress } from "../../../../lib/utils/helpers";
 import { AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
+import { precomputeContractAddress } from "../../../utils/contract-test-helpers";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../../utils/test-helpers";
-import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../test-settings";
-import { precomputeContractAddress } from "../../../utils/contract-test-helpers";
+import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../test-settings";
 
 contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance unit tests`, async accounts => {
 

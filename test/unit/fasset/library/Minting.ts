@@ -469,8 +469,6 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const poolFeeShareBIPS = toBIPS(0.4);
         const poolFee = paymentAmount.mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
         chain.mint(underlyingRandomAddress, paymentAmount.add(poolFee));
-        // const nonce = await ethers.provider.getTransactionCount(contracts.agentVaultFactory.address);
-        // let agentVaultAddressCalc = ethers.utils.getContractAddress({ from: contracts.agentVaultFactory.address, nonce: nonce });
         const nonce = await web3.eth.getTransactionCount(contracts.agentVaultFactory.address);
         const agentVaultAddressCalc = precomputeContractAddress(contracts.agentVaultFactory.address, nonce);
         const txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount.add(poolFee), PaymentReference.selfMint(agentVaultAddressCalc));

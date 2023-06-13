@@ -1,5 +1,4 @@
 import BN from "bn.js";
-// import { BigNumber } from "ethers";
 
 // convert primitive object to normalized form (mostly string)
 
