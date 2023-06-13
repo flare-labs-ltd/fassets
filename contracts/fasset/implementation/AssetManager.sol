@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../interface/IIAgentVault.sol";
 import "../interface/IIAssetManager.sol";
-import "../../generated/interface/IAttestationClient.sol";
+import "../../generated/interface/ISCProofVerifier.sol";
 import "../interface/IFAsset.sol";
 import "../library/data/AssetManagerState.sol";
 import "../library/Globals.sol";
@@ -160,7 +160,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _payment proof of payment on the underlying chain
      */
     function proveUnderlyingAddressEOA(
-        IAttestationClient.Payment calldata _payment
+        ISCProofVerifier.Payment calldata _payment
     )
         external override
     {
@@ -448,7 +448,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _proof proof that a block with given number and timestamp exists
      */
     function updateCurrentBlock(
-        IAttestationClient.ConfirmedBlockHeightExists calldata _proof
+        ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof
     )
         external override
     {
@@ -525,7 +525,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _collateralReservationId collateral reservation id
      */
     function executeMinting(
-        IAttestationClient.Payment calldata _payment,
+        ISCProofVerifier.Payment calldata _payment,
         uint256 _collateralReservationId
     )
         external override
@@ -543,7 +543,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _collateralReservationId id of a collateral reservation created by the minter
      */
     function mintingPaymentDefault(
-        IAttestationClient.ReferencedPaymentNonexistence calldata _proof,
+        ISCProofVerifier.ReferencedPaymentNonexistence calldata _proof,
         uint256 _collateralReservationId
     )
         external override
@@ -564,7 +564,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _collateralReservationId collateral reservation id
      */
     function unstickMinting(
-        IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
+        ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof,
         uint256 _collateralReservationId
     )
         external payable override
@@ -585,7 +585,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _lots number of lots to mint
      */
     function selfMint(
-        IAttestationClient.Payment calldata _payment,
+        ISCProofVerifier.Payment calldata _payment,
         address _agentVault,
         uint256 _lots
     )
@@ -639,7 +639,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _redemptionRequestId id of an existing redemption request
      */
     function confirmRedemptionPayment(
-        IAttestationClient.Payment calldata _payment,
+        ISCProofVerifier.Payment calldata _payment,
         uint256 _redemptionRequestId
     )
         external override
@@ -658,7 +658,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _redemptionRequestId id of an existing redemption request
      */
     function redemptionPaymentDefault(
-        IAttestationClient.ReferencedPaymentNonexistence calldata _proof,
+        ISCProofVerifier.ReferencedPaymentNonexistence calldata _proof,
         uint256 _redemptionRequestId
     )
         external override
@@ -677,7 +677,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _redemptionRequestId id of an existing, but already defaulted, redemption request
      */
     function finishRedemptionWithoutPayment(
-        IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
+        ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof,
         uint256 _redemptionRequestId
     )
         external override
@@ -735,7 +735,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _agentVault agent vault address
      */
     function confirmUnderlyingWithdrawal(
-        IAttestationClient.Payment calldata _payment,
+        ISCProofVerifier.Payment calldata _payment,
         address _agentVault
     )
         external override
@@ -771,7 +771,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _agentVault agent vault address
      */
     function confirmTopupPayment(
-        IAttestationClient.Payment calldata _payment,
+        ISCProofVerifier.Payment calldata _payment,
         address _agentVault
     )
         external override
@@ -792,7 +792,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _agentVault agent vault address
      */
     function illegalPaymentChallenge(
-        IAttestationClient.BalanceDecreasingTransaction calldata _transaction,
+        ISCProofVerifier.BalanceDecreasingTransaction calldata _transaction,
         address _agentVault
     )
         external override
@@ -811,8 +811,8 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _agentVault agent vault address
      */
     function doublePaymentChallenge(
-        IAttestationClient.BalanceDecreasingTransaction calldata _payment1,
-        IAttestationClient.BalanceDecreasingTransaction calldata _payment2,
+        ISCProofVerifier.BalanceDecreasingTransaction calldata _payment1,
+        ISCProofVerifier.BalanceDecreasingTransaction calldata _payment2,
         address _agentVault
     )
         external override
@@ -831,7 +831,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _agentVault agent vault address
      */
     function freeBalanceNegativeChallenge(
-        IAttestationClient.BalanceDecreasingTransaction[] calldata _payments,
+        ISCProofVerifier.BalanceDecreasingTransaction[] calldata _payments,
         address _agentVault
     )
         external override

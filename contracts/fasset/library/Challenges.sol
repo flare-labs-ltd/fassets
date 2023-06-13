@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../generated/interface/IAttestationClient.sol";
+import "../../generated/interface/ISCProofVerifier.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
@@ -20,7 +20,7 @@ library Challenges {
     using PaymentConfirmations for PaymentConfirmations.State;
 
     function illegalPaymentChallenge(
-        IAttestationClient.BalanceDecreasingTransaction calldata _payment,
+        ISCProofVerifier.BalanceDecreasingTransaction calldata _payment,
         address _agentVault
     )
         external
@@ -69,8 +69,8 @@ library Challenges {
     }
 
     function doublePaymentChallenge(
-        IAttestationClient.BalanceDecreasingTransaction calldata _payment1,
-        IAttestationClient.BalanceDecreasingTransaction calldata _payment2,
+        ISCProofVerifier.BalanceDecreasingTransaction calldata _payment1,
+        ISCProofVerifier.BalanceDecreasingTransaction calldata _payment2,
         address _agentVault
     )
         external
@@ -96,7 +96,7 @@ library Challenges {
     }
 
     function paymentsMakeFreeBalanceNegative(
-        IAttestationClient.BalanceDecreasingTransaction[] calldata _payments,
+        ISCProofVerifier.BalanceDecreasingTransaction[] calldata _payments,
         address _agentVault
     )
         external
@@ -109,7 +109,7 @@ library Challenges {
         // check the payments originates from agent's address, are not confirmed already and calculate total
         int256 total = 0;
         for (uint256 i = 0; i < _payments.length; i++) {
-            IAttestationClient.BalanceDecreasingTransaction calldata pmi = _payments[i];
+            ISCProofVerifier.BalanceDecreasingTransaction calldata pmi = _payments[i];
             TransactionAttestation.verifyBalanceDecreasingTransaction(pmi);
             // check there are no duplicate transactions
             for (uint256 j = 0; j < i; j++) {

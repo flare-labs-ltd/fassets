@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../generated/interface/IAttestationClient.sol";
+import "../../generated/interface/ISCProofVerifier.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
@@ -32,7 +32,7 @@ library UnderlyingWithdrawalAnnouncements {
     }
 
     function confirmUnderlyingWithdrawal(
-        IAttestationClient.Payment calldata _payment,
+        ISCProofVerifier.Payment calldata _payment,
         address _agentVault
     )
         external

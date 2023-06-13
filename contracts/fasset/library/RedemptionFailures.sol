@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../generated/interface/IAttestationClient.sol";
+import "../../generated/interface/ISCProofVerifier.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
@@ -17,7 +17,7 @@ library RedemptionFailures {
     using AgentCollateral for Collateral.Data;
 
     function redemptionPaymentDefault(
-        IAttestationClient.ReferencedPaymentNonexistence calldata _nonPayment,
+        ISCProofVerifier.ReferencedPaymentNonexistence calldata _nonPayment,
         uint64 _redemptionRequestId
     )
         external
@@ -49,7 +49,7 @@ library RedemptionFailures {
     }
 
     function finishRedemptionWithoutPayment(
-        IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
+        ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof,
         uint64 _redemptionRequestId
     )
         external

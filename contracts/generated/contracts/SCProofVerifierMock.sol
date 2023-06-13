@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-contract StateConnectorMock {
+contract SCProofVerifierMock {
 
     uint256 public constant BUFFER_WINDOW = 90 seconds; 
     uint256 public constant TOTAL_STORED_PROOFS = (1 weeks)/BUFFER_WINDOW; 

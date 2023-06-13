@@ -7,9 +7,9 @@ import "./TransactionAttestation.sol";
 
 
 library StateUpdater {
-    function updateCurrentBlock(
-        IAttestationClient.ConfirmedBlockHeightExists calldata _proof
-    )
+    using SafeCast for uint256;
+
+    function updateCurrentBlock(ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof)
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -20,14 +20,23 @@ library StateUpdater {
             state.currentUnderlyingBlock = finalizationBlockNumber;
             changed = true;
         }
-        uint64 finalizationBlockTimestamp = _proof.blockTimestamp +
-            _proof.numberOfConfirmations * _proof.averageBlockProductionTimeMs / 1000;
+        uint256 finalizationBlockTimestamp = _proof.blockTimestamp + _finalizationTime(_proof);
         if (finalizationBlockTimestamp > state.currentUnderlyingBlockTimestamp) {
-            state.currentUnderlyingBlockTimestamp = finalizationBlockTimestamp;
+            state.currentUnderlyingBlockTimestamp = finalizationBlockTimestamp.toUint64();
             changed = true;
         }
         if (changed) {
-            state.currentUnderlyingBlockUpdatedAt = SafeCast.toUint64(block.timestamp);
+            state.currentUnderlyingBlockUpdatedAt = block.timestamp.toUint64();
         }
+    }
+
+    function _finalizationTime(ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof)
+        private pure
+        returns (uint256)
+    {
+        uint256 timeRange = _proof.blockTimestamp - _proof.lowestQueryWindowBlockTimestamp;
+        uint256 blockRange = _proof.blockNumber - _proof.lowestQueryWindowBlockNumber;
+        // `timeRange / blockRange` is the average block time estimate
+        return _proof.numberOfConfirmations * timeRange / blockRange;
     }
 }

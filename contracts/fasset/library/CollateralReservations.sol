@@ -73,7 +73,7 @@ library CollateralReservations {
     }
 
     function mintingPaymentDefault(
-        IAttestationClient.ReferencedPaymentNonexistence calldata _nonPayment,
+        ISCProofVerifier.ReferencedPaymentNonexistence calldata _nonPayment,
         uint64 _crtId
     )
         external
@@ -105,7 +105,7 @@ library CollateralReservations {
     }
 
     function unstickMinting(
-        IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
+        ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof,
         uint64 _crtId
     )
         external

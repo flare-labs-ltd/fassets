@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../generated/interface/IAttestationClient.sol";
+import "../../generated/interface/ISCProofVerifier.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/MathUtils.sol";
 import "./data/AssetManagerState.sol";
@@ -21,7 +21,7 @@ library UnderlyingBalance {
     using Agent for Agent.State;
 
     function confirmTopupPayment(
-        IAttestationClient.Payment calldata _payment,
+        ISCProofVerifier.Payment calldata _payment,
         address _agentVault
     )
         external

@@ -39,7 +39,7 @@ library AssetManagerSettings {
         address agentWhitelist;
 
         // Attestation client verifies and decodes attestation proofs.
-        // Type: IAttestationClient
+        // Type: ISCProofVerifier
         // changed via address updater
         address attestationClient;
 
