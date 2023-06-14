@@ -1,6 +1,7 @@
 import { DHType } from "../../verification/generated/attestation-hash-types";
+import { ARBase } from "../../verification/generated/attestation-request-types";
 
-export interface AttestationRequest {
+export interface AttestationRequestId {
     round: number;
     data: string;
 }
@@ -15,6 +16,6 @@ export interface AttestationResponse<T extends DHType> {
 export interface IStateConnectorClient {
     roundFinalized(round: number): Promise<boolean>;
     waitForRoundFinalization(round: number): Promise<void>;
-    submitRequest(data: string): Promise<AttestationRequest>;
+    submitRequest(request: ARBase): Promise<AttestationRequestId | null>;
     obtainProof(round: number, requestData: string): Promise<AttestationResponse<DHType>>;
 }
