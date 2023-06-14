@@ -1,10 +1,10 @@
 import {
-    AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents, AttestationClientSCEvents, CollateralPoolFactoryEvents,
+    AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents, SCProofVerifierEvents, CollateralPoolFactoryEvents,
     ERC20Events, FtsoManagerEvents, FtsoEvents, FtsoRegistryEvents, StateConnectorEvents, WNatEvents
 } from "../../../lib/fasset/IAssetContext";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import {
-    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, AttestationClientSCInstance, CollateralPoolFactoryInstance,
+    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, SCProofVerifierInstance, CollateralPoolFactoryInstance,
     ERC20MockInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance, StateConnectorMockInstance, WNatInstance
 } from "../../../typechain-truffle";
 import { createFtsoMock } from "../../unit/fasset/test-settings";
@@ -14,7 +14,7 @@ import { testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
 
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
-const AttestationClient = artifacts.require('AttestationClientSC');
+const AttestationClient = artifacts.require('SCProofVerifier');
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const WNat = artifacts.require('WNat');
@@ -38,7 +38,7 @@ export class CommonContext {
         public stateConnector: ContractWithEvents<StateConnectorMockInstance, StateConnectorEvents>,
         public agentVaultFactory: ContractWithEvents<AgentVaultFactoryInstance, AgentVaultFactoryEvents>,
         public collateralPoolFactory: ContractWithEvents<CollateralPoolFactoryInstance, CollateralPoolFactoryEvents>,
-        public attestationClient: ContractWithEvents<AttestationClientSCInstance, AttestationClientSCEvents>,
+        public attestationClient: ContractWithEvents<SCProofVerifierInstance, SCProofVerifierEvents>,
         public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryEvents>,
         public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerEvents>,
         public natInfo: TestNatInfo,

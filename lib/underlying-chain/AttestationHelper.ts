@@ -1,10 +1,11 @@
+import { constants } from "@openzeppelin/test-helpers";
 import { DHBalanceDecreasingTransaction, DHConfirmedBlockHeightExists, DHPayment, DHReferencedPaymentNonexistence, DHType } from "../verification/generated/attestation-hash-types";
-import { encodeBalanceDecreasingTransaction, encodeConfirmedBlockHeightExists, encodePayment, encodeReferencedPaymentNonexistence } from "../verification/generated/attestation-request-encode";
 import { ARBalanceDecreasingTransaction, ARConfirmedBlockHeightExists, ARPayment, ARReferencedPaymentNonexistence } from "../verification/generated/attestation-request-types";
 import { AttestationType } from "../verification/generated/attestation-types-enum";
 import { SourceId } from "../verification/sources/sources";
 import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
 import { AttestationRequest, AttestationResponse, IStateConnectorClient } from "./interfaces/IStateConnectorClient";
+import { AttestationDefinitionStore } from "../verification/attestation-types/AttestationDefinitionStore";
 
 // Attestation provider data that is always proved (i.e. contains Merkle proof).
 export type ProvedDH<T extends DHType> = T & { merkleProof: string };
@@ -54,9 +55,11 @@ export class AttestationHelper {
             inUtxo: findAddressIndex(transaction.inputs, sourceAddress, 0),
             utxo: findAddressIndex(transaction.outputs, receivingAddress, 0),
             id: transactionHash,
-            upperBoundProof: finalizationBlock.hash,
+            blockNumber: block.number,
+            messageIntegrityCode: constants.ZERO_BYTES32,
         };
-        const data = encodePayment(request);
+        const defStore = new AttestationDefinitionStore();
+        const data = defStore.encodeRequest(request);
         return await this.client.submitRequest(data);
     }
 
@@ -73,15 +76,17 @@ export class AttestationHelper {
         const request: ARBalanceDecreasingTransaction = {
             attestationType: AttestationType.BalanceDecreasingTransaction,
             sourceId: this.chainId,
-            inUtxo: findAddressIndex(transaction.inputs, sourceAddress, 0),
+            sourceAddressIndicator: web3.utils.keccak256(sourceAddress),
             id: transactionHash,
-            upperBoundProof: finalizationBlock.hash,
+            blockNumber: block.number,
+            messageIntegrityCode: constants.ZERO_BYTES32,
         };
-        const data = encodeBalanceDecreasingTransaction(request);
+        const defStore = new AttestationDefinitionStore();
+        const data = defStore.encodeRequest(request);
         return await this.client.submitRequest(data);
     }
 
-    async requestReferencedPaymentNonexistenceProof(destinationAddress: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number): Promise<AttestationRequest> {
+    async requestReferencedPaymentNonexistenceProof(destinationAddress: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number): Promise<AttestationRequest> {
         let overflowBlock = await this.chain.getBlockAt(endBlock + 1);
         while (overflowBlock != null && overflowBlock.timestamp <= endTimestamp) {
             overflowBlock = await this.chain.getBlockAt(overflowBlock.number + 1);
@@ -96,18 +101,20 @@ export class AttestationHelper {
         const request: ARReferencedPaymentNonexistence = {
             attestationType: AttestationType.ReferencedPaymentNonexistence,
             sourceId: this.chainId,
+            minimalBlockNumber: startBlock,
             deadlineBlockNumber: endBlock,
             deadlineTimestamp: endTimestamp,
             destinationAddressHash: web3.utils.keccak256(destinationAddress),
             amount: amount,
             paymentReference: paymentReference,
-            upperBoundProof: finalizationBlock.hash,
+            messageIntegrityCode: constants.ZERO_BYTES32,
         };
-        const data = encodeReferencedPaymentNonexistence(request);
+        const defStore = new AttestationDefinitionStore();
+        const data = defStore.encodeRequest(request);
         return await this.client.submitRequest(data);
     }
 
-    async requestConfirmedBlockHeightExistsProof(): Promise<AttestationRequest> {
+    async requestConfirmedBlockHeightExistsProof(queryWindow: number): Promise<AttestationRequest> {
         const blockHeight = await this.chain.getBlockHeight();
         const finalizationBlock = await this.chain.getBlockAt(blockHeight);
         if (finalizationBlock == null) {
@@ -116,9 +123,12 @@ export class AttestationHelper {
         const request: ARConfirmedBlockHeightExists = {
             attestationType: AttestationType.ConfirmedBlockHeightExists,
             sourceId: this.chainId,
-            upperBoundProof: finalizationBlock.hash,
+            blockNumber: blockHeight - this.chain.finalizationBlocks,
+            queryWindow: queryWindow,
+            messageIntegrityCode: constants.ZERO_BYTES32,
         };
-        const data = encodeConfirmedBlockHeightExists(request);
+        const defStore = new AttestationDefinitionStore();
+        const data = defStore.encodeRequest(request);
         return await this.client.submitRequest(data);
     }
 
@@ -158,8 +168,8 @@ export class AttestationHelper {
         return result as ProvedDH<DHBalanceDecreasingTransaction>;
     }
 
-    async proveReferencedPaymentNonexistence(destinationAddress: string, paymentReference: string, amount: BN, endBlock: number, endTimestamp: number): Promise<ProvedDH<DHReferencedPaymentNonexistence>> {
-        const request = await this.requestReferencedPaymentNonexistenceProof(destinationAddress, paymentReference, amount, endBlock, endTimestamp);
+    async proveReferencedPaymentNonexistence(destinationAddress: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number): Promise<ProvedDH<DHReferencedPaymentNonexistence>> {
+        const request = await this.requestReferencedPaymentNonexistenceProof(destinationAddress, paymentReference, amount, startBlock, endBlock, endTimestamp);
         await this.client.waitForRoundFinalization(request.round);
         const { result } = await this.obtainReferencedPaymentNonexistenceProof(request.round, request.data);
         if (result == null || result.merkleProof == null) {
@@ -168,8 +178,8 @@ export class AttestationHelper {
         return result as ProvedDH<DHReferencedPaymentNonexistence>;
     }
 
-    async proveConfirmedBlockHeightExists(): Promise<ProvedDH<DHConfirmedBlockHeightExists>> {
-        const request = await this.requestConfirmedBlockHeightExistsProof();
+    async proveConfirmedBlockHeightExists(queryWindow: number): Promise<ProvedDH<DHConfirmedBlockHeightExists>> {
+        const request = await this.requestConfirmedBlockHeightExistsProof(queryWindow);
         await this.client.waitForRoundFinalization(request.round);
         const { result } = await this.obtainConfirmedBlockHeightExistsProof(request.round, request.data);
         if (result == null || result.merkleProof == null) {

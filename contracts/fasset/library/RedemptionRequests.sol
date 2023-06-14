@@ -180,10 +180,11 @@ library RedemptionRequests {
         uint64 requestId = _newRequestId(_poolSelfClose);
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
         uint128 redemptionFeeUBA = redeemedValueUBA.mulBips(state.settings.redemptionFeeBIPS).toUint128();
+        uint64 firstUnderlyingBlock = state.currentUnderlyingBlock;
         state.redemptionRequests[requestId] = Redemption.Request({
             redeemerUnderlyingAddressHash: underlyingAddressHash,
             underlyingValueUBA: redeemedValueUBA,
-            firstUnderlyingBlock: state.currentUnderlyingBlock,
+            firstUnderlyingBlock: firstUnderlyingBlock,
             lastUnderlyingBlock: lastUnderlyingBlock,
             lastUnderlyingTimestamp: lastUnderlyingTimestamp,
             timestamp: block.timestamp.toUint64(),
@@ -203,6 +204,7 @@ library RedemptionRequests {
             normalizedUnderlyingAddress,
             redeemedValueUBA,
             redemptionFeeUBA,
+            firstUnderlyingBlock,
             lastUnderlyingBlock,
             lastUnderlyingTimestamp,
             PaymentReference.redemption(requestId));

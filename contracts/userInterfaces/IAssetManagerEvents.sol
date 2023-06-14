@@ -118,6 +118,7 @@ interface IAssetManagerEvents {
         uint256 collateralReservationId,
         uint256 valueUBA,
         uint256 feeUBA,
+        uint256 firstUnderlyingBlock,
         uint256 lastUnderlyingBlock,
         uint256 lastUnderlyingTimestamp,
         string paymentAddress,
@@ -169,6 +170,7 @@ interface IAssetManagerEvents {
         string paymentAddress,
         uint256 valueUBA,
         uint256 feeUBA,
+        uint256 firstUnderlyingBlock,
         uint256 lastUnderlyingBlock,
         uint256 lastUnderlyingTimestamp,
         bytes32 paymentReference);

@@ -27,10 +27,10 @@ library CollateralReservations {
     )
         external
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireWhitelistedAgentVaultOwner(agent);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
+        AssetManagerState.State storage state = AssetManagerState.get();
         require(state.pausedAt == 0, "minting paused");
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 lots");
@@ -66,6 +66,7 @@ library CollateralReservations {
             crtId,
             underlyingValueUBA,
             underlyingFeeUBA,
+            state.currentUnderlyingBlock,
             lastUnderlyingBlock,
             lastUnderlyingTimestamp,
             paymentAddress,

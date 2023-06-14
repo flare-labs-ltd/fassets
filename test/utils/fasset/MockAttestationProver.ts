@@ -38,6 +38,7 @@ export class MockAttestationProver {
         const sourceAddressHash = web3.utils.keccak256(transaction.inputs[inUtxo][0]);
         const receivingAddressHash = web3.utils.keccak256(transaction.outputs[utxo][0]);
         const spent = totalSpentValue(transaction, sourceAddressHash);
+        const received = totalReceivedValue(transaction, receivingAddressHash);
         const proof: DHPayment = {
             stateConnectorRound: 0, // filled later
             blockNumber: toBN(block.number),
@@ -46,10 +47,14 @@ export class MockAttestationProver {
             inUtxo: toBN(inUtxo),
             utxo: toBN(utxo),
             sourceAddressHash: sourceAddressHash,
+            intendedSourceAddressHash: sourceAddressHash,
             receivingAddressHash: receivingAddressHash,
+            intendedReceivingAddressHash: receivingAddressHash,
             paymentReference: transaction.reference ?? constants.ZERO_BYTES32,
             spentAmount: spent,
-            receivedAmount: totalReceivedValue(transaction, receivingAddressHash),
+            intendedSpentAmount: spent,
+            receivedAmount: received,
+            intendedReceivedAmount: received,
             oneToOne: false,    // not needed
             status: toBN(transaction.status)
         };
@@ -65,8 +70,8 @@ export class MockAttestationProver {
             blockNumber: toBN(block.number),
             blockTimestamp: toBN(block.timestamp),
             transactionHash: transaction.hash,
-            inUtxo: toBN(inUtxo),
             sourceAddressHash: sourceAddressHash,
+            sourceAddressIndicator: sourceAddressHash,
             spentAmount: spent,
             paymentReference: transaction.reference ?? constants.ZERO_BYTES32,
         };
@@ -171,7 +176,6 @@ export class MockAttestationProver {
             blockNumber: toBN(block.number),
             blockTimestamp: toBN(block.timestamp),
             numberOfConfirmations: toBN(this.chain.finalizationBlocks),
-            averageBlockProductionTimeMs: toBN(Math.round(this.chain.secondsPerBlock * 1000)),
             lowestQueryWindowBlockNumber: toBN(lowestQueryWindowBlock?.number ?? 0),
             lowestQueryWindowBlockTimestamp: toBN(lowestQueryWindowBlock?.timestamp ?? 0),
         };
