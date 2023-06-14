@@ -225,6 +225,16 @@ interface IAssetManager is IAssetManagerEvents {
     ) external;
 
     /**
+     * If the current agent's class1 collateral token gets deprecated, the agent must switch with this method.
+     * NOTE: may only be called by the agent vault owner.
+     * NOTE: at the time of switch, the agent must have enough of both collaterals in the vault.
+     */
+    function switchClass1Collateral(
+        address _agentVault,
+        IERC20 _token
+    ) external;
+
+    /**
      * When current pool collateral token contract (WNat) is replaced by the method setPoolCollateralType,
      * pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for
      * new ones and sets it for use by the pool.

@@ -220,6 +220,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     /**
      * Due to effect on the pool, all agent settings are timelocked.
      * This method announces a setting change. The change can be executed after the timelock expires.
+     * NOTE: may only be called by the agent vault owner.
      */
     function announceAgentSettingUpdate(
         address _agentVault,
@@ -234,6 +235,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     /**
      * Due to effect on the pool, all agent settings are timelocked.
      * This method executes a setting change after the timelock expired.
+     * NOTE: may only be called by the agent vault owner.
      */
     function executeAgentSettingUpdate(
         address _agentVault,
@@ -242,6 +244,20 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         external override
     {
         AgentSettingsUpdater.executeUpdate(_agentVault, _name);
+    }
+
+    /**
+     * If the current agent's class1 collateral token gets deprecated, the agent must switch with this method.
+     * NOTE: may only be called by the agent vault owner.
+     * NOTE: at the time of switch, the agent must have enough of both collaterals in the vault.
+     */
+    function switchClass1Collateral(
+        address _agentVault,
+        IERC20 _token
+    )
+        external override
+    {
+        AgentsExternal.switchClass1Collateral(_agentVault, _token);
     }
 
     /**
