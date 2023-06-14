@@ -258,6 +258,14 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_ATTESTATION_WINDOW_SECONDS, abi.encode(_value));
     }
 
+    function setAverageBlockTimeMS(IIAssetManager[] memory _assetManagers, uint256 _value)
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_AVERAGE_BLOCK_TIME_MS, abi.encode(_value));
+    }
+
     function setAnnouncedUnderlyingConfirmationMinSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyImmediateGovernance

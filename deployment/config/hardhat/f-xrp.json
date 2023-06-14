@@ -65,6 +65,7 @@
     "redemptionDefaultFactorPoolBIPS": 0,
     "underlyingBlocksForPayment": 100,
     "underlyingSecondsForPayment": 300,
+    "averageBlockTimeMS": 2000,
     "attestationWindowSeconds": 86400,
     "confirmationByOthersAfterSeconds": 7200,
     "confirmationByOthersRewardUSD5": "100 00000",

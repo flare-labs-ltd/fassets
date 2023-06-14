@@ -53,6 +53,11 @@ library AssetManagerSettings {
         // timelocked
         address liquidationStrategy;
 
+        // The address where bunrned NAt is sent.
+        // (E.g. collateral reservation fee is burned on successful minting.)
+        // immutable
+        address payable burnAddress;
+
         // FTSO registry from which the system obtains ftso's for nat and asset.
         // Type: IFtsoRegistry
         // changed via address updater
@@ -67,20 +72,19 @@ library AssetManagerSettings {
         // immutable
         uint8 assetMintingDecimals;
 
+        // Must match attestation data chainId.
+        // immutable
+        uint32 chainId;
+
+        // Average time between two successive blocks on the underlying chain, in milliseconds.
+        // rate-limited
+        uint32 averageBlockTimeMS;
+
         // The minimum amount of pool tokens the agent must hold to be able to mint.
         // To be able to mint, the NAT value of all backed fassets together with new ones times this percentage
         // must be smaller than the agent's pool tokens' amount converted to NAT.
         // rate-limited
         uint32 mintingPoolHoldingsRequiredBIPS;
-
-        // WNat is always used as pool collateral.
-        // Collateral reservation fee is burned on successful minting.
-        // immutable
-        address payable burnAddress;
-
-        // Must match attestation data chainId.
-        // immutable
-        uint32 chainId;
 
         // Collateral reservation fee that must be paid by the minter.
         // Payment is in NAT, but is proportional to the value of assets to be minted.
@@ -106,19 +110,14 @@ library AssetManagerSettings {
         // The percentage of minted f-assets that the agent must hold in his underlying address.
         uint16 minUnderlyingBackingBIPS;
 
-        // Maximum minted amount of the f-asset.
-        // rate-limited
-        uint64 mintingCapAMG;
-
-        // Maximum age that trusted price feed is valid.
-        // Otherwise (if there were no trusted votes for that long) just use generic ftso price feed.
-        // rate-limited
-        uint64 maxTrustedPriceAgeSeconds;
-
         // for some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address
         // this must be done by presenting a payment proof from that address
         // immutable
         bool requireEOAAddressProof;
+
+        // Maximum minted amount of the f-asset.
+        // rate-limited
+        uint64 mintingCapAMG;
 
         // Number of underlying blocks that the minter or agent is allowed to pay underlying value.
         // If payment not reported in that time, minting/redemption can be challenged and default action triggered.
@@ -184,11 +183,18 @@ library AssetManagerSettings {
         // rate-limited
         uint64 withdrawalWaitMinSeconds;
 
+        // Maximum age that trusted price feed is valid.
+        // Otherwise (if there were no trusted votes for that long) just use generic ftso price feed.
+        // rate-limited
+        uint64 maxTrustedPriceAgeSeconds;
+
         // Agent can remain in CCB for this much time, after that liquidation starts automatically.
         // rate-limited
         uint64 ccbTimeSeconds;
 
-        // Maximum time for which it is possible to obtain payment or non-payment proofs.
+        // Amount of seconds (typically 1 day) that the payment/non-payment proofs must be available.
+        // This setting is used in `unstickMinting` and `finishRedemptionWithoutPayment` to prove that the time when
+        // payment/non-payment could be proved has already passed.
         // rate-limited
         uint64 attestationWindowSeconds;
 

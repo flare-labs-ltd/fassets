@@ -207,6 +207,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         underlyingBlocksForPayment: parameters.underlyingBlocksForPayment,
         underlyingSecondsForPayment: parameters.underlyingSecondsForPayment,
         attestationWindowSeconds: parameters.attestationWindowSeconds,
+        averageBlockTimeMS: parameters.averageBlockTimeMS,
         confirmationByOthersAfterSeconds: parameters.confirmationByOthersAfterSeconds,
         confirmationByOthersRewardUSD5: parseBN(parameters.confirmationByOthersRewardUSD5),
         paymentChallengeRewardBIPS: parameters.paymentChallengeRewardBIPS,

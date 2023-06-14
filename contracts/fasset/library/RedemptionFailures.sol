@@ -54,6 +54,7 @@ library RedemptionFailures {
     )
         external
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
         Agents.requireAgentVaultOwner(agent);
@@ -64,8 +65,10 @@ library RedemptionFailures {
             // verify proof
             TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
             // if non-payment proof is still available, should use redemptionPaymentDefault() instead
+            // (the last inequality tests that the query window in proof is at least as big as configured)
             require(_proof.lowestQueryWindowBlockNumber > request.lastUnderlyingBlock
-                && _proof.lowestQueryWindowBlockTimestamp > request.lastUnderlyingTimestamp,
+                && _proof.lowestQueryWindowBlockTimestamp > request.lastUnderlyingTimestamp
+                && _proof.lowestQueryWindowBlockTimestamp + settings.attestationWindowSeconds <= _proof.blockTimestamp,
                 "should default first");
             executeDefaultPayment(agent, request, _redemptionRequestId);
         }

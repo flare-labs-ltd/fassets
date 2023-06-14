@@ -111,6 +111,7 @@ library CollateralReservations {
     )
         external
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
@@ -118,7 +119,8 @@ library CollateralReservations {
         TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
         // enough time must pass so that proofs are no longer available
         require(_proof.lowestQueryWindowBlockNumber > crt.lastUnderlyingBlock
-            && _proof.lowestQueryWindowBlockTimestamp > crt.lastUnderlyingTimestamp,
+            && _proof.lowestQueryWindowBlockTimestamp > crt.lastUnderlyingTimestamp
+            && _proof.lowestQueryWindowBlockTimestamp + settings.attestationWindowSeconds <= _proof.blockTimestamp,
             "cannot unstick minting yet");
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
         Agents.burnDirectNAT(crt.reservationFeeNatWei);

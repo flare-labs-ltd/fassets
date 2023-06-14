@@ -86,6 +86,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         maxTrustedPriceAgeSeconds: 8 * MINUTES,
         minUpdateRepeatTimeSeconds: 1 * DAYS,
         attestationWindowSeconds: 1 * DAYS,
+        averageBlockTimeMS: Math.round(ci.blockTime * 1000),
         buybackCollateralFactorBIPS: toBIPS(1.1),               // 1.1
         announcedUnderlyingConfirmationMinSeconds: 0,           // should be higher in production (~ state connector response time, in tests sc response time is 0)
         agentFeeChangeTimelockSeconds: 6 * HOURS,

@@ -20,7 +20,8 @@ library StateUpdater {
             state.currentUnderlyingBlock = finalizationBlockNumber;
             changed = true;
         }
-        uint256 finalizationBlockTimestamp = _proof.blockTimestamp + _finalizationTime(_proof);
+        uint256 finalizationBlockTimestamp = _proof.blockTimestamp +
+            _proof.numberOfConfirmations * state.settings.averageBlockTimeMS / 1000;
         if (finalizationBlockTimestamp > state.currentUnderlyingBlockTimestamp) {
             state.currentUnderlyingBlockTimestamp = finalizationBlockTimestamp.toUint64();
             changed = true;
@@ -28,15 +29,5 @@ library StateUpdater {
         if (changed) {
             state.currentUnderlyingBlockUpdatedAt = block.timestamp.toUint64();
         }
-    }
-
-    function _finalizationTime(ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof)
-        private pure
-        returns (uint256)
-    {
-        uint256 timeRange = _proof.blockTimestamp - _proof.lowestQueryWindowBlockTimestamp;
-        uint256 blockRange = _proof.blockNumber - _proof.lowestQueryWindowBlockNumber;
-        // `timeRange / blockRange` is the average block time estimate
-        return _proof.numberOfConfirmations * timeRange / blockRange;
     }
 }
