@@ -1,7 +1,8 @@
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
-import { FAssetInstance } from "../../../../typechain-truffle";
+import { FAssetInstance, IERC165Contract, IERC20Contract, IVPTokenContract, IIVPTokenContract, IICleanableContract } from "../../../../typechain-truffle";
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { erc165InterfaceId } from "../../../../lib/utils/helpers";
 
 const FAsset = artifacts.require('FAsset');
 
@@ -80,6 +81,30 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             await fAsset.terminate({ from: assetManager });
             const res = fAsset.transfer(accounts[2], 50, { from: accounts[1]});
             await expectRevert(res, "f-asset terminated");
+        });
+    });
+
+    describe("ERC-165 interface identification", () => {
+        it("should properly respond to supportsInterface", async () => {
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20" as any) as any as IERC20Contract;
+            const IFasset = artifacts.require("IFAsset");
+            const IVPToken = artifacts.require("flare-smart-contracts/contracts/userInterfaces/IVPToken.sol:IVPToken" as any) as any as IVPTokenContract;
+            const IIVPToken = artifacts.require("flare-smart-contracts/contracts/token/interface/IIVPToken.sol:IIVPToken" as any) as any as IIVPTokenContract;
+            const IICleanable = artifacts.require("flare-smart-contracts/contracts/token/interface/IICleanable.sol:IICleanable" as any) as any as IICleanableContract;
+            const iERC165 = await IERC165.at(fAsset.address);
+            const iERC20 = await IERC20.at(fAsset.address);
+            const iFasset = await IFasset.at(fAsset.address);
+            const iVPToken = await IVPToken.at(fAsset.address);
+            const iiVPToken = await IIVPToken.at(fAsset.address);
+            const iiCleanable = await IICleanable.at(fAsset.address);
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iERC165.abi)));
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iERC20.abi)));
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iVPToken.abi)));
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iFasset.abi)));
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iiCleanable.abi)));
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iiVPToken.abi, [iVPToken.abi])));
+            assert.isFalse(await fAsset.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
 });

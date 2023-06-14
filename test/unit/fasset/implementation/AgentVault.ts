@@ -1,7 +1,7 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
-import { toBN, toWei } from "../../../../lib/utils/helpers";
-import { AssetManagerControllerInstance, AssetManagerInstance, AssetManagerMockInstance, ERC20MockInstance, FAssetInstance, WNatInstance, CollateralPoolInstance, CollateralPoolTokenInstance, AgentVaultInstance, FAssetMockInstance } from "../../../../typechain-truffle";
+import { toBN, toWei, erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { AssetManagerControllerInstance, AssetManagerInstance, AssetManagerMockInstance, ERC20MockInstance, FAssetInstance, WNatInstance, CollateralPoolInstance, CollateralPoolTokenInstance, AgentVaultInstance, FAssetMockInstance, IERC165Contract } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { getTestFile } from "../../../utils/test-helpers";
@@ -17,6 +17,7 @@ const AssetManagerMock = artifacts.require("AssetManagerMock");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPool = artifacts.require("CollateralPool");
 const FAssetMock = artifacts.require("FAssetMock");
+const AgentVaultFactory = artifacts.require("AgentVaultFactory");
 
 contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, async accounts => {
     let contracts: TestSettingsContracts;
@@ -430,5 +431,34 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await assetManagerMock.callFunctionAt(agentVault.address, agentVault.contract.methods.payout(
             erc20.address, owner, 100).encodeABI(), { from: owner });
         assertWeb3Equal(await erc20.balanceOf(owner), toBN(100));
+    });
+
+    describe("ERC-165 interface identification for Agent Vault", () => {
+        it("should properly respond to supportsInterface", async () => {
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IAgentVault = artifacts.require("IAgentVault");
+            const IIAgentVault = artifacts.require("IIAgentVault");
+            const agentVault = await createAgent(owner, underlyingAgent1);
+            const iERC165 = await IERC165.at(agentVault.address);
+            const iAgentVault = await IAgentVault.at(agentVault.address);
+            const iiAgentVault = await IIAgentVault.at(agentVault.address);
+            assert.isTrue(await agentVault.supportsInterface(erc165InterfaceId(iERC165.abi)));
+            assert.isTrue(await agentVault.supportsInterface(erc165InterfaceId(iAgentVault.abi)));
+            assert.isTrue(await agentVault.supportsInterface(erc165InterfaceId(iiAgentVault.abi, [iAgentVault.abi])));
+            assert.isFalse(await agentVault.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+        });
+    });
+
+
+    describe("ERC-165 interface identification for Agent Vault Factory", () => {
+        it("should properly respond to supportsInterface", async () => {
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IAgentVaultFactory = artifacts.require("IAgentVaultFactory");
+            const iERC165 = await IERC165.at(contracts.agentVaultFactory.address);
+            const iAgentVaultFactory = await IAgentVaultFactory.at(contracts.agentVaultFactory.address);
+            assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(iERC165.abi)));
+            assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(iAgentVaultFactory.abi)));
+            assert.isFalse(await contracts.agentVaultFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+        });
     });
 });

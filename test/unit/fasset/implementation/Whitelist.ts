@@ -1,8 +1,9 @@
 import { constants, expectRevert } from "@openzeppelin/test-helpers";
-import { WhitelistInstance } from "../../../../typechain-truffle";
+import { WhitelistInstance, IERC165Contract } from "../../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
 import { getTestFile } from "../../../utils/test-helpers";
+import { erc165InterfaceId } from "../../../../lib/utils/helpers";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -55,6 +56,18 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
             await waitForTimelock(rev, whitelist, governance);
             const isRevoked = await whitelist.isWhitelisted(whitelistedAddresses[0]);
             assert.equal(isRevoked, false);
+        });
+    });
+
+    describe("ERC-165 interface identification for Agent Vault", () => {
+        it("should properly respond to supportsInterface", async () => {
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IWhitelist = artifacts.require("IWhitelist");
+            const iERC165 = await IERC165.at(whitelist.address);
+            const iWhitelist = await IWhitelist.at(whitelist.address);
+            assert.isTrue(await whitelist.supportsInterface(erc165InterfaceId(iERC165.abi)));
+            assert.isTrue(await whitelist.supportsInterface(erc165InterfaceId(iWhitelist.abi)));
+            assert.isFalse(await whitelist.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
 });

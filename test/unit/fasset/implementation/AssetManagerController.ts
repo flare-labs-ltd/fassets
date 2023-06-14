@@ -3,8 +3,8 @@ import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/Ass
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
-import { AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, randomAddress, toBIPS, toBN, toStringExp, erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, WhitelistInstance, IERC165Contract, AddressUpdatableContract } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager, waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -12,9 +12,11 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../test-settings";
+import { AddressUpdatableInstance, AddressUpdatableMockContract } from "../../../../typechain-truffle";
 
 const Whitelist = artifacts.require('Whitelist');
 const AssetManagerController = artifacts.require('AssetManagerController');
+const AddressUpdatableMock = artifacts.require('AddressUpdatableMock');
 
 contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager controller basic tests`, async accounts => {
     const governance = accounts[10];
@@ -33,6 +35,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
     let whitelist: WhitelistInstance;
+    let addressUpdatableMock : AddressUpdatableInstance;
 
     let liquidationStrategySettings: LiquidationStrategyImplSettings;
 
@@ -63,6 +66,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         const encodedLiquidationStrategySettings = encodeLiquidationStrategyImplSettings(liquidationStrategySettings);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, encodedLiquidationStrategySettings, updateExecutor);
+        addressUpdatableMock = await AddressUpdatableMock.new(contracts.addressUpdater.address);
     });
 
     describe("set and update settings with controller", () => {
@@ -1001,5 +1005,17 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assert.isFalse(await fAsset.terminated());
         });
 
+    });
+
+    describe("ERC-165 interface identification", () => {
+        it("should properly respond to supportsInterface", async () => {
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IIAddressUpdatable = artifacts.require('flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdatable.sol:IIAddressUpdatable'as any) as any as AddressUpdatableContract;
+            const iERC165 = await IERC165.at(assetManagerController.address);
+            const iiAddressUpdatable = await IIAddressUpdatable.at(addressUpdatableMock.address);
+            assert.isTrue(await assetManagerController.supportsInterface(erc165InterfaceId(iERC165.abi)));
+            assert.isTrue(await assetManagerController.supportsInterface(erc165InterfaceId(iiAddressUpdatable.abi)));
+            assert.isFalse(await assetManagerController.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+        });
     });
 });
