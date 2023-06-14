@@ -101,7 +101,7 @@ library Agents {
     )
         internal
     {
-        _agent.collateralPool.setTopupCollateralRatioBIPS(_poolTopupTokenPriceFactorBIPS);
+        _agent.collateralPool.setTopupTokenPriceFactorBIPS(_poolTopupTokenPriceFactorBIPS);
     }
 
     function allocateMintedAssets(

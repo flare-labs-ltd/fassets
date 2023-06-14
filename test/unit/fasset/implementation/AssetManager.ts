@@ -246,7 +246,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 "only agent vault owner");
         });
 
-        it("should correctly update agent settings", async () => {
+        it("should correctly update agent settings fee BIPS", async () => {
             const agentFeeChangeTimelock = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
             const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "feeBIPS", 2000, { from: agentOwner1 });
@@ -254,6 +254,77 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "feeBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.feeBIPS.toString(), "2000");
+        });
+
+        it("should correctly update agent setting pool fee share BIPS", async () => {
+            const agentFeeChangeTimelock = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolFeeShareBIPS", 2000, { from: agentOwner1 });
+            await time.increase(agentFeeChangeTimelock);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "poolFeeShareBIPS", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assert.equal(agentInfo.poolFeeShareBIPS.toString(), "2000");
+        });
+
+        it("should correctly update agent setting minting Class1 collateral ratio BIPS", async () => {
+            const agentCollateralRatioChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "mintingClass1CollateralRatioBIPS", 25000, { from: agentOwner1 });
+            await time.increase(agentCollateralRatioChangeTimelock);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "mintingClass1CollateralRatioBIPS", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            console.log(agentInfo.mintingClass1CollateralRatioBIPS.toString());
+            assert.equal(agentInfo.mintingClass1CollateralRatioBIPS.toString(), "25000");
+        });
+
+        it("should correctly update agent setting minting pool collateral ratio BIPS", async () => {
+            const agentCollateralRatioChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "mintingPoolCollateralRatioBIPS", 25000, { from: agentOwner1 });
+            await time.increase(agentCollateralRatioChangeTimelock);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "mintingPoolCollateralRatioBIPS", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assert.equal(agentInfo.mintingPoolCollateralRatioBIPS.toString(), "25000");
+        });
+
+        it("should correctly update agent setting buy fasset by agent factor BIPS", async () => {
+            const agentBuyFactorChangeTimelock = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "buyFAssetByAgentFactorBIPS", 25000, { from: agentOwner1 });
+            await time.increase(agentBuyFactorChangeTimelock);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "buyFAssetByAgentFactorBIPS", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assert.equal(agentInfo.buyFAssetByAgentFactorBIPS.toString(), "25000");
+        });
+
+        it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
+            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", 25000, { from: agentOwner1 });
+            await time.increase(agentPoolExitCRChangeTimelock);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assert.equal(agentInfo.poolExitCollateralRatioBIPS.toString(), "25000");
+        });
+
+        it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
+            const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", 25000, { from: agentOwner1 });
+            await time.increase(agentPoolTopupCRChangeTimelock);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assert.equal(agentInfo.poolTopupCollateralRatioBIPS.toString(), "25000");
+        });
+
+        it("should correctly update agent setting pool topup token price factor BIPS", async () => {
+            const agentPoolTopupPriceFactorChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupTokenPriceFactorBIPS", 9000, { from: agentOwner1 });
+            await time.increase(agentPoolTopupPriceFactorChangeTimelock);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupTokenPriceFactorBIPS", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assert.equal(agentInfo.poolTopupTokenPriceFactorBIPS.toString(), "9000");
         });
     });
 
