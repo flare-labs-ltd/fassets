@@ -354,6 +354,7 @@ export class Agent extends AssetContextClient {
             request.paymentAddress,
             request.paymentReference,
             request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(),
             request.lastUnderlyingBlock.toNumber(),
             request.lastUnderlyingTimestamp.toNumber());
         const res = await this.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: this.ownerHotAddress });
@@ -361,7 +362,7 @@ export class Agent extends AssetContextClient {
     }
 
     async finishRedemptionWithoutPayment(request: EventArgs<RedemptionRequested>): Promise<EventArgs<RedemptionDefault>> {
-        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists();
+        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(this.context.attestationWindowSeconds());
         const res = await this.assetManager.finishRedemptionWithoutPayment(proof, request.requestId, { from: this.ownerHotAddress });
         return eventArgs(res, "RedemptionDefault");
     }
@@ -401,6 +402,7 @@ export class Agent extends AssetContextClient {
             this.underlyingAddress,
             crt.paymentReference,
             crt.valueUBA.add(crt.feeUBA),
+            crt.firstUnderlyingBlock.toNumber(),
             crt.lastUnderlyingBlock.toNumber(),
             crt.lastUnderlyingTimestamp.toNumber());
         const res = await this.assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: this.ownerHotAddress });
@@ -426,7 +428,7 @@ export class Agent extends AssetContextClient {
     }
 
     async unstickMinting(crt: EventArgs<CollateralReserved>) {
-        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists();
+        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(this.context.attestationWindowSeconds());
         const unstickMintingCost = await this.unstickMintingCostNAT(crt);
         await this.assetManager.unstickMinting(proof, crt.collateralReservationId, { from: this.ownerHotAddress, value: unstickMintingCost });
     }

@@ -96,9 +96,13 @@ export class AssetContext implements IAssetContext {
     }
 
     async updateUnderlyingBlock() {
-        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists();
+        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(this.attestationWindowSeconds());
         await this.assetManager.updateCurrentBlock(proof);
         return toNumber(proof.blockNumber) + toNumber(proof.numberOfConfirmations);
+    }
+
+    attestationWindowSeconds() {
+        return Number(this.settings.attestationWindowSeconds);
     }
 
     convertAmgToUBA(valueAMG: BNish) {

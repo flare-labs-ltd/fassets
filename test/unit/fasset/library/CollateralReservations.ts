@@ -209,17 +209,20 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         // wrong address
         const proofAddress = await attestationProvider.proveReferencedPaymentNonexistence(
-            underlyingMinter1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
+            underlyingMinter1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA),
+            crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseAddress = assetManager.mintingPaymentDefault(proofAddress, crt.collateralReservationId, { from: agentOwner1 });
         await expectRevert(promiseAddress, "minting non-payment mismatch");
         // wrong reference
         const proofReference = await attestationProvider.proveReferencedPaymentNonexistence(
-            underlyingAgent1, PaymentReference.minting(crt.collateralReservationId.addn(1)), crt.valueUBA.add(crt.feeUBA), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
+            underlyingAgent1, PaymentReference.minting(crt.collateralReservationId.addn(1)), crt.valueUBA.add(crt.feeUBA),
+            crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseReference = assetManager.mintingPaymentDefault(proofReference, crt.collateralReservationId, { from: agentOwner1 });
         await expectRevert(promiseReference, "minting non-payment mismatch");
         // wrong amount
         const proofAmount = await attestationProvider.proveReferencedPaymentNonexistence(
-            underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA).addn(1), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
+            underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA).addn(1),
+            crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseAmount = assetManager.mintingPaymentDefault(proofAmount, crt.collateralReservationId, { from: agentOwner1 });
         await expectRevert(promiseAmount, "minting non-payment mismatch");
     });
@@ -236,7 +239,8 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         // wrong overflow block
         const proofOverflow = await attestationProvider.proveReferencedPaymentNonexistence(
-            underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA), crt.lastUnderlyingBlock.toNumber() - 1, crt.lastUnderlyingTimestamp.toNumber() - chainInfo.blockTime * 2);
+            underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA),
+            crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber() - 1, crt.lastUnderlyingTimestamp.toNumber() - chainInfo.blockTime * 2);
         const promiseOverflow = assetManager.mintingPaymentDefault(proofOverflow, crt.collateralReservationId, { from: agentOwner1 });
         // assert
         await expectRevert(promiseOverflow, "minting default too early");
@@ -254,7 +258,8 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         // wrong overflow block
         const proofOverflow = await attestationProvider.proveReferencedPaymentNonexistence(
-            underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
+            underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA),
+            crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseOverflow = assetManager.mintingPaymentDefault(proofOverflow, crt.collateralReservationId, { from: agentOwner1 });
         // assert
         await expectRevert(promiseOverflow, "minting request too old");

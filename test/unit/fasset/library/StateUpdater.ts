@@ -49,9 +49,9 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingAgent1, 50, PaymentReference.addressOwnership(agentOwner1), { maxFee: 100 });
         await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingAgent1);
 
-        const proof = await attestationProvider.proveConfirmedBlockHeightExists();
+        const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         await assetManager.updateCurrentBlock(proof);
-        const proof2 = await attestationProvider.proveConfirmedBlockHeightExists();
+        const proof2 = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         await assetManager.updateCurrentBlock(proof2);;
     });
 });

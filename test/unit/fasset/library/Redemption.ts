@@ -66,7 +66,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     }
 
     async function updateUnderlyingBlock() {
-        const proof = await attestationProvider.proveConfirmedBlockHeightExists();
+        const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         await assetManager.updateCurrentBlock(proof);
         return toNumber(proof.blockNumber) + toNumber(proof.numberOfConfirmations);
     }
@@ -227,7 +227,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
-        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
         expectEvent(res, 'RedemptionDefault');
     });
@@ -241,7 +242,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
-        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: agentOwner1 });
         expectEvent(res, 'RedemptionDefault');
     });
@@ -255,7 +257,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
-        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: minterAddress1 });
         await expectRevert(res, 'only redeemer or agent');
     });
@@ -269,7 +272,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
-        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA, request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA,
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
         await expectRevert(res, 'redemption non-payment mismatch');
     });
@@ -283,7 +287,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
-        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
         const resReAg = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
         await expectRevert(resReAg, "invalid redemption status");
@@ -305,7 +310,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // skip the time until the proofs cannot be made anymore
         chain.skipTime(stateConnectorClient.queryWindowSeconds);
 
-        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res =  assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
         await expectRevert(res, 'redemption request too old');
     });
@@ -319,7 +325,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
 
-        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber() - 1, request.lastUnderlyingTimestamp.toNumber() - chainInfo.blockTime);
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber() - 1, request.lastUnderlyingTimestamp.toNumber() - chainInfo.blockTime);
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: agentOwner1 });
         await expectRevert(res, 'redemption default too early');
     });
@@ -378,7 +385,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const chainId: SourceId = 2;
         stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
-        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: agentOwner1 });
         await expectRevert(res, 'non-payment not proved');
     });

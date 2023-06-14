@@ -82,7 +82,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         const chainId: SourceId = 2;
         stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
-        const proof = await attestationProvider.proveConfirmedBlockHeightExists();
+        const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         let res = assetManager.updateCurrentBlock(proof);
         await expectRevert(res, "block height not proved")
     });

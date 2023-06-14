@@ -13,11 +13,11 @@ export class Redeemer extends AssetContextClient {
     ) {
         super(context);
     }
-    
+
     static async create(ctx: AssetContext, address: string, underlyingAddress: string) {
         return new Redeemer(ctx, address, underlyingAddress);
     }
-    
+
     async requestRedemption(lots: number): Promise<[requests: EventArgs<RedemptionRequested>[], remainingLots: BN, dustChanges: EventArgs<DustChanged>[]]> {
         const res = await this.assetManager.redeem(lots, this.underlyingAddress, { from: this.address });
         const redemptionRequests = filterEvents(res, 'RedemptionRequested').map(e => e.args);
@@ -39,6 +39,7 @@ export class Redeemer extends AssetContextClient {
             request.paymentAddress,
             request.paymentReference,
             request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(),
             request.lastUnderlyingBlock.toNumber(),
             request.lastUnderlyingTimestamp.toNumber());
         const res = await this.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: this.address });

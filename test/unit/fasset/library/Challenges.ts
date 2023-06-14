@@ -68,7 +68,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
     }
 
     async function updateUnderlyingBlock() {
-        const proof = await attestationProvider.proveConfirmedBlockHeightExists();
+        const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         await assetManager.updateCurrentBlock(proof);
     }
 
