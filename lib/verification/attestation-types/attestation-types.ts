@@ -75,10 +75,9 @@ export function getSummarizedVerificationStatus(status: VerificationStatus): Sum
     case VerificationStatus.NOT_STANDARD_PAYMENT_REFERENCE:
     case VerificationStatus.PAYMENT_SUMMARY_ERROR:
       return SummarizedVerificationStatus.invalid;
-    default:
-      // exhaustive switch guard: if a compile time error appears here, you have forgotten one of the cases
-      ((_: never): void => {})(status);
   }
+  // exhaustive switch guard: if a compile time error appears here, you have forgotten one of the cases
+  ((_: never): void => { })(status);
 }
 
 /**
@@ -102,7 +101,7 @@ export class Verification<R, T> {
   /**
    * Verification status.
    */
-  status: VerificationStatus;
+  status!: VerificationStatus;
 }
 
 export interface WeightedRandomChoice<T> {
@@ -169,7 +168,7 @@ export class AttestationRequest {
   /**
    * Attestation request in hex string representing byte sequence as submitted to State Connector smart contract.
    */
-  request: string;
+  request!: string;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

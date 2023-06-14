@@ -15,8 +15,8 @@ import {
  * Reads attestation type definition schemes and provide methods to encode, decode, compare and hash attestation requests and attestation responses.
  */
 export class AttestationDefinitionStore {
-  definitions: AttestationTypeScheme[];
-  web3: Web3;
+  definitions!: AttestationTypeScheme[];
+  web3!: Web3;
 
   async initialize() {
     this.web3 = new Web3();
@@ -34,7 +34,7 @@ export class AttestationDefinitionStore {
    * @param salt
    * @returns
    */
-  dataHash(request: ARBase, response: any, salt?: string): string | undefined {
+  dataHash(request: ARBase, response: any, salt?: string): string | null | undefined {
     let definition = this.getDefinitionForAttestationType(request.attestationType);
     if (!definition) {
       return;
@@ -72,10 +72,11 @@ export class AttestationDefinitionStore {
     }
     let bytes = "0x";
     for (let def of [...REQUEST_BASE_DEFINITIONS, ...definition.request]) {
-      if (request[def.key] === undefined) {
+      const value = request[def.key as keyof ARBase];
+      if (value === undefined) {
         throw new AttestationRequestEncodeError(`Missing key ${def.key} in request`);
       }
-      bytes += toUnprefixedBytes(request[def.key], def.type, def.size, def.key);
+      bytes += toUnprefixedBytes(value, def.type, def.size, def.key);
     }
     return bytes;
   }
@@ -104,7 +105,7 @@ export class AttestationDefinitionStore {
       throw new AttestationRequestParseError("Incorrectly formatted attestation request");
     }
     let start = 0;
-    let result = {} as ARBase;
+    let result: any = {};
     for (const item of [...REQUEST_BASE_DEFINITIONS, ...definition.request]) {
       const end = start + item.size * 2;
       result[item.key] = fromUnprefixedBytes(input.slice(start, end), item.type, item.size);
@@ -127,7 +128,8 @@ export class AttestationDefinitionStore {
     }
 
     for (const item of [...REQUEST_BASE_DEFINITIONS, ...definition.request]) {
-      if (!assertEqualsByScheme(request1[item.key], request2[item.key], item.type)) {
+      const key = item.key as keyof ARBase;
+      if (!assertEqualsByScheme(request1[key], request2[key], item.type)) {
         return false;
       }
     }
