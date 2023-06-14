@@ -100,10 +100,10 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const iiCleanable = await IICleanable.at(fAsset.address);
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iERC165.abi)));
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iERC20.abi)));
-            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iVPToken.abi)));
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iVPToken.abi, [iERC20.abi])));
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iFasset.abi)));
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iiCleanable.abi)));
-            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iiVPToken.abi, [iVPToken.abi])));
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iiVPToken.abi, [iVPToken.abi, iiCleanable.abi])));
             assert.isFalse(await fAsset.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });

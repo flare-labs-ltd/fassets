@@ -984,7 +984,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const iERC20 = await IERC20.at(collateralPoolToken.address);
             const iCollateralPoolToken = await ICollateralPoolToken.at(collateralPoolToken.address);
             assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iERC165.abi)));
-            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iCollateralPoolToken.abi)));
+            assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iCollateralPoolToken.abi, [iERC20.abi])));
             assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iERC20.abi)));
             assert.isFalse(await collateralPoolToken.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
