@@ -8,7 +8,9 @@
         "declarationMap": true,
         "sourceMap": true,
         "forceConsistentCasingInFileNames": true,
-        "outDir": "dist",
+        "isolatedModules": true,
+        "skipLibCheck": true,
+        "outDir": "build",
         "typeRoots": [
             "test/types",
             "node_modules/flare-smart-contracts/test/types",

@@ -2,6 +2,7 @@ import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-web3";
 import * as dotenv from "dotenv";
 import fs from "fs";
+import glob from "glob";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import { TASK_COMPILE, TASK_TEST_GET_TEST_FILES } from 'hardhat/builtin-tasks/task-names';
@@ -10,7 +11,6 @@ import path from "path";
 import 'solidity-coverage';
 import "./type-extensions";
 const intercept = require('intercept-stdout');
-const glob = require('glob');
 
 // allow glob patterns in test file args
 task(TASK_TEST_GET_TEST_FILES, async ({ testFiles }: { testFiles: string[] }, { config }) => {
