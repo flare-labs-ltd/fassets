@@ -357,6 +357,23 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
         });
 
+        it("should switch class1 collateral token", async () => {
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            //deprecate token
+            const tx = await assetManager.deprecateCollateralType(collaterals[1].collateralClass, collaterals[1].token,
+                settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
+            expectEvent(tx, "CollateralTypeDeprecated");
+            const collateralType = await assetManager.getCollateralType(collaterals[1].collateralClass, collaterals[1].token);
+            assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
+            //Wait until you can swtich class1 token
+            time.increase(settings.tokenInvalidationTimeMinSeconds);
+            //switch class1 token
+            const tx1 = await assetManager.switchClass1Collateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
+            expectEvent(tx1, "AgentCollateralTypeChanged");
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assert.equal(agentInfo.class1CollateralToken, collaterals[2].token);
+        });
+
         it("should set pool collateral token", async () => {
             const newWnat = await ERC20Mock.new("Wrapped NAT", "WNAT");
             const tokenInfo = collaterals[0];
