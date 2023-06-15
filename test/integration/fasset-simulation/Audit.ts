@@ -14,7 +14,7 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
-import { createTestAgentSettings } from "../../unit/fasset/test-settings";
+import { createTestAgentSettings } from "../../utils/test-settings";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 
 const AgentVault = artifacts.require('AgentVault');

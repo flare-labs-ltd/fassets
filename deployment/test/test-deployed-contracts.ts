@@ -1,5 +1,5 @@
 import { requiredEventArgs } from "../../lib/utils/events/truffle";
-import { createTestAgent } from "../../test/unit/fasset/test-settings";
+import { createTestAgent } from "../../test/utils/test-settings";
 import { getTestFile } from "../../test/utils/test-helpers";
 import { AssetManagerControllerInstance } from "../../typechain-truffle";
 import { ChainContracts, loadContracts } from "../lib/contracts";

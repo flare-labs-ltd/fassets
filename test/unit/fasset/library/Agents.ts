@@ -15,7 +15,7 @@ import { assertWeb3Equal } from "../../../utils/web3assertions";
 import {
     createEncodedTestLiquidationSettings, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos,
     createTestSettings, TestFtsos, TestSettingsContracts
-} from "../test-settings";
+} from "../../../utils/test-settings";
 
 contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accounts => {
     const governance = accounts[10];

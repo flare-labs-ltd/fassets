@@ -7,7 +7,7 @@ import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, SCProofVerifierInstance, CollateralPoolFactoryInstance,
     ERC20MockInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance, StateConnectorMockInstance, WNatInstance
 } from "../../../typechain-truffle";
-import { createFtsoMock } from "../../unit/fasset/test-settings";
+import { createFtsoMock } from "../../utils/test-settings";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";

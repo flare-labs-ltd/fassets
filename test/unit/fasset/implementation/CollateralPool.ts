@@ -7,7 +7,7 @@ import {
 import { getTestFile } from "../../../utils/test-helpers";
 import BN from "bn.js";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { createTestContracts, TestSettingsContracts } from "../test-settings";
+import { createTestContracts, TestSettingsContracts } from "../../../utils/test-settings";
 
 function assertEqualBN(a: BN, b: BN, message?: string) {
     assert.equal(a.toString(), b.toString(), message);

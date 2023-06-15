@@ -1,21 +1,21 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralType, CollateralClass } from "../../../lib/fasset/AssetManagerTypes";
-import { encodeLiquidationStrategyImplSettings, LiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
-import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
-import { findRequiredEvent } from "../../../lib/utils/events/truffle";
-import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp } from "../../../lib/utils/helpers";
-import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
+import { AgentSettings, AssetManagerSettings, CollateralType, CollateralClass } from "../../lib/fasset/AssetManagerTypes";
+import { encodeLiquidationStrategyImplSettings, LiquidationStrategyImplSettings } from "../../lib/fasset/LiquidationStrategyImpl";
+import { PaymentReference } from "../../lib/fasset/PaymentReference";
+import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
+import { findRequiredEvent } from "../../lib/utils/events/truffle";
+import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp } from "../../lib/utils/helpers";
+import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerInstance, SCProofVerifierInstance,
     CollateralPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
     IAddressValidatorInstance, IWhitelistInstance, StateConnectorMockInstance, WNatInstance
-} from "../../../typechain-truffle";
-import { TestChainInfo } from "../../integration/utils/TestChainInfo";
-import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
-import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
-import { setDefaultVPContract } from "../../utils/token-test-helpers";
-import { ChainInfo } from "../../../lib/fasset/ChainInfo";
+} from "../../typechain-truffle";
+import { TestChainInfo } from "../integration/utils/TestChainInfo";
+import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
+import { MockChain, MockChainWallet } from "./fasset/MockChain";
+import { setDefaultVPContract } from "./token-test-helpers";
+import { ChainInfo } from "../../lib/fasset/ChainInfo";
 
 const AgentVault = artifacts.require("AgentVault");
 const WNat = artifacts.require("WNat");
