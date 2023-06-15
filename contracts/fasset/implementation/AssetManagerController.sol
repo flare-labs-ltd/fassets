@@ -6,7 +6,7 @@ import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAssetManager.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../../generated/interface/IAttestationClient.sol";
+import "../../generated/interface/ISCProofVerifier.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
 import "../library/SettingsUpdater.sol";
@@ -256,6 +256,14 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     {
         _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_ATTESTATION_WINDOW_SECONDS, abi.encode(_value));
+    }
+
+    function setAverageBlockTimeMS(IIAssetManager[] memory _assetManagers, uint256 _value)
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_AVERAGE_BLOCK_TIME_MS, abi.encode(_value));
     }
 
     function setAnnouncedUnderlyingConfirmationMinSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)

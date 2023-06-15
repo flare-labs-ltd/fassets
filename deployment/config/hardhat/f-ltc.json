@@ -66,6 +66,7 @@
     "underlyingBlocksForPayment": 10,
     "underlyingSecondsForPayment": 3600,
     "attestationWindowSeconds": 86400,
+    "averageBlockTimeMS": 2000,
     "confirmationByOthersAfterSeconds": 7200,
     "confirmationByOthersRewardUSD5": "100 00000",
     "paymentChallengeRewardBIPS": 0,

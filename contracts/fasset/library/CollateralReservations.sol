@@ -27,10 +27,10 @@ library CollateralReservations {
     )
         external
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireWhitelistedAgentVaultOwner(agent);
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
+        AssetManagerState.State storage state = AssetManagerState.get();
         require(state.pausedAt == 0, "minting paused");
         require(agent.availableAgentsPos != 0, "agent not in mint queue");
         require(_lots > 0, "cannot mint 0 lots");
@@ -66,6 +66,7 @@ library CollateralReservations {
             crtId,
             underlyingValueUBA,
             underlyingFeeUBA,
+            state.currentUnderlyingBlock,
             lastUnderlyingBlock,
             lastUnderlyingTimestamp,
             paymentAddress,
@@ -73,7 +74,7 @@ library CollateralReservations {
     }
 
     function mintingPaymentDefault(
-        IAttestationClient.ReferencedPaymentNonexistence calldata _nonPayment,
+        ISCProofVerifier.ReferencedPaymentNonexistence calldata _nonPayment,
         uint64 _crtId
     )
         external
@@ -92,7 +93,7 @@ library CollateralReservations {
             _nonPayment.firstOverflowBlockTimestamp > crt.lastUnderlyingTimestamp,
             "minting default too early");
         require(_nonPayment.lowerBoundaryBlockNumber <= crt.firstUnderlyingBlock,
-            "minting request too old");
+            "minting non-payment proof window too short");
         // send event
         uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFee(agent, crt.underlyingFeeUBA);
         emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
@@ -105,11 +106,12 @@ library CollateralReservations {
     }
 
     function unstickMinting(
-        IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
+        ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof,
         uint64 _crtId
     )
         external
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
@@ -117,7 +119,8 @@ library CollateralReservations {
         TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
         // enough time must pass so that proofs are no longer available
         require(_proof.lowestQueryWindowBlockNumber > crt.lastUnderlyingBlock
-            && _proof.lowestQueryWindowBlockTimestamp > crt.lastUnderlyingTimestamp,
+            && _proof.lowestQueryWindowBlockTimestamp > crt.lastUnderlyingTimestamp
+            && _proof.lowestQueryWindowBlockTimestamp + settings.attestationWindowSeconds <= _proof.blockTimestamp,
             "cannot unstick minting yet");
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
         Agents.burnDirectNAT(crt.reservationFeeNatWei);

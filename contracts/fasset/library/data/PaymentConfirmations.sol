@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../../generated/interface/IAttestationClient.sol";
+import "../../../generated/interface/ISCProofVerifier.sol";
 
 
 library PaymentConfirmations {
@@ -24,7 +24,7 @@ library PaymentConfirmations {
      */
     function confirmIncomingPayment(
         State storage _state,
-        IAttestationClient.Payment calldata _payment
+        ISCProofVerifier.Payment calldata _payment
     )
         internal
     {
@@ -37,7 +37,7 @@ library PaymentConfirmations {
      */
     function confirmSourceDecreasingTransaction(
         State storage _state,
-        IAttestationClient.Payment calldata _payment
+        ISCProofVerifier.Payment calldata _payment
     )
         internal
     {
@@ -49,7 +49,7 @@ library PaymentConfirmations {
      */
     function transactionConfirmed(
         State storage _state,
-        IAttestationClient.BalanceDecreasingTransaction calldata _transaction
+        ISCProofVerifier.BalanceDecreasingTransaction calldata _transaction
     )
         internal view
         returns (bool)

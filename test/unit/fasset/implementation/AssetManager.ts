@@ -735,7 +735,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
     describe("minting", () => {
         it("should update the current block", async () => {
-            const proof = await attestationProvider.proveConfirmedBlockHeightExists();
+            const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
             await assetManager.updateCurrentBlock(proof);
             const currentBlock = await assetManager.currentUnderlyingBlock();
             assertWeb3Equal(currentBlock[0], proof.blockNumber);
@@ -781,7 +781,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // prove non-payment
             const proof = await attestationProvider.proveReferencedPaymentNonexistence(underlyingAgent1,
                 PaymentReference.minting(crt.collateralReservationId), crt.valueUBA.add(crt.feeUBA),
-                chain.blockHeight()-1, chain.lastBlockTimestamp()-1);
+                0, chain.blockHeight()-1, chain.lastBlockTimestamp()-1);
             const tx2 = await assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: agentOwner1 });
             const def = findRequiredEvent(tx2, "MintingPaymentDefault").args;
             // check that events were emitted correctly
@@ -817,7 +817,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const mintedValueNAT = mintedValueUBA.mul(multiplier).div(divisor);
             const unstickMintingCost = mulBIPS(mintedValueNAT, toBN(settings.class1BuyForFlareFactorBIPS));
             // unstick minting
-            const heightExistenceProof = await attestationProvider.proveConfirmedBlockHeightExists();
+            const heightExistenceProof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
             const tx2 = await assetManager.unstickMinting(heightExistenceProof, crt.collateralReservationId,
                 { from: agentOwner1, value: unstickMintingCost });
             const collateralReservationDeleted = findRequiredEvent(tx2, "CollateralReservationDeleted").args;
@@ -882,7 +882,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // do default
             const proof = await attestationProvider.proveReferencedPaymentNonexistence(underlyingRedeemer,
                 PaymentReference.redemption(redemptionRequest.requestId), redemptionRequest.valueUBA.sub(redemptionRequest.feeUBA),
-                chain.blockHeight()-1, chain.lastBlockTimestamp()-1);
+                0, chain.blockHeight()-1, chain.lastBlockTimestamp()-1);
             const redemptionDefaultTx = await assetManager.redemptionPaymentDefault(proof, redemptionRequest.requestId, { from: agentOwner1 });
             // expect events
             const redemptionDefault = findRequiredEvent(redemptionDefaultTx, "RedemptionDefault").args;
@@ -910,7 +910,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // don't mint f-assets for a long time (> 24 hours) to escape the provable attestation window
             skipToProofUnavailability(redemptionRequest.lastUnderlyingBlock, redemptionRequest.lastUnderlyingTimestamp);
             // prove redemption payment
-            const proof = await attestationProvider.proveConfirmedBlockHeightExists();
+            const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
             const redemptionFinishedTx = await assetManager.finishRedemptionWithoutPayment(proof, redemptionRequest.requestId, { from: agentOwner1 });
             const redemptionDefault = findRequiredEvent(redemptionFinishedTx, "RedemptionDefault").args;
             assertWeb3Equal(redemptionDefault.agentVault, agentVault.address);

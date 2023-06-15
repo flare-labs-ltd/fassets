@@ -96,9 +96,13 @@ export class AssetContext implements IAssetContext {
     }
 
     async updateUnderlyingBlock() {
-        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists();
+        const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(this.attestationWindowSeconds());
         await this.assetManager.updateCurrentBlock(proof);
         return toNumber(proof.blockNumber) + toNumber(proof.numberOfConfirmations);
+    }
+
+    attestationWindowSeconds() {
+        return Number(this.settings.attestationWindowSeconds);
     }
 
     convertAmgToUBA(valueAMG: BNish) {
@@ -165,10 +169,9 @@ export class AssetContext implements IAssetContext {
 
     skipToProofUnavailability(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {
         const chain = this.chain as MockChain;
-        const stateConnectorClient = this.stateConnectorClient as MockStateConnectorClient;
         chain.skipTimeTo(Number(lastUnderlyingTimestamp) + 1);
         chain.mineTo(Number(lastUnderlyingBlock) + 1);
-        chain.skipTime(stateConnectorClient.queryWindowSeconds + 1);
+        chain.skipTime(this.attestationWindowSeconds() + 1);
         chain.mine(chain.finalizationBlocks);
     }
 

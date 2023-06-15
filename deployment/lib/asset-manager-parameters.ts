@@ -265,6 +265,12 @@ export interface AssetManagerParameters {
     attestationWindowSeconds: integer;
 
     /**
+     * Average time between two successive blocks on the underlying chain, in milliseconds.
+     * @minimum 0
+     */
+    averageBlockTimeMS: integer;
+
+    /**
      * If the agent or redeemer becomes unresponsive, we still need payment or non-payment confirmations
      * to be presented eventually to properly track agent's underlying balance.
      * Therefore we allow anybody to confirm payments/non-payments this many seconds after request was made.

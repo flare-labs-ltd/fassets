@@ -7,9 +7,9 @@ import "./TransactionAttestation.sol";
 
 
 library StateUpdater {
-    function updateCurrentBlock(
-        IAttestationClient.ConfirmedBlockHeightExists calldata _proof
-    )
+    using SafeCast for uint256;
+
+    function updateCurrentBlock(ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof)
         external
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -20,14 +20,14 @@ library StateUpdater {
             state.currentUnderlyingBlock = finalizationBlockNumber;
             changed = true;
         }
-        uint64 finalizationBlockTimestamp = _proof.blockTimestamp +
-            _proof.numberOfConfirmations * _proof.averageBlockProductionTimeMs / 1000;
+        uint256 finalizationBlockTimestamp = _proof.blockTimestamp +
+            _proof.numberOfConfirmations * state.settings.averageBlockTimeMS / 1000;
         if (finalizationBlockTimestamp > state.currentUnderlyingBlockTimestamp) {
-            state.currentUnderlyingBlockTimestamp = finalizationBlockTimestamp;
+            state.currentUnderlyingBlockTimestamp = finalizationBlockTimestamp.toUint64();
             changed = true;
         }
         if (changed) {
-            state.currentUnderlyingBlockUpdatedAt = SafeCast.toUint64(block.timestamp);
+            state.currentUnderlyingBlockUpdatedAt = block.timestamp.toUint64();
         }
     }
 }

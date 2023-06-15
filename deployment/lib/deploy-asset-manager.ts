@@ -1,15 +1,14 @@
 import BN from "bn.js";
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { AssetManagerSettings, CollateralType, CollateralClass } from '../../lib/fasset/AssetManagerTypes';
+import { AssetManagerSettings, CollateralClass, CollateralType } from '../../lib/fasset/AssetManagerTypes';
+import { web3DeepNormalize } from "../../lib/utils/web3normalize";
+import { FAssetInstance } from "../../typechain-truffle";
 import { JsonParameterSchema } from "./JsonParameterSchema";
 import { AssetManagerParameters, CollateralTypeParameters } from './asset-manager-parameters';
 import { ChainContracts, loadContracts, newContract, saveContracts } from "./contracts";
-import { loadDeployAccounts, ZERO_ADDRESS } from './deploy-utils';
+import { ZERO_ADDRESS, loadDeployAccounts } from './deploy-utils';
 import { ILiquidationStrategyFactory } from "./liquidationStrategyFactory/ILiquidationStrategyFactory";
 import { LiquidationStrategyImpl } from "./liquidationStrategyFactory/LiquidationStrategyImpl";
-import { FAssetInstance } from "../../typechain-truffle";
-import { web3DeepNormalize } from "../../lib/utils/web3normalize";
-import { MAX_BIPS } from "../../lib/utils/helpers";
 
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
 
@@ -22,13 +21,13 @@ export async function deployAttestationClient(hre: HardhatRuntimeEnvironment, co
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
-    const AttestationClient = artifacts.require("AttestationClientSC");
+    const AttestationClient = artifacts.require("SCProofVerifier");
 
     const contracts = loadContracts(contractsFile);
 
     const attestationClient = await AttestationClient.new(contracts.StateConnector.address);
 
-    contracts.AttestationClient = newContract("AttestationClient", "AttestationClientSC.sol", attestationClient.address);
+    contracts.AttestationClient = newContract("AttestationClient", "SCProofVerifier.sol", attestationClient.address);
     saveContracts(contractsFile, contracts);
 
     // console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AttestationClient"], [${attestationClient.address}])'`);
@@ -208,6 +207,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         underlyingBlocksForPayment: parameters.underlyingBlocksForPayment,
         underlyingSecondsForPayment: parameters.underlyingSecondsForPayment,
         attestationWindowSeconds: parameters.attestationWindowSeconds,
+        averageBlockTimeMS: parameters.averageBlockTimeMS,
         confirmationByOthersAfterSeconds: parameters.confirmationByOthersAfterSeconds,
         confirmationByOthersRewardUSD5: parseBN(parameters.confirmationByOthersRewardUSD5),
         paymentChallengeRewardBIPS: parameters.paymentChallengeRewardBIPS,

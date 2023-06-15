@@ -64,6 +64,8 @@ library SettingsUpdater {
         keccak256("updateLiquidationStrategySettings(bytes)");
     bytes32 internal constant SET_ATTESTATION_WINDOW_SECONDS =
         keccak256("setAttestationWindowSeconds(uint256)");
+    bytes32 internal constant SET_AVERAGE_BLOCK_TIME_MS =
+        keccak256("setAverageBlockTimeMS(uint256)");
     bytes32 internal constant SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS =
         keccak256("setAnnouncedUnderlyingConfirmationMinSeconds(uint256)");
     bytes32 internal constant SET_MINTING_POOL_HOLDINGS_REQUIRED_BIPS =
@@ -162,6 +164,9 @@ library SettingsUpdater {
         } else if (_method == SET_ATTESTATION_WINDOW_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAttestationWindowSeconds(_params);
+        } else if (_method == SET_AVERAGE_BLOCK_TIME_MS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setAverageBlockTimeMS(_params);
         } else if (_method == SET_MAX_TRUSTED_PRICE_AGE_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setMaxTrustedPriceAgeSeconds(_params);
@@ -553,6 +558,22 @@ library SettingsUpdater {
         // update
         settings.attestationWindowSeconds = value.toUint64();
         emit AMEvents.SettingChanged("attestationWindowSeconds", value);
+    }
+
+    function _setAverageBlockTimeMS(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value > 0, "cannot be zero");
+        require(value <= settings.averageBlockTimeMS * 2, "increase too big");
+        require(value >= settings.averageBlockTimeMS / 2, "decrease too big");
+        // update
+        settings.averageBlockTimeMS = value.toUint32();
+        emit AMEvents.SettingChanged("averageBlockTimeMS", value);
     }
 
     function _setAnnouncedUnderlyingConfirmationMinSeconds(

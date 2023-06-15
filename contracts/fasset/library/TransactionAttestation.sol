@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../generated/interface/IAttestationClient.sol";
+import "../../generated/interface/ISCProofVerifier.sol";
 import "./data/AssetManagerState.sol";
 
 
@@ -13,7 +13,7 @@ library TransactionAttestation {
     uint8 internal constant PAYMENT_BLOCKED = 2;
 
     function verifyPaymentSuccess(
-        IAttestationClient.Payment calldata _attestationData
+        ISCProofVerifier.Payment calldata _attestationData
     )
         internal view
     {
@@ -22,47 +22,47 @@ library TransactionAttestation {
     }
 
     function verifyPayment(
-        IAttestationClient.Payment calldata _attestationData
+        ISCProofVerifier.Payment calldata _attestationData
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
-        IAttestationClient attestationClient = IAttestationClient(_settings.attestationClient);
+        ISCProofVerifier attestationClient = ISCProofVerifier(_settings.attestationClient);
         require(attestationClient.verifyPayment(_settings.chainId, _attestationData),
             "legal payment not proved");
         require(_confirmationCannotBeCleanedUp(_attestationData.blockTimestamp), "verified transaction too old");
     }
 
     function verifyBalanceDecreasingTransaction(
-        IAttestationClient.BalanceDecreasingTransaction calldata _attestationData
+        ISCProofVerifier.BalanceDecreasingTransaction calldata _attestationData
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
-        IAttestationClient attestationClient = IAttestationClient(_settings.attestationClient);
+        ISCProofVerifier attestationClient = ISCProofVerifier(_settings.attestationClient);
         require(attestationClient.verifyBalanceDecreasingTransaction(_settings.chainId, _attestationData),
             "transaction not proved");
         require(_confirmationCannotBeCleanedUp(_attestationData.blockTimestamp), "verified transaction too old");
     }
 
     function verifyConfirmedBlockHeightExists(
-        IAttestationClient.ConfirmedBlockHeightExists calldata _attestationData
+        ISCProofVerifier.ConfirmedBlockHeightExists calldata _attestationData
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
-        IAttestationClient attestationClient = IAttestationClient(_settings.attestationClient);
+        ISCProofVerifier attestationClient = ISCProofVerifier(_settings.attestationClient);
         require(attestationClient.verifyConfirmedBlockHeightExists(_settings.chainId, _attestationData),
             "block height not proved");
     }
 
     function verifyReferencedPaymentNonexistence(
-        IAttestationClient.ReferencedPaymentNonexistence calldata _attestationData
+        ISCProofVerifier.ReferencedPaymentNonexistence calldata _attestationData
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
-        IAttestationClient attestationClient = IAttestationClient(_settings.attestationClient);
+        ISCProofVerifier attestationClient = ISCProofVerifier(_settings.attestationClient);
         require(attestationClient.verifyReferencedPaymentNonexistence(_settings.chainId, _attestationData),
             "non-payment not proved");
     }

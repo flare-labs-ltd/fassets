@@ -52,7 +52,7 @@ library AgentsCreateDestroy {
     }
 
     function claimAddressWithEOAProof(
-        IAttestationClient.Payment calldata _payment
+        ISCProofVerifier.Payment calldata _payment
     )
         external
     {

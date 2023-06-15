@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../generated/interface/IAttestationClient.sol";
+import "../../generated/interface/ISCProofVerifier.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
@@ -17,7 +17,7 @@ library RedemptionFailures {
     using AgentCollateral for Collateral.Data;
 
     function redemptionPaymentDefault(
-        IAttestationClient.ReferencedPaymentNonexistence calldata _nonPayment,
+        ISCProofVerifier.ReferencedPaymentNonexistence calldata _nonPayment,
         uint64 _redemptionRequestId
     )
         external
@@ -36,7 +36,7 @@ library RedemptionFailures {
             _nonPayment.firstOverflowBlockTimestamp > request.lastUnderlyingTimestamp,
             "redemption default too early");
         require(_nonPayment.lowerBoundaryBlockNumber <= request.firstUnderlyingBlock,
-            "redemption request too old");
+            "redemption non-payment proof window too short");
         // We allow only redeemers or agents to trigger redemption default, since they may want
         // to do it at some particular time. (Agent might want to call default to unstick redemption when
         // the redeemer is unresponsive.)
@@ -49,11 +49,12 @@ library RedemptionFailures {
     }
 
     function finishRedemptionWithoutPayment(
-        IAttestationClient.ConfirmedBlockHeightExists calldata _proof,
+        ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof,
         uint64 _redemptionRequestId
     )
         external
     {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
         Agents.requireAgentVaultOwner(agent);
@@ -64,8 +65,10 @@ library RedemptionFailures {
             // verify proof
             TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
             // if non-payment proof is still available, should use redemptionPaymentDefault() instead
+            // (the last inequality tests that the query window in proof is at least as big as configured)
             require(_proof.lowestQueryWindowBlockNumber > request.lastUnderlyingBlock
-                && _proof.lowestQueryWindowBlockTimestamp > request.lastUnderlyingTimestamp,
+                && _proof.lowestQueryWindowBlockTimestamp > request.lastUnderlyingTimestamp
+                && _proof.lowestQueryWindowBlockTimestamp + settings.attestationWindowSeconds <= _proof.blockTimestamp,
                 "should default first");
             executeDefaultPayment(agent, request, _redemptionRequestId);
         }

@@ -7,7 +7,7 @@ import { findRequiredEvent } from "../../../lib/utils/events/truffle";
 import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import {
-    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerInstance, AttestationClientSCInstance,
+    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerInstance, SCProofVerifierInstance,
     CollateralPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
     IAddressValidatorInstance, IWhitelistInstance, StateConnectorMockInstance, WNatInstance
 } from "../../../typechain-truffle";
@@ -20,7 +20,7 @@ import { ChainInfo } from "../../../lib/fasset/ChainInfo";
 const AgentVault = artifacts.require("AgentVault");
 const WNat = artifacts.require("WNat");
 const AddressUpdater = artifacts.require('AddressUpdater');
-const AttestationClient = artifacts.require('AttestationClientSC');
+const AttestationClient = artifacts.require('SCProofVerifier');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const StateConnector = artifacts.require('StateConnectorMock');
@@ -36,7 +36,7 @@ export interface TestSettingsContracts {
     agentVaultFactory: AgentVaultFactoryInstance;
     collateralPoolFactory: CollateralPoolFactoryInstance;
     stateConnector: StateConnectorMockInstance;
-    attestationClient: AttestationClientSCInstance;
+    attestationClient: SCProofVerifierInstance;
     addressValidator: IAddressValidatorInstance;
     whitelist?: IWhitelistInstance;
     agentWhitelist?: IWhitelistInstance;
@@ -86,6 +86,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         maxTrustedPriceAgeSeconds: 8 * MINUTES,
         minUpdateRepeatTimeSeconds: 1 * DAYS,
         attestationWindowSeconds: 1 * DAYS,
+        averageBlockTimeMS: Math.round(ci.blockTime * 1000),
         buybackCollateralFactorBIPS: toBIPS(1.1),               // 1.1
         announcedUnderlyingConfirmationMinSeconds: 0,           // should be higher in production (~ state connector response time, in tests sc response time is 0)
         agentFeeChangeTimelockSeconds: 6 * HOURS,

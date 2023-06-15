@@ -5,10 +5,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../interface/IAttestationClient.sol";
+import "../interface/ISCProofVerifier.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-abstract contract AttestationClientBase is IAttestationClient {
+abstract contract SCProofVerifierBase is ISCProofVerifier {
     using MerkleProof for bytes32[];
 
     // possible attestationType values
@@ -16,7 +16,6 @@ abstract contract AttestationClientBase is IAttestationClient {
     uint16 public constant BALANCE_DECREASING_TRANSACTION = 2;
     uint16 public constant CONFIRMED_BLOCK_HEIGHT_EXISTS = 3;
     uint16 public constant REFERENCED_PAYMENT_NONEXISTENCE = 4;
-    uint16 public constant TRUSTLINE_ISSUANCE = 5;
 
     function verifyPayment(uint32 _chainId, Payment calldata _data)
         external view override
@@ -62,17 +61,6 @@ abstract contract AttestationClientBase is IAttestationClient {
         );
     }
 
-    function verifyTrustlineIssuance(uint32 _chainId, TrustlineIssuance calldata _data)
-        external view override
-        returns (bool _proved)
-    {
-        return _verifyMerkleProof(
-            _data.merkleProof,
-            merkleRootForRound(_data.stateConnectorRound),
-            _hashTrustlineIssuance(_chainId, _data)
-        );
-    }
-
     function merkleRootForRound(uint256 _stateConnectorRound) public view virtual returns (bytes32 _merkleRoot);
 
     function _hashPayment(uint32 _chainId, Payment calldata _data)
@@ -84,17 +72,24 @@ abstract contract AttestationClientBase is IAttestationClient {
             abi.encode(
                 PAYMENT,
                 _chainId,
+                _data.stateConnectorRound,
                 _data.blockNumber,
                 _data.blockTimestamp,
                 _data.transactionHash,
                 _data.inUtxo,
-                _data.utxo,
-                _data.sourceAddressHash
+                _data.utxo
             ),
             abi.encode(
+                _data.sourceAddressHash,
+                _data.intendedSourceAddressHash,
                 _data.receivingAddressHash,
+                _data.intendedReceivingAddressHash,
                 _data.spentAmount,
+                _data.intendedSpentAmount,
                 _data.receivedAmount,
+                _data.intendedReceivedAmount
+            ),
+            abi.encode(
                 _data.paymentReference,
                 _data.oneToOne,
                 _data.status
@@ -109,10 +104,11 @@ abstract contract AttestationClientBase is IAttestationClient {
         return keccak256(abi.encode(
             BALANCE_DECREASING_TRANSACTION,
             _chainId,
+            _data.stateConnectorRound,
             _data.blockNumber,
             _data.blockTimestamp,
             _data.transactionHash,
-            _data.inUtxo,
+            _data.sourceAddressIndicator,
             _data.sourceAddressHash,
             _data.spentAmount,
             _data.paymentReference
@@ -126,10 +122,10 @@ abstract contract AttestationClientBase is IAttestationClient {
         return keccak256(abi.encode(
             CONFIRMED_BLOCK_HEIGHT_EXISTS,
             _chainId,
+            _data.stateConnectorRound,
             _data.blockNumber,
             _data.blockTimestamp,
             _data.numberOfConfirmations,
-            _data.averageBlockProductionTimeMs,
             _data.lowestQueryWindowBlockNumber,
             _data.lowestQueryWindowBlockTimestamp
         ));
@@ -144,32 +140,19 @@ abstract contract AttestationClientBase is IAttestationClient {
             abi.encode(
                 REFERENCED_PAYMENT_NONEXISTENCE,
                 _chainId,
+                _data.stateConnectorRound,
                 _data.deadlineBlockNumber,
                 _data.deadlineTimestamp,
                 _data.destinationAddressHash,
                 _data.paymentReference,
-                _data.amount,
-                _data.lowerBoundaryBlockNumber
+                _data.amount
             ),
             abi.encode(
+                _data.lowerBoundaryBlockNumber,
                 _data.lowerBoundaryBlockTimestamp,
                 _data.firstOverflowBlockNumber,
                 _data.firstOverflowBlockTimestamp
             )
-        ));
-    }
-
-    function _hashTrustlineIssuance(uint32 _chainId, TrustlineIssuance calldata _data)
-        private pure
-        returns (bytes32)
-    {
-        return keccak256(abi.encode(
-            TRUSTLINE_ISSUANCE,
-            _chainId,
-            _data.tokenCurrencyCode,
-            _data.tokenValueNominator,
-            _data.tokenValueDenominator,
-            _data.tokenIssuer
         ));
     }
 
