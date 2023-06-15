@@ -10,13 +10,15 @@ import { HardhatUserConfig, task } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
 import "./type-extensions";
+import { trace } from "./lib/utils/helpers";
 const intercept = require('intercept-stdout');
 
 // allow glob patterns in test file args
 task(TASK_TEST_GET_TEST_FILES, async ({ testFiles }: { testFiles: string[] }, { config }) => {
     const cwd = process.cwd();
     if (testFiles.length === 0) {
-        testFiles = [config.paths.tests + '/**/*.{js,ts}'];
+        const testPath = path.relative(cwd, config.paths.tests).replace(/\\/g, '/');    // glob doesn't work with windows paths
+        testFiles = [testPath + '/**/*.{js,ts}'];
     }
     return testFiles.flatMap(pattern => glob.sync(pattern) as string[])
         .map(fname => path.resolve(cwd, fname));
