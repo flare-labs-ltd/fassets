@@ -93,7 +93,7 @@ library CollateralReservations {
             _nonPayment.firstOverflowBlockTimestamp > crt.lastUnderlyingTimestamp,
             "minting default too early");
         require(_nonPayment.lowerBoundaryBlockNumber <= crt.firstUnderlyingBlock,
-            "minting request too old");
+            "minting non-payment proof window too short");
         // send event
         uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFee(agent, crt.underlyingFeeUBA);
         emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);

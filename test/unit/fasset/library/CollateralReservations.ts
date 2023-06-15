@@ -246,7 +246,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await expectRevert(promiseOverflow, "minting default too early");
     });
 
-    it("should not default minting if minting request too old", async () => {
+    it("should not default minting if minting non-payment proof window too short", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
@@ -254,14 +254,14 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // mine some blocks to create overflow block
         chain.mine(chainInfo.underlyingBlocksForPayment + 1);
         // skip the time until the proofs cannot be made anymore
-        chain.skipTime(stateConnectorClient.queryWindowSeconds);
+        chain.skipTime(Number(settings.attestationWindowSeconds) + 1);
         // act
         // wrong overflow block
         const proofOverflow = await attestationProvider.proveReferencedPaymentNonexistence(
             underlyingAgent1, crt.paymentReference, crt.valueUBA.add(crt.feeUBA),
-            crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
+            crt.firstUnderlyingBlock.toNumber() + 1, crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const promiseOverflow = assetManager.mintingPaymentDefault(proofOverflow, crt.collateralReservationId, { from: agentOwner1 });
         // assert
-        await expectRevert(promiseOverflow, "minting request too old");
+        await expectRevert(promiseOverflow, "minting non-payment proof window too short");
     });
 });

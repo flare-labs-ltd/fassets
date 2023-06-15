@@ -36,7 +36,7 @@ library RedemptionFailures {
             _nonPayment.firstOverflowBlockTimestamp > request.lastUnderlyingTimestamp,
             "redemption default too early");
         require(_nonPayment.lowerBoundaryBlockNumber <= request.firstUnderlyingBlock,
-            "redemption request too old");
+            "redemption non-payment proof window too short");
         // We allow only redeemers or agents to trigger redemption default, since they may want
         // to do it at some particular time. (Agent might want to call default to unstick redemption when
         // the redeemer is unresponsive.)

@@ -294,7 +294,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(resReAg, "invalid redemption status");
     });
 
-    it("should not execute redemption payment default - redemption request too old", async () => {
+    it("should not execute redemption payment default - redemption non-payment proof window too short", async () => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
 
@@ -308,12 +308,13 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // mine some blocks to create overflow block
         chain.mine(chainInfo.underlyingBlocksForPayment + 1);
         // skip the time until the proofs cannot be made anymore
-        chain.skipTime(stateConnectorClient.queryWindowSeconds);
+        chain.skipTime(Number(settings.attestationWindowSeconds) + 1);
+        chain.mine();
 
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
-            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+            request.firstUnderlyingBlock.toNumber() + 1, request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res =  assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
-        await expectRevert(res, 'redemption request too old');
+        await expectRevert(res, 'redemption non-payment proof window too short');
     });
 
     it("should not execute redemption payment default - redemption default too early", async () => {
