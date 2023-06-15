@@ -136,7 +136,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         // verify and collect proof data of requests
         const proofs: { [data: string]: DHProof } = {};
         for (const reqData of this.rounds[round]) {
-            const proof = this.proveRequest(reqData);
+            const proof = this.proveRequest(reqData, round);
             if (proof != null) {
                 proofs[reqData] = proof;
             }
@@ -146,7 +146,6 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         const tree = new MerkleTree(hashes);
         await this.stateConnector.setMerkleRoot(round, tree.root ?? constants.ZERO_BYTES32);
         for (const proof of Object.values(proofs)) {
-            proof.data.stateConnectorRound = round;
             proof.data.merkleProof = tree.getProofForValue(proof.hash) ?? [];
         }
         // add new finalized round
@@ -160,19 +159,20 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         }
     }
 
-    private proveRequest(requestData: string): DHProof | null {
+    private proveRequest(requestData: string, stateConnectorRound: number): DHProof | null {
         const request = this.definitionStore.parseRequest<ARBase>(requestData);
         const response = this.proveParsedRequest(request);
         if (response == null) return null;
-        // calculate hash for Merkle tree
-        const hash = this.definitionStore.dataHash(request, response);
-        if (hash == null) {
-            throw new StateConnectorClientError(`StateConnectorClient: invalid attestation reponse`);
-        }
-        // verify MIC (message integrity code)
+        // verify MIC (message integrity code) - stateConnectorRound field must be 0
         const mic = this.definitionStore.dataHash(request, response, MIC_SALT);
         if (mic == null || mic !== request.messageIntegrityCode) {
             throw new StateConnectorClientError(`StateConnectorClient: invalid message integrity code`);
+        }
+        // calculate hash for Merkle tree - requires correct stateConnectorRound field
+        response.stateConnectorRound = stateConnectorRound;
+        const hash = this.definitionStore.dataHash(request, response);
+        if (hash == null) {
+            throw new StateConnectorClientError(`StateConnectorClient: invalid attestation reponse`);
         }
         return { attestationType: request.attestationType, sourceId: request.sourceId, data: response, hash: hash };
     }

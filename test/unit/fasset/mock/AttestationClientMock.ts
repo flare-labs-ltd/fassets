@@ -14,7 +14,7 @@ contract(`SCProofVerifierMock.sol; ${getTestFile(__filename)}; Attestation clien
         });
         it("should set merkle root", async () => {
             attestationClient = await AttestationClient.new();
-            const hashes = [web3.utils.soliditySha3("test1")!, web3.utils.soliditySha3("test2")!];
+            const hashes = [web3.utils.soliditySha3Raw("test1")!, web3.utils.soliditySha3Raw("test2")!];
             const tree = new MerkleTree(hashes);
             await attestationClient.setMerkleRoot(5, tree.root!);
             const root = await attestationClient.merkleRootForRound(5);
