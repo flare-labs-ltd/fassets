@@ -85,7 +85,7 @@ sast:
 
 
 run-tests:
-  stage: .pre
+  stage: build
   image: busybox
   rules:
   - !reference [.rules, manual-web_always]
