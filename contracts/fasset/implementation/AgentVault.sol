@@ -85,7 +85,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
     function depositCollateral(IERC20 _token, uint256 _amount)
         external override
     {
-        _token.transferFrom(msg.sender, address(this), _amount);
+        _token.safeTransferFrom(msg.sender, address(this), _amount);
         assetManager.collateralDeposited(address(this), _token);
         _tokenUsed(_token, TOKEN_DEPOSIT);
     }

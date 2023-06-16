@@ -2,6 +2,5 @@ contracts/token/implementation/VPToken.sol
 contracts/token/implementation/WNat.sol
 contracts/addressUpdater/implementation/AddressUpdater.sol
 contracts/genesis/implementation/GovernanceSettings.sol
-contracts/inflation/mock/SuicidalMock.sol
 contracts/utils/interface/IIFtsoRegistry.sol
 contracts/ftso/interface/IIFtsoManager.sol

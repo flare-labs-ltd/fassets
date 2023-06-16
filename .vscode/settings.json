@@ -5,5 +5,7 @@
     "solidity.packageDefaultDependenciesDirectory": "node_modules",
     "yaml.customTags": [
         "!reference sequence"
-    ]
+    ],
+    "slither.solcPath": "",
+    "slither.hiddenDetectors": []
 }

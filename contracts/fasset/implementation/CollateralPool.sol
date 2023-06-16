@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -13,10 +14,12 @@ import "../interface/IICollateralPool.sol";
 import "../interface/IFAsset.sol";
 import "./CollateralPoolToken.sol";
 
-
+//slither-disable reentrancy    // all possible reentrancies guarded by nonReentrant
 contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     using SafeCast for uint256;
     using SafePct for uint256;
+    using SafeERC20 for IERC20;
+    using SafeERC20 for IWNat;
 
     struct AssetData {
         uint256 poolTokenSupply;
@@ -117,6 +120,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      * @param _fAssets                 Number of f-assets sent along the deposited NAT (not all may be used)
      * @param _enterWithFullFAssets    Specifies whether "required" f-assets should be calculated automatically
      */
+    // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function enter(uint256 _fAssets, bool _enterWithFullFAssets)
         external payable override
         nonReentrant
@@ -157,6 +161,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      *                      Must be positive and smaller or equal to the sender's token balance
      * @param _exitType     An enum describing the ratio used to liquidate debt and free tokens
      */
+    // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function exit(uint256 _tokenShare, TokenExitType _exitType)
         external override
         nonReentrant
@@ -203,6 +208,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      * @notice All f-asset fees will be redeemed along with potential additionally required f-assets taken
      *  from the sender's f-asset account
      */
+    // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function selfCloseExit(
         uint256 _tokenShare,
         bool _redeemToCollateral,
@@ -249,7 +255,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
             uint256 additionallyRequiredFAssets = requiredFAssets - fAssetFees;
             require(fAsset.allowance(msg.sender, address(this)) >= additionallyRequiredFAssets,
                 "f-asset allowance too small");
-            fAsset.transferFrom(msg.sender, address(this), additionallyRequiredFAssets);
+            fAsset.safeTransferFrom(msg.sender, address(this), additionallyRequiredFAssets);
         }
         // redeem f-assets if necessary
         if (requiredFAssets > 0) {
@@ -548,11 +554,11 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         if (_amount > 0) {
             if (_from == address(this)) {
                 totalFAssetFees -= _amount;
-                fAsset.transfer(_to, _amount);
+                fAsset.safeTransfer(_to, _amount);
             } else if (_to == address(this)) {
                 /* solhint-disable reentrancy */
                 totalFAssetFees += _amount;
-                fAsset.transferFrom(_from, _to, _amount);
+                fAsset.safeTransferFrom(_from, _to, _amount);
             }
         }
     }
@@ -567,11 +573,11 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         if (_amount > 0) {
             if (_from == address(this)) {
                 totalCollateral -= _amount;
-                wNat.transfer(_to, _amount);
+                wNat.safeTransfer(_to, _amount);
             } else if (_to == address(this)) {
                 /* solhint-disable reentrancy */
                 totalCollateral += _amount;
-                wNat.transferFrom(_from, _to, _amount);
+                wNat.safeTransferFrom(_from, _to, _amount);
             }
         }
     }
@@ -664,10 +670,15 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         // transfer untracked f-assets and wNat, if any
         uint256 untrackedWNat = wNat.balanceOf(address(this));
         uint256 untrackedFAsset = fAsset.balanceOf(address(this));
-        if (untrackedWNat > 0) wNat.transfer(_recipient, untrackedWNat);
-        if (untrackedFAsset > 0) fAsset.transfer(_recipient, untrackedFAsset);
+        if (untrackedWNat > 0) {
+            wNat.safeTransfer(_recipient, untrackedWNat);
+        }
+        if (untrackedFAsset > 0) {
+            fAsset.safeTransfer(_recipient, untrackedFAsset);
+        }
     }
 
+    // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function payout(
         address _recipient,
         uint256 _amount,
@@ -692,9 +703,11 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         }
     }
 
+    // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function upgradeWNatContract(IWNat _newWNat)
         external override
         onlyAssetManager
+        nonReentrant
     {
         if (_newWNat == wNat) return;
         // transfer all funds to new WNat
