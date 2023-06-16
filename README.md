@@ -1,15 +1,30 @@
-# Flare network f-asset smart contracts repository
+# FAsset contracts
 
-Contracts cover *Flare network* f-asset functionality. It depends on the contract in the `flare-smart-contracts` repository.
+Solidity contracts for *Flare Labs* FAsset system.
 
-## Getting started
+## Overview
 
-1. Clone this repo.
+The FAsset contracts are used to mint assets on top of Flare (or Songbird). The system is designed to handle chains which don’t have (full) smart contract capabilities, although it can also work for smart contract chains. Initially, FAsset system will support assets from block chains Ripple, Bitcoin, Doge, and Litecoin. Later we might add other blockchains.
+
+The minted FAssets are secured by collateral, which is in the form of ERC20 tokens on Flare/Songbird chain and native tokens (FLR/SGB). The collateral is locked in contracts that guarantee that minted tokens can always be redeemed for underlying assets or compensated by collateral.
+
+Two novel protocols, available on Flare and Songbird blockchains, enable the FAsset system to operate:
+
+- **FTSO** contracts which provide decentralised price feeds for multiple tokens.
+- Flare’s **State Connector**, which bridges payment data from any connected chain.
+
+## Development
+
+### Getting started
+
+1. Clone this repository.
 2. Run `yarn`.
 3. Compile the solidity code: `yarn c`.
 4. Run basic tests `yarn testHH`.
 
-Currently, `flare-smart-contracts` dependency is obtained directly from git repository without any branch/tag selection, so it always obtains the current `master` branch and then puts commit hash in the lockfile. In future we will tag the correct flare-smart-contracts version or publish it to npm repository.
+#### Flare-smart-contracts dependency
+
+Currently, `flare-smart-contracts` dependency is obtained directly from git repository from a tag that supports the required functionality.
 
 For development, it might be beneficial to directly use checked-out code of `flare-smart-contracts`. This can be done with `yarn link`:
 
@@ -20,20 +35,14 @@ This creates softlink from `node_modules/flare-smart-contracts` to the flare-sma
 
 For development in *VSCode* you might also find VSCode *Workspace* feature useful - it allows you to have multiple projects open in the same window (e.g. both fasset and flare-smart-contracts).
 
-## Testing
+### Testing
 
-Note: be sure to compile (`yarn c`) after any solidity code changes or if starting a clean project as Typescript stubs need to be generated as part of the compilation. 
+Note: be sure to compile (`yarn c`) after any solidity code changes or if starting a clean project as Typescript stubs need to be generated as part of the compilation.
 
 Then one can run different types of tests.
 
-- `yarn testHH` - all tests in hardhat environment (includes next three types of tests).
+- `yarn testHH` - all tests in hardhat environment (includes following two types of tests).
 - `yarn test_unit_hh` - only unit tests in hardhat environment.
-- `yarn test_performance_hh` - only performance tests in hardhat environment.
 - `test_integration_hh` - only integration tests in hardhat environment.
-
-Each of these calls can have additional parameters, namely paths to specific files with tests. Glob expressions can be used, but note that glob expressions are expanded in `bash` to a sequence of space separated paths. Keep in mind that glob expressions in bash containing `/**/` do not by default expand to all files, so one can switch on full expansion by setting `shopt -s globstar`, and if needed, later switch it off with `shopt -u globstar`.
-
-Some parts of the code can only be tested against a "real" Flare block chain which adds some special features on top of the regular EVM. Any test below that has `HH` in the script name will run against an auto-launched hardhat chain. Some tests can only run against a Flare chain.
-A few options exist for running a Flare chain, with the simplest one described above.
 
 To check test coverage run `yarn cov`.
