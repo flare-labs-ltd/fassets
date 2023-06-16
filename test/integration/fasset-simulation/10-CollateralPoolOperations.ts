@@ -1,5 +1,5 @@
-import { expectRevert, expectEvent } from "@openzeppelin/test-helpers";
-import { BN_ZERO, MAX_BIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { expectEvent } from "@openzeppelin/test-helpers";
+import { MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { getTestFile } from "../../utils/test-helpers";
@@ -7,13 +7,10 @@ import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
 import { CommonContext } from "../utils/CommonContext";
+import { Liquidator } from "../utils/Liquidator";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
-import { Liquidator } from "../utils/Liquidator";
-import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
-import { decodeLiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
-import { fasset } from "../../../typechain/contracts";
-import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { testChainInfo } from "../utils/TestChainInfo";
 
 
 contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations`, async accounts => {

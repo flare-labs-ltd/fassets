@@ -153,12 +153,6 @@ export class Agent extends AssetContextClient {
         return await this.agentVault.buyCollateralPoolTokens({ from: this.ownerHotAddress, value: toBN(amountNatWei) });
     }
 
-    async hasLiquidationEnded(tx: Truffle.TransactionResponse<any>) {
-        // const tr = await web3.eth.getTransaction(res.tx);
-        // const res2 = await this.assetManager.getPastEvents('LiquidationEnded', { fromBlock: tr.blockNumber!, toBlock: tr.blockNumber!, filter: { transactionHash: res.tx } })
-        // return res2.length > 0 ? (res2[0] as any).args as EventArgs<LiquidationEnded> : undefined;
-    }
-
     async makeAvailable() {
         const res = await this.assetManager.makeAgentAvailable(this.vaultAddress, { from: this.ownerHotAddress });
         return requiredEventArgs(res, 'AgentAvailable');
@@ -484,22 +478,6 @@ export class Agent extends AssetContextClient {
         return toBN(fullCollateral).muln(MAX_BIPS).div(backingClass1Wei);
     }
 
-//     async lockedCollateralWei(mintedUBA: BNish, reservedUBA: BNish = 0, redeemingUBA: BNish = 0, withdrawalAnnouncedNATWei: BNish = 0) {
-//         const settings = await this.assetManager.getSettings();
-//         const agentInfo = await this.assetManager.getAgentInfo(this.agentVault.address);
-//         const prices = await this.context.getPrices();
-//         const mintedAMG = this.context.convertUBAToAmg(mintedUBA);
-//         const reservedAMG = this.context.convertUBAToAmg(reservedUBA);
-//         const redeemingAMG = this.context.convertUBAToAmg(redeemingUBA);
-//         const mintingAMG = reservedAMG.add(mintedAMG);
-//         const minCollateralRatio = agentInfo.agentMinCollateralRatioBIPS;
-//         const mintingCollateral = this.context.convertAmgToNATWei(mintingAMG, amgToNATWeiPrice)
-//             .mul(toBN(minCollateralRatio)).divn(10_000);
-//         const redeemingCollateral = this.context.convertAmgToNATWei(redeemingAMG, amgToNATWeiPrice)
-//             .mul(toBN(settings.minCollateralRatioBIPS)).divn(10_000);
-//         return mintingCollateral.add(redeemingCollateral).add(toBN(withdrawalAnnouncedNATWei));
-//    }
-
     async endLiquidation() {
         const res = await this.assetManager.endLiquidation(this.vaultAddress, { from: this.ownerHotAddress });
         assert.equal(requiredEventArgs(res, 'LiquidationEnded').agentVault, this.vaultAddress);
@@ -520,16 +498,6 @@ export class Agent extends AssetContextClient {
         await this.assetManager.buybackAgentCollateral(this.agentVault.address, { from: this.ownerHotAddress, value: buybackCost });
     }
 
-    // async calculateFreeCollateralLots(freeCollateralUBA: BNish) {
-    //     const settings = await this.context.assetManager.getSettings();
-    //     const agentInfo = await this.context.assetManager.getAgentInfo(this.agentVault.address);
-    //     const minCollateralRatio = Math.max(toBN(agentInfo.agentMinCollateralRatioBIPS).toNumber(), toBN(settings.minCollateralRatioBIPS).toNumber());
-    //     const lotCollateral = this.context.convertAmgToNATWei(settings.lotSizeAMG, await this.context.currentAmgToNATWeiPrice())
-    //         .muln(minCollateralRatio)
-    //         .divn(10_000);
-    //     return toBN(freeCollateralUBA).div(lotCollateral);
-    // }
-
     lastAgentInfoCheck: CheckAgentInfo = CHECK_DEFAULTS;
 
     async checkAgentInfo(check: CheckAgentInfo, keepPreviousChecks: boolean = true) {
@@ -542,7 +510,7 @@ export class Agent extends AssetContextClient {
         assertWeb3Equal(agentCollateral.freeCollateralLots(), agentInfo.freeCollateralLots);
         assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.class1), agentInfo.freeClass1CollateralWei);
         assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.pool), agentInfo.freePoolCollateralNATWei);
-        assertApproximateMatch(agentCollateral.freeCollateralWei(agentCollateral.agentPoolTokens), Approximation.absolute(agentInfo.freeAgentPoolTokensWei, 1000));
+        assertApproximateMatch(agentCollateral.freeCollateralWei(agentCollateral.agentPoolTokens), Approximation.relative(agentInfo.freeAgentPoolTokensWei, 1e-10));
         // assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.agentPoolTokens), agentInfo.freeAgentPoolTokensWei);
         assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.class1), agentInfo.class1CollateralRatioBIPS);
         assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.pool), agentInfo.poolCollateralRatioBIPS);
