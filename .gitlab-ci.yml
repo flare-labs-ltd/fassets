@@ -110,6 +110,7 @@ build-smart-contracts:
       policy: pull-push
   rules:
   - !reference [coverage:schedule, rules]
+  - !reference [fuzzer:schedule, rules]
   - !reference [.rules, manual-web_always]
   artifacts:
     paths:
@@ -168,3 +169,27 @@ coverage:schedule:
   rules:
   - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "coverage"'
     when: always
+
+
+fuzzer:schedule:
+  extends:
+    - .run-on-selfhosted-runner
+    - .test-node-sc
+  stage: fuzzer
+  timeout: 4 hours
+  variables:
+    NODE_OPTIONS: "--max_old_space_size=6144"
+    LOOPS: 5000
+    CHANGE_PRICE_AT: '300,600,...'
+    # CHANGE_PRICE_FACTOR: '{"default": [0.9, 1.1]}'
+  script:
+    - yarn fuzzing_fasset
+  artifacts:
+    paths:
+      - test_logs/fasset-fuzzing.log
+    name: fasset-fuzzing
+    when: always
+    expire_in: 30 days
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "fuzzer"'
+      when: always
