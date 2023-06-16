@@ -1,0 +1,11 @@
+{
+    "files.trimFinalNewlines": true,
+    "files.trimTrailingWhitespace": true,
+    "solidity.compileUsingRemoteVersion": "v0.8.20+commit.a1b79de6",
+    "solidity.packageDefaultDependenciesDirectory": "node_modules",
+    "yaml.customTags": [
+        "!reference sequence"
+    ],
+    "slither.solcPath": "",
+    "slither.hiddenDetectors": []
+}

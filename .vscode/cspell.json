@@ -1,0 +1,35 @@
+{
+    "language": "en",
+    "enableFiletypes": [
+        "solidity"
+    ],
+    "words": [
+        "abicoder",
+        "bips",
+        "CRBIPS",
+        "Delegators",
+        "fasset",
+        "fassets",
+        "FTSO",
+        "ftsos",
+        "IERC",
+        "keccak",
+        "mintings",
+        "multicollateral",
+        "prng",
+        "Reentrancy",
+        "selfdestruct",
+        "solhint",
+        "sstore",
+        "stablecoins",
+        "struct",
+        "timelock",
+        "timelocked",
+        "timeshift",
+        "topup",
+        "topups",
+        "undelegate",
+        "utxo",
+        "wnat"
+    ]
+}

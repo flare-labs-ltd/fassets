@@ -1,0 +1,35 @@
+{
+    "compilerOptions": {
+        "target": "es2018",
+        "module": "commonjs",
+        "strict": true,
+        "esModuleInterop": true,
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "forceConsistentCasingInFileNames": true,
+        "isolatedModules": true,
+        "skipLibCheck": true,
+        "outDir": "build",
+        "typeRoots": [
+            "test/types",
+            "node_modules/flare-smart-contracts/test/types",
+            "node_modules/@types"
+        ],
+        "lib": [
+            "ES2018"
+        ]
+    },
+    "include": [
+        "./lib",
+        "./test",
+        "deployment/lib",
+        "deployment/test",
+        "./typechain-truffle",
+        "node_modules/flare-smart-contracts/test/types"
+    ],
+    "files": [
+        "./hardhat.config.ts",
+        "./type-extensions.ts",
+    ]
+}
