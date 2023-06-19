@@ -56,6 +56,9 @@ export function deepCopy<T>(object: T, copiedObjectsMap?: Map<any, any>): T {
                 res.push(deepCopy(elt, copiedObjectsMap));
             }
             return res as T;
+        } else if ((object.constructor as any).deepCopyWithObjectCreate) {
+            // class object can be copied with deepCopyWithObjectCreate
+            return deepCopyWithObjectCreate(object, copiedObjectsMap);
         } else if (isDeepCopyable(object)) {
             // object has own `deepCopyThis` method
             return object.deepCopyThis(copiedObjectsMap);
@@ -67,4 +70,17 @@ export function deepCopy<T>(object: T, copiedObjectsMap?: Map<any, any>): T {
         // atomic object (number, string, function, etc.) - return without copying
         return object;
     }
+}
+
+export function deepCopyWithObjectCreate<T extends {}>(object: T, copiedObjectsMap: Map<any, any>): T {
+    const res = Object.create(object.constructor.prototype, {
+        constructor: { value: object.constructor, enumerable: false, writable: true, configurable: true },
+    });
+    copiedObjectsMap.set(object, res);
+    for (const key in object) {
+        if (object.hasOwnProperty(key)) {
+            res[key] = deepCopy(object[key], copiedObjectsMap);
+        }
+    }
+    return res;
 }

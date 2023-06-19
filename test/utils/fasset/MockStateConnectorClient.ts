@@ -39,6 +39,8 @@ export class StateConnectorClientError extends Error {
 export type AutoFinalizationType = 'auto' | 'on_wait' | 'timed' | 'manual';
 
 export class MockStateConnectorClient implements IStateConnectorClient {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         public stateConnector: StateConnectorMockInstance,
         public supportedChains: { [chainId: number]: MockChain },

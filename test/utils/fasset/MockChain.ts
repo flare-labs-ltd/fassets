@@ -1,9 +1,9 @@
-import { BNish, BN_ZERO, Dict, formatBN, systemTimestamp, toBN } from "../../../lib/utils/helpers";
-import { ILogger } from "../../../lib/utils/logging";
-import { IBlock, IBlockChain, IBlockId, ITransaction, TxInputOutput, TX_FAILED, TX_SUCCESS } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { IBlock, IBlockChain, IBlockId, ITransaction, TX_FAILED, TX_SUCCESS, TxInputOutput } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { BlockHandler, IBlockChainEvents, TransactionHandler } from "../../../lib/underlying-chain/interfaces/IBlockChainEvents";
 import { IBlockChainWallet, TransactionOptions, TransactionOptionsWithFee } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
+import { BN_ZERO, BNish, Dict, formatBN, systemTimestamp, toBN } from "../../../lib/utils/helpers";
 import { stringifyJson } from "../../../lib/utils/json-bn";
+import { ILogger } from "../../../lib/utils/logging";
 
 export type MockTransactionOptions = TransactionOptions & { status?: number };
 export type MockTransactionOptionsWithFee = TransactionOptionsWithFee & { status?: number };
@@ -30,6 +30,8 @@ export interface MockChainBlock {
  * (these are handled in attestation system and are not really visible in fasset system).
  */
 export class MockChain implements IBlockChain, IBlockChainEvents {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         currentTime: BN
     ) {
@@ -274,6 +276,8 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
 }
 
 export class MockChainWallet implements IBlockChainWallet {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         public chain: MockChain,
     ) {}

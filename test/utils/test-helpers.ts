@@ -17,5 +17,5 @@ export function getTestFile(myFile: string) {
  * @returns The (copy of) variables returned by `fixture`.
  */
 export function loadFixtureCopyVars<T>(fixture: () => Promise<T>): Promise<T> {
-    return deepCopy(loadFixture(fixture));
+    return loadFixture(fixture).then(deepCopy);
 }
