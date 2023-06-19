@@ -25,6 +25,8 @@ function findAddressIndex(ios: TxInputOutput[], address: string | null, defaultV
 }
 
 export class AttestationHelper {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         public client: IStateConnectorClient,
         public chain: IBlockChain,

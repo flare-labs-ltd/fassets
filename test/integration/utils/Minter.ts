@@ -7,6 +7,8 @@ import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
 export class Minter extends AssetContextClient {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         context: AssetContext,
         public address: string,

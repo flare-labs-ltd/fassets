@@ -1,13 +1,16 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import {
-    CollateralPoolInstance, CollateralPoolTokenInstance,
-    ERC20MockInstance, AssetManagerMockInstance,
-    AgentVaultMockInstance, DistributionToDelegatorsInstance, IERC165Contract, IERC20Contract
-} from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
 import BN from "bn.js";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { createTestContracts, TestSettingsContracts } from "../../../utils/test-settings";
+import {
+    AgentVaultMockInstance,
+    AssetManagerMockInstance,
+    CollateralPoolInstance, CollateralPoolTokenInstance,
+    DistributionToDelegatorsInstance,
+    ERC20MockInstance,
+    IERC165Contract, IERC20Contract
+} from "../../../../typechain-truffle";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { TestSettingsContracts, createTestContracts } from "../../../utils/test-settings";
 
 function assertEqualBN(a: BN, b: BN, message?: string) {
     assert.equal(a.toString(), b.toString(), message);
@@ -61,7 +64,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
     let MIN_TOKEN_SUPPLY_AFTER_EXIT: BN;
     let MIN_NAT_BALANCE_AFTER_EXIT: BN;
 
-    beforeEach(async () => {
+    async function initialize() {
         contracts = await createTestContracts(governance);
         wNat = await ERC20Mock.new("wNative", "wNat");
         assetManager = await AssetManager.new(wNat.address);
@@ -73,9 +76,9 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             agentVault.address,
             assetManager.address,
             fAsset.address,
-            Math.floor(exitCR*10_000),
-            Math.floor(topupCR*10_000),
-            Math.floor(topupTokenDiscount*10_000)
+            Math.floor(exitCR * 10_000),
+            Math.floor(topupCR * 10_000),
+            Math.floor(topupTokenDiscount * 10_000)
         );
         collateralPoolToken = await CollateralPoolToken.new(collateralPool.address);
         // set pool token
@@ -87,6 +90,12 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         MIN_NAT_BALANCE_AFTER_EXIT = await collateralPool.MIN_NAT_BALANCE_AFTER_EXIT();
         // temporary fix for testing
         await assetManager.registerFAssetForCollateralPool(fAsset.address);
+        return { contracts, wNat, assetManager, fAsset, agentVault, collateralPool, collateralPoolToken, MIN_NAT_TO_ENTER, MIN_TOKEN_SUPPLY_AFTER_EXIT, MIN_NAT_BALANCE_AFTER_EXIT };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, assetManager, fAsset, agentVault, collateralPool, collateralPoolToken, MIN_NAT_TO_ENTER, MIN_TOKEN_SUPPLY_AFTER_EXIT, MIN_NAT_BALANCE_AFTER_EXIT } =
+            await loadFixtureCopyVars(initialize));
     });
 
     function applyTopupDiscount(x: BN) {

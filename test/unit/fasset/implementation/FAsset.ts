@@ -1,8 +1,8 @@
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
-import { FAssetInstance, IERC165Contract, IERC20Contract, IVPTokenContract, IIVPTokenContract, IICleanableContract } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { FAssetInstance, IERC165Contract, IERC20Contract, IICleanableContract, IIVPTokenContract, IVPTokenContract } from "../../../../typechain-truffle";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const FAsset = artifacts.require('FAsset');
 
@@ -11,8 +11,13 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
     const governance = accounts[10];
     const assetManager = accounts[11];
 
-    beforeEach(async () => {
+    async function initialize() {
         fAsset = await FAsset.new(governance, "Ethereum", "ETH", 18);
+        return { fAsset };
+    }
+
+    beforeEach(async () => {
+        ({ fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     describe("basic tests", () => {

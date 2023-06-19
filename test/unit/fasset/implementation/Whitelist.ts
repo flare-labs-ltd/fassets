@@ -1,9 +1,9 @@
 import { constants, expectRevert } from "@openzeppelin/test-helpers";
-import { WhitelistInstance, IERC165Contract } from "../../../../typechain-truffle";
+import { erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { IERC165Contract, WhitelistInstance } from "../../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
-import { getTestFile } from "../../../utils/test-helpers";
-import { erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -13,13 +13,18 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
     const governance = accounts[10];
     const whitelistedAddresses = [accounts[0], accounts[1]];
 
-    beforeEach(async () => {
+    async function initialize() {
         // create governance settings
         const governanceSettings = await GovernanceSettings.new();
         await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
         // create whitelist
         whitelist = await Whitelist.new(governanceSettings.address, governance, true);
         await whitelist.switchToProductionMode({ from: governance });
+        return { whitelist };
+    }
+
+    beforeEach(async () => {
+        ({ whitelist } = await loadFixtureCopyVars(initialize));
     });
 
     describe("whitelist functions", () => {

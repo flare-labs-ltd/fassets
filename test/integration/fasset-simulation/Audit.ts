@@ -3,9 +3,11 @@ import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { toWei } from "../../../lib/utils/helpers";
+import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
-import { getTestFile } from "../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
+import { createTestAgentSettings } from "../../utils/test-settings";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
@@ -13,9 +15,7 @@ import { Challenger } from "../utils/Challenger";
 import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
-import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
-import { createTestAgentSettings } from "../../utils/test-settings";
-import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
+import { testChainInfo } from "../utils/TestChainInfo";
 
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
@@ -45,9 +45,14 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
     let commonContext: CommonContext;
     let context: AssetContext;
 
-    beforeEach(async () => {
+    async function initialize() {
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.eth);
+        return { commonContext, context };
+    }
+
+    beforeEach(async () => {
+        ({ commonContext, context } = await loadFixtureCopyVars(initialize));
     });
 
     it("cannot use invalid payment reference type", async () => {

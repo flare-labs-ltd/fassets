@@ -1,16 +1,15 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
-import { BN_ZERO, MAX_BIPS, toBN, toWei, trace } from "../../../lib/utils/helpers";
+import { MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { Approximation } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
 import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
-import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
-import { Approximation } from "../../utils/approximation";
+import { testChainInfo } from "../utils/TestChainInfo";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -36,9 +35,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let context: AssetContext;
     let mockChain: MockChain;
 
-    beforeEach(async () => {
+    async function initialize() {
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.btc);
+        return { commonContext, context };
+    }
+
+    beforeEach(async () => {
+        ({ commonContext, context } = await loadFixtureCopyVars(initialize));
         mockChain = context.chain as MockChain;
     });
 

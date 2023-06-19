@@ -30,6 +30,8 @@ const GovernanceSettings = artifacts.require('GovernanceSettings');
 export type TestContextFtsos = Record<string, ContractWithEvents<FtsoMockInstance, FtsoEvents>>;
 
 export class CommonContext {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         public governance: string,
         public governanceSettings: GovernanceSettingsInstance,
