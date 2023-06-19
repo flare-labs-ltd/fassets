@@ -16,6 +16,7 @@ import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgentSettings, createTestCollaterals, createTestContracts,
     createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../../../utils/test-settings";
+import { initWithSnapshot } from "../../../../lib/utils/snapshots";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -148,7 +149,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         chain.mine(chain.finalizationBlocks);
     }
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
         // save some contracts as globals
@@ -165,6 +166,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await initWithSnapshot(initialize));
     });
 
     describe("set and update settings / properties", () => {
@@ -366,7 +372,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const collateralType = await assetManager.getCollateralType(collaterals[1].collateralClass, collaterals[1].token);
             assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
             //Wait until you can swtich class1 token
-            time.increase(settings.tokenInvalidationTimeMinSeconds);
+            await time.increase(settings.tokenInvalidationTimeMinSeconds);
             //switch class1 token
             const tx1 = await assetManager.switchClass1Collateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
             expectEvent(tx1, "AgentCollateralTypeChanged");

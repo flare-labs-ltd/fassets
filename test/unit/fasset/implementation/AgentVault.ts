@@ -8,6 +8,7 @@ import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../../../utils/test-settings";
 import { setBalance } from "@nomicfoundation/hardhat-network-helpers";
+import { initWithSnapshot } from "../../../../lib/utils/snapshots";
 
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AgentVault = artifacts.require("AgentVault");
@@ -61,7 +62,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         return CollateralPoolToken.at(await collateralPool.token());
     }
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = testChainInfo.btc;
         contracts = await createTestContracts(governance);
         // save some contracts as globals
@@ -79,6 +80,11 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         // create asset manager mock (for tests that use AgentVault.new)
         assetManagerMock = await AssetManagerMock.new(wNat.address);
         await assetManagerMock.setCommonOwner(owner);
+        return { contracts, wNat, stablecoins, usdc, ftsos, assetManagerController, collaterals, settings, assetManager, fAsset, assetManagerMock };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, stablecoins, usdc, ftsos, assetManagerController, collaterals, settings, assetManager, fAsset, assetManagerMock } = await initWithSnapshot(initialize));
     });
 
     describe("pool token methods", async () => {

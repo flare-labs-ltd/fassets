@@ -3,6 +3,7 @@ import { RedemptionQueueMockInstance } from "../../../../typechain-truffle";
 import { BNish, randomAddress, toBN, toStringExp } from "../../../../lib/utils/helpers";
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { initWithSnapshot } from "../../../../lib/utils/snapshots";
 
 const RedemptionQueue = artifacts.require("RedemptionQueueMock");
 
@@ -27,8 +28,13 @@ contract(`RedemptionQueue.sol; ${getTestFile(__filename)};  RedemptionQueue unit
         assertWeb3Equal(ticket.nextForAgent, nextForAgent);
     }
 
-    beforeEach(async() => {
+    async function initialize() {
         redemptionQueue = await RedemptionQueue.new();
+        return { redemptionQueue };
+    }
+
+    beforeEach(async () => {
+        ({ redemptionQueue } = await initWithSnapshot(initialize));
     });
 
     it("should create redemption ticket", async () => {

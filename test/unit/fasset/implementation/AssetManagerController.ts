@@ -13,6 +13,7 @@ import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../../../utils/test-settings";
 import { AddressUpdatableInstance, AddressUpdatableMockContract } from "../../../../typechain-truffle";
+import { initWithSnapshot } from "../../../../lib/utils/snapshots";
 
 const Whitelist = artifacts.require('Whitelist');
 const AssetManagerController = artifacts.require('AssetManagerController');
@@ -39,7 +40,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
     let liquidationStrategySettings: LiquidationStrategyImplSettings;
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
         await contracts.governanceSettings.setExecutors([governance, updateExecutor], { from: governance });
@@ -67,6 +68,12 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         const encodedLiquidationStrategySettings = encodeLiquidationStrategyImplSettings(liquidationStrategySettings);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, encodedLiquidationStrategySettings, updateExecutor);
         addressUpdatableMock = await AddressUpdatableMock.new(contracts.addressUpdater.address);
+        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, liquidationStrategySettings, collaterals, settings, assetManager, fAsset, addressUpdatableMock };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, liquidationStrategySettings, collaterals, settings, assetManager, fAsset, addressUpdatableMock } =
+            await initWithSnapshot(initialize));
     });
 
     describe("set and update settings with controller", () => {

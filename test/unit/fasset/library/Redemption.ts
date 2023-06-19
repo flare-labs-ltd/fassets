@@ -13,6 +13,7 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile } from "../../../utils/test-helpers";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../../../utils/test-settings";
 import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
+import { initWithSnapshot } from "../../../../lib/utils/snapshots";
 
 
 const CollateralPool = artifacts.require("CollateralPool");
@@ -149,7 +150,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await stopImpersonatingContract(collateralPool);
     }
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = chainInfo = testChainInfo.eth;
         contracts = await createTestContracts(governance);
         // save some contracts as globals
@@ -166,6 +167,11 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await initWithSnapshot(initialize));
     });
 
     it("should confirm redemption payment from agent vault owner", async () => {

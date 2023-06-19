@@ -14,6 +14,7 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../../../utils/test-settings";
+import { initWithSnapshot } from "../../../../lib/utils/snapshots";
 
 contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralReservations basic tests`, async accounts => {
     const governance = accounts[10];
@@ -77,7 +78,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         return await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, paymentAmount, PaymentReference.selfMint(agentVault));
     }
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = chainInfo = testChainInfo.eth;
         contracts = await createTestContracts(governance);
         // save some contracts as globals
@@ -94,6 +95,11 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await initWithSnapshot(initialize));
     });
 
     it("should reserve collateral", async () => {

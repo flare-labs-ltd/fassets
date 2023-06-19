@@ -16,6 +16,7 @@ import {
     createEncodedTestLiquidationSettings, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos,
     createTestSettings, TestFtsos, TestSettingsContracts
 } from "../../../utils/test-settings";
+import { initWithSnapshot } from "../../../../lib/utils/snapshots";
 
 contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accounts => {
     const governance = accounts[10];
@@ -55,7 +56,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         return await assetManager.executeAgentSettingUpdate(agentVault.address, name, { from: owner });
     }
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = testChainInfo.btc;
         contracts = await createTestContracts(governance);
         usdc = contracts.stablecoins.USDC;
@@ -70,6 +71,11 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        return { contracts, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await initWithSnapshot(initialize));
     });
 
     it("should prove EOA address", async () => {
