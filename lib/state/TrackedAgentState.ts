@@ -188,7 +188,7 @@ export class TrackedAgentState {
     }
 
     protected isPoolSelfCloseRedemption(requestId: BNish) {
-        return toBN(requestId).and(BN_ONE).isZero();
+        return !toBN(requestId).and(BN_ONE).isZero();
     }
 
     // handlers: dust
