@@ -1,16 +1,16 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { BN_ZERO, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
 import { CommonContext } from "../utils/CommonContext";
 import { Liquidator } from "../utils/Liquidator";
 import { Minter } from "../utils/Minter";
-import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
-import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { testChainInfo } from "../utils/TestChainInfo";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -37,9 +37,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let mockChain: MockChain;
     let mockStateConnectorClient: MockStateConnectorClient;
 
-    beforeEach(async () => {
+    async function initialize() {
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.eth);
+        return { commonContext, context };
+    }
+
+    beforeEach(async () => {
+        ({ commonContext, context } = await loadFixtureCopyVars(initialize));
         mockChain = context.chain as MockChain;
         mockStateConnectorClient = context.stateConnectorClient as MockStateConnectorClient;
     });

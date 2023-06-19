@@ -34,6 +34,8 @@ export interface SettingsOptions {
 
 // context, specific for each asset manager (includes common context vars)
 export class AssetContext implements IAssetContext {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         public common: CommonContext,
         public chainInfo: TestChainInfo,

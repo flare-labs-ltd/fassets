@@ -32,6 +32,8 @@ export const CHECK_DEFAULTS: CheckAgentInfo = {
 export type AgentCreateOptions = Partial<Omit<AgentSettings, 'underlyingAddressString'>>;
 
 export class Agent extends AssetContextClient {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         context: AssetContext,
         public ownerColdAddress: string,
