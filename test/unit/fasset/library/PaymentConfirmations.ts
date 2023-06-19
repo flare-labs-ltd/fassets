@@ -8,9 +8,8 @@ import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
-import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../../../utils/test-settings";
-import { initWithSnapshot } from "../../../../lib/utils/snapshots";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 
 contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmations basic tests`, async accounts => {
     const governance = accounts[10];
@@ -68,7 +67,7 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await initWithSnapshot(initialize));
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should cleanup payment verifications after 15 days", async () => {

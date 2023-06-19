@@ -10,13 +10,13 @@ import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import {
+    TestFtsos, TestSettingsContracts,
     createEncodedTestLiquidationSettings, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos,
-    createTestSettings, TestFtsos, TestSettingsContracts
+    createTestSettings
 } from "../../../utils/test-settings";
-import { initWithSnapshot } from "../../../../lib/utils/snapshots";
+import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accounts => {
     const governance = accounts[10];
@@ -75,7 +75,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
     }
 
     beforeEach(async () => {
-        ({ contracts, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await initWithSnapshot(initialize));
+        ({ contracts, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should prove EOA address", async () => {

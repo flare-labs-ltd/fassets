@@ -12,11 +12,12 @@ import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import {
+    TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgentSettings, createTestCollaterals, createTestContracts,
+    createTestFtsos, createTestLiquidationSettings, createTestSettings
+} from "../../../utils/test-settings";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
-import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgentSettings, createTestCollaterals, createTestContracts,
-    createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../../../utils/test-settings";
-import { initWithSnapshot } from "../../../../lib/utils/snapshots";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -170,7 +171,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await initWithSnapshot(initialize));
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     describe("set and update settings / properties", () => {

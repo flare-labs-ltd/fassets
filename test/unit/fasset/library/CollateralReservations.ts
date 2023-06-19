@@ -4,17 +4,16 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, toBN, toWei, toBIPS } from "../../../../lib/utils/helpers";
+import { BNish, toBN, toWei } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../../../utils/test-settings";
-import { initWithSnapshot } from "../../../../lib/utils/snapshots";
 
 contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralReservations basic tests`, async accounts => {
     const governance = accounts[10];
@@ -99,7 +98,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await initWithSnapshot(initialize));
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should reserve collateral", async () => {

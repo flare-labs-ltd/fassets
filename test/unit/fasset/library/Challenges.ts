@@ -9,9 +9,8 @@ import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
-import { initWithSnapshot } from "../../../../lib/utils/snapshots";
 
 const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
@@ -136,7 +135,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
 
     beforeEach(async () => {
         ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, agentVault, agentVault2, agentTxHash, agentTxProof } =
-            await initWithSnapshot(initialize));
+            await loadFixtureCopyVars(initialize));
     });
 
     describe("illegal payment challenge", () => {

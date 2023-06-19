@@ -1,10 +1,9 @@
 import { constants, expectRevert } from "@openzeppelin/test-helpers";
-import { WhitelistInstance, IERC165Contract } from "../../../../typechain-truffle";
+import { erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { IERC165Contract, WhitelistInstance } from "../../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
-import { getTestFile } from "../../../utils/test-helpers";
-import { erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { initWithSnapshot } from "../../../../lib/utils/snapshots";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -25,7 +24,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
     }
 
     beforeEach(async () => {
-        ({ whitelist } = await initWithSnapshot(initialize));
+        ({ whitelist } = await loadFixtureCopyVars(initialize));
     });
 
     describe("whitelist functions", () => {

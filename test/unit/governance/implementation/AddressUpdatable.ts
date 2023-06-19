@@ -1,7 +1,6 @@
 import { expectRevert } from '@openzeppelin/test-helpers';
 import { AddressUpdatableMockInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
-import { initWithSnapshot } from '../../../../lib/utils/snapshots';
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 
 const AddressUpdatableMock = artifacts.require("AddressUpdatableMock");
 
@@ -23,7 +22,7 @@ contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable con
   }
 
   beforeEach(async () => {
-    ({ addressUpdatable } = await initWithSnapshot(initialize));
+    ({ addressUpdatable } = await loadFixtureCopyVars(initialize));
   });
 
   it("Should know about address updater contract", async() => {

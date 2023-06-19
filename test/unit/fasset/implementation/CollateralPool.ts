@@ -1,14 +1,16 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import {
-    CollateralPoolInstance, CollateralPoolTokenInstance,
-    ERC20MockInstance, AssetManagerMockInstance,
-    AgentVaultMockInstance, DistributionToDelegatorsInstance, IERC165Contract, IERC20Contract
-} from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
 import BN from "bn.js";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { createTestContracts, TestSettingsContracts } from "../../../utils/test-settings";
-import { initWithSnapshot } from "../../../../lib/utils/snapshots";
+import {
+    AgentVaultMockInstance,
+    AssetManagerMockInstance,
+    CollateralPoolInstance, CollateralPoolTokenInstance,
+    DistributionToDelegatorsInstance,
+    ERC20MockInstance,
+    IERC165Contract, IERC20Contract
+} from "../../../../typechain-truffle";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { TestSettingsContracts, createTestContracts } from "../../../utils/test-settings";
 
 function assertEqualBN(a: BN, b: BN, message?: string) {
     assert.equal(a.toString(), b.toString(), message);
@@ -93,7 +95,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
     beforeEach(async () => {
         ({ contracts, wNat, assetManager, fAsset, agentVault, collateralPool, collateralPoolToken, MIN_NAT_TO_ENTER, MIN_TOKEN_SUPPLY_AFTER_EXIT, MIN_NAT_BALANCE_AFTER_EXIT } =
-            await initWithSnapshot(initialize));
+            await loadFixtureCopyVars(initialize));
     });
 
     function applyTopupDiscount(x: BN) {

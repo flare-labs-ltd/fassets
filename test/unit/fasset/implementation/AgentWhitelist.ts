@@ -10,9 +10,8 @@ import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager, waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../../../utils/test-settings";
-import { initWithSnapshot } from "../../../../lib/utils/snapshots";
 
 const Whitelist = artifacts.require('Whitelist');
 const AssetManagerController = artifacts.require('AssetManagerController');
@@ -81,7 +80,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Agent whitelist tests`, asy
 
     beforeEach(async () => {
         ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, liquidationStrategySettings, collaterals, settings, assetManager, fAsset, agentWhitelist } =
-            await initWithSnapshot(initialize));
+            await loadFixtureCopyVars(initialize));
     });
 
     describe("whitelist functions", () => {

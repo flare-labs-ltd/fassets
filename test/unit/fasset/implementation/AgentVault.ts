@@ -1,14 +1,13 @@
+import { setBalance } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
-import { toBN, toWei, erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { AssetManagerControllerInstance, AssetManagerInstance, AssetManagerMockInstance, ERC20MockInstance, FAssetInstance, WNatInstance, CollateralPoolInstance, CollateralPoolTokenInstance, AgentVaultInstance, FAssetMockInstance, IERC165Contract } from "../../../../typechain-truffle";
+import { erc165InterfaceId, toBN, toWei } from "../../../../lib/utils/helpers";
+import { AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AssetManagerMockInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../../../utils/test-settings";
-import { setBalance } from "@nomicfoundation/hardhat-network-helpers";
-import { initWithSnapshot } from "../../../../lib/utils/snapshots";
 
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AgentVault = artifacts.require("AgentVault");
@@ -84,7 +83,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, stablecoins, usdc, ftsos, assetManagerController, collaterals, settings, assetManager, fAsset, assetManagerMock } = await initWithSnapshot(initialize));
+        ({ contracts, wNat, stablecoins, usdc, ftsos, assetManagerController, collaterals, settings, assetManager, fAsset, assetManagerMock } = await loadFixtureCopyVars(initialize));
     });
 
     describe("pool token methods", async () => {

@@ -1,9 +1,8 @@
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
-import { FAssetInstance, IERC165Contract, IERC20Contract, IVPTokenContract, IIVPTokenContract, IICleanableContract } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { initWithSnapshot } from "../../../../lib/utils/snapshots";
+import { FAssetInstance, IERC165Contract, IERC20Contract, IICleanableContract, IIVPTokenContract, IVPTokenContract } from "../../../../typechain-truffle";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const FAsset = artifacts.require('FAsset');
 
@@ -18,7 +17,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
     }
 
     beforeEach(async () => {
-        ({ fAsset } = await initWithSnapshot(initialize));
+        ({ fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     describe("basic tests", () => {

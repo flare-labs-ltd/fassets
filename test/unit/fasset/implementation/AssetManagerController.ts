@@ -3,17 +3,15 @@ import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/Ass
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, randomAddress, toBIPS, toBN, toStringExp, erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, WhitelistInstance, IERC165Contract, AddressUpdatableContract } from "../../../../typechain-truffle";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
+import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager, waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
-import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../../../utils/test-settings";
-import { AddressUpdatableInstance, AddressUpdatableMockContract } from "../../../../typechain-truffle";
-import { initWithSnapshot } from "../../../../lib/utils/snapshots";
+import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
 
 const Whitelist = artifacts.require('Whitelist');
 const AssetManagerController = artifacts.require('AssetManagerController');
@@ -73,7 +71,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
     beforeEach(async () => {
         ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, liquidationStrategySettings, collaterals, settings, assetManager, fAsset, addressUpdatableMock } =
-            await initWithSnapshot(initialize));
+            await loadFixtureCopyVars(initialize));
     });
 
     describe("set and update settings with controller", () => {
