@@ -71,7 +71,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const lotsUBA = context.convertLotsToUBA(lots);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0, reservedUBA: lotsUBA });
+            await agent.checkAgentInfo({
+                totalClass1CollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: 0,
+                mintedUBA: 0,
+                reservedUBA: lotsUBA.add(agent.poolFeeShare(crt.feeUBA)) });
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             const minted = await minter.executeMinting(crt, txHash);

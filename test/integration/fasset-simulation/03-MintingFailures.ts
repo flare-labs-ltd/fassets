@@ -139,7 +139,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
             await time.increase(DAYS);
             context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0, reservedUBA: context.convertLotsToUBA(lots) });
+            await agent.checkAgentInfo({
+                totalClass1CollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: 0,
+                mintedUBA: 0,
+                reservedUBA: context.convertLotsToUBA(lots).add(agent.poolFeeShare(crt.feeUBA)) });
             // test rewarding for unstick default
             const class1Token = agent.class1Token();
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;

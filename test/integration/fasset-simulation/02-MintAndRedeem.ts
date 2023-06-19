@@ -67,7 +67,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const lotsUBA = context.convertLotsToUBA(lots);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, reservedUBA: lotsUBA });
+            await agent.checkAgentInfo({
+                totalClass1CollateralWei: fullAgentCollateral,
+                reservedUBA: lotsUBA.add(agent.poolFeeShare(crt.feeUBA)) });
             const burnAddress = context.settings.burnAddress;
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             const minted = await minter.executeMinting(crt, txHash);
@@ -113,7 +115,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const lots1 = 3;
             await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, totalPoolCollateralNATWei: fullAgentCollateral });
             const crt1 = await minter1.reserveCollateral(agent.vaultAddress, lots1);
-            await agent.checkAgentInfo({ reservedUBA: crt1.valueUBA });
+            await agent.checkAgentInfo({ reservedUBA: crt1.valueUBA.add(agent.poolFeeShare(crt1.feeUBA)) });
             const tx1Hash = await minter1.performMintingPayment(crt1);
             underlyingBalance = underlyingBalance.add(crt1.valueUBA).add(crt1.feeUBA);
             await agent.checkAgentInfo({ actualUnderlyingBalance: underlyingBalance }); // only change on other chain
@@ -123,7 +125,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted1.agentFeeUBA, mintedUBA: totalMinted1, reservedUBA: 0 });
             const lots2 = 6;
             const crt2 = await minter2.reserveCollateral(agent.vaultAddress, lots2);
-            await agent.checkAgentInfo({ reservedUBA: crt2.valueUBA });
+            await agent.checkAgentInfo({ reservedUBA: crt2.valueUBA.add(agent.poolFeeShare(crt2.feeUBA)) });
             const tx2Hash = await minter2.performMintingPayment(crt2);
             underlyingBalance = underlyingBalance.add(crt2.valueUBA).add(crt2.feeUBA);
             await agent.checkAgentInfo({ actualUnderlyingBalance: underlyingBalance });
