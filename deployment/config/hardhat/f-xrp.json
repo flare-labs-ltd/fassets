@@ -11,7 +11,7 @@
     "whitelist": null,
     "agentWhitelist": null,
     "underlyingAddressValidator": [
-        "TrivialAddressValidatorMock",
+        "RippleAddressValidator",
         []
     ],
     "liquidationStrategy": "LiquidationStrategyImpl",
