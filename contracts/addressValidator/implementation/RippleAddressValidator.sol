@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import "../interface/IAddressValidator.sol";
 import "../library/Bytes.sol";
 import "../library/Base58.sol";
 
-contract RippleAddressValidator {
+contract RippleAddressValidator is IAddressValidator {
     bytes constant XRP_ALPHABET = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz";
 
     function validate(string memory _rippleAddress)

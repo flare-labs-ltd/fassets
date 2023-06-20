@@ -25,6 +25,13 @@ describe("Tests for crypto address validation", () => {
 
     describe("ripple address validation", () => {
 
+        it("should check normalization is trivial", async () => {
+            const address = randomXrpAddress();
+            const { 0: normalized, 1: hash } = await rippleValidator.normalize(address);
+            assert.equal(normalized, address);
+            assert.equal(hash, web3.utils.keccak256(address));
+        });
+
         it("should fuzz test valid addresses", async () => {
             const ncases = 100;
             for (let i = 0; i < ncases; i++) {
