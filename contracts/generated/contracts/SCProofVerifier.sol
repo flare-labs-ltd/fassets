@@ -12,6 +12,6 @@ contract SCProofVerifier is SCProofVerifierBase {
     }
 
     function merkleRootForRound(uint256 _stateConnectorRound) public view override returns (bytes32 _merkleRoot) {
-        return stateConnector.merkleRoots(_stateConnectorRound % stateConnector.TOTAL_STORED_PROOFS());
+        return stateConnector.merkleRoot(_stateConnectorRound);
     }
 }
