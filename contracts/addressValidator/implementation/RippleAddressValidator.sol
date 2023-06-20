@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../library/BytesLib.sol";
+import "../library/Bytes.sol";
 import "../library/Base58.sol";
 
 contract RippleAddressValidator {
@@ -31,10 +31,10 @@ contract RippleAddressValidator {
         private pure
         returns (bool)
     {
-        bytes memory checksum = BytesLib.slice(_payload, _payload.length - 4, 4);
-        bytes memory accountID = BytesLib.slice(_payload, 0, _payload.length - 4);
+        bytes memory accountID = Bytes.slice(_payload, 0, _payload.length - 4);
+        bytes memory checksum = Bytes.slice(_payload, _payload.length - 4, _payload.length);
         bytes memory accountChecksum = _sha256Checksum(accountID);
-        return BytesLib.equal(accountChecksum, checksum);
+        return Bytes.equal(accountChecksum, checksum);
     }
 
     function _sha256Checksum(bytes memory _payload)
@@ -42,7 +42,7 @@ contract RippleAddressValidator {
         returns (bytes memory)
     {
         bytes memory dSha256 = abi.encodePacked(sha256(abi.encodePacked(sha256(_payload))));
-        return BytesLib.slice(dSha256, 0, 4);
+        return Bytes.slice(dSha256, 0, 4);
     }
 
 }
