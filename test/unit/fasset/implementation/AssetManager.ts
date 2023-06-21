@@ -1171,18 +1171,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const r = assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,address)")),
                 web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, attestationClientNewAddress, ftsoRegistryNewAddress]),
                 { from: accounts[29] });
-            expectRevert(r, "only asset manager controller");
+            await expectRevert(r, "only asset manager controller");
         });
 
         it("random address shouldn't be able to attach controller", async () => {
             const r = assetManager.attachController(false, { from: accounts[29]});
-            expectRevert(r, "only asset manager controller");
+            await expectRevert(r, "only asset manager controller");
         });
 
         it("unattached asset manager can't create agent", async () => {
             await assetManager.attachController(false, { from: assetManagerController });
             const r = createAgentWithEOA(agentOwner1, underlyingAgent1);
-            expectRevert(r, "only attached");
+            await expectRevert(r, "not attached");
         });
 
         it("unattached asset manager can't do collateral reservations", async () => {
@@ -1193,7 +1193,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const reservationFee = await assetManager.collateralReservationFee(1);
             const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
                 { from: minter, value: reservationFee });
-            expectRevert(r, "only attached");
+            await expectRevert(r, "not attached");
         });
 
         it("when whitelist is enabled, address not whitelisted can't do collateral reservations", async () => {
@@ -1214,7 +1214,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // Try to reserve collateral from non whitelisted address
             const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
                 { from: minter, value: reservationFee });
-            expectRevert(r, "not whitelisted");
+            await expectRevert(r, "not whitelisted");
         });
 
         it("agent can't self mint if asset manager is not attached", async () => {
@@ -1233,7 +1233,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const proof = await attestationProvider.provePayment(txHash, "random_address", underlyingAgent1);
             // self-mint
             const r = assetManager.selfMint(proof, agentVault.address, 1, { from: agentOwner1 });
-            expectRevert(r, "only attached");
+            await expectRevert(r, "not attached");
         });
 
         it("when whitelist is enabled, address not whitelisted can't redeem", async () => {
@@ -1253,7 +1253,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
             // default a redemption
             const r = assetManager.redeem(1, underlyingRedeemer, { from: redeemer });
-            expectRevert(r, "not whitelisted");
+            await expectRevert(r, "not whitelisted");
         });
 
         it("when whitelist is enabled, address not whitelisted can't challenge illegal payment", async () => {
@@ -1273,7 +1273,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
                 { from: assetManagerController });
             const r = assetManager.illegalPaymentChallenge(proof, agentVault.address, { from: challenger });
-            expectRevert(r, "not whitelisted");
+            await expectRevert(r, "not whitelisted");
         });
 
         it("when whitelist is enabled, address not whitelisted can't challenge illegal double payment", async () => {
@@ -1296,7 +1296,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
                 { from: assetManagerController });
             const r = assetManager.doublePaymentChallenge(proof1, proof2, agentVault.address, { from: challenger });
-            expectRevert(r, "not whitelisted");
+            await expectRevert(r, "not whitelisted");
         });
 
         it("when whitelist is enabled, address not whitelisted can't challenge free balance negative", async () => {
@@ -1323,7 +1323,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 { from: assetManagerController });
             // make a challenge
             const r = assetManager.freeBalanceNegativeChallenge([proof], agentVault.address, { from: challenger });
-            expectRevert(r, "not whitelisted");
+            await expectRevert(r, "not whitelisted");
         });
 
         it("when whitelist is enabled, address not whitelisted can't start liquidation", async () => {
@@ -1344,7 +1344,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
                 { from: assetManagerController });
             const r = assetManager.startLiquidation(agentVault.address, { from: accounts[83] });
-            expectRevert(r, "not whitelisted");
+            await expectRevert(r, "not whitelisted");
         });
 
         it("when whitelist is enabled, address not whitelisted can't liquidate", async () => {
@@ -1368,7 +1368,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
                 { from: assetManagerController });
             const r = assetManager.liquidate(agentVault.address, lotsToUBA(2), { from: liquidator });
-            expectRevert(r, "not whitelisted");
+            await expectRevert(r, "not whitelisted");
         });
 
         it("random address shouldn't be able to add collateral token", async () => {
@@ -1377,20 +1377,20 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             collateral.tokenFtsoSymbol = "NT";
             collateral.assetFtsoSymbol = "NT";
             const r = assetManager.addCollateralType(web3DeepNormalize(collateral), { from: accounts[99]});
-            expectRevert(r, "only asset manager controller");
+            await expectRevert(r, "only asset manager controller");
 
         });
 
         it("random address shouldn't be able to add collateral ratios for token", async () => {
             const r = assetManager.setCollateralRatiosForToken(collaterals[0].collateralClass, collaterals[0].token,
                 toBIPS(1.5), toBIPS(1.4), toBIPS(1.6), { from: accounts[99] });
-            expectRevert(r, "only asset manager controller");
+            await expectRevert(r, "only asset manager controller");
         });
 
         it("random address shouldn't be able to deprecate token", async () => {
             const r = assetManager.deprecateCollateralType(collaterals[0].collateralClass, collaterals[0].token,
                 settings.tokenInvalidationTimeMinSeconds, { from: accounts[99] });
-            expectRevert(r, "only asset manager controller");
+            await expectRevert(r, "only asset manager controller");
         });
     });
 });
