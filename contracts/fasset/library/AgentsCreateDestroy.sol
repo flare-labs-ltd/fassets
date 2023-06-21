@@ -14,6 +14,8 @@ import "./Conversion.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
 import "./AgentSettingsUpdater.sol";
+import "./UnderlyingAddresses.sol";
+
 
 library AgentsCreateDestroy {
     using SafePct for uint256;
@@ -86,7 +88,7 @@ library AgentsCreateDestroy {
         Agents.requireWhitelisted(ownerColdAddress);
         // validate underlying address
         (string memory normalizedUnderlyingAddress, bytes32 underlyingAddressHash) =
-            Globals.validateAndNormalizeUnderlyingAddress(_settings.underlyingAddressString);
+            UnderlyingAddresses.validateAndNormalize(_settings.underlyingAddressString);
         // create agent vault
         IAgentVaultFactory agentVaultFactory = IAgentVaultFactory(state.settings.agentVaultFactory);
         IIAgentVault agentVault = agentVaultFactory.create(_assetManager);

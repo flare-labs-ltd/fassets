@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../addressValidator/interface/IAddressValidator.sol";
 import "../interface/IFAsset.sol";
 import "./data/AssetManagerState.sol";
 
@@ -30,15 +29,5 @@ library Globals {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         return IFAsset(settings.fAsset);
-    }
-
-    function validateAndNormalizeUnderlyingAddress(string memory _underlyingAddressString)
-        internal view
-        returns (string memory _normalizedAddressString, bytes32 _uniqueHash)
-    {
-        IAddressValidator validator = IAddressValidator(AssetManagerState.getSettings().underlyingAddressValidator);
-        require(bytes(_underlyingAddressString).length != 0, "empty underlying address");
-        require(validator.validate(_underlyingAddressString), "invalid underlying address");
-        return validator.normalize(_underlyingAddressString);
     }
 }

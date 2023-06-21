@@ -9,6 +9,8 @@ import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./Redemptions.sol";
 import "./Liquidation.sol";
+import "./UnderlyingAddresses.sol";
+
 
 library RedemptionRequests {
     using SafePct for *;
@@ -174,7 +176,7 @@ library RedemptionRequests {
         AssetManagerState.State storage state = AssetManagerState.get();
         // validate redemption address
         (string memory normalizedUnderlyingAddress, bytes32 underlyingAddressHash) =
-            Globals.validateAndNormalizeUnderlyingAddress(_redeemerUnderlyingAddressString);
+            UnderlyingAddresses.validateAndNormalize(_redeemerUnderlyingAddressString);
         // create request
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
         uint64 requestId = _newRequestId(_poolSelfClose);
