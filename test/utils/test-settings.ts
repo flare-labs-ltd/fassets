@@ -20,7 +20,7 @@ import { ChainInfo } from "../../lib/fasset/ChainInfo";
 const AgentVault = artifacts.require("AgentVault");
 const WNat = artifacts.require("WNat");
 const AddressUpdater = artifacts.require('AddressUpdater');
-const AttestationClient = artifacts.require('SCProofVerifier');
+const SCProofVerifier = artifacts.require('SCProofVerifier');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const StateConnector = artifacts.require('StateConnectorMock');
@@ -37,7 +37,7 @@ export interface TestSettingsContracts {
     agentVaultFactory: AgentVaultFactoryInstance;
     collateralPoolFactory: CollateralPoolFactoryInstance;
     stateConnector: StateConnectorMockInstance;
-    attestationClient: SCProofVerifierInstance;
+    scProofVerifier: SCProofVerifierInstance;
     addressValidator: IAddressValidatorInstance;
     whitelist?: IWhitelistInstance;
     agentWhitelist: IWhitelistInstance;
@@ -55,7 +55,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         fAsset: constants.ZERO_ADDRESS,                     // replaced in newAssetManager(...)
         agentVaultFactory: contracts.agentVaultFactory.address,
         collateralPoolFactory: contracts.collateralPoolFactory.address,
-        attestationClient: contracts.attestationClient.address,
+        scProofVerifier: contracts.scProofVerifier.address,
         underlyingAddressValidator: contracts.addressValidator.address,
         liquidationStrategy: contracts.liquidationStrategy,
         whitelist: contracts.whitelist?.address ?? constants.ZERO_ADDRESS,
@@ -196,7 +196,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     // create state connector
     const stateConnector = await StateConnector.new();
     // create attestation client
-    const attestationClient = await AttestationClient.new(stateConnector.address);
+    const scProofVerifier = await SCProofVerifier.new(stateConnector.address);
     // create WNat token
     const wNat = await WNat.new(governance, "NetworkNative", "NAT");
     await setDefaultVPContract(wNat, governance);
@@ -224,7 +224,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
     const liquidationStrategy = liquidationStrategyLib.address;
     //
-    return { governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, stateConnector, attestationClient,
+    return { governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, stateConnector, scProofVerifier,
         addressValidator, agentWhitelist, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
 }
 

@@ -726,7 +726,7 @@ library SettingsUpdater {
         require(_settings.fAsset != address(0), "zero fAsset address");
         require(_settings.agentVaultFactory != address(0), "zero agentVaultFactory address");
         require(_settings.collateralPoolFactory != address(0), "zero collateralPoolFactory address");
-        require(_settings.attestationClient != address(0), "zero attestationClient address");
+        require(_settings.scProofVerifier != address(0), "zero scProofVerifier address");
         require(_settings.underlyingAddressValidator != address(0), "zero underlyingAddressValidator address");
         require(_settings.ftsoRegistry != address(0), "zero ftsoRegistry address");
         require(_settings.liquidationStrategy != address(0), "zero liquidationStrategy address");

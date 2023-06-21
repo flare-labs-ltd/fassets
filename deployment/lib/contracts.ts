@@ -15,7 +15,7 @@ export interface ChainContracts {
     FtsoRegistry: Contract;
     FtsoManager: Contract;
     // fasset
-    AttestationClient?: Contract;
+    SCProofVerifier?: Contract;
     AgentVaultFactory?: Contract;
     CollateralPoolFactory?: Contract;
     AssetManagerController?: Contract;

@@ -205,7 +205,7 @@
     "address": "0x0dC26E31aff8ac4B5e3D7B21bFcF8fDfD1C96d50"
   },
   {
-    "name": "AttestationClient",
+    "name": "SCProofVerifier",
     "contractName": "SCProofVerifier.sol",
     "address": "0x70325F3D34D83391a3b6ffE77a9fB62c033e8e55"
   },

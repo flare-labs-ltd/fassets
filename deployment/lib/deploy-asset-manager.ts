@@ -16,21 +16,21 @@ export const liquidationStrategyFactories: Record<string, () => ILiquidationStra
     LiquidationStrategyImpl: () => new LiquidationStrategyImpl(),
 }
 
-export async function deployAttestationClient(hre: HardhatRuntimeEnvironment, contractsFile: string) {
-    console.log(`Deploying AttestationClient`);
+export async function deploySCProofVerifier(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    console.log(`Deploying SCProofVerifier`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
-    const AttestationClient = artifacts.require("SCProofVerifier");
+    const SCProofVerifier = artifacts.require("SCProofVerifier");
 
     const contracts = loadContracts(contractsFile);
 
-    const attestationClient = await AttestationClient.new(contracts.StateConnector.address);
+    const scProofVerifier = await SCProofVerifier.new(contracts.StateConnector.address);
 
-    contracts.AttestationClient = newContract("AttestationClient", "SCProofVerifier.sol", attestationClient.address);
+    contracts.SCProofVerifier = newContract("SCProofVerifier", "SCProofVerifier.sol", scProofVerifier.address);
     saveContracts(contractsFile, contracts);
 
-    // console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AttestationClient"], [${attestationClient.address}])'`);
+    // console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["SCProofVerifier"], [${scProofVerifier.address}])'`);
 }
 
 export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
@@ -171,7 +171,7 @@ function convertCollateralType(contracts: ChainContracts, parameters: Collateral
 }
 
 function createAssetManagerSettings(contracts: ChainContracts, parameters: AssetManagerParameters, fAsset: FAssetInstance, liquidationStrategy: string, addressValidator: string): AssetManagerSettings {
-    if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.AttestationClient || !contracts.CollateralPoolFactory) {
+    if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.SCProofVerifier || !contracts.CollateralPoolFactory) {
         throw new Error("Missing contracts");
     }
     const ten = new BN(10);
@@ -182,7 +182,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         fAsset: fAsset.address,
         agentVaultFactory: contracts.AgentVaultFactory.address,
         collateralPoolFactory: contracts.CollateralPoolFactory.address,
-        attestationClient: contracts.AttestationClient.address,
+        scProofVerifier: contracts.SCProofVerifier.address,
         underlyingAddressValidator: addressValidator,
         liquidationStrategy: liquidationStrategy,
         whitelist: parameters.whitelist ? addressFromParameter(contracts, parameters.whitelist) : ZERO_ADDRESS,

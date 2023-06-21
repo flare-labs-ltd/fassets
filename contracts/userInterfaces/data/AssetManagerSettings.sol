@@ -41,7 +41,7 @@ library AssetManagerSettings {
         // Attestation client verifies and decodes attestation proofs.
         // Type: ISCProofVerifier
         // changed via address updater
-        address attestationClient;
+        address scProofVerifier;
 
         // Pluggable validator for underlying addresses (typically, each chain has different rules).
         // Type: IAddressValidator

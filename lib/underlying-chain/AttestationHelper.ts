@@ -5,12 +5,11 @@ import { AttestationType } from "../verification/generated/attestation-types-enu
 import { SourceId } from "../verification/sources/sources";
 import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
 import { AttestationRequestId, AttestationResponse, IStateConnectorClient } from "./interfaces/IStateConnectorClient";
-import { AttestationDefinitionStore } from "../verification/attestation-types/AttestationDefinitionStore";
 
 // Attestation provider data that is always proved (i.e. contains Merkle proof).
 export type ProvedDH<T extends DHType> = T & { merkleProof: string };
 
-export class AttestationClientError extends Error {
+export class AttestationHelperError extends Error {
     constructor(message: string) {
         super(message);
     }
@@ -21,7 +20,7 @@ function findAddressIndex(ios: TxInputOutput[], address: string | null, defaultV
     for (let i = 0; i < ios.length; i++) {
         if (ios[i][0] === address) return i;
     }
-    throw new AttestationClientError(`address ${address} not used in transaction`);
+    throw new AttestationHelperError(`address ${address} not used in transaction`);
 }
 
 export class AttestationHelper {
@@ -45,11 +44,11 @@ export class AttestationHelper {
         const transaction = await this.chain.getTransaction(transactionHash);
         const block = await this.chain.getTransactionBlock(transactionHash);
         if (transaction == null || block == null) {
-            throw new AttestationClientError(`transaction not found ${transactionHash}`);
+            throw new AttestationHelperError(`transaction not found ${transactionHash}`);
         };
         const finalizationBlock = await this.chain.getBlockAt(block.number + this.chain.finalizationBlocks);
         if (finalizationBlock == null) {
-            throw new AttestationClientError(`finalization block not found (block ${block.number}, height ${await this.chain.getBlockHeight()})`);
+            throw new AttestationHelperError(`finalization block not found (block ${block.number}, height ${await this.chain.getBlockHeight()})`);
         }
         const request: ARPayment = {
             attestationType: AttestationType.Payment,
@@ -67,11 +66,11 @@ export class AttestationHelper {
         const transaction = await this.chain.getTransaction(transactionHash);
         const block = await this.chain.getTransactionBlock(transactionHash);
         if (transaction == null || block == null) {
-            throw new AttestationClientError(`transaction not found ${transactionHash}`);
+            throw new AttestationHelperError(`transaction not found ${transactionHash}`);
         };
         const finalizationBlock = await this.chain.getBlockAt(block.number + this.chain.finalizationBlocks);
         if (finalizationBlock == null) {
-            throw new AttestationClientError(`finalization block not found (block ${block.number}, height ${await this.chain.getBlockHeight()})`);
+            throw new AttestationHelperError(`finalization block not found (block ${block.number}, height ${await this.chain.getBlockHeight()})`);
         }
         const request: ARBalanceDecreasingTransaction = {
             attestationType: AttestationType.BalanceDecreasingTransaction,
@@ -90,11 +89,11 @@ export class AttestationHelper {
             overflowBlock = await this.chain.getBlockAt(overflowBlock.number + 1);
         }
         if (overflowBlock == null) {
-            throw new AttestationClientError(`overflow block not found (overflowBlock ${endBlock + 1}, endTimestamp ${endTimestamp}, height ${await this.chain.getBlockHeight()})`);
+            throw new AttestationHelperError(`overflow block not found (overflowBlock ${endBlock + 1}, endTimestamp ${endTimestamp}, height ${await this.chain.getBlockHeight()})`);
         }
         const finalizationBlock = await this.chain.getBlockAt(overflowBlock.number + this.chain.finalizationBlocks);
         if (finalizationBlock == null) {
-            throw new AttestationClientError(`finalization block not found (block ${overflowBlock.number}, height ${await this.chain.getBlockHeight()})`);
+            throw new AttestationHelperError(`finalization block not found (block ${overflowBlock.number}, height ${await this.chain.getBlockHeight()})`);
         }
         const request: ARReferencedPaymentNonexistence = {
             attestationType: AttestationType.ReferencedPaymentNonexistence,
@@ -114,7 +113,7 @@ export class AttestationHelper {
         const blockHeight = await this.chain.getBlockHeight();
         const finalizationBlock = await this.chain.getBlockAt(blockHeight);
         if (finalizationBlock == null) {
-            throw new AttestationClientError(`finalization block not found (block ${blockHeight}, height ${await this.chain.getBlockHeight()})`);
+            throw new AttestationHelperError(`finalization block not found (block ${blockHeight}, height ${await this.chain.getBlockHeight()})`);
         }
         const request: ARConfirmedBlockHeightExists = {
             attestationType: AttestationType.ConfirmedBlockHeightExists,
@@ -145,12 +144,12 @@ export class AttestationHelper {
     async provePayment(transactionHash: string, sourceAddress: string | null, receivingAddress: string | null): Promise<ProvedDH<DHPayment>> {
         const request = await this.requestPaymentProof(transactionHash, sourceAddress, receivingAddress);
         if (request == null) {
-            throw new AttestationClientError("payment: not proved")
+            throw new AttestationHelperError("payment: not proved")
         }
         await this.client.waitForRoundFinalization(request.round);
         const { result } = await this.obtainPaymentProof(request.round, request.data);
         if (result == null || result.merkleProof == null) {
-            throw new AttestationClientError("payment: not proved")
+            throw new AttestationHelperError("payment: not proved")
         }
         return result as ProvedDH<DHPayment>;
     }
@@ -158,12 +157,12 @@ export class AttestationHelper {
     async proveBalanceDecreasingTransaction(transactionHash: string, sourceAddress: string): Promise<ProvedDH<DHBalanceDecreasingTransaction>> {
         const request = await this.requestBalanceDecreasingTransactionProof(transactionHash, sourceAddress);
         if (request == null) {
-            throw new AttestationClientError("balanceDecreasingTransaction: not proved")
+            throw new AttestationHelperError("balanceDecreasingTransaction: not proved")
         }
         await this.client.waitForRoundFinalization(request.round);
         const { result } = await this.obtainBalanceDecreasingTransactionProof(request.round, request.data);
         if (result == null || result.merkleProof == null) {
-            throw new AttestationClientError("balanceDecreasingTransaction: not proved")
+            throw new AttestationHelperError("balanceDecreasingTransaction: not proved")
         }
         return result as ProvedDH<DHBalanceDecreasingTransaction>;
     }
@@ -171,12 +170,12 @@ export class AttestationHelper {
     async proveReferencedPaymentNonexistence(destinationAddress: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number): Promise<ProvedDH<DHReferencedPaymentNonexistence>> {
         const request = await this.requestReferencedPaymentNonexistenceProof(destinationAddress, paymentReference, amount, startBlock, endBlock, endTimestamp);
         if (request == null) {
-            throw new AttestationClientError("referencedPaymentNonexistence: not proved")
+            throw new AttestationHelperError("referencedPaymentNonexistence: not proved")
         }
         await this.client.waitForRoundFinalization(request.round);
         const { result } = await this.obtainReferencedPaymentNonexistenceProof(request.round, request.data);
         if (result == null || result.merkleProof == null) {
-            throw new AttestationClientError("referencedPaymentNonexistence: not proved")
+            throw new AttestationHelperError("referencedPaymentNonexistence: not proved")
         }
         return result as ProvedDH<DHReferencedPaymentNonexistence>;
     }
@@ -184,12 +183,12 @@ export class AttestationHelper {
     async proveConfirmedBlockHeightExists(queryWindow: number): Promise<ProvedDH<DHConfirmedBlockHeightExists>> {
         const request = await this.requestConfirmedBlockHeightExistsProof(queryWindow);
         if (request == null) {
-            throw new AttestationClientError("confirmedBlockHeightExists: not proved")
+            throw new AttestationHelperError("confirmedBlockHeightExists: not proved")
         }
         await this.client.waitForRoundFinalization(request.round);
         const { result } = await this.obtainConfirmedBlockHeightExistsProof(request.round, request.data);
         if (result == null || result.merkleProof == null) {
-            throw new AttestationClientError("confirmedBlockHeightExists: not proved")
+            throw new AttestationHelperError("confirmedBlockHeightExists: not proved")
         }
         return result as ProvedDH<DHConfirmedBlockHeightExists>;
     }

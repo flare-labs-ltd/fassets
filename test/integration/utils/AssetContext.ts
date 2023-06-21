@@ -62,7 +62,7 @@ export class AssetContext implements IAssetContext {
     stateConnector = this.common.stateConnector;
     agentVaultFactory = this.common.agentVaultFactory;
     collateralPoolFactory = this.common.collateralPoolFactory;
-    attestationClient = this.common.attestationClient;
+    scProofVerifier = this.common.scProofVerifier;
     ftsoRegistry = this.common.ftsoRegistry;
     ftsoManager = this.common.ftsoManager;
     natInfo = this.common.natInfo;
