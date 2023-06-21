@@ -534,17 +534,13 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should change wnat contract", async () => {
-            const newWNat = {
-                ...collaterals[0],
-                token: accounts[82],
-                ftsoSymbol: "NAT",
-                minCollateralRatioBIPS: "20000",
-                ccbMinCollateralRatioBIPS: "19000",
-                safetyMinCollateralRatioBIPS: "21000",
-            };
-            const prms = assetManagerController.setPoolWNatCollateralType([assetManager.address], newWNat, { from: governance });
-            await waitForTimelock(prms, assetManagerController, updateExecutor);
-            assertWeb3Equal(await assetManager.getWNat(), accounts[82]);
+            const newWNat = accounts[82];
+            const prms1 = contracts.addressUpdater.addOrUpdateContractNamesAndAddresses(["AssetManagerController", "FtsoRegistry", "WNat"],
+                [assetManagerController.address, contracts.ftsoRegistry.address, newWNat], { from: governance })
+            await waitForTimelock(prms1, contracts.addressUpdater, updateExecutor);
+            const prms2 = contracts.addressUpdater.updateContractAddresses([assetManagerController.address], { from: governance });
+            await waitForTimelock(prms2, assetManagerController, updateExecutor);
+            assertWeb3Equal(await assetManager.getWNat(), newWNat);
         });
 
         it("should change agent vault factory on asset manager controller", async () => {
@@ -562,26 +558,25 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should change contracts", async () => {
-            await contracts.addressUpdater.update(["AddressUpdater", "AssetManagerController", "AttestationClient", "FtsoRegistry"],
+            await contracts.addressUpdater.update(["AddressUpdater", "AssetManagerController", "WNat", "FtsoRegistry"],
                 [contracts.addressUpdater.address, assetManagerController.address, accounts[80], accounts[81]],
                 [assetManagerController.address],
                 { from: governance });
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(settings.assetManagerController, assetManagerController.address);
-            assertWeb3Equal(settings.attestationClient, accounts[80]);
+            assertWeb3Equal(await assetManager.getWNat(), accounts[80]);
             assertWeb3Equal(settings.ftsoRegistry, accounts[81]);
             assertWeb3Equal(await assetManagerController.replacedBy(), constants.ZERO_ADDRESS);
         });
 
         it("should change contracts, including asset manager controller", async () => {
-            await contracts.addressUpdater.update(["AddressUpdater", "AssetManagerController", "AttestationClient", "FtsoRegistry"],
-                [contracts.addressUpdater.address, accounts[79], accounts[80], accounts[81]],
+            await contracts.addressUpdater.update(["AddressUpdater", "AssetManagerController", "FtsoRegistry"],
+                [contracts.addressUpdater.address, accounts[79], accounts[80]],
                 [assetManagerController.address],
                 { from: governance });
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(settings.assetManagerController, accounts[79]);
-            assertWeb3Equal(settings.attestationClient, accounts[80]);
-            assertWeb3Equal(settings.ftsoRegistry, accounts[81]);
+            assertWeb3Equal(settings.ftsoRegistry, accounts[80]);
             assertWeb3Equal(await assetManagerController.replacedBy(), accounts[79]);
         });
 

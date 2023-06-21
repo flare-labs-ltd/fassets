@@ -73,6 +73,11 @@ export class CommonContext {
         const ftsos = await createTestFtsos(ftsoRegistry);
         // create FTSO manager mock (just for notifying about epoch finalization)
         const ftsoManager = await FtsoManagerMock.new();
+        // add some addresses to address updater
+        await addressUpdater.addOrUpdateContractNamesAndAddresses(
+            ["GovernanceSettings", "AddressUpdater", "StateConnector", "FtsoManager", "FtsoRegistry", "WNat"],
+            [governanceSettings.address, addressUpdater.address, stateConnector.address, ftsoManager.address, ftsoRegistry.address, wNat.address],
+            { from: governance });
         // create agent vault factory
         const agentVaultFactory = await AgentVaultFactory.new();
         // create collateral pool factory

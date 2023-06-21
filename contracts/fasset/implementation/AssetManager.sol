@@ -1042,20 +1042,6 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     }
 
     /**
-     * If the WNat token is replaced, it is not automatically used by the pools in the system.
-     * Instead, it has to be added as a new collateral token of type POOL by this method.
-     * Note that existing pools must switch afterwards using `upgradeWNat` method.
-     */
-    function setPoolWNatCollateralType(
-        CollateralType.Data calldata _data
-    )
-        external override
-        onlyAssetManagerController
-    {
-        CollateralTypes.setPoolWNatCollateralType(_data);
-    }
-
-    /**
      * When current pool collateral token contract (WNat) is replaced by the method setPoolCollateralType,
      * pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for
      * new ones and sets it for use by the pool.

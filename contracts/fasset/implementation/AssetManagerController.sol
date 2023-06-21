@@ -400,18 +400,6 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         }
     }
 
-    function setPoolWNatCollateralType(
-        IIAssetManager[] memory _assetManagers,
-        CollateralType.Data calldata _data
-    )
-        external
-        onlyGovernance
-    {
-        for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).setPoolWNatCollateralType(_data);
-        }
-    }
-
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Upgrade (second phase)
 
@@ -481,15 +469,15 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     {
         address assetManagerController =
             _getContractAddress(_contractNameHashes, _contractAddresses, "AssetManagerController");
-        address attestationClient =
-            _getContractAddress(_contractNameHashes, _contractAddresses, "AttestationClient");
         address ftsoRegistry =
             _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry");
+        address wNat =
+            _getContractAddress(_contractNameHashes, _contractAddresses, "WNat");
         for (uint256 i = 0; i < assetManagers.length; i++) {
             IIAssetManager assetManager = assetManagers[i];
             assetManager.updateSettings(
                 SettingsUpdater.UPDATE_CONTRACTS,
-                abi.encode(assetManagerController, attestationClient, ftsoRegistry));
+                abi.encode(assetManagerController, ftsoRegistry, wNat));
         }
         // if this controller was replaced, set forwarding address
         if (assetManagerController != address(this)) {

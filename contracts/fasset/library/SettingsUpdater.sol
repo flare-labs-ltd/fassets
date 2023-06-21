@@ -7,6 +7,8 @@ import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./LiquidationStrategy.sol";
+import "./Globals.sol";
+import "./CollateralTypes.sol";
 
 library SettingsUpdater {
     using SafeCast for uint256;
@@ -19,7 +21,7 @@ library SettingsUpdater {
     bytes32 internal constant UPDATES_STATE_POSITION = keccak256("fasset.AssetManager.UpdaterState");
 
     bytes32 internal constant UPDATE_CONTRACTS =
-        keccak256("updateContracts(address,address,address)");
+        keccak256("updateContracts(address,address,IWNat)");
     bytes32 internal constant SET_TIME_FOR_PAYMENT =
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant SET_WHITELIST =
@@ -228,20 +230,25 @@ library SettingsUpdater {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
 
-        (address controller, address attestationClient, address ftsoRegistry) =
-            abi.decode(_params, (address, address, address));
+        (address controller, address ftsoRegistry, IWNat wNat) =
+            abi.decode(_params, (address, address, IWNat));
 
         if (settings.assetManagerController != controller) {
             settings.assetManagerController = controller;
             emit AMEvents.ContractChanged("assetManagerController", address(controller));
         }
-        if (settings.attestationClient != attestationClient) {
-            settings.attestationClient = attestationClient;
-            emit AMEvents.ContractChanged("attestationClient", address(attestationClient));
-        }
+
         if (settings.ftsoRegistry != ftsoRegistry) {
             settings.ftsoRegistry = ftsoRegistry;
             emit AMEvents.ContractChanged("ftsoRegistry", address(ftsoRegistry));
+        }
+
+        IWNat oldWNat = Globals.getWNat();
+        if (oldWNat != wNat) {
+            CollateralType.Data memory data = CollateralTypes.getInfo(CollateralType.Class.POOL, oldWNat);
+            data.token = wNat;
+            CollateralTypes.setPoolWNatCollateralType(data);
+            emit AMEvents.ContractChanged("wNat", address(wNat));
         }
     }
 

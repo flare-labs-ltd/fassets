@@ -207,6 +207,11 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     };
     // create ftso registry
     const ftsoRegistry = await FtsoRegistryMock.new();
+    // add some addresses to address updater
+    await addressUpdater.addOrUpdateContractNamesAndAddresses(
+        ["GovernanceSettings", "AddressUpdater", "StateConnector", "FtsoRegistry", "WNat"],
+        [governanceSettings.address, addressUpdater.address, stateConnector.address, ftsoRegistry.address, wNat.address],
+        { from: governance });
     // create agent vault factory
     const agentVaultFactory = await AgentVaultFactory.new();
     // create collateral pool factory
