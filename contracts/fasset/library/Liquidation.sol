@@ -370,7 +370,6 @@ library Liquidation {
         // A simple way to force agents still holding expired collateral tokens into liquidation is just to
         // set fullCollateral for expired types to 0.
         // This will also make all liquidation payments in the other collateral type.
-        // TODO: 1) is this ok?  2) test if it works.
         uint256 fullCollateral = CollateralTypes.isValid(collateral) ? collateral.token.balanceOf(owner) : 0;
         (uint256 price, uint256 trusted) = Conversion.currentAmgPriceInTokenWeiWithTrusted(collateral);
         _data = Collateral.Data({ kind: _kind, fullCollateral: fullCollateral, amgToTokenWeiPrice: price });
