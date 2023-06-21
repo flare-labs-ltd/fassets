@@ -746,7 +746,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should revert setting underlying address validator after timelock when address 0 is provided", async () => {
-            const res = assetManagerController.setUnderlyingAddressValidator([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const res = assetManagerController.setSCProofVerifier([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "address zero");
         });
@@ -756,6 +756,13 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const res = await assetManagerController.setUnderlyingAddressValidator([assetManager.address], addr, { from: governance });
             const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
             expectEvent(timelock_info, "ContractChanged", { name: "underlyingAddressValidator", value: addr });
+        });
+
+        it("should set state connector proof verifier after timelock", async () => {
+            const addr = randomAddress();
+            const res = await assetManagerController.setSCProofVerifier([assetManager.address], addr, { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "ContractChanged", { name: "scProofVerifier", value: addr });
         });
 
         it("should revert setting min update repeat time when 0 seconds is provided", async () => {

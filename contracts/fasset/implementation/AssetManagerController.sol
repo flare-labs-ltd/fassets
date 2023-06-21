@@ -131,6 +131,14 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_UNDERLYING_ADDRESS_VALIDATOR, abi.encode(_value));
     }
 
+    function setSCProofVerifier(IIAssetManager[] memory _assetManagers, address _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_SC_PROOF_VERIFIER, abi.encode(_value));
+    }
+
     function setMinUpdateRepeatTimeSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance
