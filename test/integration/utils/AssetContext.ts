@@ -22,6 +22,7 @@ import { TokenPriceReader } from "../../../lib/state/TokenPrice";
 import { CollateralPrice } from "../../../lib/state/CollateralPrice";
 
 const TrivialAddressValidatorMock = artifacts.require('TrivialAddressValidatorMock');
+const WhitelistMock = artifacts.require("WhitelistMock");
 
 export interface SettingsOptions {
     // optional settings
@@ -188,11 +189,13 @@ export class AssetContext implements IAssetContext {
         const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId);
         // create address validator
         const addressValidator = await TrivialAddressValidatorMock.new();
+        // create allow-all agent whitelist
+        const agentWhitelist = await WhitelistMock.new(true);
         // create liquidation strategy (dynamic library)
         const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
         const liquidationStrategy = liquidationStrategyLib.address;
         // create collaterals
-        const testSettingsContracts = { ...common, addressValidator, liquidationStrategy };
+        const testSettingsContracts = { ...common, addressValidator, agentWhitelist, liquidationStrategy };
         // create settings
         const settings = createTestSettings(testSettingsContracts, chainInfo);
         const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts, chainInfo);

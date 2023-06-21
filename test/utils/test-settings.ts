@@ -29,6 +29,7 @@ const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const ERC20Mock = artifacts.require("ERC20Mock");
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const TrivialAddressValidatorMock = artifacts.require("TrivialAddressValidatorMock");
+const WhitelistMock = artifacts.require("WhitelistMock");
 
 export interface TestSettingsContracts {
     governanceSettings: GovernanceSettingsInstance;
@@ -39,7 +40,7 @@ export interface TestSettingsContracts {
     attestationClient: SCProofVerifierInstance;
     addressValidator: IAddressValidatorInstance;
     whitelist?: IWhitelistInstance;
-    agentWhitelist?: IWhitelistInstance;
+    agentWhitelist: IWhitelistInstance;
     ftsoRegistry: FtsoRegistryMockInstance;
     liquidationStrategy: string; // lib address
     wNat: WNatInstance,
@@ -212,12 +213,14 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const collateralPoolFactory = await CollateralPoolFactory.new();
     // create address validator
     const addressValidator = await TrivialAddressValidatorMock.new();
+    // create allow-all agent whitelist
+    const agentWhitelist = await WhitelistMock.new(true);
     // create liquidation strategy
     const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
     const liquidationStrategy = liquidationStrategyLib.address;
     //
     return { governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, stateConnector, attestationClient,
-        addressValidator, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
+        addressValidator, agentWhitelist, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
 }
 
 export interface CreateTestAgentDeps {

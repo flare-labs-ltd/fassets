@@ -723,6 +723,7 @@ library SettingsUpdater {
         require(_settings.underlyingAddressValidator != address(0), "zero underlyingAddressValidator address");
         require(_settings.ftsoRegistry != address(0), "zero ftsoRegistry address");
         require(_settings.liquidationStrategy != address(0), "zero liquidationStrategy address");
+        require(_settings.agentWhitelist != address(0), "zero agentWhitelist address");
 
         require(_settings.assetUnitUBA > 0, "cannot be zero");
         require(_settings.assetMintingGranularityUBA > 0, "cannot be zero");
