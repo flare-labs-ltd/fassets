@@ -8,8 +8,7 @@
     "fAssetName": "F-Litecoin",
     "fAssetSymbol": "FLTC",
     "assetMintingDecimals": 8,
-    "whitelist": null,
-    "agentWhitelist": null,
+    "userWhitelist": null,
     "underlyingAddressValidator": [
         "TrivialAddressValidatorMock",
         []

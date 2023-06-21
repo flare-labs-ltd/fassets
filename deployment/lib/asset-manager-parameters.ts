@@ -77,6 +77,58 @@ export interface AssetManagerParameters {
     burnAddress: string;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Contracts - may be shared between asset managers. Most have sensible defaults.
+
+    /**
+     * The asset manager controller which manages all the asset manager settings.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'AssetManagerController' in contracts.json.
+     * @pattern ^\w+$
+     */
+    assetManagerController?: string;
+
+    /**
+     * The factory contract for creating agent vaults.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'AgentVaultFactory' in contracts.json.
+     * @pattern ^\w+$
+     */
+    agentVaultFactory?: string;
+
+    /**
+     * The factory contract for creating agent collateral pools.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'CollateralPoolFactory' in contracts.json.
+     * @pattern ^\w+$
+     */
+    collateralPoolFactory?: string;
+
+    /**
+     * The proof verifier contract for state connector prrofs.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'SCProofVerifier' in contracts.json.
+     * @pattern ^\w+$
+     */
+    scProofVerifier?: string;
+
+    /**
+     * The agent whitelist contains a list of allowed agent owners.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'AgentWhitelist' in contracts.json.
+     * @pattern ^\w+$
+     */
+    agentWhitelist?: string;
+
+    /**
+     * If non-null, the whitelist contains a list of accounts that can call public methods
+     * (minting, redeeming, challenging, etc.)
+     * If null, there will be no user whitelisting.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * @pattern ^\w+$
+     */
+    userWhitelist: string | null;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
     // F-asset (chain) specific parameters
 
     /**
@@ -123,21 +175,6 @@ export interface AssetManagerParameters {
      * @minimum 0
      */
     assetMintingDecimals: integer;
-
-    /**
-     * If non-null, the whitelist contains a list of accounts that can call public methods
-     * (minting, redeeming, challenging, etc.)
-     * Can be a contract address (0x...) or a name in contracts.json.
-     * @pattern ^\w+$
-     */
-    whitelist: string | null;
-
-    /**
-     * If non-null, the whitelist contains a list of allowed agent owners.
-     * Can be a contract address (0x...) or a name in contracts.json.
-     * @pattern ^\w+$
-     */
-    agentWhitelist: string | null;
 
     /**
      * Underlying address validator in format `[artifactName, constructorParameters]`.

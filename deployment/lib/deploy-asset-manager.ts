@@ -29,8 +29,23 @@ export async function deploySCProofVerifier(hre: HardhatRuntimeEnvironment, cont
 
     contracts.SCProofVerifier = newContract("SCProofVerifier", "SCProofVerifier.sol", scProofVerifier.address);
     saveContracts(contractsFile, contracts);
+}
 
-    // console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["SCProofVerifier"], [${scProofVerifier.address}])'`);
+export async function deployWhitelist(hre: HardhatRuntimeEnvironment, contractsFile: string, kind: 'Agent' | 'User') {
+    console.log(`Deploying ${kind}Whitelist`);
+
+    const artifacts = hre.artifacts as Truffle.Artifacts;
+
+    const Whitelist = artifacts.require("Whitelist");
+
+    const { deployer } = loadDeployAccounts(hre);
+    const contracts = loadContracts(contractsFile);
+
+    const revokeSupported = kind === 'Agent';
+    const whitelist = await Whitelist.new(contracts.GovernanceSettings.address, deployer, revokeSupported);
+
+    contracts[`${kind}Whitelist`] = newContract(`${kind}Whitelist`, "Whitelist.sol", whitelist.address);
+    saveContracts(contractsFile, contracts);
 }
 
 export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
@@ -46,8 +61,6 @@ export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, co
 
     contracts.AgentVaultFactory = newContract("AgentVaultFactory", "AgentVaultFactory.sol", agentVaultFactory.address);
     saveContracts(contractsFile, contracts);
-
-    // console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AgentVaultFactory"], [${agentVaultFactory.address}])'`);
 }
 
 export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
@@ -63,8 +76,6 @@ export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment
 
     contracts.CollateralPoolFactory = newContract("CollateralPoolFactory", "CollateralPoolFactory.sol", collateralPoolFactory.address);
     saveContracts(contractsFile, contracts);
-
-    // console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["CollateralPoolFactory"], [${collateralPoolFactory.address}])'`);
 }
 
 export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, contractsFile: string, managerParameterFiles: string[]) {
@@ -178,15 +189,15 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
     const assetUnitUBA = ten.pow(new BN(parameters.assetDecimals));
     const assetMintingGranularityUBA = ten.pow(new BN(parameters.assetDecimals - parameters.assetMintingDecimals));
     return {
-        assetManagerController: contracts.AssetManagerController.address,
+        assetManagerController: addressFromParameter(contracts, parameters.assetManagerController ?? 'AssetManagerController'),
         fAsset: fAsset.address,
-        agentVaultFactory: contracts.AgentVaultFactory.address,
-        collateralPoolFactory: contracts.CollateralPoolFactory.address,
-        scProofVerifier: contracts.SCProofVerifier.address,
+        agentVaultFactory: addressFromParameter(contracts, parameters.agentVaultFactory ?? 'AgentVaultFactory'),
+        collateralPoolFactory: addressFromParameter(contracts, parameters.collateralPoolFactory ?? 'CollateralPoolFactory'),
+        scProofVerifier: addressFromParameter(contracts, parameters.scProofVerifier ?? 'SCProofVerifier'),
+        whitelist: parameters.userWhitelist ? addressFromParameter(contracts, parameters.userWhitelist) : ZERO_ADDRESS,
+        agentWhitelist: addressFromParameter(contracts, parameters.agentWhitelist ?? 'AgentWhitelist'),
         underlyingAddressValidator: addressValidator,
         liquidationStrategy: liquidationStrategy,
-        whitelist: parameters.whitelist ? addressFromParameter(contracts, parameters.whitelist) : ZERO_ADDRESS,
-        agentWhitelist: parameters.agentWhitelist ? addressFromParameter(contracts, parameters.agentWhitelist) : ZERO_ADDRESS,
         ftsoRegistry: contracts.FtsoRegistry.address,
         burnAddress: parameters.burnAddress,
         chainId: parameters.chainId,
