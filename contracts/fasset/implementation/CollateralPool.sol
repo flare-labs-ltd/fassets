@@ -769,9 +769,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         return claimed;
     }
 
-    // Set executors that can then automatically claim rewards through FtsoRewardManager.
+    // Set executors that can then automatically claim rewards and airdrop.
 
-    function setFtsoAutoClaiming(
+    function setAutoClaiming(
         IClaimSetupManager _claimSetupManager,
         address[] memory _executors
     )
