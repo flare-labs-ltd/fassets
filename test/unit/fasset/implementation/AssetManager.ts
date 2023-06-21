@@ -1163,4 +1163,234 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
+
+    describe("branch tests", () => {
+        it("random address shouldn't be able to update settings", async () => {
+            let attestationClientNewAddress = accounts[22];
+            let ftsoRegistryNewAddress = accounts[23];
+            const r = assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,address)")),
+                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, attestationClientNewAddress, ftsoRegistryNewAddress]),
+                { from: accounts[29] });
+            expectRevert(r, "only asset manager controller");
+        });
+
+        it("random address shouldn't be able to attach controller", async () => {
+            const r = assetManager.attachController(false, { from: accounts[29]});
+            expectRevert(r, "only asset manager controller");
+        });
+
+        it("unattached asset manager can't create agent", async () => {
+            await assetManager.attachController(false, { from: assetManagerController });
+            const r = createAgentWithEOA(agentOwner1, underlyingAgent1);
+            expectRevert(r, "only attached");
+        });
+
+        it("unattached asset manager can't do collateral reservations", async () => {
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.attachController(false, { from: assetManagerController });
+            const minter = accounts[80];
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const reservationFee = await assetManager.collateralReservationFee(1);
+            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
+                { from: minter, value: reservationFee });
+            expectRevert(r, "only attached");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't do collateral reservations", async () => {
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            // create governance settings
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            const minter = accounts[80];
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const reservationFee = await assetManager.collateralReservationFee(1);
+            // Try to reserve collateral from non whitelisted address
+            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
+                { from: minter, value: reservationFee });
+            expectRevert(r, "not whitelisted");
+        });
+
+        it("agent can't self mint if asset manager is not attached", async () => {
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            //unattach
+            await assetManager.attachController(false, { from: assetManagerController });
+            // calculate payment amount (as amount >= one lot => include pool fee)
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const amountUBA = lotsToUBA(1);
+            const poolFeeShare = mulBIPS(mulBIPS(amountUBA, toBN(agentInfo.feeBIPS)), toBN(agentInfo.poolFeeShareBIPS));
+            const paymentAmount = amountUBA.add(poolFeeShare);
+            // make and prove payment transaction
+            chain.mint("random_address", paymentAmount);
+            const txHash = await wallet.addTransaction("random_address", underlyingAgent1, paymentAmount,
+                PaymentReference.selfMint(agentVault.address));
+            const proof = await attestationProvider.provePayment(txHash, "random_address", underlyingAgent1);
+            // self-mint
+            const r = assetManager.selfMint(proof, agentVault.address, 1, { from: agentOwner1 });
+            expectRevert(r, "only attached");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't redeem", async () => {
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            // create governance settings
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            const redeemer = accounts[83];
+            const underlyingRedeemer = "redeemer"
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
+            // default a redemption
+            const r = assetManager.redeem(1, underlyingRedeemer, { from: redeemer });
+            expectRevert(r, "not whitelisted");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't challenge illegal payment", async () => {
+            const challenger = accounts[83];
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await depositUnderlyingAsset(agentVault, agentOwner1, underlyingAgent1, toWei(10));
+            // make unannounced (illegal) payment
+            const txHash = await wallet.addTransaction(underlyingAgent1, "random_address", 1000, PaymentReference.announcedWithdrawal(1));
+            const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            const r = assetManager.illegalPaymentChallenge(proof, agentVault.address, { from: challenger });
+            expectRevert(r, "not whitelisted");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't challenge illegal double payment", async () => {
+            const challenger = accounts[83];
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            // announce ONE underlying withdrawal
+            await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+            // make two identical payments
+            const txHash1 = await wallet.addTransaction(underlyingAgent1, "random_address", 500, PaymentReference.announcedWithdrawal(1));
+            const txHash2 = await wallet.addTransaction(underlyingAgent1, "random_address", 500, PaymentReference.announcedWithdrawal(1));
+            const proof1 = await attestationProvider.proveBalanceDecreasingTransaction(txHash1, underlyingAgent1);
+            const proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            const r = assetManager.doublePaymentChallenge(proof1, proof2, agentVault.address, { from: challenger });
+            expectRevert(r, "not whitelisted");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't challenge free balance negative", async () => {
+            const challenger = accounts[83];
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            // mint one lot of f-assets
+            const lots = toBN(1);
+            const { underlyingPaymentUBA } = await mintFassets(agentVault, agentOwner1, underlyingAgent1, agentVault.address, lots);
+            // announce withdrawal
+            const _tx = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+            const underlyingWithdrawalAnnouncement = findRequiredEvent(_tx, "UnderlyingWithdrawalAnnounced").args;
+            // make payment that would make free balance negative
+            const txHash = await wallet.addTransaction(underlyingAgent1, "random_address", lotsToUBA(lots),
+                underlyingWithdrawalAnnouncement.paymentReference);
+            const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            // make a challenge
+            const r = assetManager.freeBalanceNegativeChallenge([proof], agentVault.address, { from: challenger });
+            expectRevert(r, "not whitelisted");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't start liquidation", async () => {
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1)
+            // mint some f-assets that require backing
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[82], toBN(1));
+            // price change
+            await ftsos.asset.setCurrentPrice(toBNExp(3521, 50), 0);
+            await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(3521, 50), 0);
+            // start liquidation
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            const r = assetManager.startLiquidation(agentVault.address, { from: accounts[83] });
+            expectRevert(r, "not whitelisted");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't liquidate", async () => {
+            const liquidator = accounts[83];
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e8), toWei(3e8))
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, liquidator, toBN(2));
+            // simulate liquidation (set cr to eps > 0)
+            await ftsos.asset.setCurrentPrice(toBNExp(10, 12), 0);
+            await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(10, 12), 0);
+            await assetManager.startLiquidation(agentVault.address, { from: liquidator });
+            // calculate liquidation value and liquidate liquidate
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const liquidationUBA = lotsToUBA(2);
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            const r = assetManager.liquidate(agentVault.address, lotsToUBA(2), { from: liquidator });
+            expectRevert(r, "not whitelisted");
+        });
+
+        it("random address shouldn't be able to add collateral token", async () => {
+            const collateral = JSON.parse(JSON.stringify(web3DeepNormalize(collaterals[1]))); // make a deep copy
+            collateral.token = (await ERC20Mock.new("New Token", "NT")).address;
+            collateral.tokenFtsoSymbol = "NT";
+            collateral.assetFtsoSymbol = "NT";
+            const r = assetManager.addCollateralType(web3DeepNormalize(collateral), { from: accounts[99]});
+            expectRevert(r, "only asset manager controller");
+
+        });
+
+        it("random address shouldn't be able to add collateral ratios for token", async () => {
+            const r = assetManager.setCollateralRatiosForToken(collaterals[0].collateralClass, collaterals[0].token,
+                toBIPS(1.5), toBIPS(1.4), toBIPS(1.6), { from: accounts[99] });
+            expectRevert(r, "only asset manager controller");
+        });
+
+        it("random address shouldn't be able to deprecate token", async () => {
+            const r = assetManager.deprecateCollateralType(collaterals[0].collateralClass, collaterals[0].token,
+                settings.tokenInvalidationTimeMinSeconds, { from: accounts[99] });
+            expectRevert(r, "only asset manager controller");
+        });
+    });
 });
