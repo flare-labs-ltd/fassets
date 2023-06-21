@@ -33,6 +33,7 @@ library RedemptionRequests {
         string memory _redeemerUnderlyingAddress
     )
         external
+        returns (uint256)
     {
         uint256 maxRedeemedTickets = AssetManagerState.getSettings().maxRedeemedTickets;
         AgentRedemptionList memory redemptionList = AgentRedemptionList({
@@ -59,6 +60,7 @@ library RedemptionRequests {
         // burn the redeemed value of fassets
         uint256 redeemedUBA = Conversion.convertLotsToUBA(redeemedLots);
         Redemptions.burnFAssets(msg.sender, redeemedUBA);
+        return redeemedUBA;
     }
 
     function redeemFromAgent(
@@ -109,6 +111,7 @@ library RedemptionRequests {
         uint256 _amountUBA
     )
         external
+        returns (uint256)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
@@ -121,6 +124,7 @@ library RedemptionRequests {
         Liquidation.endLiquidationIfHealthy(agent);
         // send event
         emit AMEvents.SelfClose(_agentVault, closedUBA);
+        return closedUBA;
     }
 
     function maxRedemptionFromAgent(

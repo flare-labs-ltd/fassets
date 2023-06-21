@@ -80,6 +80,7 @@ library AgentsCreateDestroy {
         AgentSettings.Data calldata _settings
     )
         external
+        returns (address)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         // can be called from cold or hot owner address
@@ -129,6 +130,7 @@ library AgentsCreateDestroy {
         // notify
         emitAgentCreated(ownerColdAddress, address(agentVault), address(agent.collateralPool),
             normalizedUnderlyingAddress, _settings);
+        return address(agentVault);
     }
 
     function announceDestroy(
@@ -136,6 +138,7 @@ library AgentsCreateDestroy {
     )
         external
         onlyAgentVaultOwner(_agentVault)
+        returns (uint256)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
@@ -149,6 +152,7 @@ library AgentsCreateDestroy {
             agent.destroyAllowedAt = destroyAllowedAt.toUint64();
             emit AMEvents.AgentDestroyAnnounced(_agentVault, destroyAllowedAt);
         }
+        return agent.destroyAllowedAt;
     }
 
     function destroyAgent(

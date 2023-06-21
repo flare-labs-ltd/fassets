@@ -35,12 +35,20 @@ library Liquidation {
         address _agentVault
     )
         external
+        returns (Agent.LiquidationPhase _liquidationPhase, uint256 _liquidationStartTs)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         // if already in full liquidation or destroying, do nothing
-        if (agent.status == Agent.Status.FULL_LIQUIDATION || agent.status == Agent.Status.DESTROYING) return;
+        if (agent.status == Agent.Status.FULL_LIQUIDATION) {
+            return (Agent.LiquidationPhase.LIQUIDATION, agent.liquidationStartedAt);
+        }
+        if (agent.status == Agent.Status.DESTROYING) {
+            return (Agent.LiquidationPhase.NONE, 0);
+        }
+        // upgrade liquidation based on CR and time
         CRData memory cr = getCollateralRatiosBIPS(agent);
-        _upgradeLiquidationPhase(agent, cr);
+        _liquidationPhase = _upgradeLiquidationPhase(agent, cr);
+        _liquidationStartTs = _liquidationStartTimestamp(agent);
     }
 
     // Liquidate agent's position.
@@ -289,6 +297,24 @@ library Liquidation {
             return Agent.LiquidationPhase.LIQUIDATION;
         } else {    // any other status - NORMAL or DESTROYING
             return Agent.LiquidationPhase.NONE;
+        }
+    }
+
+    function _liquidationStartTimestamp(
+        Agent.State storage _agent
+    )
+        private view
+        returns (uint256)
+    {
+        Agent.Status status = _agent.status;
+        if (status == Agent.Status.LIQUIDATION) {
+            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+            bool startedInCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;
+            return _agent.liquidationStartedAt + (startedInCCB ? settings.ccbTimeSeconds : 0);
+        } else if (status == Agent.Status.FULL_LIQUIDATION) {
+            return _agent.liquidationStartedAt;
+        } else {    // any other status - NORMAL or DESTROYING
+            return 0;
         }
     }
 
