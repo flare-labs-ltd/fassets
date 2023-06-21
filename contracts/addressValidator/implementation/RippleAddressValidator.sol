@@ -6,14 +6,14 @@ import "../library/Bytes.sol";
 import "../library/Base58.sol";
 
 contract RippleAddressValidator is IAddressValidator {
-    bytes constant XRP_ALPHABET = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz";
+    bytes internal constant XRP_ALPHABET = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz";
 
     function validate(string memory _rippleAddress)
         external pure
         returns (bool)
     {
         bytes memory rippleAddress = bytes(_rippleAddress);
-        if (rippleAddress.length < 25 || rippleAddress.length > 35 || rippleAddress[0] != 'r') {
+        if (rippleAddress.length < 25 || rippleAddress.length > 35 || rippleAddress[0] != "r") {
             return false;
         }
         (bytes memory decoded, bool ok) = Base58.decode(rippleAddress, XRP_ALPHABET);
