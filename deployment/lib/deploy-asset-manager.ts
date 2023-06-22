@@ -44,7 +44,7 @@ export async function deployWhitelist(hre: HardhatRuntimeEnvironment, contractsF
     const revokeSupported = kind === 'Agent';
     const whitelist = await Whitelist.new(contracts.GovernanceSettings.address, deployer, revokeSupported);
 
-    contracts[`${kind}Whitelist`] = newContract(`${kind}Whitelist`, "Whitelist.sol", whitelist.address);
+    contracts[`${kind}Whitelist`] = newContract(`${kind}Whitelist`, "Whitelist.sol", whitelist.address, { mustSwitchToProduction: true });
     saveContracts(contractsFile, contracts);
 }
 
@@ -90,7 +90,7 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
 
     const assetManagerController = await AssetManagerController.new(contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address);
 
-    contracts.AssetManagerController = newContract("AssetManagerController", "AssetManagerController.sol", assetManagerController.address);
+    contracts.AssetManagerController = newContract("AssetManagerController", "AssetManagerController.sol", assetManagerController.address, { mustSwitchToProduction: true });
     saveContracts(contractsFile, contracts);
 
     // add asset managers before switching to production governance
@@ -99,8 +99,6 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
         const assetManager = await deployAssetManager(hre, parameterFile, contractsFile, false);
         await assetManagerController.addAssetManager(assetManager.address, { from: deployer });
     }
-
-    await assetManagerController.switchToProductionMode({ from: deployer });
 
     console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AssetManagerController"], [${assetManagerController.address}])'`);
 }
@@ -142,17 +140,32 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     const symbol = parameters.fAssetSymbol;
     contracts[`AssetManager_${symbol}`] = newContract(`AssetManager_${symbol}`, "AssetManager.sol", assetManager.address);
-    contracts[symbol] = newContract(symbol, "FAsset.sol", fAsset.address);
+    contracts[symbol] = newContract(symbol, "FAsset.sol", fAsset.address, { mustSwitchToProduction: true });
     contracts[`AddressValidator_${symbol}`] = newContract(`AddressValidator_${symbol}`, `${addressValidatorArtifact}.sol`, addressValidator.address);
     saveContracts(contractsFile, contracts);
-
-    await fAsset.switchToProductionMode({ from: deployer });
 
     if (standalone) {
         console.log(`NOTE: perform governance call 'AssetManagerController(${contracts.AssetManagerController?.address}).addAssetManager(${assetManager.address})'`);
     }
 
     return assetManager;
+}
+
+export async function switchAllToProductionMode(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    const { deployer } = loadDeployAccounts(hre);
+    const contracts = loadContracts(contractsFile);
+
+    const GovernedBase = artifacts.require("contracts/governance/implementation/GovernedBase.sol:GovernedBase" as 'GovernedBase');
+
+    for (const contract of Object.values(contracts)) {
+        if (contract?.mustSwitchToProduction) {
+            console.log(`Switching to production: ${contract.name}`);
+            const instance = await GovernedBase.at(contract.address);
+            await instance.switchToProductionMode({ from: deployer });
+            delete contract.mustSwitchToProduction;
+            saveContracts(contractsFile, contracts);
+        }
+    }
 }
 
 function addressFromParameter(contracts: ChainContracts, addressOrName: string) {

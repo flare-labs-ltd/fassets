@@ -7,7 +7,7 @@ import "hardhat-gas-reporter";
 import { task } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
-import { deployAgentVaultFactory, deployWhitelist, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory, deploySCProofVerifier } from "./deployment/lib/deploy-asset-manager";
+import { deployAgentVaultFactory, deployWhitelist, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory, deploySCProofVerifier, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import "./type-extensions";
 
@@ -68,6 +68,13 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
                 await deployAssetManager(hre, paramFile, contractsFile, true);
             }
         }
+    });
+
+task("switch-to-production", "Switch all deployed files to production mode.")
+    .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
+    .setAction(async ({ networkConfig }, hre) => {
+        const contractsFile = `deployment/deploys/${networkConfig}.json`;
+        await switchAllToProductionMode(hre, contractsFile);
     });
 
 export default config;

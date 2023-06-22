@@ -4,6 +4,7 @@ export interface Contract {
     name: string;
     contractName: string;
     address: string;
+    mustSwitchToProduction?: boolean;
 }
 
 export interface ChainContracts {
@@ -19,14 +20,16 @@ export interface ChainContracts {
     AgentVaultFactory?: Contract;
     CollateralPoolFactory?: Contract;
     AssetManagerController?: Contract;
-    FAssetWhitelist?: Contract;
-    FAssetAgentWhitelist?: Contract;
+    UserWhitelist?: Contract;
+    AgentWhitelist?: Contract;
     // others (asset managers & fassets & everything from flare-smart-contract)
     [key: string]: Contract | undefined;
 }
 
-export function newContract(name: string, contractName: string, address: string) {
-    return { name, contractName, address };
+export type NewContractOptions = Omit<Contract, 'name' | 'contractName' | 'address'>;
+
+export function newContract(name: string, contractName: string, address: string, options?: NewContractOptions) {
+    return { name, contractName, address, ...(options ?? {}) };
 }
 
 export function loadContracts(filename: string): ChainContracts {
