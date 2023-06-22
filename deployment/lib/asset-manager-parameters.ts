@@ -115,7 +115,7 @@ export interface AssetManagerParameters {
 
     /**
      * The number of decimals of precision for minting.
-     * Usually it is the same as assetDecimals (e.g. 8 for bitcoin).
+     * Usually it is the same as assetDecimals (e.g. 8 for BTC).
      * But for some asset types e.g. ethereum, the number of asset decimals is 18, so we internally
      * manage all mintings with a smaller number of decimals (e.g. 9).
      * The maximum number of decimals must be such that the total supply of fasset will never

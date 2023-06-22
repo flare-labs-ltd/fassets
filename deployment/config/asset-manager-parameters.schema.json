@@ -97,7 +97,7 @@
             "type": "integer"
         },
         "assetMintingDecimals": {
-            "description": "The number of decimals of precision for minting.\nUsually it is the same as assetDecimals (e.g. 8 for bitcoin).\nBut for some asset types e.g. ethereum, the number of asset decimals is 18, so we internally\nmanage all mintings with a smaller number of decimals (e.g. 9).\nThe maximum number of decimals must be such that the total supply of fasset will never\nexceed 64bit when expressed as fixed point with this many decimals (this allows for storage optimization).",
+            "description": "The number of decimals of precision for minting.\nUsually it is the same as assetDecimals (e.g. 8 for BTC).\nBut for some asset types e.g. ethereum, the number of asset decimals is 18, so we internally\nmanage all mintings with a smaller number of decimals (e.g. 9).\nThe maximum number of decimals must be such that the total supply of fasset will never\nexceed 64bit when expressed as fixed point with this many decimals (this allows for storage optimization).",
             "minimum": 0,
             "type": "integer"
         },
@@ -345,4 +345,3 @@
     ],
     "type": "object"
 }
-

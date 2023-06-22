@@ -4,7 +4,7 @@ Solidity contracts for *Flare Labs* FAsset system.
 
 ## Overview
 
-The FAsset contracts are used to mint assets on top of Flare (or Songbird). The system is designed to handle chains which don’t have (full) smart contract capabilities, although it can also work for smart contract chains. Initially, FAsset system will support assets from block chains Ripple, Bitcoin, Doge, and Litecoin. Later we might add other blockchains.
+The FAsset contracts are used to mint assets on top of Flare (or Songbird). The system is designed to handle chains which don’t have (full) smart contract capabilities, although it can also work for smart contract chains. Initially, FAsset system will support assets XRP, BTC, DOGE, and LTC. Later we might add other blockchains.
 
 The minted FAssets are secured by collateral, which is in the form of ERC20 tokens on Flare/Songbird chain and native tokens (FLR/SGB). The collateral is locked in contracts that guarantee that minted tokens can always be redeemed for underlying assets or compensated by collateral.
 
