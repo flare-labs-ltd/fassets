@@ -13,7 +13,7 @@ import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
 import { AssetManagerInstance, FAssetInstance, IAddressValidatorInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { createTestCollaterals, createTestLiquidationSettings, createTestSettings } from "../../utils/test-settings";
-import { newAssetManager, waitForTimelock } from "../../utils/fasset/DeployAssetManager";
+import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { CommonContext } from "./CommonContext";

@@ -2,7 +2,7 @@ import { constants, expectRevert } from "@openzeppelin/test-helpers";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
 import { IERC165Contract, WhitelistInstance } from "../../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
-import { waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
+import { waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 
 const Whitelist = artifacts.require('Whitelist');
