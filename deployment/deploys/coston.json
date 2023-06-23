@@ -198,5 +198,69 @@
     "name": "WNatRegistryProvider",
     "contractName": "WNatRegistryProvider.sol",
     "address": "0x9819645ab3E99a0A2c0ECF797Da4B9312b31121F"
+  },
+  {
+    "name": "USDC",
+    "contractName": "ERC20Mock.sol",
+    "address": "0x75F79Df31F0fbF3332EBA67d013CbA1154Bf20F1"
+  },
+  {
+    "name": "USDT",
+    "contractName": "ERC20Mock.sol",
+    "address": "0x0e16329b59A6448315B29F9d663BedC2F54Bcf9B"
+  },
+  {
+    "name": "SCProofVerifier",
+    "contractName": "SCProofVerifier.sol",
+    "address": "0x2D98960902EA6D0d9188052B23682d32C59d4461"
+  },
+  {
+    "name": "AgentWhitelist",
+    "contractName": "Whitelist.sol",
+    "address": "0xf66dEC1236319AA8202A1B0F2aa8442A4ad88A8F",
+    "mustSwitchToProduction": true
+  },
+  {
+    "name": "UserWhitelist",
+    "contractName": "Whitelist.sol",
+    "address": "0x5f73833EFDa1054905084232b25384505f2e6cb6",
+    "mustSwitchToProduction": true
+  },
+  {
+    "name": "AgentVaultFactory",
+    "contractName": "AgentVaultFactory.sol",
+    "address": "0xc5B0f10BEea6BB5Ac10aF93f494e75904B6fb0cC"
+  },
+  {
+    "name": "CollateralPoolFactory",
+    "contractName": "CollateralPoolFactory.sol",
+    "address": "0x27FEc084D6a09bBB6611063732df1B8BCcba5878"
+  },
+  {
+    "name": "AssetManagerController",
+    "contractName": "AssetManagerController.sol",
+    "address": "0xec3eEe520ec48f5901f71B99feBB109A4df39b2B",
+    "mustSwitchToProduction": true
+  },
+  {
+    "name": "LiquidationStrategyImpl",
+    "contractName": "LiquidationStrategyImpl.sol",
+    "address": "0xcA5969f4F5d7152f675aC9F066B4C3A50A9184B3"
+  },
+  {
+    "name": "AssetManager_FtestXRP",
+    "contractName": "AssetManager.sol",
+    "address": "0xBc9bDE568C2f072CCAF99721be1A67BCC09d2D8b"
+  },
+  {
+    "name": "FtestXRP",
+    "contractName": "FAsset.sol",
+    "address": "0x8b1c69F60F740B3226cC6Df4A814d0EF79f3eA09",
+    "mustSwitchToProduction": true
+  },
+  {
+    "name": "AddressValidator_FtestXRP",
+    "contractName": "RippleAddressValidator.sol",
+    "address": "0xE0F0d0bbD62f1ace5Aa86C3818e51728C86cd7a9"
   }
 ]
