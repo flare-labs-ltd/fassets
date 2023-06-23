@@ -16,6 +16,7 @@ export function requiredEnvironmentVariable(name: string): string {
 export function loadDeployAccounts(hre: HardhatRuntimeEnvironment): DeployAccounts {
     const deployerPrivateKey = requiredEnvironmentVariable('DEPLOYER_PRIVATE_KEY');
     const deployerAccount = hre.web3.eth.accounts.privateKeyToAccount(deployerPrivateKey);
+    hre.web3.eth.accounts.wallet.add(deployerPrivateKey);
     return {
         deployer: deployerAccount.address
     };
