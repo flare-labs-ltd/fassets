@@ -48,6 +48,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
+    let usdt: ERC20MockInstance;
 
     // addresses
     const underlyingBurnAddr = "Burn";
@@ -156,6 +157,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         // save some contracts as globals
         ({ wNat } = contracts);
         usdc = contracts.stablecoins.USDC;
+        usdt = contracts.stablecoins.USDT;
         // create FTSOs for nat, stablecoins and asset and set some price
         ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
         // create mock chain and attestation provider
@@ -167,11 +169,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
-        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
     });
 
     describe("set and update settings / properties", () => {
@@ -379,6 +381,34 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             expectEvent(tx1, "AgentCollateralTypeChanged");
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.class1CollateralToken, collaterals[2].token);
+        });
+
+        it("If agent doesn't switch class1 after deprecation and invalidation time, liquidator can start liquidation", async () => {
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(1));
+            const liquidator = accounts[83];
+            //deprecate token
+            const tx = await assetManager.deprecateCollateralType(collaterals[1].collateralClass, collaterals[1].token,
+                settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
+            expectEvent(tx, "CollateralTypeDeprecated");
+            const collateralType = await assetManager.getCollateralType(collaterals[1].collateralClass, collaterals[1].token);
+            assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
+            //Wait until you can swtich class1 token
+            await time.increase(settings.tokenInvalidationTimeMinSeconds);
+            await time.increase(settings.tokenInvalidationTimeMinSeconds);
+            await assetManager.startLiquidation(agentVault.address, { from: liquidator });
+            //Check for liquidation status
+            const info = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(info.status, 2);
+            //Switch class1 and deposit collateral
+            await assetManager.switchClass1Collateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
+            await usdt.mintAmount(agentOwner1, toWei(3e8));
+            await usdt.approve(agentVault.address, toWei(3e8), { from: agentOwner1 });
+            await agentVault.depositCollateral(usdt.address, toWei(3e8), { from: agentOwner1 });
+            //Chekc that agent is out of liquidation
+            const info1 = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(info1.status, 0);
+
         });
 
         it("should set pool collateral token", async () => {
