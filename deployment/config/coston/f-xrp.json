@@ -43,8 +43,8 @@
             "token": "USDC",
             "decimals": 18,
             "directPricePair": false,
-            "assetFtsoSymbol": "XRP",
-            "tokenFtsoSymbol": "USDC",
+            "assetFtsoSymbol": "testXRP",
+            "tokenFtsoSymbol": "testUSDC",
             "minCollateralRatioBIPS": 14000,
             "ccbMinCollateralRatioBIPS": 13000,
             "safetyMinCollateralRatioBIPS": 15000
@@ -53,11 +53,11 @@
             "token": "USDT",
             "decimals": 18,
             "directPricePair": false,
-            "assetFtsoSymbol": "XRP",
-            "tokenFtsoSymbol": "USDT",
-            "minCollateralRatioBIPS": 15000,
-            "ccbMinCollateralRatioBIPS": 14000,
-            "safetyMinCollateralRatioBIPS": 16000
+            "assetFtsoSymbol": "testXRP",
+            "tokenFtsoSymbol": "testUSDT",
+            "minCollateralRatioBIPS": 14000,
+            "ccbMinCollateralRatioBIPS": 13000,
+            "safetyMinCollateralRatioBIPS": 15000
         }
     ],
     "minUnderlyingBackingBIPS": 10000,

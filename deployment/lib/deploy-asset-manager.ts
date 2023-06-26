@@ -6,7 +6,7 @@ import { FAssetInstance } from "../../typechain-truffle";
 import { JsonParameterSchema } from "./JsonParameterSchema";
 import { AssetManagerParameters, CollateralTypeParameters } from './asset-manager-parameters';
 import { ChainContracts, loadContracts, newContract, saveContracts } from "./contracts";
-import { ZERO_ADDRESS, loadDeployAccounts } from './deploy-utils';
+import { ZERO_ADDRESS, loadDeployAccounts, requiredEnvironmentVariable } from './deploy-utils';
 import { ILiquidationStrategyFactory } from "./liquidationStrategyFactory/ILiquidationStrategyFactory";
 import { LiquidationStrategyImpl } from "./liquidationStrategyFactory/LiquidationStrategyImpl";
 
@@ -109,6 +109,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     const AssetManager = artifacts.require("AssetManager");
     const FAsset = artifacts.require('FAsset');
+
 
     const { deployer } = loadDeployAccounts(hre);
     const parameters = assetManagerParameters.load(parametersFile);

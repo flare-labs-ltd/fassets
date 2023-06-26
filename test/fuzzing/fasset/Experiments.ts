@@ -52,6 +52,16 @@ class Future<T> {
 }
 
 contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
+    it("try load new account", async () => {
+        const privateKey = '0x3c5237a289ca14d74a34778d757a437821dde826593cefcbab5d8bf23b8932c1';
+        const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+        web3.eth.accounts.wallet.add(account);
+        console.log(web3.eth.accounts.currentProvider);
+        console.log(WNAT);
+        const wNat = await WNAT.new(account.address, "Wrapped NAT", "WNAT");
+        await setDefaultVPContract(wNat, account.address);
+    });
+
     describe("web3 hardhat experiments", () => {
         // a fresh contract for each test
         let wNat: WNatInstance;

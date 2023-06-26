@@ -63,6 +63,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         const owner = requiredEnvironmentVariable('TEST_AGENT_OWNER');
         await agentWhitelist.addAddressToWhitelist(owner, { from: deployer });
         for (const mgrAddress of managers) {
+            console.log("Testing manager at", mgrAddress);
             const assetManager = await AssetManager.at(mgrAddress);
             const settings = await assetManager.getSettings();
             const collaterals = await assetManager.getCollateralTypes();
