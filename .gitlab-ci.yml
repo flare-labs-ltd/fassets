@@ -85,7 +85,10 @@ test-unit:
     - TEST_PATH:
       - ./test/unit/fasset/implementation
       - ./test/unit/fasset/library
-      - ./test/unit/{bots,governance,utils,fasset/mock}
+      - ./test/unit/fasset/mock
+      - ./test/unit/bots
+      - ./test/unit/governance
+      - ./test/unit/utils
     - TEST_ARG:
       - test/unit/gasReport/GasReport.ts
   script:
