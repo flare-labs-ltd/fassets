@@ -1,6 +1,6 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
-import { erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { erc165InterfaceId, toBN } from "../../../../lib/utils/helpers";
 import {
     AgentVaultMockInstance,
     AssetManagerMockInstance,
@@ -11,6 +11,7 @@ import {
 } from "../../../../typechain-truffle";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../utils/test-settings";
+import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
 
 function assertEqualBN(a: BN, b: BN, message?: string) {
     assert.equal(a.toString(), b.toString(), message);
@@ -330,6 +331,16 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(tokenSupply, ETH(10));
             const collateral = await wNat.balanceOf(collateralPool.address);
             assertEqualBN(collateral, ETH(10));
+        });
+
+        it("should not enter if token supply to nat balance is too small", async () => {
+            await agentVault.enterPool(collateralPool.address, { value: ETH(1) });
+            //Mint collateral pool tokens to increase total supply
+            await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
+            await collateralPoolToken.mint(accounts[12],ETH(10000), { from: collateralPool.address });
+            await stopImpersonatingContract(collateralPool.address);
+            const res = collateralPool.enter(0, true, { value: ETH(10) });
+            await expectRevert(res, "pool nat balance too small");
         });
 
         it("should enter tokenless and f-assetless pool holding some collateral", async () => {
@@ -996,6 +1007,36 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iCollateralPoolToken.abi, [iERC20.abi])));
             assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iERC20.abi)));
             assert.isFalse(await collateralPoolToken.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+        });
+    });
+
+    describe("branch tests", () => {
+        it("random address shouldn't be able to set exit collateral RatioBIPS", async () => {
+            const setTo = BN_ONE.addn(Math.floor(10_000 * topupCR));
+            const res = collateralPool.setExitCollateralRatioBIPS(setTo, { from: accounts[12] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to set topup collateral ratio BIPS", async () => {
+            const setTo = new BN(Math.floor(10_000 * exitCR)).sub(BN_ONE);
+            const res = collateralPool.setTopupCollateralRatioBIPS(setTo, { from: accounts[12] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to set topup token price factor BIPS", async () => {
+            const setTo = new BN(10_000).sub(BN_ONE);
+            const res = collateralPool.setTopupTokenPriceFactorBIPS(setTo, { from: accounts[12] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to mint collateral pool tokens", async () => {
+            let res = collateralPoolToken.mint(accounts[12],ETH(10000), { from: accounts[5] });
+            await expectRevert(res, "only collateral pool");
+        });
+
+        it("random address shouldn't be able to burn collateral pool tokens", async () => {
+            let res = collateralPoolToken.burn(accounts[12],ETH(1), { from: accounts[5] });
+            await expectRevert(res, "only collateral pool");
         });
     });
 });

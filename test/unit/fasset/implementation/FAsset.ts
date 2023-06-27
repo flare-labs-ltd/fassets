@@ -60,6 +60,22 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             assertWeb3Equal(balance.toNumber(), amount);
         });
 
+        it('only asset manager should be able to mint FAssets', async function () {
+            await fAsset.setAssetManager(assetManager, { from: governance });
+            const amount = 100;
+            let res = fAsset.mint(accounts[1], amount,{ from: accounts[5] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it('only asset manager should be able to burn FAssets', async function () {
+            await fAsset.setAssetManager(assetManager, { from: governance });
+            const mint_amount = 100;
+            const burn_amount = 20;
+            await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
+            let res = fAsset.burn(accounts[1], burn_amount,{ from: accounts[5] } );
+            await expectRevert(res, "only asset manager");
+        });
+
         it('should burn FAsset', async function () {
             await fAsset.setAssetManager(assetManager, { from: governance });
             const mint_amount = 100;
@@ -75,7 +91,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const mint_amount = 10;
             const burn_amount = 20;
             await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
-            const res = fAsset.burn(accounts[1], burn_amount,{ from: assetManager } )
+            const res = fAsset.burn(accounts[1], burn_amount,{ from: assetManager } );
             await expectRevert(res, "Burn too big for owner");
         });
 

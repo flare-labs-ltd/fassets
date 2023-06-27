@@ -1,4 +1,4 @@
-import { expectEvent } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
@@ -11,6 +11,8 @@ import { Liquidator } from "../utils/Liquidator";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
+import { impersonateAccount, stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers";
+import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
 
 
 contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations`, async accounts => {
@@ -358,6 +360,36 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assert.equal(class1BalanceRedeemerAfter.sub(class1BalanceRedeemerBefore).toString(), class1BalanceAgentBefore.sub(class1BalanceAgentAfter).toString());
         assert.equal((await context.wNat.balanceOf(minter.address)).toString(), natShare.toString());
         expectEvent(resp, "Exit");
+    });
+
+    it("withdraw collateral when FAsset is terminated", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
+        // make agent available
+        const fullAgentClass1Collateral = toWei(1e7);
+        const fullAgentPoolCollateral = toWei(1e7);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        // minter mints
+        const lots = 300;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        const txHash1 = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash1);
+        // minter enters the pool
+        const minterPoolDeposit1 = toWei(10000);
+        await agent.collateralPool.enter(0, false, { from: minter.address, value: minterPoolDeposit1 });
+        // Cant withdraw collateral if fasset is not terminated
+        let res = agent.collateralPool.withdrawCollateralWhenFAssetTerminated({ from: minter.address });
+        await expectRevert(res, "f-asset not terminated");
+        await impersonateContract(context.assetManager.address, toBN(512526332000000000), accounts[0]);
+        await context.fAsset.terminate({ from: context.assetManager.address });
+        await stopImpersonatingContract(context.assetManager.address);
+        const natBalanceBefore = await context.wNat.balanceOf(minter.address);
+        await agent.collateralPool.withdrawCollateralWhenFAssetTerminated({ from: minter.address });
+        const natBalanceAfter = await context.wNat.balanceOf(minter.address);
+        assertWeb3Equal(natBalanceAfter.sub(natBalanceBefore), minterPoolDeposit1);
+        //Should revert if there is no collateral to withdraw
+        res = agent.collateralPool.withdrawCollateralWhenFAssetTerminated({ from: minter.address });
+        await expectRevert(res, "nothing to withdraw");
     });
 
 });
