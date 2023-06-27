@@ -95,7 +95,7 @@ test-unit:
 
 
 test-unit:
-  extends: .test-unit
+  extends: test-unit
   tags:
   - flarenetwork-md
   parallel:
