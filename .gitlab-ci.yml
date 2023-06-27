@@ -11,10 +11,10 @@ sast:
   needs: []
 
 
+variables:
+  YARN_CACHE_DIR: "$CI_PROJECT_DIR/.yarn-cache"
 
 default:
-  variables:
-    YARN_CACHE_DIR: "$CI_PROJECT_DIR/.yarn-cache"
   tags:
   - flarenetwork
 
