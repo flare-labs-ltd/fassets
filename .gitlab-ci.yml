@@ -93,8 +93,8 @@ test-unit:
   script:
   - yarn hardhat test --network hardhat ${TEST_ARG}
 
-test-unit:
-  extends: .test-node-sc
+test-unit-md:
+  extends: test-unit
   tags: [ flarenetwork-md ]
   parallel:
     matrix:
