@@ -26,7 +26,7 @@ default:
 
 .test-node-sc:
   stage: test
-  image: node:latest
+  image: node:19
   timeout: 3h
   needs:
   - build-smart-contracts
@@ -56,7 +56,7 @@ default:
 build-smart-contracts:
   stage: build
   needs: []
-  image: node:latest
+  image: node:19
   before_script:
   - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
   script:

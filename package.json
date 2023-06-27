@@ -10,6 +10,9 @@
   "author": "Flare SC team",
   "license": "MIT",
   "directories": {},
+  "engines" : {
+    "node" : ">=16 <20"
+  },
   "scripts": {
     "---------HOOKS": "",
     "postinstall": "echo Running install in flare-smart-contracts... && cd node_modules/flare-smart-contracts && yarn",
