@@ -80,8 +80,14 @@ build-smart-contracts:
 
 test-unit:
   extends: .test-node-sc
+  tags:
+  - ${RUNNER_TAG}
   parallel:
     matrix:
+    - RUNNER_TAG:
+      - larenetwork-md
+      TEST_PATH:
+      - ./test/unit/fasset/implementation
     - TEST_PATH:
       - ./test/unit/fasset/library
       - ./test/unit/fasset/mock
@@ -92,16 +98,6 @@ test-unit:
       - test/unit/gasReport/GasReport.ts
   script:
   - yarn hardhat test --network hardhat ${TEST_ARG}
-
-
-test-unit:
-  extends: test-unit
-  tags:
-  - flarenetwork-md
-  parallel:
-    matrix:
-    - TEST_PATH:
-      - ./test/unit/fasset/implementation
 
 
 test-contract-integration:
