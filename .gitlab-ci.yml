@@ -83,7 +83,6 @@ test-unit:
   parallel:
     matrix:
     - TEST_PATH:
-      - ./test/unit/fasset/implementation
       - ./test/unit/fasset/library
       - ./test/unit/fasset/mock
       - ./test/unit/bots
@@ -93,6 +92,16 @@ test-unit:
       - test/unit/gasReport/GasReport.ts
   script:
   - yarn hardhat test --network hardhat ${TEST_ARG}
+
+
+test-unit:
+  extends: .test-unit
+  tags:
+  - flarenetwork-md
+  parallel:
+    matrix:
+    - TEST_PATH:
+      - ./test/unit/fasset/implementation
 
 
 test-contract-integration:
