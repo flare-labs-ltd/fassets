@@ -23,7 +23,7 @@ import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
 import { InterceptorEvmEvents } from "./InterceptorEvmEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
-import { FuzzingPoolTokenHolder } from "./FuzzingPoolTokenHolder";
+import { FAssetMarketplace, FuzzingPoolTokenHolder } from "./FuzzingPoolTokenHolder";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
     const startTimestamp = systemTimestamp();
@@ -156,10 +156,11 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         challenger = new Challenger(runner, fuzzingState, challengerAddress);
         eventDecoder.addAddress(`CHALLENGER`, challenger.address);
         // create pool token holders
+        const fAssetMarketplace = new FAssetMarketplace(customers);
         const firstPoolTokenHolderAddress = firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS + N_KEEPERS + 1;
         for (let i = 0; i < N_POOL_TOKEN_HOLDERS; i++) {
             const underlyingAddress = "underlying_pool_token_holder_" + i;
-            const tokenHolder = new FuzzingPoolTokenHolder(runner, accounts[firstPoolTokenHolderAddress + i], underlyingAddress);
+            const tokenHolder = new FuzzingPoolTokenHolder(runner, accounts[firstPoolTokenHolderAddress + i], underlyingAddress, fAssetMarketplace);
             poolTokenHolders.push(tokenHolder);
             eventDecoder.addAddress(`POOL_TOKEN_HOLDER_${i}`, tokenHolder.address);
         }

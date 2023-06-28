@@ -38,7 +38,8 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
     constructor(
         public runner: FuzzingRunner,
         public address: string,
-        public underlyingAddress: string
+        public underlyingAddress: string,
+        public fAssetMarketplace: FAssetMarketplace,
     ) {
         super(runner);
     }
@@ -70,15 +71,17 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
             if (!this.poolInfo) return;
             const balance = await this.poolInfo.poolToken.balanceOf(this.address);
             const amount = full ? balance : randomBN(balance);
-            const exitAmount = amount.eq(balance) ? 'full' : `${formatBN(amount)} / ${formatBN(balance)}`;
-            const selfCloseFAssetRequired = await this.poolInfo.pool.fAssetRequiredForSelfCloseExit(exitAmount);
+            const amountFmt = amount.eq(balance) ? `full ${formatBN(balance)}` : `${formatBN(amount)} / ${formatBN(balance)}`;
+            const selfCloseFAssetRequired = await this.poolInfo.pool.fAssetRequiredForSelfCloseExit(amount);
             if (selfCloseFAssetRequired.isZero()) {
-                this.comment(`${this.formatAddress(this.address)}: exiting pool ${this.formatAddress(this.poolInfo.pool.address)} (${formatBN(exitAmount)})`);
+                this.comment(`${this.formatAddress(this.address)}: exiting pool ${this.formatAddress(this.poolInfo.pool.address)} (${amountFmt})`);
                 await this.poolInfo.pool.exit(amount, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, { from: this.address })
                     .catch(e => scope.exitOnExpectedError(e, ['collateral ratio falls below exitCR']));
             } else {
+                await this.fAssetMarketplace.buy(scope, this.address, selfCloseFAssetRequired);
+                await this.context.fAsset.approve(this.poolInfo.pool.address, selfCloseFAssetRequired, { from: this.address });
                 const redeemToCollateral = coinFlip();
-                this.comment(`${this.formatAddress(this.address)}: self-close exiting pool ${this.formatAddress(this.poolInfo.pool.address)} (${formatBN(exitAmount)}), fassets=${formatBN(selfCloseFAssetRequired)}, toCollateral=${redeemToCollateral}`);
+                this.comment(`${this.formatAddress(this.address)}: self-close exiting pool ${this.formatAddress(this.poolInfo.pool.address)} (${amountFmt}), fassets=${formatBN(selfCloseFAssetRequired)}, toCollateral=${redeemToCollateral}`);
                 const res = await this.poolInfo.pool.selfCloseExit(amount, redeemToCollateral, this.underlyingAddress, { from: this.address })
                     .catch(e => scope.exitOnExpectedError(e, []));
                 const redemptionRequest = this.runner.eventDecoder.findEventFrom(res, this.context.assetManager, 'RedemptionRequested');
