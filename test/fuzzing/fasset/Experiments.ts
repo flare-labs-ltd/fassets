@@ -1,8 +1,6 @@
-import { constants, time } from "@openzeppelin/test-helpers";
+import { time } from "@openzeppelin/test-helpers";
 import { network } from "hardhat";
-import { HardhatNetworkAccountUserConfig } from "hardhat/types";
-import hardhatConfig from "../../../hardhat.config";
-import { formatBN as formatBNOrig, sleep, toBN, toBNExp, toStringExp } from "../../../lib/utils/helpers";
+import { Future, formatBN, sleep, toBN, toBNExp, toStringExp } from "../../../lib/utils/helpers";
 import { WNatInstance } from "../../../typechain-truffle";
 import { currentRealTime, elapsedTime } from "../../utils/fuzzing-utils";
 import { getTestFile } from "../../utils/test-helpers";
@@ -11,8 +9,6 @@ import { setDefaultVPContract } from "../../utils/token-test-helpers";
 const WNAT = artifacts.require("WNat");
 
 let startTimestamp: BN;
-
-const formatBN = formatBNOrig as (x: BN  | string | number) => string;
 
 async function timed<T>(call: () => Promise<T>): Promise<T> {
     const start = currentRealTime();
@@ -40,15 +36,6 @@ async function waitNewNonce(address: string) {
             return [nonce, currentRealTime() - startTm];
         }
     }
-}
-
-class Future<T> {
-    resolve!: (value: T | PromiseLike<T>) => void;
-    reject!: (error: any) => void;
-    promise = new Promise<T>((resolve, reject) => {
-        this.resolve = resolve;
-        this.reject = reject;
-    });
 }
 
 contract(`Experiments; ${getTestFile(__filename)}`, async accounts => {
