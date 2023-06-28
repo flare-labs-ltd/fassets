@@ -123,7 +123,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
             const res1 = await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
             await waitForTimelock(res1, assetManagerController, updateExecutor);
-            const res2 = await assetManagerController.removeAssetManager(assetManager.address, { from: governance });
+            const res2 = await assetManagerController.removeAssetManager(assetManager2.address, { from: governance });
             await waitForTimelock(res2, assetManagerController, updateExecutor);
             const isAttached = await assetManager2.controllerAttached();
             assert.equal(isAttached, true);
@@ -1186,6 +1186,21 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
             const res = assetManagerController.setAgentCollateralRatioChangeTimelockSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_new, { from: accounts[12] });
             await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set confirmation by others after seconds", async () => {
+            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("Controler that does not manage an asset manager shouldn't be able to update its settings", async () => {
+            let assetManager2: AssetManagerInstance;
+            let fAsset2: FAssetInstance;
+            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
+            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager2.address], agentCollateralRatioChangeTimelockSeconds_new, { from: governance });
+            await expectRevert(res, "Asset manager not managed");
         });
 
         it("random address shouldn't be able to add Collateral token", async () => {

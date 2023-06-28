@@ -1,6 +1,6 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
-import { erc165InterfaceId, toBN } from "../../../../lib/utils/helpers";
+import { erc165InterfaceId, toBN, toWei } from "../../../../lib/utils/helpers";
 import {
     AgentVaultMockInstance,
     AssetManagerMockInstance,
@@ -1037,6 +1037,34 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("random address shouldn't be able to burn collateral pool tokens", async () => {
             let res = collateralPoolToken.burn(accounts[12],ETH(1), { from: accounts[5] });
             await expectRevert(res, "only collateral pool");
+        });
+
+        it("random address shouldn't be able to deposit fasset fees", async () => {
+            let res = collateralPool.fAssetFeeDeposited(ETH(1), { from: accounts[5] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to destory collateral pool", async () => {
+            let res = collateralPool.destroy(accounts[5], { from: accounts[5] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to payout", async () => {
+            let res = collateralPool.payout(accounts[5], toWei(1), toWei(1), { from: accounts[5] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to upgrade wNat contract", async () => {
+            const newWNat: ERC20MockInstance = await ERC20Mock.new("new wnat", "WNat");
+            let res = collateralPool.upgradeWNatContract(newWNat.address, { from: accounts[5] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to claim rewards from ftso reward manager", async () => {
+            const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
+            await wNat.mintAmount(distributionToDelegators.address, ETH(1));
+            let res = collateralPool.claimFtsoRewards(distributionToDelegators.address, 0, { from: accounts[5] });
+            await expectRevert(res, "only agent");
         });
     });
 });
