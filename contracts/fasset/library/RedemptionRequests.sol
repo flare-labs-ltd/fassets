@@ -206,6 +206,7 @@ library RedemptionRequests {
         Agents.startRedeemingAssets(Agent.get(_data.agentVault), _data.valueAMG, _poolSelfClose);
         // emit event to remind agent to pay
         emit AMEvents.RedemptionRequested(_data.agentVault,
+            _redeemer,
             requestId,
             normalizedUnderlyingAddress,
             redeemedValueUBA,

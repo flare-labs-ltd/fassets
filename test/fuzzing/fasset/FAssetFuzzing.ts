@@ -158,9 +158,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         // create pool token holders
         const firstPoolTokenHolderAddress = firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS + N_KEEPERS + 1;
         for (let i = 0; i < N_POOL_TOKEN_HOLDERS; i++) {
-            const lpholder = new FuzzingPoolTokenHolder(runner, accounts[firstPoolTokenHolderAddress + i]);
-            poolTokenHolders.push(lpholder);
-            eventDecoder.addAddress(`POOL_TOKEN_HOLDER_${i}`, lpholder.address);
+            const underlyingAddress = "underlying_pool_token_holder_" + i;
+            const tokenHolder = new FuzzingPoolTokenHolder(runner, accounts[firstPoolTokenHolderAddress + i], underlyingAddress);
+            poolTokenHolders.push(tokenHolder);
+            eventDecoder.addAddress(`POOL_TOKEN_HOLDER_${i}`, tokenHolder.address);
         }
         // await context.wnat.send("1000", { from: governance });
         await interceptor.allHandled();

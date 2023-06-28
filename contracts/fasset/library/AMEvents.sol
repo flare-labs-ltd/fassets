@@ -166,6 +166,7 @@ library AMEvents {
      */
     event RedemptionRequested(
         address indexed agentVault,
+        address indexed redeemer,
         uint256 requestId,
         string paymentAddress,
         uint256 valueUBA,
