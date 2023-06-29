@@ -1,0 +1,64 @@
+name: tests
+
+on:
+  push:
+
+jobs:
+  unit-test:
+    runs-on: node:19
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+        - TEST_PATH: ./test/unit/fasset/library
+        - TEST_PATH: ./test/unit/fasset/mock
+        - TEST_PATH: ./test/unit/bots
+        - TEST_PATH: ./test/unit/governance
+        - TEST_PATH: ./test/unit/utils
+        - TEST_PATH: ./test/unit/fasset/implementation
+        - TEST_ARG: test/unit/gasReport/GasReport.ts
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Install node modules
+      run: yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
+    - name: Compile contracts
+      run: yarn run compile
+    - name: Run test
+      run: yarn hardhat test --network hardhat ${{TEST_ARG}}
+      env:
+        TEST_PATH: ${{ TEST_PATH }}
+
+
+  test-contract-integration:
+    runs-on: node:19
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Install node modules
+      run: yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
+    - name: Compile contracts
+      run: yarn run compile
+    - name: Run the test
+      run: yarn test_integration_hh
+
+
+  test-linter:
+    runs-on: node:19
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Install node modules
+      run: yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
+    - name: Compile contracts
+      run: yarn run compile
+    - name: Run the test
+      run: yarn run lint
