@@ -80,7 +80,7 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
             } else {
                 await this.fAssetMarketplace.buy(scope, this.address, selfCloseFAssetRequired);
                 await this.context.fAsset.approve(this.poolInfo.pool.address, selfCloseFAssetRequired, { from: this.address });
-                const redeemToCollateral = coinFlip();
+                const redeemToCollateral = coinFlip(0.1);   // it will usually redeem to collateral anyway, because amount is typically < 1 lot
                 this.comment(`${this.formatAddress(this.address)}: self-close exiting pool ${this.formatAddress(this.poolInfo.pool.address)} (${amountFmt}), fassets=${formatBN(selfCloseFAssetRequired)}, toCollateral=${redeemToCollateral}`);
                 const res = await this.poolInfo.pool.selfCloseExit(amount, redeemToCollateral, this.underlyingAddress, { from: this.address })
                     .catch(e => scope.exitOnExpectedError(e, []));

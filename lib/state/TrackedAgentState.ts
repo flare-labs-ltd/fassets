@@ -1,5 +1,6 @@
 import {
     AgentAvailable, AgentCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
+    RedeemedInCollateral,
     RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/AssetManager";
 import { AgentInfo, AgentSetting, AgentStatus, CollateralType, CollateralClass } from "../fasset/AssetManagerTypes";
@@ -174,6 +175,10 @@ export class TrackedAgentState {
 
     handleRedemptionDefault(args: EvmEventArgs<RedemptionDefault>): void {
         this.updateRedeemingUBA(args.requestId, toBN(args.redemptionAmountUBA).neg());
+    }
+
+    handleRedeemedInCollateral(args: EvmEventArgs<RedeemedInCollateral>): void {
+        this.mintedUBA = this.mintedUBA.sub(toBN(args.redemptionAmountUBA));
     }
 
     handleSelfClose(args: EvmEventArgs<SelfClose>): void {
