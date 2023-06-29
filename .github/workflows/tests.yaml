@@ -5,7 +5,7 @@ on:
 
 jobs:
   unit-test:
-    runs-on: node:19
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     strategy:
@@ -22,6 +22,10 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+    - name: Install Node.js 19
+      uses: actions/setup-node@v3
+      with:
+        node-version: 19
     - name: Install node modules
       run: yarn install --frozen-lockfile
     - name: Compile contracts
@@ -33,13 +37,17 @@ jobs:
 
 
   test-contract-integration:
-    runs-on: node:19
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+    - name: Install Node.js 19
+      uses: actions/setup-node@v3
+      with:
+        node-version: 19
     - name: Install node modules
       run: yarn install --frozen-lockfile
     - name: Compile contracts
@@ -49,13 +57,17 @@ jobs:
 
 
   test-linter:
-    runs-on: node:19
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+    - name: Install Node.js 19
+      uses: actions/setup-node@v3
+      with:
+        node-version: 19
     - name: Install node modules
       run: yarn install --frozen-lockfile
     - name: Compile contracts
@@ -65,13 +77,17 @@ jobs:
 
 
   test-slither-test:
-    runs-on: node:19
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+    - name: Install Node.js 19
+      uses: actions/setup-node@v3
+      with:
+        node-version: 19
     - name: Install slither-analyzer
       run: apt update -y && apt install -y python3-pip && pip3 install slither-analyzer
     - name: Install node modules
@@ -80,44 +96,3 @@ jobs:
       run: yarn run compile
     - name: Run the test
       run: yarn run slither
-
-
-  test-coverage:
-    runs-on: node:19
-    permissions:
-      contents: read
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Install node modules
-      run: yarn install --frozen-lockfile
-    - name: Compile contracts
-      run: yarn run compile
-    - name: Run the test
-      run: yarn run cov
-
-
-  test-fuzzer:
-    runs-on: node:19
-    permissions:
-      contents: read
-    env:
-      NODE_OPTIONS: "--max_old_space_size=6144"
-      LOOPS: 5000
-      CHANGE_PRICE_AT: '300,600,...'
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Install node modules
-      run: yarn install --frozen-lockfile
-    - name: Compile contracts
-      run: yarn run compile
-    - name: Run the test
-      run: yarn run fuzzing_fasset
-    - name: Archive fuzzer log
-      uses: actions/upload-artifact@v3
-      with:
-        name: fuzzer-log
-        path: test_logs/fasset-fuzzing.log

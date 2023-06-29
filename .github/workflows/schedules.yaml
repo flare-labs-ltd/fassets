@@ -1,0 +1,56 @@
+name: "Scheduled tests"
+
+on:
+  schedule:
+    - cron:  '0 0 * * 1' # 00:00 every monday
+
+jobs:
+
+
+  test-coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Install Node.js 19
+      uses: actions/setup-node@v3
+      with:
+        node-version: 19
+    - name: Install node modules
+      run: yarn install --frozen-lockfile
+    - name: Compile contracts
+      run: yarn run compile
+    - name: Run the test
+      run: yarn run cov
+
+
+  test-fuzzer:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      NODE_OPTIONS: "--max_old_space_size=6144"
+      LOOPS: 5000
+      CHANGE_PRICE_AT: '300,600,...'
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Install Node.js 19
+      uses: actions/setup-node@v3
+      with:
+        node-version: 19
+    - name: Install node modules
+      run: yarn install --frozen-lockfile
+    - name: Compile contracts
+      run: yarn run compile
+    - name: Run the test
+      run: yarn run fuzzing_fasset
+    - name: Archive fuzzer log
+      uses: actions/upload-artifact@v3
+      with:
+        name: fuzzer-log
+        path: test_logs/fasset-fuzzing.log
