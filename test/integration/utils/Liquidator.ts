@@ -9,6 +9,8 @@ import { AssetContext, AssetContextClient } from "./AssetContext";
 const AgentVault = artifacts.require('AgentVault');
 
 export class Liquidator extends AssetContextClient {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         context: AssetContext,
         public address: string

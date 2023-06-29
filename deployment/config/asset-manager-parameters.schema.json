@@ -78,13 +78,15 @@
             "minimum": 0,
             "type": "integer"
         },
-        "agentWhitelist": {
-            "description": "If non-null, the whitelist contains a list of allowed agent owners.\nCan be a contract address (0x...) or a name in contracts.json.",
+        "agentVaultFactory": {
+            "description": "The factory contract for creating agent vaults.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'AgentVaultFactory' in contracts.json.",
             "pattern": "^\\w+$",
-            "type": [
-                "null",
-                "string"
-            ]
+            "type": "string"
+        },
+        "agentWhitelist": {
+            "description": "The agent whitelist contains a list of allowed agent owners.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'AgentWhitelist' in contracts.json.",
+            "pattern": "^\\w+$",
+            "type": "string"
         },
         "announcedUnderlyingConfirmationMinSeconds": {
             "description": "Minimum time that has to pass between underlying withdrawal announcement and the confirmation.\nAny value is ok, but higher values give more security agains multiple announcement attack by a miner.\nShouldn't be much bigger than state connector response time, so that payments can be confirmed without\nextra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).",
@@ -95,6 +97,11 @@
             "description": "The number of decimals in asset.",
             "minimum": 0,
             "type": "integer"
+        },
+        "assetManagerController": {
+            "description": "The asset manager controller which manages all the asset manager settings.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'AssetManagerController' in contracts.json.",
+            "pattern": "^\\w+$",
+            "type": "string"
         },
         "assetMintingDecimals": {
             "description": "The number of decimals of precision for minting.\nUsually it is the same as assetDecimals (e.g. 8 for BTC).\nBut for some asset types e.g. ethereum, the number of asset decimals is 18, so we internally\nmanage all mintings with a smaller number of decimals (e.g. 9).\nThe maximum number of decimals must be such that the total supply of fasset will never\nexceed 64bit when expressed as fixed point with this many decimals (this allows for storage optimization).",
@@ -151,6 +158,11 @@
                 "$ref": "#/definitions/CollateralTypeParameters"
             },
             "type": "array"
+        },
+        "collateralPoolFactory": {
+            "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'CollateralPoolFactory' in contracts.json.",
+            "pattern": "^\\w+$",
+            "type": "string"
         },
         "collateralReservationFeeBIPS": {
             "description": "Collateral reservation fee that must be paid by the minter.\nPayment is in NAT, but is proportional to the value of assets to be minted.",
@@ -253,6 +265,11 @@
             "description": "For some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address.\nThis must be done by presenting a payment proof from that address.",
             "type": "boolean"
         },
+        "scProofVerifier": {
+            "description": "The proof verifier contract for state connector prrofs.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'SCProofVerifier' in contracts.json.",
+            "pattern": "^\\w+$",
+            "type": "string"
+        },
         "tokenInvalidationTimeMinSeconds": {
             "description": "Minimum time from the moment token is deprecated to when it becomes invalid and agents still using\nit as class1 get liquidated.",
             "minimum": 0,
@@ -283,8 +300,8 @@
             "minimum": 0,
             "type": "integer"
         },
-        "whitelist": {
-            "description": "If non-null, the whitelist contains a list of accounts that can call public methods\n(minting, redeeming, challenging, etc.)\nCan be a contract address (0x...) or a name in contracts.json.",
+        "userWhitelist": {
+            "description": "If non-null, the whitelist contains a list of accounts that can call public methods\n(minting, redeeming, challenging, etc.)\nIf null, there will be no user whitelisting.\nCan be a contract address (0x...) or a name in contracts.json.",
             "pattern": "^\\w+$",
             "type": [
                 "null",
@@ -301,7 +318,6 @@
         "agentCollateralRatioChangeTimelockSeconds",
         "agentExitAvailableTimelockSeconds",
         "agentFeeChangeTimelockSeconds",
-        "agentWhitelist",
         "announcedUnderlyingConfirmationMinSeconds",
         "assetDecimals",
         "assetMintingDecimals",
@@ -340,7 +356,7 @@
         "underlyingAddressValidator",
         "underlyingBlocksForPayment",
         "underlyingSecondsForPayment",
-        "whitelist",
+        "userWhitelist",
         "withdrawalWaitMinSeconds"
     ],
     "type": "object"

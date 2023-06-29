@@ -3,16 +3,15 @@ import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/Ass
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, randomAddress, toBIPS, toBN, toStringExp, erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, WhitelistInstance, IERC165Contract, AddressUpdatableContract } from "../../../../typechain-truffle";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
+import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { newAssetManager, waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
+import { newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
-import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../../../utils/test-settings";
-import { AddressUpdatableInstance, AddressUpdatableMockContract } from "../../../../typechain-truffle";
+import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
 
 const Whitelist = artifacts.require('Whitelist');
 const AssetManagerController = artifacts.require('AssetManagerController');
@@ -39,7 +38,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
     let liquidationStrategySettings: LiquidationStrategyImplSettings;
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
         await contracts.governanceSettings.setExecutors([governance, updateExecutor], { from: governance });
@@ -67,6 +66,12 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         const encodedLiquidationStrategySettings = encodeLiquidationStrategyImplSettings(liquidationStrategySettings);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, encodedLiquidationStrategySettings, updateExecutor);
         addressUpdatableMock = await AddressUpdatableMock.new(contracts.addressUpdater.address);
+        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, liquidationStrategySettings, collaterals, settings, assetManager, fAsset, addressUpdatableMock };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, liquidationStrategySettings, collaterals, settings, assetManager, fAsset, addressUpdatableMock } =
+            await loadFixtureCopyVars(initialize));
     });
 
     describe("set and update settings with controller", () => {
@@ -99,6 +104,29 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await waitForTimelock(res2, assetManagerController, updateExecutor);
             const managers_remove = await assetManagerController.getAssetManagers();
             assert.equal(managers_current.length, managers_remove.length);
+        });
+
+        it("Asset manager controller should not be attached when add asset manager is called from a different controler", async () => {
+            let assetManager2: AssetManagerInstance;
+            let fAsset2: FAssetInstance;
+            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
+            await assetManager2.attachController(false, { from: accounts[5] });
+            const res1 = await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
+            await waitForTimelock(res1, assetManagerController, updateExecutor);
+            const isAttached = await assetManager2.controllerAttached();
+            assert.equal(isAttached, false);
+        });
+
+        it("Asset manager controller should not be unattached when remove asset manager is called from a different controler", async () => {
+            let assetManager2: AssetManagerInstance;
+            let fAsset2: FAssetInstance;
+            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
+            const res1 = await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
+            await waitForTimelock(res1, assetManagerController, updateExecutor);
+            const res2 = await assetManagerController.removeAssetManager(assetManager2.address, { from: governance });
+            await waitForTimelock(res2, assetManagerController, updateExecutor);
+            const isAttached = await assetManager2.controllerAttached();
+            assert.equal(isAttached, true);
         });
 
         it("should not add asset manager twice", async () => {
@@ -466,6 +494,27 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(res, "SettingChanged", { name: "attestationWindowSeconds", value: toBN(attestationWindowSeconds_new) });
         });
 
+        it("should revert seting average block time in ms if value is 0, too big or too small", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let averageBlockTimeMS_new = toBN(currentSettings.averageBlockTimeMS).muln(3);
+            let res = assetManagerController.setAverageBlockTimeMS([assetManager.address], averageBlockTimeMS_new, { from: governance });
+            await expectRevert(res, "increase too big");
+
+            averageBlockTimeMS_new = toBN(currentSettings.averageBlockTimeMS).divn(3);
+            res = assetManagerController.setAverageBlockTimeMS([assetManager.address], averageBlockTimeMS_new, { from: governance });
+            await expectRevert(res, "decrease too big");
+
+            res = assetManagerController.setAverageBlockTimeMS([assetManager.address], 0, { from: governance });
+            await expectRevert(res, "cannot be zero");
+        });
+
+        it("should set average block time in ms", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let averageBlockTimeMS_new = toBN(currentSettings.averageBlockTimeMS).muln(2);
+            let res = await assetManagerController.setAverageBlockTimeMS([assetManager.address], averageBlockTimeMS_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "averageBlockTimeMS", value: toBN(averageBlockTimeMS_new) });
+        });
+
         it("should set announced underlying confirmation min seconds", async () => {
             let announcedUnderlyingConfirmationMinSeconds_new = 100;
             let res = await assetManagerController.setAnnouncedUnderlyingConfirmationMinSeconds([assetManager.address], announcedUnderlyingConfirmationMinSeconds_new, { from: governance });
@@ -529,17 +578,13 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should change wnat contract", async () => {
-            const newWNat = {
-                ...collaterals[0],
-                token: accounts[82],
-                ftsoSymbol: "NAT",
-                minCollateralRatioBIPS: "20000",
-                ccbMinCollateralRatioBIPS: "19000",
-                safetyMinCollateralRatioBIPS: "21000",
-            };
-            const prms = assetManagerController.setPoolWNatCollateralType([assetManager.address], newWNat, { from: governance });
-            await waitForTimelock(prms, assetManagerController, updateExecutor);
-            assertWeb3Equal(await assetManager.getWNat(), accounts[82]);
+            const newWNat = accounts[82];
+            const prms1 = contracts.addressUpdater.addOrUpdateContractNamesAndAddresses(["AssetManagerController", "FtsoRegistry", "WNat"],
+                [assetManagerController.address, contracts.ftsoRegistry.address, newWNat], { from: governance })
+            await waitForTimelock(prms1, contracts.addressUpdater, updateExecutor);
+            const prms2 = contracts.addressUpdater.updateContractAddresses([assetManagerController.address], { from: governance });
+            await waitForTimelock(prms2, assetManagerController, updateExecutor);
+            assertWeb3Equal(await assetManager.getWNat(), newWNat);
         });
 
         it("should change agent vault factory on asset manager controller", async () => {
@@ -557,26 +602,25 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should change contracts", async () => {
-            await contracts.addressUpdater.update(["AddressUpdater", "AssetManagerController", "AttestationClient", "FtsoRegistry"],
+            await contracts.addressUpdater.update(["AddressUpdater", "AssetManagerController", "WNat", "FtsoRegistry"],
                 [contracts.addressUpdater.address, assetManagerController.address, accounts[80], accounts[81]],
                 [assetManagerController.address],
                 { from: governance });
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(settings.assetManagerController, assetManagerController.address);
-            assertWeb3Equal(settings.attestationClient, accounts[80]);
+            assertWeb3Equal(await assetManager.getWNat(), accounts[80]);
             assertWeb3Equal(settings.ftsoRegistry, accounts[81]);
             assertWeb3Equal(await assetManagerController.replacedBy(), constants.ZERO_ADDRESS);
         });
 
         it("should change contracts, including asset manager controller", async () => {
-            await contracts.addressUpdater.update(["AddressUpdater", "AssetManagerController", "AttestationClient", "FtsoRegistry"],
-                [contracts.addressUpdater.address, accounts[79], accounts[80], accounts[81]],
+            await contracts.addressUpdater.update(["AddressUpdater", "AssetManagerController", "FtsoRegistry"],
+                [contracts.addressUpdater.address, accounts[79], accounts[80]],
                 [assetManagerController.address],
                 { from: governance });
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(settings.assetManagerController, accounts[79]);
-            assertWeb3Equal(settings.attestationClient, accounts[80]);
-            assertWeb3Equal(settings.ftsoRegistry, accounts[81]);
+            assertWeb3Equal(settings.ftsoRegistry, accounts[80]);
             assertWeb3Equal(await assetManagerController.replacedBy(), accounts[79]);
         });
 
@@ -746,7 +790,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should revert setting underlying address validator after timelock when address 0 is provided", async () => {
-            const res = assetManagerController.setUnderlyingAddressValidator([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const res = assetManagerController.setSCProofVerifier([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "address zero");
         });
@@ -756,6 +800,13 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const res = await assetManagerController.setUnderlyingAddressValidator([assetManager.address], addr, { from: governance });
             const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
             expectEvent(timelock_info, "ContractChanged", { name: "underlyingAddressValidator", value: addr });
+        });
+
+        it("should set state connector proof verifier after timelock", async () => {
+            const addr = randomAddress();
+            const res = await assetManagerController.setSCProofVerifier([assetManager.address], addr, { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "ContractChanged", { name: "scProofVerifier", value: addr });
         });
 
         it("should revert setting min update repeat time when 0 seconds is provided", async () => {
@@ -1016,6 +1067,181 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assert.isTrue(await assetManagerController.supportsInterface(erc165InterfaceId(iERC165.abi)));
             assert.isTrue(await assetManagerController.supportsInterface(erc165InterfaceId(iiAddressUpdatable.abi)));
             assert.isFalse(await assetManagerController.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+        });
+    });
+
+    describe("branch tests", () => {
+        it("random address shouldn't be able to set payment challenge reward", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let paymentChallengeRewardUSD5_new = toBN(currentSettings.paymentChallengeRewardUSD5).muln(4);
+            let paymentChallengeRewardBIPS_new = (toBN(currentSettings.paymentChallengeRewardBIPS).muln(4)).addn(100);
+
+            let res = assetManagerController.setPaymentChallengeReward([assetManager.address], paymentChallengeRewardUSD5_new, paymentChallengeRewardBIPS_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set max trusted price age seconds", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let maxTrustedPriceAgeSeconds_new = toBN(currentSettings.maxTrustedPriceAgeSeconds).addn(20);
+            let res = assetManagerController.setMaxTrustedPriceAgeSeconds([assetManager.address], maxTrustedPriceAgeSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set collateral reservation fee bips", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let collateralReservationFeeBIPS_new = toBN(currentSettings.collateralReservationFeeBIPS).muln(2);
+            let res = assetManagerController.setCollateralReservationFeeBips([assetManager.address], collateralReservationFeeBIPS_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set redemption fee bips", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let redemptionFeeBIPS_new = toBN(currentSettings.redemptionFeeBIPS).muln(1);
+            let res = assetManagerController.setRedemptionFeeBips([assetManager.address], redemptionFeeBIPS_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set redemption default factor bips for agent", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let redemptionDefaultFactorPoolBIPS = toBN(currentSettings.redemptionDefaultFactorPoolBIPS);
+            let redemptionDefaultFactorAgentC1BIPS_new = 1_1000;
+            let res = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorAgentC1BIPS_new, redemptionDefaultFactorPoolBIPS, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set confirmation by others reward NATWei", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let confirmationByOthersRewardUSD5_new = toBN(currentSettings.confirmationByOthersRewardUSD5).muln(2);
+            let res = assetManagerController.setConfirmationByOthersRewardUSD5([assetManager.address], confirmationByOthersRewardUSD5_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set max redeemed tickets", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let maxRedeemedTickets_new = toBN(currentSettings.maxRedeemedTickets).muln(2);
+            let res = assetManagerController.setMaxRedeemedTickets([assetManager.address], maxRedeemedTickets_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set withdrawal wait", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let withdrawalWaitMinSeconds_new = toBN(currentSettings.withdrawalWaitMinSeconds).muln(2);
+            let res = assetManagerController.setWithdrawalOrDestroyWaitMinSeconds([assetManager.address], withdrawalWaitMinSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set ccb time", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let ccbTimeSeconds_new = toBN(currentSettings.ccbTimeSeconds).muln(2);
+            let res = assetManagerController.setCcbTimeSeconds([assetManager.address], ccbTimeSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set attestation window", async () => {
+            let attestationWindowSeconds_new = DAYS;
+            let res = assetManagerController.setAttestationWindowSeconds([assetManager.address], attestationWindowSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set average block time in ms", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let averageBlockTimeMS_new = toBN(currentSettings.averageBlockTimeMS).muln(2);
+            let res = assetManagerController.setAverageBlockTimeMS([assetManager.address], averageBlockTimeMS_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set announced underlying confirmation delay", async () => {
+            let announcedUnderlyingConfirmationMinSeconds_new = 2 * HOURS;
+            let res = assetManagerController.setAnnouncedUnderlyingConfirmationMinSeconds([assetManager.address], announcedUnderlyingConfirmationMinSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set minting pool holdings required BIPS", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let mintingPoolHoldingsRequiredBIPS_new = toBN(currentSettings.mintingPoolHoldingsRequiredBIPS).muln(3).add(toBN(MAX_BIPS));
+            const res = assetManagerController.setMintingPoolHoldingsRequiredBIPS([assetManager.address], mintingPoolHoldingsRequiredBIPS_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set minting cap AMG", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let mintingCapAMG_new = toBN(currentSettings.mintingCapAMG).add(toBN(1));
+            const res = assetManagerController.setMintingCapAmg([assetManager.address], mintingCapAMG_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set agent exit available timelock seconds", async () => {
+            let agentExitAvailableTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setAgentExitAvailableTimelockSeconds([assetManager.address], agentExitAvailableTimelockSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set agent exit available timelock seconds", async () => {
+            let agentFeeChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setAgentFeeChangeTimelockSeconds([assetManager.address], agentFeeChangeTimelockSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set agent collateral ratio change timelock seconds", async () => {
+            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setAgentCollateralRatioChangeTimelockSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set confirmation by others after seconds", async () => {
+            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("Controler that does not manage an asset manager shouldn't be able to update its settings", async () => {
+            let assetManager2: AssetManagerInstance;
+            let fAsset2: FAssetInstance;
+            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
+            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager2.address], agentCollateralRatioChangeTimelockSeconds_new, { from: governance });
+            await expectRevert(res, "Asset manager not managed");
+        });
+
+        it("random address shouldn't be able to add Collateral token", async () => {
+            const newToken = {
+                ...collaterals[0],
+                token: accounts[82],
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "20000",
+                ccbMinCollateralRatioBIPS: "18000",
+                safetyMinCollateralRatioBIPS: "21000",
+                collateralClass: 2,
+            };
+            let res = assetManagerController.addCollateralType([assetManager.address], newToken, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to deprecate token", async () => {
+            const currentSettings = await assetManager.getSettings();
+            const invalidToken = {
+                ...collaterals[0],
+                token: accounts[81],
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "20000",
+                ccbMinCollateralRatioBIPS: "18000",
+                safetyMinCollateralRatioBIPS: "21000",
+                collateralClass: 2,
+            };
+
+            const newToken = {
+                ...collaterals[0],
+                token: accounts[82],
+                ftsoSymbol: "TOK",
+                minCollateralRatioBIPS: "20000",
+                ccbMinCollateralRatioBIPS: "18000",
+                safetyMinCollateralRatioBIPS: "21000",
+                collateralClass: 2,
+            };
+            await assetManagerController.addCollateralType([assetManager.address], newToken, { from: governance });
+            await assetManagerController.addCollateralType([assetManager.address], invalidToken, { from: governance });
+            let res = assetManagerController.deprecateCollateralType([assetManager.address],2, invalidToken.token,currentSettings.tokenInvalidationTimeMinSeconds ,{ from: accounts[12] });
+            await expectRevert(res, "only governance");
         });
     });
 });

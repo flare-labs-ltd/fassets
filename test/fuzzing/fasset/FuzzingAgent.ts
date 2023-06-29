@@ -199,6 +199,7 @@ export class FuzzingAgent extends FuzzingActor {
         const announcement = await agent.announceUnderlyingWithdrawal()
             .catch(e => scope.exitOnExpectedError(e, ['announced underlying withdrawal active']));
         if (coinFlip(0.8)) {
+            this.comment(`Underlying withdrawal for ${this.name(agent)}: amount=${formatBN(amount)} free=${formatBN(agentState.freeUnderlyingBalanceUBA)}`)
             // perform withdrawal
             const txHash = await agent.performUnderlyingWithdrawal(announcement, amount, this.ownerUnderlyingAddress)
                 .catch(e => scope.exitOnExpectedError(e, []));

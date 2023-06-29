@@ -46,6 +46,7 @@ library AvailableAgents {
     )
         external
         onlyAgentVaultOwner(_agentVault)
+        returns (uint256)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
@@ -53,6 +54,7 @@ library AvailableAgents {
         uint256 exitAfterTs = block.timestamp + settings.agentExitAvailableTimelockSeconds;
         agent.exitAvailableAfterTs = exitAfterTs.toUint64();
         emit AMEvents.AvailableAgentExitAnnounced(_agentVault, exitAfterTs);
+        return exitAfterTs;
     }
 
     function exit(

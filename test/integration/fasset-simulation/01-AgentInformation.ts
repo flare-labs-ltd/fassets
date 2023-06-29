@@ -1,5 +1,5 @@
 import { toWei } from "../../../lib/utils/helpers";
-import { getTestFile } from "../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
@@ -29,9 +29,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let commonContext: CommonContext;
     let context: AssetContext;
 
-    beforeEach(async () => {
+    async function initialize() {
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.eth);
+        return { commonContext, context };
+    }
+
+    beforeEach(async () => {
+        ({ commonContext, context } = await loadFixtureCopyVars(initialize));
     });
 
     describe("simple scenarios - get information about agent(s)", () => {

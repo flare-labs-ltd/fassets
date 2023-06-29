@@ -3,16 +3,16 @@ import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../..
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { randomAddress, toBN, toBNExp, toNumber, toWei, toBIPS, MAX_BIPS, BNish } from "../../../../lib/utils/helpers";
+import { BNish, MAX_BIPS, randomAddress, toBIPS, toBN, toBNExp, toNumber, toWei } from "../../../../lib/utils/helpers";
 import { SourceId } from "../../../../lib/verification/sources/sources";
-import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, CollateralPoolInstance} from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerInstance, CollateralPoolInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
+import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
-import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../../../utils/test-settings";
-import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 
 
 const CollateralPool = artifacts.require("CollateralPool");
@@ -149,7 +149,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await stopImpersonatingContract(collateralPool);
     }
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = chainInfo = testChainInfo.eth;
         contracts = await createTestContracts(governance);
         // save some contracts as globals
@@ -166,6 +166,11 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should confirm redemption payment from agent vault owner", async () => {

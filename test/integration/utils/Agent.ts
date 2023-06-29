@@ -32,6 +32,8 @@ export const CHECK_DEFAULTS: CheckAgentInfo = {
 export type AgentCreateOptions = Partial<Omit<AgentSettings, 'underlyingAddressString'>>;
 
 export class Agent extends AssetContextClient {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         context: AssetContext,
         public ownerColdAddress: string,
@@ -592,5 +594,9 @@ export class Agent extends AssetContextClient {
         const newAssetPrice = assetPrice.mul(toBN(factorBIPS)).divn(MAX_BIPS);
         await this.context.assetFtso.setCurrentPrice(newAssetPrice, 0);
         await this.context.assetFtso.setCurrentPriceFromTrustedProviders(newAssetPrice, 0);
+    }
+
+    poolFeeShare(feeUBA: BNish) {
+        return toBN(feeUBA).mul(toBN(this.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
     }
 }

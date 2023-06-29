@@ -35,12 +35,20 @@ library Liquidation {
         address _agentVault
     )
         external
+        returns (Agent.LiquidationPhase _liquidationPhase, uint256 _liquidationStartTs)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         // if already in full liquidation or destroying, do nothing
-        if (agent.status == Agent.Status.FULL_LIQUIDATION || agent.status == Agent.Status.DESTROYING) return;
+        if (agent.status == Agent.Status.FULL_LIQUIDATION) {
+            return (Agent.LiquidationPhase.LIQUIDATION, agent.liquidationStartedAt);
+        }
+        if (agent.status == Agent.Status.DESTROYING) {
+            return (Agent.LiquidationPhase.NONE, 0);
+        }
+        // upgrade liquidation based on CR and time
         CRData memory cr = getCollateralRatiosBIPS(agent);
-        _upgradeLiquidationPhase(agent, cr);
+        _liquidationPhase = _upgradeLiquidationPhase(agent, cr);
+        _liquidationStartTs = _liquidationStartTimestamp(agent);
     }
 
     // Liquidate agent's position.
@@ -292,6 +300,24 @@ library Liquidation {
         }
     }
 
+    function _liquidationStartTimestamp(
+        Agent.State storage _agent
+    )
+        private view
+        returns (uint256)
+    {
+        Agent.Status status = _agent.status;
+        if (status == Agent.Status.LIQUIDATION) {
+            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+            bool startedInCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;
+            return _agent.liquidationStartedAt + (startedInCCB ? settings.ccbTimeSeconds : 0);
+        } else if (status == Agent.Status.FULL_LIQUIDATION) {
+            return _agent.liquidationStartedAt;
+        } else {    // any other status - NORMAL or DESTROYING
+            return 0;
+        }
+    }
+
     function _targetRatioBIPS(
         Agent.State storage _agent,
         Agent.LiquidationPhase _currentPhase,
@@ -370,7 +396,6 @@ library Liquidation {
         // A simple way to force agents still holding expired collateral tokens into liquidation is just to
         // set fullCollateral for expired types to 0.
         // This will also make all liquidation payments in the other collateral type.
-        // TODO: 1) is this ok?  2) test if it works.
         uint256 fullCollateral = CollateralTypes.isValid(collateral) ? collateral.token.balanceOf(owner) : 0;
         (uint256 price, uint256 trusted) = Conversion.currentAmgPriceInTokenWeiWithTrusted(collateral);
         _data = Collateral.Data({ kind: _kind, fullCollateral: fullCollateral, amgToTokenWeiPrice: price });

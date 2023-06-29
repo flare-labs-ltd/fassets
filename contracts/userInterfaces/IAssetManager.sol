@@ -169,19 +169,23 @@ interface IAssetManager is IAssetManagerEvents {
      *  but in fasset system, each agent vault acts as an independent agent.)
      * NOTE: may only be called by an agent on the allowed agent list.
      * Can be called from the cold or the hot agent wallet address.
+     * @return _agentVault new agent vault address
      */
     function createAgent(
         AgentSettings.Data calldata _settings
-    ) external;
+    ) external
+        returns (address _agentVault);
 
     /**
      * Announce that the agent is going to be destroyed. At this time, the agent must not have any mintings
      * or collateral reservations and must not be on the available agents list.
      * NOTE: may only be called by the agent vault owner.
+     * @return _destroyAllowedAt the timestamp at which the destroy can be executed
      */
     function announceDestroyAgent(
         address _agentVault
-    ) external;
+    ) external
+        returns (uint256 _destroyAllowedAt);
 
     /**
      * Delete all agent data, self destruct agent vault and send remaining collateral to the `_recipient`.
@@ -207,12 +211,14 @@ interface IAssetManager is IAssetManagerEvents {
      * Due to the effect on the pool, all agent settings are timelocked.
      * This method announces a setting change. The change can be executed after the timelock expires.
      * NOTE: may only be called by the agent vault owner.
+     * @return _updateAllowedAt the timestamp at which the update can be executed
      */
     function announceAgentSettingUpdate(
         address _agentVault,
         string memory _name,
         uint256 _value
-    ) external;
+    ) external
+        returns (uint256 _updateAllowedAt);
 
     /**
      * Due to the effect on the pool, all agent settings are timelocked.
@@ -254,11 +260,13 @@ interface IAssetManager is IAssetManagerEvents {
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _valueNATWei the amount to be withdrawn
+     * @return _withdrawalAllowedAt the timestamp when the withdrawal can be made
      */
     function announceClass1CollateralWithdrawal(
         address _agentVault,
         uint256 _valueNATWei
-    ) external;
+    ) external
+        returns (uint256 _withdrawalAllowedAt);
 
     /**
      * The agent is going to redeem `_valueWei` collateral pool tokens in the agent vault.
@@ -267,11 +275,13 @@ interface IAssetManager is IAssetManagerEvents {
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _valueNATWei the amount to be withdrawn
+     * @return _redemptionAllowedAt the timestamp when the redemption can be made
      */
     function announceAgentPoolTokenRedemption(
         address _agentVault,
         uint256 _valueNATWei
-    ) external;
+    ) external
+        returns (uint256 _redemptionAllowedAt);
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Underlying balance topup
@@ -402,10 +412,12 @@ interface IAssetManager is IAssetManagerEvents {
      * Announce exit from the publicly available agents list.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
+     * @return _exitAllowedAt the timestamp when the agent can exit
      */
     function announceExitAvailableAgentList(
         address _agentVault
-    ) external;
+    ) external
+        returns (uint256 _exitAllowedAt);
 
     /**
      * Exit the publicly available agents list.
@@ -552,11 +564,14 @@ interface IAssetManager is IAssetManagerEvents {
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     * @return _redeemedAmountUBA the actual redeemed amount; may be less then requested if there are not enough
+     *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function redeem(
         uint256 _lots,
         string memory _redeemerUnderlyingAddressString
-    ) external;
+    ) external
+        returns (uint256 _redeemedAmountUBA);
 
     /**
      * After paying to the redeemer, the agent must call this method to unlock the collateral
@@ -615,11 +630,14 @@ interface IAssetManager is IAssetManagerEvents {
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _amountUBA amount of f-assets to self-close
+     * @return _closedAmountUBA the actual self-closed amount, may be less then requested if there are not enough
+     *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function selfClose(
         address _agentVault,
         uint256 _amountUBA
-    ) external;
+    ) external
+        returns (uint256 _closedAmountUBA);
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Dust
@@ -646,11 +664,16 @@ interface IAssetManager is IAssetManagerEvents {
     /**
      * Checks that the agent's collateral is too low and if true, starts the agent's liquidation.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
+     * NOTE: always succeeds and returns the new liquidation status.
      * @param _agentVault agent vault address
+     * @return _liquidationStatus 0=no liquidation, 1=CCB, 2=liquidation
+     * @return _liquidationStartTs if the status is LIQUIDATION, the timestamp when liquidation started;
+     *  if the status is CCB, the timestamp when liquidation will start; otherwise 0
      */
     function startLiquidation(
         address _agentVault
-    ) external;
+    ) external
+        returns (uint8 _liquidationStatus, uint256 _liquidationStartTs);
 
     /**
      * Burns up to `_amountUBA` f-assets owned by the caller and pays
@@ -677,6 +700,7 @@ interface IAssetManager is IAssetManagerEvents {
      * Full liquidation (i.e. the liquidation triggered by illegal underlying payment)
      * cannot be stopped.
      * NOTE: anybody can call.
+     * NOTE: if the method succeeds, the agent's liquidation has ended.
      * @param _agentVault agent vault address
      */
     function endLiquidation(

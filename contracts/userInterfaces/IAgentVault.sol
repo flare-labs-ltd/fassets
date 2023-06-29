@@ -104,10 +104,10 @@ interface IAgentVault {
         returns (uint256);
 
     /**
-     * Set executors and recipients that can then automatically claim rewards through FtsoRewardManager.
+     * Set executors and recipients that can then automatically claim rewards and airdrop.
      * NOTE: only the owner of the agent vault may call this method.
      */
-    function setFtsoAutoClaiming(
+    function setAutoClaiming(
         IClaimSetupManager _claimSetupManager,
         address[] memory _executors,
         address[] memory _allowedRecipients

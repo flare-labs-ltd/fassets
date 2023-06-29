@@ -13,7 +13,7 @@ import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
 import { AssetManagerInstance, FAssetInstance, IAddressValidatorInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { createTestCollaterals, createTestLiquidationSettings, createTestSettings } from "../../utils/test-settings";
-import { newAssetManager, waitForTimelock } from "../../utils/fasset/DeployAssetManager";
+import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { CommonContext } from "./CommonContext";
@@ -22,6 +22,7 @@ import { TokenPriceReader } from "../../../lib/state/TokenPrice";
 import { CollateralPrice } from "../../../lib/state/CollateralPrice";
 
 const TrivialAddressValidatorMock = artifacts.require('TrivialAddressValidatorMock');
+const WhitelistMock = artifacts.require("WhitelistMock");
 
 export interface SettingsOptions {
     // optional settings
@@ -34,6 +35,8 @@ export interface SettingsOptions {
 
 // context, specific for each asset manager (includes common context vars)
 export class AssetContext implements IAssetContext {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         public common: CommonContext,
         public chainInfo: TestChainInfo,
@@ -59,7 +62,7 @@ export class AssetContext implements IAssetContext {
     stateConnector = this.common.stateConnector;
     agentVaultFactory = this.common.agentVaultFactory;
     collateralPoolFactory = this.common.collateralPoolFactory;
-    attestationClient = this.common.attestationClient;
+    scProofVerifier = this.common.scProofVerifier;
     ftsoRegistry = this.common.ftsoRegistry;
     ftsoManager = this.common.ftsoManager;
     natInfo = this.common.natInfo;
@@ -186,11 +189,13 @@ export class AssetContext implements IAssetContext {
         const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId);
         // create address validator
         const addressValidator = await TrivialAddressValidatorMock.new();
+        // create allow-all agent whitelist
+        const agentWhitelist = await WhitelistMock.new(true);
         // create liquidation strategy (dynamic library)
         const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
         const liquidationStrategy = liquidationStrategyLib.address;
         // create collaterals
-        const testSettingsContracts = { ...common, addressValidator, liquidationStrategy };
+        const testSettingsContracts = { ...common, addressValidator, agentWhitelist, liquidationStrategy };
         // create settings
         const settings = createTestSettings(testSettingsContracts, chainInfo);
         const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts, chainInfo);

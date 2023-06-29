@@ -7,7 +7,7 @@ import "hardhat-gas-reporter";
 import { task } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
-import { deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployAttestationClient, deployCollateralPoolFactory } from "./deployment/lib/deploy-asset-manager";
+import { deployAgentVaultFactory, deployWhitelist, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory, deploySCProofVerifier, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import "./type-extensions";
 
@@ -26,7 +26,7 @@ task("link-contracts", "Link contracts with external libraries")
 
 task("deploy-asset-managers", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
     .addFlag("link", "Link asset manager before")
-    .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and AttestationClient")
+    .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and SCProofVerifier")
     .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
     .addFlag("all", "Deploy all asset managers (for all parameter files in the directory)")
     .addVariadicPositionalParam("managers", "Asset manager file names (default extension is .json). Must be in the directory deployment/config/${networkConfig}. Alternatively, add -all flag to use all parameter files in the directory.", [])
@@ -57,7 +57,9 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
         }
         // optionally run the full deploy
         if (deployController) {
-            await deployAttestationClient(hre, contractsFile);
+            await deploySCProofVerifier(hre, contractsFile);
+            await deployWhitelist(hre, contractsFile, 'Agent');
+            await deployWhitelist(hre, contractsFile, 'User');
             await deployAgentVaultFactory(hre, contractsFile);
             await deployCollateralPoolFactory(hre, contractsFile);
             await deployAssetManagerController(hre, contractsFile, managerParameterFiles);
@@ -66,6 +68,13 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
                 await deployAssetManager(hre, paramFile, contractsFile, true);
             }
         }
+    });
+
+task("switch-to-production", "Switch all deployed files to production mode.")
+    .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
+    .setAction(async ({ networkConfig }, hre) => {
+        const contractsFile = `deployment/deploys/${networkConfig}.json`;
+        await switchAllToProductionMode(hre, contractsFile);
     });
 
 export default config;

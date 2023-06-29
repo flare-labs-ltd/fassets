@@ -7,15 +7,16 @@ import { BNish, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import {
+    TestFtsos, TestSettingsContracts,
     createEncodedTestLiquidationSettings, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos,
-    createTestSettings, TestFtsos, TestSettingsContracts
+    createTestSettings
 } from "../../../utils/test-settings";
+import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accounts => {
     const governance = accounts[10];
@@ -55,7 +56,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         return await assetManager.executeAgentSettingUpdate(agentVault.address, name, { from: owner });
     }
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = testChainInfo.btc;
         contracts = await createTestContracts(governance);
         usdc = contracts.stablecoins.USDC;
@@ -70,6 +71,11 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        return { contracts, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should prove EOA address", async () => {

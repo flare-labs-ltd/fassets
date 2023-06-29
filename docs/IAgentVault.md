@@ -37,7 +37,7 @@ NOTE: only the owner of the agent vault may call this method.
 **claimFtsoRewards** - Claim the FTSO rewards earned by delegating. Alternatively, you can set a claim executor and then claim directly from FtsoRewardManager.
 NOTE: only the owner of the agent vault may call this method.
 
-**setFtsoAutoClaiming** - Set executors and recipients that can then automatically claim rewards through FtsoRewardManager.
+**setAutoClaiming** - Set executors and recipients that can then automatically claim rewards and airdrop.
 NOTE: only the owner of the agent vault may call this method.
 
 **claimAirdropDistribution** - Claim airdrops earned by holding wNAT in the vault.

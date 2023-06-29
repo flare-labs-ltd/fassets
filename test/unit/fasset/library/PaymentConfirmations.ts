@@ -5,11 +5,11 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { DAYS } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
-import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../../../utils/test-settings";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 
 contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmations basic tests`, async accounts => {
     const governance = accounts[10];
@@ -46,7 +46,7 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         return proof;
     }
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
         // save some contracts as globals
@@ -63,6 +63,11 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should cleanup payment verifications after 15 days", async () => {

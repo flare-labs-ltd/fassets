@@ -8,8 +8,7 @@
     "fAssetName": "F-Dogecoin",
     "fAssetSymbol": "FDOGE",
     "assetMintingDecimals": 8,
-    "whitelist": null,
-    "agentWhitelist": null,
+    "userWhitelist": null,
     "underlyingAddressValidator": [
         "TrivialAddressValidatorMock",
         []

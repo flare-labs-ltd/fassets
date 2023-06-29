@@ -14,6 +14,7 @@ import { ILogger } from "../../../lib/utils/logging";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
+    RedeemedInCollateral,
     RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/AssetManager";
 import { Enter, Exit } from "../../../typechain-truffle/CollateralPool";
@@ -201,6 +202,12 @@ export class FuzzingStateAgent extends TrackedAgentState {
         const request = this.getRedemptionRequest(Number(args.requestId));
         request.collateralReleased = true;
         this.releaseClosedRedemptionRequests(args.$event, request);
+    }
+
+    override handleRedeemedInCollateral(args: EvmEventArgs<RedeemedInCollateral>): void {
+        super.handleRedeemedInCollateral(args);
+        // close tickets, update free balance
+        this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.redemptionAmountUBA));
     }
 
     override handleSelfClose(args: EvmEventArgs<SelfClose>): void {

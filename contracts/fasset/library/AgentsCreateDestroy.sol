@@ -14,6 +14,8 @@ import "./Conversion.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
 import "./AgentSettingsUpdater.sol";
+import "./UnderlyingAddresses.sol";
+
 
 library AgentsCreateDestroy {
     using SafePct for uint256;
@@ -78,6 +80,7 @@ library AgentsCreateDestroy {
         AgentSettings.Data calldata _settings
     )
         external
+        returns (address)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         // can be called from cold or hot owner address
@@ -86,7 +89,7 @@ library AgentsCreateDestroy {
         Agents.requireWhitelisted(ownerColdAddress);
         // validate underlying address
         (string memory normalizedUnderlyingAddress, bytes32 underlyingAddressHash) =
-            Globals.validateAndNormalizeUnderlyingAddress(_settings.underlyingAddressString);
+            UnderlyingAddresses.validateAndNormalize(_settings.underlyingAddressString);
         // create agent vault
         IAgentVaultFactory agentVaultFactory = IAgentVaultFactory(state.settings.agentVaultFactory);
         IIAgentVault agentVault = agentVaultFactory.create(_assetManager);
@@ -127,6 +130,7 @@ library AgentsCreateDestroy {
         // notify
         emitAgentCreated(ownerColdAddress, address(agentVault), address(agent.collateralPool),
             normalizedUnderlyingAddress, _settings);
+        return address(agentVault);
     }
 
     function announceDestroy(
@@ -134,6 +138,7 @@ library AgentsCreateDestroy {
     )
         external
         onlyAgentVaultOwner(_agentVault)
+        returns (uint256)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
@@ -147,6 +152,7 @@ library AgentsCreateDestroy {
             agent.destroyAllowedAt = destroyAllowedAt.toUint64();
             emit AMEvents.AgentDestroyAnnounced(_agentVault, destroyAllowedAt);
         }
+        return agent.destroyAllowedAt;
     }
 
     function destroyAgent(

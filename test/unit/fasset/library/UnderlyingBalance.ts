@@ -7,10 +7,10 @@ import { randomAddress } from "../../../../lib/utils/helpers";
 import { AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { precomputeContractAddress } from "../../../utils/contract-test-helpers";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 
 contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance unit tests`, async accounts => {
@@ -40,7 +40,7 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
     }
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
         // save some contracts as globals
@@ -57,6 +57,11 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should confirm top up payment", async () => {

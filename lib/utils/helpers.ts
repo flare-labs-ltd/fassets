@@ -323,6 +323,18 @@ export function minBN(first: BN, ...rest: BN[]) {
 }
 
 /**
+ * A promise that can be resolved/rejected "from the outside" by calling future.resolve/reject.
+ */
+export class Future<T> {
+    resolve!: (value: T | PromiseLike<T>) => void;
+    reject!: (error: any) => void;
+    promise = new Promise<T>((resolve, reject) => {
+        this.resolve = resolve;
+        this.reject = reject;
+    });
+}
+
+/**
  * Return a copy of list, sorted by comparisonKey.
  */
 export function sorted<T, K>(list: Iterable<T>, comparisonKey: (e: T) => K): T[];

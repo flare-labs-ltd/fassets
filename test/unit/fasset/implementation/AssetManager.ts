@@ -1,21 +1,23 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralClass, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { decodeLiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
+import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, DAYS, HOURS, MAX_BIPS, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
+import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import {
+    TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgentSettings, createTestCollaterals, createTestContracts,
+    createTestFtsos, createTestLiquidationSettings, createTestSettings
+} from "../../../utils/test-settings";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
-import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgentSettings, createTestCollaterals, createTestContracts,
-    createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../../../utils/test-settings";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -46,6 +48,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
+    let usdt: ERC20MockInstance;
 
     // addresses
     const underlyingBurnAddr = "Burn";
@@ -148,12 +151,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         chain.mine(chain.finalizationBlocks);
     }
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
         // save some contracts as globals
         ({ wNat } = contracts);
         usdc = contracts.stablecoins.USDC;
+        usdt = contracts.stablecoins.USDT;
         // create FTSOs for nat, stablecoins and asset and set some price
         ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
         // create mock chain and attestation provider
@@ -165,6 +169,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
     });
 
     describe("set and update settings / properties", () => {
@@ -249,11 +258,29 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("should correctly update agent settings fee BIPS", async () => {
             const agentFeeChangeTimelock = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
             const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            //Invalid setting name will be reverted
+            let res = assetManager.announceAgentSettingUpdate(agentVault.address, "something", 2000, { from: agentOwner1 });
+            await expectRevert(res, "invalid setting name");
+            //Can't execute update if it is not announced
+            res = assetManager.executeAgentSettingUpdate(agentVault.address, "feeBIPS", { from: agentOwner1 });
+            await expectRevert(res, "no pending update");
             await assetManager.announceAgentSettingUpdate(agentVault.address, "feeBIPS", 2000, { from: agentOwner1 });
+            //Can't execute update if called to early after announcement
+            res = assetManager.executeAgentSettingUpdate(agentVault.address, "feeBIPS", { from: agentOwner1 });
+            await expectRevert(res, "update not valid yet");
             await time.increase(agentFeeChangeTimelock);
             await assetManager.executeAgentSettingUpdate(agentVault.address, "feeBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.feeBIPS.toString(), "2000");
+        });
+
+        it("should not update agent settings fee BIPS if value too high", async () => {
+            const agentFeeChangeTimelock = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "feeBIPS", 200000000, { from: agentOwner1 });
+            await time.increase(agentFeeChangeTimelock);
+            let res = assetManager.executeAgentSettingUpdate(agentVault.address, "feeBIPS", { from: agentOwner1 });
+            await expectRevert(res, "fee to high");
         });
 
         it("should correctly update agent setting pool fee share BIPS", async () => {
@@ -264,6 +291,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "poolFeeShareBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolFeeShareBIPS.toString(), "2000");
+        });
+
+        it("should not update agent setting pool fee share BIPS if value to high", async () => {
+            const agentFeeChangeTimelock = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolFeeShareBIPS", 20000000, { from: agentOwner1 });
+            await time.increase(agentFeeChangeTimelock);
+            let res = assetManager.executeAgentSettingUpdate(agentVault.address, "poolFeeShareBIPS", { from: agentOwner1 });
+            await expectRevert(res, "value to high");
         });
 
         it("should correctly update agent setting minting Class1 collateral ratio BIPS", async () => {
@@ -287,6 +323,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(agentInfo.mintingPoolCollateralRatioBIPS.toString(), "25000");
         });
 
+        it("should not update agent setting minting pool collateral ratio BIPS if value too small", async () => {
+            const agentCollateralRatioChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "mintingPoolCollateralRatioBIPS", 10, { from: agentOwner1 });
+            await time.increase(agentCollateralRatioChangeTimelock);
+            let res = assetManager.executeAgentSettingUpdate(agentVault.address, "mintingPoolCollateralRatioBIPS", { from: agentOwner1 });
+            await expectRevert(res, "collateral ratio too small");
+        });
+
         it("should correctly update agent setting buy fasset by agent factor BIPS", async () => {
             const agentBuyFactorChangeTimelock = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
             const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
@@ -307,6 +352,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(agentInfo.poolExitCollateralRatioBIPS.toString(), "25000");
         });
 
+        it("should not update agent setting pool exit collateral ratio BIPS if value too low", async () => {
+            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", 2, { from: agentOwner1 });
+            await time.increase(agentPoolExitCRChangeTimelock);
+            let res = assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
+            await expectRevert(res, "value to low")
+        });
+
         it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
             const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
             const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
@@ -315,6 +369,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolTopupCollateralRatioBIPS.toString(), "25000");
+        });
+
+        it("should not update agent setting pool exit collateral ratio BIPS if value too low", async () => {
+            const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", 2, { from: agentOwner1 });
+            await time.increase(agentPoolTopupCRChangeTimelock);
+            let res = assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", { from: agentOwner1 });
+            await expectRevert(res, "value to low")
         });
 
         it("should correctly update agent setting pool topup token price factor BIPS", async () => {
@@ -359,6 +422,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should switch class1 collateral token", async () => {
             const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            //Can't switch class1 collateral if it has not been deprecated
+            let res = assetManager.switchClass1Collateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
+            await expectRevert(res, "current collateral not deprecated");
+            // Only agent owner can switch class1 collateral
+            res = assetManager.switchClass1Collateral(agentVault.address,collaterals[2].token, { from: accounts[5] });
+            await expectRevert(res, "only agent vault owner");
             //deprecate token
             const tx = await assetManager.deprecateCollateralType(collaterals[1].collateralClass, collaterals[1].token,
                 settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
@@ -366,7 +435,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const collateralType = await assetManager.getCollateralType(collaterals[1].collateralClass, collaterals[1].token);
             assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
             //Wait until you can swtich class1 token
-            time.increase(settings.tokenInvalidationTimeMinSeconds);
+            await time.increase(settings.tokenInvalidationTimeMinSeconds);
             //switch class1 token
             const tx1 = await assetManager.switchClass1Collateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
             expectEvent(tx1, "AgentCollateralTypeChanged");
@@ -374,26 +443,60 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(agentInfo.class1CollateralToken, collaterals[2].token);
         });
 
+        it("If agent doesn't switch class1 after deprecation and invalidation time, liquidator can start liquidation", async () => {
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(1));
+            const liquidator = accounts[83];
+            //deprecate token
+            const tx = await assetManager.deprecateCollateralType(collaterals[1].collateralClass, collaterals[1].token,
+                settings.tokenInvalidationTimeMinSeconds, { from: assetManagerController });
+            expectEvent(tx, "CollateralTypeDeprecated");
+            const collateralType = await assetManager.getCollateralType(collaterals[1].collateralClass, collaterals[1].token);
+            assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
+            //Wait until you can swtich class1 token
+            await time.increase(settings.tokenInvalidationTimeMinSeconds);
+            await time.increase(settings.tokenInvalidationTimeMinSeconds);
+            await assetManager.startLiquidation(agentVault.address, { from: liquidator });
+            //Check for liquidation status
+            const info = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(info.status, 2);
+            //Switch class1 and deposit collateral
+            await assetManager.switchClass1Collateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
+            await usdt.mintAmount(agentOwner1, toWei(3e8));
+            await usdt.approve(agentVault.address, toWei(3e8), { from: agentOwner1 });
+            await agentVault.depositCollateral(usdt.address, toWei(3e8), { from: agentOwner1 });
+            //Random address can't call collateral deposited
+            let res = assetManager.collateralDeposited(agentVault.address,usdt.address, { from: accounts[5] });
+            await expectRevert(res, "only agent vault or pool");
+            //Chekc that agent is out of liquidation
+            const info1 = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(info1.status, 0);
+
+        });
+
         it("should set pool collateral token", async () => {
             const newWnat = await ERC20Mock.new("Wrapped NAT", "WNAT");
-            const tokenInfo = collaterals[0];
-            tokenInfo.token = newWnat.address;
-            tokenInfo.assetFtsoSymbol = "WNAT";
-            await assetManager.setPoolWNatCollateralType(web3DeepNormalize(tokenInfo), { from: assetManagerController });
-            const token = await assetManager.getCollateralType(tokenInfo.collateralClass, tokenInfo.token);
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,IWNat)")),
+                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, contracts.ftsoRegistry.address, newWnat.address]),
+                { from: assetManagerController });
+            const token = await assetManager.getCollateralType(CollateralClass.POOL, newWnat.address);
             assertWeb3Equal(token.token, newWnat.address);
         });
 
         it("should set pool collateral token and upgrade wnat", async () => {
             const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
             const newWnat = await ERC20Mock.new("Wrapped NAT", "WNAT");
-            const tokenInfo = collaterals[0];
-            tokenInfo.token = newWnat.address;
-            tokenInfo.assetFtsoSymbol = "WNAT";
-            await assetManager.setPoolWNatCollateralType(web3DeepNormalize(tokenInfo), { from: assetManagerController });
-            const res = assetManager.upgradeWNatContract(agentVault.address, {from: agentOwner1});
-            expectEvent(await res, "AgentCollateralTypeChanged");
-            const token = await assetManager.getCollateralType(tokenInfo.collateralClass, tokenInfo.token);
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,IWNat)")),
+                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, contracts.ftsoRegistry.address, newWnat.address]),
+                { from: assetManagerController });
+            //Random address shouldn't be able to upgrade wNat contract
+            let tx = assetManager.upgradeWNatContract(agentVault.address, {from: accounts[5]});
+            await expectRevert(tx, "only agent vault owner");
+            const res = await assetManager.upgradeWNatContract(agentVault.address, {from: agentOwner1});
+            expectEvent(res, "AgentCollateralTypeChanged");
+            const eventArgs = requiredEventArgs(res, 'AgentCollateralTypeChanged');
+            assert.equal(Number(eventArgs.collateralClass), CollateralClass.POOL);
+            const token = await assetManager.getCollateralType(CollateralClass.POOL, eventArgs.token);
             assertWeb3Equal(token.token, newWnat.address);
         });
     });
@@ -491,29 +594,34 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     describe("should update contracts", () => {
         it("should update contract addresses", async () => {
             let agentVaultFactoryNewAddress = accounts[21];
-            let attestationClientNewAddress = accounts[22];
-            let ftsoRegistryNewAddress = accounts[23];
-            const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,address)")),
-                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, attestationClientNewAddress, ftsoRegistryNewAddress]),
+            let ftsoRegistryNewAddress = accounts[22];
+            let wnatNewAddress = accounts[23];
+            const oldSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            const oldWNat = await assetManager.getWNat();
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,IWNat)")),
+                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, ftsoRegistryNewAddress, wnatNewAddress]),
                 { from: assetManagerController });
             await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentVaultFactory(address)")),
                 web3.eth.abi.encodeParameters(['address'], [agentVaultFactoryNewAddress]), { from: assetManagerController });
             const res = web3ResultStruct(await assetManager.getSettings());
-            assert.notEqual(newSettings.agentVaultFactory, res.agentVaultFactory)
-            assert.notEqual(newSettings.attestationClient, res.attestationClient)
-            assert.notEqual(newSettings.ftsoRegistry, res.ftsoRegistry)
+            const resWNat = await assetManager.getWNat();
+            assert.notEqual(oldSettings.agentVaultFactory, res.agentVaultFactory)
+            assert.notEqual(oldSettings.ftsoRegistry, res.ftsoRegistry)
+            assert.notEqual(oldWNat, resWNat)
+            assert.equal(agentVaultFactoryNewAddress, res.agentVaultFactory)
+            assert.equal(ftsoRegistryNewAddress, res.ftsoRegistry)
+            assert.equal(wnatNewAddress, resWNat)
         });
 
         it("should not update contract addresses", async () => {
-            const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,address)")),
-            web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, contracts.attestationClient.address, contracts.ftsoRegistry.address]),
+            const oldSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,IWNat)")),
+                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, contracts.ftsoRegistry.address, contracts.wNat.address]),
                 { from: assetManagerController });
             await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentVaultFactory(address)")),
                 web3.eth.abi.encodeParameters(['address'], [contracts.agentVaultFactory.address]), { from: assetManagerController });
             const res = web3ResultStruct(await assetManager.getSettings());
-            assertWeb3DeepEqual(res, newSettings)
+            assertWeb3DeepEqual(res, oldSettings)
         });
     });
 
@@ -1149,6 +1257,236 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iAssetManager.abi)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iiAssetManager.abi, [iAssetManager.abi])));
             assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+        });
+    });
+
+    describe("branch tests", () => {
+        it("random address shouldn't be able to update settings", async () => {
+            let attestationClientNewAddress = accounts[22];
+            let ftsoRegistryNewAddress = accounts[23];
+            const r = assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,address)")),
+                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, attestationClientNewAddress, ftsoRegistryNewAddress]),
+                { from: accounts[29] });
+            await expectRevert(r, "only asset manager controller");
+        });
+
+        it("random address shouldn't be able to attach controller", async () => {
+            const r = assetManager.attachController(false, { from: accounts[29]});
+            await expectRevert(r, "only asset manager controller");
+        });
+
+        it("unattached asset manager can't create agent", async () => {
+            await assetManager.attachController(false, { from: assetManagerController });
+            const r = createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await expectRevert(r, "not attached");
+        });
+
+        it("unattached asset manager can't do collateral reservations", async () => {
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.attachController(false, { from: assetManagerController });
+            const minter = accounts[80];
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const reservationFee = await assetManager.collateralReservationFee(1);
+            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
+                { from: minter, value: reservationFee });
+            await expectRevert(r, "not attached");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't do collateral reservations", async () => {
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            // create governance settings
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            const minter = accounts[80];
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const reservationFee = await assetManager.collateralReservationFee(1);
+            // Try to reserve collateral from non whitelisted address
+            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
+                { from: minter, value: reservationFee });
+            await expectRevert(r, "not whitelisted");
+        });
+
+        it("agent can't self mint if asset manager is not attached", async () => {
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            //unattach
+            await assetManager.attachController(false, { from: assetManagerController });
+            // calculate payment amount (as amount >= one lot => include pool fee)
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const amountUBA = lotsToUBA(1);
+            const poolFeeShare = mulBIPS(mulBIPS(amountUBA, toBN(agentInfo.feeBIPS)), toBN(agentInfo.poolFeeShareBIPS));
+            const paymentAmount = amountUBA.add(poolFeeShare);
+            // make and prove payment transaction
+            chain.mint("random_address", paymentAmount);
+            const txHash = await wallet.addTransaction("random_address", underlyingAgent1, paymentAmount,
+                PaymentReference.selfMint(agentVault.address));
+            const proof = await attestationProvider.provePayment(txHash, "random_address", underlyingAgent1);
+            // self-mint
+            const r = assetManager.selfMint(proof, agentVault.address, 1, { from: agentOwner1 });
+            await expectRevert(r, "not attached");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't redeem", async () => {
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            // create governance settings
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            const redeemer = accounts[83];
+            const underlyingRedeemer = "redeemer"
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
+            // default a redemption
+            const r = assetManager.redeem(1, underlyingRedeemer, { from: redeemer });
+            await expectRevert(r, "not whitelisted");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't challenge illegal payment", async () => {
+            const challenger = accounts[83];
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await depositUnderlyingAsset(agentVault, agentOwner1, underlyingAgent1, toWei(10));
+            // make unannounced (illegal) payment
+            const txHash = await wallet.addTransaction(underlyingAgent1, "random_address", 1000, PaymentReference.announcedWithdrawal(1));
+            const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            const r = assetManager.illegalPaymentChallenge(proof, agentVault.address, { from: challenger });
+            await expectRevert(r, "not whitelisted");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't challenge illegal double payment", async () => {
+            const challenger = accounts[83];
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            // announce ONE underlying withdrawal
+            await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+            // make two identical payments
+            const txHash1 = await wallet.addTransaction(underlyingAgent1, "random_address", 500, PaymentReference.announcedWithdrawal(1));
+            const txHash2 = await wallet.addTransaction(underlyingAgent1, "random_address", 500, PaymentReference.announcedWithdrawal(1));
+            const proof1 = await attestationProvider.proveBalanceDecreasingTransaction(txHash1, underlyingAgent1);
+            const proof2 = await attestationProvider.proveBalanceDecreasingTransaction(txHash2, underlyingAgent1);
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            const r = assetManager.doublePaymentChallenge(proof1, proof2, agentVault.address, { from: challenger });
+            await expectRevert(r, "not whitelisted");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't challenge free balance negative", async () => {
+            const challenger = accounts[83];
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            // mint one lot of f-assets
+            const lots = toBN(1);
+            const { underlyingPaymentUBA } = await mintFassets(agentVault, agentOwner1, underlyingAgent1, agentVault.address, lots);
+            // announce withdrawal
+            const _tx = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+            const underlyingWithdrawalAnnouncement = findRequiredEvent(_tx, "UnderlyingWithdrawalAnnounced").args;
+            // make payment that would make free balance negative
+            const txHash = await wallet.addTransaction(underlyingAgent1, "random_address", lotsToUBA(lots),
+                underlyingWithdrawalAnnouncement.paymentReference);
+            const proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            // make a challenge
+            const r = assetManager.freeBalanceNegativeChallenge([proof], agentVault.address, { from: challenger });
+            await expectRevert(r, "not whitelisted");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't start liquidation", async () => {
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1)
+            // mint some f-assets that require backing
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[82], toBN(1));
+            // price change
+            await ftsos.asset.setCurrentPrice(toBNExp(3521, 50), 0);
+            await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(3521, 50), 0);
+            // start liquidation
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            const r = assetManager.startLiquidation(agentVault.address, { from: accounts[83] });
+            await expectRevert(r, "not whitelisted");
+        });
+
+        it("when whitelist is enabled, address not whitelisted can't liquidate", async () => {
+            const liquidator = accounts[83];
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, toWei(3e8), toWei(3e8))
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, liquidator, toBN(2));
+            // simulate liquidation (set cr to eps > 0)
+            await ftsos.asset.setCurrentPrice(toBNExp(10, 12), 0);
+            await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(10, 12), 0);
+            await assetManager.startLiquidation(agentVault.address, { from: liquidator });
+            // calculate liquidation value and liquidate liquidate
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const liquidationUBA = lotsToUBA(2);
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            // create whitelist
+            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist.switchToProductionMode({ from: governance });
+            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
+                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                { from: assetManagerController });
+            const r = assetManager.liquidate(agentVault.address, lotsToUBA(2), { from: liquidator });
+            await expectRevert(r, "not whitelisted");
+        });
+
+        it("random address shouldn't be able to add collateral token", async () => {
+            const collateral = JSON.parse(JSON.stringify(web3DeepNormalize(collaterals[1]))); // make a deep copy
+            collateral.token = (await ERC20Mock.new("New Token", "NT")).address;
+            collateral.tokenFtsoSymbol = "NT";
+            collateral.assetFtsoSymbol = "NT";
+            const r = assetManager.addCollateralType(web3DeepNormalize(collateral), { from: accounts[99]});
+            await expectRevert(r, "only asset manager controller");
+
+        });
+
+        it("random address shouldn't be able to add collateral ratios for token", async () => {
+            const r = assetManager.setCollateralRatiosForToken(collaterals[0].collateralClass, collaterals[0].token,
+                toBIPS(1.5), toBIPS(1.4), toBIPS(1.6), { from: accounts[99] });
+            await expectRevert(r, "only asset manager controller");
+        });
+
+        it("random address shouldn't be able to deprecate token", async () => {
+            const r = assetManager.deprecateCollateralType(collaterals[0].collateralClass, collaterals[0].token,
+                settings.tokenInvalidationTimeMinSeconds, { from: accounts[99] });
+            await expectRevert(r, "only asset manager controller");
         });
     });
 });

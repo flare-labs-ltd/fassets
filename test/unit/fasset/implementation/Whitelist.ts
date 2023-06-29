@@ -1,9 +1,9 @@
 import { constants, expectRevert } from "@openzeppelin/test-helpers";
-import { WhitelistInstance, IERC165Contract } from "../../../../typechain-truffle";
-import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
-import { waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
-import { getTestFile } from "../../../utils/test-helpers";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { IERC165Contract, WhitelistInstance } from "../../../../typechain-truffle";
+import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
+import { waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -13,13 +13,18 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
     const governance = accounts[10];
     const whitelistedAddresses = [accounts[0], accounts[1]];
 
-    beforeEach(async () => {
+    async function initialize() {
         // create governance settings
         const governanceSettings = await GovernanceSettings.new();
         await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
         // create whitelist
         whitelist = await Whitelist.new(governanceSettings.address, governance, true);
         await whitelist.switchToProductionMode({ from: governance });
+        return { whitelist };
+    }
+
+    beforeEach(async () => {
+        ({ whitelist } = await loadFixtureCopyVars(initialize));
     });
 
     describe("whitelist functions", () => {
@@ -27,7 +32,12 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
         it('should not add addresses if not governance', async function () {
             let res = whitelist.addAddressesToWhitelist(whitelistedAddresses);
             await expectRevert(res, "only governance");
-          });
+        });
+
+        it('should not add address if not governance', async function () {
+            let res = whitelist.addAddressToWhitelist(accounts[5]);
+            await expectRevert(res, "only governance");
+        });
 
         it('should not add address 0', async function () {
             let res = whitelist.addAddressToWhitelist(constants.ZERO_ADDRESS, {from: governance});
@@ -56,6 +66,18 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
             await waitForTimelock(rev, whitelist, governance);
             const isRevoked = await whitelist.isWhitelisted(whitelistedAddresses[0]);
             assert.equal(isRevoked, false);
+        });
+
+        it('should not revoke address from the whitelist if revoke is not supported', async function () {
+            let whitelist2: WhitelistInstance;
+            const governanceSettings = await GovernanceSettings.new();
+            await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+            whitelist2 = await Whitelist.new(governanceSettings.address, governance, false);
+            await whitelist2.switchToProductionMode({ from: governance });
+            await whitelist2.addAddressToWhitelist(whitelistedAddresses[0], {from: governance});
+            let rev = await whitelist2.revokeAddress(whitelistedAddresses[0], {from: governance});
+            let res = waitForTimelock(rev, whitelist2, governance);
+            await expectRevert(res, "revoke not supported");
         });
     });
 

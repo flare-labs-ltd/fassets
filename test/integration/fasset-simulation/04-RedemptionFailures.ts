@@ -1,17 +1,17 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { TX_BLOCKED, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
-import { eventArgs, findRequiredEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { eventArgs, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { DAYS, toBN, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
 import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
-import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
+import { testChainInfo } from "../utils/TestChainInfo";
 
 contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -38,9 +38,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
     let mockChain: MockChain;
     let mockStateConnectorClient: MockStateConnectorClient;
 
-    beforeEach(async () => {
+    async function initialize() {
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.eth);
+        return { commonContext, context };
+    }
+
+    beforeEach(async () => {
+        ({ commonContext, context } = await loadFixtureCopyVars(initialize));
         mockChain = context.chain as MockChain;
         mockStateConnectorClient = context.stateConnectorClient as MockStateConnectorClient;
     });
@@ -66,7 +71,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
             const txHash = await minter.performMintingPayment(crt);
             const lotsUBA = context.convertLotsToUBA(lots);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0, reservedUBA: lotsUBA });
+            await agent.checkAgentInfo({
+                totalClass1CollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: 0,
+                mintedUBA: 0,
+                reservedUBA: lotsUBA.add(agent.poolFeeShare(crt.feeUBA)) });
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             const minted = await minter.executeMinting(crt, txHash);

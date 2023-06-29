@@ -14,7 +14,7 @@ import { testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
 
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
-const AttestationClient = artifacts.require('SCProofVerifier');
+const SCProofVerifier = artifacts.require('SCProofVerifier');
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const WNat = artifacts.require('WNat');
@@ -30,6 +30,8 @@ const GovernanceSettings = artifacts.require('GovernanceSettings');
 export type TestContextFtsos = Record<string, ContractWithEvents<FtsoMockInstance, FtsoEvents>>;
 
 export class CommonContext {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         public governance: string,
         public governanceSettings: GovernanceSettingsInstance,
@@ -38,7 +40,7 @@ export class CommonContext {
         public stateConnector: ContractWithEvents<StateConnectorMockInstance, StateConnectorEvents>,
         public agentVaultFactory: ContractWithEvents<AgentVaultFactoryInstance, AgentVaultFactoryEvents>,
         public collateralPoolFactory: ContractWithEvents<CollateralPoolFactoryInstance, CollateralPoolFactoryEvents>,
-        public attestationClient: ContractWithEvents<SCProofVerifierInstance, SCProofVerifierEvents>,
+        public scProofVerifier: ContractWithEvents<SCProofVerifierInstance, SCProofVerifierEvents>,
         public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryEvents>,
         public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerEvents>,
         public natInfo: TestNatInfo,
@@ -54,7 +56,7 @@ export class CommonContext {
         // create state connector
         const stateConnector = await StateConnector.new();
         // create attestation client
-        const attestationClient = await AttestationClient.new(stateConnector.address);
+        const scProofVerifier = await SCProofVerifier.new(stateConnector.address);
         // create address updater
         const addressUpdater = await AddressUpdater.new(governance); // don't switch to production
         // create WNat token
@@ -71,6 +73,11 @@ export class CommonContext {
         const ftsos = await createTestFtsos(ftsoRegistry);
         // create FTSO manager mock (just for notifying about epoch finalization)
         const ftsoManager = await FtsoManagerMock.new();
+        // add some addresses to address updater
+        await addressUpdater.addOrUpdateContractNamesAndAddresses(
+            ["GovernanceSettings", "AddressUpdater", "StateConnector", "FtsoManager", "FtsoRegistry", "WNat"],
+            [governanceSettings.address, addressUpdater.address, stateConnector.address, ftsoManager.address, ftsoRegistry.address, wNat.address],
+            { from: governance });
         // create agent vault factory
         const agentVaultFactory = await AgentVaultFactory.new();
         // create collateral pool factory
@@ -80,7 +87,7 @@ export class CommonContext {
         await assetManagerController.switchToProductionMode({ from: governance });
         // collect
         return new CommonContext(governance, governanceSettings, addressUpdater, assetManagerController, stateConnector,
-            agentVaultFactory, collateralPoolFactory, attestationClient, ftsoRegistry, ftsoManager, testNatInfo, wNat, stablecoins, ftsos);
+            agentVaultFactory, collateralPoolFactory, scProofVerifier, ftsoRegistry, ftsoManager, testNatInfo, wNat, stablecoins, ftsos);
     }
 }
 

@@ -8,8 +8,7 @@
     "fAssetName": "F-Bitcoin",
     "fAssetSymbol": "FBTC",
     "assetMintingDecimals": 8,
-    "whitelist": null,
-    "agentWhitelist": null,
+    "userWhitelist": null,
     "underlyingAddressValidator": [
         "TrivialAddressValidatorMock",
         []

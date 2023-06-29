@@ -51,9 +51,9 @@ export async function waitForTimelock<C extends Truffle.ContractInstance>(respon
 
 export async function linkAssetManager() {
     // deploy all libraries
-    const SettingsUpdater = await deployLibrary('SettingsUpdater');
-    const StateUpdater = await deployLibrary('StateUpdater');
     const CollateralTypes = await deployLibrary('CollateralTypes');
+    const SettingsUpdater = await deployLibrary('SettingsUpdater', { CollateralTypes });
+    const StateUpdater = await deployLibrary('StateUpdater');
     const AgentsExternal = await deployLibrary('AgentsExternal');
     const AgentsCreateDestroy = await deployLibrary('AgentsCreateDestroy');
     const AgentSettingsUpdater = await deployLibrary('AgentSettingsUpdater');

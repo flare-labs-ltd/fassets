@@ -1,13 +1,17 @@
 import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import {
-    CollateralPoolInstance, CollateralPoolTokenInstance,
-    ERC20MockInstance, AssetManagerMockInstance,
-    AgentVaultMockInstance, DistributionToDelegatorsInstance, IERC165Contract, IERC20Contract
-} from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
 import BN from "bn.js";
-import { erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { createTestContracts, TestSettingsContracts } from "../../../utils/test-settings";
+import { erc165InterfaceId, toBN, toWei } from "../../../../lib/utils/helpers";
+import {
+    AgentVaultMockInstance,
+    AssetManagerMockInstance,
+    CollateralPoolInstance, CollateralPoolTokenInstance,
+    DistributionToDelegatorsInstance,
+    ERC20MockInstance,
+    IERC165Contract, IERC20Contract
+} from "../../../../typechain-truffle";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { TestSettingsContracts, createTestContracts } from "../../../utils/test-settings";
+import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
 
 function assertEqualBN(a: BN, b: BN, message?: string) {
     assert.equal(a.toString(), b.toString(), message);
@@ -61,7 +65,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
     let MIN_TOKEN_SUPPLY_AFTER_EXIT: BN;
     let MIN_NAT_BALANCE_AFTER_EXIT: BN;
 
-    beforeEach(async () => {
+    async function initialize() {
         contracts = await createTestContracts(governance);
         wNat = await ERC20Mock.new("wNative", "wNat");
         assetManager = await AssetManager.new(wNat.address);
@@ -73,9 +77,9 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             agentVault.address,
             assetManager.address,
             fAsset.address,
-            Math.floor(exitCR*10_000),
-            Math.floor(topupCR*10_000),
-            Math.floor(topupTokenDiscount*10_000)
+            Math.floor(exitCR * 10_000),
+            Math.floor(topupCR * 10_000),
+            Math.floor(topupTokenDiscount * 10_000)
         );
         collateralPoolToken = await CollateralPoolToken.new(collateralPool.address);
         // set pool token
@@ -87,6 +91,12 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         MIN_NAT_BALANCE_AFTER_EXIT = await collateralPool.MIN_NAT_BALANCE_AFTER_EXIT();
         // temporary fix for testing
         await assetManager.registerFAssetForCollateralPool(fAsset.address);
+        return { contracts, wNat, assetManager, fAsset, agentVault, collateralPool, collateralPoolToken, MIN_NAT_TO_ENTER, MIN_TOKEN_SUPPLY_AFTER_EXIT, MIN_NAT_BALANCE_AFTER_EXIT };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, assetManager, fAsset, agentVault, collateralPool, collateralPoolToken, MIN_NAT_TO_ENTER, MIN_TOKEN_SUPPLY_AFTER_EXIT, MIN_NAT_BALANCE_AFTER_EXIT } =
+            await loadFixtureCopyVars(initialize));
     });
 
     function applyTopupDiscount(x: BN) {
@@ -321,6 +331,16 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(tokenSupply, ETH(10));
             const collateral = await wNat.balanceOf(collateralPool.address);
             assertEqualBN(collateral, ETH(10));
+        });
+
+        it("should not enter if token supply to nat balance is too small", async () => {
+            await agentVault.enterPool(collateralPool.address, { value: ETH(1) });
+            //Mint collateral pool tokens to increase total supply
+            await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
+            await collateralPoolToken.mint(accounts[12],ETH(10000), { from: collateralPool.address });
+            await stopImpersonatingContract(collateralPool.address);
+            const res = collateralPool.enter(0, true, { value: ETH(10) });
+            await expectRevert(res, "pool nat balance too small");
         });
 
         it("should enter tokenless and f-assetless pool holding some collateral", async () => {
@@ -987,6 +1007,64 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iCollateralPoolToken.abi, [iERC20.abi])));
             assert.isTrue(await collateralPoolToken.supportsInterface(erc165InterfaceId(iERC20.abi)));
             assert.isFalse(await collateralPoolToken.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+        });
+    });
+
+    describe("branch tests", () => {
+        it("random address shouldn't be able to set exit collateral RatioBIPS", async () => {
+            const setTo = BN_ONE.addn(Math.floor(10_000 * topupCR));
+            const res = collateralPool.setExitCollateralRatioBIPS(setTo, { from: accounts[12] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to set topup collateral ratio BIPS", async () => {
+            const setTo = new BN(Math.floor(10_000 * exitCR)).sub(BN_ONE);
+            const res = collateralPool.setTopupCollateralRatioBIPS(setTo, { from: accounts[12] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to set topup token price factor BIPS", async () => {
+            const setTo = new BN(10_000).sub(BN_ONE);
+            const res = collateralPool.setTopupTokenPriceFactorBIPS(setTo, { from: accounts[12] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to mint collateral pool tokens", async () => {
+            let res = collateralPoolToken.mint(accounts[12],ETH(10000), { from: accounts[5] });
+            await expectRevert(res, "only collateral pool");
+        });
+
+        it("random address shouldn't be able to burn collateral pool tokens", async () => {
+            let res = collateralPoolToken.burn(accounts[12],ETH(1), { from: accounts[5] });
+            await expectRevert(res, "only collateral pool");
+        });
+
+        it("random address shouldn't be able to deposit fasset fees", async () => {
+            let res = collateralPool.fAssetFeeDeposited(ETH(1), { from: accounts[5] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to destory collateral pool", async () => {
+            let res = collateralPool.destroy(accounts[5], { from: accounts[5] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to payout", async () => {
+            let res = collateralPool.payout(accounts[5], toWei(1), toWei(1), { from: accounts[5] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to upgrade wNat contract", async () => {
+            const newWNat: ERC20MockInstance = await ERC20Mock.new("new wnat", "WNat");
+            let res = collateralPool.upgradeWNatContract(newWNat.address, { from: accounts[5] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it("random address shouldn't be able to claim rewards from ftso reward manager", async () => {
+            const distributionToDelegators: DistributionToDelegatorsInstance = await DistributionToDelegators.new(wNat.address);
+            await wNat.mintAmount(distributionToDelegators.address, ETH(1));
+            let res = collateralPool.claimFtsoRewards(distributionToDelegators.address, 0, { from: accounts[5] });
+            await expectRevert(res, "only agent");
         });
     });
 });

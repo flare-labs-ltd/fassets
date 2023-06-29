@@ -173,27 +173,31 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * (Externally, same account may own several agent vaults,
      *  but in fasset system, each agent vault acts as an independent agent.)
      * NOTE: may only be called by a whitelisted agent
+     * @return _agentVault the new agent vault address
      */
     function createAgent(
         AgentSettings.Data calldata _settings
     )
         external override
         onlyAttached
+        returns (address _agentVault)
     {
-        AgentsCreateDestroy.createAgent(this, _settings);
+        return AgentsCreateDestroy.createAgent(this, _settings);
     }
 
     /**
      * Announce that the agent is going to be destroyed. At this time, agent must not have any mintings
      * or collateral reservations and must not be on the available agents list.
      * NOTE: may only be called by the agent vault owner.
+     * @return _destroyAllowedAt the timestamp at which the destroy can be executed
      */
     function announceDestroyAgent(
         address _agentVault
     )
         external override
+        returns (uint256 _destroyAllowedAt)
     {
-        AgentsCreateDestroy.announceDestroy(_agentVault);
+        return AgentsCreateDestroy.announceDestroy(_agentVault);
     }
 
     /**
@@ -221,6 +225,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * Due to effect on the pool, all agent settings are timelocked.
      * This method announces a setting change. The change can be executed after the timelock expires.
      * NOTE: may only be called by the agent vault owner.
+     * @return _updateAllowedAt the timestamp at which the update can be executed
      */
     function announceAgentSettingUpdate(
         address _agentVault,
@@ -228,8 +233,9 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         uint256 _value
     )
         external override
+        returns (uint256 _updateAllowedAt)
     {
-        AgentSettingsUpdater.announceUpdate(_agentVault, _name, _value);
+        return AgentSettingsUpdater.announceUpdate(_agentVault, _name, _value);
     }
 
     /**
@@ -298,14 +304,16 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _valueNATWei the amount to be withdrawn
+     * @return _withdrawalAllowedAt the timestamp when the withdrawal can be made
      */
     function announceClass1CollateralWithdrawal(
         address _agentVault,
         uint256 _valueNATWei
     )
         external override
+        returns (uint256 _withdrawalAllowedAt)
     {
-        AgentsExternal.announceWithdrawal(Collateral.Kind.AGENT_CLASS1, _agentVault, _valueNATWei);
+        return AgentsExternal.announceWithdrawal(Collateral.Kind.AGENT_CLASS1, _agentVault, _valueNATWei);
     }
 
     /**
@@ -315,14 +323,16 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _valueNATWei the amount to be withdrawn
+     * @return _redemptionAllowedAt the timestamp when the redemption can be made
      */
     function announceAgentPoolTokenRedemption(
         address _agentVault,
         uint256 _valueNATWei
     )
         external override
+        returns (uint256 _redemptionAllowedAt)
     {
-        AgentsExternal.announceWithdrawal(Collateral.Kind.AGENT_POOL, _agentVault, _valueNATWei);
+        return AgentsExternal.announceWithdrawal(Collateral.Kind.AGENT_POOL, _agentVault, _valueNATWei);
     }
 
     /**
@@ -394,13 +404,15 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * Announce exit from the publicly available agents list.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
+     * @return _exitAllowedAt the timestamp when the agent can exit
      */
     function announceExitAvailableAgentList(
         address _agentVault
     )
         external override
+        returns (uint256 _exitAllowedAt)
     {
-        AvailableAgents.announceExit(_agentVault);
+        return AvailableAgents.announceExit(_agentVault);
     }
 
     /**
@@ -628,6 +640,8 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     * @return _redeemedAmountUBA the actual redeemed amount; may be less then requested if there are not enough
+     *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function redeem(
         uint256 _lots,
@@ -635,8 +649,9 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     )
         external override
         onlyWhitelistedSender
+        returns (uint256 _redeemedAmountUBA)
     {
-        RedemptionRequests.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
+        return RedemptionRequests.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
     }
 
     /**
@@ -711,15 +726,18 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _amountUBA amount of f-assets to self-close
+     * @return _closedAmountUBA the actual self-closed amount, may be less then requested if there are not enough
+     *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function selfClose(
         address _agentVault,
         uint256 _amountUBA
     )
         external override
+        returns (uint256 _closedAmountUBA)
     {
         // in SelfClose.selfClose we check that only agent can do this
-        RedemptionRequests.selfClose(_agentVault, _amountUBA);
+        return RedemptionRequests.selfClose(_agentVault, _amountUBA);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -863,14 +881,20 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * Checks that the agent's collateral is too low and if true, starts agent's liquidation.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _agentVault agent vault address
+     * @return _liquidationStatus 0=no liquidation, 1=CCB, 2=liquidation
+     * @return _liquidationStartAt if the status is LIQUIDATION, the timestamp when liquidation started;
+     *  if the status is CCB, the timestamp when liquidation will start; otherwise 0
      */
     function startLiquidation(
         address _agentVault
     )
         external override
         onlyWhitelistedSender
+        returns (uint8 _liquidationStatus, uint256 _liquidationStartAt)
     {
-        Liquidation.startLiquidation(_agentVault);
+        (Agent.LiquidationPhase phase, uint256 startTs) = Liquidation.startLiquidation(_agentVault);
+        _liquidationStatus = uint8(phase);
+        _liquidationStartAt = startTs;
     }
 
     /**
@@ -1039,20 +1063,6 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         onlyAssetManagerController
     {
         CollateralTypes.deprecate(_collateralClass, _token, _invalidationTimeSec);
-    }
-
-    /**
-     * If the WNat token is replaced, it is not automatically used by the pools in the system.
-     * Instead, it has to be added as a new collateral token of type POOL by this method.
-     * Note that existing pools must switch afterwards using `upgradeWNat` method.
-     */
-    function setPoolWNatCollateralType(
-        CollateralType.Data calldata _data
-    )
-        external override
-        onlyAssetManagerController
-    {
-        CollateralTypes.setPoolWNatCollateralType(_data);
     }
 
     /**
