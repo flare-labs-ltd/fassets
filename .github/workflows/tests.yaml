@@ -89,7 +89,7 @@ jobs:
       with:
         node-version: 19
     - name: Install slither-analyzer
-      run: apt update -y && apt install -y python3-pip && pip3 install slither-analyzer
+      run: sudo apt update -y && sudo apt install -y python3-pip && sudo pip3 install slither-analyzer
     - name: Install node modules
       run: yarn install --frozen-lockfile
     - name: Compile contracts
