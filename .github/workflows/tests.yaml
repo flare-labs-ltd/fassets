@@ -27,9 +27,9 @@ jobs:
     - name: Compile contracts
       run: yarn run compile
     - name: Run test
-      run: yarn hardhat test --network hardhat ${{TEST_ARG}}
+      run: yarn hardhat test --network hardhat ${{ matrix.TEST_ARG }}
       env:
-        TEST_PATH: ${{ TEST_PATH }}
+        TEST_PATH: ${{ matrix.TEST_PATH }}
 
 
   test-contract-integration:
