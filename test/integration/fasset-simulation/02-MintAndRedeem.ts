@@ -100,6 +100,96 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.exitAndDestroy(fullAgentCollateral);
         });
 
+        it("mint and redeem f-assets when minting cap is enabled", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // mine some blocks to skip the agent creation time
+            mockChain.mine(5);
+            // update block
+            const blockNumber = await context.updateUnderlyingBlock();
+            const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
+            assertWeb3Equal(currentUnderlyingBlock[0], blockNumber);
+            assertWeb3Equal(currentUnderlyingBlock[1], (await context.chain.getBlockAt(blockNumber))?.timestamp);
+            //Set a small minting cap
+            await context.assetManagerController.setMintingCapAmg([context.assetManager.address], context.convertLotsToAMG(10), { from: governance });
+            // perform minting
+            const lots = 3;
+            const crFee = await minter.getCollateralReservationFee(lots);
+            //Try minting more lots than minting cap
+            const res = minter.reserveCollateral(agent.vaultAddress, 15);
+            await expectRevert(res, "minting cap exceeded");
+            //Try minting less lots
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            //Try to mint again
+            const res2 = minter.reserveCollateral(agent.vaultAddress, 8);
+            await expectRevert(res2, "minting cap exceeded");
+            const txHash = await minter.performMintingPayment(crt);
+            const lotsUBA = context.convertLotsToUBA(lots);
+            await agent.checkAgentInfo({
+                totalClass1CollateralWei: fullAgentCollateral,
+                reservedUBA: lotsUBA.add(agent.poolFeeShare(crt.feeUBA)) });
+            const burnAddress = context.settings.burnAddress;
+            const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
+            const minted = await minter.executeMinting(crt, txHash);
+            const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
+            assertWeb3Equal(minted.mintedAmountUBA, lotsUBA);
+            const poolFeeShare = crt.feeUBA.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+            assertWeb3Equal(poolFeeShare, minted.poolFeeUBA);
+            const agentFeeShare = crt.feeUBA.sub(poolFeeShare);
+            assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
+            const mintedUBA = crt.valueUBA.add(poolFeeShare);
+            await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
+            // check that fee was burned
+            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
+            // redeemer "buys" f-assets
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // perform redemption
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare, mintedUBA: poolFeeShare, redeemingUBA: lotsUBA });
+            assertWeb3Equal(remainingLots, 0);
+            assert.equal(dustChanges.length, 0);
+            assert.equal(redemptionRequests.length, 1);
+            const request = redemptionRequests[0];
+            assert.equal(request.agentVault, agent.vaultAddress);
+            const tx1Hash = await agent.performRedemptionPayment(request);
+            await agent.confirmActiveRedemptionPayment(request, tx1Hash);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare.add(request.feeUBA), redeemingUBA: 0 });
+            // perform minting
+            const lots2 = 9;
+            const crt2 = await minter.reserveCollateral(agent.vaultAddress, lots2);
+            const txHash2 = await minter.performMintingPayment(crt2);
+            const lotsUBA2 = context.convertLotsToUBA(lots2);
+            await agent.checkAgentInfo({
+                totalClass1CollateralWei: fullAgentCollateral,
+                reservedUBA: lotsUBA2.add(agent.poolFeeShare(crt2.feeUBA)) });
+            const minted2 = await minter.executeMinting(crt2, txHash2);
+            assertWeb3Equal(minted2.mintedAmountUBA, lotsUBA2);
+            const poolFeeShare2 = crt2.feeUBA.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+            assertWeb3Equal(poolFeeShare2, minted2.poolFeeUBA);
+            const agentFeeShare2 = crt2.feeUBA.sub(poolFeeShare2);
+            assertWeb3Equal(agentFeeShare2, minted2.agentFeeUBA);
+            const mintedUBA2 = crt2.valueUBA.add(poolFeeShare2);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare2.add(agentFeeShare).add(request.feeUBA), mintedUBA: poolFeeShare.add(mintedUBA2), reservedUBA: 0 });
+            await context.fAsset.transfer(redeemer.address, minted2.mintedAmountUBA, { from: minter.address });
+            // perform redemption
+            const [redemptionRequests2, remainingLots2, dustChanges2] = await redeemer.requestRedemption(lots2);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare2.add(agentFeeShare).add(request.feeUBA), mintedUBA: poolFeeShare2.add(poolFeeShare), redeemingUBA: lotsUBA2 });
+            assertWeb3Equal(remainingLots2, 0);
+            assert.equal(dustChanges2.length, 0);
+            assert.equal(redemptionRequests2.length, 1);
+            const request2 = redemptionRequests2[0];
+            assert.equal(request2.agentVault, agent.vaultAddress);
+            const tx1Hash2 = await agent.performRedemptionPayment(request2);
+            await agent.confirmActiveRedemptionPayment(request2, tx1Hash2);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare2.add(request2.feeUBA).add(agentFeeShare).add(request.feeUBA), redeemingUBA: 0 });
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral);
+        });
+
         it("mint and redeem f-assets (two redemption tickets - same agent) + agent can confirm mintings", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter1 = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));

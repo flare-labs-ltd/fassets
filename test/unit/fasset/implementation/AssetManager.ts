@@ -436,6 +436,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(collateralType.validUntil, (await time.latest()).add(toBN(settings.tokenInvalidationTimeMinSeconds)));
             //Wait until you can swtich class1 token
             await time.increase(settings.tokenInvalidationTimeMinSeconds);
+            //Deprecated token can't be switched to
+            res = assetManager.switchClass1Collateral(agentVault.address,collaterals[1].token, { from: agentOwner1 });
+            await expectRevert(res, "collateral deprecated");
             //switch class1 token
             const tx1 = await assetManager.switchClass1Collateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
             expectEvent(tx1, "AgentCollateralTypeChanged");

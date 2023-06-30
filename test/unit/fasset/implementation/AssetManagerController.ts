@@ -3,7 +3,7 @@ import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/Ass
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp} from "../../../../lib/utils/helpers";
 import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
@@ -588,6 +588,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should change agent vault factory on asset manager controller", async () => {
+            //Agent factory can't be address zero
+            const prms1 = assetManagerController.setAgentVaultFactory([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor), "address zero");
             const prms = assetManagerController.setAgentVaultFactory([assetManager.address], accounts[84], { from: governance });
             await waitForTimelock(prms, assetManagerController, updateExecutor);
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
@@ -595,6 +598,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should change collateral pool factory on asset manager controller", async () => {
+            //Pool factory can't be address zero
+            const prms1 = assetManagerController.setCollateralPoolFactory([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor), "address zero");
             const prms = assetManagerController.setCollateralPoolFactory([assetManager.address], accounts[84], { from: governance });
             await waitForTimelock(prms, assetManagerController, updateExecutor);
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
@@ -796,6 +802,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should set underlying address validator after timelock", async () => {
+            //Agent factory can't be address zero
+            const prms1 = assetManagerController.setUnderlyingAddressValidator([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor), "address zero");
             const addr = randomAddress();
             const res = await assetManagerController.setUnderlyingAddressValidator([assetManager.address], addr, { from: governance });
             const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
