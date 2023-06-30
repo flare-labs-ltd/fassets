@@ -113,6 +113,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         fuzzingState.logExpectationFailures();
         interceptor.logGasUsage();
         logger.close();
+        fuzzingState.writeBalanceTrackingList("test_logs/agents.csv");
     });
 
     it("f-asset fuzzing test", async () => {

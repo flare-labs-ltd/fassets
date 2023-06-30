@@ -1,4 +1,5 @@
 import { constants } from "@openzeppelin/test-helpers";
+import fs from "fs";
 import { IAssetContext } from "../../../lib/fasset/IAssetContext";
 import { InitialAgentData } from "../../../lib/state/TrackedAgentState";
 import { TrackedState } from "../../../lib/state/TrackedState";
@@ -132,6 +133,17 @@ export class FuzzingState extends TrackedState {
         this.logger.log("\nCOLLATERAL POOL SUMMARIES");
         for (const agent of this.agents.values()) {
             agent.writePoolSummary(this.logger);
+        }
+    }
+
+    writeBalanceTrackingList(file: string) {
+        const fd = fs.openSync(file, 'w');
+        try {
+            for (const agent of this.agents.values()) {
+                agent.writeBalanceTrackingList(fd);
+            }
+        } finally {
+            fs.closeSync(fd);
         }
     }
 }
