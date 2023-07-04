@@ -132,6 +132,8 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         assertWeb3Equal(info.status, 4);
         //Calling start liquidation again won't change anything
         await assetManager.startLiquidation(agentVault.address);
+        //Calling liquite won't liquidate anything
+        await assetManager.liquidate(agentVault.address, 1, { from: liquidatorAddress1});
         // assert
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info1.status, 4);

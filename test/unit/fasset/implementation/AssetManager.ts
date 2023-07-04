@@ -9,7 +9,7 @@ import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
-import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
+import { newAssetManager, linkAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
@@ -842,6 +842,33 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const availableAgentDetailedList2 = await assetManager.getAvailableAgentsDetailedList(0, 10);
             assert.equal(availableAgentDetailedList2[0].length, 0);
         });
+
+        it("agent availability branch tests", async () => {
+            // create an agent
+            let agentVault = await createAgentWithEOA(agentOwner1, "test");
+            // Only agent owner can announce exit
+            let res = assetManager.announceExitAvailableAgentList(agentVault.address, { from: agentOwner1 });
+            await expectRevert(res, "agent not available");
+            // Only agent owner can announce exit
+            agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            res = assetManager.announceExitAvailableAgentList(agentVault.address, { from: accounts[5] });
+            await expectRevert(res, "only agent vault owner");
+            //Must announce exit to be able to exit
+            res = assetManager.exitAvailableAgentList(agentVault.address, { from: agentOwner1 });
+            await expectRevert(res, "exit not announced");
+            //Announce exit
+            await assetManager.announceExitAvailableAgentList(agentVault.address, { from: agentOwner1 });
+            // make agent unavailable
+            await time.increase((await assetManager.getSettings()).agentExitAvailableTimelockSeconds);
+            await assetManager.exitAvailableAgentList(agentVault.address, { from: agentOwner1 });
+            // check that agent is no longer available in three ways
+            const agentInfo2 = await assetManager.getAgentInfo(agentVault.address);
+            assert.equal(agentInfo2.publiclyAvailable, false);
+            const availableAgentList2 = await assetManager.getAvailableAgentsList(0, 10);
+            assert.equal(availableAgentList2[0].length, 0);
+            const availableAgentDetailedList2 = await assetManager.getAvailableAgentsDetailedList(0, 10);
+            assert.equal(availableAgentDetailedList2[0].length, 0);
+        });
     });
 
     describe("minting", () => {
@@ -1490,6 +1517,137 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const r = assetManager.deprecateCollateralType(collaterals[0].collateralClass, collaterals[0].token,
                 settings.tokenInvalidationTimeMinSeconds, { from: accounts[99] });
             await expectRevert(r, "only asset manager controller");
+        });
+
+        it("validate settings fAsset address can't be zero", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            await expectRevert(res, "zero fAsset address");
+        });
+
+        it("validate settings AgentVaultfactory cannot be address zero", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.agentVaultFactory = constants.ZERO_ADDRESS;
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            await expectRevert(res, "zero agentVaultFactory address");
+        });
+
+        it("validate settings collateralPoolFactory address cannot be zero", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.collateralPoolFactory = constants.ZERO_ADDRESS;
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            console.log(Settings.agentVaultFactory);
+            await expectRevert(res, "zero collateralPoolFactory address");
+        });
+
+        it("validate settings scProofVerifier address cannot be zero", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.scProofVerifier = constants.ZERO_ADDRESS;
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            await expectRevert(res, "zero scProofVerifier address");
+        });
+
+        it("validate settings UnderlyingAddressValidator address cannot be zero", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.underlyingAddressValidator = constants.ZERO_ADDRESS;
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            await expectRevert(res, "zero underlyingAddressValidator address");
+        });
+
+        it("validate settings ftsoRegistry address cannot be zero", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.ftsoRegistry = constants.ZERO_ADDRESS;
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            await expectRevert(res, "zero ftsoRegistry address");
+        });
+
+        it("validate settings liquidationStrategy address cannot be zero", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.liquidationStrategy = constants.ZERO_ADDRESS;
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            await expectRevert(res, "zero liquidationStrategy address");
+        });
+
+        it("validate settings agentWhitelist address cannot be zero", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.agentWhitelist = constants.ZERO_ADDRESS;
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            await expectRevert(res, "zero agentWhitelist address");
+        });
+
+        it("validate settings confirmationByOthersRewardUSD5 cannot be zero", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.confirmationByOthersRewardUSD5 = 0;
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            await expectRevert(res, "cannot be zero");
+        });
+
+        it("validate settings minUnderlyingBackingBIPS cannot be zero", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.minUnderlyingBackingBIPS = 0;
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            await expectRevert(res, "cannot be zero");
+        });
+
+        it("validate settings minUnderlyingBackingBIPS cannot be bigger than max bips", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.minUnderlyingBackingBIPS = 20000;
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            await expectRevert(res, "bips value too high");
+        });
+
+        it("validate settings class1BuyForFlareFactorBIPS cannot be smaller than max bips", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.class1BuyForFlareFactorBIPS = 5000;
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            await expectRevert(res, "value too small");
         });
     });
 });

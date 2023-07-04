@@ -3,8 +3,8 @@ import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/Ass
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp} from "../../../../lib/utils/helpers";
-import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp, toBNExp, MINUTES} from "../../../../lib/utils/helpers";
+import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance, WhitelistInstance, SettingsUpdaterInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -415,6 +415,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 ...liquidationStrategySettings,
                 liquidationStepSeconds: toBN(liquidationStrategySettings.liquidationStepSeconds).muln(2)
             };
+            //Can't be address zero
+            let prms1 = assetManagerController.setLiquidationStrategy([assetManager.address], constants.ZERO_ADDRESS, encodeLiquidationStrategyImplSettings(newLiquidationStrategySettings), { from: governance });
+            await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor),"address zero");
             let prms = assetManagerController.setLiquidationStrategy([assetManager.address], contracts.liquidationStrategy, encodeLiquidationStrategyImplSettings(newLiquidationStrategySettings), { from: governance });
             let res = await waitForTimelock(prms, assetManagerController, updateExecutor);
             expectEvent(res, "SettingChanged", { name: "liquidationStepSeconds", value: toBN(newLiquidationStrategySettings.liquidationStepSeconds) });
@@ -526,6 +529,17 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let redemptionDefaultFactorAgentC1BIPS_big = toBN(currentSettings.redemptionDefaultFactorAgentC1BIPS).muln(12001).divn(10_000);
             let redemptionDefaultFactorAgentC1BIPS_low = MAX_BIPS;
             let redemptionDefaultFactorPoolBIPS = toBN(currentSettings.redemptionDefaultFactorPoolBIPS);
+            let redemptionDefaultFactorAgentPool_big = toBN(currentSettings.redemptionDefaultFactorAgentC1BIPS).muln(12001).divn(10_000);
+            let redemptionDefaultFactorAgentPool_low = 100;
+            let redemptionDefaultFactorBIPS_new = 1_3000;
+
+            await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
+            let res_big_pool = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_new, redemptionDefaultFactorAgentPool_big, { from: governance });
+            await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
+            let res_low_pool = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_new, redemptionDefaultFactorAgentPool_low, { from: governance });
+
+            await expectRevert(res_big_pool, "fee increase too big");
+            await expectRevert(res_low_pool, "fee decrease too big");
 
             await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
             let res_big = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorAgentC1BIPS_big, redemptionDefaultFactorPoolBIPS, { from: governance });
@@ -535,7 +549,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(res_big, "fee increase too big");
             await expectRevert(res_low, "bips value too low");
 
-            let redemptionDefaultFactorBIPS_new = 1_3000;
             await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
             await assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_new, redemptionDefaultFactorPoolBIPS, { from: governance });
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());

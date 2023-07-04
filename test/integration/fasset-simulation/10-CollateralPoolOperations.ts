@@ -285,9 +285,11 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         //Approve enough fassets that will be needed in self close exit.
         await context.fAsset.approve(agent.collateralPool.address, 100000000000, { from: minter.address });
         await agent.collateralPool.enter(0, false, { from: minter.address, value: minterPoolDeposit1 });
-
+        const fAssetBalanceBefore = await context.fAsset.balanceOf(minter.address);
+        const fAssetReqForClose = await agent.collateralPool.fAssetRequiredForSelfCloseExit(toWei(90000));
         const resp = await agent.collateralPool.selfCloseExit(toWei(90000), false, underlyingMinter1, { from: minter.address });
-
+        const fAssetBalanceAfter = await context.fAsset.balanceOf(minter.address);
+        assertWeb3Equal(fAssetBalanceBefore.sub(fAssetBalanceAfter),fAssetReqForClose);
         const info = await agent.getAgentInfo();
         const natShare = toBN(info.totalPoolCollateralNATWei).mul(minterPoolDeposit1).div(await agent.collateralPoolToken.totalSupply());
         //Check for redemption request
@@ -352,7 +354,11 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
 
         //Self close exit with class1 collateral payout
         const selfCloseAmount = toWei(10000);
+        const fAssetBalanceBefore = await context.fAsset.balanceOf(minter.address);
+        const fAssetReqForClose = await agent.collateralPool.fAssetRequiredForSelfCloseExit(selfCloseAmount);
         const resp = await agent.collateralPool.selfCloseExit(selfCloseAmount, true, underlyingMinter1, { from: minter.address });
+        const fAssetBalanceAfter = await context.fAsset.balanceOf(minter.address);
+        assertWeb3Equal(fAssetBalanceBefore.sub(fAssetBalanceAfter),fAssetReqForClose);
         const info = await agent.getAgentInfo();
         const natShare = toBN(info.totalPoolCollateralNATWei).mul(selfCloseAmount).div(await agent.collateralPoolToken.totalSupply());
         const class1BalanceAgentAfter = await context.usdc.balanceOf(agent.agentVault.address);
