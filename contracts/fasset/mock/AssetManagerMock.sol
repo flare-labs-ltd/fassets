@@ -105,8 +105,14 @@ contract AssetManagerMock {
         return 1;
     }
 
-    function maxRedemptionFromAgent(address /*agentVault*/) external pure returns (uint256) {
-        return 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    uint256 internal maxRedemption = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+
+    function maxRedemptionFromAgent(address /*agentVault*/) external view returns (uint256) {
+        return maxRedemption;
+    }
+
+    function setMaxRedemptionFromAgent(uint256 _maxRedemption) external {
+        maxRedemption = _maxRedemption;
     }
 
 }

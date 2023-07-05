@@ -234,8 +234,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
             "collateral left after exit is too low and non-zero");
         uint256 maxAgentRedemption = assetManager.maxRedemptionFromAgent(agentVault);
         uint256 requiredFAssets = _getFAssetRequiredToNotSpoilCR(assetData, natShare);
-        // rare case: if agent has too many open tickets they can't redeem the requiredFAssets
-        // in one transaction. In that case we lower the amount of spent tokens and nat share.
+        // rare case: if agent has too many low-valued open tickets they can't redeem the requiredFAssets
+        // in one transaction. In that case we lower/correct the amount of spent tokens and nat share.
         if (maxAgentRedemption < requiredFAssets) {
             // natShare and _tokenShare decrease
             requiredFAssets = maxAgentRedemption;
@@ -273,7 +273,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 spentFAssetFees = Math.min(requiredFAssets, fAssetFees);
         if (spentFAssetFees > 0) {
             // fAssetFees consumed by requiredFAssets become debt
-            /* solhint-disable reentrancy */
+            /* solhint-disable reentrancy (is non-reentrant) */
             totalFAssetFees -= spentFAssetFees;
             _mintFAssetFeeDebt(msg.sender, spentFAssetFees);
             uint256 spentFreeFAssetFeeShare = Math.min(spentFAssetFees, freeFAssetFeeShare);
@@ -435,6 +435,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         }
     }
 
+    // solve (N - n) / (p / q (F - f)) >= cr for n >= 0 get n = N - p (F - f) r / q
     function _getNatRequiredToNotSpoilCR(
         AssetData memory _assetData,
         uint256 _fAssetShare
@@ -442,7 +443,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         internal view
         returns (uint256 requiredNat)
     {
-        // calculate nat required to keep CR above min(exitCR, poolCR)
+        // calculate nat required to keep CR above min(exitCR, poolCR) when taking out _fAssetShare
         // if pool is below exitCR, we shouldn't require it be increased above exitCR, only preserved
         // if pool is above exitCR, we require only for it to stay that way (like in the normal exit)
         if (_staysAboveCR(_assetData, 0, exitCollateralRatioBIPS)) {
@@ -453,8 +454,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
             requiredNat = _assetData.poolNatBalance > _aux ? _assetData.poolNatBalance - _aux : 0;
         } else {
             // nat that preserves CR
-            requiredNat = _assetData.poolNatBalance.mulDiv(
-                _fAssetShare, _assetData.agentBackedFAsset); // agentBackedFAsset > 0
+            requiredNat = _assetData.agentBackedFAsset > 0 ? _assetData.poolNatBalance.mulDiv(
+                _fAssetShare, _assetData.agentBackedFAsset) : 0;
         }
     }
 
