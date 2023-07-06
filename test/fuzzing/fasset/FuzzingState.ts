@@ -136,14 +136,9 @@ export class FuzzingState extends TrackedState {
         }
     }
 
-    writeBalanceTrackingList(file: string) {
-        const fd = fs.openSync(file, 'w');
-        try {
-            for (const agent of this.agents.values()) {
-                agent.writeBalanceTrackingList(fd);
-            }
-        } finally {
-            fs.closeSync(fd);
+    writeBalanceTrackingList(dir: string) {
+        for (const agent of this.agents.values()) {
+            agent.writeBalanceTrackingList(dir);
         }
     }
 }

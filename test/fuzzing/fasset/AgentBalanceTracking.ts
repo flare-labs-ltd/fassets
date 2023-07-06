@@ -61,8 +61,7 @@ export class BalanceTrackingList {
         fs.writeSync(fd, str, null, 'utf-8');
     }
 
-    writeCSV(fd: number, name: string) {
-        this.writeLine(fd, [name]);
+    writeCSV(fd: number) {
         let summary = new BalanceTrackingSummary({});
         this.writeLine(fd, ['Block', 'Operation', 'Request id', 'Underlying deposit', 'Underlying withdrawal', 'Mint amount', 'Mint fee agent', 'Mint fee pool',
             'Redemption amount', 'Redemption amount spent', 'Redemption fee', 'Self close', 'Withdraw', 'Topup', 'Tracked accounted underlying', 'Tracked required underlying',

@@ -23,6 +23,8 @@ import { FuzzingState, FuzzingStateLogRecord } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
 import { BalanceTrackingList, BalanceTrackingRow } from "./AgentBalanceTracking";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
+import { openNewFile } from "../../../lib/utils/file-utils";
+import { closeSync } from "fs";
 
 export interface CollateralReservation {
     id: number;
@@ -689,8 +691,13 @@ export class FuzzingStateAgent extends TrackedAgentState {
         }
     }
 
-    writeBalanceTrackingList(fd: number) {
-        this.balanceTrackingList.writeCSV(fd, this.name());
+    writeBalanceTrackingList(dir: string) {
+        const path = `${dir}/${this.name().toLowerCase()}.csv`;
+        const fd = openNewFile(path, 'w', false);
+        try {
+            this.balanceTrackingList.writeCSV(fd);
+        } finally {
+            closeSync(fd);
+        }
     }
-
 }

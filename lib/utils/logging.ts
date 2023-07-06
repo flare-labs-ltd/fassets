@@ -1,5 +1,5 @@
-import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, renameSync, unlinkSync } from "fs";
-import { join, parse } from "path";
+import { appendFileSync, closeSync } from "fs";
+import { openNewFile } from "./file-utils";
 
 export interface ILogger {
     log(text: string): void;
@@ -37,21 +37,7 @@ export class LogFile implements ILogger {
     constructor(
         public readonly path: string
     ) {
-        this.fd = LogFile.openNewFile(path);
-    }
-
-    static openNewFile(path: string) {
-        const { dir, name, ext } = parse(path);
-        if (!existsSync(dir)) {
-            mkdirSync(dir, { recursive: true });
-        }
-        if (existsSync(path)) {
-            const backup = join(dir, name) + '.1' + ext;
-            if (existsSync(backup))
-                unlinkSync(backup);
-            renameSync(path, backup);
-        }
-        return openSync(path, 'as+');
+        this.fd = openNewFile(path, 'as+', true);
     }
 
     log(text: string) {
