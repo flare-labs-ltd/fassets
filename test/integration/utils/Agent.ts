@@ -375,7 +375,9 @@ export class Agent extends AssetContextClient {
         const redemptionDefaultPool = priceNat.convertUBAToTokenWei(uba).mul(
             toBN(this.context.settings.redemptionDefaultFactorPoolBIPS)).divn(MAX_BIPS);
         if (redemptionDefaultAgent.gt(maxRedemptionCollateral)) {
-            // TODO: additional funds taken from pool
+            const extraPoolAmg = this.context.convertLotsToAMG(lots).mul
+            (redemptionDefaultAgent.sub(maxRedemptionCollateral)).divRound(redemptionDefaultAgent);
+            return [maxRedemptionCollateral, redemptionDefaultPool.add(priceNat.convertAmgToTokenWei(extraPoolAmg))];
         }
         return [redemptionDefaultAgent, redemptionDefaultPool];
     }

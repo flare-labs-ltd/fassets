@@ -479,4 +479,76 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(res, 'non-payment not proved');
     });
 
+    it("max redeem tickets gas check", async () => {
+        //Change maxRedeemedTickets in test-settings.ts or in initialize
+        //20 tickets = 492059 gas, 50 tickets = 884188 gas, 100 tickets = 1537804 gas, 200 tickets = 2845226 gas,
+        //500 tickets= 6769180 gas, 1000 tickets = 13314728 gas, 2000 = 26426919 gas,
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e10));
+        // minter
+        chain.mint(underlyingMinter1, toBNExp(10000000, 18));
+        await updateUnderlyingBlock();
+        //allLots should be the same as maxRedeemedTickets to create this amount of tickets of 1 lot size
+        const allLots = toNumber(settings.maxRedeemedTickets);
+        //Mine #allLots number of times with 1 lot
+        for (let i = 0; i <= allLots; i++) {
+            // perform minting
+            const lots = 1;
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const crFee = await assetManager.collateralReservationFee(lots);
+            const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+            const crt = requiredEventArgs(resAg, 'CollateralReserved');
+            const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+            const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
+            const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+            const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+            const minted = requiredEventArgs(res, 'MintingExecuted');
+        }
+        // perform minting
+        //Mine a large amount then redeem this large amount
+        const lots = allLots+200;
+        const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+        const crt = requiredEventArgs(resAg, 'CollateralReserved');
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+        const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        const minted = requiredEventArgs(res, 'MintingExecuted');
+        // redeemer "buys" f-assets
+        await fAsset.transfer(redeemerAddress1, minted.mintedAmountUBA, { from: minterAddress1 });
+        // redemption request
+        const resR = await assetManager.redeem(lots, underlyingRedeemer1, { from: redeemerAddress1 });
+        console.log(resR.receipt.gasUsed);
+    });
+
+    it("mint and redeem from agent and redeem from agent in collateral branch test", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e10));
+        // minter
+        chain.mint(underlyingMinter1, toBNExp(10000000, 18));
+        await updateUnderlyingBlock();
+        const lots = 1;
+        const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+        const crt = requiredEventArgs(resAg, 'CollateralReserved');
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+        const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        const minted = requiredEventArgs(res, 'MintingExecuted');
+        // redeemer "buys" f-assets
+        await fAsset.transfer(redeemerAddress1, minted.mintedAmountUBA, { from: minterAddress1 });
+        // redemption request
+        collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
+        await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
+        //Redeeming from agent and agent in collateral with amount 0 should not work
+        const resR = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, { from:  collateralPool.address });
+        await expectRevert(resR, "redemption of 0");
+        const resRC = assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, 0, { from: collateralPool.address });
+        await expectRevert(resRC, "redemption of 0");
+        await stopImpersonatingContract(collateralPool.address);
+    });
 });
