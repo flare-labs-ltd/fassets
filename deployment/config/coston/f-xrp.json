@@ -32,8 +32,8 @@
         "token": "WNat",
         "decimals": 18,
         "directPricePair": false,
-        "assetFtsoSymbol": "XRP",
-        "tokenFtsoSymbol": "NAT",
+        "assetFtsoSymbol": "testXRP",
+        "tokenFtsoSymbol": "CFLR",
         "minCollateralRatioBIPS": 20000,
         "ccbMinCollateralRatioBIPS": 19000,
         "safetyMinCollateralRatioBIPS": 21000

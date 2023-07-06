@@ -212,34 +212,34 @@
   {
     "name": "SCProofVerifier",
     "contractName": "SCProofVerifier.sol",
-    "address": "0x2D98960902EA6D0d9188052B23682d32C59d4461"
+    "address": "0x295d30332320480E5bF0C8a238f897c55aeB347f"
   },
   {
     "name": "AgentWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0xf66dEC1236319AA8202A1B0F2aa8442A4ad88A8F",
+    "address": "0xA82bCA7A73515F4fAe03f9dD2fa86D92c9616844",
     "mustSwitchToProduction": true
   },
   {
     "name": "UserWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0x5f73833EFDa1054905084232b25384505f2e6cb6",
+    "address": "0x5241A02175fac41c31A51253e651A40C7F39ba3e",
     "mustSwitchToProduction": true
   },
   {
     "name": "AgentVaultFactory",
     "contractName": "AgentVaultFactory.sol",
-    "address": "0xc5B0f10BEea6BB5Ac10aF93f494e75904B6fb0cC"
+    "address": "0xbcD43fE1d23851D000C6BA9602d2F69B61705379"
   },
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0x27FEc084D6a09bBB6611063732df1B8BCcba5878"
+    "address": "0xac6775D54b7CE9719097E4E10d074E258ed8dD51"
   },
   {
     "name": "AssetManagerController",
     "contractName": "AssetManagerController.sol",
-    "address": "0xec3eEe520ec48f5901f71B99feBB109A4df39b2B",
+    "address": "0x1F68B941b94E22acd942Ee1c66d5Ec85aC1Ffdf2",
     "mustSwitchToProduction": true
   },
   {
@@ -250,17 +250,17 @@
   {
     "name": "AssetManager_FtestXRP",
     "contractName": "AssetManager.sol",
-    "address": "0xBc9bDE568C2f072CCAF99721be1A67BCC09d2D8b"
+    "address": "0xa10D143406241786CCC9285cA02187f72F5e8C0D"
   },
   {
     "name": "FtestXRP",
     "contractName": "FAsset.sol",
-    "address": "0x8b1c69F60F740B3226cC6Df4A814d0EF79f3eA09",
+    "address": "0xd860e3835e14c678D892ec6Ccf96e2d7C07e4e83",
     "mustSwitchToProduction": true
   },
   {
     "name": "AddressValidator_FtestXRP",
     "contractName": "RippleAddressValidator.sol",
-    "address": "0xE0F0d0bbD62f1ace5Aa86C3818e51728C86cd7a9"
+    "address": "0x41C8D488e62a3E964Cf8b7d2e2be93a05C7E86D3"
   }
 ]
