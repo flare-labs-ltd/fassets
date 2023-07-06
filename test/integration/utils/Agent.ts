@@ -601,4 +601,13 @@ export class Agent extends AssetContextClient {
     poolFeeShare(feeUBA: BNish) {
         return toBN(feeUBA).mul(toBN(this.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
     }
+
+    // pool's CR can fall below exitCR
+    async getLotsToMintThatGetPoolCRTo(ratioBIPS: number) {
+        const { 0: assetPriceMul, 1: assetPriceDiv } = await this.assetManager.assetPriceNatWei();
+        const poolBalanceWei = await this.collateralPool.totalCollateral();
+        const totalBackedUBA = await this.getTotalBackedAssetUBA();
+        const toMintUBA = poolBalanceWei.mul(assetPriceDiv).muln(MAX_BIPS).div(assetPriceMul).divn(ratioBIPS).sub(totalBackedUBA);
+        return this.context.convertUBAToLots(toMintUBA);
+    }
 }

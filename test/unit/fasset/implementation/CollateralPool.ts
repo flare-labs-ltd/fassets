@@ -7,7 +7,7 @@ import {
     CollateralPoolInstance, CollateralPoolTokenInstance,
     DistributionToDelegatorsInstance,
     ERC20MockInstance,
-    IERC20Contract
+    IERC20Contract, IERC165Contract
 } from "../../../../typechain-truffle";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../utils/test-settings";
@@ -742,11 +742,11 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // mint some f-assets for minter to be able to do redemption
             await fAsset.mintAmount(accounts[0], ETH(100));
             await fAsset.approve(collateralPool.address, ETH(100));
-            // account0 enters the pool
+            // user enters the pool
             await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
             // agent can only redeem 1 f-asset at a time
             await assetManager.setMaxRedemptionFromAgent(ETH(0));
-            // account0 wants to redeem all tokens, which means he would need to
+            // user wants to redeem all tokens, which means he would need to
             // take all 100 f-assets out of circulation
             const exitCRBIPS = await collateralPool.exitCollateralRatioBIPS();
             const exitCR = exitCRBIPS.toNumber() / MAX_BIPS;
@@ -760,24 +760,22 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // account had been taken one f-asset
             assertEqualBN(fAssetBefore.sub(fAssetAfter), ETH(0));
             assertEqualBN(tokensBefore.sub(tokensAfter), await natToTokens(natToGetCRToExitCR));
-            // account0's withdrawal would leave pool's CR at 0, so he was only
-            // allowed to withdraw the collateral that gets pool at minCR and
-            // a bit more that was covered by the 1 redeemed f-asset
+            // user's withdrawal would leave pool's CR at 0, so he was only
+            // allowed to withdraw the collateral that gets pool at exitCR
             assertEqualBN(await getPoolCRBIPS(), exitCRBIPS);
             const wNatBalance = await wNat.balanceOf(accounts[0]);
             assertEqualBN(wNatBalance, natToGetCRToExitCR);
         });
 
-        it.only("should do an incomplete self-close exit (agent's max redeemed f-assets is less than required)", async () => {
+        it("should do an incomplete self-close exit, where agent's max redemption value is 0", async () => {
             // mint some f-assets for minter to be able to do redemption
             await fAsset.mintAmount(accounts[0], ETH(100));
             await fAsset.approve(collateralPool.address, ETH(100));
             // account0 enters the pool
             await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
-            // agent can only redeem 1 f-asset at a time
+            // agent cannot redeem any f-assets
             await assetManager.setMaxRedemptionFromAgent(ETH(0));
-            // account0 wants to redeem all tokens, which means he would need to
-            // take all 100 f-assets out of circulation
+            // account0 wants to redeem all tokens, which means he would need to take all 100 f-assets out of circulation
             const exitCRBIPS = await collateralPool.exitCollateralRatioBIPS();
             const exitCR = exitCRBIPS.toNumber() / MAX_BIPS;
             const natToGetCRToExitCR = await getNatRequiredToGetPoolCRBelow(exitCR);
@@ -785,21 +783,60 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const tokensBefore = await collateralPoolToken.balanceOf(accounts[0]);
             const resp = await collateralPool.selfCloseExit(tokensBefore, true, "");
             const fAssetAfter = await fAsset.balanceOf(accounts[0]);
-            const tokensAfter = await collateralPoolToken.balanceOf(accounts[0]);
+            expectEvent(resp, "IncompleteSelfCloseExit");
+            // account had not been taken any f-assets
+            assertEqualBN(fAssetBefore, fAssetAfter);
+            // user's withdrawal leaves pool's CR at exitCR as beyond that f-assets would need to get burned/redeemed
+            assertEqualBN(await getPoolCRBIPS(), exitCRBIPS);
+            // user could withdraw only the collateral that gets pool at exitCR
+            const wNatBalance = await wNat.balanceOf(accounts[0]);
+            assertEqualBN(wNatBalance, natToGetCRToExitCR);
+        });
+
+        it("should fail self-close exit because agent's max redemption allows for too few f-assets to be redeemed", async () => {
+            // mint some f-assets for minter to be able to do redemption
+            await fAsset.mintAmount(accounts[0], ETH(100));
+            await fAsset.approve(collateralPool.address, ETH(100));
+            // account0 enters the pool
+            await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
+            // agent can redeem no f-assets in one transaction (this can actually never happen)
+            await assetManager.setMaxRedemptionFromAgent(ETH(0));
+            // pool's cr goes to exitCR (we should raise prices but we raise exitCR instead)
+            const payload = await collateralPool.contract.methods.setExitCollateralRatioBIPS(await getPoolCRBIPS()).encodeABI();
+            await assetManager.callFunctionAt(collateralPool.address, payload);
+            // user wants to redeem all tokens, which means he would need to take all 100 f-assets out of circulation
+            const account0Tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            // user cannot self-exit because pool being at exitCR requires redeemed f-assets, which agent cannot redeem,
+            // as his max redemption is 0
+            const prms = collateralPool.selfCloseExit(account0Tokens, true, "");
+            await expectRevert(prms, "amount of sent tokens is too small");
+        });
+
+        it("should do an incomplete self-close exit, where agent's max redeemed f-assets is non-zero but less than required", async () => {
+            // mint some f-assets for minter to be able to do redemption
+            await fAsset.mintAmount(accounts[0], ETH(100));
+            await fAsset.approve(collateralPool.address, ETH(100));
+            // user enters the pool
+            await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
+            // agent can only redeem 1 f-asset at a time
+            await assetManager.setMaxRedemptionFromAgent(ETH(1));
+            // user wants to redeem all tokens, which means he would need to take all 100 f-assets out of circulation
+            const exitCRBIPS = await collateralPool.exitCollateralRatioBIPS();
+            const natToGetCRToExitCR = await getNatRequiredToGetPoolCRBelow(exitCRBIPS.toNumber() / MAX_BIPS);
+            const fAssetBefore = await fAsset.balanceOf(accounts[0]);
+            const userTokens = await collateralPoolToken.balanceOf(accounts[0]);
+            const resp = await collateralPool.selfCloseExit(userTokens, true, "");
+            const fAssetAfter = await fAsset.balanceOf(accounts[0]);
             expectEvent(resp, "IncompleteSelfCloseExit");
             // account had been taken one f-asset
-            assertEqualBN(fAssetBefore.sub(fAssetAfter), ETH(0));
-            // account0's withdrawal would leave pool's CR at 0, so he was only
-            // allowed to withdraw the collateral that gets pool at minCR and
-            // a bit more that was covered by the 1 redeemed f-asset
+            assertEqualBN(fAssetBefore.sub(fAssetAfter), ETH(1));
+            // user's withdrawal would leave pool's CR at 0, so he was only allowed to withdraw the collateral that
+            // gets pool at exitCR and a bit more that was covered by the 1 redeemed f-asset
             assertEqualBN(await getPoolCRBIPS(), exitCRBIPS);
-            // 1 f-asset is covered by (exitCR * priceDiv / priceMul) nat
+            // burning one f-asset gives user additional (exitCR * priceMul / priceDiv) released nat
             const { 0: assetPriceMul, 1: assetPriceDiv } = await assetManager.assetPriceNatWei();
-            const natCoveredByOneFAsset = mulBips(ETH(1).mul(assetPriceDiv).div(assetPriceMul), exitCR);
-            const wNatBalance = await wNat.balanceOf(accounts[0]);
-            console.log(natToGetCRToExitCR.toString())
-            console.log(natCoveredByOneFAsset.toString())
-            assertEqualBN(wNatBalance, natToGetCRToExitCR);
+            const natCoveringOneFAsset = ETH(1).mul(assetPriceMul).mul(exitCRBIPS).divn(MAX_BIPS).div(assetPriceDiv)
+            assertEqualBN(await wNat.balanceOf(accounts[0]), natToGetCRToExitCR.add(natCoveringOneFAsset));
         });
     });
 

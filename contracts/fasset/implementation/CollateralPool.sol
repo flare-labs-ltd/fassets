@@ -237,9 +237,10 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         // rare case: if agent has too many low-valued open tickets they can't redeem the requiredFAssets
         // in one transaction. In that case we lower/correct the amount of spent tokens and nat share.
         if (maxAgentRedemption < requiredFAssets) {
-            // natShare and _tokenShare decrease
+            // natShare and _tokenShare decrease!
             requiredFAssets = maxAgentRedemption;
             natShare = _getNatRequiredToNotSpoilCR(assetData, requiredFAssets);
+            // "amount of sent tokens is too small after agent max redempton correction"
             require(natShare > 0, "amount of sent tokens is too small");
             require(assetData.poolNatBalance == natShare ||
                 assetData.poolNatBalance - natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
@@ -273,7 +274,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 spentFAssetFees = Math.min(requiredFAssets, fAssetFees);
         if (spentFAssetFees > 0) {
             // fAssetFees consumed by requiredFAssets become debt
-            /* solhint-disable reentrancy (is non-reentrant) */
+            // solhint-disable reentrancy (is non-reentrant)
             totalFAssetFees -= spentFAssetFees;
             _mintFAssetFeeDebt(msg.sender, spentFAssetFees);
             uint256 spentFreeFAssetFeeShare = Math.min(spentFAssetFees, freeFAssetFeeShare);
@@ -419,9 +420,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         internal view
         returns (uint256 requiredFAssets)
     {
-        // calculate f-assets required to keep CR above min(exitCR, poolCR) when removing _natShare collateral
-        // if pool is below exitCR, we shouldn't require it be increased above exitCR, only preserved
-        // if pool is above exitCR, we require only for it to stay that way (like in the normal exit)
         if (_staysAboveCR(_assetData, 0, exitCollateralRatioBIPS)) {
             // f-assets required for CR to stay above exitCR (might not be needed)
             // If price is positive, we divide by a positive number as exitCollateralRatioBIPS >= 1
@@ -435,7 +433,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         }
     }
 
-    // solve (N - n) / (p / q (F - f)) >= cr for n >= 0 get n = N - p (F - f) r / q
     function _getNatRequiredToNotSpoilCR(
         AssetData memory _assetData,
         uint256 _fAssetShare
@@ -448,12 +445,14 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         // if pool is above exitCR, we require only for it to stay that way (like in the normal exit)
         if (_staysAboveCR(_assetData, 0, exitCollateralRatioBIPS)) {
             // nat required for CR to stay above exitCR (might not be needed)
-            // If price is positive, we divide by a positive number as exitCollateralRatioBIPS >= 1
+            // solve (N - n) / (p / q (F - f)) >= cr for n >= 0 get n = N - p (F - f) cr / q
+            // If price is positive, we divide by a positive number
             uint256 _aux = (_assetData.assetPriceMul * (_assetData.agentBackedFAsset - _fAssetShare))
                 .mulBips(exitCollateralRatioBIPS) / _assetData.assetPriceDiv;
             requiredNat = _assetData.poolNatBalance > _aux ? _assetData.poolNatBalance - _aux : 0;
         } else {
             // nat that preserves CR
+            // solve (N - n) / (F - f) = N / F for n >= 0 get n = N f / F
             requiredNat = _assetData.agentBackedFAsset > 0 ? _assetData.poolNatBalance.mulDiv(
                 _fAssetShare, _assetData.agentBackedFAsset) : 0;
         }
@@ -727,7 +726,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         onlyAssetManager
         nonReentrant
     {
-        if (_newWNat == wNat) return;
+        /* if (_newWNat == wNat) return;
         // transfer all funds to new WNat
         uint256 balance = wNat.balanceOf(address(this));
         internalWithdrawal = true;
@@ -736,7 +735,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         _newWNat.deposit{value: balance}();
         // set new WNat contract
         wNat = _newWNat;
-        assetManager.collateralDeposited(agentVault, wNat);
+        assetManager.collateralDeposited(agentVault, wNat); */
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

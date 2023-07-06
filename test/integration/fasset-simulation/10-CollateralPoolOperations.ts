@@ -1,5 +1,5 @@
-import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { MAX_BIPS, DAYS, toBN, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -11,8 +11,9 @@ import { Liquidator } from "../utils/Liquidator";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
-import { impersonateAccount, stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers";
 import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
+import { EventArgs } from "../../../lib/utils/events/common";
+import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 
 
 contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations`, async accounts => {
@@ -396,6 +397,55 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         //Should revert if there is no collateral to withdraw
         res = agent.collateralPool.withdrawCollateralWhenFAssetTerminated({ from: minter.address });
         await expectRevert(res, "nothing to withdraw");
+    });
+
+    it.only("should check if agent doesn't pay underlying - the redeemer must only get class1 (special case for pool redemptions)", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
+        // make agent available
+        const fullAgentClass1Collateral = toWei(1e7);
+        const fullAgentPoolCollateral = toWei(1e7);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        // minter mints
+        const lots = 100;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        const txHash1 = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash1);
+        // minter enters the pool
+        const minterPoolDeposit = toWei(1e7);
+        await context.fAsset.approve(agent.collateralPool.address, context.convertLotsToUBA(lots), { from: minter.address });
+        await agent.collateralPool.enter(0, false, { from: minter.address, value: minterPoolDeposit });
+        // pool collateral drops below exitCR (e.g. 1) so that minter will have to pay at least one lot of f-assets
+        // (in fact he needs to pay ~50 lots because math)
+        await agent.setPoolCollateralRatioByChangingAssetPrice(10_000);
+        // minters triggers self-close exit
+        const minterTokens = await agent.collateralPoolToken.balanceOf(minter.address);
+        const resp = await agent.collateralPool.selfCloseExit(minterTokens, false, underlyingMinter1, { from: minter.address });
+        // get redemption request
+        await expectEvent.inTransaction(resp.tx, context.assetManager, "RedemptionRequested");
+        const events = await context.assetManager.getPastEvents('RedemptionRequested', { fromBlock:0, toBlock:'latest'});
+        const request = events[0].returnValues as EventArgs<RedemptionRequested>;
+        // mine some blocks to create overflow block
+        for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
+            await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
+        }
+        // check that calling finishRedemptionWithoutPayment after no redemption payment will revert if called too soon
+        await expectRevert(agent.finishRedemptionWithoutPayment(request), "should default first");
+        await time.increase(DAYS);
+        context.skipToProofUnavailability(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
+        // do default
+        const redeemedLots = context.convertUBAToLots(request.valueUBA);
+        const [redemptionDefaultValueClass1, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(redeemedLots);
+        const redDef = await agent.finishRedemptionWithoutPayment(request);
+        assertWeb3Equal(redDef.redeemedPoolCollateralWei, redemptionDefaultValuePool);
+        assertWeb3Equal(redDef.redeemedPoolCollateralWei, minterPoolDeposit);
+        assertWeb3Equal(redDef.redemptionAmountUBA, request.valueUBA);
+        assertWeb3Equal(redDef.redeemedClass1CollateralWei, redemptionDefaultValueClass1);
+        // check that the redeemer got only class1
+        const minterClass1Balance = await context.usdc.balanceOf(minter.address);
+        const minterNatBalance = await context.wNat.balanceOf(minter.address);
+        assertWeb3Equal(minterClass1Balance, redemptionDefaultValueClass1);
+        assertWeb3Equal(minterNatBalance, 0);
     });
 
 });
