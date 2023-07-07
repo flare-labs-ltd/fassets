@@ -398,7 +398,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await expectRevert(res, "nothing to withdraw");
     });
 
-    it.only("should check if agent doesn't pay underlying - the redeemer must only get class1 (special case for pool redemptions)", async () => {
+    it("should check if agent doesn't pay underlying - the redeemer must only get class1 (special case for pool redemptions)", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
         // make agent available
