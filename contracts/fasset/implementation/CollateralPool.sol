@@ -726,7 +726,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         onlyAssetManager
         nonReentrant
     {
-        /* if (_newWNat == wNat) return;
+        if (_newWNat == wNat) return;
         // transfer all funds to new WNat
         uint256 balance = wNat.balanceOf(address(this));
         internalWithdrawal = true;
@@ -735,7 +735,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         _newWNat.deposit{value: balance}();
         // set new WNat contract
         wNat = _newWNat;
-        assetManager.collateralDeposited(agentVault, wNat); */
+        assetManager.collateralDeposited(agentVault, wNat);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
