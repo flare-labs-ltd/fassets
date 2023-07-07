@@ -15,6 +15,8 @@ import "../interface/IICollateralPool.sol";
 import "../interface/IFAsset.sol";
 import "./CollateralPoolToken.sol";
 
+import "hardhat/console.sol";
+
 
 //slither-disable reentrancy    // all possible reentrancies guarded by nonReentrant
 contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
@@ -135,7 +137,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
             // this conditions are set for keeping a stable token value
             require(msg.value >= assetData.poolNatBalance,
                 "if pool has no tokens, but holds collateral, you need to send at least that amount of collateral");
-            require(msg.value.mulDiv(assetData.assetPriceMul, assetData.assetPriceDiv) >= assetData.poolFAssetFees,
+            require(msg.value >= assetData.poolFAssetFees.mulDiv(assetData.assetPriceMul, assetData.assetPriceDiv),
                 "If pool has no tokens, but holds f-asset, you need to send at least f-asset worth of collateral");
         }
         // calculate obtained pool tokens and free f-assets
@@ -240,8 +242,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
             // natShare and _tokenShare decrease!
             requiredFAssets = maxAgentRedemption;
             natShare = _getNatRequiredToNotSpoilCR(assetData, requiredFAssets);
-            // "amount of sent tokens is too small after agent max redempton correction"
-            require(natShare > 0, "amount of sent tokens is too small");
+            require(natShare > 0, "amount of sent tokens is too small after agent max redempton correction");
             require(assetData.poolNatBalance == natShare ||
                 assetData.poolNatBalance - natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
                 "collateral left after exit is too low and non-zero");

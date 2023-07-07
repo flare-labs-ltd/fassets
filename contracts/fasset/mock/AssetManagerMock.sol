@@ -101,8 +101,10 @@ contract AssetManagerMock {
         return (1, 2);
     }
 
-    function lotSize() public pure returns (uint256) {
-        return 1;
+    uint256 public lotSize = 1;
+
+    function setLotSize(uint256 _lotSize) public {
+        lotSize = _lotSize;
     }
 
     uint256 internal maxRedemption = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;

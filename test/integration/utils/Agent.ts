@@ -363,20 +363,27 @@ export class Agent extends AssetContextClient {
         return eventArgs(res, "RedemptionDefault");
     }
 
-    async getRedemptionPaymentDefaultValue(lots: BNish): Promise<[BN, BN]> {
+    async getRedemptionPaymentDefaultValue(lots: BNish, selfCloseExit: boolean = false): Promise<[BN, BN]> {
         const uba = this.context.convertLotsToUBA(lots);
         const agentInfo = await this.getAgentInfo();
         const totalUBA = toBN(agentInfo.mintedUBA).add(toBN(agentInfo.reservedUBA)).add(toBN(agentInfo.redeemingUBA));
         const maxRedemptionCollateral = toBN(agentInfo.totalClass1CollateralWei).mul(uba).div(totalUBA);
         const priceClass1 = await this.context.getCollateralPrice(this.class1Collateral());
-        const redemptionDefaultAgent = priceClass1.convertUBAToTokenWei(uba).mul(
-            toBN(this.context.settings.redemptionDefaultFactorAgentC1BIPS)).divn(MAX_BIPS);
         const priceNat = await this.context.getCollateralPrice(this.context.collaterals[0]);
-        const redemptionDefaultPool = priceNat.convertUBAToTokenWei(uba).mul(
-            toBN(this.context.settings.redemptionDefaultFactorPoolBIPS)).divn(MAX_BIPS);
+        let redemptionDefaultAgent;
+        let redemptionDefaultPool;
+        if (!selfCloseExit) {
+            redemptionDefaultAgent = priceClass1.convertUBAToTokenWei(uba).mul(
+                toBN(this.context.settings.redemptionDefaultFactorAgentC1BIPS)).divn(MAX_BIPS);
+            redemptionDefaultPool = priceNat.convertUBAToTokenWei(uba).mul(
+                toBN(this.context.settings.redemptionDefaultFactorPoolBIPS)).divn(MAX_BIPS);
+        } else {
+            redemptionDefaultAgent = priceClass1.convertUBAToTokenWei(uba);
+            redemptionDefaultPool = toBN(0);
+        }
         if (redemptionDefaultAgent.gt(maxRedemptionCollateral)) {
             const extraPoolAmg = this.context.convertLotsToAMG(lots).mul
-            (redemptionDefaultAgent.sub(maxRedemptionCollateral)).divRound(redemptionDefaultAgent);
+                (redemptionDefaultAgent.sub(maxRedemptionCollateral)).divRound(redemptionDefaultAgent);
             return [maxRedemptionCollateral, redemptionDefaultPool.add(priceNat.convertAmgToTokenWei(extraPoolAmg))];
         }
         return [redemptionDefaultAgent, redemptionDefaultPool];

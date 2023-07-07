@@ -414,35 +414,34 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const minterPoolDeposit = toWei(1e7);
         await context.fAsset.approve(agent.collateralPool.address, context.convertLotsToUBA(lots), { from: minter.address });
         await agent.collateralPool.enter(0, false, { from: minter.address, value: minterPoolDeposit });
-        // pool collateral drops below exitCR (e.g. 1) so that minter will have to pay at least one lot of f-assets
+        // pool collateral drops below exitCR (e.g. to 1) so that minter will have to pay at least one lot of f-assets
         // (in fact he needs to pay ~50 lots because math)
         await agent.setPoolCollateralRatioByChangingAssetPrice(10_000);
         // minters triggers self-close exit
         const minterTokens = await agent.collateralPoolToken.balanceOf(minter.address);
-        const resp = await agent.collateralPool.selfCloseExit(minterTokens, false, underlyingMinter1, { from: minter.address });
+        const resp = await agent.collateralPool.selfCloseExit(minterTokens, false, minter.underlyingAddress, { from: minter.address });
+        assertWeb3Equal(await context.wNat.balanceOf(minter.address), minterPoolDeposit);
         // get redemption request
+        await expectEvent.inTransaction(resp.tx, context.assetManager, "RedemptionRequested");
         const request = requiredEventArgsFrom(resp, context.assetManager, 'RedemptionRequested');
-        // mine some blocks to create overflow block
-        for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
+        assert(request.valueUBA.gte(context.convertLotsToUBA(1)));
+        assertWeb3Equal(request.paymentAddress, minter.underlyingAddress);
+        assertWeb3Equal(request.agentVault, agent.vaultAddress);
+        // mine some blocks to create overflow blocka
+        for (let i = 0; i <= 2 * context.chainInfo.underlyingBlocksForPayment; i++) {
             await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
         }
-        // check that calling finishRedemptionWithoutPayment after no redemption payment will revert if called too soon
-        await expectRevert(agent.finishRedemptionWithoutPayment(request), "should default first");
-        await time.increase(DAYS);
-        context.skipToProofUnavailability(request.lastUnderlyingBlock, request.lastUnderlyingTimestamp);
         // do default
         const redeemedLots = context.convertUBAToLots(request.valueUBA);
-        const [redemptionDefaultValueClass1, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(redeemedLots);
-        const redDef = await agent.finishRedemptionWithoutPayment(request);
+        const [redemptionDefaultValueClass1, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(redeemedLots, true);
+        const redDef = await agent.redemptionPaymentDefault(request);
         assertWeb3Equal(redDef.redeemedPoolCollateralWei, redemptionDefaultValuePool);
-        assertWeb3Equal(redDef.redeemedPoolCollateralWei, minterPoolDeposit);
+        assertWeb3Equal(redDef.redeemedPoolCollateralWei, 0);
         assertWeb3Equal(redDef.redemptionAmountUBA, request.valueUBA);
         assertWeb3Equal(redDef.redeemedClass1CollateralWei, redemptionDefaultValueClass1);
         // check that the redeemer got only class1
-        const minterClass1Balance = await context.usdc.balanceOf(minter.address);
-        const minterNatBalance = await context.wNat.balanceOf(minter.address);
-        assertWeb3Equal(minterClass1Balance, redemptionDefaultValueClass1);
-        assertWeb3Equal(minterNatBalance, 0);
+        assertWeb3Equal(await context.usdc.balanceOf(minter.address), redemptionDefaultValueClass1);
+        assertWeb3Equal(await context.wNat.balanceOf(minter.address), minterPoolDeposit);
     });
 
 });
