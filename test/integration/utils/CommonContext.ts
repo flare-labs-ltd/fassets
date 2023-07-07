@@ -1,11 +1,11 @@
 import {
     AddressUpdaterEvents, AgentVaultFactoryEvents, AssetManagerControllerEvents, SCProofVerifierEvents, CollateralPoolFactoryEvents,
-    ERC20Events, FtsoManagerEvents, FtsoEvents, FtsoRegistryEvents, StateConnectorEvents, WNatEvents
+    ERC20Events, FtsoManagerEvents, FtsoEvents, FtsoRegistryEvents, StateConnectorEvents, WNatEvents, CollateralPoolTokenFactoryEvents
 } from "../../../lib/fasset/IAssetContext";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerControllerInstance, SCProofVerifierInstance, CollateralPoolFactoryInstance,
-    ERC20MockInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance, StateConnectorMockInstance, WNatInstance
+    ERC20MockInstance, FtsoManagerMockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance, StateConnectorMockInstance, WNatInstance, CollateralPoolTokenFactoryInstance
 } from "../../../typechain-truffle";
 import { createFtsoMock } from "../../utils/test-settings";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
@@ -14,6 +14,7 @@ import { testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
 
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
+const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 const SCProofVerifier = artifacts.require('SCProofVerifier');
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AddressUpdater = artifacts.require('AddressUpdater');
@@ -40,6 +41,7 @@ export class CommonContext {
         public stateConnector: ContractWithEvents<StateConnectorMockInstance, StateConnectorEvents>,
         public agentVaultFactory: ContractWithEvents<AgentVaultFactoryInstance, AgentVaultFactoryEvents>,
         public collateralPoolFactory: ContractWithEvents<CollateralPoolFactoryInstance, CollateralPoolFactoryEvents>,
+        public collateralPoolTokenFactory: ContractWithEvents<CollateralPoolTokenFactoryInstance, CollateralPoolTokenFactoryEvents>,
         public scProofVerifier: ContractWithEvents<SCProofVerifierInstance, SCProofVerifierEvents>,
         public ftsoRegistry: ContractWithEvents<FtsoRegistryMockInstance, FtsoRegistryEvents>,
         public ftsoManager: ContractWithEvents<FtsoManagerMockInstance, FtsoManagerEvents>,
@@ -80,14 +82,16 @@ export class CommonContext {
             { from: governance });
         // create agent vault factory
         const agentVaultFactory = await AgentVaultFactory.new();
-        // create collateral pool factory
+        // create collateral pool and token factory
         const collateralPoolFactory = await CollateralPoolFactory.new();
+        const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new();
         // create asset manager controller
         const assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
         await assetManagerController.switchToProductionMode({ from: governance });
         // collect
         return new CommonContext(governance, governanceSettings, addressUpdater, assetManagerController, stateConnector,
-            agentVaultFactory, collateralPoolFactory, scProofVerifier, ftsoRegistry, ftsoManager, testNatInfo, wNat, stablecoins, ftsos);
+            agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory,
+            scProofVerifier, ftsoRegistry, ftsoManager, testNatInfo, wNat, stablecoins, ftsos);
     }
 }
 

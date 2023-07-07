@@ -25,6 +25,11 @@ library AssetManagerSettings {
         // timelocked
         address collateralPoolFactory;
 
+        // Factory for creating new agent collateral pool tokens.
+        // Type: ICollateralPoolTokenFactory
+        // timelocked
+        address collateralPoolTokenFactory;
+
         // If set, the whitelist contains a list of accounts that can call public methods
         // (minting, redeeming, challenging, etc.)
         // This can be `address(0)`, in which case no whitelist checks are done.

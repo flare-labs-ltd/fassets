@@ -104,6 +104,14 @@ export interface AssetManagerParameters {
     collateralPoolFactory?: string;
 
     /**
+     * The factory contract for creating agent collateral pools.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'CollateralPoolTokenFactory' in contracts.json.
+     * @pattern ^\w+$
+     */
+    collateralPoolTokenFactory?: string;
+
+    /**
      * The proof verifier contract for state connector prrofs.
      * Can be a contract address (0x...) or a name in contracts.json.
      * Optional, default is 'SCProofVerifier' in contracts.json.

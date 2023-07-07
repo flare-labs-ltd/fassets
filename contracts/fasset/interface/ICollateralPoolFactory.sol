@@ -6,15 +6,13 @@ import "./IIAssetManager.sol";
 
 
 /**
- * @title Agent vault factory
+ * @title Collateral pool factory
  */
 interface ICollateralPoolFactory {
     function create(
         IIAssetManager _assetManager,
         address _agentVault,
         AgentSettings.Data memory _settings
-    ) external returns (IICollateralPool);
-
-    function createPoolToken(IICollateralPool pool)
-        external returns (address);
+    ) external
+        returns (IICollateralPool);
 }

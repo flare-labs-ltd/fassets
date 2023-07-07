@@ -1109,7 +1109,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
     });
 
-    describe("ERC-165 interface identification for Collateral Pool Factory", () => {
+    describe("ERC-165 interface identification for CollateralPoolFactory", () => {
         it("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
             const ICollateralPoolFactory = artifacts.require("ICollateralPoolFactory");
@@ -1118,6 +1118,18 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(iERC165.abi)));
             assert.isTrue(await contracts.collateralPoolFactory.supportsInterface(erc165InterfaceId(iCollateralPoolFactory.abi)));
             assert.isFalse(await contracts.collateralPoolFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+        });
+    });
+
+    describe("ERC-165 interface identification for CollateralPoolTokenFactory", () => {
+        it("should properly respond to supportsInterface", async () => {
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const ICollateralPoolTokenFactory = artifacts.require("ICollateralPoolTokenFactory");
+            const iERC165 = await IERC165.at(contracts.collateralPoolTokenFactory.address);
+            const iCollateralPoolTokenFactory = await ICollateralPoolTokenFactory.at(contracts.collateralPoolTokenFactory.address);
+            assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(iERC165.abi)));
+            assert.isTrue(await contracts.collateralPoolTokenFactory.supportsInterface(erc165InterfaceId(iCollateralPoolTokenFactory.abi)));
+            assert.isFalse(await contracts.collateralPoolTokenFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
 

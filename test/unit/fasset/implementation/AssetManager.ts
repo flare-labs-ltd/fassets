@@ -1551,6 +1551,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "zero collateralPoolFactory address");
         });
 
+        it("validate settings collateralPoolTokenFactory address cannot be zero", async () => {
+            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
+            const AssetManager = await linkAssetManager();
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.collateralPoolTokenFactory = constants.ZERO_ADDRESS;
+            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            console.log(Settings.agentVaultFactory);
+            await expectRevert(res, "zero collateralPoolTokenFactory address");
+        });
+
         it("validate settings scProofVerifier address cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
             const AssetManager = await linkAssetManager();

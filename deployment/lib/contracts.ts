@@ -19,6 +19,7 @@ export interface ChainContracts {
     SCProofVerifier?: Contract;
     AgentVaultFactory?: Contract;
     CollateralPoolFactory?: Contract;
+    CollateralPoolTokenFactory?: Contract;
     AssetManagerController?: Contract;
     UserWhitelist?: Contract;
     AgentWhitelist?: Contract;

@@ -620,6 +620,16 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(settings.collateralPoolFactory, accounts[84]);
         });
 
+        it("should change collateral pool token factory on asset manager controller", async () => {
+            //Pool factory can't be address zero
+            const prms1 = assetManagerController.setCollateralPoolTokenFactory([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor), "address zero");
+            const prms = assetManagerController.setCollateralPoolTokenFactory([assetManager.address], accounts[84], { from: governance });
+            await waitForTimelock(prms, assetManagerController, updateExecutor);
+            const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(settings.collateralPoolTokenFactory, accounts[84]);
+        });
+
         it("should change contracts", async () => {
             await contracts.addressUpdater.update(["AddressUpdater", "AssetManagerController", "WNat", "FtsoRegistry"],
                 [contracts.addressUpdater.address, assetManagerController.address, accounts[80], accounts[81]],

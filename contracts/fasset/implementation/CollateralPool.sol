@@ -651,7 +651,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      * @param _account  User address
      */
     function lockedTokensOf(address _account)
-        external view
+        external view override
         returns (uint256)
     {
         AssetData memory assetData = _getAssetData();
@@ -663,7 +663,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      * @param _account  User address
      */
     function transferableTokensOf(address _account)
-        external view
+        external view override
         returns (uint256)
     {
         AssetData memory assetData = _getAssetData();

@@ -124,6 +124,14 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_COLLATERAL_POOL_FACTORY, abi.encode(_value));
     }
 
+    function setCollateralPoolTokenFactory(IIAssetManager[] memory _assetManagers, address _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_COLLATERAL_POOL_TOKEN_FACTORY, abi.encode(_value));
+    }
+
     function setUnderlyingAddressValidator(IIAssetManager[] memory _assetManagers, address _value)
         external
         onlyGovernance

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../interface/IIAssetManager.sol";
 import "../interface/ICollateralPoolFactory.sol";
+import "../interface/ICollateralPoolTokenFactory.sol";
 import "../interface/IAgentVaultFactory.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
@@ -117,9 +118,7 @@ library AgentsCreateDestroy {
         uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(underlyingAddressHash);
         agent.underlyingBlockAtCreation = SafeMath64.max64(state.currentUnderlyingBlock, eoaProofBlock + 1);
         // add collateral pool
-        ICollateralPoolFactory collateralPoolFactory = ICollateralPoolFactory(state.settings.collateralPoolFactory);
-        agent.collateralPool = collateralPoolFactory.create(_assetManager, address(agentVault), _settings);
-        agent.collateralPool.setPoolToken(collateralPoolFactory.createPoolToken(agent.collateralPool));
+        agent.collateralPool = _createCollateralPool(_assetManager, address(agentVault), _settings);
         // run the pool setters just for validation
         agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
         agent.setPoolTopupCollateralRatioBIPS(_settings.poolTopupCollateralRatioBIPS);
@@ -128,7 +127,7 @@ library AgentsCreateDestroy {
         agent.allAgentsPos = state.allAgents.length.toUint32();
         state.allAgents.push(address(agentVault));
         // notify
-        emitAgentCreated(ownerColdAddress, address(agentVault), address(agent.collateralPool),
+        _emitAgentCreated(ownerColdAddress, address(agentVault), address(agent.collateralPool),
             normalizedUnderlyingAddress, _settings);
         return address(agentVault);
     }
@@ -216,9 +215,25 @@ library AgentsCreateDestroy {
         agent.reservedAMG = 0;
     }
 
+    function _createCollateralPool(
+        IIAssetManager _assetManager,
+        address _agentVault,
+        AgentSettings.Data calldata _settings
+    )
+        private
+        returns (IICollateralPool)
+    {
+        AssetManagerSettings.Data storage globalSettings = AssetManagerState.getSettings();
+        ICollateralPoolFactory collateralPoolFactory = ICollateralPoolFactory(globalSettings.collateralPoolFactory);
+        IICollateralPool collateralPool = collateralPoolFactory.create(_assetManager, _agentVault, _settings);
+        collateralPool.setPoolToken(
+            ICollateralPoolTokenFactory(globalSettings.collateralPoolTokenFactory).create(collateralPool));
+        return collateralPool;
+    }
+
     // Basically the same as `emit AMEvents.AgentCreated`.
     // Must be a separate method as workaround for EVM 16 stack variables limit.
-    function emitAgentCreated(
+    function _emitAgentCreated(
         address _ownerColdAddress,
         address _agentVault,
         address _collateralPool,

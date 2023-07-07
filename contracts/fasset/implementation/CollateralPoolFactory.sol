@@ -16,7 +16,7 @@ contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
         address _agentVault,
         AgentSettings.Data memory _settings
     )
-        external
+        external override
         returns (IICollateralPool)
     {
         address fAsset = address(_assetManager.fAsset());
@@ -25,14 +25,6 @@ contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
             _settings.poolTopupCollateralRatioBIPS.toUint32(),
             _settings.poolTopupTokenPriceFactorBIPS.toUint16());
         return pool;
-    }
-
-    function createPoolToken(IICollateralPool _pool)
-        external
-        returns (address)
-    {
-        CollateralPoolToken poolToken = new CollateralPoolToken(payable(address(_pool)));
-        return address(poolToken);
     }
 
     /**

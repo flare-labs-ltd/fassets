@@ -78,6 +78,21 @@ export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment
     saveContracts(contractsFile, contracts);
 }
 
+export async function deployCollateralPoolTokenFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    console.log(`Deploying CollateralPoolTokenFactory`);
+
+    const artifacts = hre.artifacts as Truffle.Artifacts;
+
+    const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
+
+    const contracts = loadContracts(contractsFile);
+
+    const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new();
+
+    contracts.CollateralPoolTokenFactory = newContract("CollateralPoolTokenFactory", "CollateralPoolTokenFactory.sol", collateralPoolTokenFactory.address);
+    saveContracts(contractsFile, contracts);
+}
+
 export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, contractsFile: string, managerParameterFiles: string[]) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
@@ -207,6 +222,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         fAsset: fAsset.address,
         agentVaultFactory: addressFromParameter(contracts, parameters.agentVaultFactory ?? 'AgentVaultFactory'),
         collateralPoolFactory: addressFromParameter(contracts, parameters.collateralPoolFactory ?? 'CollateralPoolFactory'),
+        collateralPoolTokenFactory: addressFromParameter(contracts, parameters.collateralPoolTokenFactory ?? 'CollateralPoolTokenFactory'),
         scProofVerifier: addressFromParameter(contracts, parameters.scProofVerifier ?? 'SCProofVerifier'),
         whitelist: parameters.userWhitelist ? addressFromParameter(contracts, parameters.userWhitelist) : ZERO_ADDRESS,
         agentWhitelist: addressFromParameter(contracts, parameters.agentWhitelist ?? 'AgentWhitelist'),

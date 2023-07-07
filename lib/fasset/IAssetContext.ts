@@ -11,6 +11,7 @@ export type WNatEvents = import('../../typechain-truffle/WNat').AllEvents;
 export type StateConnectorEvents = import('../../typechain-truffle/IStateConnector').AllEvents;
 export type AgentVaultFactoryEvents = import('../../typechain-truffle/AgentVaultFactory').AllEvents;
 export type CollateralPoolFactoryEvents = import('../../typechain-truffle/CollateralPoolFactory').AllEvents;
+export type CollateralPoolTokenFactoryEvents = import('../../typechain-truffle/CollateralPoolTokenFactory').AllEvents;
 export type WhitelistEvents = import('../../typechain-truffle/Whitelist').AllEvents;
 export type SCProofVerifierEvents = import('../../typechain-truffle/SCProofVerifier').AllEvents;
 export type FtsoRegistryEvents = import('../../typechain-truffle/IFtsoRegistry').AllEvents;

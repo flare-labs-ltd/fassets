@@ -9,7 +9,7 @@ import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerInstance, SCProofVerifierInstance,
     CollateralPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
-    IAddressValidatorInstance, IWhitelistInstance, StateConnectorMockInstance, WNatInstance
+    IAddressValidatorInstance, IWhitelistInstance, StateConnectorMockInstance, WNatInstance, CollateralPoolTokenFactoryInstance
 } from "../../typechain-truffle";
 import { TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
@@ -28,6 +28,7 @@ const GovernanceSettings = artifacts.require('GovernanceSettings');
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const ERC20Mock = artifacts.require("ERC20Mock");
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
+const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 const TrivialAddressValidatorMock = artifacts.require("TrivialAddressValidatorMock");
 const WhitelistMock = artifacts.require("WhitelistMock");
 
@@ -36,6 +37,7 @@ export interface TestSettingsContracts {
     addressUpdater: AddressUpdaterInstance;
     agentVaultFactory: AgentVaultFactoryInstance;
     collateralPoolFactory: CollateralPoolFactoryInstance;
+    collateralPoolTokenFactory: CollateralPoolTokenFactoryInstance;
     stateConnector: StateConnectorMockInstance;
     scProofVerifier: SCProofVerifierInstance;
     addressValidator: IAddressValidatorInstance;
@@ -55,6 +57,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         fAsset: constants.ZERO_ADDRESS,                     // replaced in newAssetManager(...)
         agentVaultFactory: contracts.agentVaultFactory.address,
         collateralPoolFactory: contracts.collateralPoolFactory.address,
+        collateralPoolTokenFactory: contracts.collateralPoolTokenFactory.address,
         scProofVerifier: contracts.scProofVerifier.address,
         underlyingAddressValidator: contracts.addressValidator.address,
         liquidationStrategy: contracts.liquidationStrategy,
@@ -214,8 +217,9 @@ export async function createTestContracts(governance: string): Promise<TestSetti
         { from: governance });
     // create agent vault factory
     const agentVaultFactory = await AgentVaultFactory.new();
-    // create collateral pool factory
+    // create collateral pool and token factory
     const collateralPoolFactory = await CollateralPoolFactory.new();
+    const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new();
     // create address validator
     const addressValidator = await TrivialAddressValidatorMock.new();
     // create allow-all agent whitelist
@@ -224,7 +228,8 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
     const liquidationStrategy = liquidationStrategyLib.address;
     //
-    return { governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, stateConnector, scProofVerifier,
+    return {
+        governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, stateConnector, scProofVerifier,
         addressValidator, agentWhitelist, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
 }
 

@@ -164,6 +164,11 @@
             "pattern": "^\\w+$",
             "type": "string"
         },
+        "collateralPoolTokenFactory": {
+            "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'CollateralPoolTokenFactory' in contracts.json.",
+            "pattern": "^\\w+$",
+            "type": "string"
+        },
         "collateralReservationFeeBIPS": {
             "description": "Collateral reservation fee that must be paid by the minter.\nPayment is in NAT, but is proportional to the value of assets to be minted.",
             "minimum": 0,
@@ -361,3 +366,4 @@
     ],
     "type": "object"
 }
+
