@@ -15,8 +15,6 @@ import "../interface/IICollateralPool.sol";
 import "../interface/IFAsset.sol";
 import "./CollateralPoolToken.sol";
 
-import "hardhat/console.sol";
-
 
 //slither-disable reentrancy    // all possible reentrancies guarded by nonReentrant
 contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
