@@ -6,7 +6,7 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, DAYS, HOURS, MAX_BIPS, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerContract, AssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { newAssetManager, linkAssetManager } from "../../../utils/fasset/CreateAssetManager";
@@ -37,6 +37,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     const governance = accounts[10];
     let assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
+    let AssetManager: AssetManagerContract;
     let assetManager: AssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
@@ -154,6 +155,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     async function initialize() {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
+        AssetManager = await linkAssetManager();
         // save some contracts as globals
         ({ wNat } = contracts);
         usdc = contracts.stablecoins.USDC;
@@ -169,11 +171,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
-        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
+        return { contracts, AssetManager, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
+        ({ contracts, AssetManager, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
     });
 
     describe("set and update settings / properties", () => {
@@ -1517,7 +1519,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings fAsset address can't be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
@@ -1526,7 +1527,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings AgentVaultfactory cannot be address zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
@@ -1537,7 +1537,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings collateralPoolFactory address cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
@@ -1549,7 +1548,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings collateralPoolTokenFactory address cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
@@ -1561,7 +1559,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings scProofVerifier address cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
@@ -1572,7 +1569,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings UnderlyingAddressValidator address cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
@@ -1583,7 +1579,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings priceReader address cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
@@ -1594,7 +1589,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings liquidationStrategy address cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
@@ -1605,7 +1599,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings agentWhitelist address cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
@@ -1616,7 +1609,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings confirmationByOthersRewardUSD5 cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
@@ -1627,7 +1619,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings minUnderlyingBackingBIPS cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
@@ -1638,7 +1629,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings minUnderlyingBackingBIPS cannot be bigger than max bips", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
@@ -1649,7 +1639,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("validate settings class1BuyForFlareFactorBIPS cannot be smaller than max bips", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
