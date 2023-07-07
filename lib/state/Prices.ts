@@ -51,7 +51,7 @@ export class Prices {
     }
 
     static async getPrices(context: IAssetContext, settings: AssetManagerSettings, collaterals: Iterable<CollateralType>): Promise<[Prices, Prices]> {
-        const priceReader = new TokenPriceReader(context.ftsoRegistry);
+        const priceReader = new TokenPriceReader(context.priceReader);
         const ftsoPrices = await this.getFtsoPrices(priceReader, settings, collaterals, false);
         const trustedPrices = await this.getFtsoPrices(priceReader, settings, collaterals, true);
         return [ftsoPrices, trustedPrices];

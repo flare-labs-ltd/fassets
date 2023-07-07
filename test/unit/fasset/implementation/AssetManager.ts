@@ -479,8 +479,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should set pool collateral token", async () => {
             const newWnat = await ERC20Mock.new("Wrapped NAT", "WNAT");
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,IWNat)")),
-                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, contracts.ftsoRegistry.address, newWnat.address]),
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IWNat)")),
+                web3.eth.abi.encodeParameters(['address', 'address'], [assetManagerController, newWnat.address]),
                 { from: assetManagerController });
             const token = await assetManager.getCollateralType(CollateralClass.POOL, newWnat.address);
             assertWeb3Equal(token.token, newWnat.address);
@@ -489,8 +489,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("should set pool collateral token and upgrade wnat", async () => {
             const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
             const newWnat = await ERC20Mock.new("Wrapped NAT", "WNAT");
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,IWNat)")),
-                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, contracts.ftsoRegistry.address, newWnat.address]),
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IWNat)")),
+                web3.eth.abi.encodeParameters(['address', 'address'], [assetManagerController, newWnat.address]),
                 { from: assetManagerController });
             //Random address shouldn't be able to upgrade wNat contract
             let tx = assetManager.upgradeWNatContract(agentVault.address, {from: accounts[5]});
@@ -597,29 +597,26 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     describe("should update contracts", () => {
         it("should update contract addresses", async () => {
             let agentVaultFactoryNewAddress = accounts[21];
-            let ftsoRegistryNewAddress = accounts[22];
             let wnatNewAddress = accounts[23];
             const oldSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             const oldWNat = await assetManager.getWNat();
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,IWNat)")),
-                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, ftsoRegistryNewAddress, wnatNewAddress]),
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IWNat)")),
+                web3.eth.abi.encodeParameters(['address', 'address'], [assetManagerController, wnatNewAddress]),
                 { from: assetManagerController });
             await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentVaultFactory(address)")),
                 web3.eth.abi.encodeParameters(['address'], [agentVaultFactoryNewAddress]), { from: assetManagerController });
             const res = web3ResultStruct(await assetManager.getSettings());
             const resWNat = await assetManager.getWNat();
             assert.notEqual(oldSettings.agentVaultFactory, res.agentVaultFactory)
-            assert.notEqual(oldSettings.ftsoRegistry, res.ftsoRegistry)
             assert.notEqual(oldWNat, resWNat)
             assert.equal(agentVaultFactoryNewAddress, res.agentVaultFactory)
-            assert.equal(ftsoRegistryNewAddress, res.ftsoRegistry)
             assert.equal(wnatNewAddress, resWNat)
         });
 
         it("should not update contract addresses", async () => {
             const oldSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,IWNat)")),
-                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, contracts.ftsoRegistry.address, contracts.wNat.address]),
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IWNat)")),
+                web3.eth.abi.encodeParameters(['address', 'address'], [assetManagerController, contracts.wNat.address]),
                 { from: assetManagerController });
             await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentVaultFactory(address)")),
                 web3.eth.abi.encodeParameters(['address'], [contracts.agentVaultFactory.address]), { from: assetManagerController });
@@ -1292,10 +1289,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
     describe("branch tests", () => {
         it("random address shouldn't be able to update settings", async () => {
-            let attestationClientNewAddress = accounts[22];
-            let ftsoRegistryNewAddress = accounts[23];
-            const r = assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address,address)")),
-                web3.eth.abi.encodeParameters(['address', 'address', 'address'], [assetManagerController, attestationClientNewAddress, ftsoRegistryNewAddress]),
+            let wnatNewAddress = accounts[23];
+            const r = assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address)")),
+                web3.eth.abi.encodeParameters(['address', 'address'], [assetManagerController, wnatNewAddress]),
                 { from: accounts[29] });
             await expectRevert(r, "only asset manager controller");
         });
@@ -1585,15 +1581,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "zero underlyingAddressValidator address");
         });
 
-        it("validate settings ftsoRegistry address cannot be zero", async () => {
+        it("validate settings priceReader address cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
             const AssetManager = await linkAssetManager();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.ftsoRegistry = constants.ZERO_ADDRESS;
+            Settings.priceReader = constants.ZERO_ADDRESS;
             let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
-            await expectRevert(res, "zero ftsoRegistry address");
+            await expectRevert(res, "zero priceReader address");
         });
 
         it("validate settings liquidationStrategy address cannot be zero", async () => {

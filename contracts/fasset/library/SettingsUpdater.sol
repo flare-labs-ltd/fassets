@@ -21,7 +21,7 @@ library SettingsUpdater {
     bytes32 internal constant UPDATES_STATE_POSITION = keccak256("fasset.AssetManager.UpdaterState");
 
     bytes32 internal constant UPDATE_CONTRACTS =
-        keccak256("updateContracts(address,address,IWNat)");
+        keccak256("updateContracts(address,IWNat)");
     bytes32 internal constant SET_TIME_FOR_PAYMENT =
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant SET_WHITELIST =
@@ -36,6 +36,8 @@ library SettingsUpdater {
         keccak256("setCollateralPoolTokenFactory(address)");
     bytes32 internal constant SET_UNDERLYING_ADDRESS_VALIDATOR =
         keccak256("setUnderlyingAddressValidator(address)");
+    bytes32 internal constant SET_PRICE_READER =
+        keccak256("setPriceReader(address)");
     bytes32 internal constant SET_SC_PROOF_VERIFIER =
         keccak256("setSCProofVerifier(address)");
     bytes32 internal constant SET_MIN_UPDATE_REPEAT_TIME_SECONDS =
@@ -131,6 +133,9 @@ library SettingsUpdater {
         } else if (_method == SET_UNDERLYING_ADDRESS_VALIDATOR) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setUnderlyingAddressValidator(_params);
+        } else if (_method == SET_PRICE_READER) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setPriceReader(_params);
         } else if (_method == SET_SC_PROOF_VERIFIER) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setSCProofVerifier(_params);
@@ -240,17 +245,11 @@ library SettingsUpdater {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
 
-        (address controller, address ftsoRegistry, IWNat wNat) =
-            abi.decode(_params, (address, address, IWNat));
+        (address controller, IWNat wNat) = abi.decode(_params, (address, IWNat));
 
         if (settings.assetManagerController != controller) {
             settings.assetManagerController = controller;
             emit AMEvents.ContractChanged("assetManagerController", address(controller));
-        }
-
-        if (settings.ftsoRegistry != ftsoRegistry) {
-            settings.ftsoRegistry = ftsoRegistry;
-            emit AMEvents.ContractChanged("ftsoRegistry", address(ftsoRegistry));
         }
 
         IWNat oldWNat = Globals.getWNat();
@@ -376,6 +375,20 @@ library SettingsUpdater {
         // update
         settings.underlyingAddressValidator = value;
         emit AMEvents.ContractChanged("underlyingAddressValidator", value);
+    }
+
+    function _setPriceReader(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        address value = abi.decode(_params, (address));
+        // validate
+        require(value != address(0), "address zero");
+        // update
+        settings.priceReader = value;
+        emit AMEvents.ContractChanged("priceReader", value);
     }
 
     function _setSCProofVerifier(
@@ -767,7 +780,7 @@ library SettingsUpdater {
         require(_settings.collateralPoolTokenFactory != address(0), "zero collateralPoolTokenFactory address");
         require(_settings.scProofVerifier != address(0), "zero scProofVerifier address");
         require(_settings.underlyingAddressValidator != address(0), "zero underlyingAddressValidator address");
-        require(_settings.ftsoRegistry != address(0), "zero ftsoRegistry address");
+        require(_settings.priceReader != address(0), "zero priceReader address");
         require(_settings.liquidationStrategy != address(0), "zero liquidationStrategy address");
         require(_settings.agentWhitelist != address(0), "zero agentWhitelist address");
 

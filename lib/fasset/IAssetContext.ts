@@ -1,4 +1,4 @@
-import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance, IERC20Instance, IFtsoInstance, IFtsoManagerInstance, IFtsoRegistryInstance, WNatInstance } from "../../typechain-truffle";
+import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance, IERC20Instance, IFtsoInstance, IFtsoManagerInstance, IFtsoRegistryInstance, IPriceReaderInstance, WNatInstance } from "../../typechain-truffle";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
 import { IBlockChain } from "../underlying-chain/interfaces/IBlockChain";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
@@ -14,6 +14,7 @@ export type CollateralPoolFactoryEvents = import('../../typechain-truffle/Collat
 export type CollateralPoolTokenFactoryEvents = import('../../typechain-truffle/CollateralPoolTokenFactory').AllEvents;
 export type WhitelistEvents = import('../../typechain-truffle/Whitelist').AllEvents;
 export type SCProofVerifierEvents = import('../../typechain-truffle/SCProofVerifier').AllEvents;
+export type PriceReaderEvents = import('../../typechain-truffle/IPriceReader').AllEvents;
 export type FtsoRegistryEvents = import('../../typechain-truffle/IFtsoRegistry').AllEvents;
 export type FtsoEvents = import('../../typechain-truffle/IFtso').AllEvents;
 export type FtsoManagerEvents = import('../../typechain-truffle/IFtsoManager').AllEvents;
@@ -39,4 +40,5 @@ export interface IAssetContext {
     assetManager: ContractWithEvents<AssetManagerInstance, AssetManagerEvents>;
     stablecoins: Record<string, ContractWithEvents<IERC20Instance, ERC20Events>>;
     ftsos: Record<string, ContractWithEvents<IFtsoInstance, FtsoEvents>>;
+    priceReader: ContractWithEvents<IPriceReaderInstance, PriceReaderEvents>;
 }

@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdater.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAssetManager.sol";
@@ -138,6 +137,14 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     {
         _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_UNDERLYING_ADDRESS_VALIDATOR, abi.encode(_value));
+    }
+
+    function setPriceReader(IIAssetManager[] memory _assetManagers, address _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_PRICE_READER, abi.encode(_value));
     }
 
     function setSCProofVerifier(IIAssetManager[] memory _assetManagers, address _value)
@@ -491,10 +498,9 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         IIAddressUpdater addressUpdater = IIAddressUpdater(getAddressUpdater());
         address newAddressUpdater = addressUpdater.getContractAddress("AddressUpdater");
         address assetManagerController = addressUpdater.getContractAddress("AssetManagerController");
-        address ftsoRegistry = addressUpdater.getContractAddress("FtsoRegistry");
         address wNat = addressUpdater.getContractAddress("WNat");
-        require(newAddressUpdater != address(0) && assetManagerController != address(0) &&
-                ftsoRegistry != address(0) && wNat != address(0), "address zero");
+        require(newAddressUpdater != address(0) && assetManagerController != address(0)
+                && wNat != address(0), "address zero");
         // update address updater if necessary
         if (newAddressUpdater != address(addressUpdater)) {
             setAddressUpdaterValue(newAddressUpdater);
@@ -504,7 +510,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             IIAssetManager assetManager = _checkAssetManager(_assetManagers[i]);
             assetManager.updateSettings(
                 SettingsUpdater.UPDATE_CONTRACTS,
-                abi.encode(assetManagerController, ftsoRegistry, wNat));
+                abi.encode(assetManagerController, wNat));
         }
         // if this controller was replaced, set forwarding address
         if (assetManagerController != address(this)) {
@@ -521,15 +527,13 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     {
         address assetManagerController =
             _getContractAddress(_contractNameHashes, _contractAddresses, "AssetManagerController");
-        address ftsoRegistry =
-            _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry");
         address wNat =
             _getContractAddress(_contractNameHashes, _contractAddresses, "WNat");
         for (uint256 i = 0; i < assetManagers.length; i++) {
             IIAssetManager assetManager = assetManagers[i];
             assetManager.updateSettings(
                 SettingsUpdater.UPDATE_CONTRACTS,
-                abi.encode(assetManagerController, ftsoRegistry, wNat));
+                abi.encode(assetManagerController, wNat));
         }
         // if this controller was replaced, set forwarding address
         if (assetManagerController != address(this)) {

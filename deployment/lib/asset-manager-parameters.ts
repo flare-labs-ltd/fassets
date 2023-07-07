@@ -120,6 +120,14 @@ export interface AssetManagerParameters {
     scProofVerifier?: string;
 
     /**
+     * Price reader contract is a simple abstraction of FTSO system.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'SCProofVerifier' in contracts.json.
+     * @pattern ^\w+$
+     */
+    priceReader?: string;
+
+    /**
      * The agent whitelist contains a list of allowed agent owners.
      * Can be a contract address (0x...) or a name in contracts.json.
      * Optional, default is 'AgentWhitelist' in contracts.json.

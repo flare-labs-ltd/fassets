@@ -21,6 +21,7 @@ export interface ChainContracts {
     CollateralPoolFactory?: Contract;
     CollateralPoolTokenFactory?: Contract;
     AssetManagerController?: Contract;
+    PriceReader?: Contract;
     UserWhitelist?: Contract;
     AgentWhitelist?: Contract;
     // others (asset managers & fassets & everything from flare-smart-contract)

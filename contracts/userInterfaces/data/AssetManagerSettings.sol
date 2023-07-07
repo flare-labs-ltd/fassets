@@ -63,10 +63,10 @@ library AssetManagerSettings {
         // immutable
         address payable burnAddress;
 
-        // FTSO registry from which the system obtains ftso's for nat and asset.
-        // Type: IFtsoRegistry
-        // changed via address updater
-        address ftsoRegistry;
+        // The contract that reads prices from FTSO system in an FTSO version independent way.
+        // Type: IPriceReader
+        // timelocked
+        address priceReader;
 
         // Same as assetToken.decimals()
         // immutable

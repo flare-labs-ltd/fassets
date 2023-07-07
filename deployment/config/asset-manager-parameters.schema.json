@@ -251,6 +251,11 @@
             "$ref": "#/definitions/CollateralTypeParameters",
             "description": "Data about the collateral used in the collateral pool, token is always WNat (FLR/SGB)."
         },
+        "priceReader": {
+            "description": "Price reader contract is a simple abstraction of FTSO system.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'SCProofVerifier' in contracts.json.",
+            "pattern": "^\\w+$",
+            "type": "string"
+        },
         "redemptionDefaultFactorClass1BIPS": {
             "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from agent's class 1 collateral.",
             "minimum": 0,
