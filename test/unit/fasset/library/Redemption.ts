@@ -16,6 +16,7 @@ import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings,
 
 
 const CollateralPool = artifacts.require("CollateralPool");
+const RippleAddressValidator = artifacts.require("RippleAddressValidator");
 
 contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, async accounts => {
     const governance = accounts[10];
@@ -550,5 +551,47 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const resRC = assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, 0, { from: collateralPool.address });
         await expectRevert(resRC, "redemption of 0");
         await stopImpersonatingContract(collateralPool.address);
+    });
+
+    it("mint and redeem address validation", async () => {
+        const ci = chainInfo = testChainInfo.eth;
+        const rippleAddressValidator = await RippleAddressValidator.new();
+        settings.underlyingAddressValidator = rippleAddressValidator.address;
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        const agentXRP = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjN";
+
+        const agentVault = await createAgent(agentOwner1, agentXRP);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e10));
+        // minter
+        chain.mint(underlyingMinter1, toBNExp(10000000, 18));
+        await updateUnderlyingBlock();
+        const lots = 1;
+        const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+        const crt = requiredEventArgs(resAg, 'CollateralReserved');
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+        const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        const minted = requiredEventArgs(res, 'MintingExecuted');
+        // redeemer "buys" f-assets
+        await fAsset.transfer(redeemerAddress1, minted.mintedAmountUBA, { from: minterAddress1 });
+        const redeemerXRPAddressCorrect = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjN";
+        const redeemerXRPAddressTooShort = "rfsK8pNsNeGA8nYWM3PzoRx";
+        const redeemerXRPAddressTooLong = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjNMRHNFsg";
+        const redeemerXRPAddressIncorrect = "rfsk8pNsNeGA8nYWf3PzoRxMRHeAyEtNjN";
+        // redemption request, underlying address too short
+        let resR = assetManager.redeem(lots, redeemerXRPAddressTooShort, { from: redeemerAddress1 });
+        await expectRevert(resR,"invalid underlying address");
+        // redemption request, underlying address too long
+        resR = assetManager.redeem(lots, redeemerXRPAddressTooLong, { from: redeemerAddress1 });
+        await expectRevert(resR,"invalid underlying address");
+        // redemption request, underlying address too short
+        resR = assetManager.redeem(lots, redeemerXRPAddressIncorrect, { from: redeemerAddress1 });
+        await expectRevert(resR,"invalid underlying address");
+        // redemption request
+        resR = assetManager.redeem(lots, redeemerXRPAddressCorrect, { from: redeemerAddress1 });
+        expectEvent(await resR, "RedemptionRequested");
     });
 });

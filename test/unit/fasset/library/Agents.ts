@@ -18,6 +18,8 @@ import {
 } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
+const RippleAddressValidator = artifacts.require("RippleAddressValidator");
+
 contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accounts => {
     const governance = accounts[10];
     let assetManagerController = accounts[11];
@@ -474,5 +476,27 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // act
         // assert
         await assetManager.convertDustToTicket(agentVault.address);
+    });
+
+    it("create agent underlying XRP address validation tests", async () => {
+        const ci = testChainInfo.btc;
+        const rippleAddressValidator = await RippleAddressValidator.new();
+        settings.underlyingAddressValidator = rippleAddressValidator.address;
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        const agentXRPAddressCorrect = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjN";
+        const agentXRPAddressTooShort = "rfsK8pNsNeGA8nYWM3PzoRx";
+        const agentXRPAddressTooLong = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjNMRHNFsg";
+        const agentXRPAddressIncorrect = "rfsk8pNsNeGA8nYWf3PzoRxMRHeAyEtNjN";
+        //Create agent, underlying address too short
+        let res = createAgent(agentOwner1, agentXRPAddressTooShort);
+        await expectRevert(res, "invalid underlying address");
+        //Create agent, underlying address too short
+        res = createAgent(agentOwner1, agentXRPAddressTooLong);
+        await expectRevert(res, "invalid underlying address");
+        //Create agent, underlying address too short
+        res = createAgent(agentOwner1, agentXRPAddressIncorrect);
+        await expectRevert(res, "invalid underlying address");
+        //Create agent
+        await createAgent(agentOwner1, agentXRPAddressCorrect);
     });
 });
