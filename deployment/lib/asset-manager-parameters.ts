@@ -104,12 +104,28 @@ export interface AssetManagerParameters {
     collateralPoolFactory?: string;
 
     /**
+     * The factory contract for creating agent collateral pools.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'CollateralPoolTokenFactory' in contracts.json.
+     * @pattern ^\w+$
+     */
+    collateralPoolTokenFactory?: string;
+
+    /**
      * The proof verifier contract for state connector prrofs.
      * Can be a contract address (0x...) or a name in contracts.json.
      * Optional, default is 'SCProofVerifier' in contracts.json.
      * @pattern ^\w+$
      */
     scProofVerifier?: string;
+
+    /**
+     * Price reader contract is a simple abstraction of FTSO system.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'SCProofVerifier' in contracts.json.
+     * @pattern ^\w+$
+     */
+    priceReader?: string;
 
     /**
      * The agent whitelist contains a list of allowed agent owners.

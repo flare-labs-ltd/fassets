@@ -503,4 +503,13 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             await expectRevert(res, "only owner");
         });
     });
+
+    describe("CR calculation", () => {
+        it("check CR calculation if amg==0 and collateral==0", async () => {
+            const agentVault = await createAgent(owner, underlyingAgent1);
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(agentInfo.class1CollateralRatioBIPS, 1e10);
+            assertWeb3Equal(agentInfo.poolCollateralRatioBIPS, 1e10);
+        });
+    });
 });

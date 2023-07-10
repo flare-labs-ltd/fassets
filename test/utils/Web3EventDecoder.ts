@@ -75,3 +75,16 @@ export class Web3EventDecoder extends EventFormatter {
         return logs.find(e => e.address === contract.address && e.event === eventName) as any;
     }
 }
+
+export function findRequiredEventFrom<C extends Truffle.ContractInstance, E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<any>, contract: ContractWithEvents<C, E>, name: N): TruffleExtractEvent<E, N> {
+    const eventDecoder = new Web3EventDecoder({ contract });
+    const event = eventDecoder.findEventFrom(response, contract, name);
+    if (event == null) {
+        throw new Error(`Missing event ${name}`);
+    }
+    return event;
+}
+
+export function requiredEventArgsFrom<C extends Truffle.ContractInstance, E extends EventSelector, N extends E['name']>(response: Truffle.TransactionResponse<any>, contract: ContractWithEvents<C, E>, name: N): TruffleExtractEvent<E, N>['args'] {
+    return findRequiredEventFrom(response, contract, name).args;
+}
