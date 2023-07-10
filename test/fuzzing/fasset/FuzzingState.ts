@@ -10,7 +10,7 @@ import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { EvmEvent } from "../../../lib/utils/events/common";
 import { sumBN, toBN } from "../../../lib/utils/helpers";
 import { SparseArray } from "../../utils/SparseMatrix";
-import { FuzzingStateAgent } from "./FuzzingStateAgent";
+import { FuzzingAgentState } from "./FuzzingAgentState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
 
 export type FuzzingStateLogRecord = {
@@ -33,9 +33,9 @@ export class FuzzingState extends TrackedState {
     fAssetBalance = new SparseArray();
 
     // override agent state type (initialized in AssetState)
-    override agents!: Map<string, FuzzingStateAgent>;
-    override agentsByUnderlying!: Map<string, FuzzingStateAgent>;
-    override agentsByPool!: Map<string, FuzzingStateAgent>;
+    override agents!: Map<string, FuzzingAgentState>;
+    override agentsByUnderlying!: Map<string, FuzzingAgentState>;
+    override agentsByPool!: Map<string, FuzzingAgentState>;
 
     // logs
     failedExpectations: FuzzingStateLogRecord[] = [];
@@ -65,12 +65,12 @@ export class FuzzingState extends TrackedState {
     }
 
     // override with correct state
-    override getAgent(address: string): FuzzingStateAgent | undefined {
+    override getAgent(address: string): FuzzingAgentState | undefined {
         return this.agents.get(address);
     }
 
     protected override newAgent(data: InitialAgentData) {
-        return new FuzzingStateAgent(this, data);
+        return new FuzzingAgentState(this, data);
     }
 
     async checkInvariants(failOnProblems: boolean) {

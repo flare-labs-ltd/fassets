@@ -69,7 +69,7 @@ export interface UnderlyingBalanceChange {
 const CollateralPool = artifacts.require("CollateralPool");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 
-export class FuzzingStateAgent extends TrackedAgentState {
+export class FuzzingAgentState extends TrackedAgentState {
     constructor(
         parent: FuzzingState,
         data: InitialAgentData,
