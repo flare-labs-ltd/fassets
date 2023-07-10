@@ -76,7 +76,7 @@ library RedemptionRequests {
         require(_amountUBA != 0, "redemption of 0");
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
+        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, false);
         // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
         _createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress, true);
@@ -96,7 +96,7 @@ library RedemptionRequests {
         require(_amountUBA != 0, "redemption of 0");
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
+        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true);
         // pay in collateral
         uint256 priceAmgToWei = Conversion.currentAmgPriceInTokenWei(agent.class1CollateralIndex);
         uint256 paymentWei = Conversion.convertAmgToTokenWei(closedAMG, priceAmgToWei)
@@ -118,7 +118,7 @@ library RedemptionRequests {
         Agents.requireAgentVaultOwner(_agentVault);
         require(_amountUBA != 0, "self close of 0");
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
+        (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true);
         // burn the self-closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
         // try to pull agent out of liquidation

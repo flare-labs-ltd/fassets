@@ -253,7 +253,7 @@ library Liquidation {
             _maxLiquidationAmountAMG(_agent, _cr.poolCR, poolFactor, Collateral.Kind.POOL));
         uint64 amountToLiquidateAMG = Math.min(maxLiquidatedAMG, _amountAMG).toUint64();
         // liquidate redemption tickets
-        (_liquidatedAMG,) = Redemptions.closeTickets(_agent, amountToLiquidateAMG);
+        (_liquidatedAMG,) = Redemptions.closeTickets(_agent, amountToLiquidateAMG, true);
         // calculate payouts to liquidator
         _payoutC1Wei = Conversion.convertAmgToTokenWei(_liquidatedAMG.mulBips(class1Factor), _cr.amgToC1WeiPrice);
         _payoutPoolWei = Conversion.convertAmgToTokenWei(_liquidatedAMG.mulBips(poolFactor), _cr.amgToPoolWeiPrice);
