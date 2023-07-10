@@ -545,6 +545,9 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // redemption request
         collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
         await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
+        //Only collateral pool can redeem from agent
+        const rs = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, { from:  accounts[15] });
+        await expectRevert(rs, "only collateral pool");
         //Redeeming from agent and agent in collateral with amount 0 should not work
         const resR = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, { from:  collateralPool.address });
         await expectRevert(resR, "redemption of 0");
