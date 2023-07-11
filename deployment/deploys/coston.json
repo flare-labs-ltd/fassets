@@ -212,55 +212,65 @@
   {
     "name": "SCProofVerifier",
     "contractName": "SCProofVerifier.sol",
-    "address": "0x295d30332320480E5bF0C8a238f897c55aeB347f"
+    "address": "0x3551096766115b622bD02EF156b151A9D996Fb6E"
   },
   {
     "name": "AgentWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0xA82bCA7A73515F4fAe03f9dD2fa86D92c9616844",
+    "address": "0x392Def29bb0cd8ca844f84240422d20032db3023",
     "mustSwitchToProduction": true
   },
   {
     "name": "UserWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0x5241A02175fac41c31A51253e651A40C7F39ba3e",
+    "address": "0x241D573D3cdF4fFA9b74F645786ED7a213AD574e",
     "mustSwitchToProduction": true
   },
   {
     "name": "AgentVaultFactory",
     "contractName": "AgentVaultFactory.sol",
-    "address": "0xbcD43fE1d23851D000C6BA9602d2F69B61705379"
+    "address": "0x76777D106FEbc11Db4d63DA5cc556C92A2785C9e"
   },
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0xac6775D54b7CE9719097E4E10d074E258ed8dD51"
+    "address": "0xE82f5B2205cA7cab381Ca7C7400E62aa587e5325"
   },
   {
     "name": "AssetManagerController",
     "contractName": "AssetManagerController.sol",
-    "address": "0x1F68B941b94E22acd942Ee1c66d5Ec85aC1Ffdf2",
+    "address": "0xDB7A4C303e96cF6eF1882a3437D55B922bcC0600",
     "mustSwitchToProduction": true
   },
   {
     "name": "LiquidationStrategyImpl",
     "contractName": "LiquidationStrategyImpl.sol",
-    "address": "0xcA5969f4F5d7152f675aC9F066B4C3A50A9184B3"
+    "address": "0x911a27f5e9410d9834aA43e03125EBa80E945e78"
   },
   {
     "name": "AssetManager_FtestXRP",
     "contractName": "AssetManager.sol",
-    "address": "0xa10D143406241786CCC9285cA02187f72F5e8C0D"
+    "address": "0x68F6322BFf80978eB5b7F672404bC3D0ad77eF32"
   },
   {
     "name": "FtestXRP",
     "contractName": "FAsset.sol",
-    "address": "0xd860e3835e14c678D892ec6Ccf96e2d7C07e4e83",
+    "address": "0x366267567371F467a068750507A0c5074E009897",
     "mustSwitchToProduction": true
   },
   {
     "name": "AddressValidator_FtestXRP",
     "contractName": "RippleAddressValidator.sol",
-    "address": "0x41C8D488e62a3E964Cf8b7d2e2be93a05C7E86D3"
+    "address": "0xE5111756D1083E0945CeF00de548a862dDFb6429"
+  },
+  {
+    "name": "PriceReader",
+    "contractName": "PriceReader.sol",
+    "address": "0xf004A0b42Ca503aDAa4374E85521615942078a69"
+  },
+  {
+    "name": "CollateralPoolTokenFactory",
+    "contractName": "CollateralPoolTokenFactory.sol",
+    "address": "0xC8469619EcC781EE19bb973e9b1c182F7F1D8693"
   }
 ]
