@@ -13,7 +13,8 @@ library Redemptions {
 
     function closeTickets(
         Agent.State storage _agent,
-        uint64 _amountAMG
+        uint64 _amountAMG,
+        bool _immediatelyReleaseMinted
     )
         internal
         returns (uint64 _closedAMG, uint256 _closedUBA)
@@ -40,7 +41,9 @@ library Redemptions {
         }
         _closedUBA = Conversion.convertAmgToUBA(_closedAMG);
         // self-close or liquidation is one step, so we can release minted assets without redeeming step
-        Agents.releaseMintedAssets(_agent, _closedAMG);
+        if (_immediatelyReleaseMinted) {
+            Agents.releaseMintedAssets(_agent, _closedAMG);
+        }
     }
 
     function removeFromTicket(

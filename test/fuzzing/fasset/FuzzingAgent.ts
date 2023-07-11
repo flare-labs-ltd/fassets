@@ -8,6 +8,7 @@ import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, MAX_BIPS, checkedCast, formatBN, minBN, toBN, toWei } from "../../../lib/utils/helpers";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Agent, AgentCreateOptions } from "../../integration/utils/Agent";
+import { SparseArray } from "../../utils/SparseMatrix";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { coinFlip, randomBN, randomChoice, randomInt } from "../../utils/fuzzing-utils";
 import { FuzzingActor } from "./FuzzingActor";
@@ -45,6 +46,18 @@ export class FuzzingAgent extends FuzzingActor {
     static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string, options?: AgentCreateOptions) {
         const agent = await Agent.createTest(runner.context, ownerAddress, underlyingAddress, options);
         return new FuzzingAgent(runner, agent, agent.ownerColdAddress, ownerUnderlyingAddress, options ?? {});
+    }
+
+    unaccountedSpentFreeBalance = new SparseArray();
+
+    freeUnderlyingBalance(agent: Agent) {
+        const agentState = this.agentState(agent);
+        const unaccountedSpend = this.unaccountedSpentFreeBalance.get(agent.vaultAddress);
+        const freeBalance = agentState.freeUnderlyingBalanceUBA.sub(unaccountedSpend);
+        if (freeBalance.lt(BN_ZERO)) {
+            this.comment(`Free balance negative for ${this.name(agent)}: accounted=${formatBN(agentState.freeUnderlyingBalanceUBA)} unaccounted=${formatBN(unaccountedSpend)}`);
+        }
+        return freeBalance;
     }
 
     eventSubscriptions: EventSubscription[] = [];
@@ -86,7 +99,8 @@ export class FuzzingAgent extends FuzzingActor {
             const cheatOnPayment = coinFlip(0.2);
             const takeFee = cheatOnPayment ? request.feeUBA.muln(2) : request.feeUBA;   // cheat by taking more fee (so the payment should be considered failed)
             const paymentAmount = request.valueUBA.sub(takeFee);
-            const amountToMyself = randomBN(takeFee.add(this.agentState(agent).freeUnderlyingBalanceUBA));  // abuse redemption to pay something to the owner via multi-transaction
+            const amountToMyself = randomBN(takeFee.add(this.freeUnderlyingBalance(agent)));  // abuse redemption to pay something to the owner via multi-transaction
+            this.unaccountedSpentFreeBalance.addTo(agent.vaultAddress, amountToMyself);
             const txHash = await agent.wallet.addMultiTransaction({ [agent.underlyingAddress]: paymentAmount.add(amountToMyself) },
                 { [request.paymentAddress]: paymentAmount, [this.ownerUnderlyingAddress]: amountToMyself },
                 request.paymentReference);
@@ -101,6 +115,7 @@ export class FuzzingAgent extends FuzzingActor {
                     .catch(e => scope.exitOnExpectedError(e, ['Missing event RedemptionDefault']));
                 // Error 'Missing event RedemptionDefault' happens when redeemer defaults before confirm
             }
+            this.unaccountedSpentFreeBalance.subFrom(agent.vaultAddress, amountToMyself);
         });
     }
 
@@ -193,21 +208,23 @@ export class FuzzingAgent extends FuzzingActor {
         const agent = this.agent;   // save in case agent is destroyed and re-created
         const agentState = this.agentState(agent);
         if (agentState.status !== AgentStatus.NORMAL) return;   // reduce noise in case of (full) liquidation
-        const amount = randomBN(agentState.freeUnderlyingBalanceUBA);
+        const amount = randomBN(this.freeUnderlyingBalance(agent));
         if (amount.isZero()) return;
         // announce
         const announcement = await agent.announceUnderlyingWithdrawal()
             .catch(e => scope.exitOnExpectedError(e, ['announced underlying withdrawal active']));
         if (coinFlip(0.8)) {
+            this.comment(`Underlying withdrawal for ${this.name(agent)}: amount=${formatBN(amount)} free=${formatBN(this.freeUnderlyingBalance(agent))}`)
+            this.unaccountedSpentFreeBalance.addTo(agent.vaultAddress, amount);
             // perform withdrawal
             const txHash = await agent.performUnderlyingWithdrawal(announcement, amount, this.ownerUnderlyingAddress)
                 .catch(e => scope.exitOnExpectedError(e, []));
             // wait for finalization
             await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
-            // wait
             // confirm
             await agent.confirmUnderlyingWithdrawal(announcement, txHash)
                 .catch(e => scope.exitOnExpectedError(e, []));
+            this.unaccountedSpentFreeBalance.subFrom(agent.vaultAddress, amount);
         } else {
             // cancel withdrawal
             await agent.cancelUnderlyingWithdrawal(announcement)

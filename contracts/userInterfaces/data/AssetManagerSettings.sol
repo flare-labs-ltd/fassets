@@ -25,6 +25,11 @@ library AssetManagerSettings {
         // timelocked
         address collateralPoolFactory;
 
+        // Factory for creating new agent collateral pool tokens.
+        // Type: ICollateralPoolTokenFactory
+        // timelocked
+        address collateralPoolTokenFactory;
+
         // If set, the whitelist contains a list of accounts that can call public methods
         // (minting, redeeming, challenging, etc.)
         // This can be `address(0)`, in which case no whitelist checks are done.
@@ -58,10 +63,10 @@ library AssetManagerSettings {
         // immutable
         address payable burnAddress;
 
-        // FTSO registry from which the system obtains ftso's for nat and asset.
-        // Type: IFtsoRegistry
-        // changed via address updater
-        address ftsoRegistry;
+        // The contract that reads prices from FTSO system in an FTSO version independent way.
+        // Type: IPriceReader
+        // timelocked
+        address priceReader;
 
         // Same as assetToken.decimals()
         // immutable

@@ -104,12 +104,28 @@ export interface AssetManagerParameters {
     collateralPoolFactory?: string;
 
     /**
+     * The factory contract for creating agent collateral pools.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'CollateralPoolTokenFactory' in contracts.json.
+     * @pattern ^\w+$
+     */
+    collateralPoolTokenFactory?: string;
+
+    /**
      * The proof verifier contract for state connector prrofs.
      * Can be a contract address (0x...) or a name in contracts.json.
      * Optional, default is 'SCProofVerifier' in contracts.json.
      * @pattern ^\w+$
      */
     scProofVerifier?: string;
+
+    /**
+     * Price reader contract is a simple abstraction of FTSO system.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'SCProofVerifier' in contracts.json.
+     * @pattern ^\w+$
+     */
+    priceReader?: string;
 
     /**
      * The agent whitelist contains a list of allowed agent owners.
@@ -167,7 +183,7 @@ export interface AssetManagerParameters {
 
     /**
      * The number of decimals of precision for minting.
-     * Usually it is the same as assetDecimals (e.g. 8 for bitcoin).
+     * Usually it is the same as assetDecimals (e.g. 8 for BTC).
      * But for some asset types e.g. ethereum, the number of asset decimals is 18, so we internally
      * manage all mintings with a smaller number of decimals (e.g. 9).
      * The maximum number of decimals must be such that the total supply of fasset will never

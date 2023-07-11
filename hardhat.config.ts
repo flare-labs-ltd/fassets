@@ -7,7 +7,10 @@ import "hardhat-gas-reporter";
 import { task } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
-import { deployAgentVaultFactory, deployWhitelist, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory, deploySCProofVerifier, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
+import {
+    deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory,
+    deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployWhitelist, switchAllToProductionMode
+} from "./deployment/lib/deploy-asset-manager";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import "./type-extensions";
 
@@ -58,10 +61,12 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
         // optionally run the full deploy
         if (deployController) {
             await deploySCProofVerifier(hre, contractsFile);
+            await deployPriceReader(hre, contractsFile);
             await deployWhitelist(hre, contractsFile, 'Agent');
             await deployWhitelist(hre, contractsFile, 'User');
             await deployAgentVaultFactory(hre, contractsFile);
             await deployCollateralPoolFactory(hre, contractsFile);
+            await deployCollateralPoolTokenFactory(hre, contractsFile);
             await deployAssetManagerController(hre, contractsFile, managerParameterFiles);
         } else {
             for (const paramFile of managerParameterFiles) {

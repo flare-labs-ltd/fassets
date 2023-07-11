@@ -24,7 +24,7 @@ export class SparseArray {
     countNonZero() {
         return this.data.size;
     }
-    
+
     total() {
         let result = BN_ZERO;
         for (const value of this.data.values()) {
@@ -32,9 +32,13 @@ export class SparseArray {
         }
         return result;
     }
-    
+
     addTo(key: string, value: BN) {
         this.set(key, this.get(key).add(value));
+    }
+
+    subFrom(key: string, value: BN) {
+        this.set(key, this.get(key).sub(value));
     }
 
     clear() {

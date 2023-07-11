@@ -104,7 +104,7 @@
             "type": "string"
         },
         "assetMintingDecimals": {
-            "description": "The number of decimals of precision for minting.\nUsually it is the same as assetDecimals (e.g. 8 for bitcoin).\nBut for some asset types e.g. ethereum, the number of asset decimals is 18, so we internally\nmanage all mintings with a smaller number of decimals (e.g. 9).\nThe maximum number of decimals must be such that the total supply of fasset will never\nexceed 64bit when expressed as fixed point with this many decimals (this allows for storage optimization).",
+            "description": "The number of decimals of precision for minting.\nUsually it is the same as assetDecimals (e.g. 8 for BTC).\nBut for some asset types e.g. ethereum, the number of asset decimals is 18, so we internally\nmanage all mintings with a smaller number of decimals (e.g. 9).\nThe maximum number of decimals must be such that the total supply of fasset will never\nexceed 64bit when expressed as fixed point with this many decimals (this allows for storage optimization).",
             "minimum": 0,
             "type": "integer"
         },
@@ -161,6 +161,11 @@
         },
         "collateralPoolFactory": {
             "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'CollateralPoolFactory' in contracts.json.",
+            "pattern": "^\\w+$",
+            "type": "string"
+        },
+        "collateralPoolTokenFactory": {
+            "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'CollateralPoolTokenFactory' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
         },
@@ -245,6 +250,11 @@
         "poolCollateral": {
             "$ref": "#/definitions/CollateralTypeParameters",
             "description": "Data about the collateral used in the collateral pool, token is always WNat (FLR/SGB)."
+        },
+        "priceReader": {
+            "description": "Price reader contract is a simple abstraction of FTSO system.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'SCProofVerifier' in contracts.json.",
+            "pattern": "^\\w+$",
+            "type": "string"
         },
         "redemptionDefaultFactorClass1BIPS": {
             "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from agent's class 1 collateral.",

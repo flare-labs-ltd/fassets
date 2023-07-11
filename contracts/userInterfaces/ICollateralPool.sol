@@ -204,4 +204,11 @@ interface ICollateralPool {
     function fAssetFeeDebtOf(address _account)
         external view
         returns (uint256);
+
+    /**
+     * Get the amount of fassets that need to be burned to perform self close exit.
+     */
+    function fAssetRequiredForSelfCloseExit(uint256 _tokenAmountWei)
+        external view
+        returns (uint256);
 }

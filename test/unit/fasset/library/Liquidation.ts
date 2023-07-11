@@ -130,6 +130,13 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         // assert
         const info = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info.status, 4);
+        //Calling start liquidation again won't change anything
+        await assetManager.startLiquidation(agentVault.address);
+        //Calling liquite won't liquidate anything
+        await assetManager.liquidate(agentVault.address, 1, { from: liquidatorAddress1});
+        // assert
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info1.status, 4);
     });
 
     it("should not change liquidationStartedAt timestamp when liquidation phase does not change (liquidation -> full_liquidation)", async () => {
@@ -151,6 +158,11 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         assertWeb3Equal(info1.liquidationStartTimestamp, info2.liquidationStartTimestamp);
         assertWeb3Equal(info1.status, 2);
         assertWeb3Equal(info2.status, 3);
+        //Calling start liquidation again won't change anything
+        await assetManager.startLiquidation(agentVault.address);
+        // assert
+        const info3 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info3.status, 3);
     });
 
     it("should not do anything if callig startLiquidation twice", async () => {

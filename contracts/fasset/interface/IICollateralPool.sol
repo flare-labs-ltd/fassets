@@ -7,16 +7,28 @@ import "../../userInterfaces/ICollateralPool.sol";
 import "./IWNat.sol";
 
 /**
- * Collateral pool methods that are only callable by the asset manager.
+ * Collateral pool methods that are only callable by the asset manager or pool token.
  */
 interface IICollateralPool is ICollateralPool {
     function setPoolToken(address _poolToken) external;
+
     function payout(address _receiver, uint256 _amountWei, uint256 _agentResponsibilityWei) external;
+
     function destroy(address payable _recipient) external;
+
     function upgradeWNatContract(IWNat newWNat) external;
+
     function setExitCollateralRatioBIPS(uint256 _value) external;
+
     function setTopupCollateralRatioBIPS(uint256 _value) external;
+
     function setTopupTokenPriceFactorBIPS(uint256 _value) external;
+
     function fAssetFeeDeposited(uint256 _amount) external;
+
     function wNat() external view returns (IWNat);
+
+    function transferableTokensOf(address _account) external view returns (uint256);
+
+    function lockedTokensOf(address _account) external view returns (uint256);
 }

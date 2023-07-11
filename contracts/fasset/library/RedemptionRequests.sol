@@ -76,7 +76,7 @@ library RedemptionRequests {
         require(_amountUBA != 0, "redemption of 0");
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
+        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, false);
         // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
         _createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress, true);
@@ -96,12 +96,13 @@ library RedemptionRequests {
         require(_amountUBA != 0, "redemption of 0");
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
+        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true);
         // pay in collateral
         uint256 priceAmgToWei = Conversion.currentAmgPriceInTokenWei(agent.class1CollateralIndex);
         uint256 paymentWei = Conversion.convertAmgToTokenWei(closedAMG, priceAmgToWei)
             .mulBips(agent.buyFAssetByAgentFactorBIPS);
         Agents.payoutClass1(agent, _redeemer, paymentWei);
+        emit AMEvents.RedeemedInCollateral(_agentVault, _redeemer, closedUBA, paymentWei);
         // burn the closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
     }
@@ -117,7 +118,7 @@ library RedemptionRequests {
         Agents.requireAgentVaultOwner(_agentVault);
         require(_amountUBA != 0, "self close of 0");
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
-        (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG);
+        (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true);
         // burn the self-closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
         // try to pull agent out of liquidation
@@ -206,6 +207,7 @@ library RedemptionRequests {
         Agents.startRedeemingAssets(Agent.get(_data.agentVault), _data.valueAMG, _poolSelfClose);
         // emit event to remind agent to pay
         emit AMEvents.RedemptionRequested(_data.agentVault,
+            _redeemer,
             requestId,
             normalizedUnderlyingAddress,
             redeemedValueUBA,
