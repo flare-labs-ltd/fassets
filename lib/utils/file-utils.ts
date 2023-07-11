@@ -11,16 +11,24 @@ export function openNewFile(path: string, openMode: OpenMode, backup: boolean) {
     if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true });
     }
-    if (existsSync(path)) {
-        if (backup) {
-            const backupPath = join(dir, name) + '.1' + ext;
-            if (existsSync(backupPath)) {
-                unlinkSync(backupPath);
+    try {
+        if (existsSync(path)) {
+            if (backup) {
+                const backupPath = join(dir, name) + '.1' + ext;
+                if (existsSync(backupPath)) {
+                    unlinkSync(backupPath);
+                }
+                renameSync(path, backupPath);
+            } else {
+                unlinkSync(path);
             }
-            renameSync(path, backupPath);
-        } else {
-            unlinkSync(path);
         }
+        return openSync(path, openMode);
+    } catch (e) {
+        console.error('' + e);
+        // file might be locked (e.g. open csv) - change it with some random addition
+        const random = 100 + Math.floor(Math.random() * 900);
+        const newpath = join(dir, `${name}-${random}${ext}`);
+        return openSync(newpath, openMode);
     }
-    return openSync(path, openMode);
 }

@@ -77,6 +77,9 @@ export class TrackedState {
         this.assetManagerEvent('RedemptionRequested').subscribe(args => {
             this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
         });
+        this.assetManagerEvent('RedeemedInCollateral').subscribe(args => {
+            this.fAssetSupply = this.fAssetSupply.sub(toBN(args.redemptionAmountUBA));
+        });
         this.assetManagerEvent('SelfClose').subscribe(args => {
             this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
         });
@@ -264,7 +267,7 @@ export class TrackedState {
     }
 
     eventInfo(event: EvmEvent) {
-        return `event=${event.event} at ${event.blockNumber}.${event.logIndex}`;
+        return `event=${event.event} at block ${event.blockNumber} (index ${event.logIndex})`;
     }
 
     logAllAgentSummaries() {

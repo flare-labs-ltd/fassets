@@ -12,6 +12,7 @@ import { sumBN, toBN } from "../../../lib/utils/helpers";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { FuzzingAgentState } from "./FuzzingAgentState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
+import { LogFile } from "../../../lib/utils/logging";
 
 export type FuzzingStateLogRecord = {
     text: string;
@@ -138,7 +139,22 @@ export class FuzzingState extends TrackedState {
 
     writeBalanceTrackingList(dir: string) {
         for (const agent of this.agents.values()) {
-            agent.writeBalanceTrackingList(dir);
+            try {
+                agent.writeBalanceTrackingList(dir);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    }
+
+    withLogFile(path: string, action: () => void) {
+        const curLogger = this.logger;
+        this.logger = new LogFile(path);
+        try {
+            action();
+        } finally {
+            (this.logger as LogFile).close();
+            this.logger = curLogger;
         }
     }
 }

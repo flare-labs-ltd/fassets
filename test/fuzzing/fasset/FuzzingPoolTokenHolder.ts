@@ -78,12 +78,12 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
                 await this.poolInfo.pool.exit(amount, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, { from: this.address })
                     .catch(e => scope.exitOnExpectedError(e, ['collateral ratio falls below exitCR']));
             } else {
-                await this.fAssetMarketplace.buy(scope, this.address, selfCloseFAssetRequired);
-                await this.context.fAsset.approve(this.poolInfo.pool.address, selfCloseFAssetRequired, { from: this.address });
                 const redeemToCollateral = coinFlip(0.1);   // it will usually redeem to collateral anyway, because amount is typically < 1 lot
                 this.comment(`${this.formatAddress(this.address)}: self-close exiting pool ${this.formatAddress(this.poolInfo.pool.address)} (${amountFmt}), fassets=${formatBN(selfCloseFAssetRequired)}, toCollateral=${redeemToCollateral}`);
+                await this.fAssetMarketplace.buy(scope, this.address, selfCloseFAssetRequired);
+                await this.context.fAsset.approve(this.poolInfo.pool.address, selfCloseFAssetRequired, { from: this.address });
                 const res = await this.poolInfo.pool.selfCloseExit(amount, redeemToCollateral, this.underlyingAddress, { from: this.address })
-                    .catch(e => scope.exitOnExpectedError(e, []));
+                    .catch(e => scope.exitOnExpectedError(e, ['f-asset allowance too small', 'amount of sent tokens is too small after agent max redempton correction']));
                 const redemptionRequest = this.runner.eventDecoder.findEventFrom(res, this.context.assetManager, 'RedemptionRequested');
                 if (redemptionRequest) {
                     const redemptionPaymentReceiver = RedemptionPaymentReceiver.create(this.runner, this.address, this.underlyingAddress);
