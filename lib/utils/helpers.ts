@@ -386,16 +386,25 @@ export function reportError(error: any) {
 }
 
 // either (part of) error message or an error constructor
-export type ErrorFilter = string | { new (...args: any[]): Error };
+export type SimpleErrorFilter = string | { new(...args: any[]): Error };
+export type ErrorFilter = SimpleErrorFilter | { error: SimpleErrorFilter, when: boolean };
+
+function simpleErrorMatch(error: any, message: string, expectedError: SimpleErrorFilter) {
+    if (typeof expectedError === 'string') {
+        if (message.includes(expectedError)) return true;
+    } else {
+        if (error instanceof expectedError) return true;
+    }
+    return false;
+}
 
 export function errorIncluded(error: any, expectedErrors: ErrorFilter[]) {
     const message = String(error?.message ?? '');
     for (const expectedErr of expectedErrors) {
-        if (typeof expectedErr === 'string') {
-            if (message.includes(expectedErr)) return true;
-        } else {
-            if (error instanceof expectedErr) return true;
-        }
+        const expectedErrMatches = typeof expectedErr === 'object' && 'when' in expectedErr
+            ? expectedErr.when && simpleErrorMatch(error, message, expectedErr.error)
+            : simpleErrorMatch(error, message, expectedErr);
+        if (expectedErrMatches) return true;
     }
     return false;
 }

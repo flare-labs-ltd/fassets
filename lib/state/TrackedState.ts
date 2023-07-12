@@ -45,6 +45,7 @@ export class TrackedState {
 
     // settings
     logger?: ILogger;
+    deleteDestroyedAgents = true;
 
     // synthetic events
     pricesUpdated = new TriggerableEvent<void>(this.eventQueue);
@@ -239,7 +240,7 @@ export class TrackedState {
 
     destroyAgent(address: string) {
         const agent = this.getAgent(address);
-        if (agent) {
+        if (agent && this.deleteDestroyedAgents) {
             this.agents.delete(address);
             this.agentsByUnderlying.delete(agent.underlyingAddressString);
             this.agentsByPool.delete(agent.collateralPoolAddress);

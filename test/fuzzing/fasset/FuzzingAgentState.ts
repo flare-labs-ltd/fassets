@@ -9,7 +9,7 @@ import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockCha
 import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 import { EvmEvent } from "../../../lib/utils/events/common";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, formatBN, latestBlockTimestamp, minBN, requireNotNull, sumBN, toBN, toHex } from "../../../lib/utils/helpers";
+import { BN_ZERO, expectErrors, formatBN, latestBlockTimestamp, minBN, requireNotNull, sumBN, toBN, toHex } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import {
@@ -612,7 +612,12 @@ export class FuzzingAgentState extends TrackedAgentState {
         const agentName = this.name();
         // get actual agent state
         // this.parent.logger?.log(`STARTING DIFFERENCE CHECK FOR ${agentName} - GET INFO`);
-        const agentInfo = await this.parent.context.assetManager.getAgentInfo(this.address);
+        const agentInfo = await this.parent.context.assetManager.getAgentInfo(this.address)
+            .catch(e => expectErrors(e, ['invalid agent vault address']));
+        if (!agentInfo) {
+            checker.logger.log(`    ${agentName}: agent already destroyed.`);
+            return;
+        }
         // this.parent.logger?.log(`STARTING DIFFERENCE CHECK FOR ${agentName} - AFTER GET INFO`);
         let problems = 0;
         // reserved
