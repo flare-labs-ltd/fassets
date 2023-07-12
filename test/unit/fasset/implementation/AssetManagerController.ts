@@ -839,6 +839,21 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(timelock_info, "ContractChanged", { name: "scProofVerifier", value: addr });
         });
 
+        it("should set price reader", async () => {
+            const addr = randomAddress();
+            //Only governance can set price reader
+            const tx = assetManagerController.setPriceReader([assetManager.address], addr, { from: accounts[12] });
+            await expectRevert(tx, "only governance");
+            //Price reader address shouldn't be 0
+            const res = assetManagerController.setPriceReader([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert(timelock_info, "address zero");
+            //Correctly set price reader
+            const res2 = await assetManagerController.setPriceReader([assetManager.address], addr, { from: governance });
+            const timelock_info2 = await waitForTimelock(res2, assetManagerController, updateExecutor);
+            expectEvent(timelock_info2, "ContractChanged", { name: "priceReader", value: addr });
+        });
+
         it("should revert setting min update repeat time when 0 seconds is provided", async () => {
             const res = assetManagerController.setMinUpdateRepeatTimeSeconds([assetManager.address], 0, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);

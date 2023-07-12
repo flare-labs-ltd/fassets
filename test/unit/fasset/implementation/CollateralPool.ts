@@ -1201,6 +1201,11 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectRevert(res, "only collateral pool");
         });
 
+        it("random address shouldn't be able to destroy collateral pool token", async () => {
+            let res = collateralPoolToken.destroy(accounts[12], { from: accounts[5] });
+            await expectRevert(res, "only collateral pool");
+        });
+
         it("random address shouldn't be able to deposit fasset fees", async () => {
             let res = collateralPool.fAssetFeeDeposited(ETH(1), { from: accounts[5] });
             await expectRevert(res, "only asset manager");

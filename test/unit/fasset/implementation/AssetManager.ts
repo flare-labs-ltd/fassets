@@ -275,6 +275,15 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(OwnerColdAndHotAddresses3[1], constants.ZERO_ADDRESS);
         });
 
+        it("checking agent vault owner with hot address should work", async () => {
+            // create agent
+            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            const hotAddress = "0xe34BDff68a5b89216D7f6021c1AB25c012142425";
+            // set owner hot address
+            await assetManager.setOwnerHotAddress(hotAddress, { from: agentOwner1 });
+            assert.equal(await assetManager.isAgentVaultOwner(agentVault.address, hotAddress),true);
+        });
+
         it("should fail at announcing agent setting update from non-agent-owner account", async () => {
             const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
             await expectRevert(assetManager.announceAgentSettingUpdate(agentVault.address, "feeBIPS", 2000, { from: accounts[80] }),
@@ -680,6 +689,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // buy back the collateral
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const mintedUSD = await ubaToC1Wei(toBN(agentInfo.mintedUBA));
+            //Random address can't buy back agent collateral
+            const res = assetManager.buybackAgentCollateral(agentVault.address, { from: accounts[12], value: toWei(3e6) });
+            await expectRevert(res, "only agent vault owner");
+            //Buy back agent collateral
             await assetManager.buybackAgentCollateral(agentVault.address, { from: agentOwner1, value: toWei(3e6) });
             const buybackPriceUSD = mulBIPS(mintedUSD, toBN(settings.buybackCollateralFactorBIPS));
             assertEqualWithNumError(await usdc.balanceOf(agentOwner1), buybackPriceUSD, toBN(1));
@@ -1446,7 +1459,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("when whitelist is enabled, address not whitelisted can't do collateral reservations", async () => {
-            const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             // create governance settings
             const governanceSettings = await GovernanceSettings.new();
             await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
@@ -1464,6 +1477,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
                 { from: minter, value: reservationFee });
             await expectRevert(r, "not whitelisted");
+            //Whitelisted account should be able to reserve collateral
+            const res = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
+                { from: whitelistedAccount, value: reservationFee });
+            expectEvent(res,"CollateralReserved");
         });
 
         it("agent can't self mint if asset manager is not attached", async () => {
