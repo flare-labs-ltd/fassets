@@ -486,7 +486,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentXRPAddressCorrect = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjN";
         const agentXRPAddressTooShort = "rfsK8pNsNeGA8nYWM3PzoRx";
         const agentXRPAddressTooLong = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjNMRHNFsg";
-        const agentXRPAddressIncorrect = "rfsk8pNsNeGA8nYWf3PzoRxMRHeAyEtNjN";
+        //Incorrect address with out of vocabulary letter
+        const agentXRPAddressIncorrect = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjž";
         //Create agent, underlying address too short
         let res = createAgent(agentOwner1, agentXRPAddressTooShort);
         await expectRevert(res, "invalid underlying address");
