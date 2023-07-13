@@ -400,18 +400,21 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         // - debtFAsset = virtualFAsset + 1 > virtualFAsset
         // - freeFAsset > totalFAssetFees (not necessarily by 1, but should be small)
         if (_exitType == TokenExitType.MAXIMIZE_FEE_WITHDRAWAL) {
-            uint256 freeFasset = debtFAsset < virtualFAsset ? virtualFAsset - debtFAsset : 0;
-            freeFAssetFeeShare = Math.min(Math.min(fAssetShare, freeFasset), totalFAssetFees);
+            uint256 freeFAsset = debtFAsset < virtualFAsset ? virtualFAsset - debtFAsset : 0;
+            freeFAssetFeeShare = Math.min(fAssetShare, freeFAsset);
             debtFAssetFeeShare = fAssetShare - freeFAssetFeeShare;
         } else if (_exitType == TokenExitType.MINIMIZE_FEE_DEBT) {
-            debtFAssetFeeShare = Math.min(Math.min(fAssetShare, debtFAsset), totalFAssetFees);
+            debtFAssetFeeShare = Math.min(fAssetShare, debtFAsset);
             freeFAssetFeeShare = fAssetShare - debtFAssetFeeShare;
         } else { // KEEP_RATIO
             debtFAssetFeeShare = virtualFAsset > 0 ? debtFAsset.mulDiv(fAssetShare, virtualFAsset) : 0;
             // _tokenShare <= token.balanceOf(_account) implies fAssetShare <= virtualFAsset
             // implies debtFAssetFeeShare <= fAssetShare
-            freeFAssetFeeShare = Math.min(fAssetShare - debtFAssetFeeShare, totalFAssetFees);
+            freeFAssetFeeShare = fAssetShare - debtFAssetFeeShare;
         }
+        // cap the fee shares in case of rounding errors
+        freeFAssetFeeShare = Math.min(freeFAssetFeeShare, totalFAssetFees);
+        debtFAssetFeeShare = Math.min(debtFAssetFeeShare, totalFAssetFeeDebt);
     }
 
     function _getFAssetRequiredToNotSpoilCR(
