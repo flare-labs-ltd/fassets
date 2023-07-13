@@ -5,9 +5,10 @@ import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain"
 import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, MAX_BIPS, checkedCast, formatBN, minBN, toBN, toWei } from "../../../lib/utils/helpers";
+import { BN_ZERO, MAX_BIPS, checkedCast, formatBN, minBN, sleep, toBN, toWei } from "../../../lib/utils/helpers";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Agent, AgentCreateOptions } from "../../integration/utils/Agent";
+import { SparseArray } from "../../utils/SparseMatrix";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { coinFlip, randomBN, randomChoice, randomInt } from "../../utils/fuzzing-utils";
 import { FuzzingActor } from "./FuzzingActor";
@@ -47,10 +48,22 @@ export class FuzzingAgent extends FuzzingActor {
         return new FuzzingAgent(runner, agent, agent.ownerColdAddress, ownerUnderlyingAddress, options ?? {});
     }
 
-    eventSubscriptions: EventSubscription[] = [];
+    unaccountedSpentFreeBalance = new SparseArray();
+
+    freeUnderlyingBalance(agent: Agent) {
+        const agentState = this.agentState(agent);
+        const unaccountedSpend = this.unaccountedSpentFreeBalance.get(agent.vaultAddress);
+        const freeBalance = agentState.freeUnderlyingBalanceUBA.sub(unaccountedSpend);
+        if (freeBalance.lt(BN_ZERO)) {
+            this.comment(`Free balance negative for ${this.name(agent)}: accounted=${formatBN(agentState.freeUnderlyingBalanceUBA)} unaccounted=${formatBN(unaccountedSpend)}`);
+        }
+        return freeBalance;
+    }
+
+    eventSubscriptions: { [agentVaultAddress: string]: EventSubscription[] } = {};
 
     registerForEvents(agentVaultAddress: string) {
-        this.eventSubscriptions = [
+        this.eventSubscriptions[agentVaultAddress] = [
             this.runner.assetManagerEvent('RedemptionRequested', { agentVault: agentVaultAddress })
                 .subscribe((args) => this.handleRedemptionRequest(args)),
             this.runner.assetManagerEvent('AgentInCCB', { agentVault: agentVaultAddress })
@@ -73,8 +86,8 @@ export class FuzzingAgent extends FuzzingActor {
         ];
     }
 
-    unregisterEvents() {
-        for (const subscription of this.eventSubscriptions) {
+    unregisterEvents(agentVaultAddress: string) {
+        for (const subscription of this.eventSubscriptions[agentVaultAddress] ?? []) {
             subscription.unsubscribe();
         }
     }
@@ -86,7 +99,8 @@ export class FuzzingAgent extends FuzzingActor {
             const cheatOnPayment = coinFlip(0.2);
             const takeFee = cheatOnPayment ? request.feeUBA.muln(2) : request.feeUBA;   // cheat by taking more fee (so the payment should be considered failed)
             const paymentAmount = request.valueUBA.sub(takeFee);
-            const amountToMyself = randomBN(takeFee.add(this.agentState(agent).freeUnderlyingBalanceUBA));  // abuse redemption to pay something to the owner via multi-transaction
+            const amountToMyself = randomBN(takeFee.add(this.freeUnderlyingBalance(agent)));  // abuse redemption to pay something to the owner via multi-transaction
+            this.unaccountedSpentFreeBalance.addTo(agent.vaultAddress, amountToMyself);
             const txHash = await agent.wallet.addMultiTransaction({ [agent.underlyingAddress]: paymentAmount.add(amountToMyself) },
                 { [request.paymentAddress]: paymentAmount, [this.ownerUnderlyingAddress]: amountToMyself },
                 request.paymentReference);
@@ -101,6 +115,7 @@ export class FuzzingAgent extends FuzzingActor {
                     .catch(e => scope.exitOnExpectedError(e, ['Missing event RedemptionDefault']));
                 // Error 'Missing event RedemptionDefault' happens when redeemer defaults before confirm
             }
+            this.unaccountedSpentFreeBalance.subFrom(agent.vaultAddress, amountToMyself);
         });
     }
 
@@ -193,22 +208,23 @@ export class FuzzingAgent extends FuzzingActor {
         const agent = this.agent;   // save in case agent is destroyed and re-created
         const agentState = this.agentState(agent);
         if (agentState.status !== AgentStatus.NORMAL) return;   // reduce noise in case of (full) liquidation
-        const amount = randomBN(agentState.freeUnderlyingBalanceUBA);
+        const amount = randomBN(this.freeUnderlyingBalance(agent));
         if (amount.isZero()) return;
         // announce
         const announcement = await agent.announceUnderlyingWithdrawal()
             .catch(e => scope.exitOnExpectedError(e, ['announced underlying withdrawal active']));
         if (coinFlip(0.8)) {
-            this.comment(`Underlying withdrawal for ${this.name(agent)}: amount=${formatBN(amount)} free=${formatBN(agentState.freeUnderlyingBalanceUBA)}`)
+            this.comment(`Underlying withdrawal for ${this.name(agent)}: amount=${formatBN(amount)} free=${formatBN(this.freeUnderlyingBalance(agent))}`)
+            this.unaccountedSpentFreeBalance.addTo(agent.vaultAddress, amount);
             // perform withdrawal
             const txHash = await agent.performUnderlyingWithdrawal(announcement, amount, this.ownerUnderlyingAddress)
                 .catch(e => scope.exitOnExpectedError(e, []));
             // wait for finalization
             await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
-            // wait
             // confirm
             await agent.confirmUnderlyingWithdrawal(announcement, txHash)
                 .catch(e => scope.exitOnExpectedError(e, []));
+            this.unaccountedSpentFreeBalance.subFrom(agent.vaultAddress, amount);
         } else {
             // cancel withdrawal
             await agent.cancelUnderlyingWithdrawal(announcement)
@@ -243,49 +259,77 @@ export class FuzzingAgent extends FuzzingActor {
         this.runner.startThread((scope) => this.destroyAndReenter(scope));
     }
 
-    destroying: boolean = false;
+    destroying: Set<Agent> = new Set();
 
     async destroyAgent(scope: EventScope) {
-        const agentState = this.agentState(this.agent);
-        if (this.destroying) return;
-        if (this.avoidErrors) {
-            this.destroying = true;
-        }
-        this.comment(`Destroying agent ${this.name(this.agent)}`);
+        const agent = this.agent;
+        // don't destroy the same agent twice
+        if (this.destroying.has(agent)) return;
+        this.destroying.add(agent);
+        //
+        this.comment(`Destroying agent ${this.name(agent)}`);
+        const agentState = this.agentState(agent);
         // exit available if needed
         if (agentState.publiclyAvailable) {
-            const exitAllowedAt = await this.agent.announceExitAvailable();
+            const exitAllowedAt = await agent.announceExitAvailable();
             await this.timeline.flareTimestamp(exitAllowedAt).wait(scope);
-            await this.agent.exitAvailable()
-                .catch(e => scope.exitOnExpectedError(e, ['agent not available']));
+            await agent.exitAvailable()
+                .catch(e => scope.handleExpectedErrors(e, { continue: ['agent not available'] }));
         }
         // pull out fees
-        const poolFeeBalance = await this.agent.poolFeeBalance();
-        await this.agent.withdrawPoolFees(poolFeeBalance);
-        // TODO: somehow self-close all backed f-assets
-        await this.agent.selfClose(poolFeeBalance);
+        const poolFeeBalance = await agent.poolFeeBalance();
+        await agent.withdrawPoolFees(poolFeeBalance);
+        // self-close agent fee fassets
+        await agent.selfClose(poolFeeBalance);
+        // conditionally wait until all the agent's tickets are redeemed
+        const waitForRedemptions = coinFlip(0.9);
+        if (waitForRedemptions) {
+            this.comment(`Redeeming fAssets backed by ${this.name(agent)} before destroy...`);
+            // wait until all the agent's tickets are redeemed
+            while (!(agentState.mintedUBA.lte(agentState.dustUBA) && agentState.reservedUBA.isZero() && agentState.redeemingUBA.isZero())) {
+                if (this.runner.waitingToFinish) scope.exit();
+                await sleep(1000);
+            }
+            // self-close dust - must buy some fassets
+            if (agentState.dustUBA.gt(BN_ZERO)) {
+                await this.runner.fAssetMarketplace.buy(scope, this.ownerHotAddress, agentState.dustUBA)
+                    .catch(e => scope.exitOnExpectedError(e, []));
+                await agent.selfClose(agentState.dustUBA);
+            }
+        } else {
+            this.comment(`Skipping redemption of fAssets backed by ${this.name(agent)} before destroy`);
+        }
         // redeem pool tokens
-        // TODO: all other pool token holders must also redeem
-        const poolTokenBalance = await this.agent.poolTokenBalance();
-        const { withdrawalAllowedAt } = await this.agent.announcePoolTokenRedemption(poolTokenBalance);
+        const poolTokenBalance = await agent.poolTokenBalance();
+        const { withdrawalAllowedAt } = await agent.announcePoolTokenRedemption(poolTokenBalance);
         await this.timeline.flareTimestamp(withdrawalAllowedAt).wait(scope);
-        await this.agent.redeemCollateralPoolTokens(poolTokenBalance);
-        // destroy agent vault
-        const destroyAllowedAt = await this.agent.announceDestroy();
+        await agent.redeemCollateralPoolTokens(poolTokenBalance);
+        // announce destroy
+        const destroyAllowedAt = await agent.announceDestroy()
+            .catch(e => scope.exitOnExpectedError(e, [{ error: 'agent still active', when: !waitForRedemptions }]));
         await this.timeline.flareTimestamp(destroyAllowedAt).wait(scope);
-        await this.agent.destroy();
-        this.unregisterEvents();
+        // wait for all other pool token holders to redeem
+        const waitForTokenHolderExit = coinFlip(0.5);
+        if (waitForTokenHolderExit) {
+            this.comment(`Waiting for pool token holders of ${this.name(agent)} to exit before destroy, pool token supply = ${formatBN(agentState.poolTokenBalances.total())}...`);
+            while (!agentState.poolTokenBalances.total().isZero()) {
+                if (this.runner.waitingToFinish) scope.exit();
+                await sleep(1000);
+            }
+        } else {
+            this.comment(`Skipping wait for pool token holders of ${this.name(agent)} to exit before destroy, pool token supply = ${formatBN(agentState.poolTokenBalances.total())}`);
+        }
+        // destroy agent vault
+        await agent.destroy()
+            .catch(e => scope.exitOnExpectedError(e, [{ error: 'cannot destroy a pool with issued tokens', when: !waitForTokenHolderExit }]));
+        this.unregisterEvents(agent.vaultAddress);
     }
 
     async destroyAndReenter(scope: EventScope) {
+        if (this.destroying.has(this.agent)) return;
         // save old agent's data
         const name = this.name(this.agent);
         const agentState = this.agentState(this.agent);
-        // start destroying
-        if (this.destroying) return;
-        if (this.avoidErrors) {
-            this.destroying = true;
-        }
         // const collateral = agentState.totalCollateralNATWei;
         const createOptions: AgentCreateOptions = {
             ...this.creationOptions,
@@ -300,8 +344,8 @@ export class FuzzingAgent extends FuzzingActor {
             poolTopupTokenPriceFactorBIPS: agentState.poolTopupTokenPriceFactorBIPS,
         };
         const underlyingAddress = this.agent.underlyingAddress;
-        // destroy old agent vault
-        await this.destroyAgent(scope);
+        // destroy old agent vault in parallel
+        this.runner.startThread((scope) => this.destroyAgent(scope));
         // create the agent again
         this.agent = await Agent.createTest(this.runner.context, this.ownerHotAddress, underlyingAddress + '*', createOptions);
         this.registerForEvents(this.agent.agentVault.address);
@@ -310,7 +354,5 @@ export class FuzzingAgent extends FuzzingActor {
         this.runner.interceptor.captureEventsFrom(`${newName}_POOL`, this.agent.collateralPool, 'CollateralPool');
         this.runner.interceptor.captureEventsFrom(`${newName}_LPTOKEN`, this.agent.collateralPoolToken, 'CollateralPoolToken');
         await this.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
-        // make all working again
-        this.destroying = false;
     }
 }

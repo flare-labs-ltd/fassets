@@ -1,7 +1,7 @@
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
-import { BN_ZERO, formatBN, requireNotNull } from "../../../lib/utils/helpers";
+import { formatBN, requireNotNull } from "../../../lib/utils/helpers";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
-import { AsyncLock, coinFlip, randomBN, randomChoice, randomShuffled } from "../../utils/fuzzing-utils";
+import { AsyncLock, coinFlip, randomBN, randomChoice } from "../../utils/fuzzing-utils";
 import { FuzzingActor } from "./FuzzingActor";
 import { RedemptionPaymentReceiver } from "./FuzzingCustomer";
 import { FuzzingRunner } from "./FuzzingRunner";
@@ -13,33 +13,11 @@ interface PoolInfo {
     poolToken: CollateralPoolTokenInstance;
 }
 
-export interface FAssetSeller {
-    buyFAssetsFrom(scope: EventScope, receiverAddress: string, amount: BN): Promise<BN>;
-}
-
-export class FAssetMarketplace {
-    constructor(
-        public sellers: FAssetSeller[] = [],
-    ) { }
-
-    public async buy(scope: EventScope, receiverAddress: string, amount: BN) {
-        let total = BN_ZERO;
-        const sellers = randomShuffled(this.sellers);
-        for (const seller of sellers) {
-            if (total.gte(amount)) break;
-            const bought = await seller.buyFAssetsFrom(scope, receiverAddress, amount.sub(total));
-            total = total.add(bought);
-        }
-        return total;
-    }
-}
-
 export class FuzzingPoolTokenHolder extends FuzzingActor {
     constructor(
         public runner: FuzzingRunner,
         public address: string,
         public underlyingAddress: string,
-        public fAssetMarketplace: FAssetMarketplace,
     ) {
         super(runner);
     }
@@ -78,12 +56,12 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
                 await this.poolInfo.pool.exit(amount, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL, { from: this.address })
                     .catch(e => scope.exitOnExpectedError(e, ['collateral ratio falls below exitCR']));
             } else {
-                await this.fAssetMarketplace.buy(scope, this.address, selfCloseFAssetRequired);
-                await this.context.fAsset.approve(this.poolInfo.pool.address, selfCloseFAssetRequired, { from: this.address });
                 const redeemToCollateral = coinFlip(0.1);   // it will usually redeem to collateral anyway, because amount is typically < 1 lot
                 this.comment(`${this.formatAddress(this.address)}: self-close exiting pool ${this.formatAddress(this.poolInfo.pool.address)} (${amountFmt}), fassets=${formatBN(selfCloseFAssetRequired)}, toCollateral=${redeemToCollateral}`);
+                await this.runner.fAssetMarketplace.buy(scope, this.address, selfCloseFAssetRequired);
+                await this.context.fAsset.approve(this.poolInfo.pool.address, selfCloseFAssetRequired, { from: this.address });
                 const res = await this.poolInfo.pool.selfCloseExit(amount, redeemToCollateral, this.underlyingAddress, { from: this.address })
-                    .catch(e => scope.exitOnExpectedError(e, []));
+                    .catch(e => scope.exitOnExpectedError(e, ['f-asset allowance too small', 'amount of sent tokens is too small after agent max redempton correction']));
                 const redemptionRequest = this.runner.eventDecoder.findEventFrom(res, this.context.assetManager, 'RedemptionRequested');
                 if (redemptionRequest) {
                     const redemptionPaymentReceiver = RedemptionPaymentReceiver.create(this.runner, this.address, this.underlyingAddress);

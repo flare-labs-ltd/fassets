@@ -4,7 +4,7 @@ import { expectErrors } from "../../../lib/utils/helpers";
 import { MintingExecuted } from "../../../typechain-truffle/AssetManager";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
-import { FuzzingStateAgent } from "./FuzzingStateAgent";
+import { FuzzingAgentState } from "./FuzzingAgentState";
 
 export class FuzzingKeeper extends FuzzingActor {
     constructor(
@@ -45,7 +45,7 @@ export class FuzzingKeeper extends FuzzingActor {
         })
     }
 
-    private async checkAgentForLiquidation(agent: FuzzingStateAgent) {
+    private async checkAgentForLiquidation(agent: FuzzingAgentState) {
         const timestamp = await time.latest();
         const newStatus = agent.possibleLiquidationTransition(timestamp);
         if (newStatus > agent.status) {

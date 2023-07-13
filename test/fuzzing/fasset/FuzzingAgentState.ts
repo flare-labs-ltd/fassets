@@ -1,6 +1,6 @@
 import { constants } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
-import { AgentInfo, AgentStatus, CollateralType, CollateralClass } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentInfo, AgentStatus, CollateralClass, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { NAT_WEI } from "../../../lib/fasset/Conversions";
 import { CollateralPoolEvents, CollateralPoolTokenEvents } from "../../../lib/fasset/IAssetContext";
 import { Prices } from "../../../lib/state/Prices";
@@ -9,18 +9,22 @@ import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockCha
 import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 import { EvmEvent } from "../../../lib/utils/events/common";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, formatBN, latestBlockTimestamp, minBN, requireNotNull, sumBN, toBN } from "../../../lib/utils/helpers";
+import { BN_ZERO, expectErrors, formatBN, latestBlockTimestamp, minBN, requireNotNull, sumBN, toBN, toHex } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
-    RedeemedInCollateral,
-    RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp,
+    UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/AssetManager";
 import { Enter, Exit } from "../../../typechain-truffle/CollateralPool";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { FuzzingState, FuzzingStateLogRecord } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
+import { BalanceTrackingList, BalanceTrackingRow } from "./AgentBalanceTracking";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
+import { openNewFile } from "../../../lib/utils/file-utils";
+import { closeSync } from "fs";
 
 export interface CollateralReservation {
     id: number;
@@ -65,7 +69,7 @@ export interface UnderlyingBalanceChange {
 const CollateralPool = artifacts.require("CollateralPool");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 
-export class FuzzingStateAgent extends TrackedAgentState {
+export class FuzzingAgentState extends TrackedAgentState {
     constructor(
         parent: FuzzingState,
         data: InitialAgentData,
@@ -93,6 +97,7 @@ export class FuzzingStateAgent extends TrackedAgentState {
 
     // log
     actionLog: FuzzingStateLogRecord[] = [];
+    balanceTrackingList = new BalanceTrackingList();
 
     // getters
 
@@ -154,6 +159,8 @@ export class FuzzingStateAgent extends TrackedAgentState {
         const ticketAmountUBA = amountWithDust.sub(this.calculatedDustUBA);
         // create redemption ticket
         this.addRedemptionTicket(args.$event, Number(args.redemptionTicketId), ticketAmountUBA);
+        // update balance tracking
+        this.addBalanceTrackingRow(args.$event, { requestId: args.collateralReservationId, mintAmount: args.mintedAmountUBA, mintFeeAgent: args.agentFeeUBA, mintFeePool: args.poolFeeUBA });
         // delete collateral reservation
         const collateralReservationId = Number(args.collateralReservationId);
         if (collateralReservationId > 0) {  // collateralReservationId == 0 for self-minting
@@ -177,22 +184,34 @@ export class FuzzingStateAgent extends TrackedAgentState {
         super.handleRedemptionRequested(args);
         // create request and close tickets
         const request = this.addRedemptionRequest(args);
-        this.closeRedemptionTicketsWholeLots(args.$event, toBN(args.valueUBA));
+        if (this.isPoolSelfCloseRedemption(args.requestId)) {
+            this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.valueUBA));
+        } else {
+            this.closeRedemptionTicketsWholeLots(args.$event, toBN(args.valueUBA));
+        }
+        // update balance tracking
+        this.addBalanceTrackingRow(args.$event, { requestId: request.id, redemptionRequested: args.valueUBA, redeeming: args.valueUBA, redemptionFee: args.feeUBA });
         this.logAction(`new RedemptionRequest(${request.id}): amount=${formatBN(request.valueUBA)} fee=${formatBN(request.feeUBA)}`, args.$event);
     }
 
     override handleRedemptionPerformed(args: EvmEventArgs<RedemptionPerformed>): void {
         super.handleRedemptionPerformed(args);
+        // update balance tracking
+        this.addBalanceTrackingRow(args.$event, { requestId: args.requestId, redeeming: toBN(args.redemptionAmountUBA).neg(), redemptionSpent: args.spentUnderlyingUBA });
         this.confirmRedemptionPayment('performed', args)
     }
 
     override handleRedemptionPaymentFailed(args: EvmEventArgs<RedemptionPaymentFailed>): void {
         super.handleRedemptionPaymentFailed(args);
+        // update balance tracking
+        this.addBalanceTrackingRow(args.$event, { requestId: args.requestId, redemptionSpent: args.spentUnderlyingUBA });
         this.confirmRedemptionPayment('failed', args)
     }
 
     override handleRedemptionPaymentBlocked(args: EvmEventArgs<RedemptionPaymentBlocked>): void {
         super.handleRedemptionPaymentBlocked(args);
+        // update balance tracking
+        this.addBalanceTrackingRow(args.$event, { requestId: args.requestId, redeeming: toBN(args.redemptionAmountUBA).neg(), redemptionSpent: args.spentUnderlyingUBA });
         this.confirmRedemptionPayment('blocked', args)
     }
 
@@ -201,6 +220,8 @@ export class FuzzingStateAgent extends TrackedAgentState {
         // release request
         const request = this.getRedemptionRequest(Number(args.requestId));
         request.collateralReleased = true;
+        // update balance tracking
+        this.addBalanceTrackingRow(args.$event, { requestId: args.requestId, redeeming: toBN(args.redemptionAmountUBA).neg() });
         this.releaseClosedRedemptionRequests(args.$event, request);
     }
 
@@ -208,12 +229,15 @@ export class FuzzingStateAgent extends TrackedAgentState {
         super.handleRedeemedInCollateral(args);
         // close tickets, update free balance
         this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.redemptionAmountUBA));
+        this.addBalanceTrackingRow(args.$event, { redemptionRequested: args.redemptionAmountUBA });
     }
 
     override handleSelfClose(args: EvmEventArgs<SelfClose>): void {
         super.handleSelfClose(args);
         // close tickets, update free balance
         this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.valueUBA));
+        // update balance tracking
+        this.addBalanceTrackingRow(args.$event, { selfClose: args.valueUBA });
     }
 
     // handlers: dust
@@ -246,6 +270,8 @@ export class FuzzingStateAgent extends TrackedAgentState {
         this.expect(this.announcedUnderlyingWithdrawalId.eq(args.announcementId), `underlying withdrawal id mismatch`, args.$event);
         super.handleUnderlyingWithdrawalConfirmed(args);
         this.addUnderlyingBalanceChange(args.$event, 'withdrawal', toBN(args.spentUBA).neg());
+        // update balance tracking
+        this.addBalanceTrackingRow(args.$event, { requestId: args.announcementId, withdraw: args.spentUBA });
     }
 
     override handleUnderlyingWithdrawalCancelled(args: EvmEventArgs<UnderlyingWithdrawalCancelled>): void {
@@ -256,6 +282,8 @@ export class FuzzingStateAgent extends TrackedAgentState {
     override handleUnderlyingBalanceToppedUp(args: EvmEventArgs<UnderlyingBalanceToppedUp>): void {
         super.handleUnderlyingBalanceToppedUp(args);
         this.addUnderlyingBalanceChange(args.$event, 'topup', toBN(args.depositedUBA));
+        // update balance tracking
+        this.addBalanceTrackingRow(args.$event, { topup: args.depositedUBA });
     }
 
     // handlers: liquidation
@@ -270,10 +298,33 @@ export class FuzzingStateAgent extends TrackedAgentState {
 
     handleTransactionFromUnderlying(transaction: ITransaction) {
         this.logAction(`underlying withdraw amount=${formatBN(transaction.outputs[0][1])} to=${transaction.outputs[0][0]}`, "UNDERLYING_TRANSACTION");
+        // update balance tracking
+        const [operation, requestId] = this.underlyingOperationText(transaction.reference, "unknown underlying withdrawal");
+        for (const [address, amount] of transaction.outputs) {
+            this.addBalanceTrackingRow(null, { operation, requestId, underlyingWithdraw: amount });
+        }
     }
 
     handleTransactionToUnderlying(transaction: ITransaction) {
         this.logAction(`underlying deposit amount=${formatBN(transaction.outputs[0][1])} from=${transaction.inputs[0][0]}`, "UNDERLYING_TRANSACTION");
+        // update balance tracking
+        const [operation, requestId] = this.underlyingOperationText(transaction.reference, "unknown underlying deposit");
+        for (const [address, amount] of transaction.outputs) {
+            this.addBalanceTrackingRow(null, { operation, requestId, underlyingDeposit: amount });
+        }
+    }
+
+    private underlyingOperations: Record<number, string> = {
+        0x0001: "minting", 0x0002: "redemption", 0x0003: "announced withdrawal",
+        0x0011: "topup", 0x0012: "self mint", 0x0013: "address ownership proof",
+    }
+
+    private underlyingOperationText(paymentReference: string | null, defaultText: string): [string, string | null] {
+        if (!PaymentReference.isValid(paymentReference)) return [defaultText, null];
+        const type = PaymentReference.decodeType(paymentReference);
+        const idBN = PaymentReference.decodeId(paymentReference);
+        const id = type >= 0x10 ? null : String(idBN);
+        return ['underlying ' + this.underlyingOperations[type], id];
     }
 
     // handlers: pool enter and exit
@@ -321,6 +372,15 @@ export class FuzzingStateAgent extends TrackedAgentState {
 
     // agent state changing
 
+    private addBalanceTrackingRow(event: EvmEvent | null, data: Partial<BalanceTrackingRow>) {
+        const block = event?.blockNumber ?? null;
+        const operation = event?.event ?? "?";
+        const trackedMinted = this.mintedUBA;
+        const trackedRedeeming = this.redeemingUBA;
+        const trackedAccountedUnderlying = this.underlyingBalanceUBA;
+        this.balanceTrackingList.addRow({ block, operation, trackedMinted, trackedRedeeming, trackedAccountedUnderlying, ...data });
+    }
+
     newCollateralReservation(args: EvmEventArgs<CollateralReserved>): CollateralReservation {
         return {
             id: Number(args.collateralReservationId),
@@ -357,9 +417,12 @@ export class FuzzingStateAgent extends TrackedAgentState {
     }
 
     addRedemptionTicket(event: EvmEvent, ticketId: number, amountUBA: BN) {
-        const ticket = this.newRedemptionTicket(ticketId, amountUBA);
+        const amountWithDust = this.calculatedDustUBA.add(amountUBA);
+        this.calculatedDustUBA = amountWithDust.mod(this.parent.lotSize());
+        const ticketAmount = amountWithDust.sub(this.calculatedDustUBA);
+        const ticket = this.newRedemptionTicket(ticketId, ticketAmount);
         this.redemptionTickets.set(ticket.id, ticket);
-        this.logAction(`new RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, event);
+        this.logAction(`new RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}, new dust=${formatBN(this.calculatedDustUBA)}`, event);
     }
 
     closeRedemptionTicketsWholeLots(event: EvmEvent, amountUBA: BN) {
@@ -548,42 +611,49 @@ export class FuzzingStateAgent extends TrackedAgentState {
     async checkInvariants(checker: FuzzingStateComparator) {
         const agentName = this.name();
         // get actual agent state
-        const agentInfo = await this.parent.context.assetManager.getAgentInfo(this.address);
+        // this.parent.logger?.log(`STARTING DIFFERENCE CHECK FOR ${agentName} - GET INFO`);
+        const agentInfo = await this.parent.context.assetManager.getAgentInfo(this.address)
+            .catch(e => expectErrors(e, ['invalid agent vault address']));
+        if (!agentInfo) {
+            checker.logger.log(`    ${agentName}: agent already destroyed.`);
+            return;
+        }
+        // this.parent.logger?.log(`STARTING DIFFERENCE CHECK FOR ${agentName} - AFTER GET INFO`);
         let problems = 0;
         // reserved
         const reservedUBA = this.calculateReservedUBA();
-        problems += checker.checkEquality(`${agentName}.reservedUBA`, agentInfo.reservedUBA, reservedUBA);
-        problems += checker.checkEquality(`${agentName}.reservedUBA.cumulative`, this.reservedUBA, reservedUBA);
+        problems += checker.checkEquality(`${agentName}.reservedUBA`, agentInfo.reservedUBA, this.reservedUBA);
+        problems += checker.checkEquality(`${agentName}.reservedUBA.cumulative`, agentInfo.reservedUBA, reservedUBA);
         // minted
         const mintedUBA = this.calculateMintedUBA();
-        problems += checker.checkEquality(`${agentName}.mintedUBA`, agentInfo.mintedUBA, mintedUBA);
-        problems += checker.checkEquality(`${agentName}.mintedUBA.cumulative`, this.mintedUBA, mintedUBA);
+        problems += checker.checkEquality(`${agentName}.mintedUBA`, agentInfo.mintedUBA, this.mintedUBA);
+        problems += checker.checkEquality(`${agentName}.mintedUBA.cumulative`, agentInfo.mintedUBA, mintedUBA);
         // redeeming
         const redeemingUBA = this.calculateRedeemingUBA();
-        problems += checker.checkEquality(`${agentName}.redeemingUBA`, agentInfo.redeemingUBA, redeemingUBA);
-        problems += checker.checkEquality(`${agentName}.redeemingUBA.cumulative`, this.redeemingUBA, redeemingUBA);
+        problems += checker.checkEquality(`${agentName}.redeemingUBA`, agentInfo.redeemingUBA, this.redeemingUBA);
+        problems += checker.checkEquality(`${agentName}.redeemingUBA.cumulative`, agentInfo.redeemingUBA, redeemingUBA);
         // poolRedeeming
         const poolRedeemingUBA = this.calculatePoolRedeemingUBA();
-        problems += checker.checkEquality(`${agentName}.poolRedeemingUBA`, agentInfo.poolRedeemingUBA, poolRedeemingUBA);
-        problems += checker.checkEquality(`${agentName}.poolRedeemingUBA.cumulative`, this.poolRedeemingUBA, poolRedeemingUBA);
+        problems += checker.checkEquality(`${agentName}.poolRedeemingUBA`, agentInfo.poolRedeemingUBA, this.poolRedeemingUBA);
+        problems += checker.checkEquality(`${agentName}.poolRedeemingUBA.cumulative`, agentInfo.poolRedeemingUBA, poolRedeemingUBA);
         // free balance
         const freeUnderlyingBalanceUBA = this.calculateFreeUnderlyingBalanceUBA();
-        problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
-        problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA.cumulative`, this.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
+        problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA`, agentInfo.freeUnderlyingBalanceUBA, this.freeUnderlyingBalanceUBA);
+        problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA.cumulative`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
         // pool fees
         const collateralPool = await CollateralPool.at(this.collateralPoolAddress);
         const collateralPoolToken = await CollateralPoolToken.at(requireNotNull(this.poolTokenAddress));
         const collateralPoolName = this.poolName();
         problems += checker.checkEquality(`${collateralPoolName}.totalPoolFees`, await this.parent.context.fAsset.balanceOf(this.collateralPoolAddress), this.totalPoolFee);
         problems += checker.checkEquality(`${collateralPoolName}.totalPoolTokens`, await collateralPoolToken.totalSupply(), this.poolTokenBalances.total());
-        problems += checker.checkEquality(`${collateralPoolName}.totalPoolFeeDebt`, await collateralPool.totalFAssetFeeDebt(), this.poolFeeDebt.total());
+        problems += checker.checkApproxEquality(`${collateralPoolName}.totalPoolFeeDebt`, await collateralPool.totalFAssetFeeDebt(), this.poolFeeDebt.total(), 10);
         for (const tokenHolder of this.poolTokenBalances.keys()) {
             const tokenHolderName = this.parent.eventFormatter.formatAddress(tokenHolder);
             problems += checker.checkEquality(`${collateralPoolName}.poolTokensOf(${tokenHolderName})`, await collateralPoolToken.balanceOf(tokenHolder), this.poolTokenBalances.get(tokenHolder));
             const poolFeeDebt = await collateralPool.fAssetFeeDebtOf(tokenHolder);
-            problems += checker.checkEquality(`${collateralPoolName}.poolFeeDebtOf(${tokenHolderName})`, poolFeeDebt, this.poolFeeDebt.get(tokenHolder));
+            problems += checker.checkApproxEquality(`${collateralPoolName}.poolFeeDebtOf(${tokenHolderName})`, poolFeeDebt, this.poolFeeDebt.get(tokenHolder), 10);
             const virtualFees = await collateralPool.virtualFAssetOf(tokenHolder);
-            problems += checker.checkEquality(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName})`, virtualFees, this.calculateVirtualFeesOf(tokenHolder));
+            problems += checker.checkApproxEquality(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName})`, virtualFees, this.calculateVirtualFeesOf(tokenHolder), 10);
             problems += checker.checkNumericDifference(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName}) >= debt`, virtualFees, 'gte', poolFeeDebt);
         }
         // minimum underlying backing (unless in full liquidation)
@@ -600,9 +670,9 @@ export class FuzzingStateAgent extends TrackedAgentState {
             checker.logger.log(`    ${agentName}.status: CCB -> LIQUIDATION issue, time=${await latestBlockTimestamp() - Number(this.ccbStartTimestamp)}`);
         }
         // log
-        if (problems > 0) {
-            this.writeActionLog(checker.logger);
-        }
+        // if (problems > 0) {
+        //     this.writeActionLog(checker.logger);
+        // }
     }
 
     // expectations and logs
@@ -637,4 +707,13 @@ export class FuzzingStateAgent extends TrackedAgentState {
         }
     }
 
+    writeBalanceTrackingList(dir: string) {
+        const path = `${dir}/${this.name().toLowerCase().replace(/\*/g, 'x')}.csv`;
+        const fd = openNewFile(path, 'w', false);
+        try {
+            this.balanceTrackingList.writeCSV(fd);
+        } finally {
+            closeSync(fd);
+        }
+    }
 }

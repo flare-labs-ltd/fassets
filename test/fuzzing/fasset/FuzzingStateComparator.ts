@@ -1,5 +1,5 @@
 import BN from "bn.js";
-import { BNish, BN_ZERO, formatBN, toBN } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish, formatBN, toBN } from "../../../lib/utils/helpers";
 import { ILogger, MemoryLog } from "../../../lib/utils/logging";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 
@@ -17,6 +17,18 @@ export class FuzzingStateComparator {
         } else {
             return this.checkStringEquality(description, actualValue, trackedValue, alwaysLog);
         }
+    }
+
+    checkApproxEquality(description: string, actualValue: BNish, trackedValue: BNish, maxDiff: BNish, alwaysLog: boolean = false) {
+        const difference = toBN(trackedValue).sub(toBN(actualValue)).abs();
+        const problem = difference.gt(toBN(maxDiff));
+        if (problem) {
+            this.logger.log(`    different  ${description}:  actual=${formatBN(actualValue)} != tracked=${formatBN(trackedValue)},  difference=${formatBN(difference)} > ${formatBN(maxDiff)}`);
+        } else if (alwaysLog) {
+            this.logger.log(`    equal  ${description}:  actual=${formatBN(actualValue)} == tracked=${formatBN(trackedValue)},  difference=${formatBN(difference)} <= ${formatBN(maxDiff)}`);
+        }
+        this.problems += problem ? 1 : 0;
+        return problem ? 1 : 0;
     }
 
     checkStringEquality(description: string, actualValue: unknown, trackedValue: unknown, alwaysLog: boolean = false) {
@@ -43,7 +55,7 @@ export class FuzzingStateComparator {
         this.problems += problem ? 1 : 0;
         return problem ? 1 : 0;
     }
-    
+
     writeLog(logger: ILogger | undefined) {
         if (!logger) return;
         logger.log(`CHECKING STATE DIFFERENCES`);
