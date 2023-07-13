@@ -1069,6 +1069,14 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(assetManagerController.unpause([assetManager.address], { from: governance }), "f-asset terminated");
         });
 
+        it("controler shouldn't be able to terminate asset manager that he is not managing", async () => {
+            let assetManager2: AssetManagerInstance;
+            let fAsset2: FAssetInstance;
+            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
+            //Shouldn't be able to terminate unmanaged asset manager
+            await expectRevert(assetManagerController.terminate([assetManager2.address], { from: governance }), "Asset manager not managed");
+        });
+
         it("should unpause if not yet terminated", async () => {
             await assetManagerController.pause([assetManager.address], { from: governance });
             assert.isTrue(await assetManager.paused());
