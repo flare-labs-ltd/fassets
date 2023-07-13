@@ -429,6 +429,19 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assertWeb3Equal(delegatedAfter, toBN(0));
     });
 
+    it("should destroy the agentVault contract with token used but 0 token balance in agent vault branch test", async () => {
+        const agentVault = await createAgent(owner, underlyingAgent1);
+        //Deposit some token collateral
+        await wNat.deposit({ from: owner, value: toBN(100) })
+        await wNat.approve(agentVault.address, toBN(100), { from: owner })
+        await agentVault.depositCollateral(wNat.address, toBN(100), { from: owner });
+        //Withdraw token so balance is 0
+        await agentVault.withdrawCollateral(wNat.address, toBN(100), accounts[12], { from: owner });
+        await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
+        await time.increase(settings.withdrawalWaitMinSeconds);
+        await assetManager.destroyAgent(agentVault.address, owner, { from: owner });
+    });
+
     it("should payout from a given token", async () => {
         const erc20 = await ERC20Mock.new("XTOK", "XToken");
         const agentVault = await AgentVault.new(assetManagerMock.address);
