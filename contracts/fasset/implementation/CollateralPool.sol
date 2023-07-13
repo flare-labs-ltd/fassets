@@ -396,19 +396,21 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 tokens = token.balanceOf(_account);
         if (tokens == 0) return (0, 0);
         uint256 fAssetShare = virtualFAsset.mulDiv(_tokenShare, tokens);
-        // note: it can happen that debtFAsset = virtualFAsset + 1 > virtualFAsset
+        // note: rounding errors can be responsible for:
+        // - debtFAsset = virtualFAsset + 1 > virtualFAsset
+        // - freeFAsset > totalFAssetFees (not necessarily by 1, but should be small)
         if (_exitType == TokenExitType.MAXIMIZE_FEE_WITHDRAWAL) {
             uint256 freeFasset = debtFAsset < virtualFAsset ? virtualFAsset - debtFAsset : 0;
-            freeFAssetFeeShare = Math.min(fAssetShare, freeFasset);
+            freeFAssetFeeShare = Math.min(Math.min(fAssetShare, freeFasset), totalFAssetFees);
             debtFAssetFeeShare = fAssetShare - freeFAssetFeeShare;
         } else if (_exitType == TokenExitType.MINIMIZE_FEE_DEBT) {
-            debtFAssetFeeShare = Math.min(fAssetShare, debtFAsset);
+            debtFAssetFeeShare = Math.min(Math.min(fAssetShare, debtFAsset), totalFAssetFees);
             freeFAssetFeeShare = fAssetShare - debtFAssetFeeShare;
         } else { // KEEP_RATIO
             debtFAssetFeeShare = virtualFAsset > 0 ? debtFAsset.mulDiv(fAssetShare, virtualFAsset) : 0;
             // _tokenShare <= token.balanceOf(_account) implies fAssetShare <= virtualFAsset
             // implies debtFAssetFeeShare <= fAssetShare
-            freeFAssetFeeShare = fAssetShare - debtFAssetFeeShare;
+            freeFAssetFeeShare = Math.min(fAssetShare - debtFAssetFeeShare, totalFAssetFees);
         }
     }
 
