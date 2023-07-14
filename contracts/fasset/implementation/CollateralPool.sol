@@ -498,7 +498,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 debtFAssetFees = _fAssetFeeDebtOf[_account];
         // note: rounding errors can make debtFassets larger than virtualFassets by at most one
         // this can happen only when user has no free f-assets
-        return virtualFAssetFees > debtFAssetFees ? virtualFAssetFees - debtFAssetFees : 0;
+        uint256 freeFAssetFees = virtualFAssetFees > debtFAssetFees ? virtualFAssetFees - debtFAssetFees : 0;
+        // note: rounding errors can make freeFassets larger than total pool f-asset fees by small amounts
+        return Math.min(freeFAssetFees, totalFAssetFees);
     }
 
     function _transferableTokensOf(
