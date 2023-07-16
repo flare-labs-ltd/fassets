@@ -394,7 +394,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 virtualFAsset = _virtualFAssetFeesOf(_assetData, _account);
         uint256 debtFAsset = _fAssetFeeDebtOf[_account];
         uint256 tokens = token.balanceOf(_account);
-        if (tokens == 0) return (0, 0);
+        if (tokens == 0) return (0, 0); // never happens in this contract
         uint256 fAssetShare = virtualFAsset.mulDiv(_tokenShare, tokens);
         // note: rounding errors can be responsible for:
         // - debtFAsset = virtualFAsset + 1 > virtualFAsset
@@ -442,7 +442,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 _fAssetShare
     )
         internal view
-        returns (uint256 requiredNat)
+        returns (uint256)
     {
         // calculate nat required to keep CR above min(exitCR, poolCR) when taking out _fAssetShare
         // if pool is below exitCR, we shouldn't require it be increased above exitCR, only preserved
@@ -453,11 +453,11 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
             // If price is positive, we divide by a positive number
             uint256 _aux = (_assetData.assetPriceMul * (_assetData.agentBackedFAsset - _fAssetShare))
                 .mulBips(exitCollateralRatioBIPS) / _assetData.assetPriceDiv;
-            requiredNat = _assetData.poolNatBalance > _aux ? _assetData.poolNatBalance - _aux : 0;
+            return _assetData.poolNatBalance > _aux ? _assetData.poolNatBalance - _aux : 0;
         } else {
             // nat that preserves CR
             // solve (N - n) / (F - f) = N / F for n >= 0 get n = N f / F
-            requiredNat = _assetData.agentBackedFAsset > 0 ? _assetData.poolNatBalance.mulDiv(
+            return _assetData.agentBackedFAsset > 0 ? _assetData.poolNatBalance.mulDiv(
                 _fAssetShare, _assetData.agentBackedFAsset) : 0;
         }
     }

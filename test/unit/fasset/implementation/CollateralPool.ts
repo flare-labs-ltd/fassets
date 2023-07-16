@@ -13,6 +13,8 @@ import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../utils/test-settings";
 import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
 import { MAX_BIPS } from "../../../../lib/utils/helpers";
+import { eventArgs } from "../../../../lib/utils/events/truffle";
+import { requiredEventArgsFrom } from "../../../utils/Web3EventDecoder";
 
 function assertEqualBN(a: BN, b: BN, message?: string) {
     assert.equal(a.toString(), b.toString(), message);
@@ -176,9 +178,29 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
     }
 
     async function natToTokens(nat: BN) {
-        const poolSupply = await collateralPoolToken.totalSupply();
-        const collateral = await collateralPool.totalCollateral();
-        return nat.mul(poolSupply).div(collateral);
+        const poolTokenSupply = await collateralPoolToken.totalSupply();
+        const poolCollateral = await collateralPool.totalCollateral();
+        return nat.mul(poolTokenSupply).div(poolCollateral);
+    }
+
+    async function tokensToNat(tokens: BN) {
+        const poolTokenSupply = await collateralPoolToken.totalSupply();
+        const poolCollateral = await collateralPool.totalCollateral();
+        return tokens.mul(poolCollateral).div(poolTokenSupply);
+    }
+
+    async function getFAssetRequiredToNotSpoilCR(natShare: BN): Promise<BN> {
+        const poolCR = await getPoolCRBIPS();
+        const backedFAsset = await assetManager.getFAssetsBackedByPool(agentVault.address);
+        const poolNatBalance = await collateralPool.totalCollateral();
+        if (poolCR.gtn(exitCR)) {
+            const { 0: priceMul, 1: priceDiv } = await assetManager.assetPriceNatWei();
+            const _aux = priceMul.mul(poolNatBalance.sub(natShare)).div(mulBips(priceMul, exitCR)).div(priceDiv);
+            return backedFAsset.gt(_aux) ? backedFAsset.sub(_aux) : toBN(0);
+        } else {
+            // f-assets that preserve CR
+            return backedFAsset.mul(natShare).div(poolNatBalance);
+        }
     }
 
     describe("setting contract variables", async () => {
@@ -805,6 +827,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const fAssetBefore = await fAsset.balanceOf(accounts[0]);
             const tokensBefore = await collateralPoolToken.balanceOf(accounts[0]);
             const resp = await collateralPool.selfCloseExit(tokensBefore, true, "");
+            const tokensAfter = await collateralPoolToken.balanceOf(accounts[0]);
             const fAssetAfter = await fAsset.balanceOf(accounts[0]);
             expectEvent(resp, "IncompleteSelfCloseExit");
             // account had not been taken any f-assets
@@ -814,6 +837,9 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // user could withdraw only the collateral that gets pool at exitCR
             const wNatBalance = await wNat.balanceOf(accounts[0]);
             assertEqualBN(wNatBalance, natToGetCRToExitCR);
+            // check that user's pool tokens evaluate to correct amount of collateral
+            const userPoolNatBalance = await tokensToNat(tokensAfter);
+            assertEqualBN(userPoolNatBalance, ETH(100).sub(natToGetCRToExitCR));
         });
 
         it("should fail self-close exit because agent's max redemption allows for too few f-assets to be redeemed", async () => {
@@ -858,8 +884,52 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(await getPoolCRBIPS(), exitCRBIPS);
             // burning one f-asset gives user additional (exitCR * priceMul / priceDiv) released nat
             const { 0: assetPriceMul, 1: assetPriceDiv } = await assetManager.assetPriceNatWei();
-            const natCoveringOneFAsset = ETH(1).mul(assetPriceMul).mul(exitCRBIPS).divn(MAX_BIPS).div(assetPriceDiv)
+            const natCoveringOneFAsset = ETH(1).mul(assetPriceMul).mul(exitCRBIPS).divn(MAX_BIPS).div(assetPriceDiv);
             assertEqualBN(await wNat.balanceOf(accounts[0]), natToGetCRToExitCR.add(natCoveringOneFAsset));
+        });
+
+        // this test describes a problem when agent's max redemption can cause a very unexpected error to a
+        // user that tries to self-close exit with ALL of their collateral. This is a very unlikely scenario though
+        it("should fail at doing an incomplete self-close exit, where agent's max redeemed f-assets reduce user's withdrawal by a microscopic amount", async () => {
+            // mint some f-assets for minter to be able to do redemption
+            await fAsset.mintAmount(accounts[0], ETH(100));
+            await fAsset.approve(collateralPool.address, ETH(100));
+            // user enters the pool
+            await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
+            // agent should be able to redeem a an amount of f-assets that is just a bit lower than required to
+            const requiredFAssets = await getFAssetRequiredToNotSpoilCR(ETH(100));
+            await assetManager.setMaxRedemptionFromAgent(requiredFAssets.subn(10));
+            // user wants to redeem all tokens, but agent's max redemption forces him to leave a tiny amount of collateral
+            const userTokens = await collateralPoolToken.balanceOf(accounts[0]);
+            const tx = collateralPool.selfCloseExit(userTokens, true, "");
+            await expectRevert(tx, "collateral left after exit is too low and non-zero");
+        });
+
+        it("should simulate a situation where agent's max redemption is lower than required but does not effect the spent collateral", async () => {
+            // make f-asset cheaper than nat (it is required by this test)
+            await assetManager.setAssetPriceNatWei(1, 100);
+            // mint some f-assets for minter to be able to do redemption
+            await fAsset.mintAmount(accounts[0], ETH(100));
+            await fAsset.approve(collateralPool.address, ETH(100));
+            // user enters the pool
+            await collateralPool.enter(0, false, { value: ETH(100), from: accounts[0] });
+            // agent should be able to redeem a an amount of f-assets that is just a bit lower than required to
+            const requiredFAssets = await getFAssetRequiredToNotSpoilCR(ETH(100));
+            await assetManager.setMaxRedemptionFromAgent(requiredFAssets.subn(1));
+            // user can redeem all tokens, as agent's max redemption forces him to leave a tiny amount of collateral
+            const userTokensBefore = await collateralPoolToken.balanceOf(accounts[0]);
+            const resp = await collateralPool.selfCloseExit(userTokensBefore, true, "");
+            const userTokensAfter = await collateralPoolToken.balanceOf(accounts[0]);
+            expectEvent(resp, "IncompleteSelfCloseExit");
+            await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
+            // check that all user's tokens were spent
+            const incompleteSelfCloseExit = eventArgs(resp, "IncompleteSelfCloseExit");
+            assertEqualBN(incompleteSelfCloseExit.burnedTokensWei, userTokensBefore);
+            assertEqualBN(incompleteSelfCloseExit.redeemedFAssetUBA, requiredFAssets.subn(1));
+            assertEqualBN(userTokensAfter, BN_ZERO);
+            const agentRedemption = requiredEventArgsFrom(resp, assetManager, "AgentRedemptionInCollateral");
+            // @ts-ignore
+            assertEqualBN(agentRedemption._amountUBA, requiredFAssets.subn(1));
         });
 
     });

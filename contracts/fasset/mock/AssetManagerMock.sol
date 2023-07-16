@@ -97,8 +97,16 @@ contract AssetManagerMock {
         return fasset;
     }
 
-    function assetPriceNatWei() public pure returns (uint256, uint256) {
-        return (1, 2);
+    uint256 public assetPriceMul = 1;
+    uint256 public assetPriceDiv = 2;
+
+    function assetPriceNatWei() public view returns (uint256, uint256) {
+        return (assetPriceMul, assetPriceDiv);
+    }
+
+    function setAssetPriceNatWei(uint256 _mul, uint256 _div) external {
+        assetPriceMul = _mul;
+        assetPriceDiv = _div;
     }
 
     uint256 public lotSize = 1;
