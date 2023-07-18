@@ -11,7 +11,7 @@ import {
 } from "../../../../typechain-truffle";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestSettingsContracts, createTestContracts } from "../../../utils/test-settings";
-import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
+import { impersonateContract, stopImpersonatingContract, transferWithSuicide } from "../../../utils/contract-test-helpers";
 import { MAX_BIPS } from "../../../../lib/utils/helpers";
 import { eventArgs } from "../../../../lib/utils/events/truffle";
 import { requiredEventArgsFrom } from "../../../utils/Web3EventDecoder";
@@ -195,10 +195,9 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         const poolNatBalance = await collateralPool.totalCollateral();
         if (poolCR.gtn(exitCR)) {
             const { 0: priceMul, 1: priceDiv } = await assetManager.assetPriceNatWei();
-            const _aux = priceMul.mul(poolNatBalance.sub(natShare)).div(mulBips(priceMul, exitCR)).div(priceDiv);
+            const _aux = priceDiv.mul(poolNatBalance.sub(natShare)).muln(MAX_BIPS).div(priceMul).divn(MAX_BIPS * exitCR);
             return backedFAsset.gt(_aux) ? backedFAsset.sub(_aux) : toBN(0);
         } else {
-            // f-assets that preserve CR
             return backedFAsset.mul(natShare).div(poolNatBalance);
         }
     }
@@ -725,6 +724,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
             const resp = await collateralPool.selfCloseExit(tokens, false, "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2");
             await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemption");
+            assert((await getPoolCRBIPS()).gten(exitCR * MAX_BIPS))
         });
 
         it("should do a self-close exit where redemption fails to be done in underlying asset as it does not exceed one lot", async () => {
@@ -735,6 +735,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const requiredFAssets = await collateralPool.fAssetRequiredForSelfCloseExit(ETH(1));
             const resp = await collateralPool.selfCloseExit(ETH(1), false, "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2");
             await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
+            assert((await getPoolCRBIPS()).gten(exitCR * MAX_BIPS))
             const fAssetBalance = await fAsset.balanceOf(accounts[0]);
             assertEqualBN(ETH(100).sub(fAssetBalance), requiredFAssets);
         });
@@ -743,10 +744,13 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await givePoolFAssetFees(ETH(100));
             await getPoolAboveCR(accounts[0], false, exitCR + 1);
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            const collateral = await collateralPool.totalCollateral();
+            const fAssetRequired = await getFAssetRequiredToNotSpoilCR(collateral.divn(2));
             const resp = await collateralPool.selfCloseExit(tokens.divn(2), true, "");
             await expectEvent.inTransaction(resp.tx, assetManager, "AgentRedemptionInCollateral");
+            assert((await getPoolCRBIPS()).gten(exitCR * MAX_BIPS))
             const fAssetBalance = await fAsset.balanceOf(accounts[0]);
-            assertEqualBN(fAssetBalance, ETH(5));
+            assertEqualBNWithError(fAssetBalance, ETH(50).sub(fAssetRequired), BN_ONE);
         });
 
         it("should do a simple self-close exit with one user who has no f-asset debt", async () => {
@@ -802,6 +806,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const fAssetAfter = await fAsset.balanceOf(accounts[0]);
             const tokensAfter = await collateralPoolToken.balanceOf(accounts[0]);
             expectEvent(resp, "IncompleteSelfCloseExit");
+            assert((await getPoolCRBIPS()).gten(exitCR * MAX_BIPS))
             // account had been taken one f-asset
             assertEqualBN(fAssetBefore.sub(fAssetAfter), ETH(0));
             assertEqualBN(tokensBefore.sub(tokensAfter), await natToTokens(natToGetCRToExitCR));
@@ -1119,7 +1124,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectRevert(prms, "cannot destroy a pool holding f-assets");
         });
 
-        it("should destroy the pool", async () => {
+        it("should destroy the pool (without nat balances)", async () => {
             // mint untracked f-assets, wNat and send nat to pool
             await wNat.mintAmount(collateralPool.address, ETH(1));
             await fAsset.mintAmount(collateralPool.address, ETH(2));
@@ -1131,7 +1136,28 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(await fAsset.balanceOf(collateralPool.address), BN_ZERO);
             assertEqualBN(await wNat.balanceOf(agent), ETH(1));
             assertEqualBN(await fAsset.balanceOf(agent), ETH(2));
+        });
 
+        it("should destroy the pool (with nat balance)", async () => {
+            // send nat to contract
+            await transferWithSuicide(ETH(3), accounts[0], collateralPool.address);
+            // destroy through asset manager
+            const natBefore = new BN(await web3.eth.getBalance(agent));
+            const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
+            await assetManager.callFunctionAt(collateralPool.address, payload);
+            const natAfter = new BN(await web3.eth.getBalance(agent));
+            // check that funds were transacted correctly
+            assert.equal(await web3.eth.getBalance(collateralPool.address), "0");
+            assertEqualBN(natAfter.sub(natBefore), ETH(3));
+        });
+
+        it("should try destroying the pool, but fail because nat cannot be sent to receiver", async () => {
+            // send nat to contract
+            await transferWithSuicide(ETH(3), accounts[0], collateralPool.address);
+            // destroy through asset manager (note that collateral pool has receive fucntion disabled)
+            const payload = collateralPool.contract.methods.destroy(collateralPool.address).encodeABI();
+            const prms = assetManager.callFunctionAt(collateralPool.address, payload);
+            await expectRevert(prms, "transfer failed");
         });
 
         it("should payout collateral from collateral pool", async () => {
@@ -1185,8 +1211,8 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const collateralPoolBalance = await wNat.balanceOf(collateralPool.address);
             assertEqualBN(collateralPoolBalance, ETH(1));
         });
-    });
 
+    });
 
     describe("ERC-165 interface identification for Collateral Pool", () => {
         it("should properly respond to supportsInterface", async () => {
@@ -1306,7 +1332,18 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
 
         it("random addresses shouldn't be able to set delegations", async () => {
             const res = collateralPool.delegate([accounts[2]], [5_000], { from: accounts[5] });
-            await expectRevert(res, "only agent")
+            await expectRevert(res, "only agent");
+        });
+
+        it("random address shouldn't be able to set auto claiming", async () => {
+            const contract = await MockContract.new();
+            const res = collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: accounts[2] });
+            await expectRevert(res, "only agent");
+        });
+
+        it("should set auto claiming", async () => {
+            const contract = await MockContract.new();
+            await collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: agent });
         });
     });
 });

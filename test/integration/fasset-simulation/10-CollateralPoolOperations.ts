@@ -444,4 +444,15 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(await context.wNat.balanceOf(minter.address), minterPoolDeposit);
     });
 
+    it("should delegate collateral pool's wNat", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        // make agent available
+        const fullAgentClass1Collateral = toWei(1e7);
+        const fullAgentPoolCollateral = toWei(1e7);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        // delegate
+        await agent.collateralPool.delegate([accounts[2]], [50], { from: agentOwner1 });
+        const { _delegateAddresses } = await context.wNat.delegatesOf(agent.collateralPool.address) as any;
+        assertWeb3Equal(_delegateAddresses[0], accounts[2]);
+    });
 });
