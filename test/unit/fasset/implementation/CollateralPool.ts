@@ -1303,5 +1303,10 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             let res = collateralPool.claimFtsoRewards(distributionToDelegators.address, 0, { from: accounts[5] });
             await expectRevert(res, "only agent");
         });
+
+        it("random addresses shouldn't be able to set delegations", async () => {
+            const res = collateralPool.delegate([accounts[2]], [5_000], { from: accounts[5] });
+            await expectRevert(res, "only agent")
+        });
     });
 });
