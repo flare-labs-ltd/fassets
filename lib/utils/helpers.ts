@@ -447,7 +447,7 @@ export function deepFormat(value: any): any {
         } else {
             return value.map(v => deepFormat(v));
         }
-    } else if (typeof value === 'object') {
+    } else if (typeof value === 'object' && value != null) {
         const formattedEntries = Object.entries(value).map(([key, val]) => [key, deepFormat(val)]);
         return Object.fromEntries(formattedEntries);
     } else {

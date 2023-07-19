@@ -4,7 +4,7 @@ import { decodeLiquidationStrategyImplSettings, encodeLiquidationStrategyImplSet
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, DAYS, HOURS, MAX_BIPS, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { BNish, DAYS, HOURS, MAX_BIPS, deepFormat, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, AssetManagerContract, AssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -1025,7 +1025,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             res = assetManager.exitAvailableAgentList(agentVault.address, { from: agentOwner1 });
             await expectRevert(res, "exit not announced");
             //Announce exit
-            await assetManager.announceExitAvailableAgentList(agentVault.address, { from: agentOwner1 });
+            let annRes = await assetManager.announceExitAvailableAgentList(agentVault.address, { from: agentOwner1 });
+            let exitTime = requiredEventArgs(annRes, 'AvailableAgentExitAnnounced').exitAllowedAt;
+            // announce twice returns the same time for exit
+            await time.increase(1);
+            let annRes2 = await assetManager.announceExitAvailableAgentList(agentVault.address, { from: agentOwner1 });
+            expectEvent.notEmitted(annRes2, 'AvailableAgentExitAnnounced');
+            let exitTime2 = await assetManager.announceExitAvailableAgentList.call(agentVault.address, { from: agentOwner1 });
+            assertWeb3Equal(exitTime, exitTime2);
             //Must wait agentExitAvailableTimelockSeconds before agent can exit
             res = assetManager.exitAvailableAgentList(agentVault.address, { from: agentOwner1 });
             await expectRevert(res, "exit too soon");

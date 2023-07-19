@@ -51,9 +51,12 @@ library AvailableAgents {
         Agent.State storage agent = Agent.get(_agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        uint256 exitAfterTs = block.timestamp + settings.agentExitAvailableTimelockSeconds;
-        agent.exitAvailableAfterTs = exitAfterTs.toUint64();
-        emit AMEvents.AvailableAgentExitAnnounced(_agentVault, exitAfterTs);
+        uint256 exitAfterTs = agent.exitAvailableAfterTs;
+        if (exitAfterTs == 0) {
+            exitAfterTs = block.timestamp + settings.agentExitAvailableTimelockSeconds;
+            agent.exitAvailableAfterTs = exitAfterTs.toUint64();
+            emit AMEvents.AvailableAgentExitAnnounced(_agentVault, exitAfterTs);
+        }
         return exitAfterTs;
     }
 
