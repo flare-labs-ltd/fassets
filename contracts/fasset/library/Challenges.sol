@@ -58,8 +58,8 @@ library Challenges {
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
                 uint256 announcementId = PaymentReference.decodeId(_payment.paymentReference);
                 // valid announced withdrawal cannot have announcementId == 0 and must match the agent's announced id
-                require(announcementId == 0 || announcementId != agent.announcedUnderlyingWithdrawalId,
-                    "matching ongoing announced pmt");
+                // but PaymentReference.isValid already checks that id in the reference != 0, so no extra check needed
+                require(announcementId != agent.announcedUnderlyingWithdrawalId, "matching ongoing announced pmt");
             }
         }
         // start liquidation and reward challengers

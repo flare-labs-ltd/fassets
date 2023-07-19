@@ -167,7 +167,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             expectEvent(res, "IllegalPaymentConfirmed");
         });
 
-        it("should succeed challenging illegal withdrawal payment - no announcement", async () => {
+        it("should succeed challenging illegal withdrawal payment - no announcement, zero id in reference", async () => {
             let txHash = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.announcedWithdrawal(0));
             let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
