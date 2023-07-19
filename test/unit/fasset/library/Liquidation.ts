@@ -1,5 +1,5 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AgentStatus, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
@@ -278,5 +278,33 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info1.status, 1);
         assertWeb3Equal(info2.status, 2);
+    });
+
+    it("should not start liquidation if trusted price is ok for agent", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
+        const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
+        // act
+        await ftsos.asset.setCurrentPrice(toBNExp(8, 12), 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(5, 10), 0);
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        // liquidator "buys" f-assets
+        assertWeb3Equal(info1.status, AgentStatus.NORMAL);
+    });
+
+    it("should ignore trusted price if it is too old", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
+        const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
+        // act
+        await ftsos.asset.setCurrentPrice(toBNExp(8, 12), 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(5, 10), 1000);
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        // liquidator "buys" f-assets
+        assertWeb3Equal(info1.status, AgentStatus.LIQUIDATION);
     });
 });

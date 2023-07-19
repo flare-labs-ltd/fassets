@@ -62,8 +62,8 @@ library FullAgentInfo {
         _info.redeemingUBA = Conversion.convertAmgToUBA(agent.redeemingAMG);
         _info.poolRedeemingUBA = Conversion.convertAmgToUBA(agent.poolRedeemingAMG);
         _info.dustUBA = Conversion.convertAmgToUBA(agent.dustAMG);
-        _info.ccbStartTimestamp = _getCCBStartTime(agent);
-        _info.liquidationStartTimestamp = _getLiquidationStartTime(agent);
+        _info.ccbStartTimestamp = Liquidation.getCCBStartTimestamp(agent);
+        _info.liquidationStartTimestamp = Liquidation.getLiquidationStartTimestamp(agent);
         _info.underlyingBalanceUBA = agent.underlyingBalanceUBA;
         _info.requiredUnderlyingBalanceUBA = UnderlyingBalance.requiredUnderlyingUBA(agent);
         _info.freeUnderlyingBalanceUBA =
@@ -92,34 +92,6 @@ library FullAgentInfo {
         } else {
             assert (status == Agent.Status.DESTROYING);
             return AgentInfo.Status.DESTROYING;
-        }
-    }
-
-    function _getCCBStartTime(
-        Agent.State storage _agent
-    )
-        private view
-        returns (uint256)
-    {
-        if (_agent.status != Agent.Status.LIQUIDATION) return 0;
-        return _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB ? _agent.liquidationStartedAt : 0;
-    }
-
-    function _getLiquidationStartTime(
-        Agent.State storage _agent
-    )
-        private view
-        returns (uint256)
-    {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        if (_agent.status == Agent.Status.LIQUIDATION) {
-            return _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB
-                ? _agent.liquidationStartedAt + settings.ccbTimeSeconds
-                : _agent.liquidationStartedAt;
-        } else if (_agent.status == Agent.Status.FULL_LIQUIDATION) {
-            return _agent.liquidationStartedAt;
-        } else {
-            return 0;
         }
     }
 }

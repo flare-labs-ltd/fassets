@@ -48,7 +48,7 @@ library Liquidation {
         // upgrade liquidation based on CR and time
         CRData memory cr = getCollateralRatiosBIPS(agent);
         _liquidationPhase = _upgradeLiquidationPhase(agent, cr);
-        _liquidationStartTs = _liquidationStartTimestamp(agent);
+        _liquidationStartTs = getLiquidationStartTimestamp(agent);
     }
 
     // Liquidate agent's position.
@@ -197,6 +197,34 @@ library Liquidation {
         _collateralRatioBIPS = Math.max(ratio, ratioTrusted);
     }
 
+    function getCCBStartTimestamp(
+        Agent.State storage _agent
+    )
+        internal view
+        returns (uint256)
+    {
+        if (_agent.status != Agent.Status.LIQUIDATION) return 0;
+        return _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB ? _agent.liquidationStartedAt : 0;
+    }
+
+    function getLiquidationStartTimestamp(
+        Agent.State storage _agent
+    )
+        internal view
+        returns (uint256)
+    {
+        Agent.Status status = _agent.status;
+        if (status == Agent.Status.LIQUIDATION) {
+            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+            bool startedInCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;
+            return _agent.liquidationStartedAt + (startedInCCB ? settings.ccbTimeSeconds : 0);
+        } else if (status == Agent.Status.FULL_LIQUIDATION) {
+            return _agent.liquidationStartedAt;
+        } else {    // any other status - NORMAL or DESTROYING
+            return 0;
+        }
+    }
+
     // Upgrade (CR-based) liquidation phase (NONE -> CCR -> LIQUIDATION), based on agent's collateral ratio.
     // When in full liquidation mode, do nothing.
     function _upgradeLiquidationPhase(
@@ -297,24 +325,6 @@ library Liquidation {
             return Agent.LiquidationPhase.LIQUIDATION;
         } else {    // any other status - NORMAL or DESTROYING
             return Agent.LiquidationPhase.NONE;
-        }
-    }
-
-    function _liquidationStartTimestamp(
-        Agent.State storage _agent
-    )
-        private view
-        returns (uint256)
-    {
-        Agent.Status status = _agent.status;
-        if (status == Agent.Status.LIQUIDATION) {
-            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-            bool startedInCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;
-            return _agent.liquidationStartedAt + (startedInCCB ? settings.ccbTimeSeconds : 0);
-        } else if (status == Agent.Status.FULL_LIQUIDATION) {
-            return _agent.liquidationStartedAt;
-        } else {    // any other status - NORMAL or DESTROYING
-            return 0;
         }
     }
 
