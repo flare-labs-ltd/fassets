@@ -40,7 +40,7 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
             const amount = randomBN(lotSizeWei.muln(3));
             this.comment(`${this.formatAddress(this.address)}: entering pool ${this.formatAddress(this.poolInfo.pool.address)} (${formatBN(amount)})`);
             await this.poolInfo.pool.enter(0, false, { from: this.address, value: amount })
-                .catch(e => scope.exitOnExpectedError(e, []));
+                .catch(e => scope.exitOnExpectedError(e, ['invalid agent vault address']));
         });
     }
 
@@ -72,6 +72,8 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
             if (amount.eq(balance)) {
                 this.poolInfo = undefined;
             }
+        }).catch(e => {
+            scope.exitOnExpectedError(e, ['invalid agent vault address']);
         });
     }
 }
