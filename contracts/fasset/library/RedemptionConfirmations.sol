@@ -112,7 +112,7 @@ library RedemptionConfirmations {
             return (false, "transaction failed");
         } else if (_payment.receivingAddressHash != request.redeemerUnderlyingAddressHash) {
             return (false, "not redeemer's address");
-        } else if (_payment.receivedAmount < 0 || uint256(_payment.receivedAmount) < paymentValueUBA) {
+        } else if (_payment.receivedAmount < int256(paymentValueUBA)) { // safe, paymentValueUBA < 2**128
             // for blocked payments, receivedAmount == 0, but it's still receiver's fault
             if (_payment.status != TransactionAttestation.PAYMENT_BLOCKED) {
                 return (false, "redemption payment too small");

@@ -255,6 +255,52 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(resRe, "invalid redemption reference");
     });
 
+    it("should not confirm redemption payment - payment too old", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        chain.mine(3);  // make some space
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+        //perform redemption payment
+        const paymentAmt = request.valueUBA.sub(request.feeUBA);
+        let tx1Hash!: string;
+        chain.modifyMinedBlock(Number(request.firstUnderlyingBlock) - 1, block => {
+            const tx = wallet.createTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
+            block.transactions.push(tx);
+            tx1Hash = tx.hash;
+        });
+        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
+        const resRe = assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
+        await expectRevert(resRe, "redemption payment too old");
+    });
+
+    it("should fail redemption payment - already deafulted (should not happen in practice)", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+        // trigger default
+        chain.mine(chainInfo.underlyingBlocksForPayment + 1);
+        chain.skipTimeTo(request.lastUnderlyingTimestamp.toNumber() + 1);
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
+        expectEvent(res, 'RedemptionDefault');
+        // force a payment in the past
+        const paymentAmt = request.valueUBA.sub(request.feeUBA);
+        let tx1Hash!: string;
+        chain.modifyMinedBlock(Number(request.firstUnderlyingBlock) + 1, block => {
+            const tx = wallet.createTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
+            block.transactions.push(tx);
+            tx1Hash = tx.hash;
+        });
+        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
+        const resRe = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
+        expectEvent(resRe, 'RedemptionPaymentFailed');
+        const resReArgs = requiredEventArgs(resRe, 'RedemptionPaymentFailed');
+        assert.equal(resReArgs.failureReason, "redemption payment too late");
+    });
+
     it("should not confirm redemption payment - invalid request id", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
