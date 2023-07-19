@@ -80,7 +80,6 @@ library CollateralTypes {
     )
         external
     {
-        require(_data.collateralClass == CollateralType.Class.POOL, "not a pool collateral");
         uint256 index = _add(_data);
         _setPoolCollateralTypeIndex(index);
     }
@@ -176,7 +175,7 @@ library CollateralTypes {
     function _setPoolCollateralTypeIndex(uint256 _index) private {
         AssetManagerState.State storage state = AssetManagerState.get();
         CollateralTypeInt.Data storage token = state.collateralTokens[_index];
-        require(token.collateralClass == CollateralType.Class.POOL, "not a pool collateral token");
+        assert(token.collateralClass == CollateralType.Class.POOL);
         state.poolCollateralIndex = _index.toUint16();
     }
 

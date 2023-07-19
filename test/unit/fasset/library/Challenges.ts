@@ -167,6 +167,15 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
             expectEvent(res, "IllegalPaymentConfirmed");
         });
 
+        it("should succeed challenging illegal withdrawal payment - no announcement", async () => {
+            let txHash = await wallet.addTransaction(
+                underlyingAgent1, underlyingRedeemer, 1, PaymentReference.announcedWithdrawal(0));
+            let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
+            let res = await assetManager.illegalPaymentChallenge(
+                proof, agentVault.address, { from: whitelistedAccount });
+            expectEvent(res, "IllegalPaymentConfirmed");
+        });
+
         it("should not succeed challenging illegal payment - verified transaction too old", async() => {
             let txHash = await wallet.addTransaction(
                 underlyingAgent1, underlyingRedeemer, 1, PaymentReference.redemption(0));
