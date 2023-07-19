@@ -100,6 +100,22 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await expectRevert(assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 }), "invalid address ownership proof");
     });
 
+    it("should prove EOA address without changing current block number", async () => {
+        // init
+        chain.mint(underlyingAgent1, toBNExp(100, 18));
+        // act
+        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
+        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
+        chain.mine(3);  // skip some blocks
+        const proofBlock = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
+        await assetManager.updateCurrentBlock(proofBlock);
+        await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
+        // assert
+        const { 0: currentBlock } = await assetManager.currentUnderlyingBlock();
+        assertWeb3Equal(currentBlock, proofBlock.blockNumber);
+        assert.isAbove(Number(currentBlock), Number(proof.blockNumber) + 2);
+    });
+
     it("should not prove EOA address - address already claimed", async () => {
         // init
         await createAgent(agentOwner1, underlyingAgent1);

@@ -809,6 +809,12 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(res, "SettingChanged", { name: "agentCollateralRatioChangeTimelockSeconds", value: toBN(agentCollateralRatioChangeTimelockSeconds_new) });
         });
 
+        it("should revert setting agent whitelist after timelock when address 0 is provided", async () => {
+            const res = assetManagerController.setAgentWhitelist([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert(timelock_info, "address zero");
+        });
+
         it("should set agent whitelist after timelock", async () => {
             const addr = randomAddress();
             const res = await assetManagerController.setAgentWhitelist([assetManager.address], addr, { from: governance });
@@ -816,7 +822,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(timelock_info, "ContractChanged", { name: "agentWhitelist", value: addr });
         });
 
-        it("should revert setting underlying address validator after timelock when address 0 is provided", async () => {
+        it("should revert setting proof verifier after timelock when address 0 is provided", async () => {
             const res = assetManagerController.setSCProofVerifier([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "address zero");

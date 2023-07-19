@@ -316,6 +316,7 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         address value = abi.decode(_params, (address));
         // validate
+        require(value != address(0), "address zero");
         // update
         settings.agentWhitelist = value;
         emit AMEvents.ContractChanged("agentWhitelist", value);

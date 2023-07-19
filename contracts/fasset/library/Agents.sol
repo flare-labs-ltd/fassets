@@ -272,7 +272,7 @@ library Agents {
         AssetManagerState.State storage state = AssetManagerState.get();
         uint256 tokenIndex = CollateralTypes.getIndex(CollateralType.Class.CLASS1, _token);
         CollateralTypeInt.Data storage collateral = state.collateralTokens[tokenIndex];
-        require(collateral.collateralClass == CollateralType.Class.CLASS1, "not class1 collateral token");
+        assert(collateral.collateralClass == CollateralType.Class.CLASS1);
         // agent should never switch to a deprecated or already invalid collateral
         require(collateral.validUntil == 0, "collateral deprecated");
         // check there is enough collateral for current mintings
@@ -312,7 +312,7 @@ library Agents {
         internal view
     {
         address whitelist = AssetManagerState.getSettings().agentWhitelist;
-        require(whitelist == address(0) || IWhitelist(whitelist).isWhitelisted(_ownerColdAddress),
+        require(IWhitelist(whitelist).isWhitelisted(_ownerColdAddress),
             "agent not whitelisted");
     }
 
