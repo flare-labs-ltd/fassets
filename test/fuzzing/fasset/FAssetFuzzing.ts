@@ -131,12 +131,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             await Agent.changeHotAddress(context, ownerColdAddress, ownerHotAddress);
             const options = createAgentOptions();
             const ownerAddress = coinFlip() ? ownerHotAddress : ownerColdAddress;
-            const fa = await FuzzingAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
-            interceptor.captureEventsFrom(`AGENT_${i}`, fa.agent.agentVault, 'AgentVault');
-            interceptor.captureEventsFrom(`AGENT_${i}_POOL`, fa.agent.collateralPool, 'CollateralPool');
-            interceptor.captureEventsFrom(`AGENT_${i}_LPTOKEN`, fa.agent.collateralPoolToken, 'CollateralPoolToken');
-            await fa.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
-            agents.push(fa);
+            const fuzzingAgent = await FuzzingAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
+            fuzzingAgent.capturePerAgentContractEvents(`AGENT_${i}`);
+            await fuzzingAgent.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
+            agents.push(fuzzingAgent);
         }
         // create customers
         const firstCustomerAddress = firstAgentAddress + 3 * N_AGENTS;

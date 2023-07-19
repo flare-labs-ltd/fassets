@@ -92,6 +92,12 @@ export class FuzzingAgent extends FuzzingActor {
         }
     }
 
+    capturePerAgentContractEvents(agentName: string) {
+        this.runner.interceptor.captureEventsFrom(agentName, this.agent.agentVault, 'AgentVault');
+        this.runner.interceptor.captureEventsFrom(`${agentName}_POOL`, this.agent.collateralPool, 'CollateralPool');
+        this.runner.interceptor.captureEventsFrom(`${agentName}_LPTOKEN`, this.agent.collateralPoolToken, 'CollateralPoolToken');
+    }
+
     async handleRedemptionRequest(request: EventArgs<RedemptionRequested>) {
         if (!coinFlip(0.8)) return;
         this.runner.startThread(async (scope) => {
@@ -349,10 +355,7 @@ export class FuzzingAgent extends FuzzingActor {
         // create the agent again
         this.agent = await Agent.createTest(this.runner.context, this.ownerHotAddress, underlyingAddress + '*', createOptions);
         this.registerForEvents(this.agent.agentVault.address);
-        const newName = name + '*';
-        this.runner.interceptor.captureEventsFrom(newName, this.agent.agentVault, 'AgentVault');
-        this.runner.interceptor.captureEventsFrom(`${newName}_POOL`, this.agent.collateralPool, 'CollateralPool');
-        this.runner.interceptor.captureEventsFrom(`${newName}_LPTOKEN`, this.agent.collateralPoolToken, 'CollateralPoolToken');
+        this.capturePerAgentContractEvents(name + '*');
         await this.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
     }
 }
