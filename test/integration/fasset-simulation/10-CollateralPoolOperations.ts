@@ -444,7 +444,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(await context.wNat.balanceOf(minter.address), minterPoolDeposit);
     });
 
-    it.only("should delegate and undelegate collateral pool's wNat", async () => {
+    it("should delegate and undelegate collateral pool's wNat", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         // make agent available
         const fullAgentClass1Collateral = toWei(1e7);

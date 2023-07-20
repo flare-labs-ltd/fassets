@@ -1,8 +1,9 @@
+import hre from "hardhat";
 import { runAsyncMain } from "../../../lib/utils/helpers";
 import { ChainContracts, loadContracts, newContract, saveContracts } from "../../lib/contracts";
-import { requiredEnvironmentVariable } from "../../lib/deploy-utils";
+import { loadDeployAccounts, requiredEnvironmentVariable } from "../../lib/deploy-utils";
 
-const ERC20Mock = artifacts.require('ERC20Mock');
+const FakeERC20 = artifacts.require('FakeERC20');
 
 // only use when deploying on full flare deploy on hardhat local network (i.e. `deploy_local_hardhat_commands` was run in flare-smart-contracts project)
 runAsyncMain(async () => {
@@ -16,6 +17,7 @@ runAsyncMain(async () => {
 
 async function deployStablecoin(contracts: ChainContracts, name: string, symbol: string) {
     // create token
-    const token = await ERC20Mock.new(name, symbol);
-    contracts[symbol] = newContract(symbol, 'ERC20Mock.sol', token.address);
+    const { deployer } = loadDeployAccounts(hre);
+    const token = await FakeERC20.new(deployer, name, symbol);
+    contracts[symbol] = newContract(symbol, 'FakeERC20.sol', token.address);
 }

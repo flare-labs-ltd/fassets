@@ -1,14 +1,14 @@
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { FtsoV1PriceReaderInstance, IERC165Contract, IERC20Contract, IICleanableContract, IIVPTokenContract, IVPTokenContract } from "../../../../typechain-truffle";
-import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { TestFtsos, TestSettingsContracts, createTestContracts, createTestFtsos } from "../../../utils/test-settings";
+import { FtsoV1PriceReaderInstance, IERC165Contract } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { TestFtsos, TestSettingsContracts, createTestContracts, createTestFtsos } from "../../../utils/test-settings";
+import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const FtsoV1PriceReader = artifacts.require('FtsoV1PriceReader');
 
-contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async accounts => {
+contract(`FtsoV1PriceReader.sol; ${getTestFile(__filename)}; FtsoV1PriceReader basic tests`, async accounts => {
     let contracts: TestSettingsContracts;
     let ftsos: TestFtsos;
     let priceReader: FtsoV1PriceReaderInstance;
