@@ -86,7 +86,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     }
 
     function setPoolToken(address _poolToken)
-        external override
+        external
         onlyAssetManager
     {
         require(address(token) == address(0), "pool token already set");
@@ -94,7 +94,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     }
 
     function setExitCollateralRatioBIPS(uint256 _exitCollateralRatioBIPS)
-        external override
+        external
         onlyAssetManager
     {
         require(_exitCollateralRatioBIPS > topupCollateralRatioBIPS, "value too low");
@@ -102,7 +102,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     }
 
     function setTopupCollateralRatioBIPS(uint256 _topupCollateralRatioBIPS)
-        external override
+        external
         onlyAssetManager
     {
         require(_topupCollateralRatioBIPS < exitCollateralRatioBIPS, "value too high");
@@ -110,7 +110,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     }
 
     function setTopupTokenPriceFactorBIPS(uint256 _topupTokenPriceFactorBIPS)
-        external override
+        external
         onlyAssetManager
     {
         require(_topupTokenPriceFactorBIPS < SafePct.MAX_BIPS, "value too high");
@@ -738,28 +738,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     ////////////////////////////////////////////////////////////////////////////////////
     // Delegation of the pool's collateral and airdrop claiming (same as in AgentVault)
 
-    function claimAirdropDistribution(
-        IDistributionToDelegators _distribution,
-        uint256 _month
-    )
-        external override
-        onlyAgent
-        returns(uint256)
-    {
-        uint256 claimed = _distribution.claim(address(this), payable(address(this)), _month, true);
-        totalCollateral += claimed;
-        return claimed;
-    }
-
-    function optOutOfAirdrop(
-        IDistributionToDelegators _distribution
-    )
-        external override
-        onlyAgent
-    {
-        _distribution.optOutOfAirdrop();
-    }
-
     function delegate(
         address[] memory _to,
         uint256[] memory _bips
@@ -768,6 +746,22 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         onlyAgent
     {
         wNat.batchDelegate(_to, _bips);
+    }
+
+    function undelegateAll() external onlyAgent {
+        wNat.undelegateAll();
+    }
+
+    function revokeDelegationAt(address _who, uint256 _blockNumber) external onlyAgent {
+        wNat.revokeDelegationAt(_who, _blockNumber);
+    }
+
+    function delegateGovernance(address _to) external onlyAgent {
+        wNat.governanceVotePower().delegate(_to);
+    }
+
+    function undelegateGovernance() external onlyAgent {
+        wNat.governanceVotePower().undelegate();
     }
 
     function claimFtsoRewards(
@@ -783,8 +777,20 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         return claimed;
     }
 
-    // Set executors that can then automatically claim rewards and airdrop.
+    function claimAirdropDistribution(
+        IDistributionToDelegators _distribution,
+        uint256 _month
+    )
+        external override
+        onlyAgent
+        returns(uint256)
+    {
+        uint256 claimed = _distribution.claim(address(this), payable(address(this)), _month, true);
+        totalCollateral += claimed;
+        return claimed;
+    }
 
+    // Set executors that can then automatically claim rewards and airdrop.
     function setAutoClaiming(
         IClaimSetupManager _claimSetupManager,
         address[] memory _executors
@@ -796,6 +802,18 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         // no recipients setup - claim everything to pool
     }
 
+    function optOutOfAirdrop(
+        IDistributionToDelegators _distribution
+    )
+        external override
+        onlyAgent
+    {
+        _distribution.optOutOfAirdrop();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // The rest
+
     function isAgentVaultOwner(address _address)
         internal view
         returns (bool)
@@ -804,7 +822,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     }
 
     // in case of f-asset termination
-
     function withdrawCollateralWhenFAssetTerminated()
         external override
         nonReentrant

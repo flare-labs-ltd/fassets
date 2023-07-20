@@ -444,15 +444,34 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(await context.wNat.balanceOf(minter.address), minterPoolDeposit);
     });
 
-    it("should delegate collateral pool's wNat", async () => {
+    it.only("should delegate and undelegate collateral pool's wNat", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         // make agent available
         const fullAgentClass1Collateral = toWei(1e7);
         const fullAgentPoolCollateral = toWei(1e7);
         await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
         // delegate
-        await agent.collateralPool.delegate([accounts[2]], [50], { from: agentOwner1 });
-        const { _delegateAddresses } = await context.wNat.delegatesOf(agent.collateralPool.address) as any;
-        assertWeb3Equal(_delegateAddresses[0], accounts[2]);
+        await agent.collateralPool.delegate([accounts[2], accounts[3]], [6_000, 4_000], { from: agentOwner1 });
+        const delegations1 = await context.wNat.delegatesOf(agent.collateralPool.address) as any;
+        assertWeb3Equal(delegations1._delegateAddresses[0], accounts[2]);
+        assertWeb3Equal(delegations1._bips[0], 6000);
+        const votePower1 = await context.wNat.votePowerOf(accounts[2]);
+        assertWeb3Equal(votePower1, fullAgentClass1Collateral.muln(6_000).divn(10_000));
+        // undelegate at block
+        const blockNumber = await web3.eth.getBlockNumber();
+        await agent.collateralPool.revokeDelegationAt(accounts[2], blockNumber, { from: agentOwner1 });
+        const votePower2 = await context.wNat.votePowerOfAt(accounts[2], blockNumber);
+        assertWeb3Equal(votePower2, 0);
+        const votePower3 = await context.wNat.votePowerOfAt(accounts[3], blockNumber);
+        assertWeb3Equal(votePower3, fullAgentClass1Collateral.muln(4_000).divn(10_000));
+        // undelegate
+        await agent.collateralPool.undelegateAll({ from: agentOwner1 });
+        const delegations2 = await context.wNat.delegatesOf(agent.collateralPool.address) as any;
+        assert.equal(delegations2._delegateAddresses.length, 0);
+        const votePower4 = await context.wNat.votePowerOf(accounts[2]);
+        assertWeb3Equal(votePower4, 0);
+        const votePower5 = await context.wNat.votePowerOf(accounts[3]);
+        assertWeb3Equal(votePower5, 0);
     });
+
 });
