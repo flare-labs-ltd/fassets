@@ -22,11 +22,6 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     mapping(address => uint256) private assetManagerIndex;
     IIAssetManager[] private assetManagers;
 
-    modifier onlyGovernanceOrExecutor {
-        _checkOnlyGovernanceOrExecutor();
-        _;
-    }
-
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, address _addressUpdater)
         Governed(_governanceSettings, _initialGovernance)
         AddressUpdatable(_addressUpdater)
@@ -556,10 +551,6 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             require(assetManagerIndex[address(assetManager)] != 0, "Asset manager not managed");
             assetManager.updateSettings(_method, _value);
         }
-    }
-
-    function _checkOnlyGovernanceOrExecutor() private view {
-        require(msg.sender == governance() || isExecutor(msg.sender), "only governance or executor");
     }
 
     function _checkAssetManager(IIAssetManager _assetManager) private view returns (IIAssetManager) {

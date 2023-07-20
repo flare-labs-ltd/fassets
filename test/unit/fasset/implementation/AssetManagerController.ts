@@ -13,6 +13,7 @@ import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
 
+const AddressUpdater = artifacts.require('AddressUpdater');
 const Whitelist = artifacts.require('Whitelist');
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AddressUpdatableMock = artifacts.require('AddressUpdatableMock');
@@ -649,6 +650,45 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(settings.assetManagerController, accounts[79]);
             assertWeb3Equal(await assetManagerController.replacedBy(), accounts[79]);
+        });
+
+        it("should change contracts by direct updateContracts call", async () => {
+            await contracts.addressUpdater.addOrUpdateContractNamesAndAddresses(["AddressUpdater", "AssetManagerController", "WNat"],
+                [accounts[79], accounts[80], accounts[81]],
+                { from: governance });
+            await assetManagerController.updateContracts([assetManager.address], { from: governance });
+            assertWeb3Equal(await assetManagerController.getAddressUpdater(), accounts[79]);
+            const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(settings.assetManagerController, accounts[80]);
+            assertWeb3Equal(await assetManagerController.replacedBy(), accounts[80]);
+            assertWeb3Equal(await assetManager.getWNat(), accounts[81]);
+        });
+
+        it("should change contracts by direct updateContracts call - no change", async () => {
+            await contracts.addressUpdater.addOrUpdateContractNamesAndAddresses(["AssetManagerController"], [assetManagerController.address], { from: governance });
+            await assetManagerController.updateContracts([assetManager.address], { from: governance });
+            assertWeb3Equal(await assetManagerController.getAddressUpdater(), contracts.addressUpdater.address);
+            const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
+            assertWeb3Equal(settings.assetManagerController, assetManagerController.address);
+            assertWeb3Equal(await assetManagerController.replacedBy(), constants.ZERO_ADDRESS);
+            assertWeb3Equal(await assetManager.getWNat(), contracts.wNat.address);
+        });
+
+        it("should change contracts by direct updateContracts call - zero contract value forbidden", async () => {
+            let addressUpdater = contracts.addressUpdater;
+            for (let zi = 0; zi < 3; zi++) {
+                const newAddressUpdater = await AddressUpdater.new(governance);
+                await addressUpdater.addOrUpdateContractNamesAndAddresses(["AddressUpdater", "AssetManagerController", "WNat"],
+                    [newAddressUpdater.address, assetManagerController.address, contracts.wNat.address], { from: governance });
+                await assetManagerController.updateContracts([assetManager.address], { from: governance });
+                const names = ["AddressUpdater", "AssetManagerController", "WNat"];
+                const addresses = [accounts[79], accounts[80]];
+                names.splice(zi, 1);
+                await newAddressUpdater.addOrUpdateContractNamesAndAddresses(names, addresses, { from: governance });
+                const resPr = assetManagerController.updateContracts([assetManager.address], { from: governance });
+                await expectRevert(resPr, "address zero");
+                addressUpdater = newAddressUpdater;
+            }
         });
 
         it("should change time for payment settings after timelock", async () => {
