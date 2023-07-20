@@ -13,6 +13,10 @@ import { MerkleTree } from "../MerkleTree";
 import { MockAttestationProver, MockAttestationProverError } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
 import { StaticAttestationDefinitionStore } from "./StaticAttestationDefinitionStore";
+import { TruffleExtractEvent, findRequiredEvent } from "../../../lib/utils/events/truffle";
+import { AllEvents, AttestationRequest } from "../../../typechain-truffle/StateConnectorMock";
+import { EventArgs, EvmEvent } from "../../../lib/utils/events/common";
+import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 
 interface DHProof {
     attestationType: AttestationType;
@@ -89,6 +93,14 @@ export class MockStateConnectorClient implements IStateConnectorClient {
             throw new StateConnectorClientError(`StateConnectorClient: invalid attestation data`);
         }
         const data = this.definitionStore.encodeRequest({ ...request, messageIntegrityCode: mic });
+        // submit request and mock listening to event
+        const res = await this.stateConnector.requestAttestations(data);
+        const event = findRequiredEvent(res, 'AttestationRequest');
+        return await this.handleAttestationRequest(event);
+    }
+
+    async handleAttestationRequest(event: Truffle.TransactionLog<AttestationRequest>) {
+        const data = event.args.data;
         // start new round?
         if (this.finalizedRounds.length >= this.rounds.length) {
             this.rounds.push([]);
