@@ -1,6 +1,6 @@
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { FtsoV1PriceReaderInstance, IERC165Contract } from "../../../../typechain-truffle";
+import { FtsoV1PriceReaderInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestContracts, createTestFtsos } from "../../../utils/test-settings";
@@ -59,7 +59,7 @@ contract(`FtsoV1PriceReader.sol; ${getTestFile(__filename)}; FtsoV1PriceReader b
 
     describe("ERC-165 interface identification", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as 'IERC165');
             const IPriceReader = artifacts.require("IPriceReader");
             const iERC165 = await IERC165.at(priceReader.address);
             const iPriceReader = await IPriceReader.at(priceReader.address);
