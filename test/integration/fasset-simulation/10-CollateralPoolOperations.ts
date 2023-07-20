@@ -474,4 +474,19 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(votePower5, 0);
     });
 
+    it("should delegate governance vote power and undelegate", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        // make agent available
+        const fullAgentClass1Collateral = toWei(1e7);
+        const fullAgentPoolCollateral = toWei(1e7);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        // set governance vote power
+        const governanceVP = await context.createGovernanceVP();
+        await context.wNat.setGovernanceVotePower(governanceVP.address, { from: governance });
+        // delegate
+        await agent.collateralPool.delegateGovernance(accounts[5], { from: agent.ownerHotAddress });
+        // undelegate
+        await agent.collateralPool.undelegateGovernance({ from: agent.ownerHotAddress });
+    });
+
 });

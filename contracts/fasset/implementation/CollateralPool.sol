@@ -599,6 +599,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     function _depositWNat()
         internal
     {
+        // msg.value is always > 0 in this contract
         if (msg.value > 0) {
             totalCollateral += msg.value;
             wNat.deposit{value: msg.value}();

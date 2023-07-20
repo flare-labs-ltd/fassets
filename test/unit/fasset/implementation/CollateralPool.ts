@@ -1335,6 +1335,27 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectRevert(res, "only agent");
         });
 
+        it("random address shouldn't be able to undelegate all", async () => {
+            const res = collateralPool.undelegateAll({ from: accounts[5] });
+            await expectRevert(res, "only agent");
+        });
+
+        it("random address shouldn't be able to revoke delegation at block", async () => {
+            const blockNumber = await web3.eth.getBlockNumber();
+            const res = collateralPool.revokeDelegationAt(accounts[2], blockNumber, { from: accounts[5] });
+            await expectRevert(res, "only agent");
+        });
+
+        it("random address shouldn't be able to delegate governance", async () => {
+            const res = collateralPool.delegateGovernance(accounts[2], { from: accounts[5] });
+            await expectRevert(res, "only agent");
+        });
+
+        it("random address shouldn't be able to undelegate governance", async () => {
+            const res = collateralPool.undelegateGovernance({ from: accounts[5] });
+            await expectRevert(res, "only agent");
+        });
+
         it("random address shouldn't be able to set auto claiming", async () => {
             const contract = await MockContract.new();
             const res = collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: accounts[2] });
@@ -1345,5 +1366,6 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const contract = await MockContract.new();
             await collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: agent });
         });
+
     });
 });
