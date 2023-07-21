@@ -18,8 +18,8 @@ export interface ChainContracts {
     // fasset
     SCProofVerifier?: Contract;
     AgentVaultFactory?: Contract;
-    CollateralPoolFactory?: Contract;
-    CollateralPoolTokenFactory?: Contract;
+    ContingencyPoolFactory?: Contract;
+    ContingencyPoolTokenFactory?: Contract;
     AssetManagerController?: Contract;
     PriceReader?: Contract;
     UserWhitelist?: Contract;

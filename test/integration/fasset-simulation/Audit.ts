@@ -18,8 +18,8 @@ import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
 
 const AgentVault = artifacts.require('AgentVault');
-const CollateralPool = artifacts.require('CollateralPool');
-const CollateralPoolToken = artifacts.require('CollateralPoolToken');
+const ContingencyPool = artifacts.require('ContingencyPool');
+const ContingencyPoolToken = artifacts.require('ContingencyPoolToken');
 
 contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => {
     const governance = accounts[10];
@@ -143,11 +143,11 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         const response = await context.assetManager.createAgent(web3DeepNormalize(agentSettings), { from: agentOwner1 });
         const created = requiredEventArgs(response, 'AgentCreated');
         const agentVault = await AgentVault.at(created.agentVault);
-        const collateralPool = await CollateralPool.at(created.collateralPool);
-        const poolTokenAddress = await collateralPool.poolToken();
-        const collateralPoolToken = await CollateralPoolToken.at(poolTokenAddress);
+        const contingencyPool = await ContingencyPool.at(created.contingencyPool);
+        const poolTokenAddress = await contingencyPool.poolToken();
+        const contingencyPoolToken = await ContingencyPoolToken.at(poolTokenAddress);
         // create object
-        const agent = new Agent(context, agentOwner1, agentVault, collateralPool, collateralPoolToken, wallet, agentSettings);
+        const agent = new Agent(context, agentOwner1, agentVault, contingencyPool, contingencyPoolToken, wallet, agentSettings);
         // make agent available
         const fullAgentCollateral = toWei(3e8);
         await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);

@@ -11,13 +11,13 @@ import "../../utils/lib/SafePct.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAssetManager.sol";
 import "../interface/IIAgentVault.sol";
-import "../interface/IICollateralPool.sol";
+import "../interface/IIContingencyPool.sol";
 import "../interface/IFAsset.sol";
-import "./CollateralPoolToken.sol";
+import "./ContingencyPoolToken.sol";
 
 
 //slither-disable reentrancy    // all possible reentrancies guarded by nonReentrant
-contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
+contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
     using SafeCast for uint256;
     using SafePct for uint256;
     using SafeERC20 for IERC20;
@@ -41,7 +41,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     address public immutable agentVault;
     IIAssetManager public immutable assetManager;
     IERC20 public immutable fAsset;
-    CollateralPoolToken public token; // practically immutable
+    ContingencyPoolToken public token; // practically immutable
 
     IWNat public wNat;
     uint32 public exitCollateralRatioBIPS;
@@ -90,7 +90,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         onlyAssetManager
     {
         require(address(token) == address(0), "pool token already set");
-        token = CollateralPoolToken(_poolToken);
+        token = ContingencyPoolToken(_poolToken);
     }
 
     function setExitCollateralRatioBIPS(uint256 _exitCollateralRatioBIPS)
@@ -348,7 +348,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     /**
      * @notice Returns the collateral pool token contract used by this contract
      */
-    function poolToken() external view override returns (ICollateralPoolToken) {
+    function poolToken() external view override returns (IContingencyPoolToken) {
         return token;
     }
 
@@ -853,8 +853,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         returns (bool)
     {
         return _interfaceId == type(IERC165).interfaceId
-            || _interfaceId == type(ICollateralPool).interfaceId
-            || _interfaceId == type(IICollateralPool).interfaceId;
+            || _interfaceId == type(IContingencyPool).interfaceId
+            || _interfaceId == type(IIContingencyPool).interfaceId;
     }
 
     function subOrZero(uint256 _a, uint256 _b)

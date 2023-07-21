@@ -55,7 +55,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
 
     async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string, fullAgentCollateral: BN = toWei(3e8)) {
         await depositCollateral(owner, agentVault, fullAgentCollateral);
-        await agentVault.buyCollateralPoolTokens({ from: owner, value: fullAgentCollateral });  // add pool collateral and agent pool tokens
+        await agentVault.buyContingencyPoolTokens({ from: owner, value: fullAgentCollateral });  // add pool collateral and agent pool tokens
         await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 

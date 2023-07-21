@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "../../userInterfaces/ICollateralPool.sol";
+import "../../userInterfaces/IContingencyPool.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAgentVault.sol";
 import "../interface/IIAssetManager.sol";
@@ -55,28 +55,28 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
     }
 
     // without "onlyOwner" to allow owner to send funds from any source
-    function buyCollateralPoolTokens()
+    function buyContingencyPoolTokens()
         external payable
     {
-        collateralPool().enter{value: msg.value}(0, false);
+        contingencyPool().enter{value: msg.value}(0, false);
     }
 
     function withdrawPoolFees(uint256 _amount, address _recipient)
         external
         onlyOwner
     {
-        collateralPool().withdrawFees(_amount);
+        contingencyPool().withdrawFees(_amount);
         assetManager.fAsset().safeTransfer(_recipient, _amount);
     }
 
-    function redeemCollateralPoolTokens(uint256 _amount, address payable _recipient)
+    function redeemContingencyPoolTokens(uint256 _amount, address payable _recipient)
         external
         onlyOwner
     {
-        ICollateralPool pool = collateralPool();
+        IContingencyPool pool = contingencyPool();
         assetManager.withdrawCollateral(pool.poolToken(), _amount);
         (uint256 natShare, uint256 fassetShare) =
-            pool.exit(_amount, ICollateralPool.TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
+            pool.exit(_amount, IContingencyPool.TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
         _withdrawWNatTo(_recipient, natShare);
         assetManager.fAsset().safeTransfer(_recipient, fassetShare);
     }
@@ -239,11 +239,11 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         _withdrawWNatTo(_recipient, _amount);
     }
 
-    function collateralPool()
+    function contingencyPool()
         public view
-        returns (ICollateralPool)
+        returns (IContingencyPool)
     {
-        return ICollateralPool(assetManager.getCollateralPool(address(this)));
+        return IContingencyPool(assetManager.getContingencyPool(address(this)));
     }
 
     function isOwner(address _address)

@@ -10,8 +10,8 @@ export type AssetManagerControllerEvents = import('../../typechain-truffle/Asset
 export type WNatEvents = import('../../typechain-truffle/WNat').AllEvents;
 export type StateConnectorEvents = import('../../typechain-truffle/IStateConnector').AllEvents;
 export type AgentVaultFactoryEvents = import('../../typechain-truffle/AgentVaultFactory').AllEvents;
-export type CollateralPoolFactoryEvents = import('../../typechain-truffle/CollateralPoolFactory').AllEvents;
-export type CollateralPoolTokenFactoryEvents = import('../../typechain-truffle/CollateralPoolTokenFactory').AllEvents;
+export type ContingencyPoolFactoryEvents = import('../../typechain-truffle/ContingencyPoolFactory').AllEvents;
+export type ContingencyPoolTokenFactoryEvents = import('../../typechain-truffle/ContingencyPoolTokenFactory').AllEvents;
 export type WhitelistEvents = import('../../typechain-truffle/Whitelist').AllEvents;
 export type SCProofVerifierEvents = import('../../typechain-truffle/SCProofVerifier').AllEvents;
 export type PriceReaderEvents = import('../../typechain-truffle/IPriceReader').AllEvents;
@@ -22,8 +22,8 @@ export type AssetManagerEvents = import('../../typechain-truffle/IAssetManager')
 export type FAssetEvents = import('../../typechain-truffle/FAsset').AllEvents;
 export type ERC20Events = import('../../typechain-truffle/IERC20').AllEvents;
 export type AgentVaultEvents = import('../../typechain-truffle/IAgentVault').AllEvents;
-export type CollateralPoolEvents = import('../../typechain-truffle/ICollateralPool').AllEvents;
-export type CollateralPoolTokenEvents = import('../../typechain-truffle/ICollateralPoolToken').AllEvents;
+export type ContingencyPoolEvents = import('../../typechain-truffle/IContingencyPool').AllEvents;
+export type ContingencyPoolTokenEvents = import('../../typechain-truffle/IContingencyPoolToken').AllEvents;
 
 export interface IAssetContext {
     chainInfo: ChainInfo;

@@ -4,8 +4,8 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface ICollateralPoolToken is IERC20 {
-    function collateralPool()
+interface IContingencyPoolToken is IERC20 {
+    function contingencyPool()
         external view
         returns (address);
 

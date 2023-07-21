@@ -3,13 +3,13 @@ pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../userInterfaces/ICollateralPool.sol";
+import "../../userInterfaces/IContingencyPool.sol";
 import "./IWNat.sol";
 
 /**
  * Collateral pool methods that are only callable by the asset manager or pool token.
  */
-interface IICollateralPool is ICollateralPool {
+interface IIContingencyPool is IContingencyPool {
     function setPoolToken(address _poolToken) external;
 
     function payout(address _receiver, uint256 _amountWei, uint256 _agentResponsibilityWei) external;

@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import "../interface/IWNat.sol";
 import "../interface/IIAgentVault.sol";
-import "../interface/IICollateralPool.sol";
+import "../interface/IIContingencyPool.sol";
 import "./ERC20Mock.sol";
 
 contract AssetManagerMock {
@@ -11,7 +11,7 @@ contract AssetManagerMock {
     ERC20Mock public fasset;
     address private commonOwner;
     bool private checkForValidAgentVaultAddress = true;
-    address private collateralPool;
+    address private contingencyPool;
 
     event AgentRedemptionInCollateral(uint256 _amountUBA);
     event AgentRedemption(uint256 _amountUBA);
@@ -56,12 +56,12 @@ contract AssetManagerMock {
         checkForValidAgentVaultAddress = _check;
     }
 
-    function getCollateralPool(address /*_agentVault*/) external view returns (address) {
-        return collateralPool;
+    function getContingencyPool(address /*_agentVault*/) external view returns (address) {
+        return contingencyPool;
     }
 
-    function setCollateralPool(address pool) external {
-        collateralPool = pool;
+    function setContingencyPool(address pool) external {
+        contingencyPool = pool;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +82,7 @@ contract AssetManagerMock {
         emit AgentRedemptionInCollateral(_amountUBA);
     }
 
-    function registerFAssetForCollateralPool(ERC20Mock _fasset) external {
+    function registerFAssetForContingencyPool(ERC20Mock _fasset) external {
         fasset = _fasset;
     }
 

@@ -159,13 +159,13 @@
             },
             "type": "array"
         },
-        "collateralPoolFactory": {
-            "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'CollateralPoolFactory' in contracts.json.",
+        "contingencyPoolFactory": {
+            "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'ContingencyPoolFactory' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
         },
-        "collateralPoolTokenFactory": {
-            "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'CollateralPoolTokenFactory' in contracts.json.",
+        "contingencyPoolTokenFactory": {
+            "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'ContingencyPoolTokenFactory' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
         },

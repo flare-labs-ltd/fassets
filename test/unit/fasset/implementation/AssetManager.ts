@@ -26,8 +26,8 @@ import { Prices } from "../../../../lib/state/Prices";
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
 const AgentVault = artifacts.require('AgentVault');
-const CollateralPool = artifacts.require('CollateralPool');
-const CollateralPoolToken = artifacts.require('CollateralPoolToken');
+const ContingencyPool = artifacts.require('ContingencyPool');
+const ContingencyPoolToken = artifacts.require('ContingencyPoolToken');
 const ERC20Mock = artifacts.require('ERC20Mock');
 
 const mulBIPS = (x: BN, y: BN) => x.mul(y).div(toBN(MAX_BIPS));
@@ -68,9 +68,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             .div(toBN(settings.assetMintingGranularityUBA));
     }
 
-    async function getCollateralPoolToken(agentVault: string) {
-        const pool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault));
-        return CollateralPoolToken.at(await pool.token());
+    async function getContingencyPoolToken(agentVault: string) {
+        const pool = await ContingencyPool.at(await assetManager.getContingencyPool(agentVault));
+        return ContingencyPoolToken.at(await pool.token());
     }
 
     // price of ftso-asset in uba/wei/base units
@@ -107,7 +107,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         await usdc.mintAmount(owner, depositVaultCollateral);
         await usdc.approve(agentVault.address, depositVaultCollateral, { from: owner });
         await agentVault.depositCollateral(usdc.address, depositVaultCollateral, { from: owner });
-        await agentVault.buyCollateralPoolTokens({ from: owner, value: depositPool });
+        await agentVault.buyContingencyPoolTokens({ from: owner, value: depositPool });
     }
 
     async function createAgentWithEOA(owner: string, underlyingAddress: string): Promise<AgentVaultInstance> {
@@ -130,7 +130,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         await wNat.deposit({ from: owner, value: depositVaultCollateral })
         await wNat.transfer(agentVault.address, depositVaultCollateral, { from: owner })
         await agentVault.depositCollateral(usdc.address, depositVaultCollateral, { from: owner });
-        await agentVault.buyCollateralPoolTokens({ from: owner, value: depositPool });
+        await agentVault.buyContingencyPoolTokens({ from: owner, value: depositPool });
     }
 
     //For creating agent where vault collateral and pool wnat are the same
@@ -966,7 +966,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         it("should announce pool redemption (class2 withdrawal) and execute it", async () => {
             const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
             // deposit pool tokens to agent vault (there is a min-limit on nat deposited to collateral pool)
-            await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: toWei(10) });
+            await agentVault.buyContingencyPoolTokens({ from: agentOwner1, value: toWei(10) });
             const _agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(_agentInfo.totalAgentPoolTokensWei, toWei(10));
             // announce withdrawal and execute it (nat to pool token ratio is 1:1 as there are no minted f-assets)
@@ -974,11 +974,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentWithdrawalTimelock = (await assetManager.getSettings()).withdrawalWaitMinSeconds;
             await time.increase(agentWithdrawalTimelock);
             const natRecipient = "0xe34BDff68a5b89216D7f6021c1AB25c012142425"
-            await agentVault.redeemCollateralPoolTokens(toWei(1), natRecipient, { from: agentOwner1 });
+            await agentVault.redeemContingencyPoolTokens(toWei(1), natRecipient, { from: agentOwner1 });
             // check pool tokens were withdrawn
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3DeepEqual(agentInfo.totalAgentPoolTokensWei, toWei(9));
-            const token = await getCollateralPoolToken(agentVault.address);
+            const token = await getContingencyPoolToken(agentVault.address);
             assertWeb3DeepEqual(await token.balanceOf(agentVault.address), toWei(9));
             assertWeb3Equal(await web3.eth.getBalance(natRecipient), toWei(1));
         });
@@ -1110,7 +1110,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentShare = reservationFee.sub(poolShare);
             const agentWnatBalance = await wNat.balanceOf(agentVault.address);
             assertWeb3Equal(agentWnatBalance, agentShare);
-            const poolAddress = await assetManager.getCollateralPool(agentVault.address);
+            const poolAddress = await assetManager.getContingencyPool(agentVault.address);
             const poolWnatBalance = await wNat.balanceOf(poolAddress);
             assertWeb3Equal(poolWnatBalance.sub(toWei(3e8)), poolShare);
         });
@@ -1732,24 +1732,24 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "zero agentVaultFactory address");
         });
 
-        it("validate settings collateralPoolFactory address cannot be zero", async () => {
+        it("validate settings contingencyPoolFactory address cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.collateralPoolFactory = constants.ZERO_ADDRESS;
+            Settings.contingencyPoolFactory = constants.ZERO_ADDRESS;
             let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
-            await expectRevert(res, "zero collateralPoolFactory address");
+            await expectRevert(res, "zero contingencyPoolFactory address");
         });
 
-        it("validate settings collateralPoolTokenFactory address cannot be zero", async () => {
+        it("validate settings contingencyPoolTokenFactory address cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.collateralPoolTokenFactory = constants.ZERO_ADDRESS;
+            Settings.contingencyPoolTokenFactory = constants.ZERO_ADDRESS;
             let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
-            await expectRevert(res, "zero collateralPoolTokenFactory address");
+            await expectRevert(res, "zero contingencyPoolTokenFactory address");
         });
 
         it("validate settings scProofVerifier address cannot be zero", async () => {
@@ -1916,7 +1916,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // create agent
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             const r1 = await assetManager.isLockedVaultToken(agentVault.address, wNat.address);
-            const collateraPoolToken = await getCollateralPoolToken(agentVault.address);
+            const collateraPoolToken = await getContingencyPoolToken(agentVault.address);
             const r2 = await assetManager.isLockedVaultToken(agentVault.address, collateraPoolToken.address);
             const r3 = await assetManager.isLockedVaultToken(agentVault.address, usdc.address);
             assert.equal(r1,false);

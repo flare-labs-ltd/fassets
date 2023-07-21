@@ -51,7 +51,7 @@ library AgentsExternal {
         external
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        require(msg.sender == _agentVault || msg.sender == address(agent.collateralPool),
+        require(msg.sender == _agentVault || msg.sender == address(agent.contingencyPool),
             "only agent vault or pool");
         // try to pull agent out of liquidation
         if (agent.isCollateralToken(_token)) {
@@ -111,7 +111,7 @@ library AgentsExternal {
         Collateral.Kind kind;
         if (_token == agent.getVaultCollateralToken()) {
             kind = Collateral.Kind.VAULT;
-        } else if (_token == agent.collateralPool.poolToken()) {
+        } else if (_token == agent.contingencyPool.poolToken()) {
             kind = Collateral.Kind.AGENT_POOL;
         } else {
             return;     // we don't care about other token withdrawals from agent vault
@@ -143,7 +143,7 @@ library AgentsExternal {
         // upgrade pool wnat
         if (agent.poolCollateralIndex != state.poolCollateralIndex) {
             agent.poolCollateralIndex = state.poolCollateralIndex;
-            agent.collateralPool.upgradeWNatContract(wNat);
+            agent.contingencyPool.upgradeWNatContract(wNat);
             emit AMEvents.AgentCollateralTypeChanged(_agentVault, uint8(CollateralType.Class.POOL), address(wNat));
         }
     }
@@ -191,7 +191,7 @@ library AgentsExternal {
         returns (bool)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        return _token == agent.getVaultCollateralToken() || _token == agent.collateralPool.poolToken();
+        return _token == agent.getVaultCollateralToken() || _token == agent.contingencyPool.poolToken();
     }
 
     function getFAssetsBackedByPool(address _agentVault)

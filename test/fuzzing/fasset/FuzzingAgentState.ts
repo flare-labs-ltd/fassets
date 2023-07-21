@@ -2,7 +2,7 @@ import { constants } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
 import { AgentInfo, AgentStatus, CollateralClass, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { NAT_WEI } from "../../../lib/fasset/Conversions";
-import { CollateralPoolEvents, CollateralPoolTokenEvents } from "../../../lib/fasset/IAssetContext";
+import { ContingencyPoolEvents, ContingencyPoolTokenEvents } from "../../../lib/fasset/IAssetContext";
 import { Prices } from "../../../lib/state/Prices";
 import { InitialAgentData, TrackedAgentState } from "../../../lib/state/TrackedAgentState";
 import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";
@@ -11,13 +11,13 @@ import { EvmEvent } from "../../../lib/utils/events/common";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, expectErrors, formatBN, latestBlockTimestamp, minBN, requireNotNull, sumBN, toBN, toHex } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
-import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
+import { ContingencyPoolInstance, ContingencyPoolTokenInstance } from "../../../typechain-truffle";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp,
     UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/AssetManager";
-import { Enter, Exit } from "../../../typechain-truffle/CollateralPool";
+import { Enter, Exit } from "../../../typechain-truffle/ContingencyPool";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { FuzzingState, FuzzingStateLogRecord } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
@@ -66,8 +66,8 @@ export interface UnderlyingBalanceChange {
     amountUBA: BN,
 }
 
-const CollateralPool = artifacts.require("CollateralPool");
-const CollateralPoolToken = artifacts.require("CollateralPoolToken");
+const ContingencyPool = artifacts.require("ContingencyPool");
+const ContingencyPoolToken = artifacts.require("ContingencyPoolToken");
 
 export class FuzzingAgentState extends TrackedAgentState {
     constructor(
@@ -102,7 +102,7 @@ export class FuzzingAgentState extends TrackedAgentState {
     // getters
 
     get totalPoolFee() {
-        return this.parent.fAssetBalance.get(this.collateralPoolAddress);
+        return this.parent.fAssetBalance.get(this.contingencyPoolAddress);
     }
 
     get totalAgentPoolTokensWei() {
@@ -118,14 +118,14 @@ export class FuzzingAgentState extends TrackedAgentState {
     }
 
     async initializePoolState() {
-        const collateralPool: ContractWithEvents<CollateralPoolInstance, CollateralPoolEvents> = await CollateralPool.at(this.collateralPoolAddress);
-        this.poolTokenAddress = await collateralPool.poolToken();
-        const collateralPoolToken: ContractWithEvents<CollateralPoolTokenInstance, CollateralPoolTokenEvents> = await CollateralPoolToken.at(this.poolTokenAddress);
+        const contingencyPool: ContractWithEvents<ContingencyPoolInstance, ContingencyPoolEvents> = await ContingencyPool.at(this.contingencyPoolAddress);
+        this.poolTokenAddress = await contingencyPool.poolToken();
+        const contingencyPoolToken: ContractWithEvents<ContingencyPoolTokenInstance, ContingencyPoolTokenEvents> = await ContingencyPoolToken.at(this.poolTokenAddress);
         // pool eneter and exit event
-        this.parent.truffleEvents.event(collateralPool, 'Enter').immediate().subscribe(args => this.handlePoolEnter(args));
-        this.parent.truffleEvents.event(collateralPool, 'Exit').immediate().subscribe(args => this.handlePoolExit(args));
+        this.parent.truffleEvents.event(contingencyPool, 'Enter').immediate().subscribe(args => this.handlePoolEnter(args));
+        this.parent.truffleEvents.event(contingencyPool, 'Exit').immediate().subscribe(args => this.handlePoolExit(args));
         // pool token transfer event
-        this.parent.truffleEvents.event(collateralPoolToken, 'Transfer').immediate().subscribe(args => {
+        this.parent.truffleEvents.event(contingencyPoolToken, 'Transfer').immediate().subscribe(args => {
             this.handlePoolTokenTransfer(args.from, args.to, toBN(args.value));
         });
     }
@@ -570,7 +570,7 @@ export class FuzzingAgentState extends TrackedAgentState {
     // calculations
 
     poolName() {
-        return this.parent.eventFormatter.formatAddress(this.collateralPoolAddress);
+        return this.parent.eventFormatter.formatAddress(this.contingencyPoolAddress);
     }
 
     private collateralRatioForPrice(prices: Prices, collateral: CollateralType) {
@@ -641,20 +641,20 @@ export class FuzzingAgentState extends TrackedAgentState {
         problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA`, agentInfo.freeUnderlyingBalanceUBA, this.freeUnderlyingBalanceUBA);
         problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA.cumulative`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
         // pool fees
-        const collateralPool = await CollateralPool.at(this.collateralPoolAddress);
-        const collateralPoolToken = await CollateralPoolToken.at(requireNotNull(this.poolTokenAddress));
-        const collateralPoolName = this.poolName();
-        problems += checker.checkEquality(`${collateralPoolName}.totalPoolFees`, await this.parent.context.fAsset.balanceOf(this.collateralPoolAddress), this.totalPoolFee);
-        problems += checker.checkEquality(`${collateralPoolName}.totalPoolTokens`, await collateralPoolToken.totalSupply(), this.poolTokenBalances.total());
-        problems += checker.checkApproxEquality(`${collateralPoolName}.totalPoolFeeDebt`, await collateralPool.totalFAssetFeeDebt(), this.poolFeeDebt.total(), 10);
+        const contingencyPool = await ContingencyPool.at(this.contingencyPoolAddress);
+        const contingencyPoolToken = await ContingencyPoolToken.at(requireNotNull(this.poolTokenAddress));
+        const contingencyPoolName = this.poolName();
+        problems += checker.checkEquality(`${contingencyPoolName}.totalPoolFees`, await this.parent.context.fAsset.balanceOf(this.contingencyPoolAddress), this.totalPoolFee);
+        problems += checker.checkEquality(`${contingencyPoolName}.totalPoolTokens`, await contingencyPoolToken.totalSupply(), this.poolTokenBalances.total());
+        problems += checker.checkApproxEquality(`${contingencyPoolName}.totalPoolFeeDebt`, await contingencyPool.totalFAssetFeeDebt(), this.poolFeeDebt.total(), 10);
         for (const tokenHolder of this.poolTokenBalances.keys()) {
             const tokenHolderName = this.parent.eventFormatter.formatAddress(tokenHolder);
-            problems += checker.checkEquality(`${collateralPoolName}.poolTokensOf(${tokenHolderName})`, await collateralPoolToken.balanceOf(tokenHolder), this.poolTokenBalances.get(tokenHolder));
-            const poolFeeDebt = await collateralPool.fAssetFeeDebtOf(tokenHolder);
-            problems += checker.checkApproxEquality(`${collateralPoolName}.poolFeeDebtOf(${tokenHolderName})`, poolFeeDebt, this.poolFeeDebt.get(tokenHolder), 10);
-            const virtualFees = await collateralPool.virtualFAssetOf(tokenHolder);
-            problems += checker.checkApproxEquality(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName})`, virtualFees, this.calculateVirtualFeesOf(tokenHolder), 10);
-            problems += checker.checkNumericDifference(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName}) >= debt`, virtualFees, 'gte', poolFeeDebt);
+            problems += checker.checkEquality(`${contingencyPoolName}.poolTokensOf(${tokenHolderName})`, await contingencyPoolToken.balanceOf(tokenHolder), this.poolTokenBalances.get(tokenHolder));
+            const poolFeeDebt = await contingencyPool.fAssetFeeDebtOf(tokenHolder);
+            problems += checker.checkApproxEquality(`${contingencyPoolName}.poolFeeDebtOf(${tokenHolderName})`, poolFeeDebt, this.poolFeeDebt.get(tokenHolder), 10);
+            const virtualFees = await contingencyPool.virtualFAssetOf(tokenHolder);
+            problems += checker.checkApproxEquality(`${contingencyPoolName}.virtualPoolFeesOf(${tokenHolderName})`, virtualFees, this.calculateVirtualFeesOf(tokenHolder), 10);
+            problems += checker.checkNumericDifference(`${contingencyPoolName}.virtualPoolFeesOf(${tokenHolderName}) >= debt`, virtualFees, 'gte', poolFeeDebt);
         }
         // minimum underlying backing (unless in full liquidation)
         if (this.status !== AgentStatus.FULL_LIQUIDATION) {

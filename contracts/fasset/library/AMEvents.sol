@@ -12,7 +12,7 @@ library AMEvents {
     event AgentCreated(
         address indexed owner,
         address agentVault,
-        address collateralPool,
+        address contingencyPool,
         string underlyingAddress,
         address vaultCollateralToken,
         uint256 feeBIPS,

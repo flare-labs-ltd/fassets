@@ -12,8 +12,8 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 
-const CollateralPool = artifacts.require('CollateralPool');
-const CollateralPoolToken = artifacts.require('CollateralPoolToken');
+const ContingencyPool = artifacts.require('ContingencyPool');
+const ContingencyPoolToken = artifacts.require('ContingencyPoolToken');
 
 contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, async accounts => {
     const governance = accounts[10];
@@ -101,8 +101,8 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
     }
 
     async function depositPoolTokens(agentVault: AgentVaultInstance, owner: string, tokens: BN) {
-        const pool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
-        const poolToken = await CollateralPoolToken.at(await pool.poolToken());
+        const pool = await ContingencyPool.at(await assetManager.getContingencyPool(agentVault.address));
+        const poolToken = await ContingencyPoolToken.at(await pool.poolToken());
         await pool.enter(0, false, { value: tokens, from: owner }); // owner will get at least `tokens` of tokens
         await poolToken.transfer(agentVault.address, tokens, { from: owner });
     }

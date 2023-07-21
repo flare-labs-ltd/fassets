@@ -34,7 +34,7 @@ library FullAgentInfo {
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
         _info.status = _getAgentStatusInfo(agent);
         (_info.ownerColdWalletAddress, _info.ownerHotWalletAddress) = Agents.vaultOwner(agent);
-        _info.collateralPool = address(agent.collateralPool);
+        _info.contingencyPool = address(agent.contingencyPool);
         _info.underlyingAddressString = agent.underlyingAddressString;
         _info.publiclyAvailable = agent.availableAgentsPos != 0;
         _info.vaultCollateralToken = collateral.token;
@@ -70,9 +70,9 @@ library FullAgentInfo {
             _info.underlyingBalanceUBA - _info.requiredUnderlyingBalanceUBA.toInt256();
         _info.announcedUnderlyingWithdrawalId = agent.announcedUnderlyingWithdrawalId;
         _info.buyFAssetByAgentFactorBIPS = agent.buyFAssetByAgentFactorBIPS;
-        _info.poolExitCollateralRatioBIPS = agent.collateralPool.exitCollateralRatioBIPS();
-        _info.poolTopupCollateralRatioBIPS = agent.collateralPool.topupCollateralRatioBIPS();
-        _info.poolTopupTokenPriceFactorBIPS = agent.collateralPool.topupTokenPriceFactorBIPS();
+        _info.poolExitCollateralRatioBIPS = agent.contingencyPool.exitCollateralRatioBIPS();
+        _info.poolTopupCollateralRatioBIPS = agent.contingencyPool.topupCollateralRatioBIPS();
+        _info.poolTopupTokenPriceFactorBIPS = agent.contingencyPool.topupTokenPriceFactorBIPS();
     }
 
     function _getAgentStatusInfo(

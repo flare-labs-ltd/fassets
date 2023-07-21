@@ -110,7 +110,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_AGENT_VAULT_FACTORY, abi.encode(_value));
     }
 
-    function setCollateralPoolFactory(IIAssetManager[] memory _assetManagers, address _value)
+    function setContingencyPoolFactory(IIAssetManager[] memory _assetManagers, address _value)
         external
         onlyGovernance
     {
@@ -118,7 +118,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_COLLATERAL_POOL_FACTORY, abi.encode(_value));
     }
 
-    function setCollateralPoolTokenFactory(IIAssetManager[] memory _assetManagers, address _value)
+    function setContingencyPoolTokenFactory(IIAssetManager[] memory _assetManagers, address _value)
         external
         onlyGovernance
     {

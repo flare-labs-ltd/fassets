@@ -10,13 +10,13 @@ NOTE: only the owner of the agent vault may call this method.
 **transferExternalToken** - Allow transferring a token, airdropped to the agent vault, to the owner (cold wallet). Doesn't work for vault collateral tokens or agent's pool tokens  because this would allow withdrawing the locked collateral.
 NOTE: only the owner of the agent vault may call this method.
 
-**buyCollateralPoolTokens** - Buy collateral pool tokens for NAT. Holding enough pool tokens in the vault is required for minting.
+**buyContingencyPoolTokens** - Buy collateral pool tokens for NAT. Holding enough pool tokens in the vault is required for minting.
 NOTE: anybody can call this method, to allow the owner to deposit from any source.
 
 **withdrawPoolFees** - Collateral pool tokens which must be held by the agent accrue minting fees in form of f-assets. These fees can be withdrawn using this method.
 NOTE: only the owner of the agent vault may call this method.
 
-**redeemCollateralPoolTokens** - This method allows the agent to convert collateral pool tokens back to NAT. Prior announcement is required by calling `assetManager.announceAgentPoolTokenRedemption(...)`.
+**redeemContingencyPoolTokens** - This method allows the agent to convert collateral pool tokens back to NAT. Prior announcement is required by calling `assetManager.announceAgentPoolTokenRedemption(...)`.
 NOTE: only the owner of the agent vault may call this method.
 
 **delegate** - Delegate FTSO vote power for a collateral token held in this vault.
@@ -46,4 +46,4 @@ NOTE: only the owner of the agent vault may call this method.
 **optOutOfAirdrop** - Opt out of airdrops for wNAT in the vault.
 NOTE: only the owner of the agent vault may call this method.
 
-**collateralPool** - Get the address of the collateral pool contract corresponding to this agent vault (there is 1:1 correspondence between agent vault and collateral pools).
+**contingencyPool** - Get the address of the collateral pool contract corresponding to this agent vault (there is 1:1 correspondence between agent vault and collateral pools).

@@ -4,8 +4,8 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../interface/IIAssetManager.sol";
-import "../interface/ICollateralPoolFactory.sol";
-import "../interface/ICollateralPoolTokenFactory.sol";
+import "../interface/IContingencyPoolFactory.sol";
+import "../interface/IContingencyPoolTokenFactory.sol";
 import "../interface/IAgentVaultFactory.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
@@ -118,7 +118,7 @@ library AgentsCreateDestroy {
         uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(underlyingAddressHash);
         agent.underlyingBlockAtCreation = SafeMath64.max64(state.currentUnderlyingBlock, eoaProofBlock + 1);
         // add collateral pool
-        agent.collateralPool = _createCollateralPool(_assetManager, address(agentVault), _settings);
+        agent.contingencyPool = _createContingencyPool(_assetManager, address(agentVault), _settings);
         // run the pool setters just for validation
         agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
         agent.setPoolTopupCollateralRatioBIPS(_settings.poolTopupCollateralRatioBIPS);
@@ -127,7 +127,7 @@ library AgentsCreateDestroy {
         agent.allAgentsPos = state.allAgents.length.toUint32();
         state.allAgents.push(address(agentVault));
         // notify
-        _emitAgentCreated(ownerColdAddress, address(agentVault), address(agent.collateralPool),
+        _emitAgentCreated(ownerColdAddress, address(agentVault), address(agent.contingencyPool),
             normalizedUnderlyingAddress, _settings);
         return address(agentVault);
     }
@@ -169,7 +169,7 @@ library AgentsCreateDestroy {
         // cannot have any minting when in destroying status
         assert(agent.totalBackedAMG() == 0);
         // destroy pool
-        agent.collateralPool.destroy(_recipient);
+        agent.contingencyPool.destroy(_recipient);
         // destroy agent vault
         IIAgentVault(_agentVault).destroy(_recipient);
         // remove from the list of all agents
@@ -215,20 +215,20 @@ library AgentsCreateDestroy {
         agent.reservedAMG = 0;
     }
 
-    function _createCollateralPool(
+    function _createContingencyPool(
         IIAssetManager _assetManager,
         address _agentVault,
         AgentSettings.Data calldata _settings
     )
         private
-        returns (IICollateralPool)
+        returns (IIContingencyPool)
     {
         AssetManagerSettings.Data storage globalSettings = AssetManagerState.getSettings();
-        ICollateralPoolFactory collateralPoolFactory = ICollateralPoolFactory(globalSettings.collateralPoolFactory);
-        IICollateralPool collateralPool = collateralPoolFactory.create(_assetManager, _agentVault, _settings);
-        collateralPool.setPoolToken(
-            ICollateralPoolTokenFactory(globalSettings.collateralPoolTokenFactory).create(collateralPool));
-        return collateralPool;
+        IContingencyPoolFactory contingencyPoolFactory = IContingencyPoolFactory(globalSettings.contingencyPoolFactory);
+        IIContingencyPool contingencyPool = contingencyPoolFactory.create(_assetManager, _agentVault, _settings);
+        contingencyPool.setPoolToken(
+            IContingencyPoolTokenFactory(globalSettings.contingencyPoolTokenFactory).create(contingencyPool));
+        return contingencyPool;
     }
 
     // Basically the same as `emit AMEvents.AgentCreated`.
@@ -236,13 +236,13 @@ library AgentsCreateDestroy {
     function _emitAgentCreated(
         address _ownerColdAddress,
         address _agentVault,
-        address _collateralPool,
+        address _contingencyPool,
         string memory _underlyingAddress,
         AgentSettings.Data calldata _settings
     )
         private
     {
-        emit AMEvents.AgentCreated(_ownerColdAddress, _agentVault, _collateralPool, _underlyingAddress,
+        emit AMEvents.AgentCreated(_ownerColdAddress, _agentVault, _contingencyPool, _underlyingAddress,
             address(_settings.vaultCollateralToken), _settings.feeBIPS, _settings.poolFeeShareBIPS,
             _settings.mintingVaultCollateralRatioBIPS, _settings.mintingPoolCollateralRatioBIPS,
             _settings.buyFAssetByAgentFactorBIPS, _settings.poolExitCollateralRatioBIPS,

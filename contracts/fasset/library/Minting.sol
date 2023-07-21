@@ -148,8 +148,8 @@ library Minting {
         uint256 mintValueUBA = Conversion.convertAmgToUBA(_mintValueAMG);
         uint256 agentFeeUBA = _receivedAmountUBA - mintValueUBA - _poolFeeUBA;
         Globals.getFAsset().mint(_minter, mintValueUBA);
-        Globals.getFAsset().mint(address(_agent.collateralPool), _poolFeeUBA);
-        _agent.collateralPool.fAssetFeeDeposited(_poolFeeUBA);
+        Globals.getFAsset().mint(address(_agent.contingencyPool), _poolFeeUBA);
+        _agent.contingencyPool.fAssetFeeDeposited(_poolFeeUBA);
         // notify
         emit AMEvents.MintingExecuted(_agent.vaultAddress(), _crtId, redemptionTicketId,
             mintValueUBA, agentFeeUBA, _poolFeeUBA);

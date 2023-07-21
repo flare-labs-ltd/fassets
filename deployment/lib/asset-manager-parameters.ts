@@ -98,18 +98,18 @@ export interface AssetManagerParameters {
     /**
      * The factory contract for creating agent collateral pools.
      * Can be a contract address (0x...) or a name in contracts.json.
-     * Optional, default is 'CollateralPoolFactory' in contracts.json.
+     * Optional, default is 'ContingencyPoolFactory' in contracts.json.
      * @pattern ^\w+$
      */
-    collateralPoolFactory?: string;
+    contingencyPoolFactory?: string;
 
     /**
      * The factory contract for creating agent collateral pools.
      * Can be a contract address (0x...) or a name in contracts.json.
-     * Optional, default is 'CollateralPoolTokenFactory' in contracts.json.
+     * Optional, default is 'ContingencyPoolTokenFactory' in contracts.json.
      * @pattern ^\w+$
      */
-    collateralPoolTokenFactory?: string;
+    contingencyPoolTokenFactory?: string;
 
     /**
      * The proof verifier contract for state connector prrofs.

@@ -232,8 +232,8 @@
     "address": "0xc5B0f10BEea6BB5Ac10aF93f494e75904B6fb0cC"
   },
   {
-    "name": "CollateralPoolFactory",
-    "contractName": "CollateralPoolFactory.sol",
+    "name": "ContingencyPoolFactory",
+    "contractName": "ContingencyPoolFactory.sol",
     "address": "0x27FEc084D6a09bBB6611063732df1B8BCcba5878"
   },
   {

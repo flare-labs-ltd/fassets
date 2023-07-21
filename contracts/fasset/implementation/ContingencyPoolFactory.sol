@@ -4,11 +4,11 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IFAsset.sol";
-import "../interface/ICollateralPoolFactory.sol";
-import "./CollateralPool.sol";
+import "../interface/IContingencyPoolFactory.sol";
+import "./ContingencyPool.sol";
 
 
-contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
+contract ContingencyPoolFactory is IContingencyPoolFactory, IERC165 {
     using SafeCast for uint256;
 
     function create(
@@ -17,10 +17,10 @@ contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
         AgentSettings.Data memory _settings
     )
         external override
-        returns (IICollateralPool)
+        returns (IIContingencyPool)
     {
         address fAsset = address(_assetManager.fAsset());
-        IICollateralPool pool = new CollateralPool(_agentVault, address(_assetManager), fAsset,
+        IIContingencyPool pool = new ContingencyPool(_agentVault, address(_assetManager), fAsset,
             _settings.poolExitCollateralRatioBIPS.toUint32(),
             _settings.poolTopupCollateralRatioBIPS.toUint32(),
             _settings.poolTopupTokenPriceFactorBIPS.toUint16());
@@ -35,6 +35,6 @@ contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
         returns (bool)
     {
         return _interfaceId == type(IERC165).interfaceId
-            || _interfaceId == type(ICollateralPoolFactory).interfaceId;
+            || _interfaceId == type(IContingencyPoolFactory).interfaceId;
     }
 }

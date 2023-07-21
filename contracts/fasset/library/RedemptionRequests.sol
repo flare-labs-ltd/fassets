@@ -72,7 +72,7 @@ library RedemptionRequests {
         external
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        Agents.requireCollateralPool(agent);
+        Agents.requireContingencyPool(agent);
         require(_amountUBA != 0, "redemption of 0");
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
@@ -92,7 +92,7 @@ library RedemptionRequests {
         external
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        Agents.requireCollateralPool(agent);
+        Agents.requireContingencyPool(agent);
         require(_amountUBA != 0, "redemption of 0");
         // close redemption tickets
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);

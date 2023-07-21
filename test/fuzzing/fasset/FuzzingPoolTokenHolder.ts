@@ -1,6 +1,6 @@
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { formatBN, requireNotNull } from "../../../lib/utils/helpers";
-import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
+import { ContingencyPoolInstance, ContingencyPoolTokenInstance } from "../../../typechain-truffle";
 import { AsyncLock, coinFlip, randomBN, randomChoice } from "../../utils/fuzzing-utils";
 import { FuzzingActor } from "./FuzzingActor";
 import { RedemptionPaymentReceiver } from "./FuzzingCustomer";
@@ -9,8 +9,8 @@ import { FuzzingRunner } from "./FuzzingRunner";
 enum TokenExitType { MAXIMIZE_FEE_WITHDRAWAL, MINIMIZE_FEE_DEBT, KEEP_RATIO }
 
 interface PoolInfo {
-    pool: CollateralPoolInstance;
-    poolToken: CollateralPoolTokenInstance;
+    pool: ContingencyPoolInstance;
+    poolToken: ContingencyPoolTokenInstance;
 }
 
 export class FuzzingPoolTokenHolder extends FuzzingActor {
@@ -31,8 +31,8 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
             if (!this.poolInfo) {
                 const agent = randomChoice(Array.from(this.state.agents.values()));
                 this.poolInfo = {
-                    pool: this.getContract<CollateralPoolInstance>(agent.collateralPoolAddress),
-                    poolToken: this.getContract<CollateralPoolTokenInstance>(requireNotNull(agent.poolTokenAddress)),
+                    pool: this.getContract<ContingencyPoolInstance>(agent.contingencyPoolAddress),
+                    poolToken: this.getContract<ContingencyPoolTokenInstance>(requireNotNull(agent.poolTokenAddress)),
                 };
             }
             const natPrice = this.state.prices.getNat();

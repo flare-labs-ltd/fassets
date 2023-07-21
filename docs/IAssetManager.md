@@ -50,7 +50,7 @@ NOTE: may only be called by the agent vault owner.
 **announceVaultCollateralWithdrawal** - The agent is going to withdraw `_valueNATWei` amount of collateral from the agent vault. This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time. After that time, the agent can call `withdrawCollateral(_vaultCollateralToken, _valueNATWei)` on the agent vault.
 NOTE: may only be called by the agent vault owner.
 
-**announceAgentPoolTokenRedemption** - The agent is going to redeem `_valueWei` collateral pool tokens in the agent vault. This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time. After that time, the agent can call `redeemCollateralPoolTokens(_valueNATWei)` on the agent vault.
+**announceAgentPoolTokenRedemption** - The agent is going to redeem `_valueWei` collateral pool tokens in the agent vault. This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time. After that time, the agent can call `redeemContingencyPoolTokens(_valueNATWei)` on the agent vault.
 NOTE: may only be called by the agent vault owner.
 
 **confirmTopupPayment** - When the agent tops up his underlying address, it has to be confirmed by calling this method, which updates the underlying free balance value.
@@ -72,7 +72,7 @@ NOTE: may only be called by the agent vault owner. NOTE: the agent (cold address
 
 **getAgentInfo** - Return detailed info about an agent, typically needed by a minter.
 
-**getCollateralPool** - Returns the collateral pool address of the agent identified by `_agentVault`.
+**getContingencyPool** - Returns the collateral pool address of the agent identified by `_agentVault`.
 
 **getAgentVaultOwner** - Return the hot and the cold address of the owner of the agent identified by `_agentVault`.
 

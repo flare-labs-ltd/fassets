@@ -1114,11 +1114,11 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         return AgentsExternal.isLockedVaultToken(_agentVault, _token);
     }
 
-    function getCollateralPool(address _agentVault)
+    function getContingencyPool(address _agentVault)
         external view override
         returns (address)
     {
-        return address(Agent.get(_agentVault).collateralPool);
+        return address(Agent.get(_agentVault).contingencyPool);
     }
 
     function getFAssetsBackedByPool(address _agentVault)

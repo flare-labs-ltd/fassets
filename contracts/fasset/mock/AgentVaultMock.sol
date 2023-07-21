@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../interface/IICollateralPool.sol";
+import "../interface/IIContingencyPool.sol";
 
 contract AgentVaultMock {
 
@@ -20,7 +20,7 @@ contract AgentVaultMock {
         require(success, string(data));
     }
 
-    function enterPool(IICollateralPool _collateralPool) external payable {
-        _collateralPool.enter{value: msg.value}(0, false);
+    function enterPool(IIContingencyPool _contingencyPool) external payable {
+        _contingencyPool.enter{value: msg.value}(0, false);
     }
 }

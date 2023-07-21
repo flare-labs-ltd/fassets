@@ -24,7 +24,7 @@ export class TrackedAgentState {
         this.address = data.agentVault;
         this.owner = data.owner;
         this.underlyingAddressString = data.underlyingAddress;
-        this.collateralPoolAddress = data.collateralPool;
+        this.contingencyPoolAddress = data.contingencyPool;
         this.vaultCollateral = parent.collaterals.get(CollateralClass.VAULT, data.vaultCollateralToken);
         this.poolWNatCollateral = parent.collaterals.get(CollateralClass.POOL, data.poolWNat);
         this.feeBIPS = toBN(data.feeBIPS);
@@ -41,7 +41,7 @@ export class TrackedAgentState {
     address: string;
     owner: string;
     underlyingAddressString: string;
-    collateralPoolAddress: string;
+    contingencyPoolAddress: string;
 
     // agent's settings
     vaultCollateral: CollateralType;

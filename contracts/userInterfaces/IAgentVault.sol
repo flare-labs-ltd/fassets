@@ -6,7 +6,7 @@ import "flare-smart-contracts/contracts/userInterfaces/IVPToken.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IClaimSetupManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IDistributionToDelegators.sol";
-import "./ICollateralPool.sol";
+import "./IContingencyPool.sol";
 
 interface IAgentVault {
     /**
@@ -45,7 +45,7 @@ interface IAgentVault {
      * Holding enough pool tokens in the vault is required for minting.
      * NOTE: anybody can call this method, to allow the owner to deposit from any source.
      */
-    function buyCollateralPoolTokens() external payable;
+    function buyContingencyPoolTokens() external payable;
 
     /**
      * Collateral pool tokens which must be held by the agent accrue minting fees in form of f-assets.
@@ -59,7 +59,7 @@ interface IAgentVault {
      * Prior announcement is required by calling `assetManager.announceAgentPoolTokenRedemption(...)`.
      * NOTE: only the owner of the agent vault may call this method.
      */
-    function redeemCollateralPoolTokens(uint256 _amount, address payable _recipient) external;
+    function redeemContingencyPoolTokens(uint256 _amount, address payable _recipient) external;
 
     /**
      * Delegate FTSO vote power for a collateral token held in this vault.
@@ -136,7 +136,7 @@ interface IAgentVault {
      * Get the address of the collateral pool contract corresponding to this agent vault
      * (there is 1:1 correspondence between agent vault and collateral pools).
      */
-    function collateralPool()
+    function contingencyPool()
         external view
-        returns (ICollateralPool);
+        returns (IContingencyPool);
 }

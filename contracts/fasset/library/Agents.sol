@@ -81,7 +81,7 @@ library Agents {
         CollateralTypeInt.Data storage collateral = getPoolCollateral(_agent);
         uint256 minCR = Math.max(_agent.mintingPoolCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
         require(_poolExitCollateralRatioBIPS >= minCR, "value to low");
-        _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
+        _agent.contingencyPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
     }
 
     function setPoolTopupCollateralRatioBIPS(
@@ -92,7 +92,7 @@ library Agents {
     {
         CollateralTypeInt.Data storage collateral = getPoolCollateral(_agent);
         require(_poolTopupCollateralRatioBIPS >= collateral.minCollateralRatioBIPS, "value to low");
-        _agent.collateralPool.setTopupCollateralRatioBIPS(_poolTopupCollateralRatioBIPS);
+        _agent.contingencyPool.setTopupCollateralRatioBIPS(_poolTopupCollateralRatioBIPS);
     }
 
     function setPoolTopupTokenPriceFactorBIPS(
@@ -101,7 +101,7 @@ library Agents {
     )
         internal
     {
-        _agent.collateralPool.setTopupTokenPriceFactorBIPS(_poolTopupTokenPriceFactorBIPS);
+        _agent.contingencyPool.setTopupTokenPriceFactorBIPS(_poolTopupTokenPriceFactorBIPS);
     }
 
     function allocateMintedAssets(
@@ -205,10 +205,10 @@ library Agents {
         returns (uint256 _amountPaid)
     {
         // don't want the calling method to fail due to too small balance for payout
-        uint256 poolBalance = Globals.getWNat().balanceOf(address(_agent.collateralPool));
+        uint256 poolBalance = Globals.getWNat().balanceOf(address(_agent.contingencyPool));
         _amountPaid = Math.min(_amountWei, poolBalance);
         _agentResponsibilityWei = Math.min(_agentResponsibilityWei, _amountPaid);
-        _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
+        _agent.contingencyPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
     }
 
     // We cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT
@@ -340,12 +340,12 @@ library Agents {
         require(isOwner(_agent, msg.sender), "only agent vault owner");
     }
 
-    function requireCollateralPool(
+    function requireContingencyPool(
         Agent.State storage _agent
     )
         internal view
     {
-        require(msg.sender == address(_agent.collateralPool), "only collateral pool");
+        require(msg.sender == address(_agent.contingencyPool), "only collateral pool");
     }
 
     function isCollateralToken(
@@ -414,7 +414,7 @@ library Agents {
         internal view
         returns (address)
     {
-        return _kind == Collateral.Kind.POOL ? address(_agent.collateralPool): _agent.vaultAddress();
+        return _kind == Collateral.Kind.POOL ? address(_agent.contingencyPool): _agent.vaultAddress();
     }
 
     function collateralUnderwater(Agent.State storage _agent, Collateral.Kind _kind)

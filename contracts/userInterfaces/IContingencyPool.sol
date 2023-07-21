@@ -5,10 +5,10 @@ pragma abicoder v2;
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IClaimSetupManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IDistributionToDelegators.sol";
-import "./ICollateralPoolToken.sol";
+import "./IContingencyPoolToken.sol";
 
 
-interface ICollateralPool {
+interface IContingencyPool {
     enum TokenExitType { MAXIMIZE_FEE_WITHDRAWAL, MINIMIZE_FEE_DEBT, KEEP_RATIO }
 
     // Also emitted in case of fee debt payment - in this case `amountNatWei = receivedTokensWei = 0`.
@@ -150,7 +150,7 @@ interface ICollateralPool {
      */
     function poolToken()
         external view
-        returns (ICollateralPoolToken);
+        returns (IContingencyPoolToken);
 
     /**
      * Get the vault of the agent that owns this collateral pool

@@ -31,7 +31,7 @@ library AgentInfo {
         address ownerHotWalletAddress;
 
         // Agent's collateral pool address
-        address collateralPool;
+        address contingencyPool;
 
         // Underlying address as string - to be used for minting payments.
         // For most other purposes, you use underlyingAddressHash, which is `keccak256(underlyingAddressString)`.

@@ -83,7 +83,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // deposit collateral
             const additionalCollateral = toWei(4e6);
             await agent.depositVaultCollateral(additionalCollateral);
-            await agent.buyCollateralPoolTokens(additionalCollateral);
+            await agent.buyContingencyPoolTokens(additionalCollateral);
             // test that ccb cancelled due to collateral deposit
             assert.equal((await agent.getAgentInfo()).status,toBN(0));
             const collateralRatioBIPS = (await agent.getAgentInfo()).poolCollateralRatioBIPS;
@@ -138,7 +138,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // deposit collateral
             const additionalCollateral = toWei(4e12);
             await agent.depositVaultCollateral(additionalCollateral);
-            await agent.buyCollateralPoolTokens(additionalCollateral);
+            await agent.buyContingencyPoolTokens(additionalCollateral);
             // test that ccb cancelled due to collateral deposit and collateral ratio is higher than safety and ccb min
             assert.equal((await agent.getAgentInfo()).status,toBN(0));
             const collateralRatioBIPS = (await agent.getAgentInfo()).vaultCollateralRatioBIPS;

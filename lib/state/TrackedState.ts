@@ -14,7 +14,7 @@ import { Prices } from "./Prices";
 import { tokenContract } from "./TokenPrice";
 import { InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
 
-const CollateralPool = artifacts.require("CollateralPool");
+const ContingencyPool = artifacts.require("ContingencyPool");
 
 export class TrackedState {
     constructor(
@@ -206,12 +206,12 @@ export class TrackedState {
 
     async createAgentWithCurrentState(address: string) {
         const agentInfo = await this.context.assetManager.getAgentInfo(address);
-        const poolWNat = await CollateralPool.at(agentInfo.collateralPool).then(pool => pool.wNat());
+        const poolWNat = await ContingencyPool.at(agentInfo.contingencyPool).then(pool => pool.wNat());
         const agent = this.createAgent({
             agentVault: address,
             owner: agentInfo.ownerColdWalletAddress,
             underlyingAddress: agentInfo.underlyingAddressString,
-            collateralPool: agentInfo.collateralPool,
+            contingencyPool: agentInfo.contingencyPool,
             vaultCollateralToken: agentInfo.vaultCollateralToken,
             poolWNat: poolWNat,
             feeBIPS: agentInfo.feeBIPS,
@@ -230,7 +230,7 @@ export class TrackedState {
         const agent = this.newAgent(data);
         this.agents.set(data.agentVault, agent);
         this.agentsByUnderlying.set(data.underlyingAddress, agent);
-        this.agentsByPool.set(data.collateralPool, agent);
+        this.agentsByPool.set(data.contingencyPool, agent);
         return agent;
     }
 
@@ -243,7 +243,7 @@ export class TrackedState {
         if (agent && this.deleteDestroyedAgents) {
             this.agents.delete(address);
             this.agentsByUnderlying.delete(agent.underlyingAddressString);
-            this.agentsByPool.delete(agent.collateralPoolAddress);
+            this.agentsByPool.delete(agent.contingencyPoolAddress);
         }
     }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../interface/IICollateralPool.sol";
+import "../../interface/IIContingencyPool.sol";
 
 
 library Agent {
@@ -38,7 +38,7 @@ library Agent {
     }
 
     struct State {
-        IICollateralPool collateralPool;
+        IIContingencyPool contingencyPool;
 
         // Address of the agent owner. This is the cold wallet address, which is immutable.
         // The hot wallet address can be retrieved from the global state mapping between cold and hot addresses.
