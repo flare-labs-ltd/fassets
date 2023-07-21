@@ -431,26 +431,26 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
             const liquidationStrategySettings_lengths = {
                 ...liquidationStrategySettings,
-                liquidationFactorClass1BIPS: liquidationStrategySettings.liquidationFactorClass1BIPS.slice(0,1)
+                liquidationFactorVaultCollateralBIPS: liquidationStrategySettings.liquidationFactorVaultCollateralBIPS.slice(0,1)
             };
             const liquidationStrategySettings_empty = {
                 ...liquidationStrategySettings,
-                liquidationFactorClass1BIPS: liquidationCollateralFactorBIPS_empty,
+                liquidationFactorVaultCollateralBIPS: liquidationCollateralFactorBIPS_empty,
                 liquidationCollateralFactorBIPS: liquidationCollateralFactorBIPS_empty
             };
             const liquidationStrategySettings_maxBips = {
                 ...liquidationStrategySettings,
-                liquidationFactorClass1BIPS: liquidationStrategySettings.liquidationFactorClass1BIPS.slice(0,2),
+                liquidationFactorVaultCollateralBIPS: liquidationStrategySettings.liquidationFactorVaultCollateralBIPS.slice(0,2),
                 liquidationCollateralFactorBIPS: liquidationCollateralFactorBIPS_maxBips
             };
             const liquidationStrategySettings_notIncreasing = {
                 ...liquidationStrategySettings,
-                liquidationFactorClass1BIPS: liquidationStrategySettings.liquidationFactorClass1BIPS.slice(0,2),
+                liquidationFactorVaultCollateralBIPS: liquidationStrategySettings.liquidationFactorVaultCollateralBIPS.slice(0,2),
                 liquidationCollateralFactorBIPS: liquidationCollateralFactorBIPS_notIncreasing
             };
             const liquidationStrategySettings_tooHigh = {
                 ...liquidationStrategySettings,
-                liquidationFactorClass1BIPS: [12000, 14001],
+                liquidationFactorVaultCollateralBIPS: [12000, 14001],
                 liquidationCollateralFactorBIPS: [12000, 14000]
             }
 
@@ -463,13 +463,13 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let res_notIncreasing = assetManagerController.updateLiquidationStrategySettings([assetManager.address], encodeLiquidationStrategyImplSettings(liquidationStrategySettings_notIncreasing), { from: governance });
             await expectRevert(waitForTimelock(res_notIncreasing, assetManagerController, updateExecutor), "factors not increasing");
             let res_tooHigh = assetManagerController.updateLiquidationStrategySettings([assetManager.address], encodeLiquidationStrategyImplSettings(liquidationStrategySettings_tooHigh), { from: governance });
-            await expectRevert(waitForTimelock(res_tooHigh, assetManagerController, updateExecutor), "class1 factor higher than total");
+            await expectRevert(waitForTimelock(res_tooHigh, assetManagerController, updateExecutor), "vault collateral factor higher than total");
         });
 
         it("should set liquidation collateral factor bips", async () => {
             const newLiquidationStrategySettings = {
                 ...liquidationStrategySettings,
-                liquidationFactorClass1BIPS: liquidationStrategySettings.liquidationFactorClass1BIPS.slice(0,2),
+                liquidationFactorVaultCollateralBIPS: liquidationStrategySettings.liquidationFactorVaultCollateralBIPS.slice(0,2),
                 liquidationCollateralFactorBIPS: [2_0000, 2_5000]
             }
             let prms = assetManagerController.updateLiquidationStrategySettings([assetManager.address], encodeLiquidationStrategyImplSettings(newLiquidationStrategySettings), { from: governance });
@@ -527,10 +527,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should revert redemption default factor bips", async () => {
             const currentSettings = await assetManager.getSettings();
-            let redemptionDefaultFactorAgentC1BIPS_big = toBN(currentSettings.redemptionDefaultFactorAgentC1BIPS).muln(12001).divn(10_000);
-            let redemptionDefaultFactorAgentC1BIPS_low = MAX_BIPS;
+            let redemptionDefaultFactorVaultCollateralBIPS_big = toBN(currentSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(12001).divn(10_000);
+            let redemptionDefaultFactorVaultCollateralBIPS_low = MAX_BIPS;
             let redemptionDefaultFactorPoolBIPS = toBN(currentSettings.redemptionDefaultFactorPoolBIPS);
-            let redemptionDefaultFactorAgentPool_big = toBN(currentSettings.redemptionDefaultFactorAgentC1BIPS).muln(12001).divn(10_000);
+            let redemptionDefaultFactorAgentPool_big = toBN(currentSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(12001).divn(10_000);
             let redemptionDefaultFactorAgentPool_low = 100;
             let redemptionDefaultFactorBIPS_new = 1_3000;
 
@@ -543,9 +543,9 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(res_low_pool, "fee decrease too big");
 
             await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
-            let res_big = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorAgentC1BIPS_big, redemptionDefaultFactorPoolBIPS, { from: governance });
+            let res_big = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_big, redemptionDefaultFactorPoolBIPS, { from: governance });
             await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
-            let res_low = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorAgentC1BIPS_low, BN_ZERO, { from: governance });
+            let res_low = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_low, BN_ZERO, { from: governance });
 
             await expectRevert(res_big, "fee increase too big");
             await expectRevert(res_low, "bips value too low");
@@ -553,7 +553,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
             await assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_new, redemptionDefaultFactorPoolBIPS, { from: governance });
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            let redemptionDefaultFactorBIPS_small = toBN(newSettings.redemptionDefaultFactorAgentC1BIPS).muln(8332).divn(10_000);;
+            let redemptionDefaultFactorBIPS_small = toBN(newSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(8332).divn(10_000);;
 
             await time.increase(toBN(settings.minUpdateRepeatTimeSeconds).addn(1));
             let res_small = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorBIPS_small, redemptionDefaultFactorPoolBIPS, { from: governance });
@@ -563,17 +563,17 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should set redemption default factor bips for agent", async () => {
             const currentSettings = await assetManager.getSettings();
             let redemptionDefaultFactorPoolBIPS = toBN(currentSettings.redemptionDefaultFactorPoolBIPS);
-            let redemptionDefaultFactorAgentC1BIPS_new = 1_1000;
-            let res = await assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorAgentC1BIPS_new, redemptionDefaultFactorPoolBIPS, { from: governance });
-            expectEvent(res, "SettingChanged", { name: "redemptionDefaultFactorAgentC1BIPS", value: toBN(redemptionDefaultFactorAgentC1BIPS_new) });
+            let redemptionDefaultFactorVaultCollateralBIPS_new = 1_1000;
+            let res = await assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_new, redemptionDefaultFactorPoolBIPS, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "redemptionDefaultFactorVaultCollateralBIPS", value: toBN(redemptionDefaultFactorVaultCollateralBIPS_new) });
         });
 
         it("should revert update - too close to previous update", async () => {
             const currentSettings = await assetManager.getSettings();
             let redemptionDefaultFactorPoolBIPS = toBN(currentSettings.redemptionDefaultFactorPoolBIPS);
-            let redemptionDefaultFactorAgentC1BIPS_new = 1_3000;
-            await assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorAgentC1BIPS_new, redemptionDefaultFactorPoolBIPS, { from: governance });
-            let update = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorAgentC1BIPS_new, redemptionDefaultFactorPoolBIPS, { from: governance });
+            let redemptionDefaultFactorVaultCollateralBIPS_new = 1_3000;
+            await assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_new, redemptionDefaultFactorPoolBIPS, { from: governance });
+            let update = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_new, redemptionDefaultFactorPoolBIPS, { from: governance });
             await expectRevert(update, "too close to previous update");
         });
 
@@ -796,18 +796,18 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(timelock_info, "SettingChanged", { name: "tokenInvalidationTimeMinSeconds", value: toBN(tokenInvalidationTimeMinSeconds) });
         });
 
-        it("should revert setting Class1 buy for flare factor BIPS when value is too low after timelock", async () => {
-            let class1BuyForFlareFactorBIPS_tooSmall = toBN(MAX_BIPS).divn(2);
-            const res = assetManagerController.setClass1BuyForFlareFactorBIPS([assetManager.address], class1BuyForFlareFactorBIPS_tooSmall, { from: governance });
+        it("should revert setting VaultCollateral buy for flare factor BIPS when value is too low after timelock", async () => {
+            let vaultCollateralBuyForFlareFactorBIPS_tooSmall = toBN(MAX_BIPS).divn(2);
+            const res = assetManagerController.setVaultCollateralBuyForFlareFactorBIPS([assetManager.address], vaultCollateralBuyForFlareFactorBIPS_tooSmall, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "value too small");
         });
 
-        it("should set Class1 buy for flare factor BIPS after timelock", async () => {
-            let class1BuyForFlareFactorBIPS_new = toBN(MAX_BIPS).muln(2);
-            const res = await assetManagerController.setClass1BuyForFlareFactorBIPS([assetManager.address], class1BuyForFlareFactorBIPS_new, { from: governance });
+        it("should set VaultCollateral buy for flare factor BIPS after timelock", async () => {
+            let vaultCollateralBuyForFlareFactorBIPS_new = toBN(MAX_BIPS).muln(2);
+            const res = await assetManagerController.setVaultCollateralBuyForFlareFactorBIPS([assetManager.address], vaultCollateralBuyForFlareFactorBIPS_new, { from: governance });
             const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
-            expectEvent(timelock_info, "SettingChanged", { name: "class1BuyForFlareFactorBIPS", value: toBN(class1BuyForFlareFactorBIPS_new) });
+            expectEvent(timelock_info, "SettingChanged", { name: "vaultCollateralBuyForFlareFactorBIPS", value: toBN(vaultCollateralBuyForFlareFactorBIPS_new) });
         });
 
         it("should revert setting agent exit available timelock seconds when value is too big", async () => {
@@ -998,7 +998,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
                 safetyMinCollateralRatioBIPS: "21000",
             };
             const res = assetManagerController.addCollateralType([assetManager.address], newToken, { from: governance });
-            await expectRevert(res, "not a class1 collateral");
+            await expectRevert(res, "not a vault collateral");
         });
 
         it("should revert adding Collateral token when token exists", async () => {
@@ -1203,8 +1203,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("random address shouldn't be able to set redemption default factor bips for agent", async () => {
             const currentSettings = await assetManager.getSettings();
             let redemptionDefaultFactorPoolBIPS = toBN(currentSettings.redemptionDefaultFactorPoolBIPS);
-            let redemptionDefaultFactorAgentC1BIPS_new = 1_1000;
-            let res = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorAgentC1BIPS_new, redemptionDefaultFactorPoolBIPS, { from: accounts[12] });
+            let redemptionDefaultFactorVaultCollateralBIPS_new = 1_1000;
+            let res = assetManagerController.setRedemptionDefaultFactorBips([assetManager.address], redemptionDefaultFactorVaultCollateralBIPS_new, redemptionDefaultFactorPoolBIPS, { from: accounts[12] });
             await expectRevert(res, "only governance");
         });
 

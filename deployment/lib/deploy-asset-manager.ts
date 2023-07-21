@@ -153,8 +153,8 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const addressValidator = await AddressValidator.new(...addressValidatorConstructorArgs) as Truffle.ContractInstance;
 
     const poolCollateral = convertCollateralType(contracts, parameters.poolCollateral, CollateralClass.POOL);
-    const class1Collateral = parameters.class1Collaterals.map(p => convertCollateralType(contracts, p, CollateralClass.CLASS1));
-    const collateralTypes = [poolCollateral, ...class1Collateral];
+    const vaultCollateral = parameters.vaultCollaterals.map(p => convertCollateralType(contracts, p, CollateralClass.VAULT));
+    const collateralTypes = [poolCollateral, ...vaultCollateral];
 
     const liquidationStrategyFactory = liquidationStrategyFactories[parameters.liquidationStrategy]();
     const liquidationStrategy = await liquidationStrategyFactory.deployLibrary(hre, contracts);
@@ -258,7 +258,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         mintingPoolHoldingsRequiredBIPS: parameters.mintingPoolHoldingsRequiredBIPS,
         maxRedeemedTickets: parameters.maxRedeemedTickets,
         redemptionFeeBIPS: parameters.redemptionFeeBIPS,
-        redemptionDefaultFactorAgentC1BIPS: parameters.redemptionDefaultFactorClass1BIPS,
+        redemptionDefaultFactorVaultCollateralBIPS: parameters.redemptionDefaultFactorVaultCollateralBIPS,
         redemptionDefaultFactorPoolBIPS: parameters.redemptionDefaultFactorPoolBIPS,
         underlyingBlocksForPayment: parameters.underlyingBlocksForPayment,
         underlyingSecondsForPayment: parameters.underlyingSecondsForPayment,
@@ -273,7 +273,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         withdrawalWaitMinSeconds: parameters.withdrawalWaitMinSeconds,
         announcedUnderlyingConfirmationMinSeconds: parameters.announcedUnderlyingConfirmationMinSeconds,
         buybackCollateralFactorBIPS: parameters.buybackCollateralFactorBIPS,
-        class1BuyForFlareFactorBIPS: parameters.class1BuyForFlareFactorBIPS,
+        vaultCollateralBuyForFlareFactorBIPS: parameters.vaultCollateralBuyForFlareFactorBIPS,
         minUpdateRepeatTimeSeconds: parameters.minUpdateRepeatTimeSeconds,
         tokenInvalidationTimeMinSeconds: parameters.tokenInvalidationTimeMinSeconds,
         agentExitAvailableTimelockSeconds: parameters.agentExitAvailableTimelockSeconds,

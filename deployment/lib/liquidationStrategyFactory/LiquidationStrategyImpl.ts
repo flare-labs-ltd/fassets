@@ -24,6 +24,6 @@ export class LiquidationStrategyImpl implements ILiquidationStrategyFactory<Liqu
 
     encodeSettings(settings: LiquidationStrategyImplSettings): string {
         return web3.eth.abi.encodeParameters(['uint256', 'uint256[]', 'uint256[]'],
-            [settings.liquidationStepSeconds, settings.liquidationCollateralFactorBIPS, settings.liquidationFactorClass1BIPS]);
+            [settings.liquidationStepSeconds, settings.liquidationCollateralFactorBIPS, settings.liquidationFactorVaultCollateralBIPS]);
     }
 }

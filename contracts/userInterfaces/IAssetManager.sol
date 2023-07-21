@@ -231,11 +231,11 @@ interface IAssetManager is IAssetManagerEvents {
     ) external;
 
     /**
-     * If the current agent's class1 collateral token gets deprecated, the agent must switch with this method.
+     * If the current agent's vault collateral token gets deprecated, the agent must switch with this method.
      * NOTE: may only be called by the agent vault owner.
      * NOTE: at the time of switch, the agent must have enough of both collaterals in the vault.
      */
-    function switchClass1Collateral(
+    function switchVaultCollateral(
         address _agentVault,
         IERC20 _token
     ) external;
@@ -256,13 +256,14 @@ interface IAssetManager is IAssetManagerEvents {
     /**
      * The agent is going to withdraw `_valueNATWei` amount of collateral from the agent vault.
      * This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time.
-     * After that time, the agent can call `withdrawCollateral(_class1Token, _valueNATWei)` on the agent vault.
+     * After that time, the agent can call `withdrawCollateral(_vaultCollateralToken, _valueNATWei)`
+     * on the agent vault.
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _valueNATWei the amount to be withdrawn
      * @return _withdrawalAllowedAt the timestamp when the withdrawal can be made
      */
-    function announceClass1CollateralWithdrawal(
+    function announceVaultCollateralWithdrawal(
         address _agentVault,
         uint256 _valueNATWei
     ) external
@@ -350,9 +351,9 @@ interface IAssetManager is IAssetManagerEvents {
      * is already paused at least for a month and most f-assets are already burned and the only ones
      * remaining are unrecoverable.
      * NOTE: may only be called by the agent vault owner.
-     * NOTE: the agent (cold address) receives the class1 collateral and NAT is burned instead. Therefore
-     *      this method is `payable` and the caller must provide enough NAT to cover the received class1 amount
-     *      multiplied by `class1BuyForFlareFactorBIPS`.
+     * NOTE: the agent (cold address) receives the vault collateral and NAT is burned instead. Therefore
+     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount
+     *      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
      */
     function buybackAgentCollateral(
         address _agentVault
@@ -518,9 +519,9 @@ interface IAssetManager is IAssetManagerEvents {
      * available. In this case the agent can call this method, which burns reserved collateral at market price
      * and releases the remaining collateral (CRF is also burned).
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
-     * NOTE: the agent (cold address) receives the class1 collateral and NAT is burned instead. Therefore
-     *      this method is `payable` and the caller must provide enough NAT to cover the received class1 amount
-     *      multiplied by `class1BuyForFlareFactorBIPS`.
+     * NOTE: the agent (cold address) receives the vault collateral and NAT is burned instead. Therefore
+     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount
+     *      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
      * @param _proof proof that the attestation query window can not not contain
      *      the payment/non-payment proof anymore
      * @param _collateralReservationId collateral reservation id
@@ -685,14 +686,14 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _agentVault agent vault address
      * @param _amountUBA the amount of f-assets to liquidate
      * @return _liquidatedAmountUBA liquidated amount of f-asset
-     * @return _amountPaidClass1 amount paid to liquidator (in agents class 1)
+     * @return _amountPaidVault amount paid to liquidator (in agent's vault collateral)
      * @return _amountPaidPool amount paid to liquidator (in NAT from pool)
      */
     function liquidate(
         address _agentVault,
         uint256 _amountUBA
     ) external
-        returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidClass1, uint256 _amountPaidPool);
+        returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidVault, uint256 _amountPaidPool);
 
     /**
      * When the agent's collateral reaches the safe level during liquidation, the liquidation

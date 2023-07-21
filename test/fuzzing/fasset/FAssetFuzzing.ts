@@ -1,6 +1,6 @@
 import { time } from "@openzeppelin/test-helpers";
 import { Challenger } from "../../../lib/actors/Challenger";
-import { isClass1Collateral, isPoolCollateral } from "../../../lib/state/CollateralIndexedList";
+import { isVaultCollateral, isPoolCollateral } from "../../../lib/state/CollateralIndexedList";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { expectErrors, formatBN, latestBlockTimestamp, mulDecimal, sleep, systemTimestamp, toBIPS, toBN, toWei } from "../../../lib/utils/helpers";
@@ -261,15 +261,15 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
     });
 
     function createAgentOptions(): AgentCreateOptions {
-        const class1Collateral = randomChoice(context.collaterals.filter(isClass1Collateral));
+        const vaultCollateral = randomChoice(context.collaterals.filter(isVaultCollateral));
         const poolCollateral = context.collaterals.filter(isPoolCollateral)[0];
-        const mintingClass1CollateralRatioBIPS = mulDecimal(toBN(class1Collateral.minCollateralRatioBIPS), randomNum(1, 1.5));
+        const mintingVaultCollateralRatioBIPS = mulDecimal(toBN(vaultCollateral.minCollateralRatioBIPS), randomNum(1, 1.5));
         const mintingPoolCollateralRatioBIPS = mulDecimal(toBN(poolCollateral.minCollateralRatioBIPS), randomNum(1, 1.5));
         return {
-            class1CollateralToken: class1Collateral.token,
+            vaultCollateralToken: vaultCollateral.token,
             feeBIPS: toBIPS("5%"),
             poolFeeShareBIPS: toBIPS("40%"),
-            mintingClass1CollateralRatioBIPS: mintingClass1CollateralRatioBIPS,
+            mintingVaultCollateralRatioBIPS: mintingVaultCollateralRatioBIPS,
             mintingPoolCollateralRatioBIPS: mintingPoolCollateralRatioBIPS,
             poolExitCollateralRatioBIPS: mulDecimal(mintingPoolCollateralRatioBIPS, randomNum(1, 1.25)),
             buyFAssetByAgentFactorBIPS: toBIPS(0.9),

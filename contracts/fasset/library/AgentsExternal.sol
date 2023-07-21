@@ -59,7 +59,7 @@ library AgentsExternal {
         }
     }
 
-    // _kind will always be AGENT_CLASS1 or AGENT_POOL (limited in AssetManager)
+    // _kind will always be VAULT or AGENT_POOL (limited in AssetManager)
     function announceWithdrawal(
         Collateral.Kind _kind,
         address _agentVault,
@@ -92,8 +92,8 @@ library AgentsExternal {
             }
         }
         withdrawal.amountWei = _amountWei.toUint128();
-        if (_kind == Collateral.Kind.AGENT_CLASS1) {
-            emit AMEvents.Class1WithdrawalAnnounced(_agentVault, _amountWei, withdrawal.allowedAt);
+        if (_kind == Collateral.Kind.VAULT) {
+            emit AMEvents.VaultCollateralWithdrawalAnnounced(_agentVault, _amountWei, withdrawal.allowedAt);
         } else {
             emit AMEvents.PoolTokenRedemptionAnnounced(_agentVault, _amountWei, withdrawal.allowedAt);
         }
@@ -109,8 +109,8 @@ library AgentsExternal {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Collateral.Kind kind;
-        if (_token == agent.getClass1Token()) {
-            kind = Collateral.Kind.AGENT_CLASS1;
+        if (_token == agent.getVaultCollateralToken()) {
+            kind = Collateral.Kind.VAULT;
         } else if (_token == agent.collateralPool.poolToken()) {
             kind = Collateral.Kind.AGENT_POOL;
         } else {
@@ -148,7 +148,7 @@ library AgentsExternal {
         }
     }
 
-    function switchClass1Collateral(
+    function switchVaultCollateral(
         address _agentVault,
         IERC20 _token
     )
@@ -159,11 +159,11 @@ library AgentsExternal {
         // check that old collateral is deprecated
         // TODO: could work without this check, but would need timelock, otherwise there can be
         //       withdrawal without announcement by switching, withdrawing and switching back
-        CollateralTypeInt.Data storage currentCollateral = agent.getClass1Collateral();
+        CollateralTypeInt.Data storage currentCollateral = agent.getVaultCollateral();
         require(currentCollateral.validUntil != 0, "current collateral not deprecated");
         // set new collateral
-        agent.setClass1Collateral(_token);
-        emit AMEvents.AgentCollateralTypeChanged(_agentVault, uint8(CollateralType.Class.CLASS1), address(_token));
+        agent.setVaultCollateral(_token);
+        emit AMEvents.AgentCollateralTypeChanged(_agentVault, uint8(CollateralType.Class.VAULT), address(_token));
     }
 
     function getAllAgents(
@@ -191,7 +191,7 @@ library AgentsExternal {
         returns (bool)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        return _token == agent.getClass1Token() || _token == agent.collateralPool.poolToken();
+        return _token == agent.getVaultCollateralToken() || _token == agent.collateralPool.poolToken();
     }
 
     function getFAssetsBackedByPool(address _agentVault)

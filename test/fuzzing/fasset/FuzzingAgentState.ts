@@ -574,10 +574,10 @@ export class FuzzingAgentState extends TrackedAgentState {
     }
 
     private collateralRatioForPrice(prices: Prices, collateral: CollateralType) {
-        const redeemingUBA = collateral.collateralClass === CollateralClass.CLASS1 ? this.redeemingUBA : this.poolRedeemingUBA;
+        const redeemingUBA = collateral.collateralClass === CollateralClass.VAULT ? this.redeemingUBA : this.poolRedeemingUBA;
         const backedAmount = (Number(this.reservedUBA) + Number(this.mintedUBA) + Number(redeemingUBA)) / Number(this.parent.settings.assetUnitUBA);
         if (backedAmount === 0) return Number.POSITIVE_INFINITY;
-        const totalCollateralWei = collateral.collateralClass === CollateralClass.CLASS1 ? this.totalClass1CollateralWei : this.totalPoolCollateralNATWei;
+        const totalCollateralWei = collateral.collateralClass === CollateralClass.VAULT ? this.totalVaultCollateralWei : this.totalPoolCollateralNATWei;
         const totalCollateral = Number(totalCollateralWei) / Number(NAT_WEI);
         const assetToTokenPrice = prices.get(collateral).assetToTokenPriceNum();
         const backingCollateral = Number(backedAmount) * assetToTokenPrice;

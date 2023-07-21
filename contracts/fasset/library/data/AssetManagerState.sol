@@ -15,7 +15,7 @@ library AssetManagerState {
     struct State {
         AssetManagerSettings.Data settings;
 
-        // All collateral types, used for class 1 or pool.
+        // All collateral types, used for vault or pool.
         // Pool collateral (always WNat) has index 0.
         CollateralTypeInt.Data[] collateralTokens;
 

@@ -63,7 +63,7 @@ interface IIAssetManager is IAssetManager {
     // Collateral type management
 
     /**
-     * Add new class1 collateral type (new token type and initial collateral ratios).
+     * Add new vault collateral type (new token type and initial collateral ratios).
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
     function addCollateralType(
@@ -109,7 +109,7 @@ interface IIAssetManager is IAssetManager {
     ) external;
 
     /**
-     * Burn fassets from  a single agent and get paid in class1 collateral by the agent.
+     * Burn fassets from  a single agent and get paid in vault collateral by the agent.
      * Price is FTSO price, multiplied by factor buyFAssetByAgentFactorBIPS (set by agent).
      * Used in self-close exit from the collateral pool when requested or when self-close amount is less than 1 lot.
      * NOTE: only collateral pool can call this method.
@@ -183,7 +183,7 @@ interface IIAssetManager is IAssetManager {
         returns (uint256);
 
     /**
-     * Check if `_token` is either class1 collateral token for `_agentVault` or the pool token.
+     * Check if `_token` is either vault collateral token for `_agentVault` or the pool token.
      * These types of tokens cannot be simply transfered from the agent vault, but can only be
      * withdrawn after announcement if they are not backing any f-assets.
      * Used internally by agent vault.

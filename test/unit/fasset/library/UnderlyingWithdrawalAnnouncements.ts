@@ -36,8 +36,8 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
 
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
-        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
-        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
+        const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
 
     async function initialize() {
@@ -150,7 +150,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const ci = testChainInfo.eth;
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
-        //Make class1 token have no ftso symbol and a direct price pair (relevant when calculating reward for confirmation later)
+        //Make vault collateral token have no ftso symbol and a direct price pair (relevant when calculating reward for confirmation later)
         collaterals[1].tokenFtsoSymbol="";
         collaterals[1].directPricePair = true;
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());

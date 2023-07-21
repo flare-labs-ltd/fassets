@@ -81,7 +81,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         underlyingSecondsForPayment: ci.underlyingBlocksForPayment * ci.blockTime,
         redemptionFeeBIPS: toBIPS("2%"),
         maxRedeemedTickets: 20,                                 // TODO: find number that fits comfortably in gas limits
-        redemptionDefaultFactorAgentC1BIPS: toBIPS(1.1),
+        redemptionDefaultFactorVaultCollateralBIPS: toBIPS(1.1),
         redemptionDefaultFactorPoolBIPS: toBIPS(0.1),
         confirmationByOthersAfterSeconds: 6 * HOURS,            // 6 hours
         confirmationByOthersRewardUSD5: toBNExp(100, 5),        // 100 USD
@@ -98,7 +98,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         agentFeeChangeTimelockSeconds: 6 * HOURS,
         agentCollateralRatioChangeTimelockSeconds: 1 * HOURS,
         agentExitAvailableTimelockSeconds: 10 * MINUTES,
-        class1BuyForFlareFactorBIPS: toBIPS(1.05),
+        vaultCollateralBuyForFlareFactorBIPS: toBIPS(1.05),
         mintingPoolHoldingsRequiredBIPS: toBIPS("50%"),
         tokenInvalidationTimeMinSeconds: 1 * DAYS,
     };
@@ -119,7 +119,7 @@ export function createTestCollaterals(contracts: TestSettingsContracts, ci: Chai
         safetyMinCollateralRatioBIPS: toBIPS(2.1),
     };
     const usdcCollateral: CollateralType = {
-        collateralClass: CollateralClass.CLASS1,
+        collateralClass: CollateralClass.VAULT,
         token: contracts.stablecoins.USDC.address,
         decimals: 18,
         validUntil: 0,  // not deprecated
@@ -131,7 +131,7 @@ export function createTestCollaterals(contracts: TestSettingsContracts, ci: Chai
         safetyMinCollateralRatioBIPS: toBIPS(1.5),
     };
     const usdtCollateral: CollateralType = {
-        collateralClass: CollateralClass.CLASS1,
+        collateralClass: CollateralClass.VAULT,
         token: contracts.stablecoins.USDT.address,
         decimals: 18,
         validUntil: 0,  // not deprecated
@@ -149,7 +149,7 @@ export function createTestLiquidationSettings(): LiquidationStrategyImplSettings
     return {
         liquidationStepSeconds: 90,
         liquidationCollateralFactorBIPS: [toBIPS(1.2), toBIPS(1.6), toBIPS(2.0)],
-        liquidationFactorClass1BIPS: [toBIPS(1), toBIPS(1), toBIPS(1)],
+        liquidationFactorVaultCollateralBIPS: [toBIPS(1), toBIPS(1), toBIPS(1)],
     };
 }
 
@@ -164,13 +164,13 @@ export async function createTestFtsos(ftsoRegistry: FtsoRegistryMockInstance, as
     };
 }
 
-export function createTestAgentSettings(underlyingAddress: string, class1TokenAddress: string, options?: Partial<AgentSettings>): AgentSettings {
+export function createTestAgentSettings(underlyingAddress: string, vaultCollateralTokenAddress: string, options?: Partial<AgentSettings>): AgentSettings {
     const defaults: AgentSettings = {
         underlyingAddressString: underlyingAddress,
-        class1CollateralToken: class1TokenAddress,
+        vaultCollateralToken: vaultCollateralTokenAddress,
         feeBIPS: toBIPS("10%"),
         poolFeeShareBIPS: toBIPS("40%"),
-        mintingClass1CollateralRatioBIPS: toBIPS(1.6),
+        mintingVaultCollateralRatioBIPS: toBIPS(1.6),
         mintingPoolCollateralRatioBIPS: toBIPS(2.5),
         poolExitCollateralRatioBIPS: toBIPS(2.6),
         buyFAssetByAgentFactorBIPS: toBIPS(0.9),
@@ -245,7 +245,7 @@ export interface CreateTestAgentDeps {
     attestationProvider?: AttestationHelper;
 }
 
-export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, underlyingAddress: string, class1TokenAddress: string, options?: Partial<AgentSettings>) {
+export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, underlyingAddress: string, vaultCollateralTokenAddress: string, options?: Partial<AgentSettings>) {
     if (deps.settings.requireEOAAddressProof) {
         if (!deps.chain || !deps.wallet || !deps.attestationProvider) throw new Error("Missing chain data for EOA proof");
         // mint some funds on underlying address (just enough to make EOA proof)
@@ -256,7 +256,7 @@ export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, 
         await deps.assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
     }
     // create agent
-    const agentSettings = createTestAgentSettings(underlyingAddress, class1TokenAddress, options);
+    const agentSettings = createTestAgentSettings(underlyingAddress, vaultCollateralTokenAddress, options);
     const response = await deps.assetManager.createAgent(web3DeepNormalize(agentSettings), { from: owner });
     // extract agent vault address from AgentCreated event
     const event = findRequiredEvent(response, 'AgentCreated');

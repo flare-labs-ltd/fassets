@@ -10,7 +10,7 @@ export class AgentCollateral {
     constructor(
         public settings: AssetManagerSettings,
         public agentInfo: AgentInfo,
-        public class1: CollateralData,
+        public vault: CollateralData,
         public pool: CollateralData,
         public agentPoolTokens: CollateralData,
     ) {
@@ -21,19 +21,19 @@ export class AgentCollateral {
         const agentInfo = await assetManager.getAgentInfo(agentVault);
         const collateralPool = await CollateralPool.at(agentInfo.collateralPool);
         const collateralPoolToken = await CollateralPoolToken.at(await collateralPool.poolToken());
-        const class1Collateral = await assetManager.getCollateralType(CollateralClass.CLASS1, agentInfo.class1CollateralToken);
+        const vaultCollateral = await assetManager.getCollateralType(CollateralClass.VAULT, agentInfo.vaultCollateralToken);
         const poolCollateral = await assetManager.getCollateralType(CollateralClass.POOL, await collateralPool.wNat());
         const collateralDataFactory = await CollateralDataFactory.create(settings);
-        const class1CD = await collateralDataFactory.class1(class1Collateral, agentVault);
+        const vaultCollateralCD = await collateralDataFactory.vault(vaultCollateral, agentVault);
         const poolCD = await collateralDataFactory.pool(poolCollateral, collateralPool.address);
         const agetPoolTokenCD = await collateralDataFactory.agentPoolTokens(poolCD, collateralPoolToken, agentVault);
-        return new AgentCollateral(settings, agentInfo, class1CD, poolCD, agetPoolTokenCD);
+        return new AgentCollateral(settings, agentInfo, vaultCollateralCD, poolCD, agetPoolTokenCD);
     }
 
     ofKind(kind: CollateralKind) {
         switch (kind) {
-            case CollateralKind.CLASS1:
-                return this.class1;
+            case CollateralKind.VAULT:
+                return this.vault;
             case CollateralKind.POOL:
                 return this.pool;
             case CollateralKind.AGENT_POOL_TOKENS:
@@ -42,10 +42,10 @@ export class AgentCollateral {
     }
 
     freeCollateralLots() {
-        const class1Lots = this.freeSingleCollateralLots(this.class1);
+        const vaultCollateralLots = this.freeSingleCollateralLots(this.vault);
         const poolLots = this.freeSingleCollateralLots(this.pool);
         const agentPoolLots = this.freeSingleCollateralLots(this.agentPoolTokens);
-        return minBN(class1Lots, poolLots, agentPoolLots);
+        return minBN(vaultCollateralLots, poolLots, agentPoolLots);
     }
 
     freeSingleCollateralLots(data: CollateralData): BN {
@@ -66,7 +66,7 @@ export class AgentCollateral {
         const redeemingUBA = data.kind() === CollateralKind.POOL ? toBN(this.agentInfo.poolRedeemingUBA) : toBN(this.agentInfo.redeemingUBA);
         const redeemingCollateral = data.convertUBAToTokenWei(redeemingUBA).mul(systemMinCollateralRatioBIPS).divn(MAX_BIPS);
         const announcedWithdrawal =
-            data.kind() === CollateralKind.CLASS1 ? toBN(this.agentInfo.announcedClass1WithdrawalWei) :
+            data.kind() === CollateralKind.VAULT ? toBN(this.agentInfo.announcedVaultCollateralWithdrawalWei) :
             data.kind() === CollateralKind.AGENT_POOL_TOKENS ? toBN(this.agentInfo.announcedPoolTokensWithdrawalWei) :
             BN_ZERO;
         return mintingCollateral.add(redeemingCollateral).add(announcedWithdrawal);
@@ -80,9 +80,9 @@ export class AgentCollateral {
 
     mintingCollateralRatio(kind: CollateralKind): [mintingBIPS: BN, systemBIPS: BN] {
         switch (kind) {
-            case CollateralKind.CLASS1: {
-                const systemBIPS = toBN(this.class1.collateral!.minCollateralRatioBIPS);
-                const mintingBIPS = maxBN(toBN(this.agentInfo.mintingClass1CollateralRatioBIPS), systemBIPS);
+            case CollateralKind.VAULT: {
+                const systemBIPS = toBN(this.vault.collateral!.minCollateralRatioBIPS);
+                const mintingBIPS = maxBN(toBN(this.agentInfo.mintingVaultCollateralRatioBIPS), systemBIPS);
                 return [mintingBIPS, systemBIPS];
             }
             case CollateralKind.POOL: {

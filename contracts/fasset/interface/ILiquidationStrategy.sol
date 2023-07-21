@@ -11,7 +11,7 @@ interface ILiquidationStrategy {
         external view
         returns (bytes memory);
 
-    function currentLiquidationFactorBIPS(address _agentVault, uint256 _class1CR, uint256 _poolCR)
+    function currentLiquidationFactorBIPS(address _agentVault, uint256 _vaultCR, uint256 _poolCR)
         external view
         returns (uint256 _c1FactorBIPS, uint256 _poolFactorBIPS);
 }

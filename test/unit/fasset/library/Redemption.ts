@@ -49,8 +49,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     const underlyingRedeemer2 = "Redeemer2";
 
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
-        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
-        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
+        const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
 
     async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string, fullAgentCollateral: BN = toWei(3e8)) {
@@ -206,13 +206,13 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
-        const class1BalanceAgentBefore = await usdc.balanceOf(agentVault.address);
-        const class1BalanceRedeemerBefore = await usdc.balanceOf(redeemerAddress1);
+        const vaultCollateralBalanceAgentBefore = await usdc.balanceOf(agentVault.address);
+        const vaultCollateralBalanceRedeemerBefore = await usdc.balanceOf(redeemerAddress1);
         await mintAndRedeemFromAgentInCollateral(agentVault, collateralPool.address, chain, underlyingMinter1, minterAddress1, redeemerAddress1, true);
-        //check class1 balances
-        const class1BalanceAgentAfter = await usdc.balanceOf(agentVault.address);
-        const class1BalanceRedeemerAfter = await usdc.balanceOf(redeemerAddress1);
-        assert.equal(class1BalanceAgentBefore.sub(class1BalanceAgentAfter).toString(), class1BalanceRedeemerAfter.sub(class1BalanceRedeemerBefore).toString())
+        //check vault collateral balances
+        const vaultCollateralBalanceAgentAfter = await usdc.balanceOf(agentVault.address);
+        const vaultCollateralBalanceRedeemerAfter = await usdc.balanceOf(redeemerAddress1);
+        assert.equal(vaultCollateralBalanceAgentBefore.sub(vaultCollateralBalanceAgentAfter).toString(), vaultCollateralBalanceRedeemerAfter.sub(vaultCollateralBalanceRedeemerBefore).toString())
     });
 
     it("should finish redemption payment - payment not from agent's address", async () => {

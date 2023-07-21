@@ -56,7 +56,7 @@ export class RedemptionPaymentReceiver extends FuzzingActor {
                     await this.redemptionDefault(scope, request);
                 }
                 const result = await redemptionDefaultPromise; // now it must be fulfiled, by agent or by customer's default call
-                this.comment(`${this.name}, req=${request.requestId}: default received class1=${formatBN(result.redeemedClass1CollateralWei)} pool=${formatBN(result.redeemedPoolCollateralWei)}`);
+                this.comment(`${this.name}, req=${request.requestId}: default received vault=${formatBN(result.redeemedVaultCollateralWei)} pool=${formatBN(result.redeemedPoolCollateralWei)}`);
             }
         } else {
             this.comment(`${this.name}, req=${request.requestId}: Missing redemption, reference=${request.paymentReference}`);

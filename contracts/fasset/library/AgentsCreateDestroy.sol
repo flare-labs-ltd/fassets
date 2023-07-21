@@ -100,10 +100,10 @@ library AgentsCreateDestroy {
         agent.status = Agent.Status.NORMAL;
         agent.ownerColdAddress = ownerColdAddress;
         // set collateral token types
-        agent.setClass1Collateral(_settings.class1CollateralToken);
+        agent.setVaultCollateral(_settings.vaultCollateralToken);
         agent.poolCollateralIndex = state.poolCollateralIndex;
         // set initial collateral ratios
-        agent.setMintingClass1CollateralRatioBIPS(_settings.mintingClass1CollateralRatioBIPS);
+        agent.setMintingVaultCollateralRatioBIPS(_settings.mintingVaultCollateralRatioBIPS);
         agent.setMintingPoolCollateralRatioBIPS(_settings.mintingPoolCollateralRatioBIPS);
         // set minting fee and share
         agent.setFeeBIPS(_settings.feeBIPS);
@@ -205,11 +205,11 @@ library AgentsCreateDestroy {
         //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
         // - mintedAMG must be burned and cleared
         uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
-        CollateralTypeInt.Data storage collateral = agent.getClass1Collateral();
+        CollateralTypeInt.Data storage collateral = agent.getVaultCollateral();
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
         uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
             .mulBips(state.settings.buybackCollateralFactorBIPS);
-        agent.burnCollateralClass1(buybackCollateral);
+        agent.burnVaultCollateral(buybackCollateral);
         agent.mintedAMG = 0;
         state.totalReservedCollateralAMG -= agent.reservedAMG;
         agent.reservedAMG = 0;
@@ -243,8 +243,8 @@ library AgentsCreateDestroy {
         private
     {
         emit AMEvents.AgentCreated(_ownerColdAddress, _agentVault, _collateralPool, _underlyingAddress,
-            address(_settings.class1CollateralToken), _settings.feeBIPS, _settings.poolFeeShareBIPS,
-            _settings.mintingClass1CollateralRatioBIPS, _settings.mintingPoolCollateralRatioBIPS,
+            address(_settings.vaultCollateralToken), _settings.feeBIPS, _settings.poolFeeShareBIPS,
+            _settings.mintingVaultCollateralRatioBIPS, _settings.mintingPoolCollateralRatioBIPS,
             _settings.buyFAssetByAgentFactorBIPS, _settings.poolExitCollateralRatioBIPS,
             _settings.poolTopupCollateralRatioBIPS, _settings.poolTopupTokenPriceFactorBIPS);
     }

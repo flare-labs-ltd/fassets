@@ -21,8 +21,8 @@ export class Prices {
         return requireNotNull(this.collateralPrices.list.find(p => isPoolCollateral(p.collateral)));
     }
 
-    getClass1(token: string) {
-        return this.collateralPrices.get(CollateralClass.CLASS1, token);
+    getVault(token: string) {
+        return this.collateralPrices.get(CollateralClass.VAULT, token);
     }
 
     getPool(token: string) {

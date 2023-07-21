@@ -38,7 +38,7 @@ library AvailableAgents {
         state.availableAgents.push(_agentVault);
         agent.availableAgentsPos = state.availableAgents.length.toUint32();     // index+1 (0=not in list)
         emit AMEvents.AgentAvailable(_agentVault, agent.feeBIPS,
-            agent.mintingClass1CollateralRatioBIPS, agent.mintingPoolCollateralRatioBIPS, freeCollateralLots);
+            agent.mintingVaultCollateralRatioBIPS, agent.mintingPoolCollateralRatioBIPS, freeCollateralLots);
     }
 
     function announceExit(
@@ -116,12 +116,12 @@ library AvailableAgents {
             address agentVault = state.availableAgents[i];
             Agent.State storage agent = Agent.getWithoutCheck(agentVault);
             Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
-            (uint256 agentCR,) = AgentCollateral.mintingMinCollateralRatio(agent, Collateral.Kind.AGENT_CLASS1);
+            (uint256 agentCR,) = AgentCollateral.mintingMinCollateralRatio(agent, Collateral.Kind.VAULT);
             (uint256 poolCR,) = AgentCollateral.mintingMinCollateralRatio(agent, Collateral.Kind.POOL);
             _agents[i - _start] = AvailableAgentInfo.Data({
                 agentVault: agentVault,
                 feeBIPS: agent.feeBIPS,
-                mintingClass1CollateralRatioBIPS: agentCR,
+                mintingVaultCollateralRatioBIPS: agentCR,
                 mintingPoolCollateralRatioBIPS: poolCR,
                 freeCollateralLots: collateralData.freeCollateralLots(agent)
             });

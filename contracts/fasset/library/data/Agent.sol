@@ -55,9 +55,9 @@ library Agent {
         // Current status of the agent (changes for liquidation).
         Agent.Status status;
 
-        // Index of collateral class 1 token.
-        // The data is obtained as state.collateralTokens[class1CollateralIndex].
-        uint16 class1CollateralIndex;
+        // Index of collateral vault token.
+        // The data is obtained as state.collateralTokens[vaultCollateralIndex].
+        uint16 vaultCollateralIndex;
 
         // Index of token in collateral pool. This is always wrapped FLR/SGB, however the wrapping
         // contract (WNat) may change. In such case we add new collateral token with class POOL but the
@@ -77,7 +77,7 @@ library Agent {
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio when entering the available agent list,
         // but it must always be greater than minimum collateral ratio.
-        uint32 mintingClass1CollateralRatioBIPS;
+        uint32 mintingVaultCollateralRatioBIPS;
 
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio when entering the available agent list,
@@ -94,7 +94,7 @@ library Agent {
         // Liquidation phase at the time when liquidation started.
         LiquidationPhase initialLiquidationPhase;
 
-        // Bitmap signifying which collateral type(s) triggered liquidation (LF_CLASS1 | LF_POOL).
+        // Bitmap signifying which collateral type(s) triggered liquidation (LF_VAULT | LF_POOL).
         uint8 collateralsUnderwater;
 
         // Amount of collateral locked by collateral reservation.
@@ -110,8 +110,8 @@ library Agent {
 
         // The amount of fassets being redeemed EXCEPT those from pool self-close exits.
         // Unlike normal redemption, pool collateral was already withdrawn, so the redeeming collateral
-        // must only be accounte for / locked for class1 collateral.
-        // On redemption payment failure, redeemer will be paid only in class1 in this case
+        // must only be accounte for / locked for vault collateral.
+        // On redemption payment failure, redeemer will be paid only in vault collateral in this case
         // (and will be paid less if there isn't enough - small extra risk for pool token holders).
         // There will always be `poolRedeemingAMG <= redeemingAMG`.
         uint64 poolRedeemingAMG;
@@ -135,8 +135,8 @@ library Agent {
         // The time when ongoing underlying withdrawal was announced.
         uint64 underlyingWithdrawalAnnouncedAt;
 
-        // Announcement for class1 collateral withdrawal.
-        WithdrawalAnnouncement class1WithdrawalAnnouncement;
+        // Announcement for vault collateral withdrawal.
+        WithdrawalAnnouncement vaultCollateralWithdrawalAnnouncement;
 
         // Announcement for pool token withdrawal (which also means pool collateral withdrawal).
         WithdrawalAnnouncement poolTokenWithdrawalAnnouncement;
@@ -167,7 +167,7 @@ library Agent {
     }
 
     // underwater collateral classes
-    uint8 internal constant LF_CLASS1 = 1 << 0;
+    uint8 internal constant LF_VAULT = 1 << 0;
     uint8 internal constant LF_POOL = 1 << 1;
 
     // diamond state accessors

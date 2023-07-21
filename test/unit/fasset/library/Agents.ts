@@ -41,8 +41,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
 
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
-        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
-        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
+        const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
 
     async function depositCollateral(owner: string, agentVault: AgentVaultInstance, amount: BN, token: ERC20MockInstance = usdc) {
@@ -326,7 +326,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         // assert
-        await expectRevert(assetManager.announceClass1CollateralWithdrawal(agentVault.address, 100),
+        await expectRevert(assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100),
             "only agent vault owner");
     });
 
@@ -336,10 +336,10 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const amount = ether('1');
         await depositCollateral(agentOwner1, agentVault, amount);
         // act
-        await assetManager.announceClass1CollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
+        await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // assert
         const info = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(toBN(info.totalClass1CollateralWei).sub(toBN(info.freeClass1CollateralWei)), 100);
+        assertWeb3Equal(toBN(info.totalVaultCollateralWei).sub(toBN(info.freeVaultCollateralWei)), 100);
     });
 
     it("should decrease announced collateral withdrawal", async () => {
@@ -347,12 +347,12 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await depositCollateral(agentOwner1, agentVault, amount);
-        await assetManager.announceClass1CollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
+        await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
-        await assetManager.announceClass1CollateralWithdrawal(agentVault.address, 50, { from: agentOwner1 });
+        await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 50, { from: agentOwner1 });
         // assert
         const info = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(toBN(info.totalClass1CollateralWei).sub(toBN(info.freeClass1CollateralWei)), 50);
+        assertWeb3Equal(toBN(info.totalVaultCollateralWei).sub(toBN(info.freeVaultCollateralWei)), 50);
     });
 
     it("should cancel announced collateral withdrawal", async () => {
@@ -360,12 +360,12 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await depositCollateral(agentOwner1, agentVault, amount);
-        await assetManager.announceClass1CollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
+        await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
-        await assetManager.announceClass1CollateralWithdrawal(agentVault.address, 0, { from: agentOwner1 });
+        await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 0, { from: agentOwner1 });
         // assert
         const info = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info.totalClass1CollateralWei, info.freeClass1CollateralWei);
+        assertWeb3Equal(info.totalVaultCollateralWei, info.freeVaultCollateralWei);
     });
 
     it("should withdraw collateral after announced withdrawal time passes", async () => {
@@ -373,7 +373,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await depositCollateral(agentOwner1, agentVault, amount);
-        await assetManager.announceClass1CollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
+        await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
         await time.increase(300);
         const startBalance = await usdc.balanceOf(agentOwner1);
@@ -388,7 +388,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await depositCollateral(agentOwner1, agentVault, amount);
-        await assetManager.announceClass1CollateralWithdrawal(agentVault.address, 101, { from: agentOwner1 });
+        await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 101, { from: agentOwner1 });
         // act
         await time.increase(300);
         const startBalance = await usdc.balanceOf(agentOwner1);
@@ -430,7 +430,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await depositCollateral(agentOwner1, agentVault, amount);
-        await assetManager.announceClass1CollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
+        await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
         await time.increase(150);
         // assert
@@ -443,7 +443,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = ether('1');
         await depositCollateral(agentOwner1, agentVault, amount);
-        await assetManager.announceClass1CollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
+        await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
         // act
         await time.increase(300);
         // assert
@@ -456,10 +456,10 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
         const collateralRatioBIPS = 23000;
-        await changeAgentSetting(agentOwner1, agentVault, 'mintingClass1CollateralRatioBIPS', collateralRatioBIPS);
+        await changeAgentSetting(agentOwner1, agentVault, 'mintingVaultCollateralRatioBIPS', collateralRatioBIPS);
         // assert
         const info = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info.mintingClass1CollateralRatioBIPS, collateralRatioBIPS);
+        assertWeb3Equal(info.mintingVaultCollateralRatioBIPS, collateralRatioBIPS);
     });
 
     it("only owner can change agent's min collateral ratio", async () => {
@@ -468,9 +468,9 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // act
         const collateralRatioBIPS = 23000;
         // assert
-        await expectRevert(assetManager.announceAgentSettingUpdate(agentVault.address, 'mintingClass1CollateralRatioBIPS', collateralRatioBIPS),
+        await expectRevert(assetManager.announceAgentSettingUpdate(agentVault.address, 'mintingVaultCollateralRatioBIPS', collateralRatioBIPS),
             "only agent vault owner");
-        await expectRevert(assetManager.executeAgentSettingUpdate(agentVault.address, 'mintingClass1CollateralRatioBIPS'),
+        await expectRevert(assetManager.executeAgentSettingUpdate(agentVault.address, 'mintingVaultCollateralRatioBIPS'),
             "only agent vault owner");
     });
 
@@ -480,10 +480,10 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // act
         const collateralRatioBIPS = 1_4000 - 1;
         // assert
-        await expectRevert(changeAgentSetting(agentOwner1, agentVault, 'mintingClass1CollateralRatioBIPS', collateralRatioBIPS),
+        await expectRevert(changeAgentSetting(agentOwner1, agentVault, 'mintingVaultCollateralRatioBIPS', collateralRatioBIPS),
             "collateral ratio too small");
         const info = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(info.mintingClass1CollateralRatioBIPS, 1_6000);
+        assertWeb3Equal(info.mintingVaultCollateralRatioBIPS, 1_6000);
     });
 
     it("anyone can call convertDustToTicket", async () => {

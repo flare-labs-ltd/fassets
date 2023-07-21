@@ -47,7 +47,7 @@ NOTE: may only be called by the agent vault owner.
 **upgradeWNatContract** - When current pool collateral token contract (WNat) is replaced by the method setPoolCollateralType, pools don't switch automatically. Instead, the agent must call this method that swaps old WNat tokens for new ones and sets it for use by the pool.
 NOTE: may only be called by the agent vault owner.
 
-**announceClass1CollateralWithdrawal** - The agent is going to withdraw `_valueNATWei` amount of collateral from the agent vault. This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time. After that time, the agent can call `withdrawCollateral(_class1Token, _valueNATWei)` on the agent vault.
+**announceVaultCollateralWithdrawal** - The agent is going to withdraw `_valueNATWei` amount of collateral from the agent vault. This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time. After that time, the agent can call `withdrawCollateral(_vaultCollateralToken, _valueNATWei)` on the agent vault.
 NOTE: may only be called by the agent vault owner.
 
 **announceAgentPoolTokenRedemption** - The agent is going to redeem `_valueWei` collateral pool tokens in the agent vault. This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time. After that time, the agent can call `redeemCollateralPoolTokens(_valueNATWei)` on the agent vault.
@@ -66,7 +66,7 @@ NOTE: may only be called by the owner of the agent vault   except if enough time
 NOTE: may only be called by the agent vault owner.
 
 **buybackAgentCollateral** - When f-asset is terminated, an agent can burn the market price of backed f-assets with his collateral, to release the remaining collateral (and, formally, underlying assets). This method ONLY works when f-asset is terminated, which will only be done when the asset manager is already paused at least for a month and most f-assets are already burned and the only ones remaining are unrecoverable.
-NOTE: may only be called by the agent vault owner. NOTE: the agent (cold address) receives the class1 collateral and NAT is burned instead. Therefore      this method is `payable` and the caller must provide enough NAT to cover the received class1 amount      multiplied by `class1BuyForFlareFactorBIPS`.
+NOTE: may only be called by the agent vault owner. NOTE: the agent (cold address) receives the vault collateral and NAT is burned instead. Therefore      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
 
 **getAllAgents** - Get (a part of) the list of all agents. The list must be retrieved in parts since retrieving the whole list can consume too much gas for one block.
 
@@ -102,7 +102,7 @@ NOTE: may only be called by the minter (= creator of CR, the collateral reservat
 NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
 
 **unstickMinting** - If a collateral reservation request exists for more than 24 hours, payment or non-payment proof are no longer available. In this case the agent can call this method, which burns reserved collateral at market price and releases the remaining collateral (CRF is also burned).
-NOTE: may only be called by the owner of the agent vault in the collateral reservation request. NOTE: the agent (cold address) receives the class1 collateral and NAT is burned instead. Therefore      this method is `payable` and the caller must provide enough NAT to cover the received class1 amount      multiplied by `class1BuyForFlareFactorBIPS`.
+NOTE: may only be called by the owner of the agent vault in the collateral reservation request. NOTE: the agent (cold address) receives the vault collateral and NAT is burned instead. Therefore      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
 
 **selfMint** - Agent can mint against himself. In that case, this is a one-step process, skipping collateral reservation and no collateral reservation fee payment. Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
 NOTE: may only be called by the agent vault owner. NOTE: the caller must be a whitelisted agent.

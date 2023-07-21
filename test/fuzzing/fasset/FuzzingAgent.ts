@@ -1,6 +1,6 @@
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { isClass1Collateral } from "../../../lib/state/CollateralIndexedList";
+import { isVaultCollateral } from "../../../lib/state/CollateralIndexedList";
 import { TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedEvents";
 import { EventArgs } from "../../../lib/utils/events/common";
@@ -181,7 +181,7 @@ export class FuzzingAgent extends FuzzingActor {
             const agent = this.agent;   // save in case it is destroyed and re-created
             const agentState = this.agentState(agent);
             const topups: string[] = [];
-            for (const collateral of [agentState.class1Collateral, agentState.poolWNatCollateral]) {
+            for (const collateral of [agentState.vaultCollateral, agentState.poolWNatCollateral]) {
                 const balance = agentState.collateralBalance(collateral);
                 const price = this.state.prices.get(collateral);
                 const trustedPrice = this.state.trustedPrices.get(collateral);
@@ -192,8 +192,8 @@ export class FuzzingAgent extends FuzzingActor {
                 const requiredTopup = requiredCollateral.sub(balance);
                 if (requiredTopup.lte(BN_ZERO)) continue;
                 const crBefore = agentState.collateralRatio(collateral);
-                if (isClass1Collateral(collateral)) {
-                    await agent.depositClass1Collateral(requiredTopup)
+                if (isVaultCollateral(collateral)) {
+                    await agent.depositVaultCollateral(requiredTopup)
                         .catch(e => scope.exitOnExpectedError(e, []));
                 } else {
                     await agent.buyCollateralPoolTokens(requiredTopup)
@@ -339,10 +339,10 @@ export class FuzzingAgent extends FuzzingActor {
         // const collateral = agentState.totalCollateralNATWei;
         const createOptions: AgentCreateOptions = {
             ...this.creationOptions,
-            class1CollateralToken: agentState.class1Collateral.token,
+            vaultCollateralToken: agentState.vaultCollateral.token,
             feeBIPS: agentState.feeBIPS,
             poolFeeShareBIPS: agentState.poolFeeShareBIPS,
-            mintingClass1CollateralRatioBIPS: agentState.mintingClass1CollateralRatioBIPS,
+            mintingVaultCollateralRatioBIPS: agentState.mintingVaultCollateralRatioBIPS,
             mintingPoolCollateralRatioBIPS: agentState.mintingPoolCollateralRatioBIPS,
             buyFAssetByAgentFactorBIPS: agentState.buyFAssetByAgentFactorBIPS,
             poolExitCollateralRatioBIPS: agentState.poolExitCollateralRatioBIPS,

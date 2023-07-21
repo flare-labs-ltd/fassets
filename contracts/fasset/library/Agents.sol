@@ -19,16 +19,16 @@ library Agents {
     using SafePct for uint256;
     using Agent for Agent.State;
 
-    function setMintingClass1CollateralRatioBIPS(
+    function setMintingVaultCollateralRatioBIPS(
         Agent.State storage _agent,
-        uint256 _mintingClass1CollateralRatioBIPS
+        uint256 _mintingVaultCollateralRatioBIPS
     )
         internal
     {
-        CollateralTypeInt.Data storage collateral = getClass1Collateral(_agent);
-        require(_mintingClass1CollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
+        CollateralTypeInt.Data storage collateral = getVaultCollateral(_agent);
+        require(_mintingVaultCollateralRatioBIPS >= collateral.minCollateralRatioBIPS,
             "collateral ratio too small");
-        _agent.mintingClass1CollateralRatioBIPS = _mintingClass1CollateralRatioBIPS.toUint32();
+        _agent.mintingVaultCollateralRatioBIPS = _mintingVaultCollateralRatioBIPS.toUint32();
     }
 
     function setMintingPoolCollateralRatioBIPS(
@@ -180,7 +180,7 @@ library Agents {
         changeDust(_agent, newDustAMG);
     }
 
-    function payoutClass1(
+    function payoutFromVault(
         Agent.State storage _agent,
         address _receiver,
         uint256 _amountWei
@@ -188,7 +188,7 @@ library Agents {
         internal
         returns (uint256 _amountPaid)
     {
-        CollateralTypeInt.Data storage collateral = getClass1Collateral(_agent);
+        CollateralTypeInt.Data storage collateral = getVaultCollateral(_agent);
         // don't want the calling method to fail due to too small balance for payout
         IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
         _amountPaid = Math.min(_amountWei, collateral.token.balanceOf(address(vault)));
@@ -211,28 +211,28 @@ library Agents {
         _agent.collateralPool.payout(_receiver, _amountPaid, _agentResponsibilityWei);
     }
 
-    // We cannot burn typical class1 collateral (stablecoins), so the agent must buy them for NAT
-    // at FTSO price multiplied by class1BuyForFlarePremiumBIPS and then we burn the NATs.
-    function burnCollateralClass1(
+    // We cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT
+    // at FTSO price multiplied by vaultCollateralBuyForFlareFactorBIPS and then we burn the NATs.
+    function burnVaultCollateral(
         Agent.State storage _agent,
-        uint256 _amountClass1Wei
+        uint256 _amountVaultCollateralWei
     )
         internal
     {
-        CollateralTypeInt.Data storage class1Collateral = getClass1Collateral(_agent);
+        CollateralTypeInt.Data storage vaultCollateral = getVaultCollateral(_agent);
         CollateralTypeInt.Data storage poolCollateral = getPoolCollateral(_agent);
-        if (class1Collateral.token == poolCollateral.token) {
-            // If class1 collateral is NAT, just burn directly.
-            burnCollateralNAT(_agent, _amountClass1Wei);
+        if (vaultCollateral.token == poolCollateral.token) {
+            // If vault collateral is NAT, just burn directly.
+            burnVaultNATCollateral(_agent, _amountVaultCollateralWei);
         } else {
             AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
             IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
-            // Calculate NAT amount the agent has to pay to receive the "burned" class1 tokens.
-            // The price is FTSO price plus configurable premium (class1BuyForFlarePremiumBIPS).
-            uint256 amountNatWei = Conversion.convert(_amountClass1Wei, class1Collateral, poolCollateral)
-                .mulBips(settings.class1BuyForFlareFactorBIPS);
-            // Transfer class1 collateral to the agent vault owner
-            vault.payout(class1Collateral.token, _agent.ownerColdAddress, _amountClass1Wei);
+            // Calculate NAT amount the agent has to pay to receive the "burned" vault collateral tokens.
+            // The price is FTSO price plus configurable premium (vaultCollateralBuyForFlareFactorBIPS).
+            uint256 amountNatWei = Conversion.convert(_amountVaultCollateralWei, vaultCollateral, poolCollateral)
+                .mulBips(settings.vaultCollateralBuyForFlareFactorBIPS);
+            // Transfer vault collateral to the agent vault owner
+            vault.payout(vaultCollateral.token, _agent.ownerColdAddress, _amountVaultCollateralWei);
             // Burn the NAT equivalent (must be provided with the call).
             require(msg.value >= amountNatWei, "not enough funds provided");
             burnDirectNAT(amountNatWei);
@@ -243,7 +243,7 @@ library Agents {
         }
     }
 
-    function burnCollateralNAT(
+    function burnVaultNATCollateral(
         Agent.State storage _agent,
         uint256 _amountNATWei
     )
@@ -263,24 +263,24 @@ library Agents {
         settings.burnAddress.transfer(_amountNATWei);
     }
 
-    function setClass1Collateral(
+    function setVaultCollateral(
         Agent.State storage _agent,
         IERC20 _token
     )
         internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        uint256 tokenIndex = CollateralTypes.getIndex(CollateralType.Class.CLASS1, _token);
+        uint256 tokenIndex = CollateralTypes.getIndex(CollateralType.Class.VAULT, _token);
         CollateralTypeInt.Data storage collateral = state.collateralTokens[tokenIndex];
-        assert(collateral.collateralClass == CollateralType.Class.CLASS1);
+        assert(collateral.collateralClass == CollateralType.Class.VAULT);
         // agent should never switch to a deprecated or already invalid collateral
         require(collateral.validUntil == 0, "collateral deprecated");
         // check there is enough collateral for current mintings
-        Collateral.Data memory switchCollateralData = AgentCollateral.agentClass1CollateralData(_agent);
+        Collateral.Data memory switchCollateralData = AgentCollateral.agentVaultCollateralData(_agent);
         uint256 crBIPS = AgentCollateral.collateralRatioBIPS(switchCollateralData, _agent);
         require(crBIPS >= collateral.minCollateralRatioBIPS, "not enough collateral");
         // set the new index
-        _agent.class1CollateralIndex = tokenIndex.toUint16();
+        _agent.vaultCollateralIndex = tokenIndex.toUint16();
     }
 
     function vaultOwner(
@@ -355,30 +355,30 @@ library Agents {
         internal view
         returns (bool)
     {
-        return _token == getPoolWNat(_agent) || _token == getClass1Token(_agent);
+        return _token == getPoolWNat(_agent) || _token == getVaultCollateralToken(_agent);
     }
 
-    function getClass1Token(Agent.State storage _agent)
+    function getVaultCollateralToken(Agent.State storage _agent)
         internal view
         returns (IERC20)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.class1CollateralIndex].token;
+        return state.collateralTokens[_agent.vaultCollateralIndex].token;
     }
 
-    function getClass1Collateral(Agent.State storage _agent)
+    function getVaultCollateral(Agent.State storage _agent)
         internal view
         returns (CollateralTypeInt.Data storage)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.collateralTokens[_agent.class1CollateralIndex];
+        return state.collateralTokens[_agent.vaultCollateralIndex];
     }
 
-    function convertUSD5ToClass1Wei(Agent.State storage _agent, uint256 _amountUSD5)
+    function convertUSD5ToVaultCollateralWei(Agent.State storage _agent, uint256 _amountUSD5)
         internal view
         returns (uint256)
     {
-        return Conversion.convertFromUSD5(_amountUSD5, getClass1Collateral(_agent));
+        return Conversion.convertFromUSD5(_amountUSD5, getVaultCollateral(_agent));
     }
 
     function getPoolWNat(Agent.State storage _agent)
@@ -403,8 +403,8 @@ library Agents {
     {
         assert (_kind != Collateral.Kind.AGENT_POOL);   // there is no agent pool collateral token
         AssetManagerState.State storage state = AssetManagerState.get();
-        if (_kind == Collateral.Kind.AGENT_CLASS1) {
-            return state.collateralTokens[_agent.class1CollateralIndex];
+        if (_kind == Collateral.Kind.VAULT) {
+            return state.collateralTokens[_agent.vaultCollateralIndex];
         } else {
             return state.collateralTokens[_agent.poolCollateralIndex];
         }
@@ -421,11 +421,11 @@ library Agents {
         internal view
         returns (bool)
     {
-        if (_kind == Collateral.Kind.AGENT_CLASS1) {
-            return (_agent.collateralsUnderwater & Agent.LF_CLASS1) != 0;
+        if (_kind == Collateral.Kind.VAULT) {
+            return (_agent.collateralsUnderwater & Agent.LF_VAULT) != 0;
         } else {
             // AGENT_POOL collateral cannot be underwater (it only affects minting),
-            // so this function will only be used for CLASS1 and POOL
+            // so this function will only be used for VAULT and POOL
             assert(_kind == Collateral.Kind.POOL);
             return (_agent.collateralsUnderwater & Agent.LF_POOL) != 0;
         }
@@ -436,8 +436,8 @@ library Agents {
         returns (Agent.WithdrawalAnnouncement storage)
     {
         assert (_kind != Collateral.Kind.POOL);     // agent cannot withdraw from pool
-        return _kind == Collateral.Kind.AGENT_CLASS1
-            ? _agent.class1WithdrawalAnnouncement
+        return _kind == Collateral.Kind.VAULT
+            ? _agent.vaultCollateralWithdrawalAnnouncement
             : _agent.poolTokenWithdrawalAnnouncement;
     }
 

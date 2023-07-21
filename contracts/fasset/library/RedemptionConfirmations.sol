@@ -70,8 +70,8 @@ library RedemptionConfirmations {
         state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payoutClass1(agent, msg.sender,
-                Agents.convertUSD5ToClass1Wei(agent, state.settings.confirmationByOthersRewardUSD5));
+            Agents.payoutFromVault(agent, msg.sender,
+                Agents.convertUSD5ToVaultCollateralWei(agent, state.settings.confirmationByOthersRewardUSD5));
         }
         // redemption can make agent healthy, so check and pull out of liquidation
         Liquidation.endLiquidationIfHealthy(agent);

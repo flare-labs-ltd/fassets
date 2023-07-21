@@ -68,7 +68,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const txHash = await minter.performMintingPayment(crt);
             const lotsUBA = context.convertLotsToUBA(lots);
             await agent.checkAgentInfo({
-                totalClass1CollateralWei: fullAgentCollateral,
+                totalVaultCollateralWei: fullAgentCollateral,
                 reservedUBA: lotsUBA.add(agent.poolFeeShare(crt.feeUBA)) });
             const burnAddress = context.settings.burnAddress;
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
@@ -130,7 +130,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const txHash = await minter.performMintingPayment(crt);
             const lotsUBA = context.convertLotsToUBA(lots);
             await agent.checkAgentInfo({
-                totalClass1CollateralWei: fullAgentCollateral,
+                totalVaultCollateralWei: fullAgentCollateral,
                 reservedUBA: lotsUBA.add(agent.poolFeeShare(crt.feeUBA)) });
             const burnAddress = context.settings.burnAddress;
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
@@ -164,7 +164,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const txHash2 = await minter.performMintingPayment(crt2);
             const lotsUBA2 = context.convertLotsToUBA(lots2);
             await agent.checkAgentInfo({
-                totalClass1CollateralWei: fullAgentCollateral,
+                totalVaultCollateralWei: fullAgentCollateral,
                 reservedUBA: lotsUBA2.add(agent.poolFeeShare(crt2.feeUBA)) });
             const minted2 = await minter.executeMinting(crt2, txHash2);
             assertWeb3Equal(minted2.mintedAmountUBA, lotsUBA2);
@@ -203,7 +203,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.updateUnderlyingBlock();
             // perform minting
             const lots1 = 3;
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, totalPoolCollateralNATWei: fullAgentCollateral });
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, totalPoolCollateralNATWei: fullAgentCollateral });
             const crt1 = await minter1.reserveCollateral(agent.vaultAddress, lots1);
             await agent.checkAgentInfo({ reservedUBA: crt1.valueUBA.add(agent.poolFeeShare(crt1.feeUBA)) });
             const tx1Hash = await minter1.performMintingPayment(crt1);
@@ -240,7 +240,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.checkAgentInfo({ actualUnderlyingBalance: underlyingBalance });
             await agent.confirmActiveRedemptionPayment(request, txHash);
             await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(minted2.agentFeeUBA).add(request.feeUBA), redeemingUBA: 0 });
-            await expectRevert(agent.announceClass1CollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+            await expectRevert(agent.announceVaultCollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
         });
 
         it("mint and redeem f-assets (two redemption tickets - different agents)", async () => {
@@ -277,20 +277,20 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const tx3Hash = await agent1.performRedemptionPayment(request1);
             await agent1.confirmActiveRedemptionPayment(request1, tx3Hash);
             const cc = await agent1.getAgentCollateral();
-            // do full calculation once, normally just need to calculate `poolFeeCollateral = cc.lockedCollateralWei(minted1.poolFeeUBA, cc.class1)`
-            const poolFeeCollateral = cc.class1.convertUBAToTokenWei(minted1.poolFeeUBA.mul(toBN(agent1.settings.mintingClass1CollateralRatioBIPS)).divn(MAX_BIPS));
-            await agent1.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral,
+            // do full calculation once, normally just need to calculate `poolFeeCollateral = cc.lockedCollateralWei(minted1.poolFeeUBA, cc.vaultCollateral)`
+            const poolFeeCollateral = cc.vault.convertUBAToTokenWei(minted1.poolFeeUBA.mul(toBN(agent1.settings.mintingVaultCollateralRatioBIPS)).divn(MAX_BIPS));
+            await agent1.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral,
                 freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(request1.feeUBA),
                 mintedUBA: minted1.poolFeeUBA,
-                freeClass1CollateralWei: Approximation.absolute(fullAgentCollateral.sub(poolFeeCollateral), 10) });
+                freeVaultCollateralWei: Approximation.absolute(fullAgentCollateral.sub(poolFeeCollateral), 10) });
             const request2 = redemptionRequests[1];
             assert.equal(request2.agentVault, agent2.vaultAddress);
             const tx4Hash = await agent2.performRedemptionPayment(request2);
             await agent2.confirmActiveRedemptionPayment(request2, tx4Hash);
-            await agent2.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral,
+            await agent2.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral,
                 freeUnderlyingBalanceUBA: minted2.agentFeeUBA.add(request2.feeUBA),
                 mintedUBA: context.convertLotsToUBA(3).add(minted2.poolFeeUBA) });
-            await expectRevert(agent2.announceClass1CollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+            await expectRevert(agent2.announceVaultCollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
         });
 
         it("mint and redeem f-assets (one redemption ticket - two redeemers)", async () => {
@@ -325,7 +325,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(request1.agentVault, agent.vaultAddress);
             const tx3Hash = await agent.performRedemptionPayment(request1);
             await agent.confirmActiveRedemptionPayment(request1, tx3Hash);
-            await expectRevert(agent.announceClass1CollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+            await expectRevert(agent.announceVaultCollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
             const request2 = redemptionRequests2[0];
             assert.equal(request2.agentVault, agent.vaultAddress);
             const tx4Hash = await agent.performRedemptionPayment(request2);
@@ -343,7 +343,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await context.updateUnderlyingBlock();
             // perform self-minting
             const lots = 3;
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             const minted = await agent.selfMint(context.convertLotsToUBA(lots), lots);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
             await agent.checkAgentInfo({ mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA) });
@@ -370,14 +370,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral,
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral,
                 freeUnderlyingBalanceUBA: crt.feeUBA.sub(minted.poolFeeUBA),
                 mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA) });
             // agent "buys" f-assets
             await context.fAsset.transfer(agent.ownerHotAddress, minted.mintedAmountUBA, { from: minter.address });
             // perform self close
             const [dustChanges, selfClosedUBA] = await agent.selfClose(minted.mintedAmountUBA);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral,
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral,
                 freeUnderlyingBalanceUBA: crt.feeUBA.sub(minted.poolFeeUBA).add(crt.valueUBA),
                 mintedUBA: minted.poolFeeUBA });
             assertWeb3Equal(selfClosedUBA, minted.mintedAmountUBA);

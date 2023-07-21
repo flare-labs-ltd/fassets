@@ -26,7 +26,7 @@ export type CheckAgentInfo = { [K in keyof AgentInfo]?: AgentInfo[K] extends BN 
 
 export const CHECK_DEFAULTS: CheckAgentInfo = {
     status: AgentStatus.NORMAL, mintedUBA: 0, reservedUBA: 0, redeemingUBA: 0,
-    announcedClass1WithdrawalWei: 0, announcedPoolTokensWithdrawalWei: 0, announcedUnderlyingWithdrawalId: 0
+    announcedVaultCollateralWithdrawalWei: 0, announcedPoolTokensWithdrawalWei: 0, announcedUnderlyingWithdrawalId: 0
 };
 
 export type AgentCreateOptions = Partial<Omit<AgentSettings, 'underlyingAddressString'>>;
@@ -83,7 +83,7 @@ export class Agent extends AssetContextClient {
         // create mock wallet
         const wallet = new MockChainWallet(ctx.chain);
         // complete settings
-        const settings = createTestAgentSettings(underlyingAddress, options?.class1CollateralToken ?? ctx.usdc.address, options);
+        const settings = createTestAgentSettings(underlyingAddress, options?.vaultCollateralToken ?? ctx.usdc.address, options);
         return await Agent.create(ctx, ownerAddress, wallet, settings);
     }
 
@@ -114,19 +114,19 @@ export class Agent extends AssetContextClient {
         return new Agent(ctx, ownerColdAddress, agentVault, collateralPool, collateralPoolToken, wallet, settings);
     }
 
-    class1Token() {
-        return requireNotNull(Object.values(this.context.stablecoins).find(token => token.address === this.settings.class1CollateralToken));
+    vaultCollateralToken() {
+        return requireNotNull(Object.values(this.context.stablecoins).find(token => token.address === this.settings.vaultCollateralToken));
     }
 
-    class1Collateral() {
-        return requireNotNull(this.context.collaterals.find(c => c.token === this.settings.class1CollateralToken));
+    vaultCollateral() {
+        return requireNotNull(this.context.collaterals.find(c => c.token === this.settings.vaultCollateralToken));
     }
 
-    async usd5ToClass1Wei(usd5: BN) {
-        const ftsoAddress = await this.context.ftsoRegistry.getFtsoBySymbol(this.class1Collateral().tokenFtsoSymbol);
+    async usd5ToVaultCollateralWei(usd5: BN) {
+        const ftsoAddress = await this.context.ftsoRegistry.getFtsoBySymbol(this.vaultCollateral().tokenFtsoSymbol);
         const ftso = await Ftso.at(ftsoAddress);
-        const { 0: class1Price, 2: class1Decimals } = await ftso.getCurrentPriceWithDecimals();
-        return usd5.mul(toWei(10**class1Decimals.toNumber())).div(class1Price);
+        const { 0: vaultCollateralPrice, 2: vaultCollateralDecimals } = await ftso.getCurrentPriceWithDecimals();
+        return usd5.mul(toWei(10**vaultCollateralDecimals.toNumber())).div(vaultCollateralPrice);
     }
 
     async changeSettings(changes: Partial<Record<AgentSetting, BNish>>) {
@@ -143,11 +143,11 @@ export class Agent extends AssetContextClient {
         }
     }
 
-    async depositClass1Collateral(amountTokenWei: BNish) {
-        const class1Token = this.class1Token();
-        await class1Token.mintAmount(this.ownerHotAddress, amountTokenWei);
-        await class1Token.approve(this.agentVault.address, amountTokenWei, { from: this.ownerHotAddress });
-        return await this.agentVault.depositCollateral(class1Token.address, amountTokenWei, { from: this.ownerHotAddress });
+    async depositVaultCollateral(amountTokenWei: BNish) {
+        const vaultCollateralToken = this.vaultCollateralToken();
+        await vaultCollateralToken.mintAmount(this.ownerHotAddress, amountTokenWei);
+        await vaultCollateralToken.approve(this.agentVault.address, amountTokenWei, { from: this.ownerHotAddress });
+        return await this.agentVault.depositCollateral(vaultCollateralToken.address, amountTokenWei, { from: this.ownerHotAddress });
     }
 
     // adds pool collateral and agent pool tokens
@@ -160,8 +160,8 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'AgentAvailable');
     }
 
-    async depositCollateralsAndMakeAvailable(class1Collateral: BNish, poolCollateral: BNish) {
-        await this.depositClass1Collateral(class1Collateral);
+    async depositCollateralsAndMakeAvailable(vaultCollateral: BNish, poolCollateral: BNish) {
+        await this.depositVaultCollateral(vaultCollateral);
         await this.buyCollateralPoolTokens(poolCollateral);
         await this.makeAvailable();
     }
@@ -207,14 +207,14 @@ export class Agent extends AssetContextClient {
         await time.increaseTo(withdrawalAllowedAt);
         await this.redeemCollateralPoolTokens(poolTokenBalance);
         // ... now the agent should wait for all pool token holders to exit ...
-        // destroy (no need to pull out class1 collateral first, it will be withdrawn automatically during destroy)
+        // destroy (no need to pull out vault collateral first, it will be withdrawn automatically during destroy)
         const destroyAllowedAt = await this.announceDestroy();
         await time.increaseTo(destroyAllowedAt);
-        const class1Token = this.class1Token();
-        const ownerClass1Balance = await class1Token.balanceOf(this.ownerHotAddress);
+        const vaultCollateralToken = this.vaultCollateralToken();
+        const ownerVaultCollateralBalance = await vaultCollateralToken.balanceOf(this.ownerHotAddress);
         await this.destroy();
-        const ownerClass1BalanceAfterDestroy = await class1Token.balanceOf(this.ownerHotAddress);
-        assertWeb3Equal(ownerClass1BalanceAfterDestroy.sub(ownerClass1Balance), collateral);
+        const ownerVaultCollateralBalanceAfterDestroy = await vaultCollateralToken.balanceOf(this.ownerHotAddress);
+        assertWeb3Equal(ownerVaultCollateralBalanceAfterDestroy.sub(ownerVaultCollateralBalance), collateral);
     }
 
     async exitAndDestroyWithTerminatedFAsset(collateral: BNish) {
@@ -223,19 +223,19 @@ export class Agent extends AssetContextClient {
         // TODO: we should still be able to withdraw pool collateral (and leave pool fees behind)
         const destroyAllowedAt = await this.announceDestroy();
         await time.increaseTo(destroyAllowedAt);
-        const class1Token = this.class1Token();
-        const ownerClass1Balance = await class1Token.balanceOf(this.ownerHotAddress);
+        const vaultCollateralToken = this.vaultCollateralToken();
+        const ownerVaultCollateralBalance = await vaultCollateralToken.balanceOf(this.ownerHotAddress);
         await this.destroy();
-        const ownerClass1BalanceAfterDestroy = await class1Token.balanceOf(this.ownerHotAddress);
-        assertWeb3Equal(ownerClass1BalanceAfterDestroy.sub(ownerClass1Balance), collateral);
+        const ownerVaultCollateralBalanceAfterDestroy = await vaultCollateralToken.balanceOf(this.ownerHotAddress);
+        assertWeb3Equal(ownerVaultCollateralBalanceAfterDestroy.sub(ownerVaultCollateralBalance), collateral);
     }
 
-    async announceClass1CollateralWithdrawal(amountWei: BNish) {
-        await this.assetManager.announceClass1CollateralWithdrawal(this.vaultAddress, amountWei, { from: this.ownerHotAddress });
+    async announceVaultCollateralWithdrawal(amountWei: BNish) {
+        await this.assetManager.announceVaultCollateralWithdrawal(this.vaultAddress, amountWei, { from: this.ownerHotAddress });
     }
 
-    async withdrawClass1Collateral(amountWei: BNish) {
-        return await this.agentVault.withdrawCollateral(this.settings.class1CollateralToken, amountWei, this.ownerHotAddress, { from: this.ownerHotAddress });
+    async withdrawVaultCollateral(amountWei: BNish) {
+        return await this.agentVault.withdrawCollateral(this.settings.vaultCollateralToken, amountWei, this.ownerHotAddress, { from: this.ownerHotAddress });
     }
 
     async poolTokenBalance() {
@@ -367,18 +367,18 @@ export class Agent extends AssetContextClient {
         const uba = this.context.convertLotsToUBA(lots);
         const agentInfo = await this.getAgentInfo();
         const totalUBA = toBN(agentInfo.mintedUBA).add(toBN(agentInfo.reservedUBA)).add(toBN(agentInfo.redeemingUBA));
-        const maxRedemptionCollateral = toBN(agentInfo.totalClass1CollateralWei).mul(uba).div(totalUBA);
-        const priceClass1 = await this.context.getCollateralPrice(this.class1Collateral());
+        const maxRedemptionCollateral = toBN(agentInfo.totalVaultCollateralWei).mul(uba).div(totalUBA);
+        const priceVaultCollateral = await this.context.getCollateralPrice(this.vaultCollateral());
         const priceNat = await this.context.getCollateralPrice(this.context.collaterals[0]);
         let redemptionDefaultAgent;
         let redemptionDefaultPool;
         if (!selfCloseExit) {
-            redemptionDefaultAgent = priceClass1.convertUBAToTokenWei(uba).mul(
-                toBN(this.context.settings.redemptionDefaultFactorAgentC1BIPS)).divn(MAX_BIPS);
+            redemptionDefaultAgent = priceVaultCollateral.convertUBAToTokenWei(uba).mul(
+                toBN(this.context.settings.redemptionDefaultFactorVaultCollateralBIPS)).divn(MAX_BIPS);
             redemptionDefaultPool = priceNat.convertUBAToTokenWei(uba).mul(
                 toBN(this.context.settings.redemptionDefaultFactorPoolBIPS)).divn(MAX_BIPS);
         } else {
-            redemptionDefaultAgent = priceClass1.convertUBAToTokenWei(uba);
+            redemptionDefaultAgent = priceVaultCollateral.convertUBAToTokenWei(uba);
             redemptionDefaultPool = toBN(0);
         }
         if (redemptionDefaultAgent.gt(maxRedemptionCollateral)) {
@@ -414,22 +414,22 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'MintingPaymentDefault');
     }
 
-    async class1ToNatBurned(burnedWei: BNish): Promise<BN> {
-        const class1Price = await this.context.getCollateralPrice(this.class1Collateral())
-        const burnedUBA = class1Price.convertTokenWeiToUBA(burnedWei);
-        return this.class1ToNatBurnedInUBA(burnedUBA);
+    async vaultCollateralToNatBurned(burnedWei: BNish): Promise<BN> {
+        const vaultCollateralPrice = await this.context.getCollateralPrice(this.vaultCollateral())
+        const burnedUBA = vaultCollateralPrice.convertTokenWeiToUBA(burnedWei);
+        return this.vaultCollateralToNatBurnedInUBA(burnedUBA);
     }
 
-    async class1ToNatBurnedInUBA(uba: BNish): Promise<BN> {
+    async vaultCollateralToNatBurnedInUBA(uba: BNish): Promise<BN> {
         const natPrice = await this.context.getCollateralPrice(this.context.collaterals[0]);
         const reservedCollateralNAT = natPrice.convertAmgToTokenWei(this.context.convertUBAToAmg(uba));
-        return reservedCollateralNAT.mul(toBN(this.context.settings.class1BuyForFlareFactorBIPS)).divn(MAX_BIPS);
+        return reservedCollateralNAT.mul(toBN(this.context.settings.vaultCollateralBuyForFlareFactorBIPS)).divn(MAX_BIPS);
     }
 
     async unstickMintingCostNAT(crt: EventArgs<CollateralReserved>): Promise<BN> {
-        const class1Price = await this.context.getCollateralPrice(this.class1Collateral());
-        const burnedWei = class1Price.convertUBAToTokenWei(crt.valueUBA);
-        return this.class1ToNatBurned(burnedWei);
+        const vaultCollateralPrice = await this.context.getCollateralPrice(this.vaultCollateral());
+        const burnedWei = vaultCollateralPrice.convertUBAToTokenWei(crt.valueUBA);
+        return this.vaultCollateralToNatBurned(burnedWei);
     }
 
     async unstickMinting(crt: EventArgs<CollateralReserved>) {
@@ -463,9 +463,9 @@ export class Agent extends AssetContextClient {
         return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference, options);
     }
 
-    async getCurrentClass1CollateralRatioBIPS() {
+    async getCurrentVaultCollateralRatioBIPS() {
         const agentInfo = await this.getAgentInfo();
-        const fullCollateral = agentInfo.totalClass1CollateralWei;
+        const fullCollateral = agentInfo.totalVaultCollateralWei;
         const mintedUBA = agentInfo.mintedUBA;
         const reservedUBA = agentInfo.reservedUBA;
         const redeemingUBA = agentInfo.redeemingUBA;
@@ -484,9 +484,9 @@ export class Agent extends AssetContextClient {
     private async collateralRatio(fullCollateral: BNish, mintedAMG: BNish, reservedAMG: BNish = 0, redeemingAMG: BNish = 0) {
         const totalAMG = toBN(reservedAMG).add(toBN(mintedAMG)).add(toBN(redeemingAMG));
         if (totalAMG.eqn(0)) return toBN(2).pow(toBN(256)).subn(1);    // nothing minted - ~infinite collateral ratio
-        const priceClass1 = await this.context.getCollateralPrice(this.class1Collateral());
-        const backingClass1Wei = priceClass1.convertAmgToTokenWei(totalAMG);
-        return toBN(fullCollateral).muln(MAX_BIPS).div(backingClass1Wei);
+        const priceVaultCollateral = await this.context.getCollateralPrice(this.vaultCollateral());
+        const backingVaultCollateralWei = priceVaultCollateral.convertAmgToTokenWei(totalAMG);
+        return toBN(fullCollateral).muln(MAX_BIPS).div(backingVaultCollateralWei);
     }
 
     async endLiquidation() {
@@ -498,9 +498,9 @@ export class Agent extends AssetContextClient {
         const agentInfo = await this.getAgentInfo();
         const totalUBA = toBN(agentInfo.mintedUBA).add(toBN(agentInfo.reservedUBA));
         const totalUBAWithBuybackPremium = totalUBA.mul(toBN(this.context.settings.buybackCollateralFactorBIPS)).divn(MAX_BIPS);
-        const priceClass1 = await this.context.getCollateralPrice(this.class1Collateral());
-        const natBurned = await this.class1ToNatBurnedInUBA(totalUBAWithBuybackPremium);
-        const buybackCollateral = priceClass1.convertUBAToTokenWei(totalUBAWithBuybackPremium);
+        const priceVaultCollateral = await this.context.getCollateralPrice(this.vaultCollateral());
+        const natBurned = await this.vaultCollateralToNatBurnedInUBA(totalUBAWithBuybackPremium);
+        const buybackCollateral = priceVaultCollateral.convertUBAToTokenWei(totalUBAWithBuybackPremium);
         return [buybackCollateral, totalUBA, natBurned];
     }
 
@@ -515,15 +515,15 @@ export class Agent extends AssetContextClient {
         const agentCollateral = await this.getAgentCollateral();
         const agentInfo = agentCollateral.agentInfo;
         // collateral calculation checks
-        assertWeb3Equal(agentCollateral.class1.balance, agentInfo.totalClass1CollateralWei);
+        assertWeb3Equal(agentCollateral.vault.balance, agentInfo.totalVaultCollateralWei);
         assertWeb3Equal(agentCollateral.pool.balance, agentInfo.totalPoolCollateralNATWei);
         assertWeb3Equal(agentCollateral.agentPoolTokens.balance, agentInfo.totalAgentPoolTokensWei);
         assertWeb3Equal(agentCollateral.freeCollateralLots(), agentInfo.freeCollateralLots);
-        assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.class1), agentInfo.freeClass1CollateralWei);
+        assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.vault), agentInfo.freeVaultCollateralWei);
         assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.pool), agentInfo.freePoolCollateralNATWei);
         assertApproximateMatch(agentCollateral.freeCollateralWei(agentCollateral.agentPoolTokens), Approximation.relative(agentInfo.freeAgentPoolTokensWei, 1e-10));
         // assertWeb3Equal(agentCollateral.freeCollateralWei(agentCollateral.agentPoolTokens), agentInfo.freeAgentPoolTokensWei);
-        assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.class1), agentInfo.class1CollateralRatioBIPS);
+        assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.vault), agentInfo.vaultCollateralRatioBIPS);
         assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.pool), agentInfo.poolCollateralRatioBIPS);
         // keep the check from prevous
         if (keepPreviousChecks) {
@@ -560,13 +560,13 @@ export class Agent extends AssetContextClient {
         return toBN(agentInfo.mintedUBA).add(toBN(agentInfo.reservedUBA)).add(toBN(agentInfo.redeemingUBA));
     }
 
-    async setClass1CollateralRatioByChangingAssetPrice(ratioBIPS: number) {
-        const class1Collateral = this.class1Collateral();
+    async setVaultCollateralRatioByChangingAssetPrice(ratioBIPS: number) {
+        const vaultCollateral = this.vaultCollateral();
         const totalUBA = await this.getTotalBackedAssetUBA();
         const agentInfo = await this.getAgentInfo();
-        const { 0: class1Price } = await this.context.ftsos[class1Collateral.tokenFtsoSymbol].getCurrentPrice();
-        const assetPriceUBA = class1Price.mul(toBN(agentInfo.totalClass1CollateralWei)).div(totalUBA).muln(MAX_BIPS).divn(ratioBIPS);
-        const assetPrice = assetPriceUBA.mul(toBNExp(1, this.context.chainInfo.decimals)).div(toBNExp(1, Number(class1Collateral.decimals)));
+        const { 0: vaultCollateralPrice } = await this.context.ftsos[vaultCollateral.tokenFtsoSymbol].getCurrentPrice();
+        const assetPriceUBA = vaultCollateralPrice.mul(toBN(agentInfo.totalVaultCollateralWei)).div(totalUBA).muln(MAX_BIPS).divn(ratioBIPS);
+        const assetPrice = assetPriceUBA.mul(toBNExp(1, this.context.chainInfo.decimals)).div(toBNExp(1, Number(vaultCollateral.decimals)));
         await this.context.assetFtso.setCurrentPrice(assetPrice, 0);
         await this.context.assetFtso.setCurrentPriceFromTrustedProviders(assetPrice, 0);
     }
@@ -582,12 +582,12 @@ export class Agent extends AssetContextClient {
         await this.context.assetFtso.setCurrentPriceFromTrustedProviders(assetPrice, 0);
     }
 
-    async getClass1CollateralToMakeCollateralRatioEqualTo(ratioBIPS: number, mintedUBA: BN) {
-        const class1Collateral = this.class1Collateral();
-        const { 0: class1Price } = await this.context.ftsos[class1Collateral.tokenFtsoSymbol].getCurrentPrice();
+    async getVaultCollateralToMakeCollateralRatioEqualTo(ratioBIPS: number, mintedUBA: BN) {
+        const vaultCollateral = this.vaultCollateral();
+        const { 0: vaultCollateralPrice } = await this.context.ftsos[vaultCollateral.tokenFtsoSymbol].getCurrentPrice();
         const { 0: assetPrice } = await this.context.assetFtso.getCurrentPrice();
-        return mintedUBA.mul(assetPrice).div(class1Price).muln(ratioBIPS).divn(MAX_BIPS)
-            .mul(toBNExp(1, Number(class1Collateral.decimals))).div(toBNExp(1, this.context.chainInfo.decimals));
+        return mintedUBA.mul(assetPrice).div(vaultCollateralPrice).muln(ratioBIPS).divn(MAX_BIPS)
+            .mul(toBNExp(1, Number(vaultCollateral.decimals))).div(toBNExp(1, this.context.chainInfo.decimals));
     }
 
     async getPoolCollateralToMakeCollateralRatioEqualTo(ratioBIPS: number, mintedUBA: BN) {

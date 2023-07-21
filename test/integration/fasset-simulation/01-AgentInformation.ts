@@ -45,10 +45,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("get agent info", async () => {
-            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { feeBIPS: 0, mintingClass1CollateralRatioBIPS: 1_7500 });
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { feeBIPS: 0, mintingVaultCollateralRatioBIPS: 1_7500 });
             // before making agent public available
             await agent.checkAgentInfo({
-                totalClass1CollateralWei: 0,
+                totalVaultCollateralWei: 0,
                 totalPoolCollateralNATWei: 0,
                 totalAgentPoolTokensWei: 0,
                 publiclyAvailable: false,
@@ -57,15 +57,15 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 liquidationStartTimestamp: 0,
                 feeBIPS: 0,
                 announcedUnderlyingWithdrawalId: 0,
-                mintingClass1CollateralRatioBIPS: 1_7500,
+                mintingVaultCollateralRatioBIPS: 1_7500,
             });
             // make agent available
-            await agent.changeSettings({ feeBIPS: 500, mintingClass1CollateralRatioBIPS: 1_8000, mintingPoolCollateralRatioBIPS: 2_8000 });
-            const fullClass1Collateral = toWei(3e8);
+            await agent.changeSettings({ feeBIPS: 500, mintingVaultCollateralRatioBIPS: 1_8000, mintingPoolCollateralRatioBIPS: 2_8000 });
+            const fullVaultCollateral = toWei(3e8);
             const fullPoolCollateral = toWei(5e8);
-            await agent.depositCollateralsAndMakeAvailable(fullClass1Collateral, fullPoolCollateral);
+            await agent.depositCollateralsAndMakeAvailable(fullVaultCollateral, fullPoolCollateral);
             await agent.checkAgentInfo({
-                totalClass1CollateralWei: fullClass1Collateral,
+                totalVaultCollateralWei: fullVaultCollateral,
                 totalPoolCollateralNATWei: fullPoolCollateral,
                 totalAgentPoolTokensWei: fullPoolCollateral,
                 publiclyAvailable: true,
@@ -74,13 +74,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 liquidationStartTimestamp: 0,
                 feeBIPS: 500,
                 announcedUnderlyingWithdrawalId: 0,
-                mintingClass1CollateralRatioBIPS: 1_8000,
+                mintingVaultCollateralRatioBIPS: 1_8000,
                 mintingPoolCollateralRatioBIPS: 2_8000,
             });
             // make agent unavailable
             await agent.exitAvailable();
             await agent.checkAgentInfo({
-                totalClass1CollateralWei: fullClass1Collateral,
+                totalVaultCollateralWei: fullVaultCollateral,
                 totalPoolCollateralNATWei: fullPoolCollateral,
                 totalAgentPoolTokensWei: fullPoolCollateral,
                 publiclyAvailable: false,
@@ -89,7 +89,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 liquidationStartTimestamp: 0,
                 feeBIPS: 500,
                 announcedUnderlyingWithdrawalId: 0,
-                mintingClass1CollateralRatioBIPS: 1_8000,
+                mintingVaultCollateralRatioBIPS: 1_8000,
                 mintingPoolCollateralRatioBIPS: 2_8000,
             });
         });
@@ -100,16 +100,16 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const availableAgents1 = await context.assetManager.getAvailableAgentsList(0, 10);
             assert.equal(availableAgents1[0].length, 0);
             assertWeb3Equal(availableAgents1[1], 0);
-            const fullClass1Collateral = toWei(3e8);
+            const fullVaultCollateral = toWei(3e8);
             const fullPoolCollateral = toWei(5e8);
-            await agent1.changeSettings({ feeBIPS: 500, mintingClass1CollateralRatioBIPS: 1_8000, mintingPoolCollateralRatioBIPS: 2_8000 });
-            await agent1.depositCollateralsAndMakeAvailable(fullClass1Collateral, fullPoolCollateral);
+            await agent1.changeSettings({ feeBIPS: 500, mintingVaultCollateralRatioBIPS: 1_8000, mintingPoolCollateralRatioBIPS: 2_8000 });
+            await agent1.depositCollateralsAndMakeAvailable(fullVaultCollateral, fullPoolCollateral);
             const availableAgents2 = await context.assetManager.getAvailableAgentsList(0, 10);
             assert.equal(availableAgents2[0].length, 1);
             assert.equal(availableAgents2[0][0], agent1.agentVault.address);
             assertWeb3Equal(availableAgents2[1], 1);
-            await agent2.changeSettings({ feeBIPS: 600, mintingClass1CollateralRatioBIPS: 1_9000, mintingPoolCollateralRatioBIPS: 2_9000 });
-            await agent2.depositCollateralsAndMakeAvailable(fullClass1Collateral, fullPoolCollateral);
+            await agent2.changeSettings({ feeBIPS: 600, mintingVaultCollateralRatioBIPS: 1_9000, mintingPoolCollateralRatioBIPS: 2_9000 });
+            await agent2.depositCollateralsAndMakeAvailable(fullVaultCollateral, fullPoolCollateral);
             const availableAgents3 = await context.assetManager.getAvailableAgentsList(0, 10);
             assert.equal(availableAgents3[0].length, 2);
             assert.equal(availableAgents3[0][0], agent1.agentVault.address);
@@ -124,7 +124,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(availableAgents5[0].length, 1);
             assert.equal(availableAgents5[0][0], agent2.agentVault.address);
             assertWeb3Equal(availableAgents5[1], 1);
-            await agent1.changeSettings({ feeBIPS: 800, mintingClass1CollateralRatioBIPS: 1_5000, mintingPoolCollateralRatioBIPS: 2_5000 });
+            await agent1.changeSettings({ feeBIPS: 800, mintingVaultCollateralRatioBIPS: 1_5000, mintingPoolCollateralRatioBIPS: 2_5000 });
             await agent1.makeAvailable();
             const availableAgents6 = await context.assetManager.getAvailableAgentsList(0, 10);
             assert.equal(availableAgents6[0].length, 2);
@@ -139,30 +139,30 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const availableAgents1 = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
             assert.equal(availableAgents1[0].length, 0);
             assertWeb3Equal(availableAgents1[1], 0);
-            const fullClass1Collateral = toWei(3e8);
+            const fullVaultCollateral = toWei(3e8);
             const fullPoolCollateral = toWei(5e8);
-            await agent1.changeSettings({ feeBIPS: 500, mintingClass1CollateralRatioBIPS: 1_8000, mintingPoolCollateralRatioBIPS: 2_8000 });
-            await agent1.depositCollateralsAndMakeAvailable(fullClass1Collateral, fullPoolCollateral);
+            await agent1.changeSettings({ feeBIPS: 500, mintingVaultCollateralRatioBIPS: 1_8000, mintingPoolCollateralRatioBIPS: 2_8000 });
+            await agent1.depositCollateralsAndMakeAvailable(fullVaultCollateral, fullPoolCollateral);
             const availableAgents2 = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
             assert.equal(availableAgents2[0].length, 1);
             assert.equal(availableAgents2[0][0].agentVault, agent1.agentVault.address);
             assertWeb3Equal(availableAgents2[0][0].feeBIPS, 500);
-            assertWeb3Equal(availableAgents2[0][0].mintingClass1CollateralRatioBIPS, 1_8000);
+            assertWeb3Equal(availableAgents2[0][0].mintingVaultCollateralRatioBIPS, 1_8000);
             assertWeb3Equal(availableAgents2[0][0].mintingPoolCollateralRatioBIPS, 2_8000);
             assertWeb3Equal(availableAgents2[0][0].freeCollateralLots, (await agent1.getAgentCollateral()).freeCollateralLots());
             assertWeb3Equal(availableAgents2[1], 1);
-            await agent2.changeSettings({ feeBIPS: 600, mintingClass1CollateralRatioBIPS: 1_9000, mintingPoolCollateralRatioBIPS: 2_9000 });
-            await agent2.depositCollateralsAndMakeAvailable(fullClass1Collateral, fullPoolCollateral);
+            await agent2.changeSettings({ feeBIPS: 600, mintingVaultCollateralRatioBIPS: 1_9000, mintingPoolCollateralRatioBIPS: 2_9000 });
+            await agent2.depositCollateralsAndMakeAvailable(fullVaultCollateral, fullPoolCollateral);
             const availableAgents3 = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
             assert.equal(availableAgents3[0].length, 2);
             assert.equal(availableAgents3[0][0].agentVault, agent1.agentVault.address);
             assertWeb3Equal(availableAgents3[0][0].feeBIPS, 500);
-            assertWeb3Equal(availableAgents3[0][0].mintingClass1CollateralRatioBIPS, 1_8000);
+            assertWeb3Equal(availableAgents3[0][0].mintingVaultCollateralRatioBIPS, 1_8000);
             assertWeb3Equal(availableAgents3[0][0].mintingPoolCollateralRatioBIPS, 2_8000);
             assertWeb3Equal(availableAgents3[0][0].freeCollateralLots, (await agent1.getAgentCollateral()).freeCollateralLots());
             assert.equal(availableAgents3[0][1].agentVault, agent2.agentVault.address);
             assertWeb3Equal(availableAgents3[0][1].feeBIPS, 600);
-            assertWeb3Equal(availableAgents3[0][1].mintingClass1CollateralRatioBIPS, 1_9000);
+            assertWeb3Equal(availableAgents3[0][1].mintingVaultCollateralRatioBIPS, 1_9000);
             assertWeb3Equal(availableAgents3[0][1].mintingPoolCollateralRatioBIPS, 2_9000);
             assertWeb3Equal(availableAgents3[0][1].freeCollateralLots, (await agent2.getAgentCollateral()).freeCollateralLots());
             assertWeb3Equal(availableAgents3[1], 2);
@@ -170,7 +170,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(availableAgents4[0].length, 1);
             assert.equal(availableAgents4[0][0].agentVault, agent1.agentVault.address);
             assertWeb3Equal(availableAgents4[0][0].feeBIPS, 500);
-            assertWeb3Equal(availableAgents4[0][0].mintingClass1CollateralRatioBIPS, 1_8000);
+            assertWeb3Equal(availableAgents4[0][0].mintingVaultCollateralRatioBIPS, 1_8000);
             assertWeb3Equal(availableAgents4[0][0].mintingPoolCollateralRatioBIPS, 2_8000);
             assertWeb3Equal(availableAgents4[0][0].freeCollateralLots, (await agent1.getAgentCollateral()).freeCollateralLots());
             assertWeb3Equal(availableAgents4[1], 2);
@@ -179,22 +179,22 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(availableAgents5[0].length, 1);
             assert.equal(availableAgents5[0][0].agentVault, agent2.agentVault.address);
             assertWeb3Equal(availableAgents5[0][0].feeBIPS, 600);
-            assertWeb3Equal(availableAgents5[0][0].mintingClass1CollateralRatioBIPS, 1_9000);
+            assertWeb3Equal(availableAgents5[0][0].mintingVaultCollateralRatioBIPS, 1_9000);
             assertWeb3Equal(availableAgents5[0][0].mintingPoolCollateralRatioBIPS, 2_9000);
             assertWeb3Equal(availableAgents5[0][0].freeCollateralLots, (await agent2.getAgentCollateral()).freeCollateralLots());
             assertWeb3Equal(availableAgents5[1], 1);
-            await agent1.changeSettings({ feeBIPS: 800, mintingClass1CollateralRatioBIPS: 1_5000, mintingPoolCollateralRatioBIPS: 2_5000 });
+            await agent1.changeSettings({ feeBIPS: 800, mintingVaultCollateralRatioBIPS: 1_5000, mintingPoolCollateralRatioBIPS: 2_5000 });
             await agent1.makeAvailable();
             const availableAgents6 = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
             assert.equal(availableAgents6[0].length, 2);
             assert.equal(availableAgents6[0][0].agentVault, agent2.agentVault.address);
             assertWeb3Equal(availableAgents6[0][0].feeBIPS, 600);
-            assertWeb3Equal(availableAgents6[0][0].mintingClass1CollateralRatioBIPS, 1_9000);
+            assertWeb3Equal(availableAgents6[0][0].mintingVaultCollateralRatioBIPS, 1_9000);
             assertWeb3Equal(availableAgents6[0][0].mintingPoolCollateralRatioBIPS, 2_9000);
             assertWeb3Equal(availableAgents6[0][0].freeCollateralLots, (await agent2.getAgentCollateral()).freeCollateralLots());
             assert.equal(availableAgents6[0][1].agentVault, agent1.agentVault.address);
             assertWeb3Equal(availableAgents6[0][1].feeBIPS, 800);
-            assertWeb3Equal(availableAgents6[0][1].mintingClass1CollateralRatioBIPS, 1_5000);
+            assertWeb3Equal(availableAgents6[0][1].mintingVaultCollateralRatioBIPS, 1_5000);
             assertWeb3Equal(availableAgents6[0][1].mintingPoolCollateralRatioBIPS, 2_5000);
             assertWeb3Equal(availableAgents6[0][1].freeCollateralLots, (await agent1.getAgentCollateral()).freeCollateralLots());
             assertWeb3Equal(availableAgents6[1], 2);

@@ -253,17 +253,17 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     }
 
     /**
-     * If the current agent's class1 collateral token gets deprecated, the agent must switch with this method.
+     * If the current agent's vault collateral token gets deprecated, the agent must switch with this method.
      * NOTE: may only be called by the agent vault owner.
      * NOTE: at the time of switch, the agent must have enough of both collaterals in the vault.
      */
-    function switchClass1Collateral(
+    function switchVaultCollateral(
         address _agentVault,
         IERC20 _token
     )
         external override
     {
-        AgentsExternal.switchClass1Collateral(_agentVault, _token);
+        AgentsExternal.switchVaultCollateral(_agentVault, _token);
     }
 
     /**
@@ -306,14 +306,14 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _valueNATWei the amount to be withdrawn
      * @return _withdrawalAllowedAt the timestamp when the withdrawal can be made
      */
-    function announceClass1CollateralWithdrawal(
+    function announceVaultCollateralWithdrawal(
         address _agentVault,
         uint256 _valueNATWei
     )
         external override
         returns (uint256 _withdrawalAllowedAt)
     {
-        return AgentsExternal.announceWithdrawal(Collateral.Kind.AGENT_CLASS1, _agentVault, _valueNATWei);
+        return AgentsExternal.announceWithdrawal(Collateral.Kind.VAULT, _agentVault, _valueNATWei);
     }
 
     /**
@@ -584,9 +584,9 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * available. In this case agent can call this method, which burns reserved collateral at market price
      * and releases the remaining collateral (CRF is also burned).
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
-     * NOTE: the agent (cold address) receives the class1 collateral and NAT is burned instead. Therefore
-     *      this method is `payable` and the caller must provide enough NAT to cover the received class1 amount
-     *      multiplied by `class1BuyForFlareFactorBIPS`.
+     * NOTE: the agent (cold address) receives the vault collateral and NAT is burned instead. Therefore
+     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount
+     *      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
      * @param _proof proof that the attestation query window can not not contain
      *      the payment/non-payment proof anymore
      * @param _collateralReservationId collateral reservation id
@@ -907,7 +907,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @param _agentVault agent vault address
      * @param _amountUBA the amount of f-assets to liquidate
      * @return _liquidatedAmountUBA liquidated amount of f-asset
-     * @return _amountPaidClass1 amount paid to liquidator (in agents class 1)
+     * @return _amountPaidVault amount paid to liquidator (in agent's vault collateral)
      * @return _amountPaidPool amount paid to liquidator (in NAT from pool)
      */
     function liquidate(
@@ -916,9 +916,9 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     )
         external override
         onlyWhitelistedSender
-        returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidClass1, uint256 _amountPaidPool)
+        returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidVault, uint256 _amountPaidPool)
     {
-        (_liquidatedAmountUBA, _amountPaidClass1, _amountPaidPool) =
+        (_liquidatedAmountUBA, _amountPaidVault, _amountPaidPool) =
             Liquidation.liquidate(_agentVault, _amountUBA);
     }
 
@@ -993,9 +993,9 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * This method ONLY works when f-asset is terminated, which will only be done when AssetManager is already paused
      * at least for a month and most f-assets are already burned and the only ones remaining are unrecoverable.
      * NOTE: may only be called by the agent vault owner.
-     * NOTE: the agent (cold address) receives the class1 collateral and NAT is burned instead. Therefore
-     *      this method is `payable` and the caller must provide enough NAT to cover the received class1 amount
-     *      multiplied by `class1BuyForFlareFactorBIPS`.
+     * NOTE: the agent (cold address) receives the vault collateral and NAT is burned instead. Therefore
+     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount
+     *      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
      */
     function buybackAgentCollateral(
         address _agentVault
@@ -1103,7 +1103,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     }
 
     /**
-     * Check if `_token` is either class1 collateral token for `_agentVault` or the pool token.
+     * Check if `_token` is either vault collateral token for `_agentVault` or the pool token.
      * These types of tokens cannot be simply transfered from the agent vault, but can only be
      * withdrawn after announcement if they are not backing any f-assets.
      */
@@ -1161,7 +1161,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     }
 
     /**
-     * Burn fassets from  a single agent and get paid in class1 collateral by the agent.
+     * Burn fassets from  a single agent and get paid in vault collateral by the agent.
      * Price is FTSO price, multiplied by factor buyFAssetByAgentFactorBIPS (set by agent).
      * Used in self-close exit from the collateral pool when requested or when self-close amount is less than 1 lot.
      * Note: only collateral pool can call this method.

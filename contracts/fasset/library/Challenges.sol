@@ -151,10 +151,10 @@ library Challenges {
         Liquidation.startFullLiquidation(_agent);
         // calculate the reward
         Collateral.Data memory collateralData =
-            AgentCollateral.agentClass1CollateralData(_agent);
+            AgentCollateral.agentVaultCollateralData(_agent);
         uint256 rewardAMG = _backingAMGAtChallenge.mulBips(settings.paymentChallengeRewardBIPS);
         uint256 rewardC1Wei = Conversion.convertAmgToTokenWei(rewardAMG, collateralData.amgToTokenWeiPrice)
-            + Agents.convertUSD5ToClass1Wei(_agent, settings.paymentChallengeRewardUSD5);
-        Agents.payoutClass1(_agent, _challenger, rewardC1Wei);
+            + Agents.convertUSD5ToVaultCollateralWei(_agent, settings.paymentChallengeRewardUSD5);
+        Agents.payoutFromVault(_agent, _challenger, rewardC1Wei);
     }
 }

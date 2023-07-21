@@ -14,10 +14,10 @@ library AMEvents {
         address agentVault,
         address collateralPool,
         string underlyingAddress,
-        address class1CollateralToken,
+        address vaultCollateralToken,
         uint256 feeBIPS,
         uint256 poolFeeShareBIPS,
-        uint256 mintingClass1CollateralRatioBIPS,
+        uint256 mintingVaultCollateralRatioBIPS,
         uint256 mintingPoolCollateralRatioBIPS,
         uint256 buyFAssetByAgentFactorBIPS,
         uint256 poolExitCollateralRatioBIPS,
@@ -43,7 +43,7 @@ library AMEvents {
      * withdraw the announced amount after timestamp `withdrawalAllowedAt`.
      * If withdrawal was canceled (announced with amount 0), amountWei and withdrawalAllowedAt are zero.
      */
-    event Class1WithdrawalAnnounced(
+    event VaultCollateralWithdrawalAnnounced(
         address indexed agentVault,
         uint256 amountWei,
         uint256 withdrawalAllowedAt);
@@ -64,7 +64,7 @@ library AMEvents {
     event AgentAvailable(
         address indexed agentVault,
         uint256 feeBIPS,
-        uint256 mintingClass1CollateralRatioBIPS,
+        uint256 mintingVaultCollateralRatioBIPS,
         uint256 mintingPoolCollateralRatioBIPS,
         uint256 freeCollateralLots);
 
@@ -208,7 +208,7 @@ library AMEvents {
         address indexed agentVault,
         address indexed redeemer,
         uint256 redemptionAmountUBA,
-        uint256 redeemedClass1CollateralWei,
+        uint256 redeemedVaultCollateralWei,
         uint256 redeemedPoolCollateralWei,
         uint64 requestId);
 
@@ -246,7 +246,7 @@ library AMEvents {
         address indexed agentVault,
         address indexed redeemer,
         uint256 redemptionAmountUBA,
-        uint256 paidClass1Wei);
+        uint256 paidVaultCollateralWei);
 
     /**
      * Agent self-closed valueUBA of backing fassets.

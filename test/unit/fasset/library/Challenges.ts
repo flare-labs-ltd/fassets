@@ -52,17 +52,17 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
 
 
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
-        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
-        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
+        const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
 
     async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string) {
         // depositCollateral
         const agentPoolTokens = toWei(3e8);
-        const class1Collateral = toBNExp(240_000, 18);
-        await usdc.mintAmount(owner, class1Collateral);
-        await usdc.increaseAllowance(agentVault.address, class1Collateral, { from: owner });
-        await agentVault.depositCollateral(usdc.address, class1Collateral, { from: owner });
+        const vaultCollateral = toBNExp(240_000, 18);
+        await usdc.mintAmount(owner, vaultCollateral);
+        await usdc.increaseAllowance(agentVault.address, vaultCollateral, { from: owner });
+        await agentVault.depositCollateral(usdc.address, vaultCollateral, { from: owner });
         await depositPoolTokens(agentVault, owner, agentPoolTokens);
         await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }

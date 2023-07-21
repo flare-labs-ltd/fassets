@@ -82,8 +82,8 @@ library SettingsUpdater {
         keccak256("setMintingCapAMG((uint256)");
     bytes32 internal constant SET_TOKEN_INVALIDATION_TIME_MIN_SECONDS =
         keccak256("setTokenInvalidationTimeMinSeconds((uint256)");
-    bytes32 internal constant SET_CLASS1_BUY_FOR_FLARE_FACTOR_BIPS =
-        keccak256("setClass1BuyForFlareFactorBIPS((uint256)");
+    bytes32 internal constant SET_VAULT_COLLATERAL_BUY_FOR_FLARE_FACTOR_BIPS =
+        keccak256("setVaultCollateralBuyForFlareFactorBIPS((uint256)");
     bytes32 internal constant SET_AGENT_EXIT_AVAILABLE_TIMELOCK_SECONDS =
         keccak256("setAgentExitAvailableTimelockSeconds((uint256)");
     bytes32 internal constant SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS =
@@ -199,9 +199,9 @@ library SettingsUpdater {
         } else if (_method == SET_TOKEN_INVALIDATION_TIME_MIN_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setTokenInvalidationTimeMinSeconds(_params);
-        } else if (_method == SET_CLASS1_BUY_FOR_FLARE_FACTOR_BIPS) {
+        } else if (_method == SET_VAULT_COLLATERAL_BUY_FOR_FLARE_FACTOR_BIPS) {
             _checkEnoughTimeSinceLastUpdate(_method);
-            _setClass1BuyForFlareFactorBIPS(_params);
+            _setVaultCollateralBuyForFlareFactorBIPS(_params);
         } else if (_method == SET_AGENT_EXIT_AVAILABLE_TIMELOCK_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAgentExitAvailableTimelockSeconds(_params);
@@ -513,18 +513,18 @@ library SettingsUpdater {
         private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        (uint256 class1, uint256 pool) = abi.decode(_params, (uint256, uint256));
+        (uint256 vaultF, uint256 poolF) = abi.decode(_params, (uint256, uint256));
         // validate
-        require(class1 + pool > SafePct.MAX_BIPS, "bips value too low");
-        require(class1 <= settings.redemptionDefaultFactorAgentC1BIPS.mulBips(12000), "fee increase too big");
-        require(class1 >= settings.redemptionDefaultFactorAgentC1BIPS.mulBips(8333), "fee decrease too big");
-        require(pool <= settings.redemptionDefaultFactorPoolBIPS.mulBips(12000), "fee increase too big");
-        require(pool >= settings.redemptionDefaultFactorPoolBIPS.mulBips(8333), "fee decrease too big");
+        require(vaultF + poolF > SafePct.MAX_BIPS, "bips value too low");
+        require(vaultF <= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(12000), "fee increase too big");
+        require(vaultF >= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(8333), "fee decrease too big");
+        require(poolF <= settings.redemptionDefaultFactorPoolBIPS.mulBips(12000), "fee increase too big");
+        require(poolF >= settings.redemptionDefaultFactorPoolBIPS.mulBips(8333), "fee decrease too big");
         // update
-        settings.redemptionDefaultFactorAgentC1BIPS = class1.toUint32();
-        emit AMEvents.SettingChanged("redemptionDefaultFactorAgentC1BIPS", class1);
-        settings.redemptionDefaultFactorPoolBIPS = pool.toUint32();
-        emit AMEvents.SettingChanged("redemptionDefaultFactorPoolBIPS", pool);
+        settings.redemptionDefaultFactorVaultCollateralBIPS = vaultF.toUint32();
+        emit AMEvents.SettingChanged("redemptionDefaultFactorVaultCollateralBIPS", vaultF);
+        settings.redemptionDefaultFactorPoolBIPS = poolF.toUint32();
+        emit AMEvents.SettingChanged("redemptionDefaultFactorPoolBIPS", poolF);
     }
 
     function _setConfirmationByOthersAfterSeconds(
@@ -689,7 +689,7 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("tokenInvalidationTimeMinSeconds", value);
     }
 
-    function _setClass1BuyForFlareFactorBIPS(
+    function _setVaultCollateralBuyForFlareFactorBIPS(
         bytes calldata _params
     )
         private
@@ -699,8 +699,8 @@ library SettingsUpdater {
         // validate
         require(value >= SafePct.MAX_BIPS, "value too small");
         // update
-        settings.class1BuyForFlareFactorBIPS = value.toUint32();
-        emit AMEvents.SettingChanged("class1BuyForFlareFactorBIPS", value);
+        settings.vaultCollateralBuyForFlareFactorBIPS = value.toUint32();
+        emit AMEvents.SettingChanged("vaultCollateralBuyForFlareFactorBIPS", value);
     }
 
     function _setAgentExitAvailableTimelockSeconds(
@@ -804,11 +804,11 @@ library SettingsUpdater {
         require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         uint256 redemptionFactorBIPS =
-            _settings.redemptionDefaultFactorAgentC1BIPS + _settings.redemptionDefaultFactorPoolBIPS;
+            _settings.redemptionDefaultFactorVaultCollateralBIPS + _settings.redemptionDefaultFactorPoolBIPS;
         require(redemptionFactorBIPS > SafePct.MAX_BIPS, "bips value too low");
         require(_settings.attestationWindowSeconds >= 1 days, "window too small");
         require(_settings.confirmationByOthersAfterSeconds >= 2 hours, "must be at least two hours");
         require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, "confirmation time too big");
-        require(_settings.class1BuyForFlareFactorBIPS >= SafePct.MAX_BIPS, "value too small");
+        require(_settings.vaultCollateralBuyForFlareFactorBIPS >= SafePct.MAX_BIPS, "value too small");
     }
 }

@@ -19,19 +19,19 @@ export interface LiquidationStrategyImplSettings {
 
     /**
      * Factor with which to multiply the asset price in native currency to obtain the payment
-     * to the liquidator in class1 collateral. The rest (up to liquidationCollateralFactorBIPS) is paid from the pool.
+     * to the liquidator in vault collateral. The rest (up to liquidationCollateralFactorBIPS) is paid from the pool.
      * The length of this array must be the same as the length of liquidationCollateralFactorBIPS array.
      */
-    liquidationFactorClass1BIPS: BNish[];
+    liquidationFactorVaultCollateralBIPS: BNish[];
 }
 
 export function encodeLiquidationStrategyImplSettings(settings: LiquidationStrategyImplSettings) {
     return web3.eth.abi.encodeParameters(['uint256', 'uint256[]', 'uint256[]'],
-        [settings.liquidationStepSeconds, settings.liquidationCollateralFactorBIPS, settings.liquidationFactorClass1BIPS]);
+        [settings.liquidationStepSeconds, settings.liquidationCollateralFactorBIPS, settings.liquidationFactorVaultCollateralBIPS]);
 }
 
 export function decodeLiquidationStrategyImplSettings(encoded: string): LiquidationStrategyImplSettings {
-    const { 0: liquidationStepSeconds, 1: liquidationCollateralFactorBIPS, 2: liquidationFactorClass1BIPS } =
+    const { 0: liquidationStepSeconds, 1: liquidationCollateralFactorBIPS, 2: liquidationFactorVaultCollateralBIPS } =
         web3.eth.abi.decodeParameters(['uint256', 'uint256[]', 'uint256[]'], encoded);
-    return { liquidationStepSeconds, liquidationCollateralFactorBIPS, liquidationFactorClass1BIPS };
+    return { liquidationStepSeconds, liquidationCollateralFactorBIPS, liquidationFactorVaultCollateralBIPS };
 }
