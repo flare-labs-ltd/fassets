@@ -150,17 +150,17 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assertWeb3Equal(agentInfo2.totalVaultCollateralWei, 1100);
     });
 
-    it("should deposit vault collateral from any address - via transfer & collateralDeposited", async () => {
+    it("should deposit vault collateral from any address - via transfer & updateCollateral", async () => {
         await usdc.mintAmount(owner, 2000);
         const agentVault = await createAgent(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
         await usdc.transfer(agentVault.address, 100, { from: owner });
-        await agentVault.collateralDeposited(usdc.address, { from: owner });
+        await agentVault.updateCollateral(usdc.address, { from: owner });
         const votePower = await wNat.votePowerOf(agentVault.address);
         assertWeb3Equal(votePower, 0);
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(agentInfo.totalVaultCollateralWei, 100);
         await usdc.transfer(agentVault.address, 1000, { from: owner });
-        await agentVault.collateralDeposited(usdc.address, { from: owner });
+        await agentVault.updateCollateral(usdc.address, { from: owner });
         const agentInfo2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(agentInfo2.totalVaultCollateralWei, 1100);
     });

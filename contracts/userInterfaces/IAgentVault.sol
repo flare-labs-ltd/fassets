@@ -22,7 +22,7 @@ interface IAgentVault {
      * Parameter `_token` is explicit to allow depositing before collateral switch.
      * NOTE: anybody can call this method, to allow the owner to deposit from any source.
      */
-    function collateralDeposited(IERC20 _token) external;
+    function updateCollateral(IERC20 _token) external;
 
     /**
      * Withdraw vault collateral. This method will work for any token, but for vault collateral and agent pool tokens

@@ -296,7 +296,7 @@ contract(`ContingencyPoolOperations.sol; ${getTestFile(__filename)}; Collateral 
         assert.equal((await agent.contingencyPoolToken.balanceOf(minter.address)).toString(),"0");
         await expectEvent.inTransaction(resp.tx, context.assetManager, "RedemptionRequested");
         assert.equal((await context.wNat.balanceOf(minter.address)).toString(), natShare.toString());
-        expectEvent(resp, "Exit");
+        expectEvent(resp, "Exited");
     });
 
     it("self close exit test, incomplete self close", async () => {
@@ -327,7 +327,7 @@ contract(`ContingencyPoolOperations.sol; ${getTestFile(__filename)}; Collateral 
         //Check for redemption request and incomplete self close
         await expectEvent.inTransaction(resp.tx, context.assetManager, "RedemptionRequested");
         await expectEvent.inTransaction(resp.tx, agent.contingencyPool, "IncompleteSelfCloseExit");
-        expectEvent(resp, "Exit");
+        expectEvent(resp, "Exited");
     });
 
     it("self close exit test payout in vault collateral", async () => {
@@ -365,7 +365,7 @@ contract(`ContingencyPoolOperations.sol; ${getTestFile(__filename)}; Collateral 
         const vaultCollateralBalanceRedeemerAfter = await context.usdc.balanceOf(minter.address);
         assert.equal(vaultCollateralBalanceRedeemerAfter.sub(vaultCollateralBalanceRedeemerBefore).toString(), vaultCollateralBalanceAgentBefore.sub(vaultCollateralBalanceAgentAfter).toString());
         assert.equal((await context.wNat.balanceOf(minter.address)).toString(), natShare.toString());
-        expectEvent(resp, "Exit");
+        expectEvent(resp, "Exited");
     });
 
     it("withdraw collateral when FAsset is terminated", async () => {

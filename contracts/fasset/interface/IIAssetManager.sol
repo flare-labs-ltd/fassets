@@ -147,7 +147,7 @@ interface IIAssetManager is IAssetManager {
      * May pull agent out of liquidation.
      * NOTE: may only be called from an agent vault or collateral pool, not from an EOA address.
      */
-    function collateralDeposited(
+    function updateCollateral(
         address _agentVault,
         IERC20 _token
     ) external;

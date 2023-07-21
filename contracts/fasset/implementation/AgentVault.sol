@@ -50,7 +50,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
     // only supposed to be used from asset manager, but safe to be used by anybody
     function depositNat() external payable override {
         wNat.deposit{value: msg.value}();
-        assetManager.collateralDeposited(address(this), wNat);
+        assetManager.updateCollateral(address(this), wNat);
         _tokenUsed(wNat, TOKEN_DEPOSIT);
     }
 
@@ -86,15 +86,15 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         external override
     {
         _token.safeTransferFrom(msg.sender, address(this), _amount);
-        assetManager.collateralDeposited(address(this), _token);
+        assetManager.updateCollateral(address(this), _token);
         _tokenUsed(_token, TOKEN_DEPOSIT);
     }
 
     // update collateral after `transfer(vault, some amount)` was called (alternative to depositCollateral)
-    function collateralDeposited(IERC20 _token)
+    function updateCollateral(IERC20 _token)
         external
     {
-        assetManager.collateralDeposited(address(this), _token);
+        assetManager.updateCollateral(address(this), _token);
         _tokenUsed(_token, TOKEN_DEPOSIT);
     }
 

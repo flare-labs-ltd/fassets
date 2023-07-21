@@ -595,7 +595,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await usdt.approve(agentVault.address, toWei(3e8), { from: agentOwner1 });
             await agentVault.depositCollateral(usdt.address, toWei(3e8), { from: agentOwner1 });
             //Random address can't call collateral deposited
-            let res = assetManager.collateralDeposited(agentVault.address,usdt.address, { from: accounts[5] });
+            let res = assetManager.updateCollateral(agentVault.address,usdt.address, { from: accounts[5] });
             await expectRevert(res, "only agent vault or pool");
             //Check that agent is out of liquidation
             const info2 = await assetManager.getAgentInfo(agentVault.address);

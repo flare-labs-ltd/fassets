@@ -12,7 +12,7 @@ interface IContingencyPool {
     enum TokenExitType { MAXIMIZE_FEE_WITHDRAWAL, MINIMIZE_FEE_DEBT, KEEP_RATIO }
 
     // Also emitted in case of fee debt payment - in this case `amountNatWei = receivedTokensWei = 0`.
-    event Enter(
+    event Entered(
         address indexed tokenHolder,
         uint256 amountNatWei,
         uint256 receivedTokensWei,
@@ -20,7 +20,7 @@ interface IContingencyPool {
 
     // In case of self-close exit, `closedFAssetsUBA` is nonzero and includes `receivedFAssetFeesUBA`.
     // Also emitted in case of fee withdrawal - in this case `burnedTokensWei = receivedNatWei = 0`.
-    event Exit(
+    event Exited(
         address indexed tokenHolder,
         uint256 burnedTokensWei,
         uint256 receivedNatWei,

@@ -47,7 +47,7 @@ contract AssetManagerMock {
         return _address == commonOwner;
     }
 
-    function collateralDeposited(address /* _agentVault */, IERC20 /*_token*/) external {
+    function updateCollateral(address /* _agentVault */, IERC20 /*_token*/) external {
         commonOwner = commonOwner;  // just to prevent mutability warning
         require(!checkForValidAgentVaultAddress, "invalid agent vault address");
     }

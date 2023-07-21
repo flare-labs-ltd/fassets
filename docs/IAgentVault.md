@@ -1,7 +1,7 @@
 **depositCollateral** - Deposit vault collateral. Parameter `_token` is explicit to allow depositing before collateral switch.
 NOTE: owner must call `token.approve(vault, amount)` before calling this method. NOTE: anybody can call this method, to allow the owner to deposit from any wallet.
 
-**collateralDeposited** - Update collateral after `transfer(vault, some amount)` was called (alternative to depositCollateral). Parameter `_token` is explicit to allow depositing before collateral switch.
+**updateCollateral** - Update collateral after `transfer(vault, some amount)` was called (alternative to depositCollateral). Parameter `_token` is explicit to allow depositing before collateral switch.
 NOTE: anybody can call this method, to allow the owner to deposit from any source.
 
 **withdrawCollateral** - Withdraw vault collateral. This method will work for any token, but for vault collateral and agent pool tokens (which are locked because they may be backing f-assets) there is a check that there was prior announcement by calling `assetManager.announceVaultCollateralWithdrawal(...)`.

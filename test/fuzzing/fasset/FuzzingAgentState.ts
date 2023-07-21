@@ -17,7 +17,7 @@ import {
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp,
     UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/AssetManager";
-import { Enter, Exit } from "../../../typechain-truffle/ContingencyPool";
+import { Entered, Exited } from "../../../typechain-truffle/ContingencyPool";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { FuzzingState, FuzzingStateLogRecord } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
@@ -122,8 +122,8 @@ export class FuzzingAgentState extends TrackedAgentState {
         this.poolTokenAddress = await contingencyPool.poolToken();
         const contingencyPoolToken: ContractWithEvents<ContingencyPoolTokenInstance, ContingencyPoolTokenEvents> = await ContingencyPoolToken.at(this.poolTokenAddress);
         // pool eneter and exit event
-        this.parent.truffleEvents.event(contingencyPool, 'Enter').immediate().subscribe(args => this.handlePoolEnter(args));
-        this.parent.truffleEvents.event(contingencyPool, 'Exit').immediate().subscribe(args => this.handlePoolExit(args));
+        this.parent.truffleEvents.event(contingencyPool, 'Entered').immediate().subscribe(args => this.handlePoolEnter(args));
+        this.parent.truffleEvents.event(contingencyPool, 'Exited').immediate().subscribe(args => this.handlePoolExit(args));
         // pool token transfer event
         this.parent.truffleEvents.event(contingencyPoolToken, 'Transfer').immediate().subscribe(args => {
             this.handlePoolTokenTransfer(args.from, args.to, toBN(args.value));
@@ -329,12 +329,12 @@ export class FuzzingAgentState extends TrackedAgentState {
 
     // handlers: pool enter and exit
 
-    handlePoolEnter(args: EvmEventArgs<Enter>): void {
+    handlePoolEnter(args: EvmEventArgs<Entered>): void {
         const debtChange = this.calculatePoolFeeDebtChange(toBN(args.receivedTokensWei), toBN(args.addedFAssetFeesUBA));
         this.poolFeeDebt.addTo(args.tokenHolder, debtChange);
     }
 
-    handlePoolExit(args: EvmEventArgs<Exit>): void {
+    handlePoolExit(args: EvmEventArgs<Exited>): void {
         const debtChange = this.calculatePoolFeeDebtChange(toBN(args.burnedTokensWei).neg(), toBN(args.receviedFAssetFeesUBA).neg());
         this.poolFeeDebt.addTo(args.tokenHolder, debtChange);
     }

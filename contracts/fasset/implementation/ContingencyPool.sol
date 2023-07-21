@@ -151,10 +151,10 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
         }
         _mintFAssetFeeDebt(msg.sender, fAssetShare - depositedFAsset);
         _depositWNat();
-        assetManager.collateralDeposited(agentVault, wNat);
+        assetManager.updateCollateral(agentVault, wNat);
         token.mint(msg.sender, tokenShare);
         // emit event
-        emit Enter(msg.sender, msg.value, tokenShare, depositedFAsset);
+        emit Entered(msg.sender, msg.value, tokenShare, depositedFAsset);
     }
 
     /**
@@ -195,7 +195,7 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
         token.burn(msg.sender, _tokenShare);
         _transferWNat(msg.sender, natShare);
         // emit event
-        emit Exit(msg.sender, _tokenShare, natShare, freeFAssetFeeShare, 0);
+        emit Exited(msg.sender, _tokenShare, natShare, freeFAssetFeeShare, 0);
         return (natShare, freeFAssetFeeShare);
     }
 
@@ -292,7 +292,7 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
         token.burn(msg.sender, _tokenShare);
         _transferWNat(msg.sender, natShare);
         // emit event
-        emit Exit(msg.sender, _tokenShare, natShare, spentFAssetFees, requiredFAssets);
+        emit Exited(msg.sender, _tokenShare, natShare, spentFAssetFees, requiredFAssets);
     }
 
     /**
@@ -325,7 +325,7 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
         _mintFAssetFeeDebt(msg.sender, _fAssets);
         _transferFAsset(address(this), msg.sender, _fAssets);
         // emit event
-        emit Exit(msg.sender, 0, 0, freeFAssetFeeShare, 0);
+        emit Exited(msg.sender, 0, 0, freeFAssetFeeShare, 0);
     }
 
     /**
@@ -342,7 +342,7 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
         _burnFAssetFeeDebt(msg.sender, _fAssets);
         _transferFAsset(msg.sender, address(this), _fAssets);
         // emit event
-        emit Enter(msg.sender, 0, 0, _fAssets);
+        emit Entered(msg.sender, 0, 0, _fAssets);
     }
 
     /**
@@ -733,7 +733,7 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
         _newWNat.deposit{value: balance}();
         // set new WNat contract
         wNat = _newWNat;
-        assetManager.collateralDeposited(agentVault, wNat);
+        assetManager.updateCollateral(agentVault, wNat);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
