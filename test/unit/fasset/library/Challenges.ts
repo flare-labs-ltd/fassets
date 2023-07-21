@@ -51,7 +51,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
     const redeemerAddress1 = accounts[50]
 
 
-    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+    function createAgentVault(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
@@ -125,8 +125,8 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
 
-        agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        agentVault2 = await createAgent(agentOwner2, underlyingAgent2);
+        agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        agentVault2 = await createAgentVault(agentOwner2, underlyingAgent2);
 
         agentTxHash = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer, toWei(1), PaymentReference.redemption(1));
         agentTxProof = await attestationProvider.proveBalanceDecreasingTransaction(agentTxHash, underlyingAgent1);

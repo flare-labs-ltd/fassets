@@ -140,8 +140,8 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         await context.assetManager.proveUnderlyingAddressEOA(eoaProof, { from: agentOwner1 });
         // create agent
         const agentSettings = createTestAgentSettings(underlyingAgent1, context.usdc.address);
-        const response = await context.assetManager.createAgent(web3DeepNormalize(agentSettings), { from: agentOwner1 });
-        const created = requiredEventArgs(response, 'AgentCreated');
+        const response = await context.assetManager.createAgentVault(web3DeepNormalize(agentSettings), { from: agentOwner1 });
+        const created = requiredEventArgs(response, 'AgentVaultCreated');
         const agentVault = await AgentVault.at(created.agentVault);
         const contingencyPool = await ContingencyPool.at(created.contingencyPool);
         const poolTokenAddress = await contingencyPool.poolToken();

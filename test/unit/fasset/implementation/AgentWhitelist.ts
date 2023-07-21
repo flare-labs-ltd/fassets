@@ -126,7 +126,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Agent whitelist tests`, asy
             await waitForTimelock(rev, agentWhitelist, governance);
 
             //Try to create agent
-            const res = assetManager.createAgent(web3DeepNormalize(agentSettings), { from: ownerWorkAddress });
+            const res = assetManager.createAgentVault(web3DeepNormalize(agentSettings), { from: ownerWorkAddress });
             await expectRevert(res, "agent not whitelisted");
         });
 

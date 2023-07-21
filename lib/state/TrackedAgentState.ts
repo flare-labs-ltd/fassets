@@ -1,5 +1,5 @@
 import {
-    AgentAvailable, AgentCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
+    AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral,
     RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/AssetManager";
@@ -14,7 +14,7 @@ import { TrackedState } from "./TrackedState";
 
 const MAX_UINT256 = toBN(1).shln(256).subn(1);
 
-export type InitialAgentData = EventArgs<AgentCreated> & { poolWNat: string };
+export type InitialAgentData = EventArgs<AgentVaultCreated> & { poolWNat: string };
 
 export class TrackedAgentState {
     constructor(

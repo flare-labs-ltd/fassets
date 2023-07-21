@@ -126,7 +126,7 @@ export class TrackedState {
 
     private registerAgentHandlers() {
         // agent create / destroy
-        this.assetManagerEvent('AgentCreated').subscribe(args => this.createAgent({ ...args, poolWNat: this.poolWNatColateral.token }));
+        this.assetManagerEvent('AgentVaultCreated').subscribe(args => this.createAgentVault({ ...args, poolWNat: this.poolWNatColateral.token }));
         this.assetManagerEvent('AgentDestroyed').subscribe(args => this.destroyAgent(args.agentVault));
         // status changes
         this.assetManagerEvent('AgentInCCB').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.CCB, args.timestamp));
@@ -199,15 +199,15 @@ export class TrackedState {
     getAgentTriggerAdd(address: string): TrackedAgentState | undefined {
         const agent = this.agents.get(address);
         if (!agent) {
-            void this.createAgentWithCurrentState(address); // create in background
+            void this.createAgentVaultWithCurrentState(address); // create in background
         }
         return agent;
     }
 
-    async createAgentWithCurrentState(address: string) {
+    async createAgentVaultWithCurrentState(address: string) {
         const agentInfo = await this.context.assetManager.getAgentInfo(address);
         const poolWNat = await ContingencyPool.at(agentInfo.contingencyPool).then(pool => pool.wNat());
-        const agent = this.createAgent({
+        const agent = this.createAgentVault({
             agentVault: address,
             owner: agentInfo.ownerManagementAddress,
             underlyingAddress: agentInfo.underlyingAddressString,
@@ -226,7 +226,7 @@ export class TrackedState {
         agent.initializeState(agentInfo);
     }
 
-    createAgent(data: InitialAgentData) {
+    createAgentVault(data: InitialAgentData) {
         const agent = this.newAgent(data);
         this.agents.set(data.agentVault, agent);
         this.agentsByUnderlying.set(data.underlyingAddress, agent);

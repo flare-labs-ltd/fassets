@@ -1,4 +1,4 @@
-**AgentCreated** - A new agent vault was created.
+**AgentVaultCreated** - A new agent vault was created.
 
 **AgentDestroyAnnounced** - Agent has announced destroy (close) of agent vault and will be able to perform destroy after the timestamp `destroyAllowedAt`.
 

@@ -257,9 +257,9 @@ export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, 
     }
     // create agent
     const agentSettings = createTestAgentSettings(underlyingAddress, vaultCollateralTokenAddress, options);
-    const response = await deps.assetManager.createAgent(web3DeepNormalize(agentSettings), { from: owner });
-    // extract agent vault address from AgentCreated event
-    const event = findRequiredEvent(response, 'AgentCreated');
+    const response = await deps.assetManager.createAgentVault(web3DeepNormalize(agentSettings), { from: owner });
+    // extract agent vault address from AgentVaultCreated event
+    const event = findRequiredEvent(response, 'AgentVaultCreated');
     const agentVaultAddress = event.args.agentVault;
     // get vault contract at this address
     return await AgentVault.at(agentVaultAddress);

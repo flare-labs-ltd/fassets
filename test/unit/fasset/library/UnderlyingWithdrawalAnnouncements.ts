@@ -35,7 +35,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
 
 
-    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+    function createAgentVault(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
@@ -67,7 +67,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("should announce underlying withdrawal", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         // act
         const res = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         // assert
@@ -81,7 +81,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("should not change announced underlying withdrawal", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         // act
         const promise = assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
@@ -93,7 +93,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("only owner can announce underlying withdrawal", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         // act
         // assert
         await expectRevert(assetManager.announceUnderlyingWithdrawal(agentVault.address),
@@ -102,7 +102,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("should confirm underlying withdrawal", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
         await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
@@ -119,7 +119,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("should confirm underlying withdrawal both times", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
         await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
@@ -154,7 +154,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         collaterals[1].tokenFtsoSymbol="";
         collaterals[1].directPricePair = true;
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
         await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
@@ -172,7 +172,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("others can confirm underlying withdrawal after some time", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
         await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
@@ -190,7 +190,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("only owner can confirm underlying withdrawal immediatelly", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
         await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
@@ -204,7 +204,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("only announced payment can be confirmed", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
         // act
@@ -217,7 +217,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("should revert confirming underlying withdrawal if reference is wrong", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
         await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
@@ -232,7 +232,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
     it("should revert confirming underlying withdrawal if source is wrong", async () => {
         // init
         const underlyingAgent2 = "Agent2"
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent2, 500);
         await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
@@ -246,7 +246,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("should cancel underlying withdrawal", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         const announceRes = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announceArgs = requiredEventArgs(announceRes, "UnderlyingWithdrawalAnnounced");
         // act
@@ -260,7 +260,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("only owner can cancel underlying withdrawal", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         const announceRes = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announceArgs = requiredEventArgs(announceRes, "UnderlyingWithdrawalAnnounced");
         // act
@@ -274,7 +274,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("should cancel underlying withdrawal only if active", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         // act
         const promise = assetManager.cancelUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         // assert
@@ -285,7 +285,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("should not be able to cancel underlying withdrawal if called to soon", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
         const announceRes = await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const promise = assetManager.cancelUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
@@ -294,7 +294,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
     it("should not confirm underlying withdrawal if called too soon", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
         await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
         const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;

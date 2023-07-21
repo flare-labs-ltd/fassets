@@ -99,9 +99,9 @@ export class Agent extends AssetContextClient {
             await ctx.assetManager.proveUnderlyingAddressEOA(proof, { from: ownerAddress });
         }
         // create agent
-        const response = await ctx.assetManager.createAgent(web3DeepNormalize(settings), { from: ownerAddress });
-        // extract agent vault address from AgentCreated event
-        const args = requiredEventArgs(response, 'AgentCreated');
+        const response = await ctx.assetManager.createAgentVault(web3DeepNormalize(settings), { from: ownerAddress });
+        // extract agent vault address from AgentVaultCreated event
+        const args = requiredEventArgs(response, 'AgentVaultCreated');
         // get vault contract at agent's vault address address
         const agentVault = await AgentVault.at(args.agentVault);
         // get collateral pool

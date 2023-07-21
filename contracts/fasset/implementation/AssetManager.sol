@@ -153,7 +153,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * This method fixes the underlying address to be used by given agent owner.
      * A proof of payment (can be minimal or to itself) from this address must be provided,
      * with payment reference being equal to this method caller's address.
-     * NOTE: calling this method before `createAgent()` is optional on most chains,
+     * NOTE: calling this method before `createAgentVault()` is optional on most chains,
      * but is required on smart contract chains to make sure the agent is using EOA address
      * (depends on setting `requireEOAAddressProof`).
      * NOTE: may only be called by a whitelisted agent
@@ -175,14 +175,14 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * NOTE: may only be called by a whitelisted agent
      * @return _agentVault the new agent vault address
      */
-    function createAgent(
+    function createAgentVault(
         AgentSettings.Data calldata _settings
     )
         external override
         onlyAttached
         returns (address _agentVault)
     {
-        return AgentsCreateDestroy.createAgent(this, _settings);
+        return AgentsCreateDestroy.createAgentVault(this, _settings);
     }
 
     /**

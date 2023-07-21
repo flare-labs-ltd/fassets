@@ -76,7 +76,7 @@ library AgentsCreateDestroy {
         }
     }
 
-    function createAgent(
+    function createAgentVault(
         IIAssetManager _assetManager,
         AgentSettings.Data calldata _settings
     )
@@ -127,7 +127,7 @@ library AgentsCreateDestroy {
         agent.allAgentsPos = state.allAgents.length.toUint32();
         state.allAgents.push(address(agentVault));
         // notify
-        _emitAgentCreated(ownerManagementAddress, address(agentVault), address(agent.contingencyPool),
+        _emitAgentVaultCreated(ownerManagementAddress, address(agentVault), address(agent.contingencyPool),
             normalizedUnderlyingAddress, _settings);
         return address(agentVault);
     }
@@ -231,9 +231,9 @@ library AgentsCreateDestroy {
         return contingencyPool;
     }
 
-    // Basically the same as `emit AMEvents.AgentCreated`.
+    // Basically the same as `emit AMEvents.AgentVaultCreated`.
     // Must be a separate method as workaround for EVM 16 stack variables limit.
-    function _emitAgentCreated(
+    function _emitAgentVaultCreated(
         address _ownerManagementAddress,
         address _agentVault,
         address _contingencyPool,
@@ -242,7 +242,7 @@ library AgentsCreateDestroy {
     )
         private
     {
-        emit AMEvents.AgentCreated(_ownerManagementAddress, _agentVault, _contingencyPool, _underlyingAddress,
+        emit AMEvents.AgentVaultCreated(_ownerManagementAddress, _agentVault, _contingencyPool, _underlyingAddress,
             address(_settings.vaultCollateralToken), _settings.feeBIPS, _settings.poolFeeShareBIPS,
             _settings.mintingVaultCollateralRatioBIPS, _settings.mintingPoolCollateralRatioBIPS,
             _settings.buyFAssetByAgentFactorBIPS, _settings.poolExitCollateralRatioBIPS,

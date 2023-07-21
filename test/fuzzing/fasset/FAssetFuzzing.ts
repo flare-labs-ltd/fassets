@@ -129,7 +129,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             eventDecoder.addAddress(`OWNER_WORK_${i}`, ownerWorkAddress);
             eventDecoder.addAddress(`OWNER_MANAGEMENT_${i}`, ownerManagementAddress);
             await Agent.changeWorkAddress(context, ownerManagementAddress, ownerWorkAddress);
-            const options = createAgentOptions();
+            const options = createAgentVaultOptions();
             const ownerAddress = coinFlip() ? ownerWorkAddress : ownerManagementAddress;
             const fuzzingAgent = await FuzzingAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
             fuzzingAgent.capturePerAgentContractEvents(`AGENT_${i}`);
@@ -260,7 +260,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         assert.isTrue(fuzzingState.failedExpectations.length === 0, "fuzzing state has expectation failures");
     });
 
-    function createAgentOptions(): AgentCreateOptions {
+    function createAgentVaultOptions(): AgentCreateOptions {
         const vaultCollateral = randomChoice(context.collaterals.filter(isVaultCollateral));
         const poolCollateral = context.collaterals.filter(isPoolCollateral)[0];
         const mintingVaultCollateralRatioBIPS = mulDecimal(toBN(vaultCollateral.minCollateralRatioBIPS), randomNum(1, 1.5));

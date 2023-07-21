@@ -42,7 +42,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     const underlyingRedeemer1 = "Redeemer1";
 
 
-    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+    function createAgentVault(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
@@ -109,7 +109,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
 
     it("should not liquidate if collateral ratio is ok", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         await mint(agentVault, underlyingMinter1, minterAddress1);
         // act
@@ -121,7 +121,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     it("should not start full liquidation if agent is in status DESTROYING", async () => {
         // init
         chain.mint(underlyingAgent1, 100);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         // act
         await assetManager.announceDestroyAgent(agentVault.address, { from: agentOwner1 });
         const tx = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer1, 100, null);
@@ -142,7 +142,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     it("should not change liquidationStartedAt timestamp when liquidation phase does not change (liquidation -> full_liquidation)", async () => {
         // init
         chain.mint(underlyingAgent1, 200);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
         // act
@@ -167,7 +167,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
 
     it("should not do anything if callig startLiquidation twice", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
         // act
@@ -193,7 +193,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     it("should transition from CCB to liquidation phase because of price changes", async () => {
         // init
         chain.mint(underlyingAgent1, 200);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
         //Starting liquidation now should not do anything
@@ -217,7 +217,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     it("agent should be able to get from ccb to normal by depositing more collateral", async () => {
         // init
         chain.mint(underlyingAgent1, 200);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
         // act
@@ -237,7 +237,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     it("agent should be able to get from ccb to normal if the price rises", async () => {
         // init
         chain.mint(underlyingAgent1, 200);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
         const initial_price = await ftsos.asset.getCurrentPrice();
@@ -260,7 +260,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     it("agent in ccb, calling getAgentInfo after CR falls under CCB CR should return new Phase", async () => {
         // init
         chain.mint(underlyingAgent1, 200);
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
         const initial_price = await ftsos.asset.getCurrentPrice();
@@ -282,7 +282,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
 
     it("should not start liquidation if trusted price is ok for agent", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
         // act
@@ -296,7 +296,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
 
     it("should ignore trusted price if it is too old", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
         // act

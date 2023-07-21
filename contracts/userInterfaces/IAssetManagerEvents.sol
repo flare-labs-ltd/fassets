@@ -9,7 +9,7 @@ interface IAssetManagerEvents {
     /**
      * A new agent vault was created.
      */
-    event AgentCreated(
+    event AgentVaultCreated(
         address indexed owner,
         address agentVault,
         address contingencyPool,

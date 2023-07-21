@@ -33,7 +33,7 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
     const underlyingAgent1 = "Agent1";
     const underlyingRandomAddress = "Random";
 
-    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+    function createAgentVault(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
@@ -71,7 +71,7 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
     });
 
     it("should cleanup payment verifications after 15 days", async () => {
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
         const proof1 = await agentTopup(agentVault);
         // make transaction in the "future" (chains timestamp may differ)
         chain.skipTime(15 * DAYS);
