@@ -75,10 +75,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.checkAgentInfo({ reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: withdrawalAmount });
             await expectRevert(agent.withdrawVaultCollateral(withdrawalAmount), "withdrawal: not allowed yet");
             await time.increase(context.settings.withdrawalWaitMinSeconds);
-            const startVaultCollateralBalance = toBN(await agent.vaultCollateralToken().balanceOf(agent.ownerHotAddress));
+            const startVaultCollateralBalance = toBN(await agent.vaultCollateralToken().balanceOf(agent.ownerWorkAddress));
             await agent.withdrawVaultCollateral(withdrawalAmount);
             await agent.checkAgentInfo({ totalVaultCollateralWei: lockedCollateral, announcedVaultCollateralWithdrawalWei: 0 });
-            const endVaultCollateralBalance = toBN(await agent.vaultCollateralToken().balanceOf(agent.ownerHotAddress));
+            const endVaultCollateralBalance = toBN(await agent.vaultCollateralToken().balanceOf(agent.ownerWorkAddress));
             assertWeb3Equal(endVaultCollateralBalance.sub(startVaultCollateralBalance), withdrawalAmount);
             await expectRevert(agent.announceVaultCollateralWithdrawal(1), "withdrawal: value too high");
         });
@@ -202,7 +202,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(minter1.reserveCollateral(agent.vaultAddress, lots1), "minting paused");
             await expectRevert(agent.selfMint(context.convertLotsToUBA(lots1), lots1), "minting paused");
             // agent and redeemer "buys" f-assets
-            await context.fAsset.transfer(agent.ownerHotAddress, minted1.mintedAmountUBA, { from: minter1.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, minted1.mintedAmountUBA, { from: minter1.address });
             await context.fAsset.transfer(redeemer.address, minted2.mintedAmountUBA, { from: minter2.address });
             // perform redemption
             const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots2 / 2);
@@ -245,11 +245,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;
             const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             const startVaultCollateralBalanceAgent = await agent.vaultCollateralToken().balanceOf(agent.agentVault.address);
-            const startVaultCollateralBalanceAgentOwner = await agent.vaultCollateralToken().balanceOf(agent.ownerHotAddress);
+            const startVaultCollateralBalanceAgentOwner = await agent.vaultCollateralToken().balanceOf(agent.ownerWorkAddress);
             await agent.buybackAgentCollateral();
             const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
             const endVaultCollateralBalanceAgent = await agent.vaultCollateralToken().balanceOf(agent.agentVault.address);
-            const endVaultCollateralBalanceAgentOwner = await agent.vaultCollateralToken().balanceOf(agent.ownerHotAddress);
+            const endVaultCollateralBalanceAgentOwner = await agent.vaultCollateralToken().balanceOf(agent.ownerWorkAddress);
             assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), buybackBurnCost.subn(1)); // numerical error
             assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), buybackAgentVaultCollateral);
             assertWeb3Equal(endVaultCollateralBalanceAgentOwner.sub(startVaultCollateralBalanceAgentOwner), buybackAgentVaultCollateral);

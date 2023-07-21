@@ -143,10 +143,10 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     ////////////////////////////////////////////////////////////////////////////////////
     // Agent handling
 
-    function setOwnerHotAddress(address _ownerHotAddress)
+    function setOwnerWorkAddress(address _ownerWorkAddress)
         external override
     {
-        AgentsCreateDestroy.setOwnerHotAddress(_ownerHotAddress);
+        AgentsCreateDestroy.setOwnerWorkAddress(_ownerWorkAddress);
     }
 
     /**
@@ -584,7 +584,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * available. In this case agent can call this method, which burns reserved collateral at market price
      * and releases the remaining collateral (CRF is also burned).
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
-     * NOTE: the agent (cold address) receives the vault collateral and NAT is burned instead. Therefore
+     * NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore
      *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount
      *      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
      * @param _proof proof that the attestation query window can not not contain
@@ -993,7 +993,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * This method ONLY works when f-asset is terminated, which will only be done when AssetManager is already paused
      * at least for a month and most f-assets are already burned and the only ones remaining are unrecoverable.
      * NOTE: may only be called by the agent vault owner.
-     * NOTE: the agent (cold address) receives the vault collateral and NAT is burned instead. Therefore
+     * NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore
      *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount
      *      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
      */
@@ -1137,7 +1137,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
 
     function getAgentVaultOwner(address _agentVault)
         external view override
-        returns (address _ownerColdAddress, address _ownerHotAddress)
+        returns (address _ownerManagementAddress, address _ownerWorkAddress)
     {
         return AgentsExternal.getAgentVaultOwner(_agentVault);
     }

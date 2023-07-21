@@ -124,13 +124,13 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         for (let i = 0; i < N_AGENTS; i++) {
             const underlyingAddress = "underlying_agent_" + i;
             const ownerUnderlyingAddress = "underlying_owner_agent_" + i;
-            const ownerColdAddress = accounts[firstAgentAddress + i];
-            const ownerHotAddress = accounts[firstAgentAddress + N_AGENTS + i];
-            eventDecoder.addAddress(`OWNER_HOT_${i}`, ownerHotAddress);
-            eventDecoder.addAddress(`OWNER_COLD_${i}`, ownerColdAddress);
-            await Agent.changeHotAddress(context, ownerColdAddress, ownerHotAddress);
+            const ownerManagementAddress = accounts[firstAgentAddress + i];
+            const ownerWorkAddress = accounts[firstAgentAddress + N_AGENTS + i];
+            eventDecoder.addAddress(`OWNER_WORK_${i}`, ownerWorkAddress);
+            eventDecoder.addAddress(`OWNER_MANAGEMENT_${i}`, ownerManagementAddress);
+            await Agent.changeWorkAddress(context, ownerManagementAddress, ownerWorkAddress);
             const options = createAgentOptions();
-            const ownerAddress = coinFlip() ? ownerHotAddress : ownerColdAddress;
+            const ownerAddress = coinFlip() ? ownerWorkAddress : ownerManagementAddress;
             const fuzzingAgent = await FuzzingAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
             fuzzingAgent.capturePerAgentContractEvents(`AGENT_${i}`);
             await fuzzingAgent.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));

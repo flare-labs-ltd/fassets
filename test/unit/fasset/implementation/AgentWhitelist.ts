@@ -84,38 +84,38 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Agent whitelist tests`, asy
     });
 
     describe("whitelist functions", () => {
-        it("should not set owner hot when not whitelisted", async () => {
+        it("should not set owner work address when not whitelisted", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const ownerHotAddress = accounts[21];
-            const res = assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
+            const ownerWorkAddress = accounts[21];
+            const res = assetManager.setOwnerWorkAddress(ownerWorkAddress, { from: agentOwner1 });
             await expectRevert(res, "agent not whitelisted");
         });
 
-        it("should set owner hot address after whitelisting", async () => {
+        it("should set owner work address after whitelisting", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const ownerHotAddress = accounts[21];
+            const ownerWorkAddress = accounts[21];
             await agentWhitelist.addAddressesToWhitelist([agentOwner1], {from: governance});
-            await assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
+            await assetManager.setOwnerWorkAddress(ownerWorkAddress, { from: agentOwner1 });
             const res = await agentWhitelist.isWhitelisted(agentOwner1);
             assert.equal(res,true);
         });
 
-        it("should not allow setting hot address if hot address is set on another agent owner", async () => {
+        it("should not allow setting work address if work address is set on another agent owner", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const ownerHotAddress = accounts[21];
+            const ownerWorkAddress = accounts[21];
             await agentWhitelist.addAddressesToWhitelist([agentOwner1], {from: governance});
-            await assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
+            await assetManager.setOwnerWorkAddress(ownerWorkAddress, { from: agentOwner1 });
 
             await agentWhitelist.addAddressesToWhitelist([agentOwner2], {from: governance});
-            const res = assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner2 });
-            await expectRevert(res, "hot address in use");
+            const res = assetManager.setOwnerWorkAddress(ownerWorkAddress, { from: agentOwner2 });
+            await expectRevert(res, "work address in use");
         });
 
-        it("should not create agent from hot address after revoking cold address", async () => {
+        it("should not create agent from work address after revoking management address", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const ownerHotAddress = accounts[21];
+            const ownerWorkAddress = accounts[21];
             await agentWhitelist.addAddressesToWhitelist([agentOwner1], {from: governance});
-            await assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
+            await assetManager.setOwnerWorkAddress(ownerWorkAddress, { from: agentOwner1 });
             const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
             const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
             await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
@@ -126,7 +126,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Agent whitelist tests`, asy
             await waitForTimelock(rev, agentWhitelist, governance);
 
             //Try to create agent
-            const res = assetManager.createAgent(web3DeepNormalize(agentSettings), { from: ownerHotAddress });
+            const res = assetManager.createAgent(web3DeepNormalize(agentSettings), { from: ownerWorkAddress });
             await expectRevert(res, "agent not whitelisted");
         });
 

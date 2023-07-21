@@ -22,13 +22,13 @@ library AgentInfo {
         // Current agent's status.
         AgentInfo.Status status;
 
-        // Agent vault owner's cold wallet address, used for occasional administration.
+        // Agent vault owner's management address, used for occasional administration.
         // Immutable.
-        address ownerColdWalletAddress;
+        address ownerManagementAddress;
 
-        // Agent vault owner's cold wallet address, used for automatic operations.
-        // Can be changed by a call from the owner's cold wallet.
-        address ownerHotWalletAddress;
+        // Agent vault owner's work address, used for automatic operations.
+        // Can be changed by a call from the owner's management address.
+        address ownerWorkAddress;
 
         // Agent's collateral pool address
         address contingencyPool;

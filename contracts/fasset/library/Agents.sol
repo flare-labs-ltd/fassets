@@ -232,7 +232,7 @@ library Agents {
             uint256 amountNatWei = Conversion.convert(_amountVaultCollateralWei, vaultCollateral, poolCollateral)
                 .mulBips(settings.vaultCollateralBuyForFlareFactorBIPS);
             // Transfer vault collateral to the agent vault owner
-            vault.payout(vaultCollateral.token, _agent.ownerColdAddress, _amountVaultCollateralWei);
+            vault.payout(vaultCollateral.token, _agent.ownerManagementAddress, _amountVaultCollateralWei);
             // Burn the NAT equivalent (must be provided with the call).
             require(msg.value >= amountNatWei, "not enough funds provided");
             burnDirectNAT(amountNatWei);
@@ -287,11 +287,11 @@ library Agents {
         Agent.State storage _agent
     )
         internal view
-        returns (address _ownerColdAddress, address _ownerHotAddress)
+        returns (address _ownerManagementAddress, address _ownerWorkAddress)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        _ownerColdAddress = _agent.ownerColdAddress;
-        _ownerHotAddress = state.ownerColdToHot[_ownerColdAddress];
+        _ownerManagementAddress = _agent.ownerManagementAddress;
+        _ownerWorkAddress = state.ownerMgmtToWorkAddress[_ownerManagementAddress];
     }
 
     function isOwner(
@@ -302,17 +302,17 @@ library Agents {
         returns (bool)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        address ownerColdAddress = _agent.ownerColdAddress;
-        return _address == ownerColdAddress || _address == state.ownerColdToHot[ownerColdAddress];
+        address ownerManagementAddress = _agent.ownerManagementAddress;
+        return _address == ownerManagementAddress || _address == state.ownerMgmtToWorkAddress[ownerManagementAddress];
     }
 
     function requireWhitelisted(
-        address _ownerColdAddress
+        address _ownerManagementAddress
     )
         internal view
     {
         address whitelist = AssetManagerState.getSettings().agentWhitelist;
-        require(IWhitelist(whitelist).isWhitelisted(_ownerColdAddress),
+        require(IWhitelist(whitelist).isWhitelisted(_ownerManagementAddress),
             "agent not whitelisted");
     }
 
@@ -321,7 +321,7 @@ library Agents {
     )
         internal view
     {
-        requireWhitelisted(_agent.ownerColdAddress);
+        requireWhitelisted(_agent.ownerManagementAddress);
     }
 
     function requireAgentVaultOwner(

@@ -209,7 +209,7 @@ export class TrackedState {
         const poolWNat = await ContingencyPool.at(agentInfo.contingencyPool).then(pool => pool.wNat());
         const agent = this.createAgent({
             agentVault: address,
-            owner: agentInfo.ownerColdWalletAddress,
+            owner: agentInfo.ownerManagementAddress,
             underlyingAddress: agentInfo.underlyingAddressString,
             contingencyPool: agentInfo.contingencyPool,
             vaultCollateralToken: agentInfo.vaultCollateralToken,

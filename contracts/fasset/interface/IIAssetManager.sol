@@ -193,7 +193,7 @@ interface IIAssetManager is IAssetManager {
         returns (bool);
 
     /**
-     * True if `_address` is either hot or cold address of the owner of the agent identified by `_agentVault`.
+     * True if `_address` is either work or management address of the owner of the agent identified by `_agentVault`.
      * Used internally by agent vault.
      */
     function isAgentVaultOwner(address _agentVault, address _address)

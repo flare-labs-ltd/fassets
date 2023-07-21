@@ -33,7 +33,7 @@ library FullAgentInfo {
         CollateralTypeInt.Data storage poolCollateral = agent.getPoolCollateral();
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
         _info.status = _getAgentStatusInfo(agent);
-        (_info.ownerColdWalletAddress, _info.ownerHotWalletAddress) = Agents.vaultOwner(agent);
+        (_info.ownerManagementAddress, _info.ownerWorkAddress) = Agents.vaultOwner(agent);
         _info.contingencyPool = address(agent.contingencyPool);
         _info.underlyingAddressString = agent.underlyingAddressString;
         _info.publiclyAvailable = agent.availableAgentsPos != 0;

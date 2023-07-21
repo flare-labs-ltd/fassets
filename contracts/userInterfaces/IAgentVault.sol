@@ -33,7 +33,7 @@ interface IAgentVault {
     function withdrawCollateral(IERC20 _token, uint256 _amount, address _recipient) external;
 
     /**
-     * Allow transferring a token, airdropped to the agent vault, to the owner (cold wallet).
+     * Allow transferring a token, airdropped to the agent vault, to the owner (management address).
      * Doesn't work for vault collateral tokens or agent's pool tokens  because this would allow
      * withdrawing the locked collateral.
      * NOTE: only the owner of the agent vault may call this method.

@@ -140,19 +140,19 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         expectEvent(res, "AgentCreated", { owner: agentOwner1, underlyingAddress: underlyingAgent1 });
     });
 
-    it("should create agent from owner's hot address", async () => {
+    it("should create agent from owner's work address", async () => {
         // init
         chain.mint(underlyingAgent1, toBNExp(100, 18));
-        const ownerHotAddress = accounts[21];
-        await assetManager.setOwnerHotAddress(ownerHotAddress, { from: agentOwner1 });
+        const ownerWorkAddress = accounts[21];
+        await assetManager.setOwnerWorkAddress(ownerWorkAddress, { from: agentOwner1 });
         // act
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
         const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
-        const res = await assetManager.createAgent(web3DeepNormalize(agentSettings), { from: ownerHotAddress });
+        const res = await assetManager.createAgent(web3DeepNormalize(agentSettings), { from: ownerWorkAddress });
         // assert
-        // the owner returned in the AgentCreated event must be cold address
+        // the owner returned in the AgentCreated event must be management address
         expectEvent(res, "AgentCreated", { owner: agentOwner1, underlyingAddress: underlyingAgent1 });
     });
 

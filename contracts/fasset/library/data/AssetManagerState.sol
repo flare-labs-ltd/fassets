@@ -22,9 +22,9 @@ library AssetManagerState {
         // mapping((collateralClass, tokenAddress) => collateralTokens index + 1)
         mapping(bytes32 => uint256) collateralTokenIndex;
 
-        // bidirectional mapping between owner's hot and cold addresses
-        mapping(address => address) ownerHotToCold;
-        mapping(address => address) ownerColdToHot;
+        // bidirectional mapping between owner's work and management addresses
+        mapping(address => address) ownerWorkToMgmtAddress;
+        mapping(address => address) ownerMgmtToWorkAddress;
 
         // A list of all agents (for use by monitoring or challengers).
         // Type: array of agent vault addresses; when one is deleted, its position is filled with last

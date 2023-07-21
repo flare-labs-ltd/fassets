@@ -156,7 +156,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const vaultCollateralPrice = await context.getCollateralPrice(agent.vaultCollateral());
             const reservedCollateral = vaultCollateralPrice.convertAmgToTokenWei(context.convertLotsToAMG(lots));
             assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), reservedCollateral);
-            assertWeb3Equal(await vaultCollateralToken.balanceOf(agent.ownerHotAddress), reservedCollateral);
+            assertWeb3Equal(await vaultCollateralToken.balanceOf(agent.ownerWorkAddress), reservedCollateral);
             assert(reservedCollateral.gt(BN_ZERO));
             // check that fee and nat worth of reserved collateral (plus premium) were burned
             const burnedNAT = await agent.vaultCollateralToNatBurned(reservedCollateral);
@@ -204,7 +204,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const vaultCollateralPrice = await context.getCollateralPrice(agent.vaultCollateral());
             const reservedCollateral = vaultCollateralPrice.convertAmgToTokenWei(context.convertLotsToAMG(lots));
             assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), reservedCollateral);
-            assertWeb3Equal(await vaultCollateralToken.balanceOf(agent.ownerHotAddress), reservedCollateral);
+            assertWeb3Equal(await vaultCollateralToken.balanceOf(agent.ownerWorkAddress), reservedCollateral);
             assert(reservedCollateral.gt(BN_ZERO));
             // check that fee and nat worth of reserved collateral (plus premium) were burned
             const burnedNAT = await agent.vaultCollateralToNatBurned(reservedCollateral);
@@ -252,7 +252,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const vaultCollateralPrice = await context.getCollateralPrice(agent.vaultCollateral());
             const reservedCollateral = vaultCollateralPrice.convertAmgToTokenWei(context.convertLotsToAMG(lots));
             assertWeb3Equal(startBalanceAgent.sub(endBalanceAgent), reservedCollateral);
-            assertWeb3Equal(await vaultCollateralToken.balanceOf(agent.ownerHotAddress), reservedCollateral);
+            assertWeb3Equal(await vaultCollateralToken.balanceOf(agent.ownerWorkAddress), reservedCollateral);
             assert(reservedCollateral.gt(BN_ZERO));
             // check that fee and nat worth of reserved collateral (plus premium) were burned
             const burnedNAT = await agent.vaultCollateralToNatBurned(reservedCollateral);

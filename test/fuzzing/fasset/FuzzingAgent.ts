@@ -18,7 +18,7 @@ export class FuzzingAgent extends FuzzingActor {
     constructor(
         public runner: FuzzingRunner,
         public agent: Agent,
-        public ownerColdAddress: string,
+        public ownerManagementAddress: string,
         public ownerUnderlyingAddress: string,
         public creationOptions: AgentCreateOptions,
     ) {
@@ -27,11 +27,11 @@ export class FuzzingAgent extends FuzzingActor {
     }
 
     get ownerName() {
-        return this.formatAddress(this.ownerColdAddress);
+        return this.formatAddress(this.ownerManagementAddress);
     }
 
-    get ownerHotAddress() {
-        return Agent.getHotAddress(this.ownerColdAddress);
+    get ownerWorkAddress() {
+        return Agent.getWorkAddress(this.ownerManagementAddress);
     }
 
     name(agent: Agent) {
@@ -45,7 +45,7 @@ export class FuzzingAgent extends FuzzingActor {
 
     static async createTest(runner: FuzzingRunner, ownerAddress: string, underlyingAddress: string, ownerUnderlyingAddress: string, options?: AgentCreateOptions) {
         const agent = await Agent.createTest(runner.context, ownerAddress, underlyingAddress, options);
-        return new FuzzingAgent(runner, agent, agent.ownerColdAddress, ownerUnderlyingAddress, options ?? {});
+        return new FuzzingAgent(runner, agent, agent.ownerManagementAddress, ownerUnderlyingAddress, options ?? {});
     }
 
     unaccountedSpentFreeBalance = new SparseArray();
@@ -141,7 +141,7 @@ export class FuzzingAgent extends FuzzingActor {
         await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
         // execute
         const proof = await this.context.attestationProvider.provePayment(txHash, null, agent.underlyingAddress);
-        const res = await this.context.assetManager.selfMint(proof, agent.vaultAddress, lots, { from: this.ownerHotAddress })
+        const res = await this.context.assetManager.selfMint(proof, agent.vaultAddress, lots, { from: this.ownerWorkAddress })
             .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral', 'self-mint payment too small',
                 'self-mint invalid agent status', 'invalid self-mint reference', 'self-mint payment too old']));
         // 'self-mint payment too small' can happen after lot size change
@@ -157,7 +157,7 @@ export class FuzzingAgent extends FuzzingActor {
         if (agentState.status !== AgentStatus.NORMAL) return;   // reduce noise in case of (full) liquidation
         const mintedAssets = agentState.mintedUBA;
         if (mintedAssets.isZero()) return;
-        const ownersAssets = await this.context.fAsset.balanceOf(this.ownerHotAddress);
+        const ownersAssets = await this.context.fAsset.balanceOf(this.ownerWorkAddress);
         if (ownersAssets.isZero()) return;
         // TODO: buy fassets
         const amountUBA = randomBN(ownersAssets);
@@ -298,7 +298,7 @@ export class FuzzingAgent extends FuzzingActor {
             }
             // self-close dust - must buy some fassets
             if (agentState.dustUBA.gt(BN_ZERO)) {
-                await this.runner.fAssetMarketplace.buy(scope, this.ownerHotAddress, agentState.dustUBA)
+                await this.runner.fAssetMarketplace.buy(scope, this.ownerWorkAddress, agentState.dustUBA)
                     .catch(e => scope.exitOnExpectedError(e, []));
                 await agent.selfClose(agentState.dustUBA);
             }
@@ -353,7 +353,7 @@ export class FuzzingAgent extends FuzzingActor {
         // destroy old agent vault in parallel
         this.runner.startThread((scope) => this.destroyAgent(scope));
         // create the agent again
-        this.agent = await Agent.createTest(this.runner.context, this.ownerHotAddress, underlyingAddress + '*', createOptions);
+        this.agent = await Agent.createTest(this.runner.context, this.ownerWorkAddress, underlyingAddress + '*', createOptions);
         this.registerForEvents(this.agent.agentVault.address);
         this.capturePerAgentContractEvents(name + '*');
         await this.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));

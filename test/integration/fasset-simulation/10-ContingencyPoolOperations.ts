@@ -66,8 +66,8 @@ contract(`ContingencyPoolOperations.sol; ${getTestFile(__filename)}; Collateral 
         const txHash1 = await minter.performMintingPayment(crt);
         const minted = await minter.executeMinting(crt, txHash1);
         // agent collects pool fees
-        await agent.agentVault.withdrawPoolFees(minted.poolFeeUBA, agent.ownerHotAddress, { from: agent.ownerHotAddress });
-        assertWeb3Equal(await context.fAsset.balanceOf(agent.ownerHotAddress), minted.poolFeeUBA);
+        await agent.agentVault.withdrawPoolFees(minted.poolFeeUBA, agent.ownerWorkAddress, { from: agent.ownerWorkAddress });
+        assertWeb3Equal(await context.fAsset.balanceOf(agent.ownerWorkAddress), minted.poolFeeUBA);
         // minter transfers f-assets
         await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
         // redeemer redeems
@@ -484,9 +484,9 @@ contract(`ContingencyPoolOperations.sol; ${getTestFile(__filename)}; Collateral 
         const governanceVP = await context.createGovernanceVP();
         await context.wNat.setGovernanceVotePower(governanceVP.address, { from: governance });
         // delegate
-        await agent.contingencyPool.delegateGovernance(accounts[5], { from: agent.ownerHotAddress });
+        await agent.contingencyPool.delegateGovernance(accounts[5], { from: agent.ownerWorkAddress });
         // undelegate
-        await agent.contingencyPool.undelegateGovernance({ from: agent.ownerHotAddress });
+        await agent.contingencyPool.undelegateGovernance({ from: agent.ownerWorkAddress });
     });
 
 });

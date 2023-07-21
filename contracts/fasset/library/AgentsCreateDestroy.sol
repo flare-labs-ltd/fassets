@@ -35,22 +35,22 @@ library AgentsCreateDestroy {
         _;
     }
 
-    function setOwnerHotAddress(address _ownerHotAddress)
+    function setOwnerWorkAddress(address _ownerWorkAddress)
         external
         onlyWhitelistedAgent
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        require(_ownerHotAddress == address(0) || state.ownerHotToCold[_ownerHotAddress] == address(0),
-            "hot address in use");
-        // delete old hot to cold mapping
-        address oldHotAddress = state.ownerColdToHot[msg.sender];
-        if (oldHotAddress != address(0)) {
-            state.ownerHotToCold[oldHotAddress] = address(0);
+        require(_ownerWorkAddress == address(0) || state.ownerWorkToMgmtAddress[_ownerWorkAddress] == address(0),
+            "work address in use");
+        // delete old work to management mapping
+        address oldWorkAddress = state.ownerMgmtToWorkAddress[msg.sender];
+        if (oldWorkAddress != address(0)) {
+            state.ownerWorkToMgmtAddress[oldWorkAddress] = address(0);
         }
         // create a new bidirectional mapping
-        state.ownerColdToHot[msg.sender] = _ownerHotAddress;
-        if (_ownerHotAddress != address(0)) {
-            state.ownerHotToCold[_ownerHotAddress] = msg.sender;
+        state.ownerMgmtToWorkAddress[msg.sender] = _ownerWorkAddress;
+        if (_ownerWorkAddress != address(0)) {
+            state.ownerWorkToMgmtAddress[_ownerWorkAddress] = msg.sender;
         }
     }
 
@@ -61,9 +61,9 @@ library AgentsCreateDestroy {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         TransactionAttestation.verifyPaymentSuccess(_payment);
-        address ownerColdAddress = _getColdAddress(msg.sender);
-        Agents.requireWhitelisted(ownerColdAddress);
-        state.underlyingAddressOwnership.claimWithProof(_payment, state.paymentConfirmations, ownerColdAddress);
+        address ownerManagementAddress = _getManagementAddress(msg.sender);
+        Agents.requireWhitelisted(ownerManagementAddress);
+        state.underlyingAddressOwnership.claimWithProof(_payment, state.paymentConfirmations, ownerManagementAddress);
         // Make sure that current underlying block is at least as high as the EOA proof block.
         // This ensures that any transaction done at or before EOA check cannot be used as payment proof for minting.
         // It prevents the attack where an agent guesses the minting id, pays to the underlying address,
@@ -84,10 +84,10 @@ library AgentsCreateDestroy {
         returns (address)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        // can be called from cold or hot owner address
-        address ownerColdAddress = _getColdAddress(msg.sender);
-        // cold address must be whitelisted
-        Agents.requireWhitelisted(ownerColdAddress);
+        // can be called from management or work owner address
+        address ownerManagementAddress = _getManagementAddress(msg.sender);
+        // management address must be whitelisted
+        Agents.requireWhitelisted(ownerManagementAddress);
         // validate underlying address
         (string memory normalizedUnderlyingAddress, bytes32 underlyingAddressHash) =
             UnderlyingAddresses.validateAndNormalize(_settings.underlyingAddressString);
@@ -98,7 +98,7 @@ library AgentsCreateDestroy {
         Agent.State storage agent = Agent.getWithoutCheck(address(agentVault));
         assert(agent.status == Agent.Status.EMPTY);     // state should be empty on creation
         agent.status = Agent.Status.NORMAL;
-        agent.ownerColdAddress = ownerColdAddress;
+        agent.ownerManagementAddress = ownerManagementAddress;
         // set collateral token types
         agent.setVaultCollateral(_settings.vaultCollateralToken);
         agent.poolCollateralIndex = state.poolCollateralIndex;
@@ -111,7 +111,7 @@ library AgentsCreateDestroy {
         agent.setBuyFAssetByAgentFactorBIPS(_settings.buyFAssetByAgentFactorBIPS);
         // claim the address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
-        state.underlyingAddressOwnership.claim(ownerColdAddress, underlyingAddressHash,
+        state.underlyingAddressOwnership.claim(ownerManagementAddress, underlyingAddressHash,
             state.settings.requireEOAAddressProof);
         agent.underlyingAddressString = normalizedUnderlyingAddress;
         agent.underlyingAddressHash = underlyingAddressHash;
@@ -127,7 +127,7 @@ library AgentsCreateDestroy {
         agent.allAgentsPos = state.allAgents.length.toUint32();
         state.allAgents.push(address(agentVault));
         // notify
-        _emitAgentCreated(ownerColdAddress, address(agentVault), address(agent.contingencyPool),
+        _emitAgentCreated(ownerManagementAddress, address(agentVault), address(agent.contingencyPool),
             normalizedUnderlyingAddress, _settings);
         return address(agentVault);
     }
@@ -234,7 +234,7 @@ library AgentsCreateDestroy {
     // Basically the same as `emit AMEvents.AgentCreated`.
     // Must be a separate method as workaround for EVM 16 stack variables limit.
     function _emitAgentCreated(
-        address _ownerColdAddress,
+        address _ownerManagementAddress,
         address _agentVault,
         address _contingencyPool,
         string memory _underlyingAddress,
@@ -242,17 +242,17 @@ library AgentsCreateDestroy {
     )
         private
     {
-        emit AMEvents.AgentCreated(_ownerColdAddress, _agentVault, _contingencyPool, _underlyingAddress,
+        emit AMEvents.AgentCreated(_ownerManagementAddress, _agentVault, _contingencyPool, _underlyingAddress,
             address(_settings.vaultCollateralToken), _settings.feeBIPS, _settings.poolFeeShareBIPS,
             _settings.mintingVaultCollateralRatioBIPS, _settings.mintingPoolCollateralRatioBIPS,
             _settings.buyFAssetByAgentFactorBIPS, _settings.poolExitCollateralRatioBIPS,
             _settings.poolTopupCollateralRatioBIPS, _settings.poolTopupTokenPriceFactorBIPS);
     }
 
-    // Returns cold owner's address, given either hot or cold address.
-    function _getColdAddress(address _ownerAddress) private view returns (address) {
+    // Returns management owner's address, given either work or management address.
+    function _getManagementAddress(address _ownerAddress) private view returns (address) {
         AssetManagerState.State storage state = AssetManagerState.get();
-        address ownerColdAddress = state.ownerHotToCold[_ownerAddress];
-        return ownerColdAddress != address(0) ? ownerColdAddress : _ownerAddress;
+        address ownerManagementAddress = state.ownerWorkToMgmtAddress[_ownerAddress];
+        return ownerManagementAddress != address(0) ? ownerManagementAddress : _ownerAddress;
     }
 }

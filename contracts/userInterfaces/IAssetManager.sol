@@ -135,15 +135,15 @@ interface IAssetManager is IAssetManagerEvents {
         returns (CollateralType.Data[] memory);
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Agent owner cold and hot address management
+    // Agent owner management and work address management
 
     /**
-     * Associate a hot wallet address with the agent owner's cold owner address.
-     * Every owner (cold address) can have only one hot address, so as soon as the new one is set, the old
+     * Associate a work address with the agent owner's management address.
+     * Every owner (management address) can have only one work address, so as soon as the new one is set, the old
      * one stops working.
-     * NOTE: May only be called by an agent on the allowed agent list and only from the cold wallet address.
+     * NOTE: May only be called by an agent on the allowed agent list and only from the management address.
      */
-    function setOwnerHotAddress(address _ownerHotAddress) external;
+    function setOwnerWorkAddress(address _ownerWorkAddress) external;
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Agent create / destroy
@@ -155,7 +155,7 @@ interface IAssetManager is IAssetManagerEvents {
      * NOTE: calling this method before `createAgent()` is optional on most chains,
      * but is required on smart contract chains to make sure the agent is using EOA address
      * (depends on setting `requireEOAAddressProof`).
-     * NOTE: may only be called by a whitelisted agent (cold or hot owner address).
+     * NOTE: may only be called by a whitelisted agent (management or work owner address).
      * @param _payment proof of payment on the underlying chain
      */
     function proveUnderlyingAddressEOA(
@@ -163,12 +163,12 @@ interface IAssetManager is IAssetManagerEvents {
     ) external;
 
     /**
-     * Create an agent.
+     * Create an agent vault.
      * The agent will always be identified by `_agentVault` address.
      * (Externally, one account may own several agent vaults,
      *  but in fasset system, each agent vault acts as an independent agent.)
      * NOTE: may only be called by an agent on the allowed agent list.
-     * Can be called from the cold or the hot agent wallet address.
+     * Can be called from the management or the work agent owner address.
      * @return _agentVault new agent vault address
      */
     function createAgent(
@@ -351,7 +351,7 @@ interface IAssetManager is IAssetManagerEvents {
      * is already paused at least for a month and most f-assets are already burned and the only ones
      * remaining are unrecoverable.
      * NOTE: may only be called by the agent vault owner.
-     * NOTE: the agent (cold address) receives the vault collateral and NAT is burned instead. Therefore
+     * NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore
      *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount
      *      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
      */
@@ -390,11 +390,11 @@ interface IAssetManager is IAssetManagerEvents {
         returns (address);
 
     /**
-     * Return the hot and the cold address of the owner of the agent identified by `_agentVault`.
+     * Return the management and the work address of the owner of the agent identified by `_agentVault`.
      */
     function getAgentVaultOwner(address _agentVault)
         external view
-        returns (address _ownerColdAddress, address _ownerHotAddress);
+        returns (address _ownerManagementAddress, address _ownerWorkAddress);
 
     ////////////////////////////////////////////////////////////////////////////////////
     // List of available agents (i.e. publicly available for minting).
@@ -519,7 +519,7 @@ interface IAssetManager is IAssetManagerEvents {
      * available. In this case the agent can call this method, which burns reserved collateral at market price
      * and releases the remaining collateral (CRF is also burned).
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
-     * NOTE: the agent (cold address) receives the vault collateral and NAT is burned instead. Therefore
+     * NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore
      *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount
      *      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
      * @param _proof proof that the attestation query window can not not contain

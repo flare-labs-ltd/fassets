@@ -23,14 +23,14 @@ NOTE: anybody can call.
 
 **getCollateralTypes** - Get the list of all available and deprecated tokens used for collateral.
 
-**setOwnerHotAddress** - Associate a hot wallet address with the agent owner's cold owner address. Every owner (cold address) can have only one hot address, so as soon as the new one is set, the old one stops working.
-NOTE: May only be called by an agent on the allowed agent list and only from the cold wallet address.
+**setOwnerWorkAddress** - Associate a work address with the agent owner's management owner address. Every owner (management address) can have only one work address, so as soon as the new one is set, the old one stops working.
+NOTE: May only be called by an agent on the allowed agent list and only from the management address.
 
 **proveUnderlyingAddressEOA** - This method fixes the underlying address to be used by given agent owner. A proof of payment (can be minimal or to itself) from this address must be provided, with payment reference being equal to this method caller's address.
-NOTE: calling this method before `createAgent()` is optional on most chains, but is required on smart contract chains to make sure the agent is using EOA address (depends on setting `requireEOAAddressProof`). NOTE: may only be called by a whitelisted agent (cold or hot owner address).
+NOTE: calling this method before `createAgent()` is optional on most chains, but is required on smart contract chains to make sure the agent is using EOA address (depends on setting `requireEOAAddressProof`). NOTE: may only be called by a whitelisted agent (management or work owner address).
 
 **createAgent** - Create an agent. The agent will always be identified by `_agentVault` address. (Externally, one account may own several agent vaults,  but in fasset system, each agent vault acts as an independent agent.)
-NOTE: may only be called by an agent on the allowed agent list. Can be called from the cold or the hot agent wallet address.
+NOTE: may only be called by an agent on the allowed agent list. Can be called from the management or the work agent wallet address.
 
 **announceDestroyAgent** - Announce that the agent is going to be destroyed. At this time, the agent must not have any mintings or collateral reservations and must not be on the available agents list.
 NOTE: may only be called by the agent vault owner.
@@ -66,7 +66,7 @@ NOTE: may only be called by the owner of the agent vault   except if enough time
 NOTE: may only be called by the agent vault owner.
 
 **buybackAgentCollateral** - When f-asset is terminated, an agent can burn the market price of backed f-assets with his collateral, to release the remaining collateral (and, formally, underlying assets). This method ONLY works when f-asset is terminated, which will only be done when the asset manager is already paused at least for a month and most f-assets are already burned and the only ones remaining are unrecoverable.
-NOTE: may only be called by the agent vault owner. NOTE: the agent (cold address) receives the vault collateral and NAT is burned instead. Therefore      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
+NOTE: may only be called by the agent vault owner. NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
 
 **getAllAgents** - Get (a part of) the list of all agents. The list must be retrieved in parts since retrieving the whole list can consume too much gas for one block.
 
@@ -74,7 +74,7 @@ NOTE: may only be called by the agent vault owner. NOTE: the agent (cold address
 
 **getContingencyPool** - Returns the collateral pool address of the agent identified by `_agentVault`.
 
-**getAgentVaultOwner** - Return the hot and the cold address of the owner of the agent identified by `_agentVault`.
+**getAgentVaultOwner** - Return the management and the work address of the owner of the agent identified by `_agentVault`.
 
 **makeAgentAvailable** - Add the agent to the list of publicly available agents. Other agents can only self-mint.
 NOTE: may only be called by the agent vault owner.
@@ -102,7 +102,7 @@ NOTE: may only be called by the minter (= creator of CR, the collateral reservat
 NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
 
 **unstickMinting** - If a collateral reservation request exists for more than 24 hours, payment or non-payment proof are no longer available. In this case the agent can call this method, which burns reserved collateral at market price and releases the remaining collateral (CRF is also burned).
-NOTE: may only be called by the owner of the agent vault in the collateral reservation request. NOTE: the agent (cold address) receives the vault collateral and NAT is burned instead. Therefore      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
+NOTE: may only be called by the owner of the agent vault in the collateral reservation request. NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
 
 **selfMint** - Agent can mint against himself. In that case, this is a one-step process, skipping collateral reservation and no collateral reservation fee payment. Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
 NOTE: may only be called by the agent vault owner. NOTE: the caller must be a whitelisted agent.

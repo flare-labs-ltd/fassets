@@ -109,7 +109,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         _token.safeTransfer(_recipient, _amount);
     }
 
-    // Allow transferring a token, airdropped to the agent vault, to the owner (cold wallet).
+    // Allow transferring a token, airdropped to the agent vault, to the owner (management address).
     // Doesn't work for collateral tokens because this would allow withdrawing the locked collateral.
     function transferExternalToken(IERC20 _token, uint256 _amount)
         external override
@@ -117,8 +117,8 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         nonReentrant
     {
         require(!assetManager.isLockedVaultToken(address(this), _token), "only non-collateral tokens");
-        (address ownerColdAddress,) = assetManager.getAgentVaultOwner(address(this));
-        _token.safeTransfer(ownerColdAddress, _amount);
+        (address ownerManagementAddress,) = assetManager.getAgentVaultOwner(address(this));
+        _token.safeTransfer(ownerManagementAddress, _amount);
     }
 
     function delegate(IVPToken _token, address _to, uint256 _bips) external override onlyOwner {

@@ -99,7 +99,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             // agent "buys" f-assets
-            await context.fAsset.transfer(agent.ownerHotAddress, minted.mintedAmountUBA, { from: minter.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
             await agent.selfClose(minted.mintedAmountUBA);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.add(additionalCollateral));
@@ -154,7 +154,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info2.ccbStartTimestamp, 0);
             assertWeb3Equal(info2.liquidationStartTimestamp, 0);
             // agent "buys" f-assets
-            await context.fAsset.transfer(agent.ownerHotAddress, minted.mintedAmountUBA, { from: minter.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
             await agent.selfClose(minted.mintedAmountUBA);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.add(additionalCollateral));
@@ -194,7 +194,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
             assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
             // agent "buys" f-assets
-            await context.fAsset.transfer(agent.ownerHotAddress, minted.mintedAmountUBA, { from: minter.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
             // perform partial self close
             const selfCloseAmountUBA = context.convertAmgToUBA(5e9);
             const [, selfClosedValueUBA, liquidationCancelledEvent] = await agent.selfClose(selfCloseAmountUBA);
@@ -251,7 +251,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
             assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
             // agent "buys" f-assets
-            await context.fAsset.transfer(agent.ownerHotAddress, minted.mintedAmountUBA, { from: minter.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
             // perform partial self close, that puts CR above min CR
             const selfCloseAmountUBA = context.convertAmgToUBA(1e10);
             const [, selfClosedValueUBA, liquidationCancelledEvent] = await agent.selfClose(selfCloseAmountUBA);
@@ -376,7 +376,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(vaultCollateralRatioBIPS3.gte(toBN(vaultCollateralTypes.safetyMinCollateralRatioBIPS)));
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2);
-            await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, remainingUBA, { from: liquidator.address });
             assert(remainingUBA.gt(BN_ZERO));
             await agent.selfClose(remainingUBA);
             // agent can exit now
@@ -481,7 +481,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(vaultCollateralRatioBIPS3.gte(toBN(vaultCollateralTypes.safetyMinCollateralRatioBIPS)));
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2);
-            await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, remainingUBA, { from: liquidator.address });
             assert(remainingUBA.gt(BN_ZERO));
             await agent.selfClose(remainingUBA);
             // agent can exit now
@@ -823,7 +823,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(collateralRatioBIPS2.gte(toBN(collateralTypes.safetyMinCollateralRatioBIPS)))
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1);
-            await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, remainingUBA, { from: liquidator.address });
             assert(remainingUBA.gt(BN_ZERO));
             await agent.selfClose(remainingUBA);
             // agent can exit now
@@ -908,7 +908,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(collateralRatioBIPS2.gte(toBN(collateralTypes.safetyMinCollateralRatioBIPS)))
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1);
-            await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, remainingUBA, { from: liquidator.address });
             assert(remainingUBA.gt(BN_ZERO));
             await agent.selfClose(remainingUBA);
             // agent can exit now
@@ -998,7 +998,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(collateralRatioBIPS2.gte(toBN(collateralTypes.safetyMinCollateralRatioBIPS)))
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1);
-            await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, remainingUBA, { from: liquidator.address });
             assert(remainingUBA.gt(BN_ZERO));
             await agent.selfClose(remainingUBA);
             // agent can exit now
@@ -1086,7 +1086,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(collateralRatioBIPS2.gte(toBN(collateralTypes.safetyMinCollateralRatioBIPS)))
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1);
-            await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, remainingUBA, { from: liquidator.address });
             assert(remainingUBA.gt(BN_ZERO));
             await agent.selfClose(remainingUBA);
             // agent can exit now
@@ -1198,7 +1198,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(collateralRatioBIPS3.gte(toBN(collateralTypes.safetyMinCollateralRatioBIPS)))
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2);
-            await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, remainingUBA, { from: liquidator.address });
             assert(remainingUBA.gt(BN_ZERO));
             await agent.selfClose(remainingUBA);
             // agent can exit now
@@ -1305,7 +1305,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(collateralRatioBIPS3.gte(toBN(collateralTypes.safetyMinCollateralRatioBIPS)))
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2);
-            await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, remainingUBA, { from: liquidator.address });
             assert(remainingUBA.gt(BN_ZERO));
             await agent.selfClose(remainingUBA);
             // agent can exit now
@@ -1409,7 +1409,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(vaultCollateralRatioBIPS3.gte(toBN(vaultCollateralTypes.safetyMinCollateralRatioBIPS)));
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2);
-            await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, remainingUBA, { from: liquidator.address });
             assert(remainingUBA.gt(BN_ZERO));
             await agent.selfClose(remainingUBA);
             // agent can exit now
@@ -1513,7 +1513,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(vaultCollateralRatioBIPS3.gte(toBN(vaultCollateralTypes.safetyMinCollateralRatioBIPS)));
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2);
-            await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, remainingUBA, { from: liquidator.address });
             assert(remainingUBA.gt(BN_ZERO));
             await agent.selfClose(remainingUBA);
             // agent can exit now
@@ -1617,7 +1617,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert(vaultCollateralRatioBIPS3.gte(toBN(vaultCollateralTypes.safetyMinCollateralRatioBIPS)));
             // agent "buys" f-assets
             const remainingUBA = minted.mintedAmountUBA.sub(liquidatedUBA1).sub(liquidatedUBA2);
-            await context.fAsset.transfer(agent.ownerHotAddress, remainingUBA, { from: liquidator.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, remainingUBA, { from: liquidator.address });
             assert(remainingUBA.eq(BN_ZERO));
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(vaultCollateralLiquidationReward1).sub(vaultCollateralLiquidationReward2));

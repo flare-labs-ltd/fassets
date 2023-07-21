@@ -36,7 +36,7 @@ export class Agent extends AssetContextClient {
 
     constructor(
         context: AssetContext,
-        public ownerColdAddress: string,
+        public ownerManagementAddress: string,
         public agentVault: AgentVaultInstance,
         public contingencyPool: ContingencyPoolInstance,
         public contingencyPoolToken: ContingencyPoolTokenInstance,
@@ -49,29 +49,29 @@ export class Agent extends AssetContextClient {
     vaultAddress = this.agentVault.address;
     underlyingAddress = this.settings.underlyingAddressString;
 
-    static coldToHotOwnerAddress: Map<string, string> = new Map();
-    static hotToColdOwnerAddress: Map<string, string> = new Map();
+    static mgmtToWorkOwnerAddress: Map<string, string> = new Map();
+    static workToMgmtOwnerAddress: Map<string, string> = new Map();
 
-    static setHotAddressMapping(coldAddress: string, hotAddress: string) {
-        Agent.coldToHotOwnerAddress.set(coldAddress, hotAddress);
-        Agent.hotToColdOwnerAddress.set(hotAddress, coldAddress);
+    static setWorkAddressMapping(managementAddress: string, workAddress: string) {
+        Agent.mgmtToWorkOwnerAddress.set(managementAddress, workAddress);
+        Agent.workToMgmtOwnerAddress.set(workAddress, managementAddress);
     }
 
-    static getColdAddress(address: string) {
-        return this.hotToColdOwnerAddress.get(address) ?? address;
+    static getManagementAddress(address: string) {
+        return this.workToMgmtOwnerAddress.get(address) ?? address;
     }
 
-    static getHotAddress(address: string) {
-        return this.coldToHotOwnerAddress.get(address) ?? address;
+    static getWorkAddress(address: string) {
+        return this.mgmtToWorkOwnerAddress.get(address) ?? address;
     }
 
-    get ownerHotAddress() {
-        return Agent.getHotAddress(this.ownerColdAddress);
+    get ownerWorkAddress() {
+        return Agent.getWorkAddress(this.ownerManagementAddress);
     }
 
-    static async changeHotAddress(ctx: AssetContext, coldAddress: string, hotAddress: string) {
-        await ctx.assetManager.setOwnerHotAddress(hotAddress, { from: coldAddress });
-        this.setHotAddressMapping(coldAddress, hotAddress);
+    static async changeWorkAddress(ctx: AssetContext, managementAddress: string, workAddress: string) {
+        await ctx.assetManager.setOwnerWorkAddress(workAddress, { from: managementAddress });
+        this.setWorkAddressMapping(managementAddress, workAddress);
     }
 
     static async createTest(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, options?: AgentCreateOptions) {
@@ -110,8 +110,8 @@ export class Agent extends AssetContextClient {
         const poolTokenAddress = await contingencyPool.poolToken();
         const contingencyPoolToken = await ContingencyPoolToken.at(poolTokenAddress);
         // create object
-        const ownerColdAddress = Agent.getColdAddress(ownerAddress);
-        return new Agent(ctx, ownerColdAddress, agentVault, contingencyPool, contingencyPoolToken, wallet, settings);
+        const ownerManagementAddress = Agent.getManagementAddress(ownerAddress);
+        return new Agent(ctx, ownerManagementAddress, agentVault, contingencyPool, contingencyPoolToken, wallet, settings);
     }
 
     vaultCollateralToken() {
@@ -132,31 +132,31 @@ export class Agent extends AssetContextClient {
     async changeSettings(changes: Partial<Record<AgentSetting, BNish>>) {
         let validAt = BN_ZERO;
         for (const [name, value] of Object.entries(changes)) {
-            const res = await this.assetManager.announceAgentSettingUpdate(this.vaultAddress, name, value, { from: this.ownerHotAddress });
+            const res = await this.assetManager.announceAgentSettingUpdate(this.vaultAddress, name, value, { from: this.ownerWorkAddress });
             const announcement = requiredEventArgs(res, 'AgentSettingChangeAnnounced');
             validAt = maxBN(validAt, toBN(announcement.validAt));
         }
         if (validAt.isZero()) return;   // no execute needed
         await time.increaseTo(validAt);
         for (const [name, value] of Object.entries(changes)) {
-            await this.assetManager.executeAgentSettingUpdate(this.vaultAddress, name, { from: this.ownerHotAddress });
+            await this.assetManager.executeAgentSettingUpdate(this.vaultAddress, name, { from: this.ownerWorkAddress });
         }
     }
 
     async depositVaultCollateral(amountTokenWei: BNish) {
         const vaultCollateralToken = this.vaultCollateralToken();
-        await vaultCollateralToken.mintAmount(this.ownerHotAddress, amountTokenWei);
-        await vaultCollateralToken.approve(this.agentVault.address, amountTokenWei, { from: this.ownerHotAddress });
-        return await this.agentVault.depositCollateral(vaultCollateralToken.address, amountTokenWei, { from: this.ownerHotAddress });
+        await vaultCollateralToken.mintAmount(this.ownerWorkAddress, amountTokenWei);
+        await vaultCollateralToken.approve(this.agentVault.address, amountTokenWei, { from: this.ownerWorkAddress });
+        return await this.agentVault.depositCollateral(vaultCollateralToken.address, amountTokenWei, { from: this.ownerWorkAddress });
     }
 
     // adds pool collateral and agent pool tokens
     async buyContingencyPoolTokens(amountNatWei: BNish) {
-        return await this.agentVault.buyContingencyPoolTokens({ from: this.ownerHotAddress, value: toBN(amountNatWei) });
+        return await this.agentVault.buyContingencyPoolTokens({ from: this.ownerWorkAddress, value: toBN(amountNatWei) });
     }
 
     async makeAvailable() {
-        const res = await this.assetManager.makeAgentAvailable(this.vaultAddress, { from: this.ownerHotAddress });
+        const res = await this.assetManager.makeAgentAvailable(this.vaultAddress, { from: this.ownerWorkAddress });
         return requiredEventArgs(res, 'AgentAvailable');
     }
 
@@ -167,7 +167,7 @@ export class Agent extends AssetContextClient {
     }
 
     async announceExitAvailable() {
-        const res = await this.assetManager.announceExitAvailableAgentList(this.vaultAddress, { from: this.ownerHotAddress });
+        const res = await this.assetManager.announceExitAvailableAgentList(this.vaultAddress, { from: this.ownerWorkAddress });
         const args = requiredEventArgs(res, 'AvailableAgentExitAnnounced');
         assert.equal(args.agentVault, this.vaultAddress);
         return args.exitAllowedAt;
@@ -178,7 +178,7 @@ export class Agent extends AssetContextClient {
             const exitAllowedAt = await this.announceExitAvailable();
             await time.increaseTo(exitAllowedAt);
         }
-        const res = await this.assetManager.exitAvailableAgentList(this.vaultAddress, { from: this.ownerHotAddress });
+        const res = await this.assetManager.exitAvailableAgentList(this.vaultAddress, { from: this.ownerWorkAddress });
         const args = requiredEventArgs(res, 'AvailableAgentExited');
         assert.equal(args.agentVault, this.vaultAddress);
     }
@@ -188,9 +188,9 @@ export class Agent extends AssetContextClient {
         await this.exitAvailable();
         // withdraw pool fees
         const poolFeeBalance = await this.poolFeeBalance();
-        const ownerFAssetBalance = await this.fAsset.balanceOf(this.ownerHotAddress);
+        const ownerFAssetBalance = await this.fAsset.balanceOf(this.ownerWorkAddress);
         if (poolFeeBalance.gt(BN_ZERO)) await this.withdrawPoolFees(poolFeeBalance);
-        const ownerFAssetBalanceAfter = await this.fAsset.balanceOf(this.ownerHotAddress);
+        const ownerFAssetBalanceAfter = await this.fAsset.balanceOf(this.ownerWorkAddress);
         // check that we received exactly the agent vault's fees in fasset
         assertWeb3Equal(await this.poolFeeBalance(), 0);
         assertWeb3Equal(ownerFAssetBalanceAfter.sub(ownerFAssetBalance), poolFeeBalance);
@@ -211,9 +211,9 @@ export class Agent extends AssetContextClient {
         const destroyAllowedAt = await this.announceDestroy();
         await time.increaseTo(destroyAllowedAt);
         const vaultCollateralToken = this.vaultCollateralToken();
-        const ownerVaultCollateralBalance = await vaultCollateralToken.balanceOf(this.ownerHotAddress);
+        const ownerVaultCollateralBalance = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
         await this.destroy();
-        const ownerVaultCollateralBalanceAfterDestroy = await vaultCollateralToken.balanceOf(this.ownerHotAddress);
+        const ownerVaultCollateralBalanceAfterDestroy = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
         assertWeb3Equal(ownerVaultCollateralBalanceAfterDestroy.sub(ownerVaultCollateralBalance), collateral);
     }
 
@@ -224,18 +224,18 @@ export class Agent extends AssetContextClient {
         const destroyAllowedAt = await this.announceDestroy();
         await time.increaseTo(destroyAllowedAt);
         const vaultCollateralToken = this.vaultCollateralToken();
-        const ownerVaultCollateralBalance = await vaultCollateralToken.balanceOf(this.ownerHotAddress);
+        const ownerVaultCollateralBalance = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
         await this.destroy();
-        const ownerVaultCollateralBalanceAfterDestroy = await vaultCollateralToken.balanceOf(this.ownerHotAddress);
+        const ownerVaultCollateralBalanceAfterDestroy = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
         assertWeb3Equal(ownerVaultCollateralBalanceAfterDestroy.sub(ownerVaultCollateralBalance), collateral);
     }
 
     async announceVaultCollateralWithdrawal(amountWei: BNish) {
-        await this.assetManager.announceVaultCollateralWithdrawal(this.vaultAddress, amountWei, { from: this.ownerHotAddress });
+        await this.assetManager.announceVaultCollateralWithdrawal(this.vaultAddress, amountWei, { from: this.ownerWorkAddress });
     }
 
     async withdrawVaultCollateral(amountWei: BNish) {
-        return await this.agentVault.withdrawCollateral(this.settings.vaultCollateralToken, amountWei, this.ownerHotAddress, { from: this.ownerHotAddress });
+        return await this.agentVault.withdrawCollateral(this.settings.vaultCollateralToken, amountWei, this.ownerWorkAddress, { from: this.ownerWorkAddress });
     }
 
     async poolTokenBalance() {
@@ -250,18 +250,18 @@ export class Agent extends AssetContextClient {
     }
 
     async announcePoolTokenRedemption(amountWei: BNish) {
-        const res = await this.assetManager.announceAgentPoolTokenRedemption(this.vaultAddress, amountWei, { from: this.ownerHotAddress });
+        const res = await this.assetManager.announceAgentPoolTokenRedemption(this.vaultAddress, amountWei, { from: this.ownerWorkAddress });
         const args = requiredEventArgs(res, 'PoolTokenRedemptionAnnounced');
         assert.equal(args.agentVault, this.vaultAddress);
         return args;
     }
 
     async redeemContingencyPoolTokens(amountWei: BNish) {
-        return await this.agentVault.redeemContingencyPoolTokens(amountWei, this.ownerHotAddress, { from: this.ownerHotAddress });
+        return await this.agentVault.redeemContingencyPoolTokens(amountWei, this.ownerWorkAddress, { from: this.ownerWorkAddress });
     }
 
     async withdrawPoolFees(amountUBA: BNish) {
-        await this.agentVault.withdrawPoolFees(amountUBA, this.ownerHotAddress, { from: this.ownerHotAddress });
+        await this.agentVault.withdrawPoolFees(amountUBA, this.ownerWorkAddress, { from: this.ownerWorkAddress });
     }
 
     async poolFeeBalance() {
@@ -269,14 +269,14 @@ export class Agent extends AssetContextClient {
     }
 
     async announceDestroy() {
-        const res = await this.assetManager.announceDestroyAgent(this.vaultAddress, { from: this.ownerHotAddress });
+        const res = await this.assetManager.announceDestroyAgent(this.vaultAddress, { from: this.ownerWorkAddress });
         const args = requiredEventArgs(res, 'AgentDestroyAnnounced');
         assert.equal(args.agentVault, this.vaultAddress);
         return args.destroyAllowedAt;
     }
 
     async destroy() {
-        const res = await this.assetManager.destroyAgent(this.vaultAddress, this.ownerHotAddress, { from: this.ownerHotAddress });
+        const res = await this.assetManager.destroyAgent(this.vaultAddress, this.ownerWorkAddress, { from: this.ownerWorkAddress });
         const args = requiredEventArgs(res, 'AgentDestroyed');
         assert.equal(args.agentVault, this.vaultAddress);
         return res;
@@ -292,11 +292,11 @@ export class Agent extends AssetContextClient {
 
     async confirmTopupPayment(transactionHash: string) {
         const proof = await this.attestationProvider.provePayment(transactionHash, null, this.underlyingAddress);
-        await this.assetManager.confirmTopupPayment(proof, this.agentVault.address, { from: this.ownerHotAddress });
+        await this.assetManager.confirmTopupPayment(proof, this.agentVault.address, { from: this.ownerWorkAddress });
     }
 
     async announceUnderlyingWithdrawal() {
-        const res = await this.assetManager.announceUnderlyingWithdrawal(this.agentVault.address, { from: this.ownerHotAddress });
+        const res = await this.assetManager.announceUnderlyingWithdrawal(this.agentVault.address, { from: this.ownerWorkAddress });
         return requiredEventArgs(res, 'UnderlyingWithdrawalAnnounced');
     }
 
@@ -306,12 +306,12 @@ export class Agent extends AssetContextClient {
 
     async confirmUnderlyingWithdrawal(request: EventArgs<UnderlyingWithdrawalAnnounced>, transactionHash: string) {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, null);
-        const res = await this.assetManager.confirmUnderlyingWithdrawal(proof, this.agentVault.address, { from: this.ownerHotAddress });
+        const res = await this.assetManager.confirmUnderlyingWithdrawal(proof, this.agentVault.address, { from: this.ownerWorkAddress });
         return requiredEventArgs(res, 'UnderlyingWithdrawalConfirmed');
     }
 
     async cancelUnderlyingWithdrawal(request: EventArgs<UnderlyingWithdrawalAnnounced>) {
-        const res = await this.assetManager.cancelUnderlyingWithdrawal(this.agentVault.address, { from: this.ownerHotAddress });
+        const res = await this.assetManager.cancelUnderlyingWithdrawal(this.agentVault.address, { from: this.ownerWorkAddress });
         return requiredEventArgs(res, 'UnderlyingWithdrawalCancelled');
     }
 
@@ -322,26 +322,26 @@ export class Agent extends AssetContextClient {
 
     async confirmActiveRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
-        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerHotAddress });
+        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
         return requiredEventArgs(res, 'RedemptionPerformed');
     }
 
     async confirmDefaultedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
-        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerHotAddress });
+        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
         checkEventNotEmited(res, 'RedemptionPerformed');
         return res;
     }
 
     async confirmFailedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string): Promise<[redemptionPaymentFailed: EventArgs<RedemptionPaymentFailed>, redemptionDefault: EventArgs<RedemptionDefault>]>  {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
-        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerHotAddress });
+        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
         return [requiredEventArgs(res, 'RedemptionPaymentFailed'), requiredEventArgs(res, 'RedemptionDefault')];
     }
 
     async confirmBlockedRedemptionPayment(request: EventArgs<RedemptionRequested>, transactionHash: string) {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, request.paymentAddress);
-        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerHotAddress });
+        const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
         return requiredEventArgs(res, 'RedemptionPaymentBlocked');
     }
 
@@ -353,13 +353,13 @@ export class Agent extends AssetContextClient {
             request.firstUnderlyingBlock.toNumber(),
             request.lastUnderlyingBlock.toNumber(),
             request.lastUnderlyingTimestamp.toNumber());
-        const res = await this.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: this.ownerHotAddress });
+        const res = await this.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: this.ownerWorkAddress });
         return requiredEventArgs(res, 'RedemptionDefault');
     }
 
     async finishRedemptionWithoutPayment(request: EventArgs<RedemptionRequested>): Promise<EventArgs<RedemptionDefault>> {
         const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(this.context.attestationWindowSeconds());
-        const res = await this.assetManager.finishRedemptionWithoutPayment(proof, request.requestId, { from: this.ownerHotAddress });
+        const res = await this.assetManager.finishRedemptionWithoutPayment(proof, request.requestId, { from: this.ownerWorkAddress });
         return eventArgs(res, "RedemptionDefault");
     }
 
@@ -398,7 +398,7 @@ export class Agent extends AssetContextClient {
             sourceAddress = tx?.inputs[0][0]!;
         }
         const proof = await this.attestationProvider.provePayment(transactionHash, sourceAddress, this.underlyingAddress);
-        const res = await this.assetManager.executeMinting(proof, crt.collateralReservationId, { from: this.ownerHotAddress });
+        const res = await this.assetManager.executeMinting(proof, crt.collateralReservationId, { from: this.ownerWorkAddress });
         return requiredEventArgs(res, 'MintingExecuted');
     }
 
@@ -410,7 +410,7 @@ export class Agent extends AssetContextClient {
             crt.firstUnderlyingBlock.toNumber(),
             crt.lastUnderlyingBlock.toNumber(),
             crt.lastUnderlyingTimestamp.toNumber());
-        const res = await this.assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: this.ownerHotAddress });
+        const res = await this.assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: this.ownerWorkAddress });
         return requiredEventArgs(res, 'MintingPaymentDefault');
     }
 
@@ -435,7 +435,7 @@ export class Agent extends AssetContextClient {
     async unstickMinting(crt: EventArgs<CollateralReserved>) {
         const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(this.context.attestationWindowSeconds());
         const unstickMintingCost = await this.unstickMintingCostNAT(crt);
-        await this.assetManager.unstickMinting(proof, crt.collateralReservationId, { from: this.ownerHotAddress, value: unstickMintingCost });
+        await this.assetManager.unstickMinting(proof, crt.collateralReservationId, { from: this.ownerWorkAddress, value: unstickMintingCost });
     }
 
     async selfMint(amountUBA: BNish, lots: BNish) {
@@ -446,12 +446,12 @@ export class Agent extends AssetContextClient {
         this.context.chain.mint(randomAddr, depositUBA);
         const transactionHash = await this.wallet.addTransaction(randomAddr, this.underlyingAddress, depositUBA, PaymentReference.selfMint(this.agentVault.address));
         const proof = await this.attestationProvider.provePayment(transactionHash, null, this.underlyingAddress);
-        const res = await this.assetManager.selfMint(proof, this.agentVault.address, lots, { from: this.ownerHotAddress });
+        const res = await this.assetManager.selfMint(proof, this.agentVault.address, lots, { from: this.ownerWorkAddress });
         return requiredEventArgs(res, 'MintingExecuted');
     }
 
     async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN, liquidationCancelledEvent: EventArgs<LiquidationEnded>]> {
-        const res = await this.assetManager.selfClose(this.agentVault.address, amountUBA, { from: this.ownerHotAddress });
+        const res = await this.assetManager.selfClose(this.agentVault.address, amountUBA, { from: this.ownerWorkAddress });
         const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
         const selfClose = requiredEventArgs(res, 'SelfClose');
         dustChangedEvents.every(dc => assert.equal(dc.agentVault, this.agentVault.address));
@@ -490,7 +490,7 @@ export class Agent extends AssetContextClient {
     }
 
     async endLiquidation() {
-        const res = await this.assetManager.endLiquidation(this.vaultAddress, { from: this.ownerHotAddress });
+        const res = await this.assetManager.endLiquidation(this.vaultAddress, { from: this.ownerWorkAddress });
         assert.equal(requiredEventArgs(res, 'LiquidationEnded').agentVault, this.vaultAddress);
     }
 
@@ -506,7 +506,7 @@ export class Agent extends AssetContextClient {
 
     async buybackAgentCollateral() {
         const [,, buybackCost] = await this.getBuybackAgentCollateralValue()
-        await this.assetManager.buybackAgentCollateral(this.agentVault.address, { from: this.ownerHotAddress, value: buybackCost });
+        await this.assetManager.buybackAgentCollateral(this.agentVault.address, { from: this.ownerWorkAddress, value: buybackCost });
     }
 
     lastAgentInfoCheck: CheckAgentInfo = CHECK_DEFAULTS;

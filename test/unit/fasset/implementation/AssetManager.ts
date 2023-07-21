@@ -271,33 +271,33 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
     describe("update agent settings", () => {
 
-        it("should set owner hot address", async () => {
+        it("should set owner work address", async () => {
             // create agent
             const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
-            // set owner hot address
-            await assetManager.setOwnerHotAddress("0xe34BDff68a5b89216D7f6021c1AB25c012142425", { from: agentOwner1 });
-            const OwnerColdAndHotAddresses = await assetManager.getAgentVaultOwner(agentVault.address);
-            assert.equal(OwnerColdAndHotAddresses[0], agentOwner1);
-            assert.equal(OwnerColdAndHotAddresses[1], "0xe34BDff68a5b89216D7f6021c1AB25c012142425");
-            // set owner hot address again
-            await assetManager.setOwnerHotAddress("0x27e80dB1f5a975f4C43C5eC163114E796cdB603D", { from: agentOwner1 });
-            const OwnerColdAndHotAddresses2 = await assetManager.getAgentVaultOwner(agentVault.address);
-            assert.equal(OwnerColdAndHotAddresses2[0], agentOwner1);
-            assert.equal(OwnerColdAndHotAddresses2[1], "0x27e80dB1f5a975f4C43C5eC163114E796cdB603D");
-            // set owner hot address again with address 0
-            await assetManager.setOwnerHotAddress(constants.ZERO_ADDRESS, { from: agentOwner1 });
-            const OwnerColdAndHotAddresses3 = await assetManager.getAgentVaultOwner(agentVault.address);
-            assert.equal(OwnerColdAndHotAddresses3[0], agentOwner1);
-            assert.equal(OwnerColdAndHotAddresses3[1], constants.ZERO_ADDRESS);
+            // set owner work address
+            await assetManager.setOwnerWorkAddress("0xe34BDff68a5b89216D7f6021c1AB25c012142425", { from: agentOwner1 });
+            const OwnerMgmtAndWorkAddresses = await assetManager.getAgentVaultOwner(agentVault.address);
+            assert.equal(OwnerMgmtAndWorkAddresses[0], agentOwner1);
+            assert.equal(OwnerMgmtAndWorkAddresses[1], "0xe34BDff68a5b89216D7f6021c1AB25c012142425");
+            // set owner work address again
+            await assetManager.setOwnerWorkAddress("0x27e80dB1f5a975f4C43C5eC163114E796cdB603D", { from: agentOwner1 });
+            const OwnerMgmtAndWorkAddresses2 = await assetManager.getAgentVaultOwner(agentVault.address);
+            assert.equal(OwnerMgmtAndWorkAddresses2[0], agentOwner1);
+            assert.equal(OwnerMgmtAndWorkAddresses2[1], "0x27e80dB1f5a975f4C43C5eC163114E796cdB603D");
+            // set owner work address again with address 0
+            await assetManager.setOwnerWorkAddress(constants.ZERO_ADDRESS, { from: agentOwner1 });
+            const OwnerMgmtAndWorkAddresses3 = await assetManager.getAgentVaultOwner(agentVault.address);
+            assert.equal(OwnerMgmtAndWorkAddresses3[0], agentOwner1);
+            assert.equal(OwnerMgmtAndWorkAddresses3[1], constants.ZERO_ADDRESS);
         });
 
-        it("checking agent vault owner with hot address should work", async () => {
+        it("checking agent vault owner with work address should work", async () => {
             // create agent
             const agentVault = await createAgentWithEOA(agentOwner1, underlyingAgent1);
-            const hotAddress = "0xe34BDff68a5b89216D7f6021c1AB25c012142425";
-            // set owner hot address
-            await assetManager.setOwnerHotAddress(hotAddress, { from: agentOwner1 });
-            assert.equal(await assetManager.isAgentVaultOwner(agentVault.address, hotAddress),true);
+            const workAddress = "0xe34BDff68a5b89216D7f6021c1AB25c012142425";
+            // set owner work address
+            await assetManager.setOwnerWorkAddress(workAddress, { from: agentOwner1 });
+            assert.equal(await assetManager.isAgentVaultOwner(agentVault.address, workAddress),true);
         });
 
         it("should fail at announcing agent setting update from non-agent-owner account", async () => {
