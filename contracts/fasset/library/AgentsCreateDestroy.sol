@@ -224,7 +224,8 @@ library AgentsCreateDestroy {
         returns (IIContingencyPool)
     {
         AssetManagerSettings.Data storage globalSettings = AssetManagerState.getSettings();
-        IContingencyPoolFactory contingencyPoolFactory = IContingencyPoolFactory(globalSettings.contingencyPoolFactory);
+        IContingencyPoolFactory contingencyPoolFactory =
+            IContingencyPoolFactory(globalSettings.contingencyPoolFactory);
         IIContingencyPool contingencyPool = contingencyPoolFactory.create(_assetManager, _agentVault, _settings);
         contingencyPool.setPoolToken(
             IContingencyPoolTokenFactory(globalSettings.contingencyPoolTokenFactory).create(contingencyPool));

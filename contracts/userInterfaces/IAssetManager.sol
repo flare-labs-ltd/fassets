@@ -352,8 +352,8 @@ interface IAssetManager is IAssetManagerEvents {
      * remaining are unrecoverable.
      * NOTE: may only be called by the agent vault owner.
      * NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore
-     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount
-     *      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
+     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral
+     *      amount multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
      */
     function buybackAgentCollateral(
         address _agentVault
@@ -520,8 +520,8 @@ interface IAssetManager is IAssetManagerEvents {
      * and releases the remaining collateral (CRF is also burned).
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * NOTE: the agent (management address) receives the vault collateral and NAT is burned instead. Therefore
-     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral amount
-     *      multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
+     *      this method is `payable` and the caller must provide enough NAT to cover the received vault collateral
+     *      amount multiplied by `vaultCollateralBuyForFlareFactorBIPS`.
      * @param _proof proof that the attestation query window can not not contain
      *      the payment/non-payment proof anymore
      * @param _collateralReservationId collateral reservation id
