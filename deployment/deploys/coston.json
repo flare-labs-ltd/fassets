@@ -2,7 +2,7 @@
   {
     "name": "InflationAllocation",
     "contractName": "InflationAllocation.sol",
-    "address": "0x1B5A184869aD208E736BFecF53560e9940c3E67f"
+    "address": "0xD11CB940C8375c119CAe7b8A75844ec35371F2E0"
   },
   {
     "name": "StateConnector",
@@ -22,12 +22,12 @@
   {
     "name": "Inflation",
     "contractName": "Inflation.sol",
-    "address": "0x712BE218E44e2c93Cc1CF8179956b668EA7d8D3B"
+    "address": "0x12d20f1b378cd8ee8dA4729262645EC62FD52307"
   },
   {
     "name": "Supply",
     "contractName": "Supply.sol",
-    "address": "0xE8fc8D1eec5b5b24EAe805c3569518f787C30F3f"
+    "address": "0x98D2B1835A8D4a7c9915Ca212bDb5AA259642fac"
   },
   {
     "name": "FtsoRewardManager",
@@ -201,66 +201,76 @@
   },
   {
     "name": "USDC",
-    "contractName": "ERC20Mock.sol",
-    "address": "0x75F79Df31F0fbF3332EBA67d013CbA1154Bf20F1"
+    "contractName": "FakeERC20.sol",
+    "address": "0x67582d2FBCDef7A3e422a21b109EfEEAC42cFb3D"
   },
   {
     "name": "USDT",
-    "contractName": "ERC20Mock.sol",
-    "address": "0x0e16329b59A6448315B29F9d663BedC2F54Bcf9B"
+    "contractName": "FakeERC20.sol",
+    "address": "0x4FbfBBAab00da46f659d5A7d144bC401D5104b0D"
   },
   {
     "name": "SCProofVerifier",
     "contractName": "SCProofVerifier.sol",
-    "address": "0x2D98960902EA6D0d9188052B23682d32C59d4461"
+    "address": "0xF8e776AC59Cc8776120845105bAc4CBd87D90d77"
+  },
+  {
+    "name": "PriceReader",
+    "contractName": "PriceReader.sol",
+    "address": "0x365289d1922104b3bEF8Db2Fd07E54715175F4e2"
   },
   {
     "name": "AgentWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0xf66dEC1236319AA8202A1B0F2aa8442A4ad88A8F",
+    "address": "0x18791Ae457D91FF2705aD0829C5E6C7E6C350b07",
     "mustSwitchToProduction": true
   },
   {
     "name": "UserWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0x5f73833EFDa1054905084232b25384505f2e6cb6",
+    "address": "0xe80BfE21F9D96F136256BF0104EA17356E322DE7",
     "mustSwitchToProduction": true
   },
   {
     "name": "AgentVaultFactory",
     "contractName": "AgentVaultFactory.sol",
-    "address": "0xc5B0f10BEea6BB5Ac10aF93f494e75904B6fb0cC"
+    "address": "0x8Def61653b2Cf9088D0cF4265A5F324eFE86AC87"
   },
   {
     "name": "ContingencyPoolFactory",
     "contractName": "ContingencyPoolFactory.sol",
-    "address": "0x27FEc084D6a09bBB6611063732df1B8BCcba5878"
+    "address": "0x907FF43Ca31846879af32222065d39E1273C56fa"
+  },
+  {
+    "name": "ContingencyPoolTokenFactory",
+    "contractName": "ContingencyPoolTokenFactory.sol",
+    "address": "0x61DA9C6b99903F443891b8031BB92231B4DAAaf7"
   },
   {
     "name": "AssetManagerController",
     "contractName": "AssetManagerController.sol",
-    "address": "0xec3eEe520ec48f5901f71B99feBB109A4df39b2B",
+    "address": "0xed68b8E59850f5C5332DbbFaDE165627131233Bd",
     "mustSwitchToProduction": true
   },
   {
     "name": "LiquidationStrategyImpl",
     "contractName": "LiquidationStrategyImpl.sol",
-    "address": "0xcA5969f4F5d7152f675aC9F066B4C3A50A9184B3"
+    "address": "0x58C0b2BC2d7a6a79C92495dCcA3cEE2F56147c37"
   },
   {
     "name": "AssetManager_FtestXRP",
     "contractName": "AssetManager.sol",
-    "address": "0xBc9bDE568C2f072CCAF99721be1A67BCC09d2D8b"
+    "address": "0x9F7b9e986D07448FEF943a6028a5A88F48e94cB9"
   },
   {
     "name": "FtestXRP",
     "contractName": "FAsset.sol",
-    "address": "0x8b1c69F60F740B3226cC6Df4A814d0EF79f3eA09",
+    "address": "0xa7cD5A28Df3ddc66B8fBb86023c3C71E3db91536",
     "mustSwitchToProduction": true
   },
   {
     "name": "AddressValidator_FtestXRP",
     "contractName": "RippleAddressValidator.sol",
-    "address": "0xE0F0d0bbD62f1ace5Aa86C3818e51728C86cd7a9"
+    "address": "0xfD74D7d5aAd50233329dC60CD126d7afa56DAEe7"
   }
 ]

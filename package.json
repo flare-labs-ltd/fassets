@@ -50,6 +50,8 @@
     "deploy-mock-stablecoins-coston": "env NETWORK_CONFIG=coston yarn hardhat --network coston run deployment/test/scripts/mock-deploy-stablecoins.ts",
     "full-deploy-coston": "yarn hardhat --network coston deploy-asset-managers --network-config coston --link --deploy-controller --all",
     "full-deploy-coston-test": "env NETWORK_CONFIG=coston yarn hardhat --network coston test --no-compile deployment/test/test-deployed-contracts.ts",
+    "console": "yarn hardhat console --no-compile",
+    "console-coston": "yarn hardhat console --no-compile --network coston",
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",
     "gas-report": "ts-node node_modules/flare-smart-contracts/scripts/process-gas-report.ts && cat .gas-report.txt",
