@@ -117,7 +117,7 @@ library AgentsCreateDestroy {
         agent.underlyingAddressHash = underlyingAddressHash;
         uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(underlyingAddressHash);
         agent.underlyingBlockAtCreation = SafeMath64.max64(state.currentUnderlyingBlock, eoaProofBlock + 1);
-        // add collateral pool
+        // add contingency pool
         agent.contingencyPool = _createContingencyPool(_assetManager, address(agentVault), _settings);
         // run the pool setters just for validation
         agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);

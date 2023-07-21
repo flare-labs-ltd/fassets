@@ -104,7 +104,7 @@ export class Agent extends AssetContextClient {
         const args = requiredEventArgs(response, 'AgentVaultCreated');
         // get vault contract at agent's vault address address
         const agentVault = await AgentVault.at(args.agentVault);
-        // get collateral pool
+        // get contingency pool
         const contingencyPool = await ContingencyPool.at(args.contingencyPool);
         // get pool token
         const poolTokenAddress = await contingencyPool.poolToken();

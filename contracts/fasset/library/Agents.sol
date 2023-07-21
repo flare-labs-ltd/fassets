@@ -345,7 +345,7 @@ library Agents {
     )
         internal view
     {
-        require(msg.sender == address(_agent.contingencyPool), "only collateral pool");
+        require(msg.sender == address(_agent.contingencyPool), "only contingency pool");
     }
 
     function isCollateralToken(

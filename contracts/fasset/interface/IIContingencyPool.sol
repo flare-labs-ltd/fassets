@@ -7,7 +7,7 @@ import "../../userInterfaces/IContingencyPool.sol";
 import "./IWNat.sol";
 
 /**
- * Collateral pool methods that are only callable by the asset manager or pool token.
+ * Contingency pool methods that are only callable by the asset manager or pool token.
  */
 interface IIContingencyPool is IContingencyPool {
     function setPoolToken(address _poolToken) external;

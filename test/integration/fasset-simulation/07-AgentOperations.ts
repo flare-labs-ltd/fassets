@@ -256,7 +256,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(buybackAgentVaultCollateral),
                 freeUnderlyingBalanceUBA: minted1.agentFeeUBA.add(minted2.agentFeeUBA).add(request.feeUBA).add(selfClosedUBA).add(request2.feeUBA).add(buybackUBA), mintedUBA: 0 });
             // agent can exit now
-            // TODO: how to destroy agent with terminated f-assets, need collateral pool modification
+            // TODO: how to destroy agent with terminated f-assets, need contingency pool modification
             //await agent.exitAndDestroyWithTerminatedFAsset(fullAgentCollateral.sub(buybackAgentVaultCollateral));
         });
     });

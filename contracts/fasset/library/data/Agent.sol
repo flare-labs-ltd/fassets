@@ -60,7 +60,7 @@ library Agent {
         // The data is obtained as state.collateralTokens[vaultCollateralIndex].
         uint16 vaultCollateralIndex;
 
-        // Index of token in collateral pool. This is always wrapped FLR/SGB, however the wrapping
+        // Index of token in contingency pool. This is always wrapped FLR/SGB, however the wrapping
         // contract (WNat) may change. In such case we add new collateral token with class POOL but the
         // agent must call a method to upgrade to new contract, se we must track the actual token used.
         uint16 poolCollateralIndex;

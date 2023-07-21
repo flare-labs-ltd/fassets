@@ -88,7 +88,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     describe("pool token methods", async () => {
 
-        it("should buy collateral pool tokens", async () => {
+        it("should buy contingency pool tokens", async () => {
             const agentVault = await createAgentVault(owner, underlyingAgent1);
             await agentVault.buyContingencyPoolTokens({ from: owner, value: toWei(1000) });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
@@ -517,7 +517,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             await expectRevert(res, "only owner");
         });
 
-        it("random address shouldn't be able to redeem collateral pool tokens", async () => {
+        it("random address shouldn't be able to redeem contingency pool tokens", async () => {
             const natRecipient = "0xDe6E4607008a6B6F4341E046d18297d03e11ECa1";
             const agentVault = await createAgentVault(owner, underlyingAgent1);
             await agentVault.buyContingencyPoolTokens({ from: owner, value: toWei(1000) });

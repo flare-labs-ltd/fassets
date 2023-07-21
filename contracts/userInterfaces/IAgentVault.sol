@@ -41,21 +41,21 @@ interface IAgentVault {
     function transferExternalToken(IERC20 _token, uint256 _amount) external;
 
     /**
-     * Buy collateral pool tokens for NAT.
+     * Buy contingency pool tokens for NAT.
      * Holding enough pool tokens in the vault is required for minting.
      * NOTE: anybody can call this method, to allow the owner to deposit from any source.
      */
     function buyContingencyPoolTokens() external payable;
 
     /**
-     * Collateral pool tokens which must be held by the agent accrue minting fees in form of f-assets.
+     * Contingency pool tokens which must be held by the agent accrue minting fees in form of f-assets.
      * These fees can be withdrawn using this method.
      * NOTE: only the owner of the agent vault may call this method.
      */
     function withdrawPoolFees(uint256 _amount, address _recipient) external;
 
     /**
-     * This method allows the agent to convert collateral pool tokens back to NAT.
+     * This method allows the agent to convert contingency pool tokens back to NAT.
      * Prior announcement is required by calling `assetManager.announceAgentPoolTokenRedemption(...)`.
      * NOTE: only the owner of the agent vault may call this method.
      */
@@ -133,8 +133,8 @@ interface IAgentVault {
     ) external;
 
     /**
-     * Get the address of the collateral pool contract corresponding to this agent vault
-     * (there is 1:1 correspondence between agent vault and collateral pools).
+     * Get the address of the contingency pool contract corresponding to this agent vault
+     * (there is 1:1 correspondence between agent vault and contingency pools).
      */
     function contingencyPool()
         external view

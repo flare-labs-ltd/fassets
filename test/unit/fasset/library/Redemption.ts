@@ -591,9 +591,9 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // redemption request
         contingencyPool = await ContingencyPool.at(await assetManager.getContingencyPool(agentVault.address));
         await impersonateContract(contingencyPool.address, toBN(512526332000000000), accounts[0]);
-        //Only collateral pool can redeem from agent
+        //Only contingency pool can redeem from agent
         const rs = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, { from:  accounts[15] });
-        await expectRevert(rs, "only collateral pool");
+        await expectRevert(rs, "only contingency pool");
         //Redeeming from agent and agent in collateral with amount 0 should not work
         const resR = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, { from:  contingencyPool.address });
         await expectRevert(resR, "redemption of 0");
@@ -633,7 +633,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const minted2 = requiredEventArgs(res2, 'MintingExecuted');
         // redemption request
         contingencyPool = await ContingencyPool.at(await assetManager.getContingencyPool(agentVault.address));
-        // make sure collateral pool has enough fAssets
+        // make sure contingency pool has enough fAssets
         await fAsset.transfer(contingencyPool.address, minted.mintedAmountUBA, { from: minterAddress1 });
         await fAsset.transfer(contingencyPool.address, minted2.mintedAmountUBA, { from: minterAddress1 });
         await impersonateContract(contingencyPool.address, toBN(512526332000000000), accounts[0]);

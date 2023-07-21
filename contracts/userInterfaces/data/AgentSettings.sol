@@ -14,7 +14,7 @@ library AgentSettings {
         IERC20 vaultCollateralToken;
 
         // Minting fee. Normally charged to minters for publicly available agents, but must be set
-        // also for self-minting agents to pay part of it to collateral pool.
+        // also for self-minting agents to pay part of it to contingency pool.
         // Fee is paid in underlying currency along with backing assets.
         uint256 feeBIPS;
 

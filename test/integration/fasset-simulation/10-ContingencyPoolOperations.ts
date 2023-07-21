@@ -15,7 +15,7 @@ import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
 
 
-contract(`ContingencyPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations`, async accounts => {
+contract(`ContingencyPoolOperations.sol; ${getTestFile(__filename)}; Contingency pool operations`, async accounts => {
     const governance = accounts[10];
     const agentOwner1 = accounts[20];
     const agentOwner2 = accounts[21];
@@ -118,7 +118,7 @@ contract(`ContingencyPoolOperations.sol; ${getTestFile(__filename)}; Collateral 
         const minterPoolTokensAfter = await agent.contingencyPoolToken.balanceOf(minter.address);
         assertWeb3Equal(liquidatedUBA, liquidateUBA);
         assertWeb3Equal(await context.fAsset.balanceOf(minter.address), 0);
-        // check that collateral pool helped agent cover all of minter's liquidation
+        // check that contingency pool helped agent cover all of minter's liquidation
         const vaultCollateralPrice = await context.getCollateralPrice(agent.vaultCollateral());
         const wNatPrice = await context.getCollateralPrice(context.collaterals[0]);
         const minterVaultCollateralReward = await agent.vaultCollateralToken().balanceOf(minter.address);
@@ -164,7 +164,7 @@ contract(`ContingencyPoolOperations.sol; ${getTestFile(__filename)}; Collateral 
         const [liquidatedUBA,,,] = await liquidator.liquidate(agent, uba);
         const poolCollateralAfter = await context.wNat.balanceOf(agent.contingencyPool.address);
         assertWeb3Equal(liquidatedUBA, uba);
-        // check that collateral pool helped agent cover all of minter's liquidation
+        // check that contingency pool helped agent cover all of minter's liquidation
         const vaultCollateralPrice = await context.getCollateralPrice(agent.vaultCollateral());
         const wNatPrice = await context.getCollateralPrice(context.collaterals[0]);
         const minterVaultCollateralReward = await agent.vaultCollateralToken().balanceOf(minter.address);
@@ -444,7 +444,7 @@ contract(`ContingencyPoolOperations.sol; ${getTestFile(__filename)}; Collateral 
         assertWeb3Equal(await context.wNat.balanceOf(minter.address), minterPoolDeposit);
     });
 
-    it("should delegate and undelegate collateral pool's wNat", async () => {
+    it("should delegate and undelegate contingency pool's wNat", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         // make agent available
         const fullAgentVaultCollateral = toWei(1e7);

@@ -30,7 +30,7 @@ library AgentInfo {
         // Can be changed by a call from the owner's management address.
         address ownerWorkAddress;
 
-        // Agent's collateral pool address
+        // Agent's contingency pool address
         address contingencyPool;
 
         // Underlying address as string - to be used for minting payments.

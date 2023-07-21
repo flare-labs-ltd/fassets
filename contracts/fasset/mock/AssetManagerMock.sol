@@ -65,7 +65,7 @@ contract AssetManagerMock {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Methods specific to collateral pool contract
+    // Methods specific to contingency pool contract
 
     function redeemFromAgent(
         address /* _agentVault */, address /* _redeemer */, uint256 _amountUBA,

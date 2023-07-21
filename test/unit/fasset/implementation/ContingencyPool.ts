@@ -48,7 +48,7 @@ const ContingencyPoolToken = artifacts.require("ContingencyPoolToken");
 const DistributionToDelegators = artifacts.require("DistributionToDelegators");
 const MockContract = artifacts.require('MockContract');
 
-contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic tests`, async accounts => {
+contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Contingency pool basic tests`, async accounts => {
     let wNat: ERC20MockInstance;
     let assetManager: AssetManagerMockInstance;
     let fAsset: ERC20MockInstance;
@@ -88,7 +88,7 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
         // set pool token
         const payload = contingencyPool.contract.methods.setPoolToken(contingencyPoolToken.address).encodeABI();
         await assetManager.callFunctionAt(contingencyPool.address, payload);
-        // synch collateral pool constants
+        // synch contingency pool constants
         MIN_NAT_TO_ENTER = await contingencyPool.MIN_NAT_TO_ENTER();
         MIN_TOKEN_SUPPLY_AFTER_EXIT = await contingencyPool.MIN_TOKEN_SUPPLY_AFTER_EXIT();
         MIN_NAT_BALANCE_AFTER_EXIT = await contingencyPool.MIN_NAT_BALANCE_AFTER_EXIT();
@@ -260,7 +260,7 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
         });
 
         it("should upgrade wnat contract", async () => {
-            // get some wnat to the collateral pool
+            // get some wnat to the contingency pool
             await contingencyPool.enter(0, false, { value: ETH(100) });
             // upgrade the wnat contract
             const newWNat: ERC20MockInstance = await ERC20Mock.new("new wnat", "WNat");
@@ -286,7 +286,7 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
     });
 
     // to test whether users can send debt tokens
-    describe("collateral pool token tests", async () => {
+    describe("contingency pool token tests", async () => {
 
         it("should fetch the pool token", async () => {
             expect(await contingencyPool.poolToken()).to.equal(contingencyPoolToken.address);
@@ -334,9 +334,9 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
 
     });
 
-    describe("entering collateral pool", async () => {
+    describe("entering contingency pool", async () => {
 
-        // collateral pool now tracks its balance, so sending nat directly (without enter) is not allowed,
+        // contingency pool now tracks its balance, so sending nat directly (without enter) is not allowed,
         // thus this test is deprecated
         it.skip("should lock entering if pool token supply is much larger than pool collateral", async () => {
             // enter the pool
@@ -382,7 +382,7 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
 
         it("should not enter if token supply to nat balance is too small", async () => {
             await agentVault.enterPool(contingencyPool.address, { value: ETH(1) });
-            //Mint collateral pool tokens to increase total supply
+            //Mint contingency pool tokens to increase total supply
             await impersonateContract(contingencyPool.address, toBN(512526332000000000), accounts[0]);
             await contingencyPoolToken.mint(accounts[12],ETH(10000), { from: contingencyPool.address });
             await stopImpersonatingContract(contingencyPool.address);
@@ -469,7 +469,7 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
             await getPoolAboveCR(accounts[1], false, topupCR);
             const initialTokens = await contingencyPoolToken.balanceOf(accounts[1]);
             const initialNat = await wNat.balanceOf(contingencyPool.address);
-            // enter collateral pool without f-assets
+            // enter contingency pool without f-assets
             const nat = initialNat.muln(2);
             await contingencyPool.enter(0, false, { value: nat });
             const tokens = await contingencyPoolToken.balanceOf(accounts[0]);
@@ -494,7 +494,7 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
 
     });
 
-    describe("exiting collateral pool", async () => {
+    describe("exiting contingency pool", async () => {
 
         it("should revert on exiting the pool with zero tokens", async () => {
             const prms = contingencyPool.exit(0, TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
@@ -578,11 +578,11 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
         it("should collect all fees using the MAXIMIZE_FEE_WITHDRAWAL token exit type", async () => {
             // account0 enters the pool
             await contingencyPool.enter(0, true, { value: ETH(10), from: accounts[0] });
-            // collateral pool collects fees
+            // contingency pool collects fees
             await givePoolFAssetFees(ETH(10));
             // account1 enters the pool with no f-assets
             await contingencyPool.enter(0, false, { value: ETH(10), from: accounts[1] });
-            // collateral pool collects additional fees
+            // contingency pool collects additional fees
             await givePoolFAssetFees(ETH(10));
             // account1 exits with fees using MAXIMIZE_FEE_WITHDRAWAL token exit type
             const allTokens = await contingencyPoolToken.totalSupply();
@@ -600,11 +600,11 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
         it("should eliminate all debt tokens using the MINIMIZE_FEE_DEBT token exit type", async () => {
             // account0 enters the pool
             await contingencyPool.enter(0, true, { value: ETH(10), from: accounts[0] });
-            // collateral pool collects fees
+            // contingency pool collects fees
             await givePoolFAssetFees(ETH(10));
             // account1 enters the pool with no f-assets
             await contingencyPool.enter(0, false, { value: ETH(10), from: accounts[1] });
-            // collateral pool collects additional fees
+            // contingency pool collects additional fees
             await givePoolFAssetFees(ETH(10));
             // account1 exits with fees using MINIMIZE_FEE_DEBT token exit type
             const allTokens = await contingencyPoolToken.totalSupply();
@@ -621,11 +621,11 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
         it("should collect rewards while keeping debt/free token ratio the same using KEEP_RATIO token exit type", async () => {
             // account0 enters the pool
             await contingencyPool.enter(0, true, { value: ETH(10), from: accounts[0] });
-            // collateral pool collects fees
+            // contingency pool collects fees
             await fAsset.mintAmount(contingencyPool.address, ETH(10));
             // account1 enters the pool with no f-assets
             await contingencyPool.enter(0, false, { value: ETH(10), from: accounts[1] });
-            // collateral pool collects additional fees
+            // contingency pool collects additional fees
             await fAsset.mintAmount(contingencyPool.address, ETH(10));
             // account1 exits with fees using KEEP_RATIO token exit type
             const tokenBalance = await contingencyPoolToken.balanceOf(accounts[1]);
@@ -1154,13 +1154,13 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
         it("should try destroying the pool, but fail because nat cannot be sent to receiver", async () => {
             // send nat to contract
             await transferWithSuicide(ETH(3), accounts[0], contingencyPool.address);
-            // destroy through asset manager (note that collateral pool has receive fucntion disabled)
+            // destroy through asset manager (note that contingency pool has receive fucntion disabled)
             const payload = contingencyPool.contract.methods.destroy(contingencyPool.address).encodeABI();
             const prms = assetManager.callFunctionAt(contingencyPool.address, payload);
             await expectRevert(prms, "transfer failed");
         });
 
-        it("should payout collateral from collateral pool", async () => {
+        it("should payout collateral from contingency pool", async () => {
             // agentVault enters the pool
             await agentVault.enterPool(contingencyPool.address, { value: ETH(100) });
             const agentVaultTokensBeforePayout = await contingencyPoolToken.balanceOf(agentVault.address);
@@ -1214,7 +1214,7 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
 
     });
 
-    describe("ERC-165 interface identification for Collateral Pool", () => {
+    describe("ERC-165 interface identification for Contingency Pool", () => {
         it("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
             const IContingencyPool = artifacts.require("IContingencyPool");
@@ -1253,7 +1253,7 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
         });
     });
 
-    describe("ERC-165 interface identification for Collateral Pool Token", () => {
+    describe("ERC-165 interface identification for Contingency Pool Token", () => {
         it("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
             const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20" as any) as any as IERC20Contract;
@@ -1287,19 +1287,19 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
             await expectRevert(res, "only asset manager");
         });
 
-        it("random address shouldn't be able to mint collateral pool tokens", async () => {
+        it("random address shouldn't be able to mint contingency pool tokens", async () => {
             let res = contingencyPoolToken.mint(accounts[12],ETH(10000), { from: accounts[5] });
-            await expectRevert(res, "only collateral pool");
+            await expectRevert(res, "only contingency pool");
         });
 
-        it("random address shouldn't be able to burn collateral pool tokens", async () => {
+        it("random address shouldn't be able to burn contingency pool tokens", async () => {
             let res = contingencyPoolToken.burn(accounts[12],ETH(1), { from: accounts[5] });
-            await expectRevert(res, "only collateral pool");
+            await expectRevert(res, "only contingency pool");
         });
 
-        it("random address shouldn't be able to destroy collateral pool token", async () => {
+        it("random address shouldn't be able to destroy contingency pool token", async () => {
             let res = contingencyPoolToken.destroy(accounts[12], { from: accounts[5] });
-            await expectRevert(res, "only collateral pool");
+            await expectRevert(res, "only contingency pool");
         });
 
         it("random address shouldn't be able to deposit fasset fees", async () => {
@@ -1307,7 +1307,7 @@ contract(`ContingencyPool.sol; ${getTestFile(__filename)}; Collateral pool basic
             await expectRevert(res, "only asset manager");
         });
 
-        it("random address shouldn't be able to destory collateral pool", async () => {
+        it("random address shouldn't be able to destory contingency pool", async () => {
             let res = contingencyPool.destroy(accounts[5], { from: accounts[5] });
             await expectRevert(res, "only asset manager");
         });

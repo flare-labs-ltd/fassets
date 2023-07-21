@@ -20,12 +20,12 @@ library AssetManagerSettings {
         // timelocked
         address agentVaultFactory;
 
-        // Factory for creating new agent collateral pools.
+        // Factory for creating new agent contingency pools.
         // Type: IContingencyPoolFactory
         // timelocked
         address contingencyPoolFactory;
 
-        // Factory for creating new agent collateral pool tokens.
+        // Factory for creating new agent contingency pool tokens.
         // Type: IContingencyPoolTokenFactory
         // timelocked
         address contingencyPoolTokenFactory;

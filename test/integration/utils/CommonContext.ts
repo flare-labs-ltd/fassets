@@ -86,7 +86,7 @@ export class CommonContext {
         const priceReader = await FtsoV1PriceReader.new(addressUpdater.address, ftsoRegistry.address);
         // create agent vault factory
         const agentVaultFactory = await AgentVaultFactory.new();
-        // create collateral pool and token factory
+        // create contingency pool and token factory
         const contingencyPoolFactory = await ContingencyPoolFactory.new();
         const contingencyPoolTokenFactory = await ContingencyPoolTokenFactory.new();
         // create asset manager controller

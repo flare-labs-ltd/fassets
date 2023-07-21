@@ -611,7 +611,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(settings.agentVaultFactory, accounts[84]);
         });
 
-        it("should change collateral pool factory on asset manager controller", async () => {
+        it("should change contingency pool factory on asset manager controller", async () => {
             //Pool factory can't be address zero
             const prms1 = assetManagerController.setContingencyPoolFactory([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
             await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor), "address zero");
@@ -621,7 +621,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(settings.contingencyPoolFactory, accounts[84]);
         });
 
-        it("should change collateral pool token factory on asset manager controller", async () => {
+        it("should change contingency pool token factory on asset manager controller", async () => {
             //Pool factory can't be address zero
             const prms1 = assetManagerController.setContingencyPoolTokenFactory([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
             await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor), "address zero");

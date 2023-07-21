@@ -6,7 +6,7 @@ import "./IIAssetManager.sol";
 
 
 /**
- * @title Collateral pool factory
+ * @title Contingency pool factory
  */
 interface IContingencyPoolFactory {
     function create(

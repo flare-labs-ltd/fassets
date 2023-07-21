@@ -36,7 +36,7 @@ interface IContingencyPool {
         uint256 redeemedFAssetUBA);
 
     /**
-     * Enters the collateral pool by depositing NAT and f-asset, obtaining pool tokens, allowing holder
+     * Enters the contingency pool by depositing NAT and f-asset, obtaining pool tokens, allowing holder
      * to exit with NAT and f-asset fees later. If the user doesn't provide enough f-assets, they are
      * still able to collect future f-asset fees and exit with NAT, but their tokens are non-transferable.
      * Tokens can be made transferable by paying the f-asset fee debt and non-transferable by withdrawing
@@ -64,7 +64,7 @@ interface IContingencyPool {
      * Exits the pool by redeeming the given amount of pool tokens and burning f-assets in a way that doesn't
      * endanger the pool collateral ratio. Specifically, if pool's collateral ratio is above exit CR, then
      * the method burns an amount of user's f-assets that do not lower collateral ratio below exit CR. If, on
-     * the other hand, collateral pool is below exit CR, then the method burns an amount of user's f-assets
+     * the other hand, contingency pool is below exit CR, then the method burns an amount of user's f-assets
      * that preserve the pool's collateral ratio.
      * F-assets will be redeemed in collateral if their value does not exceed one lot, regardless of
      *  `_redeemToCollateral` value.
@@ -146,14 +146,14 @@ interface IContingencyPool {
     function withdrawCollateralWhenFAssetTerminated() external;
 
     /**
-     * Get the ERC20 pool token used by this collateral pool
+     * Get the ERC20 pool token used by this contingency pool
      */
     function poolToken()
         external view
         returns (IContingencyPoolToken);
 
     /**
-     * Get the vault of the agent that owns this collateral pool
+     * Get the vault of the agent that owns this contingency pool
      */
     function agentVault()
         external view

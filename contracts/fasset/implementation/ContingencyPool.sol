@@ -118,7 +118,7 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
     }
 
     /**
-     * @notice Enters the collateral pool by depositing some NAT
+     * @notice Enters the contingency pool by depositing some NAT
      * @param _fAssets                 Number of f-assets sent along the deposited NAT (not all may be used)
      * @param _enterWithFullFAssets    Specifies whether "required" f-assets should be calculated automatically
      */
@@ -346,7 +346,7 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
     }
 
     /**
-     * @notice Returns the collateral pool token contract used by this contract
+     * @notice Returns the contingency pool token contract used by this contract
      */
     function poolToken() external view override returns (IContingencyPoolToken) {
         return token;

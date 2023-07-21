@@ -965,7 +965,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should announce pool redemption (class2 withdrawal) and execute it", async () => {
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
-            // deposit pool tokens to agent vault (there is a min-limit on nat deposited to collateral pool)
+            // deposit pool tokens to agent vault (there is a min-limit on nat deposited to contingency pool)
             await agentVault.buyContingencyPoolTokens({ from: agentOwner1, value: toWei(10) });
             const _agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(_agentInfo.totalAgentPoolTokensWei, toWei(10));

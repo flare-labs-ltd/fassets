@@ -5,7 +5,7 @@ import "./IIContingencyPool.sol";
 
 
 /**
- * @title Collateral pool token factory
+ * @title Contingency pool token factory
  */
 interface IContingencyPoolTokenFactory {
     function create(IIContingencyPool pool)

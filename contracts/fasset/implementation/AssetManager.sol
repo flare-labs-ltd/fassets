@@ -353,7 +353,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     /**
      * Called by AgentVault when there was a deposit.
      * May pull agent out of liquidation.
-     * NOTE: may only be called from an agent vault or collateral pool, not from an EOA address.
+     * NOTE: may only be called from an agent vault or contingency pool, not from an EOA address.
      */
     function updateCollateral(
         address _agentVault,
@@ -1143,11 +1143,11 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Collateral pool redemptions
+    // Contingency pool redemptions
 
     /**
-     * Create a redemption from a single agent. Used in self-close exit from the collateral pool.
-     * Note: only collateral pool can call this method.
+     * Create a redemption from a single agent. Used in self-close exit from the contingency pool.
+     * Note: only contingency pool can call this method.
      */
     function redeemFromAgent(
         address _agentVault,
@@ -1163,8 +1163,8 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     /**
      * Burn fassets from  a single agent and get paid in vault collateral by the agent.
      * Price is FTSO price, multiplied by factor buyFAssetByAgentFactorBIPS (set by agent).
-     * Used in self-close exit from the collateral pool when requested or when self-close amount is less than 1 lot.
-     * Note: only collateral pool can call this method.
+     * Used in self-close exit from the contingency pool when requested or when self-close amount is less than 1 lot.
+     * Note: only contingency pool can call this method.
      */
     function redeemFromAgentInCollateral(
         address _agentVault,

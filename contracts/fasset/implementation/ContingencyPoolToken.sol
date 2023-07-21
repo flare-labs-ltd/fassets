@@ -11,12 +11,12 @@ contract ContingencyPoolToken is IContingencyPoolToken, ERC20, IERC165 {
     address public immutable contingencyPool;
 
     modifier onlyContingencyPool {
-        require(msg.sender == contingencyPool, "only collateral pool");
+        require(msg.sender == contingencyPool, "only contingency pool");
         _;
     }
 
     constructor(address payable _contingencyPool)
-        ERC20("FAsset Collateral Pool Token", "FCPT")
+        ERC20("FAsset Contingency Pool Token", "FCPT")
     {
         contingencyPool = _contingencyPool;
     }
@@ -44,7 +44,7 @@ contract ContingencyPoolToken is IContingencyPoolToken, ERC20, IERC165 {
     function _beforeTokenTransfer(
         address from, address /* to */, uint256 amount
     ) internal view override {
-        if (msg.sender != contingencyPool) { // collateral pool can mint and burn locked tokens
+        if (msg.sender != contingencyPool) { // contingency pool can mint and burn locked tokens
             require(amount <= transferableBalanceOf(from), "free balance too low");
         }
     }

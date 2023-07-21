@@ -101,7 +101,7 @@ library AMEvents {
         uint256 value);
 
     /**
-     * Agent or agent's collateral pool has changed token contract.
+     * Agent or agent's contingency pool has changed token contract.
      */
     event AgentCollateralTypeChanged(
         address indexed agentVault,

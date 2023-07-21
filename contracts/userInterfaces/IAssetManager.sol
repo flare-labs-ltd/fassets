@@ -270,7 +270,7 @@ interface IAssetManager is IAssetManagerEvents {
         returns (uint256 _withdrawalAllowedAt);
 
     /**
-     * The agent is going to redeem `_valueWei` collateral pool tokens in the agent vault.
+     * The agent is going to redeem `_valueWei` contingency pool tokens in the agent vault.
      * This has to be announced and the agent must then wait `withdrawalWaitMinSeconds` time.
      * After that time, the agent can call `redeemContingencyPoolTokens(_valueNATWei)` on the agent vault.
      * NOTE: may only be called by the agent vault owner.
@@ -383,7 +383,7 @@ interface IAssetManager is IAssetManagerEvents {
         returns (AgentInfo.Info memory);
 
     /**
-     * Returns the collateral pool address of the agent identified by `_agentVault`.
+     * Returns the contingency pool address of the agent identified by `_agentVault`.
      */
     function getContingencyPool(address _agentVault)
         external view
