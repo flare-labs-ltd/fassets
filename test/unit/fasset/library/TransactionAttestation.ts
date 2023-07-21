@@ -32,7 +32,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     const agentOwner1 = accounts[20];
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
 
-    function createAgentVault(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
@@ -72,7 +72,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     });
 
     it("should not succeed challenging illegal payment - transaction not proved", async() => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         let txHash = await wallet.addTransaction(underlyingAgent1, randomAddress(), 1, PaymentReference.redemption(0));
         const chainId: SourceId = 2;
         stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
@@ -83,7 +83,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     });
 
     it("should not update current block - block height not proved", async() => {
-        await createAgentVault(agentOwner1, underlyingAgent1);
+        await createAgent(agentOwner1, underlyingAgent1);
         const chainId: SourceId = 2;
         stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);

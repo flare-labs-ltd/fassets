@@ -48,7 +48,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     const underlyingRedeemer1 = "Redeemer1";
     const underlyingRedeemer2 = "Redeemer2";
 
-    function createAgentVault(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
@@ -176,7 +176,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
     it("should confirm redemption payment from agent vault owner", async () => {
         // init
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
         //perform redemption payment
@@ -189,7 +189,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
     it("should confirm redemption payment from agent", async () => {
         // init
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         contingencyPool = await ContingencyPool.at(await assetManager.getContingencyPool(agentVault.address));
         const request = await mintAndRedeemFromAgent(agentVault, contingencyPool.address, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
@@ -203,7 +203,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
     it("should confirm redemption payment from agent in collateral", async () => {
         // init
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         contingencyPool = await ContingencyPool.at(await assetManager.getContingencyPool(agentVault.address));
         const vaultCollateralBalanceAgentBefore = await usdc.balanceOf(agentVault.address);
@@ -216,7 +216,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should finish redemption payment - payment not from agent's address", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
@@ -230,7 +230,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
     it("should not confirm redemption payment - only agent vault owner", async () => {
         // init
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
         //perform redemption payment
@@ -243,7 +243,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
     it("should not confirm redemption payment - invalid redemption reference", async () => {
         // init
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
         const request2 = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer2, redeemerAddress2, true);
@@ -257,7 +257,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
     it("should not confirm redemption payment - payment too old", async () => {
         // init
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         chain.mine(3);  // make some space
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
@@ -276,7 +276,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
     it("should fail redemption payment - already deafulted (should not happen in practice)", async () => {
         // init
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
         // trigger default
@@ -303,7 +303,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
     it("should not confirm redemption payment - invalid request id", async () => {
         // init
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
         //perform redemption payment
@@ -315,7 +315,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should not self close - self close of 0", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // perform self-minting
         const lots = 3;
@@ -333,7 +333,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     it("should self close", async () => {
         const feeBIPS = toBIPS("10%");
         const poolFeeShareBIPS = toBIPS(0.4);
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e8));
         // perform self-minting
         const lots = 3;
@@ -351,7 +351,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should execute redemption payment default - redeemer", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
@@ -368,7 +368,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should execute redemption payment default - agent", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
@@ -383,7 +383,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should not execute redemption payment default - only redeemer or agent", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
@@ -398,7 +398,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should not execute redemption payment default - redemption non-payment mismatch", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
@@ -413,7 +413,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should not execute redemption payment default - invalid redemption status", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
@@ -429,7 +429,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should not execute redemption payment default - redemption non-payment proof window too short", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
 
         // const timeIncrease = toBN(settings.timelockSeconds).addn(1);
@@ -452,7 +452,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should not execute redemption payment default - redemption default too early", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
@@ -469,8 +469,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     it("should self-mint - multiple tickets", async () => {
         const feeBIPS = toBIPS("10%");
         const poolFeeShareBIPS = toBIPS(0.4);
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
-        const agentVault2 = await createAgentVault(agentOwner2, underlyingAgent2, { feeBIPS, poolFeeShareBIPS });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
+        const agentVault2 = await createAgent(agentOwner2, underlyingAgent2, { feeBIPS, poolFeeShareBIPS });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         await depositAndMakeAgentAvailable(agentVault2, agentOwner2);
 
@@ -509,7 +509,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("should not execute redemption payment default - non-payment not proved", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
 
@@ -530,7 +530,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         //Change maxRedeemedTickets in test-settings.ts or in initialize
         //20 tickets = 492059 gas, 50 tickets = 884188 gas, 100 tickets = 1537804 gas, 200 tickets = 2845226 gas,
         //500 tickets= 6769180 gas, 1000 tickets = 13314728 gas, 2000 = 26426919 gas,
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e10));
         // minter
         chain.mint(underlyingMinter1, toBNExp(10000000, 18));
@@ -571,7 +571,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("mint and redeem from agent and redeem from agent in collateral branch test", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e10));
         // minter
         chain.mint(underlyingMinter1, toBNExp(10000000, 18));
@@ -603,8 +603,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     });
 
     it("redeem from agent where minting is done from 2 agents", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
-        const agentVault2 = await createAgentVault(agentOwner2, underlyingAgent2);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault2 = await createAgent(agentOwner2, underlyingAgent2);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e10));
         await depositAndMakeAgentAvailable(agentVault2, agentOwner2,toWei(3e10));
         // minter
@@ -648,7 +648,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
         const agentXRP = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjN";
 
-        const agentVault = await createAgentVault(agentOwner1, agentXRP);
+        const agentVault = await createAgent(agentOwner1, agentXRP);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e10));
         // minter
         chain.mint(underlyingMinter1, toBNExp(10000000, 18));

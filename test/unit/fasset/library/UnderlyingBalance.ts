@@ -35,7 +35,7 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
     const underlyingAgent1 = "Agent1";  // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingRandomAddress = "Random";
 
-    function createAgentVault(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
         return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
@@ -65,7 +65,7 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
     });
 
     it("should confirm top up payment", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         chain.mint(underlyingRandomAddress,1000);
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, 500, PaymentReference.topup(agentVault.address));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
@@ -73,7 +73,7 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
     });
 
     it("should reject confirmation of top up payment if payment is negative", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         chain.mint(underlyingRandomAddress,1000);
         chain.mint(underlyingAgent1,1000);
         let txHash = await wallet.addMultiTransaction({[underlyingAgent1]: 500, [underlyingRandomAddress]: 100}, {[underlyingAgent1]: 450, [underlyingRandomAddress]: 0}, PaymentReference.topup(agentVault.address));
@@ -86,7 +86,7 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
     });
 
     it("should reject confirmation of top up payment - not underlying address", async () => {
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingRandomAddress, 500, PaymentReference.topup(agentVault.address));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingRandomAddress);
         let res = assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
@@ -94,7 +94,7 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
     });
     it("should reject confirmation of top up payment - not a topup payment", async () => {
         chain.mint(underlyingRandomAddress,1000);
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, 500, PaymentReference.topup(randomAddress()));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         let res = assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
@@ -105,7 +105,7 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
         let agentVaultAddressCalc = precomputeContractAddress(contracts.agentVaultFactory.address, 1);
         let txHash = await wallet.addTransaction(underlyingRandomAddress, underlyingAgent1, 500, PaymentReference.topup(agentVaultAddressCalc));
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
-        const agentVault = await createAgentVault(agentOwner1, underlyingAgent1);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         let res =  assetManager.confirmTopupPayment(proof, agentVault.address, { from: agentOwner1 });
         await expectRevert(res, 'topup before agent created');
     });
