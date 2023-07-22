@@ -255,6 +255,7 @@ library SettingsUpdater {
         IWNat oldWNat = Globals.getWNat();
         if (oldWNat != wNat) {
             CollateralType.Data memory data = CollateralTypes.getInfo(CollateralType.Class.POOL, oldWNat);
+            data.validUntil = 0;
             data.token = wNat;
             CollateralTypes.setPoolWNatCollateralType(data);
             emit AMEvents.ContractChanged("wNat", address(wNat));
