@@ -94,16 +94,6 @@ interface IIAssetManager is IAssetManager {
         uint256 _invalidationTimeSec
     ) external;
 
-    /**
-     * If the WNat token is replaced, it is not automatically used by the pools in the system.
-     * Instead, it has to be added as a new collateral token of type POOL by this method.
-     * NOTE: that existing pools must switch afterwards using `upgradeWNat` method.
-     * NOTE: may not be called directly - only through asset manager controller by governance.
-     */
-    function setPoolWNatCollateralType(
-        CollateralType.Data calldata _data
-    ) external;
-
     ////////////////////////////////////////////////////////////////////////////////////
     // Collateral pool redemptions
 

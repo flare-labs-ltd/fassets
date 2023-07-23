@@ -27,8 +27,8 @@ library TransactionAttestation {
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
-        ISCProofVerifier attestationClient = ISCProofVerifier(_settings.attestationClient);
-        require(attestationClient.verifyPayment(_settings.chainId, _attestationData),
+        ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
+        require(scProofVerifier.verifyPayment(_settings.chainId, _attestationData),
             "legal payment not proved");
         require(_confirmationCannotBeCleanedUp(_attestationData.blockTimestamp), "verified transaction too old");
     }
@@ -39,8 +39,8 @@ library TransactionAttestation {
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
-        ISCProofVerifier attestationClient = ISCProofVerifier(_settings.attestationClient);
-        require(attestationClient.verifyBalanceDecreasingTransaction(_settings.chainId, _attestationData),
+        ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
+        require(scProofVerifier.verifyBalanceDecreasingTransaction(_settings.chainId, _attestationData),
             "transaction not proved");
         require(_confirmationCannotBeCleanedUp(_attestationData.blockTimestamp), "verified transaction too old");
     }
@@ -51,8 +51,8 @@ library TransactionAttestation {
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
-        ISCProofVerifier attestationClient = ISCProofVerifier(_settings.attestationClient);
-        require(attestationClient.verifyConfirmedBlockHeightExists(_settings.chainId, _attestationData),
+        ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
+        require(scProofVerifier.verifyConfirmedBlockHeightExists(_settings.chainId, _attestationData),
             "block height not proved");
     }
 
@@ -62,8 +62,8 @@ library TransactionAttestation {
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
-        ISCProofVerifier attestationClient = ISCProofVerifier(_settings.attestationClient);
-        require(attestationClient.verifyReferencedPaymentNonexistence(_settings.chainId, _attestationData),
+        ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
+        require(scProofVerifier.verifyReferencedPaymentNonexistence(_settings.chainId, _attestationData),
             "non-payment not proved");
     }
 

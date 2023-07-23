@@ -20,7 +20,7 @@ import { ChainInfo } from "../../lib/fasset/ChainInfo";
 const AgentVault = artifacts.require("AgentVault");
 const WNat = artifacts.require("WNat");
 const AddressUpdater = artifacts.require('AddressUpdater');
-const AttestationClient = artifacts.require('SCProofVerifier');
+const SCProofVerifier = artifacts.require('SCProofVerifier');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const StateConnector = artifacts.require('StateConnectorMock');
@@ -29,6 +29,7 @@ const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const ERC20Mock = artifacts.require("ERC20Mock");
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const TrivialAddressValidatorMock = artifacts.require("TrivialAddressValidatorMock");
+const WhitelistMock = artifacts.require("WhitelistMock");
 
 export interface TestSettingsContracts {
     governanceSettings: GovernanceSettingsInstance;
@@ -36,10 +37,10 @@ export interface TestSettingsContracts {
     agentVaultFactory: AgentVaultFactoryInstance;
     collateralPoolFactory: CollateralPoolFactoryInstance;
     stateConnector: StateConnectorMockInstance;
-    attestationClient: SCProofVerifierInstance;
+    scProofVerifier: SCProofVerifierInstance;
     addressValidator: IAddressValidatorInstance;
     whitelist?: IWhitelistInstance;
-    agentWhitelist?: IWhitelistInstance;
+    agentWhitelist: IWhitelistInstance;
     ftsoRegistry: FtsoRegistryMockInstance;
     liquidationStrategy: string; // lib address
     wNat: WNatInstance,
@@ -54,7 +55,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         fAsset: constants.ZERO_ADDRESS,                     // replaced in newAssetManager(...)
         agentVaultFactory: contracts.agentVaultFactory.address,
         collateralPoolFactory: contracts.collateralPoolFactory.address,
-        attestationClient: contracts.attestationClient.address,
+        scProofVerifier: contracts.scProofVerifier.address,
         underlyingAddressValidator: contracts.addressValidator.address,
         liquidationStrategy: contracts.liquidationStrategy,
         whitelist: contracts.whitelist?.address ?? constants.ZERO_ADDRESS,
@@ -195,7 +196,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     // create state connector
     const stateConnector = await StateConnector.new();
     // create attestation client
-    const attestationClient = await AttestationClient.new(stateConnector.address);
+    const scProofVerifier = await SCProofVerifier.new(stateConnector.address);
     // create WNat token
     const wNat = await WNat.new(governance, "NetworkNative", "NAT");
     await setDefaultVPContract(wNat, governance);
@@ -206,18 +207,25 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     };
     // create ftso registry
     const ftsoRegistry = await FtsoRegistryMock.new();
+    // add some addresses to address updater
+    await addressUpdater.addOrUpdateContractNamesAndAddresses(
+        ["GovernanceSettings", "AddressUpdater", "StateConnector", "FtsoRegistry", "WNat"],
+        [governanceSettings.address, addressUpdater.address, stateConnector.address, ftsoRegistry.address, wNat.address],
+        { from: governance });
     // create agent vault factory
     const agentVaultFactory = await AgentVaultFactory.new();
     // create collateral pool factory
     const collateralPoolFactory = await CollateralPoolFactory.new();
     // create address validator
     const addressValidator = await TrivialAddressValidatorMock.new();
+    // create allow-all agent whitelist
+    const agentWhitelist = await WhitelistMock.new(true);
     // create liquidation strategy
     const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
     const liquidationStrategy = liquidationStrategyLib.address;
     //
-    return { governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, stateConnector, attestationClient,
-        addressValidator, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
+    return { governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, stateConnector, scProofVerifier,
+        addressValidator, agentWhitelist, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
 }
 
 export interface CreateTestAgentDeps {

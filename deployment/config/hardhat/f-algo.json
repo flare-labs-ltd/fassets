@@ -8,8 +8,7 @@
     "fAssetName": "F-Algorand",
     "fAssetSymbol": "FALGO",
     "assetMintingDecimals": 6,
-    "whitelist": null,
-    "agentWhitelist": null,
+    "userWhitelist": null,
     "underlyingAddressValidator": [
         "TrivialAddressValidatorMock",
         []

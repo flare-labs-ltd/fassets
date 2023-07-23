@@ -2,13 +2,13 @@ import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { BN_ZERO, DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
 import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
-import { testChainInfo, testNatInfo } from "../utils/TestChainInfo";
+import { testChainInfo } from "../utils/TestChainInfo";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -35,9 +35,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let mockChain: MockChain;
     let mockStateConnectorClient: MockStateConnectorClient;
 
-    beforeEach(async () => {
+    async function initialize() {
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.eth);
+        return { commonContext, context };
+    }
+
+    beforeEach(async () => {
+        ({ commonContext, context } = await loadFixtureCopyVars(initialize));
         mockChain = context.chain as MockChain;
         mockStateConnectorClient = context.stateConnectorClient as MockStateConnectorClient;
     });
@@ -134,7 +139,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(agent.unstickMinting(crt), "cannot unstick minting yet");
             await time.increase(DAYS);
             context.skipToProofUnavailability(crt.lastUnderlyingBlock, crt.lastUnderlyingTimestamp);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0, reservedUBA: context.convertLotsToUBA(lots) });
+            await agent.checkAgentInfo({
+                totalClass1CollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: 0,
+                mintedUBA: 0,
+                reservedUBA: context.convertLotsToUBA(lots).add(agent.poolFeeShare(crt.feeUBA)) });
             // test rewarding for unstick default
             const class1Token = agent.class1Token();
             const burnAddress = (await context.assetManager.getSettings()).burnAddress;

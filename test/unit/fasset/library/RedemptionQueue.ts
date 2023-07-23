@@ -1,7 +1,7 @@
 import { constants, expectRevert } from "@openzeppelin/test-helpers";
+import { BNish, randomAddress, toStringExp } from "../../../../lib/utils/helpers";
 import { RedemptionQueueMockInstance } from "../../../../typechain-truffle";
-import { BNish, randomAddress, toBN, toStringExp } from "../../../../lib/utils/helpers";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const RedemptionQueue = artifacts.require("RedemptionQueueMock");
@@ -27,8 +27,13 @@ contract(`RedemptionQueue.sol; ${getTestFile(__filename)};  RedemptionQueue unit
         assertWeb3Equal(ticket.nextForAgent, nextForAgent);
     }
 
-    beforeEach(async() => {
+    async function initialize() {
         redemptionQueue = await RedemptionQueue.new();
+        return { redemptionQueue };
+    }
+
+    beforeEach(async () => {
+        ({ redemptionQueue } = await loadFixtureCopyVars(initialize));
     });
 
     it("should create redemption ticket", async () => {

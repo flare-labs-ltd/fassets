@@ -1,8 +1,8 @@
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
-import { FAssetInstance, IERC165Contract, IERC20Contract, IVPTokenContract, IIVPTokenContract, IICleanableContract } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
-import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { FAssetInstance, IERC165Contract, IERC20Contract, IICleanableContract, IIVPTokenContract, IVPTokenContract } from "../../../../typechain-truffle";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const FAsset = artifacts.require('FAsset');
 
@@ -11,8 +11,13 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
     const governance = accounts[10];
     const assetManager = accounts[11];
 
-    beforeEach(async () => {
+    async function initialize() {
         fAsset = await FAsset.new(governance, "Ethereum", "ETH", 18);
+        return { fAsset };
+    }
+
+    beforeEach(async () => {
+        ({ fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     describe("basic tests", () => {
@@ -55,6 +60,22 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             assertWeb3Equal(balance.toNumber(), amount);
         });
 
+        it('only asset manager should be able to mint FAssets', async function () {
+            await fAsset.setAssetManager(assetManager, { from: governance });
+            const amount = 100;
+            let res = fAsset.mint(accounts[1], amount,{ from: accounts[5] });
+            await expectRevert(res, "only asset manager");
+        });
+
+        it('only asset manager should be able to burn FAssets', async function () {
+            await fAsset.setAssetManager(assetManager, { from: governance });
+            const mint_amount = 100;
+            const burn_amount = 20;
+            await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
+            let res = fAsset.burn(accounts[1], burn_amount,{ from: accounts[5] } );
+            await expectRevert(res, "only asset manager");
+        });
+
         it('should burn FAsset', async function () {
             await fAsset.setAssetManager(assetManager, { from: governance });
             const mint_amount = 100;
@@ -70,7 +91,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const mint_amount = 10;
             const burn_amount = 20;
             await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
-            const res = fAsset.burn(accounts[1], burn_amount,{ from: assetManager } )
+            const res = fAsset.burn(accounts[1], burn_amount,{ from: assetManager } );
             await expectRevert(res, "Burn too big for owner");
         });
 

@@ -18,7 +18,7 @@ export class LiquidationStrategyImpl implements ILiquidationStrategyFactory<Liqu
         }
         const LiquidationStrategy = hre.artifacts.require('LiquidationStrategyImpl') as ILiquidationStrategyContract;
         const liquidationStrategy = await LiquidationStrategy.new();
-        contracts.LiquidationStrategyImpl = newContract('LiquidationStrategyImpl', 'LiquidationStrategyImpl', liquidationStrategy.address);
+        contracts.LiquidationStrategyImpl = newContract('LiquidationStrategyImpl', 'LiquidationStrategyImpl.sol', liquidationStrategy.address);
         return liquidationStrategy.address;
     }
 

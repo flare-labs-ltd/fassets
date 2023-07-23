@@ -88,6 +88,7 @@ test-unit:
       - ./test/unit/bots
       - ./test/unit/governance
       - ./test/unit/utils
+      - ./test/unit/addressValidator
     - TEST_ARG:
       - test/unit/gasReport/GasReport.ts
   script:

@@ -8,9 +8,5 @@ runAsyncMain(async () => {
     const contracts = loadContracts("deployment/deploys/hardhat.json");
     const addressUpdater = await AddressUpdater.at(contracts.AddressUpdater.address);
     await executeTimelockedGovernanceCall(addressUpdater, (governance) =>
-        addressUpdater.addOrUpdateContractNamesAndAddresses(["AttestationClient"], [contracts.AttestationClient!.address], { from: governance }));
-    await executeTimelockedGovernanceCall(addressUpdater, (governance) =>
-        addressUpdater.addOrUpdateContractNamesAndAddresses(["AgentVaultFactory"], [contracts.AgentVaultFactory!.address], { from: governance }));
-    await executeTimelockedGovernanceCall(addressUpdater, (governance) =>
         addressUpdater.addOrUpdateContractNamesAndAddresses(["AssetManagerController"], [contracts.AssetManagerController!.address], { from: governance }));
 });

@@ -166,6 +166,7 @@ interface IAssetManagerEvents {
      */
     event RedemptionRequested(
         address indexed agentVault,
+        address indexed redeemer,
         uint256 requestId,
         string paymentAddress,
         uint256 valueUBA,
@@ -236,6 +237,16 @@ interface IAssetManagerEvents {
         int256 spentUnderlyingUBA,
         uint64 requestId,
         string failureReason);
+
+    /**
+     * Due to self-close exit, some of the agent's backed fAssets were redeemed,
+     * but the redemption was immediatelly paid in collateral so no redemption process is started.
+     */
+    event RedeemedInCollateral(
+        address indexed agentVault,
+        address indexed redeemer,
+        uint256 redemptionAmountUBA,
+        uint256 paidClass1Wei);
 
     /**
      * Agent self-closed valueUBA of backing fassets.

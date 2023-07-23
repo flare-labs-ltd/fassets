@@ -1,6 +1,6 @@
 import { expectRevert } from '@openzeppelin/test-helpers';
 import { AddressUpdatableMockInstance } from "../../../../typechain-truffle";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 
 const AddressUpdatableMock = artifacts.require("AddressUpdatableMock");
 
@@ -16,8 +16,13 @@ contract(`AddressUpdatable.sol; ${getTestFile(__filename)}; AddressUpdatable con
   const FTSO_MANAGER_NAME = "FtsoManager";
   const FTSO_MANAGER_ADDRESS = accounts[11];
 
-  beforeEach(async() => {
+  async function initialize() {
     addressUpdatable = await AddressUpdatableMock.new(ADDRESS_UPDATER_ADDRESS);
+    return { addressUpdatable };
+  }
+
+  beforeEach(async () => {
+    ({ addressUpdatable } = await loadFixtureCopyVars(initialize));
   });
 
   it("Should know about address updater contract", async() => {

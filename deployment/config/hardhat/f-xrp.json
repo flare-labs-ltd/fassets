@@ -8,10 +8,9 @@
     "fAssetName": "F-Ripple",
     "fAssetSymbol": "FXRP",
     "assetMintingDecimals": 6,
-    "whitelist": null,
-    "agentWhitelist": null,
+    "userWhitelist": null,
     "underlyingAddressValidator": [
-        "TrivialAddressValidatorMock",
+        "RippleAddressValidator",
         []
     ],
     "liquidationStrategy": "LiquidationStrategyImpl",

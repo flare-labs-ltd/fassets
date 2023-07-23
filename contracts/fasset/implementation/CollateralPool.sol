@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -13,6 +14,7 @@ import "../interface/IIAgentVault.sol";
 import "../interface/IICollateralPool.sol";
 import "../interface/IFAsset.sol";
 import "./CollateralPoolToken.sol";
+
 
 //slither-disable reentrancy    // all possible reentrancies guarded by nonReentrant
 contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
@@ -292,6 +294,21 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         _transferWNat(address(this), msg.sender, natShare);
         // emit event
         emit Exit(msg.sender, _tokenShare, natShare, spentFAssetFees, requiredFAssets);
+    }
+
+    /**
+     * Get the amount of fassets that need to be burned to perform self close exit.
+     */
+    function fAssetRequiredForSelfCloseExit(uint256 _tokenAmountWei)
+        external view
+        returns (uint256)
+    {
+        AssetData memory assetData = _getAssetData();
+        uint256 natWei = assetData.poolNatBalance.mulDiv(_tokenAmountWei, assetData.poolTokenSupply);
+        uint256 requiredFAssets = _getFAssetRequiredToNotSpoilCR(assetData, natWei);
+        uint256 fAssetFees = _fAssetFeesOf(assetData, msg.sender);
+        (, uint256 requiredExtra) = SafeMath.trySub(requiredFAssets, fAssetFees);
+        return requiredExtra;
     }
 
     /**
@@ -769,9 +786,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         return claimed;
     }
 
-    // Set executors that can then automatically claim rewards through FtsoRewardManager.
+    // Set executors that can then automatically claim rewards and airdrop.
 
-    function setFtsoAutoClaiming(
+    function setAutoClaiming(
         IClaimSetupManager _claimSetupManager,
         address[] memory _executors
     )

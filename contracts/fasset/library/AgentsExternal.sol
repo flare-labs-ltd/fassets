@@ -68,6 +68,7 @@ library AgentsExternal {
     )
         external
         onlyAgentVaultOwner(_agentVault)
+        returns (uint256)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         // only agents that are not being liquidated can withdraw
@@ -97,6 +98,7 @@ library AgentsExternal {
         } else {
             emit AMEvents.PoolTokenRedemptionAnnounced(_agentVault, _amountWei, withdrawal.allowedAt);
         }
+        return withdrawal.allowedAt;
     }
 
     function withdrawalExecuted(

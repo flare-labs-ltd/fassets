@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../userInterfaces/ICollateralPoolToken.sol";
 import "./CollateralPool.sol";
 
+
 contract CollateralPoolToken is ICollateralPoolToken, ERC20, IERC165 {
     address public immutable collateralPool;
 

@@ -6,6 +6,8 @@ import { Agent } from "./Agent";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
 export class Challenger extends AssetContextClient {
+    static deepCopyWithObjectCreate = true;
+
     constructor(
         context: AssetContext,
         public address: string

@@ -20,7 +20,7 @@ NOTE: only the owner of the pool's corresponding agent vault may call this metho
 **claimFtsoRewards** - Claim the FTSO rewards earned by delegating the vote power for the pool.
 NOTE: only the owner of the pool's corresponding agent vault may call this method.
 
-**setFtsoAutoClaiming** - Set executors that can then automatically claim rewards through FtsoRewardManager.
+**setAutoClaiming** - Set executors that can then automatically claim rewards and airdrop.
 NOTE: only the owner of the pool's corresponding agent vault may call this method.
 
 **withdrawCollateralWhenFAssetTerminated** - In case of f-asset termination, withdraw all of sender's collateral

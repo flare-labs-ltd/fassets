@@ -7,10 +7,10 @@ import { toBNExp } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { newAssetManager, waitForTimelock } from "../../../utils/fasset/DeployAssetManager";
+import { newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
-import { getTestFile } from "../../../utils/test-helpers";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../../../utils/test-settings";
 
 const Whitelist = artifacts.require('Whitelist');
@@ -42,7 +42,7 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Agent whitelist tests`, asy
     const agentOwner2 = accounts[23];
     const underlyingAgent1 = "Agent1";
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
         await contracts.governanceSettings.setExecutors([governance, updateExecutor], { from: governance });
@@ -75,6 +75,12 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Agent whitelist tests`, asy
 
         const res = await assetManagerController.setAgentWhitelist([assetManager.address], agentWhitelist.address, { from: governance });
         await waitForTimelock(res, assetManagerController, updateExecutor);
+        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, liquidationStrategySettings, collaterals, settings, assetManager, fAsset, agentWhitelist };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, liquidationStrategySettings, collaterals, settings, assetManager, fAsset, agentWhitelist } =
+            await loadFixtureCopyVars(initialize));
     });
 
     describe("whitelist functions", () => {

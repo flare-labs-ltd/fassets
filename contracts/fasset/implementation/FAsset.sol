@@ -5,6 +5,7 @@ import { IERC165, IERC20, IVPToken, IIVPToken, IICleanable, VPToken }
     from "../../../flattened/FlareSmartContracts.sol";
 import "../interface/IFAsset.sol";
 
+
 contract FAsset is IFAsset, VPToken, IERC165 {
     /**
      * Get the asset manager, corresponding to this fAsset.

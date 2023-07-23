@@ -9,6 +9,8 @@ import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./Redemptions.sol";
 import "./Liquidation.sol";
+import "./UnderlyingAddresses.sol";
+
 
 library RedemptionRequests {
     using SafePct for *;
@@ -31,6 +33,7 @@ library RedemptionRequests {
         string memory _redeemerUnderlyingAddress
     )
         external
+        returns (uint256)
     {
         uint256 maxRedeemedTickets = AssetManagerState.getSettings().maxRedeemedTickets;
         AgentRedemptionList memory redemptionList = AgentRedemptionList({
@@ -57,6 +60,7 @@ library RedemptionRequests {
         // burn the redeemed value of fassets
         uint256 redeemedUBA = Conversion.convertLotsToUBA(redeemedLots);
         Redemptions.burnFAssets(msg.sender, redeemedUBA);
+        return redeemedUBA;
     }
 
     function redeemFromAgent(
@@ -98,6 +102,7 @@ library RedemptionRequests {
         uint256 paymentWei = Conversion.convertAmgToTokenWei(closedAMG, priceAmgToWei)
             .mulBips(agent.buyFAssetByAgentFactorBIPS);
         Agents.payoutClass1(agent, _redeemer, paymentWei);
+        emit AMEvents.RedeemedInCollateral(_agentVault, _redeemer, closedUBA, paymentWei);
         // burn the closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
     }
@@ -107,6 +112,7 @@ library RedemptionRequests {
         uint256 _amountUBA
     )
         external
+        returns (uint256)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
@@ -119,6 +125,7 @@ library RedemptionRequests {
         Liquidation.endLiquidationIfHealthy(agent);
         // send event
         emit AMEvents.SelfClose(_agentVault, closedUBA);
+        return closedUBA;
     }
 
     function maxRedemptionFromAgent(
@@ -174,7 +181,7 @@ library RedemptionRequests {
         AssetManagerState.State storage state = AssetManagerState.get();
         // validate redemption address
         (string memory normalizedUnderlyingAddress, bytes32 underlyingAddressHash) =
-            Globals.validateAndNormalizeUnderlyingAddress(_redeemerUnderlyingAddressString);
+            UnderlyingAddresses.validateAndNormalize(_redeemerUnderlyingAddressString);
         // create request
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
         uint64 requestId = _newRequestId(_poolSelfClose);
@@ -200,6 +207,7 @@ library RedemptionRequests {
         Agents.startRedeemingAssets(Agent.get(_data.agentVault), _data.valueAMG, _poolSelfClose);
         // emit event to remind agent to pay
         emit AMEvents.RedemptionRequested(_data.agentVault,
+            _redeemer,
             requestId,
             normalizedUnderlyingAddress,
             redeemedValueUBA,

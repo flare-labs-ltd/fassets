@@ -1,13 +1,13 @@
+import { setBalance } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
-import { toBN, toWei, erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { AssetManagerControllerInstance, AssetManagerInstance, AssetManagerMockInstance, ERC20MockInstance, FAssetInstance, WNatInstance, CollateralPoolInstance, CollateralPoolTokenInstance, AgentVaultInstance, FAssetMockInstance, IERC165Contract } from "../../../../typechain-truffle";
+import { erc165InterfaceId, toBN, toWei } from "../../../../lib/utils/helpers";
+import { AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AssetManagerMockInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { newAssetManager } from "../../../utils/fasset/DeployAssetManager";
-import { getTestFile } from "../../../utils/test-helpers";
+import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
+import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
+import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings, TestFtsos, TestSettingsContracts } from "../../../utils/test-settings";
-import { setBalance } from "@nomicfoundation/hardhat-network-helpers";
 
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AgentVault = artifacts.require("AgentVault");
@@ -61,7 +61,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         return CollateralPoolToken.at(await collateralPool.token());
     }
 
-    beforeEach(async () => {
+    async function initialize() {
         const ci = testChainInfo.btc;
         contracts = await createTestContracts(governance);
         // save some contracts as globals
@@ -79,6 +79,11 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         // create asset manager mock (for tests that use AgentVault.new)
         assetManagerMock = await AssetManagerMock.new(wNat.address);
         await assetManagerMock.setCommonOwner(owner);
+        return { contracts, wNat, stablecoins, usdc, ftsos, assetManagerController, collaterals, settings, assetManager, fAsset, assetManagerMock };
+    }
+
+    beforeEach(async () => {
+        ({ contracts, wNat, stablecoins, usdc, ftsos, assetManagerController, collaterals, settings, assetManager, fAsset, assetManagerMock } = await loadFixtureCopyVars(initialize));
     });
 
     describe("pool token methods", async () => {
@@ -459,6 +464,43 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(iERC165.abi)));
             assert.isTrue(await contracts.agentVaultFactory.supportsInterface(erc165InterfaceId(iAgentVaultFactory.abi)));
             assert.isFalse(await contracts.agentVaultFactory.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+        });
+    });
+
+    describe("branch tests", () => {
+        it("random address shouldn't be able to withdraw pool fees", async () => {
+            // mock fAsset
+            const ci = testChainInfo.eth;
+            const fAsset = await ERC20Mock.new(ci.name, ci.symbol);
+            // create agent with mocked fAsset
+            await assetManagerMock.setCheckForValidAgentVaultAddress(false);
+            await assetManagerMock.registerFAssetForCollateralPool(fAsset.address);
+            const agentVault = await AgentVault.new(assetManagerMock.address);
+            // create pool
+            const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
+            const token = await CollateralPoolToken.new(pool.address);
+            await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.setPoolToken(token.address).encodeABI());
+            await assetManagerMock.setCollateralPool(pool.address);
+            // deposit nat
+            await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
+            // mint fAssets to the pool
+            await fAsset.mintAmount(pool.address, toWei(10));
+            await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.fAssetFeeDeposited(toWei(1000)).encodeABI());
+            // withdraw pool fees
+            const res = agentVault.withdrawPoolFees(toWei(10), owner, { from: accounts[14] });
+            await expectRevert(res, "only owner");
+        });
+
+        it("random address shouldn't be able to redeem collateral pool tokens", async () => {
+            const natRecipient = "0xDe6E4607008a6B6F4341E046d18297d03e11ECa1";
+            const agentVault = await createAgent(owner, underlyingAgent1);
+            await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const tokens = agentInfo.totalAgentPoolTokensWei;
+            await assetManager.announceAgentPoolTokenRedemption(agentVault.address, tokens, { from: owner });
+            await time.increase((await assetManager.getSettings()).withdrawalWaitMinSeconds);
+            const res = agentVault.redeemCollateralPoolTokens(tokens, natRecipient, { from: accounts[14] });
+            await expectRevert(res, "only owner");
         });
     });
 });

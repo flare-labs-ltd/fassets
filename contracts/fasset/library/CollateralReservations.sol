@@ -38,11 +38,9 @@ library CollateralReservations {
         require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
         require(_maxMintingFeeBIPS >= agent.feeBIPS, "agent's fee too high");
         uint64 valueAMG = _lots * state.settings.lotSizeAMG;
-        Minting.checkMintingCap(valueAMG);
-        agent.reservedAMG += valueAMG;
-        state.totalReservedCollateralAMG += valueAMG;
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
+        _reserveCollateral(agent, valueAMG, underlyingFeeUBA);
         // poolCollateral is WNat, so we can use its price
         uint256 reservationFee = _reservationFee(collateralData.poolCollateral.amgToTokenWeiPrice, valueAMG);
         require(msg.value == reservationFee, "inappropriate fee amount");
@@ -155,8 +153,9 @@ library CollateralReservations {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(crt.agentVault);
-        agent.reservedAMG = SafeMath64.sub64(agent.reservedAMG, crt.valueAMG, "invalid reservation");
-        state.totalReservedCollateralAMG -= crt.valueAMG;
+        uint64 reservationAMG = _reservationAMG(agent, crt.valueAMG, crt.underlyingFeeUBA);
+        agent.reservedAMG = SafeMath64.sub64(agent.reservedAMG, reservationAMG, "invalid reservation");
+        state.totalReservedCollateralAMG -= reservationAMG;
         delete state.crts[_crtId];
     }
 
@@ -169,6 +168,32 @@ library CollateralReservations {
         AssetManagerState.State storage state = AssetManagerState.get();
         require(_crtId > 0 && state.crts[_crtId].valueAMG != 0, "invalid crt id");
         return state.crts[_crtId];
+    }
+
+    function _reserveCollateral(
+        Agent.State storage _agent,
+        uint64 _valueAMG,
+        uint256 _underlyingFeeUBA
+    )
+        private
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        uint64 reservationAMG = _reservationAMG(_agent, _valueAMG, _underlyingFeeUBA);
+        Minting.checkMintingCap(reservationAMG);
+        _agent.reservedAMG += reservationAMG;
+        state.totalReservedCollateralAMG += reservationAMG;
+    }
+
+    function _reservationAMG(
+        Agent.State storage _agent,
+        uint64 _valueAMG,
+        uint256 _underlyingFeeUBA
+    )
+        private view
+        returns (uint64)
+    {
+        uint256 poolFeeUBA = _underlyingFeeUBA.mulBips(_agent.poolFeeShareBIPS);
+        return _valueAMG + Conversion.convertUBAToAmg(poolFeeUBA);
     }
 
     function _lastPaymentBlock()

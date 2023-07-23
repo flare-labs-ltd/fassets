@@ -156,8 +156,8 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         return _ftsoRewardManager.claim(address(this), _recipient, _lastRewardEpoch, false);
     }
 
-    // Set executors and recipients that can then automatically claim rewards through FtsoRewardManager.
-    function setFtsoAutoClaiming(
+    // Set executors and recipients that can then automatically claim rewards and airdrop.
+    function setAutoClaiming(
         IClaimSetupManager _claimSetupManager,
         address[] memory _executors,
         address[] memory _allowedRecipients

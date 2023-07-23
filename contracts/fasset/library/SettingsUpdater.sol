@@ -7,6 +7,8 @@ import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./LiquidationStrategy.sol";
+import "./Globals.sol";
+import "./CollateralTypes.sol";
 
 library SettingsUpdater {
     using SafeCast for uint256;
@@ -19,7 +21,7 @@ library SettingsUpdater {
     bytes32 internal constant UPDATES_STATE_POSITION = keccak256("fasset.AssetManager.UpdaterState");
 
     bytes32 internal constant UPDATE_CONTRACTS =
-        keccak256("updateContracts(address,address,address)");
+        keccak256("updateContracts(address,address,IWNat)");
     bytes32 internal constant SET_TIME_FOR_PAYMENT =
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant SET_WHITELIST =
@@ -32,6 +34,8 @@ library SettingsUpdater {
         keccak256("setCollateralPoolFactory(address)");
     bytes32 internal constant SET_UNDERLYING_ADDRESS_VALIDATOR =
         keccak256("setUnderlyingAddressValidator(address)");
+    bytes32 internal constant SET_SC_PROOF_VERIFIER =
+        keccak256("setSCProofVerifier(address)");
     bytes32 internal constant SET_MIN_UPDATE_REPEAT_TIME_SECONDS =
         keccak256("setMinUpdateRepeatTimeSeconds(uint256)");
     bytes32 internal constant SET_LOT_SIZE_AMG =
@@ -122,6 +126,9 @@ library SettingsUpdater {
         } else if (_method == SET_UNDERLYING_ADDRESS_VALIDATOR) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setUnderlyingAddressValidator(_params);
+        } else if (_method == SET_SC_PROOF_VERIFIER) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setSCProofVerifier(_params);
         } else if (_method == SET_MIN_UPDATE_REPEAT_TIME_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setMinUpdateRepeatTimeSeconds(_params);
@@ -228,20 +235,25 @@ library SettingsUpdater {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
 
-        (address controller, address attestationClient, address ftsoRegistry) =
-            abi.decode(_params, (address, address, address));
+        (address controller, address ftsoRegistry, IWNat wNat) =
+            abi.decode(_params, (address, address, IWNat));
 
         if (settings.assetManagerController != controller) {
             settings.assetManagerController = controller;
             emit AMEvents.ContractChanged("assetManagerController", address(controller));
         }
-        if (settings.attestationClient != attestationClient) {
-            settings.attestationClient = attestationClient;
-            emit AMEvents.ContractChanged("attestationClient", address(attestationClient));
-        }
+
         if (settings.ftsoRegistry != ftsoRegistry) {
             settings.ftsoRegistry = ftsoRegistry;
             emit AMEvents.ContractChanged("ftsoRegistry", address(ftsoRegistry));
+        }
+
+        IWNat oldWNat = Globals.getWNat();
+        if (oldWNat != wNat) {
+            CollateralType.Data memory data = CollateralTypes.getInfo(CollateralType.Class.POOL, oldWNat);
+            data.token = wNat;
+            CollateralTypes.setPoolWNatCollateralType(data);
+            emit AMEvents.ContractChanged("wNat", address(wNat));
         }
     }
 
@@ -345,6 +357,20 @@ library SettingsUpdater {
         // update
         settings.underlyingAddressValidator = value;
         emit AMEvents.ContractChanged("underlyingAddressValidator", value);
+    }
+
+    function _setSCProofVerifier(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        address value = abi.decode(_params, (address));
+        // validate
+        require(value != address(0), "address zero");
+        // update
+        settings.scProofVerifier = value;
+        emit AMEvents.ContractChanged("scProofVerifier", value);
     }
 
     function _setMinUpdateRepeatTimeSeconds(
@@ -719,10 +745,11 @@ library SettingsUpdater {
         require(_settings.fAsset != address(0), "zero fAsset address");
         require(_settings.agentVaultFactory != address(0), "zero agentVaultFactory address");
         require(_settings.collateralPoolFactory != address(0), "zero collateralPoolFactory address");
-        require(_settings.attestationClient != address(0), "zero attestationClient address");
+        require(_settings.scProofVerifier != address(0), "zero scProofVerifier address");
         require(_settings.underlyingAddressValidator != address(0), "zero underlyingAddressValidator address");
         require(_settings.ftsoRegistry != address(0), "zero ftsoRegistry address");
         require(_settings.liquidationStrategy != address(0), "zero liquidationStrategy address");
+        require(_settings.agentWhitelist != address(0), "zero agentWhitelist address");
 
         require(_settings.assetUnitUBA > 0, "cannot be zero");
         require(_settings.assetMintingGranularityUBA > 0, "cannot be zero");

@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../../governance/implementation/Governed.sol";
 import "../interface/IWhitelist.sol";
 
+
 contract Whitelist is IWhitelist, Governed, IERC165 {
     bool public immutable supportsRevoke;
     mapping(address => bool) private whitelist;
-
 
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, bool _supportsRevoke)
         Governed(_governanceSettings, _initialGovernance)
