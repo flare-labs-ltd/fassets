@@ -10,6 +10,7 @@ jobs:
     permissions:
       contents: read
     strategy:
+      fail-fast: false
       matrix:
         include:
         - TEST_PATH: ./test/unit/fasset/library
