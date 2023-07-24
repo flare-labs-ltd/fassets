@@ -11,13 +11,13 @@ import "../../utils/lib/SafePct.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAssetManager.sol";
 import "../interface/IIAgentVault.sol";
-import "../interface/IIContingencyPool.sol";
+import "../interface/IICollateralPool.sol";
 import "../interface/IFAsset.sol";
-import "./ContingencyPoolToken.sol";
+import "./CollateralPoolToken.sol";
 
 
 //slither-disable reentrancy    // all possible reentrancies guarded by nonReentrant
-contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
+contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     using SafeCast for uint256;
     using SafePct for uint256;
     using SafeERC20 for IERC20;
@@ -41,7 +41,7 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
     address public immutable agentVault;
     IIAssetManager public immutable assetManager;
     IERC20 public immutable fAsset;
-    ContingencyPoolToken public token; // practically immutable
+    CollateralPoolToken public token; // practically immutable
 
     IWNat public wNat;
     uint32 public exitCollateralRatioBIPS;
@@ -90,7 +90,7 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
         onlyAssetManager
     {
         require(address(token) == address(0), "pool token already set");
-        token = ContingencyPoolToken(_poolToken);
+        token = CollateralPoolToken(_poolToken);
     }
 
     function setExitCollateralRatioBIPS(uint256 _exitCollateralRatioBIPS)
@@ -118,7 +118,7 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
     }
 
     /**
-     * @notice Enters the contingency pool by depositing some NAT
+     * @notice Enters the collateral pool by depositing some NAT
      * @param _fAssets                 Number of f-assets sent along the deposited NAT (not all may be used)
      * @param _enterWithFullFAssets    Specifies whether "required" f-assets should be calculated automatically
      */
@@ -346,9 +346,9 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
     }
 
     /**
-     * @notice Returns the contingency pool token contract used by this contract
+     * @notice Returns the collateral pool token contract used by this contract
      */
-    function poolToken() external view override returns (IContingencyPoolToken) {
+    function poolToken() external view override returns (ICollateralPoolToken) {
         return token;
     }
 
@@ -853,8 +853,8 @@ contract ContingencyPool is IIContingencyPool, ReentrancyGuard, IERC165 {
         returns (bool)
     {
         return _interfaceId == type(IERC165).interfaceId
-            || _interfaceId == type(IContingencyPool).interfaceId
-            || _interfaceId == type(IIContingencyPool).interfaceId;
+            || _interfaceId == type(ICollateralPool).interfaceId
+            || _interfaceId == type(IICollateralPool).interfaceId;
     }
 
     function subOrZero(uint256 _a, uint256 _b)

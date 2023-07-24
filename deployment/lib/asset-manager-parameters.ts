@@ -96,20 +96,20 @@ export interface AssetManagerParameters {
     agentVaultFactory?: string;
 
     /**
-     * The factory contract for creating agent contingency pools.
+     * The factory contract for creating agent collateral pools.
      * Can be a contract address (0x...) or a name in contracts.json.
-     * Optional, default is 'ContingencyPoolFactory' in contracts.json.
+     * Optional, default is 'CollateralPoolFactory' in contracts.json.
      * @pattern ^\w+$
      */
-    contingencyPoolFactory?: string;
+    collateralPoolFactory?: string;
 
     /**
-     * The factory contract for creating agent contingency pools.
+     * The factory contract for creating agent collateral pools.
      * Can be a contract address (0x...) or a name in contracts.json.
-     * Optional, default is 'ContingencyPoolTokenFactory' in contracts.json.
+     * Optional, default is 'CollateralPoolTokenFactory' in contracts.json.
      * @pattern ^\w+$
      */
-    contingencyPoolTokenFactory?: string;
+    collateralPoolTokenFactory?: string;
 
     /**
      * The proof verifier contract for state connector prrofs.
@@ -211,7 +211,7 @@ export interface AssetManagerParameters {
     liquidationStrategySettings: any;
 
     /**
-     * Data about the collateral used in the contingency pool, token is always WNat (FLR/SGB).
+     * Data about the collateral used in the collateral pool, token is always WNat (FLR/SGB).
      */
     poolCollateral: CollateralTypeParameters;
 

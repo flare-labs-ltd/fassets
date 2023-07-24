@@ -94,8 +94,8 @@ export class FuzzingAgent extends FuzzingActor {
 
     capturePerAgentContractEvents(agentName: string) {
         this.runner.interceptor.captureEventsFrom(agentName, this.agent.agentVault, 'AgentVault');
-        this.runner.interceptor.captureEventsFrom(`${agentName}_POOL`, this.agent.contingencyPool, 'ContingencyPool');
-        this.runner.interceptor.captureEventsFrom(`${agentName}_LPTOKEN`, this.agent.contingencyPoolToken, 'ContingencyPoolToken');
+        this.runner.interceptor.captureEventsFrom(`${agentName}_POOL`, this.agent.collateralPool, 'CollateralPool');
+        this.runner.interceptor.captureEventsFrom(`${agentName}_LPTOKEN`, this.agent.collateralPoolToken, 'CollateralPoolToken');
     }
 
     async handleRedemptionRequest(request: EventArgs<RedemptionRequested>) {
@@ -196,7 +196,7 @@ export class FuzzingAgent extends FuzzingActor {
                     await agent.depositVaultCollateral(requiredTopup)
                         .catch(e => scope.exitOnExpectedError(e, []));
                 } else {
-                    await agent.buyContingencyPoolTokens(requiredTopup)
+                    await agent.buyCollateralPoolTokens(requiredTopup)
                         .catch(e => scope.exitOnExpectedError(e, []));
                 }
                 const crAfter = agentState.collateralRatio(collateral);
@@ -309,7 +309,7 @@ export class FuzzingAgent extends FuzzingActor {
         const poolTokenBalance = await agent.poolTokenBalance();
         const { withdrawalAllowedAt } = await agent.announcePoolTokenRedemption(poolTokenBalance);
         await this.timeline.flareTimestamp(withdrawalAllowedAt).wait(scope);
-        await agent.redeemContingencyPoolTokens(poolTokenBalance);
+        await agent.redeemCollateralPoolTokens(poolTokenBalance);
         // announce destroy
         const destroyAllowedAt = await agent.announceDestroy()
             .catch(e => scope.exitOnExpectedError(e, [{ error: 'agent still active', when: !waitForRedemptions }]));

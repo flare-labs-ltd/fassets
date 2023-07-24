@@ -237,13 +237,13 @@
     "address": "0x8Def61653b2Cf9088D0cF4265A5F324eFE86AC87"
   },
   {
-    "name": "ContingencyPoolFactory",
-    "contractName": "ContingencyPoolFactory.sol",
+    "name": "CollateralPoolFactory",
+    "contractName": "CollateralPoolFactory.sol",
     "address": "0x907FF43Ca31846879af32222065d39E1273C56fa"
   },
   {
-    "name": "ContingencyPoolTokenFactory",
-    "contractName": "ContingencyPoolTokenFactory.sol",
+    "name": "CollateralPoolTokenFactory",
+    "contractName": "CollateralPoolTokenFactory.sol",
     "address": "0x61DA9C6b99903F443891b8031BB92231B4DAAaf7"
   },
   {

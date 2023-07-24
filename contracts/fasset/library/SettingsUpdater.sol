@@ -31,9 +31,9 @@ library SettingsUpdater {
     bytes32 internal constant SET_AGENT_VAULT_FACTORY =
         keccak256("setAgentVaultFactory(address)");
     bytes32 internal constant SET_COLLATERAL_POOL_FACTORY =
-        keccak256("setContingencyPoolFactory(address)");
+        keccak256("setCollateralPoolFactory(address)");
     bytes32 internal constant SET_COLLATERAL_POOL_TOKEN_FACTORY =
-        keccak256("setContingencyPoolTokenFactory(address)");
+        keccak256("setCollateralPoolTokenFactory(address)");
     bytes32 internal constant SET_UNDERLYING_ADDRESS_VALIDATOR =
         keccak256("setUnderlyingAddressValidator(address)");
     bytes32 internal constant SET_PRICE_READER =
@@ -126,10 +126,10 @@ library SettingsUpdater {
             _setAgentVaultFactory(_params);
         } else if (_method == SET_COLLATERAL_POOL_FACTORY) {
             _checkEnoughTimeSinceLastUpdate(_method);
-            _setContingencyPoolFactory(_params);
+            _setCollateralPoolFactory(_params);
         } else if (_method == SET_COLLATERAL_POOL_TOKEN_FACTORY) {
             _checkEnoughTimeSinceLastUpdate(_method);
-            _setContingencyPoolTokenFactory(_params);
+            _setCollateralPoolTokenFactory(_params);
         } else if (_method == SET_UNDERLYING_ADDRESS_VALIDATOR) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setUnderlyingAddressValidator(_params);
@@ -337,7 +337,7 @@ library SettingsUpdater {
         emit AMEvents.ContractChanged("agentVaultFactory", value);
     }
 
-    function _setContingencyPoolFactory(
+    function _setCollateralPoolFactory(
         bytes calldata _params
     )
         private
@@ -347,11 +347,11 @@ library SettingsUpdater {
         // validate
         require(value != address(0), "address zero");
         // update
-        settings.contingencyPoolFactory = value;
-        emit AMEvents.ContractChanged("contingencyPoolFactory", value);
+        settings.collateralPoolFactory = value;
+        emit AMEvents.ContractChanged("collateralPoolFactory", value);
     }
 
-    function _setContingencyPoolTokenFactory(
+    function _setCollateralPoolTokenFactory(
         bytes calldata _params
     )
         private
@@ -361,8 +361,8 @@ library SettingsUpdater {
         // validate
         require(value != address(0), "address zero");
         // update
-        settings.contingencyPoolTokenFactory = value;
-        emit AMEvents.ContractChanged("contingencyPoolTokenFactory", value);
+        settings.collateralPoolTokenFactory = value;
+        emit AMEvents.ContractChanged("collateralPoolTokenFactory", value);
     }
 
     function _setUnderlyingAddressValidator(
@@ -778,8 +778,8 @@ library SettingsUpdater {
     {
         require(_settings.fAsset != address(0), "zero fAsset address");
         require(_settings.agentVaultFactory != address(0), "zero agentVaultFactory address");
-        require(_settings.contingencyPoolFactory != address(0), "zero contingencyPoolFactory address");
-        require(_settings.contingencyPoolTokenFactory != address(0), "zero contingencyPoolTokenFactory address");
+        require(_settings.collateralPoolFactory != address(0), "zero collateralPoolFactory address");
+        require(_settings.collateralPoolTokenFactory != address(0), "zero collateralPoolTokenFactory address");
         require(_settings.scProofVerifier != address(0), "zero scProofVerifier address");
         require(_settings.underlyingAddressValidator != address(0), "zero underlyingAddressValidator address");
         require(_settings.priceReader != address(0), "zero priceReader address");

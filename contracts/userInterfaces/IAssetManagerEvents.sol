@@ -12,7 +12,7 @@ interface IAssetManagerEvents {
     event AgentVaultCreated(
         address indexed owner,
         address agentVault,
-        address contingencyPool,
+        address collateralPool,
         string underlyingAddress,
         address vaultCollateralToken,
         uint256 feeBIPS,
@@ -101,7 +101,7 @@ interface IAssetManagerEvents {
         uint256 value);
 
     /**
-     * Agent or agent's contingency pool has changed token contract.
+     * Agent or agent's collateral pool has changed token contract.
      */
     event AgentCollateralTypeChanged(
         address indexed agentVault,

@@ -78,33 +78,33 @@ export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, co
     saveContracts(contractsFile, contracts);
 }
 
-export async function deployContingencyPoolFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
-    console.log(`Deploying ContingencyPoolFactory`);
+export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    console.log(`Deploying CollateralPoolFactory`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
-    const ContingencyPoolFactory = artifacts.require("ContingencyPoolFactory");
+    const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 
     const contracts = loadContracts(contractsFile);
 
-    const contingencyPoolFactory = await ContingencyPoolFactory.new();
+    const collateralPoolFactory = await CollateralPoolFactory.new();
 
-    contracts.ContingencyPoolFactory = newContract("ContingencyPoolFactory", "ContingencyPoolFactory.sol", contingencyPoolFactory.address);
+    contracts.CollateralPoolFactory = newContract("CollateralPoolFactory", "CollateralPoolFactory.sol", collateralPoolFactory.address);
     saveContracts(contractsFile, contracts);
 }
 
-export async function deployContingencyPoolTokenFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
-    console.log(`Deploying ContingencyPoolTokenFactory`);
+export async function deployCollateralPoolTokenFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    console.log(`Deploying CollateralPoolTokenFactory`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
-    const ContingencyPoolTokenFactory = artifacts.require("ContingencyPoolTokenFactory");
+    const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 
     const contracts = loadContracts(contractsFile);
 
-    const contingencyPoolTokenFactory = await ContingencyPoolTokenFactory.new();
+    const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new();
 
-    contracts.ContingencyPoolTokenFactory = newContract("ContingencyPoolTokenFactory", "ContingencyPoolTokenFactory.sol", contingencyPoolTokenFactory.address);
+    contracts.CollateralPoolTokenFactory = newContract("CollateralPoolTokenFactory", "CollateralPoolTokenFactory.sol", collateralPoolTokenFactory.address);
     saveContracts(contractsFile, contracts);
 }
 
@@ -226,7 +226,7 @@ function convertCollateralType(contracts: ChainContracts, parameters: Collateral
 }
 
 function createAssetManagerSettings(contracts: ChainContracts, parameters: AssetManagerParameters, fAsset: FAssetInstance, liquidationStrategy: string, addressValidator: string): AssetManagerSettings {
-    if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.SCProofVerifier || !contracts.ContingencyPoolFactory) {
+    if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.SCProofVerifier || !contracts.CollateralPoolFactory) {
         throw new Error("Missing contracts");
     }
     const ten = new BN(10);
@@ -236,8 +236,8 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         assetManagerController: addressFromParameter(contracts, parameters.assetManagerController ?? 'AssetManagerController'),
         fAsset: fAsset.address,
         agentVaultFactory: addressFromParameter(contracts, parameters.agentVaultFactory ?? 'AgentVaultFactory'),
-        contingencyPoolFactory: addressFromParameter(contracts, parameters.contingencyPoolFactory ?? 'ContingencyPoolFactory'),
-        contingencyPoolTokenFactory: addressFromParameter(contracts, parameters.contingencyPoolTokenFactory ?? 'ContingencyPoolTokenFactory'),
+        collateralPoolFactory: addressFromParameter(contracts, parameters.collateralPoolFactory ?? 'CollateralPoolFactory'),
+        collateralPoolTokenFactory: addressFromParameter(contracts, parameters.collateralPoolTokenFactory ?? 'CollateralPoolTokenFactory'),
         scProofVerifier: addressFromParameter(contracts, parameters.scProofVerifier ?? 'SCProofVerifier'),
         priceReader: addressFromParameter(contracts, parameters.priceReader ?? 'PriceReader'),
         whitelist: parameters.userWhitelist ? addressFromParameter(contracts, parameters.userWhitelist) : ZERO_ADDRESS,

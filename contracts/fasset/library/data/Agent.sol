@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../interface/IIContingencyPool.sol";
+import "../../interface/IICollateralPool.sol";
 
 
 library Agent {
@@ -38,7 +38,7 @@ library Agent {
     }
 
     struct State {
-        IIContingencyPool contingencyPool;
+        IICollateralPool collateralPool;
 
         // Address of the agent owner. This is the management address, which is immutable.
         // The work address can be retrieved from the global state mapping between
@@ -60,7 +60,7 @@ library Agent {
         // The data is obtained as state.collateralTokens[vaultCollateralIndex].
         uint16 vaultCollateralIndex;
 
-        // Index of token in contingency pool. This is always wrapped FLR/SGB, however the wrapping
+        // Index of token in collateral pool. This is always wrapped FLR/SGB, however the wrapping
         // contract (WNat) may change. In such case we add new collateral token with class POOL but the
         // agent must call a method to upgrade to new contract, se we must track the actual token used.
         uint16 poolCollateralIndex;

@@ -210,7 +210,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await depositCollateral(agentOwner1, agentVault, amount);
-        await agentVault.buyContingencyPoolTokens({ from: agentOwner1, value: amount });
+        await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 });
         // act
         // assert
@@ -261,7 +261,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const amount = toWei(3e8);
         await depositCollateral(agentOwner1, agentVault, amount);
-        await agentVault.buyContingencyPoolTokens({ from: agentOwner1, value: amount });
+        await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: amount });
         await assetManager.makeAgentAvailable(agentVault.address, { from: agentOwner1 });
         // act
         // assert

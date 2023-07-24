@@ -70,7 +70,7 @@ library AgentCollateral {
         CollateralTypeInt.Data storage collateral = _agent.getPoolCollateral();
         return Collateral.Data({
             kind: Collateral.Kind.POOL,
-            fullCollateral: collateral.token.balanceOf(address(_agent.contingencyPool)),
+            fullCollateral: collateral.token.balanceOf(address(_agent.collateralPool)),
             amgToTokenWeiPrice: Conversion.currentAmgPriceInTokenWei(collateral)
         });
     }
@@ -82,7 +82,7 @@ library AgentCollateral {
         internal view
         returns (Collateral.Data memory)
     {
-        IERC20 poolToken = _agent.contingencyPool.poolToken();
+        IERC20 poolToken = _agent.collateralPool.poolToken();
         uint256 agentPoolTokens = poolToken.balanceOf(_agent.vaultAddress());
         uint256 totalPoolTokens = poolToken.totalSupply();
         uint256 amgToPoolTokenWeiPrice = _poolCollateral.fullCollateral != 0 ?

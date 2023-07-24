@@ -55,7 +55,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
 
     async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string, fullAgentCollateral: BN = toWei(3e8)) {
         await depositCollateral(owner, agentVault, fullAgentCollateral);
-        await agentVault.buyContingencyPoolTokens({ from: owner, value: fullAgentCollateral });  // add pool collateral and agent pool tokens
+        await agentVault.buyCollateralPoolTokens({ from: owner, value: fullAgentCollateral });  // add pool collateral and agent pool tokens
         await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 
@@ -228,7 +228,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
 
         //Deposit more collateral
         await depositCollateral(agentOwner1, agentVault, toWei(3e10));
-        await agentVault.buyContingencyPoolTokens({ from: agentOwner1, value: toWei(3e10) });
+        await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: toWei(3e10) });
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info1.status, 1);
         assertWeb3Equal(info2.status, 0);

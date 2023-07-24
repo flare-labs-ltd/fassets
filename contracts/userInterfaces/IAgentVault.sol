@@ -6,7 +6,7 @@ import "flare-smart-contracts/contracts/userInterfaces/IVPToken.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IClaimSetupManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IDistributionToDelegators.sol";
-import "./IContingencyPool.sol";
+import "./ICollateralPool.sol";
 
 interface IAgentVault {
     /**
@@ -41,25 +41,25 @@ interface IAgentVault {
     function transferExternalToken(IERC20 _token, uint256 _amount) external;
 
     /**
-     * Buy contingency pool tokens for NAT.
+     * Buy collateral pool tokens for NAT.
      * Holding enough pool tokens in the vault is required for minting.
      * NOTE: anybody can call this method, to allow the owner to deposit from any source.
      */
-    function buyContingencyPoolTokens() external payable;
+    function buyCollateralPoolTokens() external payable;
 
     /**
-     * Contingency pool tokens which must be held by the agent accrue minting fees in form of f-assets.
+     * Collateral pool tokens which must be held by the agent accrue minting fees in form of f-assets.
      * These fees can be withdrawn using this method.
      * NOTE: only the owner of the agent vault may call this method.
      */
     function withdrawPoolFees(uint256 _amount, address _recipient) external;
 
     /**
-     * This method allows the agent to convert contingency pool tokens back to NAT.
+     * This method allows the agent to convert collateral pool tokens back to NAT.
      * Prior announcement is required by calling `assetManager.announceAgentPoolTokenRedemption(...)`.
      * NOTE: only the owner of the agent vault may call this method.
      */
-    function redeemContingencyPoolTokens(uint256 _amount, address payable _recipient) external;
+    function redeemCollateralPoolTokens(uint256 _amount, address payable _recipient) external;
 
     /**
      * Delegate FTSO vote power for a collateral token held in this vault.
@@ -133,10 +133,10 @@ interface IAgentVault {
     ) external;
 
     /**
-     * Get the address of the contingency pool contract corresponding to this agent vault
-     * (there is 1:1 correspondence between agent vault and contingency pools).
+     * Get the address of the collateral pool contract corresponding to this agent vault
+     * (there is 1:1 correspondence between agent vault and collateral pools).
      */
-    function contingencyPool()
+    function collateralPool()
         external view
-        returns (IContingencyPool);
+        returns (ICollateralPool);
 }

@@ -8,8 +8,8 @@ import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp } from "../../lib/utils
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerInstance, SCProofVerifierInstance,
-    ContingencyPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
-    IAddressValidatorInstance, IWhitelistInstance, StateConnectorMockInstance, WNatInstance, ContingencyPoolTokenFactoryInstance, IPriceReaderInstance
+    CollateralPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
+    IAddressValidatorInstance, IWhitelistInstance, StateConnectorMockInstance, WNatInstance, CollateralPoolTokenFactoryInstance, IPriceReaderInstance
 } from "../../typechain-truffle";
 import { TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
@@ -28,8 +28,8 @@ const StateConnector = artifacts.require('StateConnectorMock');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const ERC20Mock = artifacts.require("ERC20Mock");
-const ContingencyPoolFactory = artifacts.require("ContingencyPoolFactory");
-const ContingencyPoolTokenFactory = artifacts.require("ContingencyPoolTokenFactory");
+const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
+const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 const TrivialAddressValidatorMock = artifacts.require("TrivialAddressValidatorMock");
 const WhitelistMock = artifacts.require("WhitelistMock");
 
@@ -37,8 +37,8 @@ export interface TestSettingsContracts {
     governanceSettings: GovernanceSettingsInstance;
     addressUpdater: AddressUpdaterInstance;
     agentVaultFactory: AgentVaultFactoryInstance;
-    contingencyPoolFactory: ContingencyPoolFactoryInstance;
-    contingencyPoolTokenFactory: ContingencyPoolTokenFactoryInstance;
+    collateralPoolFactory: CollateralPoolFactoryInstance;
+    collateralPoolTokenFactory: CollateralPoolTokenFactoryInstance;
     stateConnector: StateConnectorMockInstance;
     scProofVerifier: SCProofVerifierInstance;
     priceReader: IPriceReaderInstance,
@@ -58,8 +58,8 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
         fAsset: constants.ZERO_ADDRESS,                     // replaced in newAssetManager(...)
         agentVaultFactory: contracts.agentVaultFactory.address,
-        contingencyPoolFactory: contracts.contingencyPoolFactory.address,
-        contingencyPoolTokenFactory: contracts.contingencyPoolTokenFactory.address,
+        collateralPoolFactory: contracts.collateralPoolFactory.address,
+        collateralPoolTokenFactory: contracts.collateralPoolTokenFactory.address,
         scProofVerifier: contracts.scProofVerifier.address,
         priceReader: contracts.priceReader.address,
         underlyingAddressValidator: contracts.addressValidator.address,
@@ -221,9 +221,9 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const priceReader = await PriceReader.new(addressUpdater.address, ftsoRegistry.address);
     // create agent vault factory
     const agentVaultFactory = await AgentVaultFactory.new();
-    // create contingency pool and token factory
-    const contingencyPoolFactory = await ContingencyPoolFactory.new();
-    const contingencyPoolTokenFactory = await ContingencyPoolTokenFactory.new();
+    // create collateral pool and token factory
+    const collateralPoolFactory = await CollateralPoolFactory.new();
+    const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new();
     // create address validator
     const addressValidator = await TrivialAddressValidatorMock.new();
     // create allow-all agent whitelist
@@ -233,7 +233,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const liquidationStrategy = liquidationStrategyLib.address;
     //
     return {
-        governanceSettings, addressUpdater, agentVaultFactory, contingencyPoolFactory, contingencyPoolTokenFactory, stateConnector, scProofVerifier,
+        governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, stateConnector, scProofVerifier,
         priceReader, addressValidator, agentWhitelist, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
 }
 

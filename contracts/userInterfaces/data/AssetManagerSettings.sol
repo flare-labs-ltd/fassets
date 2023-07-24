@@ -20,15 +20,15 @@ library AssetManagerSettings {
         // timelocked
         address agentVaultFactory;
 
-        // Factory for creating new agent contingency pools.
-        // Type: IContingencyPoolFactory
+        // Factory for creating new agent collateral pools.
+        // Type: ICollateralPoolFactory
         // timelocked
-        address contingencyPoolFactory;
+        address collateralPoolFactory;
 
-        // Factory for creating new agent contingency pool tokens.
-        // Type: IContingencyPoolTokenFactory
+        // Factory for creating new agent collateral pool tokens.
+        // Type: ICollateralPoolTokenFactory
         // timelocked
-        address contingencyPoolTokenFactory;
+        address collateralPoolTokenFactory;
 
         // If set, the whitelist contains a list of accounts that can call public methods
         // (minting, redeeming, challenging, etc.)

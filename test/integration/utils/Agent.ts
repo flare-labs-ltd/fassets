@@ -6,7 +6,7 @@ import { EventArgs } from "../../../lib/utils/events/common";
 import { checkEventNotEmited, eventArgs, filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, MAX_BIPS, maxBN, randomAddress, requireNotNull, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { AgentVaultInstance, ContingencyPoolInstance, ContingencyPoolTokenInstance } from "../../../typechain-truffle";
+import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/AssetManager";
 import { createTestAgentSettings } from "../../utils/test-settings";
 import { Approximation, assertApproximateMatch } from "../../utils/approximation";
@@ -17,8 +17,8 @@ import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
 
 const AgentVault = artifacts.require('AgentVault');
-const ContingencyPool = artifacts.require('ContingencyPool');
-const ContingencyPoolToken = artifacts.require('ContingencyPoolToken');
+const CollateralPool = artifacts.require('CollateralPool');
+const CollateralPoolToken = artifacts.require('CollateralPoolToken');
 const Ftso = artifacts.require('FtsoMock');
 
 export type CheckAgentInfo = { [K in keyof AgentInfo]?: AgentInfo[K] extends BN ? BNish | Approximation : AgentInfo[K] }
@@ -38,8 +38,8 @@ export class Agent extends AssetContextClient {
         context: AssetContext,
         public ownerManagementAddress: string,
         public agentVault: AgentVaultInstance,
-        public contingencyPool: ContingencyPoolInstance,
-        public contingencyPoolToken: ContingencyPoolTokenInstance,
+        public collateralPool: CollateralPoolInstance,
+        public collateralPoolToken: CollateralPoolTokenInstance,
         public wallet: IBlockChainWallet,
         public settings: AgentSettings,
     ) {
@@ -104,14 +104,14 @@ export class Agent extends AssetContextClient {
         const args = requiredEventArgs(response, 'AgentVaultCreated');
         // get vault contract at agent's vault address address
         const agentVault = await AgentVault.at(args.agentVault);
-        // get contingency pool
-        const contingencyPool = await ContingencyPool.at(args.contingencyPool);
+        // get collateral pool
+        const collateralPool = await CollateralPool.at(args.collateralPool);
         // get pool token
-        const poolTokenAddress = await contingencyPool.poolToken();
-        const contingencyPoolToken = await ContingencyPoolToken.at(poolTokenAddress);
+        const poolTokenAddress = await collateralPool.poolToken();
+        const collateralPoolToken = await CollateralPoolToken.at(poolTokenAddress);
         // create object
         const ownerManagementAddress = Agent.getManagementAddress(ownerAddress);
-        return new Agent(ctx, ownerManagementAddress, agentVault, contingencyPool, contingencyPoolToken, wallet, settings);
+        return new Agent(ctx, ownerManagementAddress, agentVault, collateralPool, collateralPoolToken, wallet, settings);
     }
 
     vaultCollateralToken() {
@@ -151,8 +151,8 @@ export class Agent extends AssetContextClient {
     }
 
     // adds pool collateral and agent pool tokens
-    async buyContingencyPoolTokens(amountNatWei: BNish) {
-        return await this.agentVault.buyContingencyPoolTokens({ from: this.ownerWorkAddress, value: toBN(amountNatWei) });
+    async buyCollateralPoolTokens(amountNatWei: BNish) {
+        return await this.agentVault.buyCollateralPoolTokens({ from: this.ownerWorkAddress, value: toBN(amountNatWei) });
     }
 
     async makeAvailable() {
@@ -162,7 +162,7 @@ export class Agent extends AssetContextClient {
 
     async depositCollateralsAndMakeAvailable(vaultCollateral: BNish, poolCollateral: BNish) {
         await this.depositVaultCollateral(vaultCollateral);
-        await this.buyContingencyPoolTokens(poolCollateral);
+        await this.buyCollateralPoolTokens(poolCollateral);
         await this.makeAvailable();
     }
 
@@ -205,7 +205,7 @@ export class Agent extends AssetContextClient {
         const poolTokenBalance = await this.poolTokenBalance();
         const { withdrawalAllowedAt } = await this.announcePoolTokenRedemption(poolTokenBalance);
         await time.increaseTo(withdrawalAllowedAt);
-        await this.redeemContingencyPoolTokens(poolTokenBalance);
+        await this.redeemCollateralPoolTokens(poolTokenBalance);
         // ... now the agent should wait for all pool token holders to exit ...
         // destroy (no need to pull out vault collateral first, it will be withdrawn automatically during destroy)
         const destroyAllowedAt = await this.announceDestroy();
@@ -239,13 +239,13 @@ export class Agent extends AssetContextClient {
     }
 
     async poolTokenBalance() {
-        return await this.contingencyPoolToken.balanceOf(this.vaultAddress);
+        return await this.collateralPoolToken.balanceOf(this.vaultAddress);
     }
 
     async poolCollateralBalance() {
         const tokens = await this.poolTokenBalance();
-        const tokenSupply = await this.contingencyPoolToken.totalSupply();
-        const poolCollateral = await this.context.wNat.balanceOf(this.contingencyPool.address);
+        const tokenSupply = await this.collateralPoolToken.totalSupply();
+        const poolCollateral = await this.context.wNat.balanceOf(this.collateralPool.address);
         return poolCollateral.mul(tokens).div(tokenSupply);
     }
 
@@ -256,8 +256,8 @@ export class Agent extends AssetContextClient {
         return args;
     }
 
-    async redeemContingencyPoolTokens(amountWei: BNish) {
-        return await this.agentVault.redeemContingencyPoolTokens(amountWei, this.ownerWorkAddress, { from: this.ownerWorkAddress });
+    async redeemCollateralPoolTokens(amountWei: BNish) {
+        return await this.agentVault.redeemCollateralPoolTokens(amountWei, this.ownerWorkAddress, { from: this.ownerWorkAddress });
     }
 
     async withdrawPoolFees(amountUBA: BNish) {
@@ -265,7 +265,7 @@ export class Agent extends AssetContextClient {
     }
 
     async poolFeeBalance() {
-        return await this.contingencyPool.fAssetFeesOf(this.vaultAddress);
+        return await this.collateralPool.fAssetFeesOf(this.vaultAddress);
     }
 
     async announceDestroy() {
@@ -574,7 +574,7 @@ export class Agent extends AssetContextClient {
     async setPoolCollateralRatioByChangingAssetPrice(ratioBIPS: number) {
         const poolCollateral = this.context.collaterals[0];
         const totalUBA = await this.getTotalBackedAssetUBA();
-        const poolBalance = await this.contingencyPool.totalCollateral();
+        const poolBalance = await this.collateralPool.totalCollateral();
         const { 0: poolPrice } = await this.context.ftsos[poolCollateral.tokenFtsoSymbol].getCurrentPrice();
         const assetPriceUBA = poolPrice.mul(poolBalance).div(totalUBA).divn(ratioBIPS).muln(MAX_BIPS);
         const assetPrice = assetPriceUBA.mul(toBNExp(1, this.context.chainInfo.decimals)).div(toBNExp(1, Number(poolCollateral.decimals)));
@@ -612,7 +612,7 @@ export class Agent extends AssetContextClient {
     // pool's CR can fall below exitCR
     async getLotsToMintThatGetPoolCRTo(ratioBIPS: number) {
         const { 0: assetPriceMul, 1: assetPriceDiv } = await this.assetManager.assetPriceNatWei();
-        const poolBalanceWei = await this.contingencyPool.totalCollateral();
+        const poolBalanceWei = await this.collateralPool.totalCollateral();
         const totalBackedUBA = await this.getTotalBackedAssetUBA();
         const toMintUBA = poolBalanceWei.mul(assetPriceDiv).muln(MAX_BIPS).div(assetPriceMul).divn(ratioBIPS).sub(totalBackedUBA);
         return this.context.convertUBAToLots(toMintUBA);

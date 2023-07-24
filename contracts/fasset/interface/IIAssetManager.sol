@@ -95,11 +95,11 @@ interface IIAssetManager is IAssetManager {
     ) external;
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Contingency pool redemptions
+    // Collateral pool redemptions
 
     /**
-     * Create a redemption from a single agent. Used in self-close exit from the contingency pool.
-     * NOTE: only contingency pool can call this method.
+     * Create a redemption from a single agent. Used in self-close exit from the collateral pool.
+     * NOTE: only collateral pool can call this method.
      */
     function redeemFromAgent(
         address _agentVault,
@@ -111,8 +111,8 @@ interface IIAssetManager is IAssetManager {
     /**
      * Burn fassets from  a single agent and get paid in vault collateral by the agent.
      * Price is FTSO price, multiplied by factor buyFAssetByAgentFactorBIPS (set by agent).
-     * Used in self-close exit from the contingency pool when requested or when self-close amount is less than 1 lot.
-     * NOTE: only contingency pool can call this method.
+     * Used in self-close exit from the collateral pool when requested or when self-close amount is less than 1 lot.
+     * NOTE: only collateral pool can call this method.
      */
     function redeemFromAgentInCollateral(
         address _agentVault,
@@ -145,7 +145,7 @@ interface IIAssetManager is IAssetManager {
     /**
      * Called by AgentVault when there was a deposit.
      * May pull agent out of liquidation.
-     * NOTE: may only be called from an agent vault or contingency pool, not from an EOA address.
+     * NOTE: may only be called from an agent vault or collateral pool, not from an EOA address.
      */
     function updateCollateral(
         address _agentVault,
@@ -153,11 +153,11 @@ interface IIAssetManager is IAssetManager {
     ) external;
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // View functions used internally by agent valt and contingency pool.
+    // View functions used internally by agent valt and collateral pool.
 
     /**
      * Get current WNat contract set in the asset manager.
-     * Used internally by agent vault and contingency pool.
+     * Used internally by agent vault and collateral pool.
      * @return WNat contract
      */
     function getWNat()
@@ -166,7 +166,7 @@ interface IIAssetManager is IAssetManager {
 
     /**
      * Returns price of asset (UBA) in NAT Wei as a fraction.
-     * Used internally by contingency pool.
+     * Used internally by collateral pool.
      */
     function assetPriceNatWei()
         external view
@@ -176,7 +176,7 @@ interface IIAssetManager is IAssetManager {
      * Returns the number of f-assets that the agent's pool identified by `_agentVault` is backing.
      * This is the same as the number of f-assets the agent is backing, but excluding
      * f-assets being redeemed by pool self-close redemptions.
-     * Used internally by contingency pool.
+     * Used internally by collateral pool.
      */
     function getFAssetsBackedByPool(address _agentVault)
         external view

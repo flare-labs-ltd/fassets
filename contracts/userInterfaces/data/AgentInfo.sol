@@ -30,8 +30,8 @@ library AgentInfo {
         // Can be changed by a call from the owner's management address.
         address ownerWorkAddress;
 
-        // Agent's contingency pool address
-        address contingencyPool;
+        // Agent's collateral pool address
+        address collateralPool;
 
         // Underlying address as string - to be used for minting payments.
         // For most other purposes, you use underlyingAddressHash, which is `keccak256(underlyingAddressString)`.

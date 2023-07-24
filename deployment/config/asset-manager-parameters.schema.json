@@ -159,13 +159,13 @@
             },
             "type": "array"
         },
-        "contingencyPoolFactory": {
-            "description": "The factory contract for creating agent contingency pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'ContingencyPoolFactory' in contracts.json.",
+        "collateralPoolFactory": {
+            "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'CollateralPoolFactory' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
         },
-        "contingencyPoolTokenFactory": {
-            "description": "The factory contract for creating agent contingency pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'ContingencyPoolTokenFactory' in contracts.json.",
+        "collateralPoolTokenFactory": {
+            "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'CollateralPoolTokenFactory' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
         },
@@ -249,7 +249,7 @@
         },
         "poolCollateral": {
             "$ref": "#/definitions/CollateralTypeParameters",
-            "description": "Data about the collateral used in the contingency pool, token is always WNat (FLR/SGB)."
+            "description": "Data about the collateral used in the collateral pool, token is always WNat (FLR/SGB)."
         },
         "priceReader": {
             "description": "Price reader contract is a simple abstraction of FTSO system.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'SCProofVerifier' in contracts.json.",

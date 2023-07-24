@@ -18,7 +18,7 @@
 
 **AgentSettingChanged** - Agent has executed setting change (fee or some agent collateral ratio change).
 
-**AgentCollateralTypeChanged** - Agent or agent's contingency pool has changed token contract.
+**AgentCollateralTypeChanged** - Agent or agent's collateral pool has changed token contract.
 
 **CollateralReserved** - Minter reserved collateral, paid the reservation fee, and is expected to pay the underlying funds. Agent's collateral was reserved.
 

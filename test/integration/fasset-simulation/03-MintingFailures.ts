@@ -68,11 +68,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             }
             // test rewarding for mint default
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
-            const startBalancePool = await context.wNat.balanceOf(agent.contingencyPool.address);
+            const startBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
             await agent.mintingPaymentDefault(crt);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
-            const endBalancePool = await context.wNat.balanceOf(agent.contingencyPool.address);
+            const endBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
             const poolFee = crFee.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
             assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee.sub(poolFee));
             assertWeb3Equal(endBalancePool.sub(startBalancePool), poolFee);
@@ -103,11 +103,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             }
             // test rewarding for mint default
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
-            const startBalancePool = await context.wNat.balanceOf(agent.contingencyPool.address);
+            const startBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
             await agent.mintingPaymentDefault(crt);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
-            const endBalancePool = await context.wNat.balanceOf(agent.contingencyPool.address);
+            const endBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
             const poolFee = crFee.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
             assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee.sub(poolFee));
             assertWeb3Equal(endBalancePool.sub(startBalancePool), poolFee);

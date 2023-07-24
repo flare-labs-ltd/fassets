@@ -131,7 +131,7 @@ export class FuzzingState extends TrackedState {
 
     logAllPoolSummaries() {
         if (!this.logger) return;
-        this.logger.log("\nCONTINGENCY POOL SUMMARIES");
+        this.logger.log("\nCollateral Pool SUMMARIES");
         for (const agent of this.agents.values()) {
             agent.writePoolSummary(this.logger);
         }

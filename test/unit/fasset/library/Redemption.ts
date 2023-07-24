@@ -5,7 +5,7 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, MAX_BIPS, randomAddress, toBIPS, toBN, toBNExp, toNumber, toWei } from "../../../../lib/utils/helpers";
 import { SourceId } from "../../../../lib/verification/sources/sources";
-import { AgentVaultInstance, AssetManagerInstance, ContingencyPoolInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerInstance, CollateralPoolInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
@@ -15,7 +15,7 @@ import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 
 
-const ContingencyPool = artifacts.require("ContingencyPool");
+const CollateralPool = artifacts.require("CollateralPool");
 const RippleAddressValidator = artifacts.require("RippleAddressValidator");
 
 contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, async accounts => {
@@ -34,7 +34,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     let wallet: MockChainWallet;
     let stateConnectorClient: MockStateConnectorClient;
     let attestationProvider: AttestationHelper;
-    let contingencyPool: ContingencyPoolInstance;
+    let collateralPool: CollateralPoolInstance;
 
     // addresses
     const agentOwner1 = accounts[20];
@@ -55,7 +55,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
     async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string, fullAgentCollateral: BN = toWei(3e8)) {
         await depositCollateral(owner, agentVault, fullAgentCollateral);
-        await agentVault.buyContingencyPoolTokens({ from: owner, value: fullAgentCollateral });  // add pool collateral and agent pool tokens
+        await agentVault.buyCollateralPoolTokens({ from: owner, value: fullAgentCollateral });  // add pool collateral and agent pool tokens
         await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 
@@ -101,7 +101,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         return request;
     }
 
-    async function mintAndRedeemFromAgent(agentVault: AgentVaultInstance, contingencyPool: string, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, underlyingRedeemerAddress: string, redeemerAddress: string, updateBlock: boolean) {
+    async function mintAndRedeemFromAgent(agentVault: AgentVaultInstance, collateralPool: string, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, underlyingRedeemerAddress: string, redeemerAddress: string, updateBlock: boolean) {
         // minter
         chain.mint(underlyingMinterAddress, toBNExp(10000, 18));
         if (updateBlock) await updateUnderlyingBlock();
@@ -119,15 +119,15 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // redeemer "buys" f-assets
         await fAsset.transfer(redeemerAddress, minted.mintedAmountUBA, { from: minterAddress });
         // redemption request
-        await impersonateContract(contingencyPool, toBN(512526332000000000), accounts[0]);
-        const resR = await assetManager.redeemFromAgent(agentVault.address, redeemerAddress, 1000, underlyingRedeemerAddress, { from: contingencyPool });
-        await stopImpersonatingContract(contingencyPool);
+        await impersonateContract(collateralPool, toBN(512526332000000000), accounts[0]);
+        const resR = await assetManager.redeemFromAgent(agentVault.address, redeemerAddress, 1000, underlyingRedeemerAddress, { from: collateralPool });
+        await stopImpersonatingContract(collateralPool);
         const redemptionRequests = filterEvents(resR, 'RedemptionRequested').map(e => e.args);
         const request = redemptionRequests[0];
         return request;
     }
 
-    async function mintAndRedeemFromAgentInCollateral(agentVault: AgentVaultInstance, contingencyPool: string, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, redeemerAddress: string, updateBlock: boolean) {
+    async function mintAndRedeemFromAgentInCollateral(agentVault: AgentVaultInstance, collateralPool: string, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, redeemerAddress: string, updateBlock: boolean) {
         // minter
         chain.mint(underlyingMinterAddress, toBNExp(10000, 18));
         if (updateBlock) await updateUnderlyingBlock();
@@ -145,9 +145,9 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // redeemer "buys" f-assets
         await fAsset.transfer(redeemerAddress, minted.mintedAmountUBA, { from: minterAddress });
         // redemption request
-        await impersonateContract(contingencyPool, toBN(512526332000000000), accounts[0]);
-        const resR = await assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress, 1000000000000, { from: contingencyPool });
-        await stopImpersonatingContract(contingencyPool);
+        await impersonateContract(collateralPool, toBN(512526332000000000), accounts[0]);
+        const resR = await assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress, 1000000000000, { from: collateralPool });
+        await stopImpersonatingContract(collateralPool);
     }
 
     async function initialize() {
@@ -191,8 +191,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        contingencyPool = await ContingencyPool.at(await assetManager.getContingencyPool(agentVault.address));
-        const request = await mintAndRedeemFromAgent(agentVault, contingencyPool.address, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+        collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
+        const request = await mintAndRedeemFromAgent(agentVault, collateralPool.address, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
         //perform redemption payment
         const paymentAmt = request.valueUBA.sub(request.feeUBA);
         const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
@@ -205,10 +205,10 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        contingencyPool = await ContingencyPool.at(await assetManager.getContingencyPool(agentVault.address));
+        collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
         const vaultCollateralBalanceAgentBefore = await usdc.balanceOf(agentVault.address);
         const vaultCollateralBalanceRedeemerBefore = await usdc.balanceOf(redeemerAddress1);
-        await mintAndRedeemFromAgentInCollateral(agentVault, contingencyPool.address, chain, underlyingMinter1, minterAddress1, redeemerAddress1, true);
+        await mintAndRedeemFromAgentInCollateral(agentVault, collateralPool.address, chain, underlyingMinter1, minterAddress1, redeemerAddress1, true);
         //check vault collateral balances
         const vaultCollateralBalanceAgentAfter = await usdc.balanceOf(agentVault.address);
         const vaultCollateralBalanceRedeemerAfter = await usdc.balanceOf(redeemerAddress1);
@@ -343,7 +343,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const proof = await attestationProvider.provePayment(transactionHash, null, underlyingAgent1);
         await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // withdraw pool f-asset fees to agent vault (so he owns all minted f-assets and can self-close)
-        const agentPoolFees = await fAsset.balanceOf(await assetManager.getContingencyPool(agentVault.address));
+        const agentPoolFees = await fAsset.balanceOf(await assetManager.getCollateralPool(agentVault.address));
         await agentVault.withdrawPoolFees(agentPoolFees, agentOwner1, { from: agentOwner1 });
         const agentFassetBalance = await fAsset.balanceOf(agentOwner1);
         let res = await assetManager.selfClose(agentVault.address, agentFassetBalance, { from: agentOwner1 });
@@ -589,17 +589,17 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // redeemer "buys" f-assets
         await fAsset.transfer(redeemerAddress1, minted.mintedAmountUBA, { from: minterAddress1 });
         // redemption request
-        contingencyPool = await ContingencyPool.at(await assetManager.getContingencyPool(agentVault.address));
-        await impersonateContract(contingencyPool.address, toBN(512526332000000000), accounts[0]);
-        //Only contingency pool can redeem from agent
+        collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
+        await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
+        //Only collateral pool can redeem from agent
         const rs = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, { from:  accounts[15] });
-        await expectRevert(rs, "only contingency pool");
+        await expectRevert(rs, "only collateral pool");
         //Redeeming from agent and agent in collateral with amount 0 should not work
-        const resR = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, { from:  contingencyPool.address });
+        const resR = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, { from:  collateralPool.address });
         await expectRevert(resR, "redemption of 0");
-        const resRC = assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, 0, { from: contingencyPool.address });
+        const resRC = assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, 0, { from: collateralPool.address });
         await expectRevert(resRC, "redemption of 0");
-        await stopImpersonatingContract(contingencyPool.address);
+        await stopImpersonatingContract(collateralPool.address);
     });
 
     it("redeem from agent where minting is done from 2 agents", async () => {
@@ -632,13 +632,13 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const res2 = await assetManager.executeMinting(proof2, crt2.collateralReservationId, { from: minterAddress1 });
         const minted2 = requiredEventArgs(res2, 'MintingExecuted');
         // redemption request
-        contingencyPool = await ContingencyPool.at(await assetManager.getContingencyPool(agentVault.address));
-        // make sure contingency pool has enough fAssets
-        await fAsset.transfer(contingencyPool.address, minted.mintedAmountUBA, { from: minterAddress1 });
-        await fAsset.transfer(contingencyPool.address, minted2.mintedAmountUBA, { from: minterAddress1 });
-        await impersonateContract(contingencyPool.address, toBN(512526332000000000), accounts[0]);
-        await assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, minted.mintedAmountUBA.add(minted2.mintedAmountUBA.div(toBN(2))), { from: contingencyPool.address });
-        await stopImpersonatingContract(contingencyPool.address);
+        collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
+        // make sure collateral pool has enough fAssets
+        await fAsset.transfer(collateralPool.address, minted.mintedAmountUBA, { from: minterAddress1 });
+        await fAsset.transfer(collateralPool.address, minted2.mintedAmountUBA, { from: minterAddress1 });
+        await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
+        await assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, minted.mintedAmountUBA.add(minted2.mintedAmountUBA.div(toBN(2))), { from: collateralPool.address });
+        await stopImpersonatingContract(collateralPool.address);
     });
 
     it("mint and redeem address validation", async () => {

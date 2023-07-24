@@ -611,24 +611,24 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(settings.agentVaultFactory, accounts[84]);
         });
 
-        it("should change contingency pool factory on asset manager controller", async () => {
+        it("should change collateral pool factory on asset manager controller", async () => {
             //Pool factory can't be address zero
-            const prms1 = assetManagerController.setContingencyPoolFactory([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const prms1 = assetManagerController.setCollateralPoolFactory([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
             await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor), "address zero");
-            const prms = assetManagerController.setContingencyPoolFactory([assetManager.address], accounts[84], { from: governance });
+            const prms = assetManagerController.setCollateralPoolFactory([assetManager.address], accounts[84], { from: governance });
             await waitForTimelock(prms, assetManagerController, updateExecutor);
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            assertWeb3Equal(settings.contingencyPoolFactory, accounts[84]);
+            assertWeb3Equal(settings.collateralPoolFactory, accounts[84]);
         });
 
-        it("should change contingency pool token factory on asset manager controller", async () => {
+        it("should change collateral pool token factory on asset manager controller", async () => {
             //Pool factory can't be address zero
-            const prms1 = assetManagerController.setContingencyPoolTokenFactory([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const prms1 = assetManagerController.setCollateralPoolTokenFactory([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
             await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor), "address zero");
-            const prms = assetManagerController.setContingencyPoolTokenFactory([assetManager.address], accounts[84], { from: governance });
+            const prms = assetManagerController.setCollateralPoolTokenFactory([assetManager.address], accounts[84], { from: governance });
             await waitForTimelock(prms, assetManagerController, updateExecutor);
             const settings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            assertWeb3Equal(settings.contingencyPoolTokenFactory, accounts[84]);
+            assertWeb3Equal(settings.collateralPoolTokenFactory, accounts[84]);
         });
 
         it("should change contracts", async () => {

@@ -2,7 +2,7 @@ import { setBalance } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { erc165InterfaceId, toBN, toWei } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AssetManagerMockInstance, ContingencyPoolInstance, ContingencyPoolTokenInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AssetManagerMockInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
@@ -14,8 +14,8 @@ const AgentVault = artifacts.require("AgentVault");
 const MockContract = artifacts.require('MockContract');
 const ERC20Mock = artifacts.require("ERC20Mock");
 const AssetManagerMock = artifacts.require("AssetManagerMock");
-const ContingencyPoolToken = artifacts.require("ContingencyPoolToken");
-const ContingencyPool = artifacts.require("ContingencyPool");
+const CollateralPoolToken = artifacts.require("CollateralPoolToken");
+const CollateralPool = artifacts.require("CollateralPool");
 const FAssetMock = artifacts.require("FAssetMock");
 const AgentVaultFactory = artifacts.require("AgentVaultFactory");
 
@@ -50,15 +50,15 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         return governanceVotePower;
     }
 
-    async function getContingencyPool(assetManager: AssetManagerInstance, agentVault: AgentVaultInstance): Promise<ContingencyPoolInstance> {
+    async function getCollateralPool(assetManager: AssetManagerInstance, agentVault: AgentVaultInstance): Promise<CollateralPoolInstance> {
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-        const contingencyPool = await ContingencyPool.at(agentInfo.contingencyPool);
-        return contingencyPool;
+        const collateralPool = await CollateralPool.at(agentInfo.collateralPool);
+        return collateralPool;
     }
 
-    async function getContingencyPoolToken(assetManager: AssetManagerInstance, agentVault: AgentVaultInstance): Promise<ContingencyPoolTokenInstance> {
-        const contingencyPool = await getContingencyPool(assetManager, agentVault);
-        return ContingencyPoolToken.at(await contingencyPool.token());
+    async function getCollateralPoolToken(assetManager: AssetManagerInstance, agentVault: AgentVaultInstance): Promise<CollateralPoolTokenInstance> {
+        const collateralPool = await getCollateralPool(assetManager, agentVault);
+        return CollateralPoolToken.at(await collateralPool.token());
     }
 
     async function initialize() {
@@ -88,9 +88,9 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     describe("pool token methods", async () => {
 
-        it("should buy contingency pool tokens", async () => {
+        it("should buy collateral pool tokens", async () => {
             const agentVault = await createAgentVault(owner, underlyingAgent1);
-            await agentVault.buyContingencyPoolTokens({ from: owner, value: toWei(1000) });
+            await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(agentInfo.totalPoolCollateralNATWei, toWei(1000));
         });
@@ -101,15 +101,15 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             const fAsset = await ERC20Mock.new(ci.name, ci.symbol);
             // create agent with mocked fAsset
             await assetManagerMock.setCheckForValidAgentVaultAddress(false);
-            await assetManagerMock.registerFAssetForContingencyPool(fAsset.address);
+            await assetManagerMock.registerFAssetForCollateralPool(fAsset.address);
             const agentVault = await AgentVault.new(assetManagerMock.address);
             // create pool
-            const pool = await ContingencyPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
-            const token = await ContingencyPoolToken.new(pool.address);
+            const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
+            const token = await CollateralPoolToken.new(pool.address);
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.setPoolToken(token.address).encodeABI());
-            await assetManagerMock.setContingencyPool(pool.address);
+            await assetManagerMock.setCollateralPool(pool.address);
             // deposit nat
-            await agentVault.buyContingencyPoolTokens({ from: owner, value: toWei(1000) });
+            await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             // mint fAssets to the pool
             await fAsset.mintAmount(pool.address, toWei(10));
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.fAssetFeeDeposited(toWei(1000)).encodeABI());
@@ -122,13 +122,13 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         it("should redeem collateral from pool", async () => {
             const natRecipient = "0xDe6E4607008a6B6F4341E046d18297d03e11ECa1";
             const agentVault = await createAgentVault(owner, underlyingAgent1);
-            await agentVault.buyContingencyPoolTokens({ from: owner, value: toWei(1000) });
+            await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const tokens = agentInfo.totalAgentPoolTokensWei;
             await assetManager.announceAgentPoolTokenRedemption(agentVault.address, tokens, { from: owner });
             await time.increase((await assetManager.getSettings()).withdrawalWaitMinSeconds);
-            await agentVault.redeemContingencyPoolTokens(tokens, natRecipient, { from: owner });
-            const pool = await getContingencyPoolToken(assetManager, agentVault);
+            await agentVault.redeemCollateralPoolTokens(tokens, natRecipient, { from: owner });
+            const pool = await getCollateralPoolToken(assetManager, agentVault);
             const poolTokenBalance = await pool.balanceOf(agentVault.address);
             assertWeb3Equal(poolTokenBalance, toBN(0));
             assertWeb3Equal(await web3.eth.getBalance(natRecipient), toWei(1000));
@@ -500,15 +500,15 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             const fAsset = await ERC20Mock.new(ci.name, ci.symbol);
             // create agent with mocked fAsset
             await assetManagerMock.setCheckForValidAgentVaultAddress(false);
-            await assetManagerMock.registerFAssetForContingencyPool(fAsset.address);
+            await assetManagerMock.registerFAssetForCollateralPool(fAsset.address);
             const agentVault = await AgentVault.new(assetManagerMock.address);
             // create pool
-            const pool = await ContingencyPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
-            const token = await ContingencyPoolToken.new(pool.address);
+            const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
+            const token = await CollateralPoolToken.new(pool.address);
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.setPoolToken(token.address).encodeABI());
-            await assetManagerMock.setContingencyPool(pool.address);
+            await assetManagerMock.setCollateralPool(pool.address);
             // deposit nat
-            await agentVault.buyContingencyPoolTokens({ from: owner, value: toWei(1000) });
+            await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             // mint fAssets to the pool
             await fAsset.mintAmount(pool.address, toWei(10));
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.fAssetFeeDeposited(toWei(1000)).encodeABI());
@@ -517,15 +517,15 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             await expectRevert(res, "only owner");
         });
 
-        it("random address shouldn't be able to redeem contingency pool tokens", async () => {
+        it("random address shouldn't be able to redeem collateral pool tokens", async () => {
             const natRecipient = "0xDe6E4607008a6B6F4341E046d18297d03e11ECa1";
             const agentVault = await createAgentVault(owner, underlyingAgent1);
-            await agentVault.buyContingencyPoolTokens({ from: owner, value: toWei(1000) });
+            await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const tokens = agentInfo.totalAgentPoolTokensWei;
             await assetManager.announceAgentPoolTokenRedemption(agentVault.address, tokens, { from: owner });
             await time.increase((await assetManager.getSettings()).withdrawalWaitMinSeconds);
-            const res = agentVault.redeemContingencyPoolTokens(tokens, natRecipient, { from: accounts[14] });
+            const res = agentVault.redeemCollateralPoolTokens(tokens, natRecipient, { from: accounts[14] });
             await expectRevert(res, "only owner");
         });
     });
