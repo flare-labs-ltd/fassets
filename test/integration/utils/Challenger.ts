@@ -78,10 +78,10 @@ export class Challenger extends AssetContextClient {
     async getChallengerReward(backingAtChallengeUBA: BNish, agent: Agent) {
         const settings = await this.context.assetManager.getSettings();
         const backingAtChallengeAMG = this.context.convertUBAToAmg(backingAtChallengeUBA);
-        // assuming class1 is usd-pegged
+        // assuming vault collateral is usd-pegged
         const rewardAMG = backingAtChallengeAMG.mul(toBN(settings.paymentChallengeRewardBIPS)).divn(MAX_BIPS);
-        const rewardClass1 = await agent.usd5ToClass1Wei(toBN(settings.paymentChallengeRewardUSD5));
-        const priceClass1 = await this.context.getCollateralPrice(agent.class1Collateral());
-        return priceClass1.convertAmgToTokenWei(rewardAMG).add(rewardClass1)
+        const rewardVaultCollateral = await agent.usd5ToVaultCollateralWei(toBN(settings.paymentChallengeRewardUSD5));
+        const priceVaultCollateral = await this.context.getCollateralPrice(agent.vaultCollateral());
+        return priceVaultCollateral.convertAmgToTokenWei(rewardAMG).add(rewardVaultCollateral)
     }
 }

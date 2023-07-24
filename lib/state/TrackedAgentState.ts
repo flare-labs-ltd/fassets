@@ -1,5 +1,5 @@
 import {
-    AgentAvailable, AgentCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
+    AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral,
     RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/AssetManager";
@@ -14,7 +14,7 @@ import { TrackedState } from "./TrackedState";
 
 const MAX_UINT256 = toBN(1).shln(256).subn(1);
 
-export type InitialAgentData = EventArgs<AgentCreated> & { poolWNat: string };
+export type InitialAgentData = EventArgs<AgentVaultCreated> & { poolWNat: string };
 
 export class TrackedAgentState {
     constructor(
@@ -25,11 +25,11 @@ export class TrackedAgentState {
         this.owner = data.owner;
         this.underlyingAddressString = data.underlyingAddress;
         this.collateralPoolAddress = data.collateralPool;
-        this.class1Collateral = parent.collaterals.get(CollateralClass.CLASS1, data.class1CollateralToken);
+        this.vaultCollateral = parent.collaterals.get(CollateralClass.VAULT, data.vaultCollateralToken);
         this.poolWNatCollateral = parent.collaterals.get(CollateralClass.POOL, data.poolWNat);
         this.feeBIPS = toBN(data.feeBIPS);
         this.poolFeeShareBIPS = toBN(data.poolFeeShareBIPS);
-        this.mintingClass1CollateralRatioBIPS = toBN(data.mintingClass1CollateralRatioBIPS);
+        this.mintingVaultCollateralRatioBIPS = toBN(data.mintingVaultCollateralRatioBIPS);
         this.mintingPoolCollateralRatioBIPS = toBN(data.mintingPoolCollateralRatioBIPS);
         this.buyFAssetByAgentFactorBIPS = toBN(data.buyFAssetByAgentFactorBIPS);
         this.poolExitCollateralRatioBIPS = toBN(data.poolExitCollateralRatioBIPS);
@@ -44,11 +44,11 @@ export class TrackedAgentState {
     collateralPoolAddress: string;
 
     // agent's settings
-    class1Collateral: CollateralType;
+    vaultCollateral: CollateralType;
     poolWNatCollateral: CollateralType;
     feeBIPS: BN;
     poolFeeShareBIPS: BN;
-    mintingClass1CollateralRatioBIPS: BN;
+    mintingVaultCollateralRatioBIPS: BN;
     mintingPoolCollateralRatioBIPS: BN;
     buyFAssetByAgentFactorBIPS: BN;
     poolExitCollateralRatioBIPS: BN;
@@ -60,7 +60,7 @@ export class TrackedAgentState {
     publiclyAvailable: boolean = false;
 
     // state
-    totalClass1CollateralWei: BN = BN_ZERO;
+    totalVaultCollateralWei: BN = BN_ZERO;
     totalPoolCollateralNATWei: BN = BN_ZERO;
     ccbStartTimestamp: BN = BN_ZERO;                // 0 - not in ccb/liquidation
     liquidationStartTimestamp: BN = BN_ZERO;        // 0 - not in liquidation
@@ -90,7 +90,7 @@ export class TrackedAgentState {
     initializeState(agentInfo: AgentInfo) {
         this.status = Number(agentInfo.status);
         this.publiclyAvailable = agentInfo.publiclyAvailable;
-        this.totalClass1CollateralWei = toBN(agentInfo.totalClass1CollateralWei);
+        this.totalVaultCollateralWei = toBN(agentInfo.totalVaultCollateralWei);
         this.totalPoolCollateralNATWei = toBN(agentInfo.totalPoolCollateralNATWei);
         this.ccbStartTimestamp = toBN(agentInfo.ccbStartTimestamp);
         this.liquidationStartTimestamp = toBN(agentInfo.liquidationStartTimestamp);
@@ -116,7 +116,7 @@ export class TrackedAgentState {
     // handlers: agent settings
 
     handleSettingChanged(name: string, value: BNish) {
-        if (!["feeBIPS", "poolFeeShareBIPS", "mintingClass1CollateralRatioBIPS", "mintingPoolCollateralRatioBIPS",
+        if (!["feeBIPS", "poolFeeShareBIPS", "mintingVaultCollateralRatioBIPS", "mintingPoolCollateralRatioBIPS",
             "buyFAssetByAgentFactorBIPS", "poolExitCollateralRatioBIPS", "poolTopupCollateralRatioBIPS", "poolTopupTokenPriceFactorBIPS"].includes(name)) return;
         this[name as AgentSetting] = toBN(value);
     }
@@ -246,14 +246,14 @@ export class TrackedAgentState {
     // agent state changing
 
     depositCollateral(token: string, value: BN) {
-        if (token === this.class1Collateral.token) {
-            this.totalClass1CollateralWei = this.totalClass1CollateralWei.add(value);
+        if (token === this.vaultCollateral.token) {
+            this.totalVaultCollateralWei = this.totalVaultCollateralWei.add(value);
         }
     }
 
     withdrawCollateral(token: string, value: BN) {
-        if (token === this.class1Collateral.token) {
-            this.totalClass1CollateralWei = this.totalClass1CollateralWei.sub(value);
+        if (token === this.vaultCollateral.token) {
+            this.totalVaultCollateralWei = this.totalVaultCollateralWei.sub(value);
         }
     }
 
@@ -276,11 +276,11 @@ export class TrackedAgentState {
     }
 
     collateralBalance(collateral: CollateralType) {
-        return collateral.collateralClass === CollateralClass.CLASS1 ? this.totalClass1CollateralWei : this.totalPoolCollateralNATWei;
+        return collateral.collateralClass === CollateralClass.VAULT ? this.totalVaultCollateralWei : this.totalPoolCollateralNATWei;
     }
 
     private collateralRatioForPriceBIPS(prices: Prices, collateral: CollateralType) {
-        const redeemingUBA = collateral.collateralClass === CollateralClass.CLASS1 ? this.redeemingUBA : this.poolRedeemingUBA;
+        const redeemingUBA = collateral.collateralClass === CollateralClass.VAULT ? this.redeemingUBA : this.poolRedeemingUBA;
         const totalUBA = this.reservedUBA.add(this.mintedUBA).add(redeemingUBA);
         if (totalUBA.isZero()) return MAX_UINT256;
         const price = prices.get(collateral);
@@ -319,10 +319,10 @@ export class TrackedAgentState {
     }
 
     possibleLiquidationTransition(timestamp: BN) {
-        const class1Transition = this.possibleLiquidationTransitionForCollateral(this.class1Collateral, timestamp);
+        const vaultCollateralTransition = this.possibleLiquidationTransitionForCollateral(this.vaultCollateral, timestamp);
         const poolTransition = this.possibleLiquidationTransitionForCollateral(this.poolWNatCollateral, timestamp);
         // return the higher status (more severe)
-        return class1Transition >= poolTransition ? class1Transition : poolTransition;
+        return vaultCollateralTransition >= poolTransition ? vaultCollateralTransition : poolTransition;
     }
 
     calculatePoolFee(mintingFeeUBA: BN) {
@@ -332,10 +332,10 @@ export class TrackedAgentState {
     // info
 
     writeAgentSummary(logger: ILogger) {
-        const class1CR = Number(this.collateralRatioBIPS(this.class1Collateral)) / MAX_BIPS;
+        const vaultCR = Number(this.collateralRatioBIPS(this.vaultCollateral)) / MAX_BIPS;
         const poolCR = Number(this.collateralRatioBIPS(this.poolWNatCollateral)) / MAX_BIPS;
         const formatCR = (cr: number) => cr >= 1e10 ? "'INF'" : cr.toFixed(3);
-        logger.log(`    ${this.name()}:  minted=${formatBN(this.mintedUBA)}  class1CR=${formatCR(class1CR)}  poolCR=${formatCR(poolCR)}  status=${AgentStatus[this.status]}  available=${this.publiclyAvailable}` +
+        logger.log(`    ${this.name()}:  minted=${formatBN(this.mintedUBA)}  vaultCR=${formatCR(vaultCR)}  poolCR=${formatCR(poolCR)}  status=${AgentStatus[this.status]}  available=${this.publiclyAvailable}` +
             `  (reserved=${formatBN(this.reservedUBA)}  redeeming=${formatBN(this.redeemingUBA)}  dust=${formatBN(this.dustUBA)}  freeUnderlying=${formatBN(this.freeUnderlyingBalanceUBA)})`)
     }
 }

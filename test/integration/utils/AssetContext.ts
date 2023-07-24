@@ -23,6 +23,7 @@ import { TestChainInfo } from "./TestChainInfo";
 
 const TrivialAddressValidatorMock = artifacts.require('TrivialAddressValidatorMock');
 const WhitelistMock = artifacts.require("WhitelistMock");
+const MockContract = artifacts.require('MockContract');
 
 export interface SettingsOptions {
     // optional settings
@@ -178,6 +179,13 @@ export class AssetContext implements IAssetContext {
         chain.mineTo(Number(lastUnderlyingBlock) + 1);
         chain.skipTime(this.attestationWindowSeconds() + 1);
         chain.mine(chain.finalizationBlocks);
+    }
+
+    async createGovernanceVP() {
+        const governanceVotePower = await MockContract.new();
+        const ownerTokenCall = web3.eth.abi.encodeFunctionCall({ type: 'function', name: 'ownerToken', inputs: [] }, []);
+        await governanceVotePower.givenMethodReturnAddress(ownerTokenCall, this.wNat.address);
+        return governanceVotePower;
     }
 
     static async createTest(common: CommonContext, chainInfo: TestChainInfo, options: SettingsOptions = {}): Promise<AssetContext> {

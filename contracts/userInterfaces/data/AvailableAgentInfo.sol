@@ -10,8 +10,8 @@ library AvailableAgentInfo {
         // Agent's minting fee in BIPS.
         uint256 feeBIPS;
 
-        // Minimum agent (class1) collateral ratio needed for minting.
-        uint256 mintingClass1CollateralRatioBIPS;
+        // Minimum agent vault collateral ratio needed for minting.
+        uint256 mintingVaultCollateralRatioBIPS;
 
         // Minimum pool collateral ratio needed for minting.
         uint256 mintingPoolCollateralRatioBIPS;

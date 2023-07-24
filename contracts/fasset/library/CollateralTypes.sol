@@ -20,9 +20,9 @@ library CollateralTypes {
         require(_data[0].collateralClass == CollateralType.Class.POOL, "not a pool collateral at 0");
         _add(_data[0]);
         _setPoolCollateralTypeIndex(0);
-        // initial class1 tokens
+        // initial vault collateral tokens
         for (uint256 i = 1; i < _data.length; i++) {
-            require(_data[i].collateralClass == CollateralType.Class.CLASS1, "not a class1 collateral");
+            require(_data[i].collateralClass == CollateralType.Class.VAULT, "not a vault collateral");
             _add(_data[i]);
         }
     }
@@ -32,7 +32,7 @@ library CollateralTypes {
     )
         external
     {
-        require(_data.collateralClass == CollateralType.Class.CLASS1, "not a class1 collateral");
+        require(_data.collateralClass == CollateralType.Class.VAULT, "not a vault collateral");
         _add(_data);
     }
 
@@ -80,7 +80,6 @@ library CollateralTypes {
     )
         external
     {
-        require(_data.collateralClass == CollateralType.Class.POOL, "not a pool collateral");
         uint256 index = _add(_data);
         _setPoolCollateralTypeIndex(index);
     }
@@ -176,7 +175,7 @@ library CollateralTypes {
     function _setPoolCollateralTypeIndex(uint256 _index) private {
         AssetManagerState.State storage state = AssetManagerState.get();
         CollateralTypeInt.Data storage token = state.collateralTokens[_index];
-        require(token.collateralClass == CollateralType.Class.POOL, "not a pool collateral token");
+        assert(token.collateralClass == CollateralType.Class.POOL);
         state.poolCollateralIndex = _index.toUint16();
     }
 

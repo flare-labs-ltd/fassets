@@ -98,10 +98,10 @@ library RedemptionRequests {
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true);
         // pay in collateral
-        uint256 priceAmgToWei = Conversion.currentAmgPriceInTokenWei(agent.class1CollateralIndex);
+        uint256 priceAmgToWei = Conversion.currentAmgPriceInTokenWei(agent.vaultCollateralIndex);
         uint256 paymentWei = Conversion.convertAmgToTokenWei(closedAMG, priceAmgToWei)
             .mulBips(agent.buyFAssetByAgentFactorBIPS);
-        Agents.payoutClass1(agent, _redeemer, paymentWei);
+        Agents.payoutFromVault(agent, _redeemer, paymentWei);
         emit AMEvents.RedeemedInCollateral(_agentVault, _redeemer, closedUBA, paymentWei);
         // burn the closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);

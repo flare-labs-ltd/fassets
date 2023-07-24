@@ -83,17 +83,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             await expectRevert(agent.destroy(), "destroy not announced");
             // others can confirm redemption payment after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
-            const startChallengerClass1Balance = await agent.class1Token().balanceOf(challenger.address);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
+            const startChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
             await challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent);
-            const challengerClass1Reward = await agent.usd5ToClass1Wei(toBN(context.settings.confirmationByOthersRewardUSD5));
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerClass1Reward), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA), redeemingUBA: 0 });
+            const challengerVaultCollateralReward = await agent.usd5ToVaultCollateralWei(toBN(context.settings.confirmationByOthersRewardUSD5));
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(challengerVaultCollateralReward), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA), redeemingUBA: 0 });
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
-            const endChallengerClass1Balance = await agent.class1Token().balanceOf(challenger.address);
+            const endChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             // test rewarding
-            assertWeb3Equal(endChallengerClass1Balance.sub(startChallengerClass1Balance), challengerClass1Reward);
+            assertWeb3Equal(endChallengerVaultCollateralBalance.sub(startChallengerVaultCollateralBalance), challengerVaultCollateralReward);
             // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral.sub(challengerClass1Reward));
+            await agent.exitAndDestroy(fullAgentCollateral.sub(challengerVaultCollateralReward));
         });
 
         it("mint and redeem f-assets (others can confirm blocked redemption payment after some time)", async () => {
@@ -128,17 +128,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             await expectRevert(agent.destroy(), "destroy not announced");
             // others can confirm redemption payment after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
-            const startChallengerClass1Balance = await agent.class1Token().balanceOf(challenger.address);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
+            const startChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
             await challenger.confirmBlockedRedemptionPayment(request, tx1Hash, agent);
-            const challengerClass1Reward = await agent.usd5ToClass1Wei(toBN(context.settings.confirmationByOthersRewardUSD5));
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerClass1Reward), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.valueUBA).subn(100), redeemingUBA: 0 });
+            const challengerVaultCollateralReward = await agent.usd5ToVaultCollateralWei(toBN(context.settings.confirmationByOthersRewardUSD5));
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(challengerVaultCollateralReward), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.valueUBA).subn(100), redeemingUBA: 0 });
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
-            const endChallengerClass1Balance = await agent.class1Token().balanceOf(challenger.address);
+            const endChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             // test rewarding
-            assertWeb3Equal(endChallengerClass1Balance.sub(startChallengerClass1Balance), challengerClass1Reward);
+            assertWeb3Equal(endChallengerVaultCollateralBalance.sub(startChallengerVaultCollateralBalance), challengerVaultCollateralReward);
             // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral.sub(challengerClass1Reward));
+            await agent.exitAndDestroy(fullAgentCollateral.sub(challengerVaultCollateralReward));
         });
 
         it("mint and redeem f-assets (others can confirm failed redemption payment after some time)", async () => {
@@ -173,33 +173,33 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             await expectRevert(agent.destroy(), "destroy not announced");
             // others can confirm redemption payment after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
-            const startClass1BalanceChallenger = await agent.class1Token().balanceOf(challenger.address);
-            const startClass1BalanceAgent = await agent.class1Token().balanceOf(agent.agentVault.address);
-            const startClass1BalanceRedeemer = await agent.class1Token().balanceOf(redeemer.address);
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
+            const startVaultCollateralBalanceChallenger = await agent.vaultCollateralToken().balanceOf(challenger.address);
+            const startVaultCollateralBalanceAgent = await agent.vaultCollateralToken().balanceOf(agent.agentVault.address);
+            const startVaultCollateralBalanceRedeemer = await agent.vaultCollateralToken().balanceOf(redeemer.address);
             const startPoolBalanceAgent = await agent.poolCollateralBalance();
             const startPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const res = await challenger.confirmFailedRedemptionPayment(request, tx1Hash, agent);
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
-            const endClass1BalanceChallenger = await agent.class1Token().balanceOf(challenger.address);
-            const endClass1BalanceAgent = await agent.class1Token().balanceOf(agent.agentVault.address);
-            const endClass1BalanceRedeemer = await agent.class1Token().balanceOf(redeemer.address);
+            const endVaultCollateralBalanceChallenger = await agent.vaultCollateralToken().balanceOf(challenger.address);
+            const endVaultCollateralBalanceAgent = await agent.vaultCollateralToken().balanceOf(agent.agentVault.address);
+            const endVaultCollateralBalanceRedeemer = await agent.vaultCollateralToken().balanceOf(redeemer.address);
             const endPoolBalanceAgent = await agent.poolCollateralBalance();
             const endPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             // test rewarding
-            const challengerClass1Reward = await agent.usd5ToClass1Wei(toBN(context.settings.confirmationByOthersRewardUSD5));
-            assertWeb3Equal(endClass1BalanceChallenger.sub(startClass1BalanceChallenger), challengerClass1Reward);
+            const challengerVaultCollateralReward = await agent.usd5ToVaultCollateralWei(toBN(context.settings.confirmationByOthersRewardUSD5));
+            assertWeb3Equal(endVaultCollateralBalanceChallenger.sub(startVaultCollateralBalanceChallenger), challengerVaultCollateralReward);
             // test rewarding for redemption payment default
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(challengerClass1Reward).sub(res[1].redeemedClass1CollateralWei), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.valueUBA).subn(100), redeemingUBA: 0 });
-            const [redemptionDefaultValueClass1, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
-            assertWeb3Equal(res[1].redeemedClass1CollateralWei,redemptionDefaultValueClass1);
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(challengerVaultCollateralReward).sub(res[1].redeemedVaultCollateralWei), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.valueUBA).subn(100), redeemingUBA: 0 });
+            const [redemptionDefaultValueVaultCollateral, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
+            assertWeb3Equal(res[1].redeemedVaultCollateralWei,redemptionDefaultValueVaultCollateral);
             assertWeb3Equal(res[1].redeemedPoolCollateralWei, redemptionDefaultValuePool);
-            assertWeb3Equal(endClass1BalanceRedeemer.sub(startClass1BalanceRedeemer), res[1].redeemedClass1CollateralWei);
-            assertWeb3Equal(startClass1BalanceAgent.sub(endClass1BalanceAgent), challengerClass1Reward.add(res[1].redeemedClass1CollateralWei));
+            assertWeb3Equal(endVaultCollateralBalanceRedeemer.sub(startVaultCollateralBalanceRedeemer), res[1].redeemedVaultCollateralWei);
+            assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), challengerVaultCollateralReward.add(res[1].redeemedVaultCollateralWei));
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res[1].redeemedPoolCollateralWei);
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), res[1].redeemedPoolCollateralWei);
             // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral.sub(challengerClass1Reward).sub(res[1].redeemedClass1CollateralWei));
+            await agent.exitAndDestroy(fullAgentCollateral.sub(challengerVaultCollateralReward).sub(res[1].redeemedVaultCollateralWei));
         });
 
         it("mint and redeem f-assets (others can confirm default redemption payment after some time)", async () => {
@@ -232,40 +232,40 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // test rewarding for redemption payment default
-            const startClass1BalanceRedeemer = await agent.class1Token().balanceOf(redeemer.address);
-            const startClass1BalanceAgent = await agent.class1Token().balanceOf(agent.agentVault.address);
+            const startVaultCollateralBalanceRedeemer = await agent.vaultCollateralToken().balanceOf(redeemer.address);
+            const startVaultCollateralBalanceAgent = await agent.vaultCollateralToken().balanceOf(agent.agentVault.address);
             const startPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const startPoolBalanceAgent = await agent.poolCollateralBalance();
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
             const res = await redeemer.redemptionPaymentDefault(request);
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(res.redeemedClass1CollateralWei), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.valueUBA), redeemingUBA: 0 });
-            const endClass1BalanceRedeemer = await agent.class1Token().balanceOf(redeemer.address);
-            const endClass1BalanceAgent = await agent.class1Token().balanceOf(agent.agentVault.address);
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(res.redeemedVaultCollateralWei), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.valueUBA), redeemingUBA: 0 });
+            const endVaultCollateralBalanceRedeemer = await agent.vaultCollateralToken().balanceOf(redeemer.address);
+            const endVaultCollateralBalanceAgent = await agent.vaultCollateralToken().balanceOf(agent.agentVault.address);
             const endPoolBalanceRedeemer = await context.wNat.balanceOf(redeemer.address);
             const endPoolBalanceAgent = await agent.poolCollateralBalance();
-            const [redemptionDefaultValueClass1, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
-            assertWeb3Equal(res.redeemedClass1CollateralWei, redemptionDefaultValueClass1);
+            const [redemptionDefaultValueVaultCollateral, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(lots);
+            assertWeb3Equal(res.redeemedVaultCollateralWei, redemptionDefaultValueVaultCollateral);
             assertWeb3Equal(res.redeemedPoolCollateralWei, redemptionDefaultValuePool);
-            assertWeb3Equal(endClass1BalanceRedeemer.sub(startClass1BalanceRedeemer), res.redeemedClass1CollateralWei);
-            assertWeb3Equal(startClass1BalanceAgent.sub(endClass1BalanceAgent), res.redeemedClass1CollateralWei);
+            assertWeb3Equal(endVaultCollateralBalanceRedeemer.sub(startVaultCollateralBalanceRedeemer), res.redeemedVaultCollateralWei);
+            assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), res.redeemedVaultCollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res.redeemedPoolCollateralWei);
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), res.redeemedPoolCollateralWei);
             // perform too late redemption payment
             const tx1Hash = await agent.performRedemptionPayment(request);
             // others can confirm redemption payment after some time
             await time.increase(context.settings.confirmationByOthersAfterSeconds);
-            const startChallengerClass1Balance = await agent.class1Token().balanceOf(challenger.address);
+            const startChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             await challenger.confirmDefaultedRedemptionPayment(request, tx1Hash, agent);
-            const challengerClass1Reward = await agent.usd5ToClass1Wei(toBN(context.settings.confirmationByOthersRewardUSD5));
-            await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral.sub(res.redeemedClass1CollateralWei).sub(challengerClass1Reward), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA) });
+            const challengerVaultCollateralReward = await agent.usd5ToVaultCollateralWei(toBN(context.settings.confirmationByOthersRewardUSD5));
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(res.redeemedVaultCollateralWei).sub(challengerVaultCollateralReward), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA) });
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
-            const endChallengerClass1Balance = await agent.class1Token().balanceOf(challenger.address);
+            const endChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             // test rewarding
-            assertWeb3Equal(endChallengerClass1Balance.sub(startChallengerClass1Balance), challengerClass1Reward);
+            assertWeb3Equal(endChallengerVaultCollateralBalance.sub(startChallengerVaultCollateralBalance), challengerVaultCollateralReward);
             // check that calling finishRedemptionWithoutPayment after confirming redemption payment will revert
             await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
             // agent can exit now
-            await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedClass1CollateralWei).sub(challengerClass1Reward));
+            await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedVaultCollateralWei).sub(challengerVaultCollateralReward));
         });
     });
 });

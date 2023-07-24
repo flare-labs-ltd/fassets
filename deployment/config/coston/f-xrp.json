@@ -22,7 +22,7 @@
             16000,
             20000
         ],
-        "liquidationFactorClass1BIPS": [
+        "liquidationFactorVaultCollateralBIPS": [
             10000,
             10000,
             10000
@@ -38,7 +38,7 @@
         "ccbMinCollateralRatioBIPS": 19000,
         "safetyMinCollateralRatioBIPS": 21000
     },
-    "class1Collaterals": [
+    "vaultCollaterals": [
         {
             "token": "USDC",
             "decimals": 18,
@@ -68,7 +68,7 @@
     "mintingPoolHoldingsRequiredBIPS": 5000,
     "maxRedeemedTickets": 20,
     "redemptionFeeBIPS": 100,
-    "redemptionDefaultFactorClass1BIPS": 12500,
+    "redemptionDefaultFactorVaultCollateralBIPS": 12500,
     "redemptionDefaultFactorPoolBIPS": 0,
     "underlyingBlocksForPayment": 100,
     "underlyingSecondsForPayment": 300,
@@ -83,7 +83,7 @@
     "withdrawalWaitMinSeconds": 60,
     "announcedUnderlyingConfirmationMinSeconds": 250,
     "buybackCollateralFactorBIPS": 10500,
-    "class1BuyForFlareFactorBIPS": 10500,
+    "vaultCollateralBuyForFlareFactorBIPS": 10500,
     "minUpdateRepeatTimeSeconds": 86400,
     "tokenInvalidationTimeMinSeconds": 86400,
     "agentExitAvailableTimelockSeconds": 86400,

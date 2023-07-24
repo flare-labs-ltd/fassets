@@ -38,7 +38,7 @@ contract AssetManagerMock {
     }
 
     function getAgentVaultOwner(address /*_agentVault*/) external view
-        returns (address _ownerColdAddress, address _ownerHotAddress)
+        returns (address _ownerManagementAddress, address _ownerWorkAddress)
     {
         return (commonOwner, address(0));
     }
@@ -47,7 +47,7 @@ contract AssetManagerMock {
         return _address == commonOwner;
     }
 
-    function collateralDeposited(address /* _agentVault */, IERC20 /*_token*/) external {
+    function updateCollateral(address /* _agentVault */, IERC20 /*_token*/) external {
         commonOwner = commonOwner;  // just to prevent mutability warning
         require(!checkForValidAgentVaultAddress, "invalid agent vault address");
     }
@@ -97,8 +97,16 @@ contract AssetManagerMock {
         return fasset;
     }
 
-    function assetPriceNatWei() public pure returns (uint256, uint256) {
-        return (1, 2);
+    uint256 public assetPriceMul = 1;
+    uint256 public assetPriceDiv = 2;
+
+    function assetPriceNatWei() public view returns (uint256, uint256) {
+        return (assetPriceMul, assetPriceDiv);
+    }
+
+    function setAssetPriceNatWei(uint256 _mul, uint256 _div) external {
+        assetPriceMul = _mul;
+        assetPriceDiv = _div;
     }
 
     uint256 public lotSize = 1;

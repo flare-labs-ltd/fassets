@@ -25,9 +25,9 @@ export interface LiquidationStrategyImplSettings {
 
     /**
      * Factor with which to multiply the asset price in native currency to obtain the payment
-     * to the liquidator in class1 collateral. The rest (up to liquidationCollateralFactorBIPS) is paid from the pool.
+     * to the liquidator in vault collateral. The rest (up to liquidationCollateralFactorBIPS) is paid from the pool.
      * The length of this array must be the same as the length of liquidationCollateralFactorBIPS array.
      * @minItems 1
      */
-    liquidationFactorClass1BIPS: integer[];
+    liquidationFactorVaultCollateralBIPS: integer[];
 }

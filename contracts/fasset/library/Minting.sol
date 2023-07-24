@@ -36,16 +36,15 @@ library Minting {
             "invalid minting reference");
         require(_payment.receivingAddressHash == agent.underlyingAddressHash,
             "not minting agent's address");
-        uint256 receivedAmount = SafeCast.toUint256(_payment.receivedAmount);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
-        require(receivedAmount >= mintValueUBA + crt.underlyingFeeUBA,
+        require(_payment.receivedAmount >= SafeCast.toInt256(mintValueUBA + crt.underlyingFeeUBA),
             "minting payment too small");
         // we do not allow payments before the underlying block at requests, because the payer should have guessed
         // the payment reference, which is good for nothing except attack attempts
         require(_payment.blockNumber >= crt.firstUnderlyingBlock,
             "minting payment too old");
         // execute minting
-        _performMinting(agent, _crtId, crt.minter, crt.valueAMG, receivedAmount,
+        _performMinting(agent, _crtId, crt.minter, crt.valueAMG, uint256(_payment.receivedAmount),
             calculatePoolFee(agent, crt.underlyingFeeUBA));
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
         Agents.burnDirectNAT(crt.reservationFeeNatWei);
@@ -77,7 +76,7 @@ library Minting {
             "invalid self-mint reference");
         require(_payment.receivingAddressHash == agent.underlyingAddressHash,
             "self-mint not agent's address");
-        require(_payment.receivedAmount >= 0 && uint256(_payment.receivedAmount) >= mintValueUBA + poolFeeUBA,
+        require(_payment.receivedAmount >= SafeCast.toInt256(mintValueUBA + poolFeeUBA),
             "self-mint payment too small");
         require(_payment.blockNumber >= agent.underlyingBlockAtCreation,
             "self-mint payment too old");

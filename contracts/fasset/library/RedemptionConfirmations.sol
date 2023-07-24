@@ -70,8 +70,8 @@ library RedemptionConfirmations {
         state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
-            Agents.payoutClass1(agent, msg.sender,
-                Agents.convertUSD5ToClass1Wei(agent, state.settings.confirmationByOthersRewardUSD5));
+            Agents.payoutFromVault(agent, msg.sender,
+                Agents.convertUSD5ToVaultCollateralWei(agent, state.settings.confirmationByOthersRewardUSD5));
         }
         // redemption can make agent healthy, so check and pull out of liquidation
         Liquidation.endLiquidationIfHealthy(agent);
@@ -112,7 +112,7 @@ library RedemptionConfirmations {
             return (false, "transaction failed");
         } else if (_payment.receivingAddressHash != request.redeemerUnderlyingAddressHash) {
             return (false, "not redeemer's address");
-        } else if (_payment.receivedAmount < 0 || uint256(_payment.receivedAmount) < paymentValueUBA) {
+        } else if (_payment.receivedAmount < int256(paymentValueUBA)) { // safe, paymentValueUBA < 2**128
             // for blocked payments, receivedAmount == 0, but it's still receiver's fault
             if (_payment.status != TransactionAttestation.PAYMENT_BLOCKED) {
                 return (false, "redemption payment too small");

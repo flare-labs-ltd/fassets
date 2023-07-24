@@ -9,9 +9,9 @@ library AgentSettings {
         // Full address on the underlying chain (not hash).
         string underlyingAddressString;
 
-        // The token used as class1 collateral. Must be one of the tokens obtained by `getCollateralTypes()`,
-        // with class CLASS1.
-        IERC20 class1CollateralToken;
+        // The token used as vault collateral. Must be one of the tokens obtained by `getCollateralTypes()`,
+        // with class VAULT.
+        IERC20 vaultCollateralToken;
 
         // Minting fee. Normally charged to minters for publicly available agents, but must be set
         // also for self-minting agents to pay part of it to collateral pool.
@@ -24,10 +24,10 @@ library AgentSettings {
 
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio on creation.
-        // The value must always be greater than system minimum collateral ratio for class1 collateral.
+        // The value must always be greater than system minimum collateral ratio for vault collateral.
         // Warning: having this value near global min collateral ratio can quickly lead to liquidation for public
         // agents, so it is advisable to set it significantly higher.
-        uint256 mintingClass1CollateralRatioBIPS;
+        uint256 mintingVaultCollateralRatioBIPS;
 
         // Collateral ratio at which we calculate locked collateral and collateral available for minting.
         // Agent may set own value for minting collateral ratio on creation.

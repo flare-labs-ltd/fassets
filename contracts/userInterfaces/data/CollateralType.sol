@@ -8,7 +8,7 @@ library CollateralType {
     enum Class {
         NONE,   // unused
         POOL,   // pool collateral type
-        CLASS1  // usable as class 1 collateral
+        VAULT  // usable as vault collateral
     }
 
     // Collateral token is uniquely identified by the pair (collateralClass, token).
@@ -39,7 +39,7 @@ library CollateralType {
         // Used for asset/token price calculation when `directPricePair` is `false`.
         // Otherwise it is irrelevant to asset/token price calculation, but if it is nonempty,
         // it is still used in calculation of challenger and confirmation rewards
-        // (otherwise we assume it approximates the value of USD and pay directly the USD amount in class1).
+        // (otherwise we assume it approximates the value of USD and pay directly the USD amount in vault collateral).
         string tokenFtsoSymbol;
 
         // Minimum collateral ratio for healthy agents.

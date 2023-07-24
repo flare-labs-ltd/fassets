@@ -1,4 +1,4 @@
-import { ErrorFilter, expectErrors, filterStackTrace } from "../helpers";
+import { ErrorFilter, errorIncluded, expectErrors, filterStackTrace } from "../helpers";
 import { ILogger } from "../logging";
 
 export type EventHandler<E> = (event: E) => void;
@@ -56,7 +56,7 @@ export class EventScope {
             parent.children.add(this);
         }
     }
-    
+
     private subscriptions: Set<EventSubscription> = new Set();
     private children: Set<EventScope> = new Set();
 
@@ -81,14 +81,24 @@ export class EventScope {
     remove(subscription: EventSubscription) {
         this.subscriptions.delete(subscription);
     }
-    
+
     exit(): never {
         throw new ExitScope(this);
     }
-    
-    exitOnExpectedError(error: any, expectedErrors: ErrorFilter[]): never {
+
+    exitOnExpectedError(error: unknown, expectedErrors: ErrorFilter[]): never {
         expectErrors(error, expectedErrors);
         throw new ExitScope(this);
+    }
+
+    handleExpectedErrors(error: unknown, filters: { continue?: ErrorFilter[], exit?: ErrorFilter[] }) {
+        if (filters.continue && errorIncluded(error, filters.continue)) {
+            return undefined;
+        } else if (filters.exit && errorIncluded(error, filters.exit)) {
+            throw new ExitScope(this);
+        } else {
+            throw error;    // unexpected error
+        }
     }
 }
 
@@ -132,7 +142,7 @@ export class EventEmitter<E> {
         const subscription = this.subscribeOnce(handler);
         return scope.add(subscription);
     }
-    
+
     wait(scope?: EventScope): Promise<E> {
         if (scope) {
             return new Promise((resolve) => this.subscribeOnceIn(scope, resolve));
@@ -140,7 +150,7 @@ export class EventEmitter<E> {
             return new Promise((resolve) => this.subscribeOnce(resolve));
         }
     }
-    
+
     filter(condition: (event: E) => boolean): EventEmitter<E> {
         return new EventEmitter<E>(this.executionQueue, (handler) => this._subscribe(event => {
             if (condition(event)) handler(event);
@@ -152,13 +162,13 @@ export class EventEmitter<E> {
             handler(convert(event));
         }));
     }
-    
+
     qualified<N extends string>(name: N): EventEmitter<QualifiedEvent<N, E>> {
         return new EventEmitter(this.executionQueue, (handler) => {
             return this.subscribe((args: E) => handler({ name, args }));
         });
     }
-    
+
     // convert to emitter without queue (immediate)
     immediate() {
         if (this.executionQueue == null) return this;   // already immediate
@@ -169,11 +179,11 @@ export class EventEmitter<E> {
 export class EventExecutionQueue {
     public logger?: ILogger;
     private queue: Array<() => void> = [];
-    
+
     push(item: () => void) {
         this.queue.push(item);
     }
-    
+
     get length() {
         return this.queue.length;
     }
@@ -198,9 +208,9 @@ export class TriggerableEvent<E> extends EventEmitter<E> {
             return { unsubscribe: () => this.handlers.delete(handler) };
         });
     }
-    
+
     private handlers = new Set<EventHandler<E>>();
-    
+
     trigger(event: E) {
         for (const handler of this.handlers) {
             handler(event);

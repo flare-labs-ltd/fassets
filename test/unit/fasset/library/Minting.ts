@@ -43,8 +43,8 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     const underlyingRandomAddress = "Random";
 
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
-        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
-        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
+        const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
 
     async function depositCollateral(owner: string, agentVault: AgentVaultInstance, amount: BN, token: ERC20MockInstance = usdc) {
@@ -255,7 +255,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         const agentCollateral = await AgentCollateral.create(assetManager, settings, agentVault.address);
         const burnNats = agentCollateral.pool.convertUBAToTokenWei(crt.valueUBA)
-            .mul(toBN(settings.class1BuyForFlareFactorBIPS)).divn(MAX_BIPS);
+            .mul(toBN(settings.vaultCollateralBuyForFlareFactorBIPS)).divn(MAX_BIPS);
         // should provide enough funds
         await expectRevert(assetManager.unstickMinting(proof, crt.collateralReservationId, { from: agentOwner1, value: burnNats.muln(0.99) }),
             "not enough funds provided");
@@ -426,7 +426,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         // console.log(`Free lots: ${ac.freeCollateralLots()}`);
         //
         assertWeb3Equal(ac.freeCollateralLots(), info.freeCollateralLots);
-        assertWeb3Equal(ac.freeCollateralWei(ac.class1), info.freeClass1CollateralWei);
+        assertWeb3Equal(ac.freeCollateralWei(ac.vault), info.freeVaultCollateralWei);
         assertWeb3Equal(ac.freeCollateralWei(ac.pool), info.freePoolCollateralNATWei);
         assertWeb3Equal(ac.freeCollateralWei(ac.agentPoolTokens), info.freeAgentPoolTokensWei);
     });

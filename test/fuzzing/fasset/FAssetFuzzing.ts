@@ -1,6 +1,6 @@
 import { time } from "@openzeppelin/test-helpers";
 import { Challenger } from "../../../lib/actors/Challenger";
-import { isClass1Collateral, isPoolCollateral } from "../../../lib/state/CollateralIndexedList";
+import { isVaultCollateral, isPoolCollateral } from "../../../lib/state/CollateralIndexedList";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { expectErrors, formatBN, latestBlockTimestamp, mulDecimal, sleep, systemTimestamp, toBIPS, toBN, toWei } from "../../../lib/utils/helpers";
@@ -23,7 +23,7 @@ import { FuzzingState } from "./FuzzingState";
 import { FuzzingTimeline } from "./FuzzingTimeline";
 import { InterceptorEvmEvents } from "./InterceptorEvmEvents";
 import { TruffleTransactionInterceptor } from "./TransactionInterceptor";
-import { FAssetMarketplace, FuzzingPoolTokenHolder } from "./FuzzingPoolTokenHolder";
+import { FuzzingPoolTokenHolder } from "./FuzzingPoolTokenHolder";
 
 contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing tests`, accounts => {
     const startTimestamp = systemTimestamp();
@@ -91,6 +91,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         timeline = new FuzzingTimeline(chain, eventQueue);
         // state checker
         fuzzingState = new FuzzingState(context, truffleEvents, chainEvents, eventDecoder, eventQueue);
+        fuzzingState.deleteDestroyedAgents = false;
         await fuzzingState.initialize();
         // runner
         runner = new FuzzingRunner(context, eventDecoder, interceptor, timeline, truffleEvents, chainEvents, fuzzingState, AVOID_ERRORS);
@@ -113,6 +114,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         fuzzingState.logExpectationFailures();
         interceptor.logGasUsage();
         logger.close();
+        fuzzingState.withLogFile("test_logs/fasset-fuzzing-actions.log", () => fuzzingState.logAllAgentActions());
         fuzzingState.writeBalanceTrackingList("test_logs/agents-csv");
     });
 
@@ -122,19 +124,17 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         for (let i = 0; i < N_AGENTS; i++) {
             const underlyingAddress = "underlying_agent_" + i;
             const ownerUnderlyingAddress = "underlying_owner_agent_" + i;
-            const ownerColdAddress = accounts[firstAgentAddress + i];
-            const ownerHotAddress = accounts[firstAgentAddress + N_AGENTS + i];
-            eventDecoder.addAddress(`OWNER_HOT_${i}`, ownerHotAddress);
-            eventDecoder.addAddress(`OWNER_COLD_${i}`, ownerColdAddress);
-            await Agent.changeHotAddress(context, ownerColdAddress, ownerHotAddress);
-            const options = createAgentOptions();
-            const ownerAddress = coinFlip() ? ownerHotAddress : ownerColdAddress;
-            const fa = await FuzzingAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
-            interceptor.captureEventsFrom(`AGENT_${i}`, fa.agent.agentVault, 'AgentVault');
-            interceptor.captureEventsFrom(`AGENT_${i}_POOL`, fa.agent.collateralPool, 'CollateralPool');
-            interceptor.captureEventsFrom(`AGENT_${i}_LPTOKEN`, fa.agent.collateralPoolToken, 'CollateralPoolToken');
-            await fa.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
-            agents.push(fa);
+            const ownerManagementAddress = accounts[firstAgentAddress + i];
+            const ownerWorkAddress = accounts[firstAgentAddress + N_AGENTS + i];
+            eventDecoder.addAddress(`OWNER_WORK_${i}`, ownerWorkAddress);
+            eventDecoder.addAddress(`OWNER_MANAGEMENT_${i}`, ownerManagementAddress);
+            await Agent.changeWorkAddress(context, ownerManagementAddress, ownerWorkAddress);
+            const options = createAgentVaultOptions();
+            const ownerAddress = coinFlip() ? ownerWorkAddress : ownerManagementAddress;
+            const fuzzingAgent = await FuzzingAgent.createTest(runner, ownerAddress, underlyingAddress, ownerUnderlyingAddress, options);
+            fuzzingAgent.capturePerAgentContractEvents(`AGENT_${i}`);
+            await fuzzingAgent.agent.depositCollateralsAndMakeAvailable(toWei(10_000_000), toWei(10_000_000));
+            agents.push(fuzzingAgent);
         }
         // create customers
         const firstCustomerAddress = firstAgentAddress + 3 * N_AGENTS;
@@ -144,6 +144,8 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
             chain.mint(underlyingAddress, 1_000_000);
             customers.push(customer);
             eventDecoder.addAddress(`CUSTOMER_${i}`, customer.address);
+            // customers can "sell" minted fassets on the mock marketplace
+            runner.fAssetMarketplace.addSeller(customer);
         }
         // create liquidators
         const firstKeeperAddress = firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS;
@@ -157,11 +159,10 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         challenger = new Challenger(runner, fuzzingState, challengerAddress);
         eventDecoder.addAddress(`CHALLENGER`, challenger.address);
         // create pool token holders
-        const fAssetMarketplace = new FAssetMarketplace(customers);
         const firstPoolTokenHolderAddress = firstAgentAddress + 3 * N_AGENTS + N_CUSTOMERS + N_KEEPERS + 1;
         for (let i = 0; i < N_POOL_TOKEN_HOLDERS; i++) {
             const underlyingAddress = "underlying_pool_token_holder_" + i;
-            const tokenHolder = new FuzzingPoolTokenHolder(runner, accounts[firstPoolTokenHolderAddress + i], underlyingAddress, fAssetMarketplace);
+            const tokenHolder = new FuzzingPoolTokenHolder(runner, accounts[firstPoolTokenHolderAddress + i], underlyingAddress);
             poolTokenHolders.push(tokenHolder);
             eventDecoder.addAddress(`POOL_TOKEN_HOLDER_${i}`, tokenHolder.address);
         }
@@ -237,6 +238,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         }
         // wait for all threads to finish
         interceptor.comment(`Remaining threads: ${runner.runningThreads}`);
+        runner.waitingToFinish = true;
         while (runner.runningThreads > 0) {
             await sleep(200);
             await timeline.skipTime(100);
@@ -258,16 +260,16 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         assert.isTrue(fuzzingState.failedExpectations.length === 0, "fuzzing state has expectation failures");
     });
 
-    function createAgentOptions(): AgentCreateOptions {
-        const class1Collateral = randomChoice(context.collaterals.filter(isClass1Collateral));
+    function createAgentVaultOptions(): AgentCreateOptions {
+        const vaultCollateral = randomChoice(context.collaterals.filter(isVaultCollateral));
         const poolCollateral = context.collaterals.filter(isPoolCollateral)[0];
-        const mintingClass1CollateralRatioBIPS = mulDecimal(toBN(class1Collateral.minCollateralRatioBIPS), randomNum(1, 1.5));
+        const mintingVaultCollateralRatioBIPS = mulDecimal(toBN(vaultCollateral.minCollateralRatioBIPS), randomNum(1, 1.5));
         const mintingPoolCollateralRatioBIPS = mulDecimal(toBN(poolCollateral.minCollateralRatioBIPS), randomNum(1, 1.5));
         return {
-            class1CollateralToken: class1Collateral.token,
+            vaultCollateralToken: vaultCollateral.token,
             feeBIPS: toBIPS("5%"),
             poolFeeShareBIPS: toBIPS("40%"),
-            mintingClass1CollateralRatioBIPS: mintingClass1CollateralRatioBIPS,
+            mintingVaultCollateralRatioBIPS: mintingVaultCollateralRatioBIPS,
             mintingPoolCollateralRatioBIPS: mintingPoolCollateralRatioBIPS,
             poolExitCollateralRatioBIPS: mulDecimal(mintingPoolCollateralRatioBIPS, randomNum(1, 1.25)),
             buyFAssetByAgentFactorBIPS: toBIPS(0.9),

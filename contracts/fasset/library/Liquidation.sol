@@ -24,7 +24,7 @@ library Liquidation {
     using Agents for Agent.State;
 
     struct CRData {
-        uint256 class1CR;
+        uint256 vaultCR;
         uint256 poolCR;
         uint256 amgToC1WeiPrice;
         uint256 amgToPoolWeiPrice;
@@ -48,7 +48,7 @@ library Liquidation {
         // upgrade liquidation based on CR and time
         CRData memory cr = getCollateralRatiosBIPS(agent);
         _liquidationPhase = _upgradeLiquidationPhase(agent, cr);
-        _liquidationStartTs = _liquidationStartTimestamp(agent);
+        _liquidationStartTs = getLiquidationStartTimestamp(agent);
     }
 
     // Liquidate agent's position.
@@ -74,7 +74,7 @@ library Liquidation {
         _liquidatedAmountUBA = Conversion.convertAmgToUBA(liquidatedAmountAMG);
         // pay the liquidator
         if (payoutC1Wei > 0) {
-            _amountPaidC1 = Agents.payoutClass1(agent, msg.sender, payoutC1Wei);
+            _amountPaidC1 = Agents.payoutFromVault(agent, msg.sender, payoutC1Wei);
         }
         if (payoutPoolWei > 0) {
             uint256 agentResponsibilityWei = _agentResponsibilityWei(agent, payoutPoolWei);
@@ -130,10 +130,10 @@ library Liquidation {
         CRData memory cr = getCollateralRatiosBIPS(_agent);
         // target collateral ratio is minCollateralRatioBIPS for CCB and safetyMinCollateralRatioBIPS for LIQUIDATION
         Agent.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_agent);
-        uint256 targetRatioClass1BIPS = _targetRatioBIPS(_agent, currentPhase, Collateral.Kind.AGENT_CLASS1);
+        uint256 targetRatioVaultCollateralBIPS = _targetRatioBIPS(_agent, currentPhase, Collateral.Kind.VAULT);
         uint256 targetRatioPoolBIPS = _targetRatioBIPS(_agent, currentPhase, Collateral.Kind.POOL);
         // if agent is safe, restore status to NORMAL
-        if (cr.class1CR >= targetRatioClass1BIPS && cr.poolCR >= targetRatioPoolBIPS) {
+        if (cr.vaultCR >= targetRatioVaultCollateralBIPS && cr.poolCR >= targetRatioPoolBIPS) {
             _agent.status = Agent.Status.NORMAL;
             _agent.liquidationStartedAt = 0;
             _agent.initialLiquidationPhase = Agent.LiquidationPhase.NONE;
@@ -155,11 +155,11 @@ library Liquidation {
         // Note that we don't need to check this for phase=NORMAL, because in that case the liquidation must
         // still be triggered via startLiquidation() or liquidate().
         CRData memory cr = getCollateralRatiosBIPS(_agent);
-        Agent.LiquidationPhase newPhaseClass1 =
-            _initialLiquidationPhaseForCollateral(cr.class1CR, _agent.class1CollateralIndex);
+        Agent.LiquidationPhase newPhaseVault =
+            _initialLiquidationPhaseForCollateral(cr.vaultCR, _agent.vaultCollateralIndex);
         Agent.LiquidationPhase newPhasePool =
             _initialLiquidationPhaseForCollateral(cr.poolCR, _agent.poolCollateralIndex);
-        Agent.LiquidationPhase newPhase = newPhaseClass1 >= newPhasePool ? newPhaseClass1 : newPhasePool;
+        Agent.LiquidationPhase newPhase = newPhaseVault >= newPhasePool ? newPhaseVault : newPhasePool;
         return newPhase > currentPhase ? newPhase : currentPhase;
     }
 
@@ -169,10 +169,10 @@ library Liquidation {
         internal view
         returns (CRData memory)
     {
-        (uint256 class1CR, uint256 amgToC1WeiPrice) = getCollateralRatioBIPS(_agent, Collateral.Kind.AGENT_CLASS1);
+        (uint256 vaultCR, uint256 amgToC1WeiPrice) = getCollateralRatioBIPS(_agent, Collateral.Kind.VAULT);
         (uint256 poolCR, uint256 amgToPoolWeiPrice) = getCollateralRatioBIPS(_agent, Collateral.Kind.POOL);
         return CRData({
-            class1CR: class1CR,
+            vaultCR: vaultCR,
             poolCR: poolCR,
             amgToC1WeiPrice: amgToC1WeiPrice,
             amgToPoolWeiPrice: amgToPoolWeiPrice
@@ -197,6 +197,34 @@ library Liquidation {
         _collateralRatioBIPS = Math.max(ratio, ratioTrusted);
     }
 
+    function getCCBStartTimestamp(
+        Agent.State storage _agent
+    )
+        internal view
+        returns (uint256)
+    {
+        if (_agent.status != Agent.Status.LIQUIDATION) return 0;
+        return _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB ? _agent.liquidationStartedAt : 0;
+    }
+
+    function getLiquidationStartTimestamp(
+        Agent.State storage _agent
+    )
+        internal view
+        returns (uint256)
+    {
+        Agent.Status status = _agent.status;
+        if (status == Agent.Status.LIQUIDATION) {
+            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+            bool startedInCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;
+            return _agent.liquidationStartedAt + (startedInCCB ? settings.ccbTimeSeconds : 0);
+        } else if (status == Agent.Status.FULL_LIQUIDATION) {
+            return _agent.liquidationStartedAt;
+        } else {    // any other status - NORMAL or DESTROYING
+            return 0;
+        }
+    }
+
     // Upgrade (CR-based) liquidation phase (NONE -> CCR -> LIQUIDATION), based on agent's collateral ratio.
     // When in full liquidation mode, do nothing.
     function _upgradeLiquidationPhase(
@@ -208,10 +236,10 @@ library Liquidation {
     {
         Agent.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_agent);
         // calculate new phase for both collaterals and if any is underwater, set its flag
-        Agent.LiquidationPhase newPhaseClass1 =
-            _initialLiquidationPhaseForCollateral(_cr.class1CR, _agent.class1CollateralIndex);
-        if (newPhaseClass1 == Agent.LiquidationPhase.LIQUIDATION) {
-            _agent.collateralsUnderwater |= Agent.LF_CLASS1;
+        Agent.LiquidationPhase newPhaseVault =
+            _initialLiquidationPhaseForCollateral(_cr.vaultCR, _agent.vaultCollateralIndex);
+        if (newPhaseVault == Agent.LiquidationPhase.LIQUIDATION) {
+            _agent.collateralsUnderwater |= Agent.LF_VAULT;
         }
         Agent.LiquidationPhase newPhasePool =
             _initialLiquidationPhaseForCollateral(_cr.poolCR, _agent.poolCollateralIndex);
@@ -219,13 +247,13 @@ library Liquidation {
             _agent.collateralsUnderwater |= Agent.LF_POOL;
         }
         // restart liquidation (set new phase and start time) if new cr based phase is higher than time based
-        Agent.LiquidationPhase newPhase = newPhaseClass1 >= newPhasePool ? newPhaseClass1 : newPhasePool;
+        Agent.LiquidationPhase newPhase = newPhaseVault >= newPhasePool ? newPhaseVault : newPhasePool;
         if (newPhase > currentPhase) {
             _agent.status = Agent.Status.LIQUIDATION;
             _agent.liquidationStartedAt = block.timestamp.toUint64();
             _agent.initialLiquidationPhase = newPhase;
             _agent.collateralsUnderwater =
-                (newPhase == newPhaseClass1 ? Agent.LF_CLASS1 : 0) | (newPhase == newPhasePool ? Agent.LF_POOL : 0);
+                (newPhase == newPhaseVault ? Agent.LF_VAULT : 0) | (newPhase == newPhasePool ? Agent.LF_POOL : 0);
             if (newPhase == Agent.LiquidationPhase.CCB) {
                 emit AMEvents.AgentInCCB(_agent.vaultAddress(), block.timestamp);
             } else {
@@ -244,18 +272,18 @@ library Liquidation {
         private
         returns (uint64 _liquidatedAMG, uint256 _payoutC1Wei, uint256 _payoutPoolWei)
     {
-        // split liquidation payment between agent class1 and pool
-        (uint256 class1Factor, uint256 poolFactor) =
-            LiquidationStrategy.currentLiquidationFactorBIPS(_agent, _cr.class1CR, _cr.poolCR);
+        // split liquidation payment between agent vault and pool
+        (uint256 vaultFactor, uint256 poolFactor) =
+            LiquidationStrategy.currentLiquidationFactorBIPS(_agent, _cr.vaultCR, _cr.poolCR);
         // calculate liquidation amount
         uint256 maxLiquidatedAMG = Math.max(
-            _maxLiquidationAmountAMG(_agent, _cr.class1CR, class1Factor, Collateral.Kind.AGENT_CLASS1),
+            _maxLiquidationAmountAMG(_agent, _cr.vaultCR, vaultFactor, Collateral.Kind.VAULT),
             _maxLiquidationAmountAMG(_agent, _cr.poolCR, poolFactor, Collateral.Kind.POOL));
         uint64 amountToLiquidateAMG = Math.min(maxLiquidatedAMG, _amountAMG).toUint64();
         // liquidate redemption tickets
         (_liquidatedAMG,) = Redemptions.closeTickets(_agent, amountToLiquidateAMG, true);
         // calculate payouts to liquidator
-        _payoutC1Wei = Conversion.convertAmgToTokenWei(_liquidatedAMG.mulBips(class1Factor), _cr.amgToC1WeiPrice);
+        _payoutC1Wei = Conversion.convertAmgToTokenWei(_liquidatedAMG.mulBips(vaultFactor), _cr.amgToC1WeiPrice);
         _payoutPoolWei = Conversion.convertAmgToTokenWei(_liquidatedAMG.mulBips(poolFactor), _cr.amgToPoolWeiPrice);
     }
 
@@ -297,24 +325,6 @@ library Liquidation {
             return Agent.LiquidationPhase.LIQUIDATION;
         } else {    // any other status - NORMAL or DESTROYING
             return Agent.LiquidationPhase.NONE;
-        }
-    }
-
-    function _liquidationStartTimestamp(
-        Agent.State storage _agent
-    )
-        private view
-        returns (uint256)
-    {
-        Agent.Status status = _agent.status;
-        if (status == Agent.Status.LIQUIDATION) {
-            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-            bool startedInCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;
-            return _agent.liquidationStartedAt + (startedInCCB ? settings.ccbTimeSeconds : 0);
-        } else if (status == Agent.Status.FULL_LIQUIDATION) {
-            return _agent.liquidationStartedAt;
-        } else {    // any other status - NORMAL or DESTROYING
-            return 0;
         }
     }
 
@@ -374,7 +384,7 @@ library Liquidation {
         private view
         returns (uint256)
     {
-        if (_agent.status == Agent.Status.FULL_LIQUIDATION || _agent.collateralsUnderwater == Agent.LF_CLASS1) {
+        if (_agent.status == Agent.Status.FULL_LIQUIDATION || _agent.collateralsUnderwater == Agent.LF_VAULT) {
             return _amount;
         } else if (_agent.collateralsUnderwater == Agent.LF_POOL) {
             return 0;

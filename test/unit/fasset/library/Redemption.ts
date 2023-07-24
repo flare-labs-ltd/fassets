@@ -49,8 +49,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     const underlyingRedeemer2 = "Redeemer2";
 
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
-        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
-        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
+        const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
 
     async function depositAndMakeAgentAvailable(agentVault: AgentVaultInstance, owner: string, fullAgentCollateral: BN = toWei(3e8)) {
@@ -206,13 +206,13 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
-        const class1BalanceAgentBefore = await usdc.balanceOf(agentVault.address);
-        const class1BalanceRedeemerBefore = await usdc.balanceOf(redeemerAddress1);
+        const vaultCollateralBalanceAgentBefore = await usdc.balanceOf(agentVault.address);
+        const vaultCollateralBalanceRedeemerBefore = await usdc.balanceOf(redeemerAddress1);
         await mintAndRedeemFromAgentInCollateral(agentVault, collateralPool.address, chain, underlyingMinter1, minterAddress1, redeemerAddress1, true);
-        //check class1 balances
-        const class1BalanceAgentAfter = await usdc.balanceOf(agentVault.address);
-        const class1BalanceRedeemerAfter = await usdc.balanceOf(redeemerAddress1);
-        assert.equal(class1BalanceAgentBefore.sub(class1BalanceAgentAfter).toString(), class1BalanceRedeemerAfter.sub(class1BalanceRedeemerBefore).toString())
+        //check vault collateral balances
+        const vaultCollateralBalanceAgentAfter = await usdc.balanceOf(agentVault.address);
+        const vaultCollateralBalanceRedeemerAfter = await usdc.balanceOf(redeemerAddress1);
+        assert.equal(vaultCollateralBalanceAgentBefore.sub(vaultCollateralBalanceAgentAfter).toString(), vaultCollateralBalanceRedeemerAfter.sub(vaultCollateralBalanceRedeemerBefore).toString())
     });
 
     it("should finish redemption payment - payment not from agent's address", async () => {
@@ -253,6 +253,52 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
         const resRe = assetManager.confirmRedemptionPayment(proofR, request2.requestId, { from: agentOwner1 });
         await expectRevert(resRe, "invalid redemption reference");
+    });
+
+    it("should not confirm redemption payment - payment too old", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        chain.mine(3);  // make some space
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+        //perform redemption payment
+        const paymentAmt = request.valueUBA.sub(request.feeUBA);
+        let tx1Hash!: string;
+        chain.modifyMinedBlock(Number(request.firstUnderlyingBlock) - 1, block => {
+            const tx = wallet.createTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
+            block.transactions.push(tx);
+            tx1Hash = tx.hash;
+        });
+        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
+        const resRe = assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
+        await expectRevert(resRe, "redemption payment too old");
+    });
+
+    it("should fail redemption payment - already deafulted (should not happen in practice)", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+        // trigger default
+        chain.mine(chainInfo.underlyingBlocksForPayment + 1);
+        chain.skipTimeTo(request.lastUnderlyingTimestamp.toNumber() + 1);
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
+        expectEvent(res, 'RedemptionDefault');
+        // force a payment in the past
+        const paymentAmt = request.valueUBA.sub(request.feeUBA);
+        let tx1Hash!: string;
+        chain.modifyMinedBlock(Number(request.firstUnderlyingBlock) + 1, block => {
+            const tx = wallet.createTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
+            block.transactions.push(tx);
+            tx1Hash = tx.hash;
+        });
+        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
+        const resRe = await assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
+        expectEvent(resRe, 'RedemptionPaymentFailed');
+        const resReArgs = requiredEventArgs(resRe, 'RedemptionPaymentFailed');
+        assert.equal(resReArgs.failureReason, "redemption payment too late");
     });
 
     it("should not confirm redemption payment - invalid request id", async () => {
@@ -545,11 +591,53 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // redemption request
         collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
         await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
+        //Only collateral pool can redeem from agent
+        const rs = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, { from:  accounts[15] });
+        await expectRevert(rs, "only collateral pool");
         //Redeeming from agent and agent in collateral with amount 0 should not work
         const resR = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, { from:  collateralPool.address });
         await expectRevert(resR, "redemption of 0");
         const resRC = assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, 0, { from: collateralPool.address });
         await expectRevert(resRC, "redemption of 0");
+        await stopImpersonatingContract(collateralPool.address);
+    });
+
+    it("redeem from agent where minting is done from 2 agents", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const agentVault2 = await createAgent(agentOwner2, underlyingAgent2);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e10));
+        await depositAndMakeAgentAvailable(agentVault2, agentOwner2,toWei(3e10));
+        // minter
+        chain.mint(underlyingMinter1, toBNExp(10000000, 18));
+        await updateUnderlyingBlock();
+        //Mint from first agent
+        const lots = 1;
+        const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+        const crt = requiredEventArgs(resAg, 'CollateralReserved');
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+        const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        const minted = requiredEventArgs(res, 'MintingExecuted');
+        //Mint from second agent
+        const agentInfo2 = await assetManager.getAgentInfo(agentVault2.address);
+        const crFee2 = await assetManager.collateralReservationFee(lots);
+        const resAg2 = await assetManager.reserveCollateral(agentVault2.address, lots, agentInfo2.feeBIPS, { from: minterAddress1, value: crFee2 });
+        const crt2 = requiredEventArgs(resAg2, 'CollateralReserved');
+        const paymentAmount2 = crt2.valueUBA.add(crt2.feeUBA);
+        const txHash2 = await wallet.addTransaction(underlyingMinter1, crt2.paymentAddress, paymentAmount2, crt2.paymentReference);
+        const proof2 = await attestationProvider.provePayment(txHash2, underlyingMinter1, crt2.paymentAddress);
+        const res2 = await assetManager.executeMinting(proof2, crt2.collateralReservationId, { from: minterAddress1 });
+        const minted2 = requiredEventArgs(res2, 'MintingExecuted');
+        // redemption request
+        collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
+        // make sure collateral pool has enough fAssets
+        await fAsset.transfer(collateralPool.address, minted.mintedAmountUBA, { from: minterAddress1 });
+        await fAsset.transfer(collateralPool.address, minted2.mintedAmountUBA, { from: minterAddress1 });
+        await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
+        await assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, minted.mintedAmountUBA.add(minted2.mintedAmountUBA.div(toBN(2))), { from: collateralPool.address });
         await stopImpersonatingContract(collateralPool.address);
     });
 

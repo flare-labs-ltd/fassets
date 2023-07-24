@@ -12,7 +12,7 @@ library AgentSettingsUpdater {
 
     bytes32 internal constant FEE_BIPS = keccak256("feeBIPS");
     bytes32 internal constant POOL_FEE_SHARE_BIPS = keccak256("poolFeeShareBIPS");
-    bytes32 internal constant MINTING_CLASS1_COLLATERAL_RATIO_BIPS = keccak256("mintingClass1CollateralRatioBIPS");
+    bytes32 internal constant MINTING_VAULT_COLLATERAL_RATIO_BIPS = keccak256("mintingVaultCollateralRatioBIPS");
     bytes32 internal constant MINTING_POOL_COLLATERAL_RATIO_BIPS = keccak256("mintingPoolCollateralRatioBIPS");
     bytes32 internal constant BUY_FASSET_BY_AGENT_FACTOR_BIPS = keccak256("buyFAssetByAgentFactorBIPS");
     bytes32 internal constant POOL_EXIT_COLLATERAL_RATIO_BIPS = keccak256("poolExitCollateralRatioBIPS");
@@ -63,7 +63,7 @@ library AgentSettingsUpdater {
     {
         delete _agent.settingUpdates[FEE_BIPS];
         delete _agent.settingUpdates[POOL_FEE_SHARE_BIPS];
-        delete _agent.settingUpdates[MINTING_CLASS1_COLLATERAL_RATIO_BIPS];
+        delete _agent.settingUpdates[MINTING_VAULT_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[MINTING_POOL_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[BUY_FASSET_BY_AGENT_FACTOR_BIPS];
         delete _agent.settingUpdates[POOL_EXIT_COLLATERAL_RATIO_BIPS];
@@ -82,8 +82,8 @@ library AgentSettingsUpdater {
             Agents.setFeeBIPS(_agent, _value);
         } else if (_hash == POOL_FEE_SHARE_BIPS) {
             Agents.setPoolFeeShareBIPS(_agent, _value);
-        } else if (_hash == MINTING_CLASS1_COLLATERAL_RATIO_BIPS) {
-            Agents.setMintingClass1CollateralRatioBIPS(_agent, _value);
+        } else if (_hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS) {
+            Agents.setMintingVaultCollateralRatioBIPS(_agent, _value);
         } else if (_hash == MINTING_POOL_COLLATERAL_RATIO_BIPS) {
             Agents.setMintingPoolCollateralRatioBIPS(_agent, _value);
         } else if (_hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS) {
@@ -113,7 +113,7 @@ library AgentSettingsUpdater {
         bool settingNameValid =
             hash == FEE_BIPS ||
             hash == POOL_FEE_SHARE_BIPS ||
-            hash == MINTING_CLASS1_COLLATERAL_RATIO_BIPS ||
+            hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS ||
             hash == MINTING_POOL_COLLATERAL_RATIO_BIPS ||
             hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS ||
             hash == POOL_EXIT_COLLATERAL_RATIO_BIPS ||

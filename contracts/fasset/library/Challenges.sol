@@ -58,8 +58,8 @@ library Challenges {
             if (PaymentReference.isValid(_payment.paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
                 uint256 announcementId = PaymentReference.decodeId(_payment.paymentReference);
                 // valid announced withdrawal cannot have announcementId == 0 and must match the agent's announced id
-                require(announcementId == 0 || announcementId != agent.announcedUnderlyingWithdrawalId,
-                    "matching ongoing announced pmt");
+                // but PaymentReference.isValid already checks that id in the reference != 0, so no extra check needed
+                require(announcementId != agent.announcedUnderlyingWithdrawalId, "matching ongoing announced pmt");
             }
         }
         // start liquidation and reward challengers
@@ -151,10 +151,10 @@ library Challenges {
         Liquidation.startFullLiquidation(_agent);
         // calculate the reward
         Collateral.Data memory collateralData =
-            AgentCollateral.agentClass1CollateralData(_agent);
+            AgentCollateral.agentVaultCollateralData(_agent);
         uint256 rewardAMG = _backingAMGAtChallenge.mulBips(settings.paymentChallengeRewardBIPS);
         uint256 rewardC1Wei = Conversion.convertAmgToTokenWei(rewardAMG, collateralData.amgToTokenWeiPrice)
-            + Agents.convertUSD5ToClass1Wei(_agent, settings.paymentChallengeRewardUSD5);
-        Agents.payoutClass1(_agent, _challenger, rewardC1Wei);
+            + Agents.convertUSD5ToVaultCollateralWei(_agent, settings.paymentChallengeRewardUSD5);
+        Agents.payoutFromVault(_agent, _challenger, rewardC1Wei);
     }
 }
