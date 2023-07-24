@@ -260,17 +260,38 @@
   {
     "name": "AssetManager_FtestXRP",
     "contractName": "AssetManager.sol",
-    "address": "0x2e16259Ba50cB196300385aF47B3c0230DC65de9"
+    "address": "0x17598a9415C7e70A1d9e2D36050508e8e0F67c62"
   },
   {
     "name": "FtestXRP",
     "contractName": "FAsset.sol",
-    "address": "0xEc400a6e2D46fC392D05BF94276e6bc1Bab325E1",
+    "address": "0xF6D08dC4aA8BC1ee57e938bF352d9B4A25cCeDa9",
     "mustSwitchToProduction": true
   },
   {
     "name": "AddressValidator_FtestXRP",
     "contractName": "RippleAddressValidator.sol",
-    "address": "0xEfdF53BE28cC4b6157c0Dbe3D5fC473a67C895F8"
+    "address": "0x12707B4FA134B822bB4F43731d291022dDb1A9E6"
+  },
+  {
+    "name": "FakePriceReader",
+    "contractName": "FakePriceReader.sol",
+    "address": "0x4B63A5045b8ac1b726C7E71A3dDa25A1bDeEa135"
+  },
+  {
+    "name": "AssetManager_FfakeXRP",
+    "contractName": "AssetManager.sol",
+    "address": "0x6a5Bf3303be1b33b2bBC248390F249A32489bb3c"
+  },
+  {
+    "name": "FfakeXRP",
+    "contractName": "FAsset.sol",
+    "address": "0xd5516a14f3Fb2A7F40F3502F88918e45450043ba",
+    "mustSwitchToProduction": true
+  },
+  {
+    "name": "AddressValidator_FfakeXRP",
+    "contractName": "RippleAddressValidator.sol",
+    "address": "0xB426501Ed03c82Ba5E1BEcd9De4BDe06C897efaB"
   }
 ]
