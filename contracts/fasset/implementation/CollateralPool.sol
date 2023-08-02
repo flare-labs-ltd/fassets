@@ -368,12 +368,12 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 collateralAtStandardPrice = subOrZero(_collateral, collateralForTopupPricing);
         uint256 collateralAtTopupPrice = collateralForTopupPricing.mulDiv(
             SafePct.MAX_BIPS, topupTokenPriceFactorBIPS);
-        uint256 tokenShareAtStandardPrice = poolConsideredEmpty ?
-            collateralAtStandardPrice : _assetData.poolTokenSupply.mulDiv(
-                collateralAtStandardPrice, _assetData.poolNatBalance);
         uint256 tokenShareAtTopupPrice = poolConsideredEmpty ?
             collateralAtTopupPrice : _assetData.poolTokenSupply.mulDiv(
                 collateralAtTopupPrice, _assetData.poolNatBalance);
+        uint256 tokenShareAtStandardPrice = poolConsideredEmpty && tokenShareAtTopupPrice == 0 ?
+            collateralAtStandardPrice : (_assetData.poolTokenSupply + tokenShareAtTopupPrice).mulDiv(
+                collateralAtStandardPrice, _assetData.poolNatBalance + collateralForTopupPricing);
         return tokenShareAtTopupPrice + tokenShareAtStandardPrice;
     }
 
