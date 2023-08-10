@@ -13,7 +13,7 @@ import "../interface/IIAssetManager.sol";
 import "../interface/IIAgentVault.sol";
 import "../interface/IICollateralPool.sol";
 import "../interface/IFAsset.sol";
-import "./CollateralPoolToken.sol";
+import "../interface/IICollateralPoolToken.sol";
 
 
 //slither-disable reentrancy    // all possible reentrancies guarded by nonReentrant
@@ -41,7 +41,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     address public immutable agentVault;
     IIAssetManager public immutable assetManager;
     IERC20 public immutable fAsset;
-    CollateralPoolToken public token; // practically immutable
+    IICollateralPoolToken public token; // practically immutable
 
     IWNat public wNat;
     uint32 public exitCollateralRatioBIPS;
@@ -90,7 +90,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         onlyAssetManager
     {
         require(address(token) == address(0), "pool token already set");
-        token = CollateralPoolToken(_poolToken);
+        token = IICollateralPoolToken(_poolToken);
     }
 
     function setExitCollateralRatioBIPS(uint256 _exitCollateralRatioBIPS)
@@ -501,7 +501,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         // this can happen only when user has no free f-assets (that is why subOrZero)
         // note: rounding errors can make freeFassets larger than total pool f-asset fees by small amounts
         // (that is why Math.min)
-        return Math.min(subOrZero(virtualFAssetFees, debtFAssetFees), totalFAssetFees);
+        return Math.min(subOrZero(virtualFAssetFees, debtFAssetFees), _assetData.poolFAssetFees);
     }
 
     function _transferableTokensOf(
@@ -524,14 +524,14 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         internal view
         returns (AssetData memory)
     {
-        uint256 poolFAssetFees = totalFAssetFees;
+        uint256 _totalFAssetFees = totalFAssetFees;
         (uint256 assetPriceMul, uint256 assetPriceDiv) = assetManager.assetPriceNatWei();
         return AssetData({
             poolTokenSupply: token.totalSupply(),
             agentBackedFAsset: assetManager.getFAssetsBackedByPool(agentVault),
             poolNatBalance: totalCollateral,
-            poolFAssetFees: poolFAssetFees,
-            poolVirtualFAssetFees: poolFAssetFees + totalFAssetFeeDebt,
+            poolFAssetFees: _totalFAssetFees,
+            poolVirtualFAssetFees: _totalFAssetFees + totalFAssetFeeDebt,
             assetPriceMul: assetPriceMul,
             assetPriceDiv: assetPriceDiv
         });
