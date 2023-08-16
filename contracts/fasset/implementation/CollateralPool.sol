@@ -791,18 +791,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         return claimed;
     }
 
-    // Set executors that can then automatically claim rewards and airdrop.
-    function setAutoClaiming(
-        IClaimSetupManager _claimSetupManager,
-        address[] memory _executors
-    )
-        external payable override
-        onlyAgent
-    {
-        _claimSetupManager.setAutoClaiming{value: msg.value}(_executors, false);
-        // no recipients setup - claim everything to pool
-    }
-
     function optOutOfAirdrop(
         IDistributionToDelegators _distribution
     )

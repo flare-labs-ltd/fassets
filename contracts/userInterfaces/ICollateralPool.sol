@@ -132,15 +132,6 @@ interface ICollateralPool {
         returns(uint256 _claimedAmount);
 
     /**
-     * Set executors that can then automatically claim rewards and airdrop.
-     * NOTE: only the owner of the pool's corresponding agent vault may call this method.
-     */
-    function setAutoClaiming(
-        IClaimSetupManager _claimSetupManager,
-        address[] memory _executors
-    ) external payable;
-
-    /**
      * In case of f-asset termination, withdraw all of sender's collateral
      */
     function withdrawCollateralWhenFAssetTerminated() external;

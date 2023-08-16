@@ -1125,7 +1125,10 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBNWithError(account1FreeFassetAfter, account1FreeFassetBefore, BN_ONE);
         });
 
-        it("coinspect - can steal all auto-claimed rewards upon destruction", async () => {
+        // as we cannot update balance when autoclaiming through executors,
+        // this test shows how agent can steal all auto-claimed rewards upon destruction.
+        // This is why `setAutoClaiming` was removed from collateral pool.
+        /* it("coinspect - can steal all auto-claimed rewards upon destruction", async () => {
             const contract = await MockContract.new();
             await collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: agent });
             let totalCollateral = await collateralPool.totalCollateral();
@@ -1148,7 +1151,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             balanceOfAgent = await wNat.balanceOf(agent);
             console.log("\n === After Pool Destruction ===");
             console.log(`Agent wNAT balance: ${balanceOfAgent}`);
-        });
+        }); */
 
     });
 
@@ -1414,17 +1417,6 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("random address shouldn't be able to undelegate governance", async () => {
             const res = collateralPool.undelegateGovernance({ from: accounts[5] });
             await expectRevert(res, "only agent");
-        });
-
-        it("random address shouldn't be able to set auto claiming", async () => {
-            const contract = await MockContract.new();
-            const res = collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: accounts[2] });
-            await expectRevert(res, "only agent");
-        });
-
-        it("should set auto claiming", async () => {
-            const contract = await MockContract.new();
-            await collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: agent });
         });
 
     });
