@@ -136,7 +136,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     });
 
-    it("should deposit vault collateral from any address - via approve & depositCollateral", async () => {
+    it("should deposit vault collateral from owner - via approve & depositCollateral", async () => {
         await usdc.mintAmount(owner, 2000);
         const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
         await usdc.approve(agentVault.address, 1100, { from: owner });
@@ -150,7 +150,17 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assertWeb3Equal(agentInfo2.totalVaultCollateralWei, 1100);
     });
 
-    it("should deposit vault collateral from any address - via transfer & updateCollateral", async () => {
+    it("can only deposit by owner - via approve & depositCollateral", async () => {
+        const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
+        const user = accounts[20];
+        await usdc.mintAmount(user, 2000);
+        await usdc.approve(agentVault.address, 1100, { from: user });
+        await expectRevert(agentVault.depositCollateral(usdc.address, 100, { from: user }), "only owner");
+        const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(agentInfo.totalVaultCollateralWei, 0);
+    });
+
+    it("should deposit vault collateral from owner - via transfer & updateCollateral", async () => {
         await usdc.mintAmount(owner, 2000);
         const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
         await usdc.transfer(agentVault.address, 100, { from: owner });
@@ -163,6 +173,14 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await agentVault.updateCollateral(usdc.address, { from: owner });
         const agentInfo2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(agentInfo2.totalVaultCollateralWei, 1100);
+    });
+
+    it("can only call updateCollateral by owner", async () => {
+        const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
+        const user = accounts[20];
+        await usdc.mintAmount(user, 2000);
+        await usdc.transfer(agentVault.address, 100, { from: user });
+        await expectRevert(agentVault.updateCollateral(usdc.address, { from: user }), "only owner");
     });
 
     it("should withdraw vault collateral from owner", async () => {

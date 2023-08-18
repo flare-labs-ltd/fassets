@@ -84,6 +84,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
     // must call `token.approve(vault, amount)` before for each token in _tokens
     function depositCollateral(IERC20 _token, uint256 _amount)
         external override
+        onlyOwner
     {
         _token.safeTransferFrom(msg.sender, address(this), _amount);
         assetManager.updateCollateral(address(this), _token);
@@ -92,7 +93,8 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
 
     // update collateral after `transfer(vault, some amount)` was called (alternative to depositCollateral)
     function updateCollateral(IERC20 _token)
-        external
+        external override
+        onlyOwner
     {
         assetManager.updateCollateral(address(this), _token);
         _tokenUsed(_token, TOKEN_DEPOSIT);
