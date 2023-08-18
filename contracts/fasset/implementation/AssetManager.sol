@@ -340,14 +340,14 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * NOTE: may only be called from an agent vault, not from an EOA address.
      * @param _valueNATWei the withdrawn amount
      */
-    function withdrawCollateral(
+    function beforeCollateralWithdrawal(
         IERC20 _token,
         uint256 _valueNATWei
     )
         external override
     {
-        // AgentsExternal.withdrawalExecuted makes sure that only a registered agent vault can call
-        AgentsExternal.withdrawalExecuted(_token, msg.sender, _valueNATWei);
+        // AgentsExternal.beforeCollateralWithdrawal makes sure that only a registered agent vault can call
+        AgentsExternal.beforeCollateralWithdrawal(_token, msg.sender, _valueNATWei);
     }
 
     /**

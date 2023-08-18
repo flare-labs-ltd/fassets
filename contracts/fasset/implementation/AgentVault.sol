@@ -74,7 +74,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         onlyOwner
     {
         ICollateralPool pool = collateralPool();
-        assetManager.withdrawCollateral(pool.poolToken(), _amount);
+        assetManager.beforeCollateralWithdrawal(pool.poolToken(), _amount);
         (uint256 natShare, uint256 fassetShare) =
             pool.exit(_amount, ICollateralPool.TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
         _withdrawWNatTo(_recipient, natShare);
@@ -104,7 +104,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         nonReentrant
     {
         // check that enough was announced and reduce announcement
-        assetManager.withdrawCollateral(_token, _amount);
+        assetManager.beforeCollateralWithdrawal(_token, _amount);
         // transfer tokens to recipient
         _token.safeTransfer(_recipient, _amount);
     }

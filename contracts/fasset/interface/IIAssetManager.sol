@@ -137,7 +137,7 @@ interface IIAssetManager is IAssetManager {
      * NOTE: may only be called from an agent vault, not from an EOA address.
      * @param _valueNATWei the withdrawn amount
      */
-    function withdrawCollateral(
+    function beforeCollateralWithdrawal(
         IERC20 _token,
         uint256 _valueNATWei
     ) external;

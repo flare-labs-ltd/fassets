@@ -231,7 +231,8 @@ export class Agent extends AssetContextClient {
     }
 
     async announceVaultCollateralWithdrawal(amountWei: BNish) {
-        await this.assetManager.announceVaultCollateralWithdrawal(this.vaultAddress, amountWei, { from: this.ownerWorkAddress });
+        const res = await this.assetManager.announceVaultCollateralWithdrawal(this.vaultAddress, amountWei, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, 'VaultCollateralWithdrawalAnnounced');
     }
 
     async withdrawVaultCollateral(amountWei: BNish) {
