@@ -12,16 +12,22 @@ library StateUpdater {
     function updateCurrentBlock(ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof)
         external
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
         TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
+        updateCurrentBlock(_proof.blockNumber, _proof.blockTimestamp, _proof.numberOfConfirmations);
+    }
+
+    function updateCurrentBlock(uint64 _blockNumber, uint64 _blockTimestamp, uint64 _numberOfConfirmations)
+        internal
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
         bool changed = false;
-        uint64 finalizationBlockNumber = _proof.blockNumber + _proof.numberOfConfirmations;
+        uint64 finalizationBlockNumber = _blockNumber + _numberOfConfirmations;
         if (finalizationBlockNumber > state.currentUnderlyingBlock) {
             state.currentUnderlyingBlock = finalizationBlockNumber;
             changed = true;
         }
-        uint256 finalizationBlockTimestamp = _proof.blockTimestamp +
-            _proof.numberOfConfirmations * state.settings.averageBlockTimeMS / 1000;
+        uint256 finalizationBlockTimestamp = _blockTimestamp +
+            _numberOfConfirmations * state.settings.averageBlockTimeMS / 1000;
         if (finalizationBlockTimestamp > state.currentUnderlyingBlockTimestamp) {
             state.currentUnderlyingBlockTimestamp = finalizationBlockTimestamp.toUint64();
             changed = true;
