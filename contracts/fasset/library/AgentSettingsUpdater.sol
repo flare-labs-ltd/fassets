@@ -51,6 +51,9 @@ library AgentSettingsUpdater {
         Agent.SettingUpdate storage update = agent.settingUpdates[hash];
         require(update.validAt != 0, "no pending update");
         require(update.validAt <= block.timestamp, "update not valid yet");
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        require(update.validAt + settings.agentSettingUpdateWindowSeconds >= block.timestamp,
+            "update not valid anymore");
         _executeUpdate(agent, hash, update.value);
         emit AMEvents.AgentSettingChanged(_agentVault, _name, update.value);
         delete agent.settingUpdates[hash];

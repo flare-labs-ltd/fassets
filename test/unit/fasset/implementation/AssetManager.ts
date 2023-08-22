@@ -334,6 +334,21 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(agentInfo.feeBIPS.toString(), "2000");
         });
 
+        it("should fail if the agent setting is executed too early or too late", async () => {
+            const settings = await assetManager.getSettings();
+            const agentFeeChangeTimelock = settings.agentFeeChangeTimelockSeconds;
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            // announce
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "feeBIPS", 2000, { from: agentOwner1 });
+            // can't execute update if called to early after announcement
+            const res1 = assetManager.executeAgentSettingUpdate(agentVault.address, "feeBIPS", { from: agentOwner1 });
+            await expectRevert(res1, "update not valid yet");
+            await time.increase(agentFeeChangeTimelock);
+            await time.increase(1 * DAYS);  // too late
+            const res2 = assetManager.executeAgentSettingUpdate(agentVault.address, "feeBIPS", { from: agentOwner1 });
+            await expectRevert(res2, "update not valid anymore");
+        });
+
         it("should not update agent settings fee BIPS if value too high", async () => {
             const agentFeeChangeTimelock = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);

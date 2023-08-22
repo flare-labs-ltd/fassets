@@ -279,5 +279,6 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         agentExitAvailableTimelockSeconds: parameters.agentExitAvailableTimelockSeconds,
         agentFeeChangeTimelockSeconds: parameters.agentFeeChangeTimelockSeconds,
         agentCollateralRatioChangeTimelockSeconds: parameters.agentCollateralRatioChangeTimelockSeconds,
+        agentSettingUpdateWindowSeconds: parameters.agentSettingUpdateWindowSeconds,
     };
 }

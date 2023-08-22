@@ -430,4 +430,10 @@ export interface AssetManagerParameters {
      * @minimum 0
      */
     agentCollateralRatioChangeTimelockSeconds: integer;
+
+    /**
+     * Amount of seconds that an agent is allowed to execute an update once it is allowed.
+     * @minimum 60
+     */
+    agentSettingUpdateWindowSeconds: integer;
 }

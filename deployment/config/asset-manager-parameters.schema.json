@@ -78,6 +78,11 @@
             "minimum": 0,
             "type": "integer"
         },
+        "agentSettingUpdateWindowSeconds": {
+            "description": "Amount of seconds that an agent is allowed to execute an update once it is allowed.",
+            "minimum": 60,
+            "type": "integer"
+        },
         "agentVaultFactory": {
             "description": "The factory contract for creating agent vaults.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'AgentVaultFactory' in contracts.json.",
             "pattern": "^\\w+$",
@@ -146,18 +151,6 @@
             "description": "Chain id as used in the state connector.",
             "minimum": 0,
             "type": "integer"
-        },
-        "vaultCollateralBuyForFlareFactorBIPS": {
-            "description": "On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock\ncollateral. For this, part of collateral corresponding to FTSO asset value is burned and the rest is released.\nHowever, we cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT\nat FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.",
-            "minimum": 0,
-            "type": "integer"
-        },
-        "vaultCollaterals": {
-            "description": "The data about allowed vault collateral types.",
-            "items": {
-                "$ref": "#/definitions/CollateralTypeParameters"
-            },
-            "type": "array"
         },
         "collateralPoolFactory": {
             "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'CollateralPoolFactory' in contracts.json.",
@@ -256,13 +249,13 @@
             "pattern": "^\\w+$",
             "type": "string"
         },
-        "redemptionDefaultFactorVaultCollateralBIPS": {
-            "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from agent's vault collateral.",
+        "redemptionDefaultFactorPoolBIPS": {
+            "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from pool in FLR/SGB.",
             "minimum": 0,
             "type": "integer"
         },
-        "redemptionDefaultFactorPoolBIPS": {
-            "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from pool in FLR/SGB.",
+        "redemptionDefaultFactorVaultCollateralBIPS": {
+            "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from agent's vault collateral.",
             "minimum": 0,
             "type": "integer"
         },
@@ -318,6 +311,18 @@
                 "string"
             ]
         },
+        "vaultCollateralBuyForFlareFactorBIPS": {
+            "description": "On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock\ncollateral. For this, part of collateral corresponding to FTSO asset value is burned and the rest is released.\nHowever, we cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT\nat FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.",
+            "minimum": 0,
+            "type": "integer"
+        },
+        "vaultCollaterals": {
+            "description": "The data about allowed vault collateral types.",
+            "items": {
+                "$ref": "#/definitions/CollateralTypeParameters"
+            },
+            "type": "array"
+        },
         "withdrawalWaitMinSeconds": {
             "description": "Agent has to announce any collateral withdrawal ar vault destroy and then wait for at least\nwithdrawalWaitMinSeconds. This prevents challenged agent to remove all collateral before\nchallenge can be proved.",
             "minimum": 0,
@@ -328,6 +333,7 @@
         "agentCollateralRatioChangeTimelockSeconds",
         "agentExitAvailableTimelockSeconds",
         "agentFeeChangeTimelockSeconds",
+        "agentSettingUpdateWindowSeconds",
         "announcedUnderlyingConfirmationMinSeconds",
         "assetDecimals",
         "assetMintingDecimals",
@@ -339,8 +345,6 @@
         "buybackCollateralFactorBIPS",
         "ccbTimeSeconds",
         "chainId",
-        "vaultCollateralBuyForFlareFactorBIPS",
-        "vaultCollaterals",
         "collateralReservationFeeBIPS",
         "confirmationByOthersAfterSeconds",
         "confirmationByOthersRewardUSD5",
@@ -358,8 +362,8 @@
         "paymentChallengeRewardBIPS",
         "paymentChallengeRewardUSD5",
         "poolCollateral",
-        "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionDefaultFactorPoolBIPS",
+        "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionFeeBIPS",
         "requireEOAAddressProof",
         "tokenInvalidationTimeMinSeconds",
@@ -367,7 +371,10 @@
         "underlyingBlocksForPayment",
         "underlyingSecondsForPayment",
         "userWhitelist",
+        "vaultCollateralBuyForFlareFactorBIPS",
+        "vaultCollaterals",
         "withdrawalWaitMinSeconds"
     ],
     "type": "object"
 }
+

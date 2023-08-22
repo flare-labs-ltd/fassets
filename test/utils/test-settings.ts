@@ -97,6 +97,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         announcedUnderlyingConfirmationMinSeconds: 0,           // should be higher in production (~ state connector response time, in tests sc response time is 0)
         agentFeeChangeTimelockSeconds: 6 * HOURS,
         agentCollateralRatioChangeTimelockSeconds: 1 * HOURS,
+        agentSettingUpdateWindowSeconds: 1 * HOURS,
         agentExitAvailableTimelockSeconds: 10 * MINUTES,
         vaultCollateralBuyForFlareFactorBIPS: toBIPS(1.05),
         mintingPoolHoldingsRequiredBIPS: toBIPS("50%"),
