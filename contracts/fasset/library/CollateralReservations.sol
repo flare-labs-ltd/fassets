@@ -98,7 +98,7 @@ library CollateralReservations {
         // share collateral reservation fee between the agent's vault and pool
         uint256 poolFeeShare = crt.reservationFeeNatWei.mulBips(agent.poolFeeShareBIPS);
         Agents.getPoolWNat(agent).depositTo{value: poolFeeShare}(address(agent.collateralPool));
-        IIAgentVault(crt.agentVault).depositNat{value: crt.reservationFeeNatWei - poolFeeShare}();
+        IIAgentVault(crt.agentVault).depositNat{value: crt.reservationFeeNatWei - poolFeeShare}(Globals.getWNat());
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
     }

@@ -84,13 +84,13 @@ interface IAgentVault {
      * Delegate governance vote power for possible NAT collateral token held in this vault.
      * NOTE: only the owner of the agent vault may call this method.
      */
-    function delegateGovernance(address _to) external;
+    function delegateGovernance(IVPToken _token, address _to) external;
 
     /**
      * Undelegate governance vote power for possible NAT collateral token held in this vault.
      * NOTE: only the owner of the agent vault may call this method.
      */
-    function undelegateGovernance() external;
+    function undelegateGovernance(IVPToken _token) external;
 
     /**
      * Claim the FTSO rewards earned by delegating.

@@ -238,7 +238,7 @@ library Agents {
             burnDirectNAT(amountNatWei);
             // If there is some overpaid NAT, just send it to the agent's vault.
             if (msg.value > amountNatWei) {
-                vault.depositNat{ value: msg.value - amountNatWei }();
+                vault.depositNat{ value: msg.value - amountNatWei }(Globals.getWNat());
             }
         }
     }
@@ -251,7 +251,7 @@ library Agents {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
-        vault.payoutNAT(settings.burnAddress, _amountNATWei);
+        vault.payoutNAT(Globals.getWNat(), settings.burnAddress, _amountNATWei);
     }
 
     function burnDirectNAT(

@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "../../userInterfaces/ICollateralPool.sol";
+import "../interface/IICollateralPool.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAgentVault.sol";
 import "../interface/IIAssetManager.sol";
@@ -18,8 +18,6 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
     IERC20[] private usedTokens;
 
     mapping(IERC20 => uint256) private tokenUseFlags;
-
-    IWNat public wNat;
 
     bool private internalWithdrawal;
 
@@ -39,7 +37,6 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
 
     constructor(IIAssetManager _assetManager) {
         assetManager = _assetManager;
-        wNat = _assetManager.getWNat();
     }
 
     // needed to allow wNat.withdraw() to send back funds, since there is no withdrawTo()
@@ -48,10 +45,10 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
     }
 
     // only supposed to be used from asset manager, but safe to be used by anybody
-    function depositNat() external payable override {
-        wNat.deposit{value: msg.value}();
-        assetManager.updateCollateral(address(this), wNat);
-        _tokenUsed(wNat, TOKEN_DEPOSIT);
+    function depositNat(IWNat _wNat) external payable override {
+        _wNat.deposit{value: msg.value}();
+        assetManager.updateCollateral(address(this), _wNat);
+        _tokenUsed(_wNat, TOKEN_DEPOSIT);
     }
 
     // without "onlyOwner" to allow owner to send funds from any source
@@ -73,11 +70,12 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         external
         onlyOwner
     {
-        ICollateralPool pool = collateralPool();
+        IICollateralPool pool = IICollateralPool(address(collateralPool()));
+        IWNat wNat = pool.wNat();
         assetManager.beforeCollateralWithdrawal(pool.poolToken(), _amount);
         (uint256 natShare, uint256 fassetShare) =
             pool.exit(_amount, ICollateralPool.TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
-        _withdrawWNatTo(_recipient, natShare);
+        _withdrawWNatTo(wNat, _recipient, natShare);
         assetManager.fAsset().safeTransfer(_recipient, fassetShare);
     }
 
@@ -136,13 +134,13 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         _token.revokeDelegationAt(_who, _blockNumber);
     }
 
-    function delegateGovernance(address _to) external override onlyOwner {
-        wNat.governanceVotePower().delegate(_to);
-        _tokenUsed(wNat, TOKEN_DELEGATE_GOVERNANCE);
+    function delegateGovernance(IVPToken _token, address _to) external override onlyOwner {
+        _token.governanceVotePower().delegate(_to);
+        _tokenUsed(_token, TOKEN_DELEGATE_GOVERNANCE);
     }
 
-    function undelegateGovernance() external override onlyOwner {
-        wNat.governanceVotePower().undelegate();
+    function undelegateGovernance(IVPToken _token) external override onlyOwner {
+        _token.governanceVotePower().undelegate();
     }
 
     // Claim ftso rewards. Alternatively, you can set claim executor and then claim directly from FtsoRewardManager.
@@ -233,12 +231,12 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
 
     // Used by asset manager (only for burn for now).
     // Is nonReentrant to prevent reentrancy, in case this is not the last method called.
-    function payoutNAT(address payable _recipient, uint256 _amount)
+    function payoutNAT(IWNat _wNat, address payable _recipient, uint256 _amount)
         external override
         onlyAssetManager
         nonReentrant
     {
-        _withdrawWNatTo(_recipient, _amount);
+        _withdrawWNatTo(_wNat, _recipient, _amount);
     }
 
     function collateralPool()
@@ -267,9 +265,9 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
             || _interfaceId == type(IIAgentVault).interfaceId;
     }
 
-    function _withdrawWNatTo(address payable _recipient, uint256 _amount) private {
+    function _withdrawWNatTo(IWNat _wNat, address payable _recipient, uint256 _amount) private {
         internalWithdrawal = true;
-        wNat.withdraw(_amount);
+        _wNat.withdraw(_amount);
         internalWithdrawal = false;
         _transferNAT(_recipient, _amount);
     }
