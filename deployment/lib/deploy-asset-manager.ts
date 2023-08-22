@@ -31,6 +31,21 @@ export async function deploySCProofVerifier(hre: HardhatRuntimeEnvironment, cont
     saveContracts(contractsFile, contracts);
 }
 
+export async function deployPriceReader(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    console.log(`Deploying PriceReader`);
+
+    const artifacts = hre.artifacts as Truffle.Artifacts;
+
+    const PriceReader = artifacts.require("FtsoV1PriceReader");
+
+    const contracts = loadContracts(contractsFile);
+
+    const priceReader = await PriceReader.new(contracts.AddressUpdater.address, contracts.FtsoRegistry.address);
+
+    contracts.PriceReader = newContract("PriceReader", "PriceReader.sol", priceReader.address);
+    saveContracts(contractsFile, contracts);
+}
+
 export async function deployWhitelist(hre: HardhatRuntimeEnvironment, contractsFile: string, kind: 'Agent' | 'User') {
     console.log(`Deploying ${kind}Whitelist`);
 
@@ -75,6 +90,21 @@ export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment
     const collateralPoolFactory = await CollateralPoolFactory.new();
 
     contracts.CollateralPoolFactory = newContract("CollateralPoolFactory", "CollateralPoolFactory.sol", collateralPoolFactory.address);
+    saveContracts(contractsFile, contracts);
+}
+
+export async function deployCollateralPoolTokenFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    console.log(`Deploying CollateralPoolTokenFactory`);
+
+    const artifacts = hre.artifacts as Truffle.Artifacts;
+
+    const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
+
+    const contracts = loadContracts(contractsFile);
+
+    const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new();
+
+    contracts.CollateralPoolTokenFactory = newContract("CollateralPoolTokenFactory", "CollateralPoolTokenFactory.sol", collateralPoolTokenFactory.address);
     saveContracts(contractsFile, contracts);
 }
 
@@ -123,8 +153,8 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const addressValidator = await AddressValidator.new(...addressValidatorConstructorArgs) as Truffle.ContractInstance;
 
     const poolCollateral = convertCollateralType(contracts, parameters.poolCollateral, CollateralClass.POOL);
-    const class1Collateral = parameters.class1Collaterals.map(p => convertCollateralType(contracts, p, CollateralClass.CLASS1));
-    const collateralTypes = [poolCollateral, ...class1Collateral];
+    const vaultCollateral = parameters.vaultCollaterals.map(p => convertCollateralType(contracts, p, CollateralClass.VAULT));
+    const collateralTypes = [poolCollateral, ...vaultCollateral];
 
     const liquidationStrategyFactory = liquidationStrategyFactories[parameters.liquidationStrategy]();
     const liquidationStrategy = await liquidationStrategyFactory.deployLibrary(hre, contracts);
@@ -207,12 +237,13 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         fAsset: fAsset.address,
         agentVaultFactory: addressFromParameter(contracts, parameters.agentVaultFactory ?? 'AgentVaultFactory'),
         collateralPoolFactory: addressFromParameter(contracts, parameters.collateralPoolFactory ?? 'CollateralPoolFactory'),
+        collateralPoolTokenFactory: addressFromParameter(contracts, parameters.collateralPoolTokenFactory ?? 'CollateralPoolTokenFactory'),
         scProofVerifier: addressFromParameter(contracts, parameters.scProofVerifier ?? 'SCProofVerifier'),
+        priceReader: addressFromParameter(contracts, parameters.priceReader ?? 'PriceReader'),
         whitelist: parameters.userWhitelist ? addressFromParameter(contracts, parameters.userWhitelist) : ZERO_ADDRESS,
         agentWhitelist: addressFromParameter(contracts, parameters.agentWhitelist ?? 'AgentWhitelist'),
         underlyingAddressValidator: addressValidator,
         liquidationStrategy: liquidationStrategy,
-        ftsoRegistry: contracts.FtsoRegistry.address,
         burnAddress: parameters.burnAddress,
         chainId: parameters.chainId,
         assetDecimals: parameters.assetDecimals,
@@ -227,7 +258,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         mintingPoolHoldingsRequiredBIPS: parameters.mintingPoolHoldingsRequiredBIPS,
         maxRedeemedTickets: parameters.maxRedeemedTickets,
         redemptionFeeBIPS: parameters.redemptionFeeBIPS,
-        redemptionDefaultFactorAgentC1BIPS: parameters.redemptionDefaultFactorClass1BIPS,
+        redemptionDefaultFactorVaultCollateralBIPS: parameters.redemptionDefaultFactorVaultCollateralBIPS,
         redemptionDefaultFactorPoolBIPS: parameters.redemptionDefaultFactorPoolBIPS,
         underlyingBlocksForPayment: parameters.underlyingBlocksForPayment,
         underlyingSecondsForPayment: parameters.underlyingSecondsForPayment,
@@ -242,7 +273,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         withdrawalWaitMinSeconds: parameters.withdrawalWaitMinSeconds,
         announcedUnderlyingConfirmationMinSeconds: parameters.announcedUnderlyingConfirmationMinSeconds,
         buybackCollateralFactorBIPS: parameters.buybackCollateralFactorBIPS,
-        class1BuyForFlareFactorBIPS: parameters.class1BuyForFlareFactorBIPS,
+        vaultCollateralBuyForFlareFactorBIPS: parameters.vaultCollateralBuyForFlareFactorBIPS,
         minUpdateRepeatTimeSeconds: parameters.minUpdateRepeatTimeSeconds,
         tokenInvalidationTimeMinSeconds: parameters.tokenInvalidationTimeMinSeconds,
         agentExitAvailableTimelockSeconds: parameters.agentExitAvailableTimelockSeconds,

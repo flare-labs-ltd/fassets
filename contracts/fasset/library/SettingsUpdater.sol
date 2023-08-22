@@ -21,7 +21,7 @@ library SettingsUpdater {
     bytes32 internal constant UPDATES_STATE_POSITION = keccak256("fasset.AssetManager.UpdaterState");
 
     bytes32 internal constant UPDATE_CONTRACTS =
-        keccak256("updateContracts(address,address,IWNat)");
+        keccak256("updateContracts(address,IWNat)");
     bytes32 internal constant SET_TIME_FOR_PAYMENT =
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant SET_WHITELIST =
@@ -32,8 +32,12 @@ library SettingsUpdater {
         keccak256("setAgentVaultFactory(address)");
     bytes32 internal constant SET_COLLATERAL_POOL_FACTORY =
         keccak256("setCollateralPoolFactory(address)");
+    bytes32 internal constant SET_COLLATERAL_POOL_TOKEN_FACTORY =
+        keccak256("setCollateralPoolTokenFactory(address)");
     bytes32 internal constant SET_UNDERLYING_ADDRESS_VALIDATOR =
         keccak256("setUnderlyingAddressValidator(address)");
+    bytes32 internal constant SET_PRICE_READER =
+        keccak256("setPriceReader(address)");
     bytes32 internal constant SET_SC_PROOF_VERIFIER =
         keccak256("setSCProofVerifier(address)");
     bytes32 internal constant SET_MIN_UPDATE_REPEAT_TIME_SECONDS =
@@ -78,8 +82,8 @@ library SettingsUpdater {
         keccak256("setMintingCapAMG((uint256)");
     bytes32 internal constant SET_TOKEN_INVALIDATION_TIME_MIN_SECONDS =
         keccak256("setTokenInvalidationTimeMinSeconds((uint256)");
-    bytes32 internal constant SET_CLASS1_BUY_FOR_FLARE_FACTOR_BIPS =
-        keccak256("setClass1BuyForFlareFactorBIPS((uint256)");
+    bytes32 internal constant SET_VAULT_COLLATERAL_BUY_FOR_FLARE_FACTOR_BIPS =
+        keccak256("setVaultCollateralBuyForFlareFactorBIPS((uint256)");
     bytes32 internal constant SET_AGENT_EXIT_AVAILABLE_TIMELOCK_SECONDS =
         keccak256("setAgentExitAvailableTimelockSeconds((uint256)");
     bytes32 internal constant SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS =
@@ -123,9 +127,15 @@ library SettingsUpdater {
         } else if (_method == SET_COLLATERAL_POOL_FACTORY) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setCollateralPoolFactory(_params);
+        } else if (_method == SET_COLLATERAL_POOL_TOKEN_FACTORY) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setCollateralPoolTokenFactory(_params);
         } else if (_method == SET_UNDERLYING_ADDRESS_VALIDATOR) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setUnderlyingAddressValidator(_params);
+        } else if (_method == SET_PRICE_READER) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setPriceReader(_params);
         } else if (_method == SET_SC_PROOF_VERIFIER) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setSCProofVerifier(_params);
@@ -189,9 +199,9 @@ library SettingsUpdater {
         } else if (_method == SET_TOKEN_INVALIDATION_TIME_MIN_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setTokenInvalidationTimeMinSeconds(_params);
-        } else if (_method == SET_CLASS1_BUY_FOR_FLARE_FACTOR_BIPS) {
+        } else if (_method == SET_VAULT_COLLATERAL_BUY_FOR_FLARE_FACTOR_BIPS) {
             _checkEnoughTimeSinceLastUpdate(_method);
-            _setClass1BuyForFlareFactorBIPS(_params);
+            _setVaultCollateralBuyForFlareFactorBIPS(_params);
         } else if (_method == SET_AGENT_EXIT_AVAILABLE_TIMELOCK_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAgentExitAvailableTimelockSeconds(_params);
@@ -235,22 +245,17 @@ library SettingsUpdater {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
 
-        (address controller, address ftsoRegistry, IWNat wNat) =
-            abi.decode(_params, (address, address, IWNat));
+        (address controller, IWNat wNat) = abi.decode(_params, (address, IWNat));
 
         if (settings.assetManagerController != controller) {
             settings.assetManagerController = controller;
             emit AMEvents.ContractChanged("assetManagerController", address(controller));
         }
 
-        if (settings.ftsoRegistry != ftsoRegistry) {
-            settings.ftsoRegistry = ftsoRegistry;
-            emit AMEvents.ContractChanged("ftsoRegistry", address(ftsoRegistry));
-        }
-
         IWNat oldWNat = Globals.getWNat();
         if (oldWNat != wNat) {
             CollateralType.Data memory data = CollateralTypes.getInfo(CollateralType.Class.POOL, oldWNat);
+            data.validUntil = 0;
             data.token = wNat;
             CollateralTypes.setPoolWNatCollateralType(data);
             emit AMEvents.ContractChanged("wNat", address(wNat));
@@ -312,6 +317,7 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         address value = abi.decode(_params, (address));
         // validate
+        require(value != address(0), "address zero");
         // update
         settings.agentWhitelist = value;
         emit AMEvents.ContractChanged("agentWhitelist", value);
@@ -345,6 +351,20 @@ library SettingsUpdater {
         emit AMEvents.ContractChanged("collateralPoolFactory", value);
     }
 
+    function _setCollateralPoolTokenFactory(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        address value = abi.decode(_params, (address));
+        // validate
+        require(value != address(0), "address zero");
+        // update
+        settings.collateralPoolTokenFactory = value;
+        emit AMEvents.ContractChanged("collateralPoolTokenFactory", value);
+    }
+
     function _setUnderlyingAddressValidator(
         bytes calldata _params
     )
@@ -357,6 +377,20 @@ library SettingsUpdater {
         // update
         settings.underlyingAddressValidator = value;
         emit AMEvents.ContractChanged("underlyingAddressValidator", value);
+    }
+
+    function _setPriceReader(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        address value = abi.decode(_params, (address));
+        // validate
+        require(value != address(0), "address zero");
+        // update
+        settings.priceReader = value;
+        emit AMEvents.ContractChanged("priceReader", value);
     }
 
     function _setSCProofVerifier(
@@ -480,18 +514,18 @@ library SettingsUpdater {
         private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        (uint256 class1, uint256 pool) = abi.decode(_params, (uint256, uint256));
+        (uint256 vaultF, uint256 poolF) = abi.decode(_params, (uint256, uint256));
         // validate
-        require(class1 + pool > SafePct.MAX_BIPS, "bips value too low");
-        require(class1 <= settings.redemptionDefaultFactorAgentC1BIPS.mulBips(12000), "fee increase too big");
-        require(class1 >= settings.redemptionDefaultFactorAgentC1BIPS.mulBips(8333), "fee decrease too big");
-        require(pool <= settings.redemptionDefaultFactorPoolBIPS.mulBips(12000), "fee increase too big");
-        require(pool >= settings.redemptionDefaultFactorPoolBIPS.mulBips(8333), "fee decrease too big");
+        require(vaultF + poolF > SafePct.MAX_BIPS, "bips value too low");
+        require(vaultF <= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(12000), "fee increase too big");
+        require(vaultF >= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(8333), "fee decrease too big");
+        require(poolF <= settings.redemptionDefaultFactorPoolBIPS.mulBips(12000), "fee increase too big");
+        require(poolF >= settings.redemptionDefaultFactorPoolBIPS.mulBips(8333), "fee decrease too big");
         // update
-        settings.redemptionDefaultFactorAgentC1BIPS = class1.toUint32();
-        emit AMEvents.SettingChanged("redemptionDefaultFactorAgentC1BIPS", class1);
-        settings.redemptionDefaultFactorPoolBIPS = pool.toUint32();
-        emit AMEvents.SettingChanged("redemptionDefaultFactorPoolBIPS", pool);
+        settings.redemptionDefaultFactorVaultCollateralBIPS = vaultF.toUint32();
+        emit AMEvents.SettingChanged("redemptionDefaultFactorVaultCollateralBIPS", vaultF);
+        settings.redemptionDefaultFactorPoolBIPS = poolF.toUint32();
+        emit AMEvents.SettingChanged("redemptionDefaultFactorPoolBIPS", poolF);
     }
 
     function _setConfirmationByOthersAfterSeconds(
@@ -656,7 +690,7 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("tokenInvalidationTimeMinSeconds", value);
     }
 
-    function _setClass1BuyForFlareFactorBIPS(
+    function _setVaultCollateralBuyForFlareFactorBIPS(
         bytes calldata _params
     )
         private
@@ -666,8 +700,8 @@ library SettingsUpdater {
         // validate
         require(value >= SafePct.MAX_BIPS, "value too small");
         // update
-        settings.class1BuyForFlareFactorBIPS = value.toUint32();
-        emit AMEvents.SettingChanged("class1BuyForFlareFactorBIPS", value);
+        settings.vaultCollateralBuyForFlareFactorBIPS = value.toUint32();
+        emit AMEvents.SettingChanged("vaultCollateralBuyForFlareFactorBIPS", value);
     }
 
     function _setAgentExitAvailableTimelockSeconds(
@@ -745,9 +779,10 @@ library SettingsUpdater {
         require(_settings.fAsset != address(0), "zero fAsset address");
         require(_settings.agentVaultFactory != address(0), "zero agentVaultFactory address");
         require(_settings.collateralPoolFactory != address(0), "zero collateralPoolFactory address");
+        require(_settings.collateralPoolTokenFactory != address(0), "zero collateralPoolTokenFactory address");
         require(_settings.scProofVerifier != address(0), "zero scProofVerifier address");
         require(_settings.underlyingAddressValidator != address(0), "zero underlyingAddressValidator address");
-        require(_settings.ftsoRegistry != address(0), "zero ftsoRegistry address");
+        require(_settings.priceReader != address(0), "zero priceReader address");
         require(_settings.liquidationStrategy != address(0), "zero liquidationStrategy address");
         require(_settings.agentWhitelist != address(0), "zero agentWhitelist address");
 
@@ -770,11 +805,11 @@ library SettingsUpdater {
         require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
         uint256 redemptionFactorBIPS =
-            _settings.redemptionDefaultFactorAgentC1BIPS + _settings.redemptionDefaultFactorPoolBIPS;
+            _settings.redemptionDefaultFactorVaultCollateralBIPS + _settings.redemptionDefaultFactorPoolBIPS;
         require(redemptionFactorBIPS > SafePct.MAX_BIPS, "bips value too low");
         require(_settings.attestationWindowSeconds >= 1 days, "window too small");
         require(_settings.confirmationByOthersAfterSeconds >= 2 hours, "must be at least two hours");
         require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, "confirmation time too big");
-        require(_settings.class1BuyForFlareFactorBIPS >= SafePct.MAX_BIPS, "value too small");
+        require(_settings.vaultCollateralBuyForFlareFactorBIPS >= SafePct.MAX_BIPS, "value too small");
     }
 }

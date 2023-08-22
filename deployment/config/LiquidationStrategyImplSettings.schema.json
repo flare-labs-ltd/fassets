@@ -14,8 +14,8 @@
             "minItems": 1,
             "type": "array"
         },
-        "liquidationFactorClass1BIPS": {
-            "description": "Factor with which to multiply the asset price in native currency to obtain the payment\nto the liquidator in class1 collateral. The rest (up to liquidationCollateralFactorBIPS) is paid from the pool.\nThe length of this array must be the same as the length of liquidationCollateralFactorBIPS array.",
+        "liquidationFactorVaultCollateralBIPS": {
+            "description": "Factor with which to multiply the asset price in native currency to obtain the payment\nto the liquidator in vault collateral. The rest (up to liquidationCollateralFactorBIPS) is paid from the pool.\nThe length of this array must be the same as the length of liquidationCollateralFactorBIPS array.",
             "items": {
                 "type": "number"
             },
@@ -30,9 +30,8 @@
     },
     "required": [
         "liquidationCollateralFactorBIPS",
-        "liquidationFactorClass1BIPS",
+        "liquidationFactorVaultCollateralBIPS",
         "liquidationStepSeconds"
     ],
     "type": "object"
 }
-

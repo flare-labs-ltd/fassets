@@ -6,6 +6,7 @@ import { IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
 import { ScopedRunner } from "../../../lib/utils/events/ScopedRunner";
 import { AssetContext } from "../../integration/utils/AssetContext";
 import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
+import { FAssetMarketplace } from "./FAssetMarketplace";
 import { FuzzingAgent } from "./FuzzingAgent";
 import { FuzzingCustomer } from "./FuzzingCustomer";
 import { FuzzingState } from "./FuzzingState";
@@ -27,9 +28,12 @@ export class FuzzingRunner extends ScopedRunner {
         this.logError = (e) => this.interceptor.logUnexpectedError(e, "!!! THREAD ERROR");
     }
 
+    waitingToFinish: boolean = false;
+
     agents: FuzzingAgent[] = [];
     customers: FuzzingCustomer[] = [];
     availableAgents: AvailableAgentInfo[] = [];
+    fAssetMarketplace = new FAssetMarketplace();
 
     async refreshAvailableAgents() {
         const { 0: _availableAgents } = await this.context.assetManager.getAvailableAgentsDetailedList(0, 1000);

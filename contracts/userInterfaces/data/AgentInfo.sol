@@ -22,13 +22,13 @@ library AgentInfo {
         // Current agent's status.
         AgentInfo.Status status;
 
-        // Agent vault owner's cold wallet address, used for occasional administration.
+        // Agent vault owner's management address, used for occasional administration.
         // Immutable.
-        address ownerColdWalletAddress;
+        address ownerManagementAddress;
 
-        // Agent vault owner's cold wallet address, used for automatic operations.
-        // Can be changed by a call from the owner's cold wallet.
-        address ownerHotWalletAddress;
+        // Agent vault owner's work address, used for automatic operations.
+        // Can be changed by a call from the owner's management address.
+        address ownerWorkAddress;
 
         // Agent's collateral pool address
         address collateralPool;
@@ -49,13 +49,13 @@ library AgentInfo {
         // This share of fee is minted as f-assets and belongs to the pool.
         uint256 poolFeeShareBIPS;
 
-        // The token identifier of the agent's current class 1 collateral.
+        // The token identifier of the agent's current vault collateral.
         // Token identifier can be used to call AssetManager.getCollateralType().
-        IERC20 class1CollateralToken;
+        IERC20 vaultCollateralToken;
 
         // Amount, set by agent, at which locked and free collateral are calculated for new mintings.
-        // For agent's class 1 collateral.
-        uint256 mintingClass1CollateralRatioBIPS;
+        // For agent's vault collateral.
+        uint256 mintingVaultCollateralRatioBIPS;
 
         // Amount, set by agent, at which locked and free collateral are calculated for new mintings.
         // For pool collateral.
@@ -65,27 +65,27 @@ library AgentInfo {
         // This can change any moment due to minting, redemption or price changes.
         uint256 freeCollateralLots;
 
-        // Total amount of class1 collateral in agent's vault.
-        uint256 totalClass1CollateralWei;
+        // Total amount of vault collateral in agent's vault.
+        uint256 totalVaultCollateralWei;
 
         // Free collateral, available for new mintings.
         // Note: this value doesn't tell you anything about agent being near liquidation, since it is
         // calculated at agentMinCollateralRatio, not minCollateralRatio.
         // Use collateralRatioBIPS to see whether the agent is near liquidation.
-        uint256 freeClass1CollateralWei;
+        uint256 freeVaultCollateralWei;
 
         // The actual agent's collateral ratio, as it is used in liquidation.
         // For calculation, the system checks both FTSO prices and trusted provider's prices and uses
         // the ones that give higher ratio.
-        uint256 class1CollateralRatioBIPS;
+        uint256 vaultCollateralRatioBIPS;
 
         // Total amount of NAT collateral in agent's pool.
         uint256 totalPoolCollateralNATWei;
 
-        // Free NAT pool collateral (see class1 for details).
+        // Free NAT pool collateral (see vault collateral for details).
         uint256 freePoolCollateralNATWei;
 
-        // The actual pool collateral ratio (see class1 for details).
+        // The actual pool collateral ratio (see vault collateral for details).
         uint256 poolCollateralRatioBIPS;
 
         // The amount of pool tokens that belong to agent's vault. This limits the amount of possible
@@ -94,8 +94,8 @@ library AgentInfo {
         // Note: the amount of agent's pool tokens only affects minting, not liquidation.
         uint256 totalAgentPoolTokensWei;
 
-        // The amount of class1 collateral that will be withdrawn by the agent.
-        uint256 announcedClass1WithdrawalWei;
+        // The amount of vault collateral that will be withdrawn by the agent.
+        uint256 announcedVaultCollateralWithdrawalWei;
 
         // The amount of pool tokens that will be withdrawn by the agent.
         uint256 announcedPoolTokensWithdrawalWei;
@@ -114,7 +114,7 @@ library AgentInfo {
 
         // Total amount of ongoing redemptions that lock the pool collateral.
         // (In pool self-close exits, pool collateral is not locked. So the amount of locked
-        // collateral in the pool can be less than the amount of locked class1 collateral.)
+        // collateral in the pool can be less than the amount of locked vault collateral.)
         uint256 poolRedeemingUBA;
 
         // Total amount of dust (unredeemable minted f-assets).

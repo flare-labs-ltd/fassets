@@ -123,9 +123,9 @@ library CollateralReservations {
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
         Agents.burnDirectNAT(crt.reservationFeeNatWei);
         // burn reserved collateral at market price
-        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.class1CollateralIndex);
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(agent.vaultCollateralIndex);
         uint256 reservedCollateral = Conversion.convertAmgToTokenWei(crt.valueAMG, amgToTokenWeiPrice);
-        Agents.burnCollateralClass1(agent, reservedCollateral);
+        Agents.burnVaultCollateral(agent, reservedCollateral);
         // send event
         uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG) +
             Minting.calculatePoolFee(agent, crt.underlyingFeeUBA);

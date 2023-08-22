@@ -53,6 +53,8 @@
     "deploy-mock-stablecoins-coston": "env NETWORK_CONFIG=coston yarn hardhat --network coston run deployment/test/scripts/mock-deploy-stablecoins.ts",
     "full-deploy-coston": "yarn hardhat --network coston deploy-asset-managers --network-config coston --link --deploy-controller --all",
     "full-deploy-coston-test": "env NETWORK_CONFIG=coston yarn hardhat --network coston test --no-compile deployment/test/test-deployed-contracts.ts",
+    "console": "yarn hardhat console --no-compile",
+    "console-coston": "yarn hardhat console --no-compile --network coston",
     "---------INFO---SCRIPTS": "",
     "gas-snapshot": "env CI=true yarn testHH; yarn gas-report",
     "gas-report": "ts-node node_modules/flare-smart-contracts/scripts/process-gas-report.ts && cat .gas-report.txt",
@@ -60,15 +62,15 @@
     "gas": "cat .gas-report.txt"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "4.9.1",
-    "@typescript-eslint/eslint-plugin": "5.59.9",
-    "@typescript-eslint/parser": "5.59.9",
-    "dotenv": "16.1.4",
-    "eslint": "8.42.0",
+    "@openzeppelin/contracts": "4.9.2",
+    "@typescript-eslint/eslint-plugin": "6.1.0",
+    "@typescript-eslint/parser": "6.1.0",
+    "dotenv": "16.3.1",
+    "eslint": "8.45.0",
     "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#flare-distribution-to-delegators",
-    "hardhat": "2.15.0",
+    "hardhat": "2.17.0",
     "solhint": "3.4.1",
-    "solidity-coverage": "0.8.2"
+    "solidity-coverage": "0.8.4"
   },
   "devDependencies": {
     "@gnosis.pm/mock-contract": "4.0.0",
@@ -77,21 +79,21 @@
     "@nomiclabs/hardhat-web3": "2.0.0",
     "@openzeppelin/test-helpers": "0.5.16",
     "@swyftx/api-crypto-address-validator": "1.13.1",
-    "@typechain/hardhat": "8.0.0",
+    "@typechain/hardhat": "8.0.2",
     "@typechain/truffle-v5": "7.0.0",
-    "@typechain/web3-v1": "6.0.3",
+    "@typechain/web3-v1": "6.0.5",
     "@types/chai": "4.3.5",
     "@types/mocha": "10.0.1",
-    "@types/node": "16.18.32",
+    "@types/node": "16.18.39",
     "chai": "4.3.7",
     "glob": "9.3.0",
-    "hardhat-contract-sizer": "2.9.0",
+    "hardhat-contract-sizer": "2.10.0",
     "hardhat-gas-reporter": "1.0.9",
     "intercept-stdout": "0.1.2",
     "ts-node": "10.9.1",
-    "typechain": "8.2.0",
-    "typescript": "5.1.3",
-    "typescript-json-schema": "0.57.0",
-    "yarn-audit-fix": "9.3.10"
+    "typechain": "8.3.0",
+    "typescript": "5.1.6",
+    "typescript-json-schema": "0.59.0",
+    "yarn-audit-fix": "9.3.12"
   }
 }

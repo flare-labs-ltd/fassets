@@ -1,10 +1,10 @@
-**AgentCreated** - A new agent vault was created.
+**AgentVaultCreated** - A new agent vault was created.
 
 **AgentDestroyAnnounced** - Agent has announced destroy (close) of agent vault and will be able to perform destroy after the timestamp `destroyAllowedAt`.
 
 **AgentDestroyed** - Agent has destroyed (closed) the agent vault.
 
-**Class1WithdrawalAnnounced** - Agent has announced a withdrawal of collateral and will be able to withdraw the announced amount after timestamp `withdrawalAllowedAt`. If withdrawal was canceled (announced with amount 0), amountWei and withdrawalAllowedAt are zero.
+**VaultCollateralWithdrawalAnnounced** - Agent has announced a withdrawal of collateral and will be able to withdraw the announced amount after timestamp `withdrawalAllowedAt`. If withdrawal was canceled (announced with amount 0), amountWei and withdrawalAllowedAt are zero.
 
 **PoolTokenRedemptionAnnounced** - Agent has announced a withdrawal of collateral and will be able to redeem the announced amount of pool tokens after the timestamp `withdrawalAllowedAt`. If withdrawal was canceled (announced with amount 0), amountWei and withdrawalAllowedAt are zero.
 

@@ -1,7 +1,7 @@
 import { IBlock, IBlockChain, IBlockId, ITransaction, TX_FAILED, TX_SUCCESS, TxInputOutput } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { BlockHandler, IBlockChainEvents, TransactionHandler } from "../../../lib/underlying-chain/interfaces/IBlockChainEvents";
 import { IBlockChainWallet, TransactionOptions, TransactionOptionsWithFee } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
-import { BN_ZERO, BNish, Dict, formatBN, systemTimestamp, toBN } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish, Dict, fail, formatBN, systemTimestamp, toBN } from "../../../lib/utils/helpers";
 import { stringifyJson } from "../../../lib/utils/json-bn";
 import { ILogger } from "../../../lib/utils/logging";
 
@@ -175,6 +175,40 @@ export class MockChain implements IBlockChain, IBlockChainEvents {
 
     currentTimestamp() {
         return Math.max(systemTimestamp() + this.timestampSkew, this.lastBlockTimestamp());
+    }
+
+    // Only use this in unit tests, since it makes the chain inconsistent.
+    modifyMinedBlock(hashOrNumber: string | number, modify: (block: MockChainBlock) => MockChainBlock | void, changeBlockHash: boolean = false) {
+        const [number, hash] = typeof hashOrNumber === 'number' ? [hashOrNumber, this.blocks[hashOrNumber].hash] : [this.blockIndex[hashOrNumber], hashOrNumber];
+        if (number == null || hash == null) throw new Error("Unknown block");
+        const block = this.blocks[number];
+        const modifiedBlock = modify(block) ?? block;
+        modifiedBlock.hash = changeBlockHash
+            ? web3.utils.keccak256(JSON.stringify({ number, timestamp: modifiedBlock.timestamp, transactions: modifiedBlock.transactions.map(tx => tx.hash) }))
+            : block.hash;
+        // delete old indexes
+        delete this.blockIndex[hash];
+        for (const [i, tx] of block.transactions.entries()) {
+            delete this.transactionIndex[tx.hash];
+        }
+        // add changed
+        this.blocks[number] = modifiedBlock;
+        this.blockIndex[modifiedBlock.hash] = number;
+        for (const [i, tx] of modifiedBlock.transactions.entries()) {
+            this.transactionIndex[tx.hash] = [number, i];
+        }
+        return modifiedBlock.hash;
+    }
+
+    // Only use this in unit tests, since it makes the chain inconsistent.
+    modifyMinedTransaction(txHash: string, modify: (transaction: MockChainTransaction, block: MockChainBlock) => MockChainTransaction | void, changeHash: boolean = false) {
+        const [blockNumber, index] = this.transactionIndex[txHash] ?? fail("Invalid transaction hash");
+        this.modifyMinedBlock(blockNumber, block => {
+            const tx = block.transactions[index];
+            const modifiedTx = modify(tx, block) ?? tx;
+            modifiedTx.hash = changeHash ? this.createTransactionHash(modifiedTx.inputs, modifiedTx.outputs, modifiedTx.reference) : tx.hash;
+            block.transactions[index] = modifiedTx;
+        }, changeHash);
     }
 
     private addBlock(transactions: MockChainTransaction[]) {

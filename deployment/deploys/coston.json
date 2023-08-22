@@ -2,7 +2,7 @@
   {
     "name": "InflationAllocation",
     "contractName": "InflationAllocation.sol",
-    "address": "0x1B5A184869aD208E736BFecF53560e9940c3E67f"
+    "address": "0xD11CB940C8375c119CAe7b8A75844ec35371F2E0"
   },
   {
     "name": "StateConnector",
@@ -22,12 +22,12 @@
   {
     "name": "Inflation",
     "contractName": "Inflation.sol",
-    "address": "0x712BE218E44e2c93Cc1CF8179956b668EA7d8D3B"
+    "address": "0x12d20f1b378cd8ee8dA4729262645EC62FD52307"
   },
   {
     "name": "Supply",
     "contractName": "Supply.sol",
-    "address": "0xE8fc8D1eec5b5b24EAe805c3569518f787C30F3f"
+    "address": "0x98D2B1835A8D4a7c9915Ca212bDb5AA259642fac"
   },
   {
     "name": "FtsoRewardManager",
@@ -201,66 +201,97 @@
   },
   {
     "name": "USDC",
-    "contractName": "ERC20Mock.sol",
-    "address": "0x75F79Df31F0fbF3332EBA67d013CbA1154Bf20F1"
+    "contractName": "FakeERC20.sol",
+    "address": "0xC06496FA0551bf4996fb5Df876cBcC6F1d836460"
   },
   {
     "name": "USDT",
-    "contractName": "ERC20Mock.sol",
-    "address": "0x0e16329b59A6448315B29F9d663BedC2F54Bcf9B"
+    "contractName": "FakeERC20.sol",
+    "address": "0xD256b237dE74d3DaA24A2290efF48BBeF8feAF55"
   },
   {
     "name": "SCProofVerifier",
     "contractName": "SCProofVerifier.sol",
-    "address": "0x2D98960902EA6D0d9188052B23682d32C59d4461"
+    "address": "0x6b0BD6D36CCc0747ff91b0205446e4f04b8E2f80"
+  },
+  {
+    "name": "PriceReader",
+    "contractName": "PriceReader.sol",
+    "address": "0x7c9e271Ac03C8e1E86AbFe594E1991cBce7eF60a"
   },
   {
     "name": "AgentWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0xf66dEC1236319AA8202A1B0F2aa8442A4ad88A8F",
+    "address": "0xAB27348A166De8097a4Bb3a8913d049B1cFaD713",
     "mustSwitchToProduction": true
   },
   {
     "name": "UserWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0x5f73833EFDa1054905084232b25384505f2e6cb6",
+    "address": "0x84fD4EE52Ec435ED787d104bAFA912f858A499D6",
     "mustSwitchToProduction": true
   },
   {
     "name": "AgentVaultFactory",
     "contractName": "AgentVaultFactory.sol",
-    "address": "0xc5B0f10BEea6BB5Ac10aF93f494e75904B6fb0cC"
+    "address": "0x4A9400B27D58CcF816B665C043E0b9ABaF572Ac9"
   },
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0x27FEc084D6a09bBB6611063732df1B8BCcba5878"
+    "address": "0xa8e603775996836E22569061517544a33BB385AD"
+  },
+  {
+    "name": "CollateralPoolTokenFactory",
+    "contractName": "CollateralPoolTokenFactory.sol",
+    "address": "0x8f82f2e72e1c709eA85C7b2Dc8bf6C9ff6B4736a"
   },
   {
     "name": "AssetManagerController",
     "contractName": "AssetManagerController.sol",
-    "address": "0xec3eEe520ec48f5901f71B99feBB109A4df39b2B",
+    "address": "0x2684149b0aF1CB8B02749faf5280C51e18dd4D90",
     "mustSwitchToProduction": true
   },
   {
     "name": "LiquidationStrategyImpl",
     "contractName": "LiquidationStrategyImpl.sol",
-    "address": "0xcA5969f4F5d7152f675aC9F066B4C3A50A9184B3"
+    "address": "0x2A9d4EBd2196b1f2718400f2ad4Ce716C67C9925"
   },
   {
     "name": "AssetManager_FtestXRP",
     "contractName": "AssetManager.sol",
-    "address": "0xBc9bDE568C2f072CCAF99721be1A67BCC09d2D8b"
+    "address": "0x17598a9415C7e70A1d9e2D36050508e8e0F67c62"
   },
   {
     "name": "FtestXRP",
     "contractName": "FAsset.sol",
-    "address": "0x8b1c69F60F740B3226cC6Df4A814d0EF79f3eA09",
+    "address": "0xF6D08dC4aA8BC1ee57e938bF352d9B4A25cCeDa9",
     "mustSwitchToProduction": true
   },
   {
     "name": "AddressValidator_FtestXRP",
     "contractName": "RippleAddressValidator.sol",
-    "address": "0xE0F0d0bbD62f1ace5Aa86C3818e51728C86cd7a9"
+    "address": "0x12707B4FA134B822bB4F43731d291022dDb1A9E6"
+  },
+  {
+    "name": "FakePriceReader",
+    "contractName": "FakePriceReader.sol",
+    "address": "0x4B63A5045b8ac1b726C7E71A3dDa25A1bDeEa135"
+  },
+  {
+    "name": "AssetManager_FfakeXRP",
+    "contractName": "AssetManager.sol",
+    "address": "0x6a5Bf3303be1b33b2bBC248390F249A32489bb3c"
+  },
+  {
+    "name": "FfakeXRP",
+    "contractName": "FAsset.sol",
+    "address": "0xd5516a14f3Fb2A7F40F3502F88918e45450043ba",
+    "mustSwitchToProduction": true
+  },
+  {
+    "name": "AddressValidator_FfakeXRP",
+    "contractName": "RippleAddressValidator.sol",
+    "address": "0xB426501Ed03c82Ba5E1BEcd9De4BDe06C897efaB"
   }
 ]

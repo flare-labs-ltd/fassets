@@ -5,14 +5,15 @@
     "assetName": "Test XRP",
     "assetSymbol": "testXRP",
     "assetDecimals": 6,
-    "fAssetName": "F-TestXRP",
-    "fAssetSymbol": "FtestXRP",
+    "fAssetName": "F-FakeXRP",
+    "fAssetSymbol": "FfakeXRP",
     "assetMintingDecimals": 6,
     "userWhitelist": null,
     "underlyingAddressValidator": [
         "RippleAddressValidator",
         []
     ],
+    "priceReader": "FakePriceReader",
     "liquidationStrategy": "LiquidationStrategyImpl",
     "liquidationStrategySettings": {
         "$schema": "../LiquidationStrategyImplSettings.schema.json",
@@ -22,7 +23,7 @@
             16000,
             20000
         ],
-        "liquidationFactorClass1BIPS": [
+        "liquidationFactorVaultCollateralBIPS": [
             10000,
             10000,
             10000
@@ -32,13 +33,13 @@
         "token": "WNat",
         "decimals": 18,
         "directPricePair": false,
-        "assetFtsoSymbol": "XRP",
-        "tokenFtsoSymbol": "NAT",
+        "assetFtsoSymbol": "testXRP",
+        "tokenFtsoSymbol": "CFLR",
         "minCollateralRatioBIPS": 20000,
         "ccbMinCollateralRatioBIPS": 19000,
         "safetyMinCollateralRatioBIPS": 21000
     },
-    "class1Collaterals": [
+    "vaultCollaterals": [
         {
             "token": "USDC",
             "decimals": 18,
@@ -62,16 +63,16 @@
     ],
     "minUnderlyingBackingBIPS": 10000,
     "mintingCap": "0",
-    "lotSize": "1000 000000",
+    "lotSize": "10 000000",
     "requireEOAAddressProof": false,
     "collateralReservationFeeBIPS": 200,
     "mintingPoolHoldingsRequiredBIPS": 5000,
     "maxRedeemedTickets": 20,
     "redemptionFeeBIPS": 100,
-    "redemptionDefaultFactorClass1BIPS": 12500,
+    "redemptionDefaultFactorVaultCollateralBIPS": 12500,
     "redemptionDefaultFactorPoolBIPS": 0,
-    "underlyingBlocksForPayment": 100,
-    "underlyingSecondsForPayment": 300,
+    "underlyingBlocksForPayment": 500,
+    "underlyingSecondsForPayment": 900,
     "averageBlockTimeMS": 2000,
     "attestationWindowSeconds": 86400,
     "confirmationByOthersAfterSeconds": 7200,
@@ -83,7 +84,7 @@
     "withdrawalWaitMinSeconds": 60,
     "announcedUnderlyingConfirmationMinSeconds": 250,
     "buybackCollateralFactorBIPS": 10500,
-    "class1BuyForFlareFactorBIPS": 10500,
+    "vaultCollateralBuyForFlareFactorBIPS": 10500,
     "minUpdateRepeatTimeSeconds": 86400,
     "tokenInvalidationTimeMinSeconds": 86400,
     "agentExitAvailableTimelockSeconds": 86400,

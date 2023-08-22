@@ -63,10 +63,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const txHash = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash);
             assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
-            const info0 = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA) });
+            const info0 = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA) });
             assertWeb3Equal(info0.dustUBA, minted.poolFeeUBA);
             // agent "buys" f-assets
-            await context.fAsset.transfer(agent.ownerHotAddress, minted.mintedAmountUBA, { from: minter.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
             // perform partial self close
             const dustAmountUBA = context.convertAmgToUBA(5);
             const selfCloseAmountUBA = minted.mintedAmountUBA.sub(dustAmountUBA);
@@ -119,14 +119,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(dustChanges1[0].dustUBA, redeemerDustAmountUBA.add(minted.poolFeeUBA));
             assert.equal(dustChanges1[0].agentVault, agent.agentVault.address);
             assert.equal(request.agentVault, agent.vaultAddress);
-            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: redeemerDustAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: request.valueUBA });
+            const info = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: redeemerDustAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: request.valueUBA });
             assertWeb3Equal(info.dustUBA, redeemerDustAmountUBA.add(minted.poolFeeUBA));
             const tx1Hash = await agent.performRedemptionPayment(request);
             await agent.confirmActiveRedemptionPayment(request, tx1Hash);
             const info2 = await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA), mintedUBA: redeemerDustAmountUBA.add(minted.poolFeeUBA), redeemingUBA: 0 });
             assertWeb3Equal(info2.dustUBA, redeemerDustAmountUBA.add(minted.poolFeeUBA));
             // agent "buys" f-assets
-            await context.fAsset.transfer(agent.ownerHotAddress, redeemerDustAmountUBA, { from: redeemer.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, redeemerDustAmountUBA, { from: redeemer.address });
             // perform self close
             const [dustChangesUBA2, selfClosedUBA] = await agent.selfClose(redeemerDustAmountUBA);
             const info3 = await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA).add(redeemerDustAmountUBA), mintedUBA: minted.poolFeeUBA });
@@ -157,9 +157,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const redeemerDustAmountUBA = context.convertLotsToUBA(1).sub(context.convertAmgToUBA(5)).sub(minted.poolFeeUBA);
             const selfCloseAmountUBA = minted.mintedAmountUBA.sub(redeemerDustAmountUBA);
             // agent "buys" f-assets
-            await context.fAsset.transfer(agent.ownerHotAddress, selfCloseAmountUBA, { from: minter.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, selfCloseAmountUBA, { from: minter.address });
             const [dustChangesUBA, selfClosedUBA1] = await agent.selfClose(selfCloseAmountUBA);
-            const info = await agent.checkAgentInfo({ totalClass1CollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(selfCloseAmountUBA), mintedUBA: redeemerDustAmountUBA.add(minted.poolFeeUBA) });
+            const info = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(selfCloseAmountUBA), mintedUBA: redeemerDustAmountUBA.add(minted.poolFeeUBA) });
             assertWeb3Equal(info.dustUBA, redeemerDustAmountUBA.add(minted.poolFeeUBA));
             assertWeb3Equal(selfClosedUBA1, selfCloseAmountUBA);
             assert.equal(dustChangesUBA.length, 2);
@@ -193,7 +193,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info4.dustUBA, newDustAmount);
             // agent "buys" f-assets
             const redeemerDustAmountUBA2 = minted.mintedAmountUBA.sub(selfCloseAmountUBA).sub(request.valueUBA);
-            await context.fAsset.transfer(agent.ownerHotAddress, redeemerDustAmountUBA2, { from: redeemer.address });
+            await context.fAsset.transfer(agent.ownerWorkAddress, redeemerDustAmountUBA2, { from: redeemer.address });
             // perform self close
             const [dustChangesUBA2, selfClosedUBA] = await agent.selfClose(redeemerDustAmountUBA2);
             const info5 = await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(selfCloseAmountUBA).add(request.feeUBA).add(redeemerDustAmountUBA2), mintedUBA: minted.poolFeeUBA });

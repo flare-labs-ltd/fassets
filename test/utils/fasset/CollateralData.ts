@@ -7,7 +7,7 @@ import { CollateralPoolTokenInstance } from "../../../typechain-truffle";
 
 export const POOL_TOKEN_DECIMALS = 18;
 
-export enum CollateralKind { CLASS1, POOL, AGENT_POOL_TOKENS };
+export enum CollateralKind { VAULT, POOL, AGENT_POOL_TOKENS };
 
 export class CollateralData extends AMGPriceConverter {
     constructor(
@@ -22,8 +22,8 @@ export class CollateralData extends AMGPriceConverter {
 
     kind() {
         if (this.collateral != null) {
-            if (Number(this.collateral.collateralClass) === CollateralClass.CLASS1) {
-                return CollateralKind.CLASS1;
+            if (Number(this.collateral.collateralClass) === CollateralClass.VAULT) {
+                return CollateralKind.VAULT;
             } else if (Number(this.collateral.collateralClass) === CollateralClass.POOL) {
                 return CollateralKind.POOL;
             }
@@ -54,7 +54,7 @@ export class CollateralDataFactory {
         return new CollateralDataFactory(settings, priceReader);
     }
 
-    async class1(collateral: CollateralType, agentVault: string) {
+    async vault(collateral: CollateralType, agentVault: string) {
         return await this.forCollateral(collateral, agentVault);
     }
 

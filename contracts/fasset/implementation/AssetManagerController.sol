@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
 import "flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdater.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAssetManager.sol";
@@ -22,11 +21,6 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     mapping(address => uint256) private assetManagerIndex;
     IIAssetManager[] private assetManagers;
-
-    modifier onlyGovernanceOrExecutor {
-        _checkOnlyGovernanceOrExecutor();
-        _;
-    }
 
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, address _addressUpdater)
         Governed(_governanceSettings, _initialGovernance)
@@ -124,12 +118,28 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_COLLATERAL_POOL_FACTORY, abi.encode(_value));
     }
 
+    function setCollateralPoolTokenFactory(IIAssetManager[] memory _assetManagers, address _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_COLLATERAL_POOL_TOKEN_FACTORY, abi.encode(_value));
+    }
+
     function setUnderlyingAddressValidator(IIAssetManager[] memory _assetManagers, address _value)
         external
         onlyGovernance
     {
         _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_UNDERLYING_ADDRESS_VALIDATOR, abi.encode(_value));
+    }
+
+    function setPriceReader(IIAssetManager[] memory _assetManagers, address _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_PRICE_READER, abi.encode(_value));
     }
 
     function setSCProofVerifier(IIAssetManager[] memory _assetManagers, address _value)
@@ -178,14 +188,14 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     function setPaymentChallengeReward(
         IIAssetManager[] memory _assetManagers,
-        uint256 _rewardClass1Wei,
+        uint256 _rewardVaultCollateralWei,
         uint256 _rewardBIPS
     )
         external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_PAYMENT_CHALLENGE_REWARD, abi.encode(_rewardClass1Wei, _rewardBIPS));
+            SettingsUpdater.SET_PAYMENT_CHALLENGE_REWARD, abi.encode(_rewardVaultCollateralWei, _rewardBIPS));
     }
 
     function setMaxTrustedPriceAgeSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
@@ -212,12 +222,12 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_REDEMPTION_FEE_BIPS, abi.encode(_value));
     }
 
-    function setRedemptionDefaultFactorBips(IIAssetManager[] memory _assetManagers, uint256 _class1, uint256 _pool)
+    function setRedemptionDefaultFactorBips(IIAssetManager[] memory _assetManagers, uint256 _vaultF, uint256 _poolF)
         external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_REDEMPTION_DEFAULT_FACTOR_BIPS, abi.encode(_class1, _pool));
+            SettingsUpdater.SET_REDEMPTION_DEFAULT_FACTOR_BIPS, abi.encode(_vaultF, _poolF));
     }
 
     function setConfirmationByOthersAfterSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
@@ -308,12 +318,12 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_TOKEN_INVALIDATION_TIME_MIN_SECONDS, abi.encode(_value));
     }
 
-    function setClass1BuyForFlareFactorBIPS(IIAssetManager[] memory _assetManagers, uint256 _value)
+    function setVaultCollateralBuyForFlareFactorBIPS(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_CLASS1_BUY_FOR_FLARE_FACTOR_BIPS, abi.encode(_value));
+            SettingsUpdater.SET_VAULT_COLLATERAL_BUY_FOR_FLARE_FACTOR_BIPS, abi.encode(_value));
     }
 
     function setAgentExitAvailableTimelockSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
@@ -483,10 +493,9 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         IIAddressUpdater addressUpdater = IIAddressUpdater(getAddressUpdater());
         address newAddressUpdater = addressUpdater.getContractAddress("AddressUpdater");
         address assetManagerController = addressUpdater.getContractAddress("AssetManagerController");
-        address ftsoRegistry = addressUpdater.getContractAddress("FtsoRegistry");
         address wNat = addressUpdater.getContractAddress("WNat");
-        require(newAddressUpdater != address(0) && assetManagerController != address(0) &&
-                ftsoRegistry != address(0) && wNat != address(0), "address zero");
+        require(newAddressUpdater != address(0) && assetManagerController != address(0)
+                && wNat != address(0), "address zero");
         // update address updater if necessary
         if (newAddressUpdater != address(addressUpdater)) {
             setAddressUpdaterValue(newAddressUpdater);
@@ -496,7 +505,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             IIAssetManager assetManager = _checkAssetManager(_assetManagers[i]);
             assetManager.updateSettings(
                 SettingsUpdater.UPDATE_CONTRACTS,
-                abi.encode(assetManagerController, ftsoRegistry, wNat));
+                abi.encode(assetManagerController, wNat));
         }
         // if this controller was replaced, set forwarding address
         if (assetManagerController != address(this)) {
@@ -513,15 +522,13 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     {
         address assetManagerController =
             _getContractAddress(_contractNameHashes, _contractAddresses, "AssetManagerController");
-        address ftsoRegistry =
-            _getContractAddress(_contractNameHashes, _contractAddresses, "FtsoRegistry");
         address wNat =
             _getContractAddress(_contractNameHashes, _contractAddresses, "WNat");
         for (uint256 i = 0; i < assetManagers.length; i++) {
             IIAssetManager assetManager = assetManagers[i];
             assetManager.updateSettings(
                 SettingsUpdater.UPDATE_CONTRACTS,
-                abi.encode(assetManagerController, ftsoRegistry, wNat));
+                abi.encode(assetManagerController, wNat));
         }
         // if this controller was replaced, set forwarding address
         if (assetManagerController != address(this)) {
@@ -544,10 +551,6 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             require(assetManagerIndex[address(assetManager)] != 0, "Asset manager not managed");
             assetManager.updateSettings(_method, _value);
         }
-    }
-
-    function _checkOnlyGovernanceOrExecutor() private view {
-        require(msg.sender == governance() || isExecutor(msg.sender), "only governance or executor");
     }
 
     function _checkAssetManager(IIAssetManager _assetManager) private view returns (IIAssetManager) {

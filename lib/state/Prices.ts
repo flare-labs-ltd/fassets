@@ -21,8 +21,8 @@ export class Prices {
         return requireNotNull(this.collateralPrices.list.find(p => isPoolCollateral(p.collateral)));
     }
 
-    getClass1(token: string) {
-        return this.collateralPrices.get(CollateralClass.CLASS1, token);
+    getVault(token: string) {
+        return this.collateralPrices.get(CollateralClass.VAULT, token);
     }
 
     getPool(token: string) {
@@ -51,7 +51,7 @@ export class Prices {
     }
 
     static async getPrices(context: IAssetContext, settings: AssetManagerSettings, collaterals: Iterable<CollateralType>): Promise<[Prices, Prices]> {
-        const priceReader = new TokenPriceReader(context.ftsoRegistry);
+        const priceReader = new TokenPriceReader(context.priceReader);
         const ftsoPrices = await this.getFtsoPrices(priceReader, settings, collaterals, false);
         const trustedPrices = await this.getFtsoPrices(priceReader, settings, collaterals, true);
         return [ftsoPrices, trustedPrices];

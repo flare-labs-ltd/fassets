@@ -85,7 +85,7 @@ library RedemptionFailures {
     {
         // pay redeemer in one or both collaterals
         (uint256 paidC1Wei, uint256 paidPoolWei) = _collateralAmountForRedemption(_agent, _request);
-        Agents.payoutClass1(_agent, _request.redeemer, paidC1Wei);
+        Agents.payoutFromVault(_agent, _request.redeemer, paidC1Wei);
         if (paidPoolWei > 0) {
             Agents.payoutFromPool(_agent, _request.redeemer, paidPoolWei, paidPoolWei);
         }
@@ -97,39 +97,40 @@ library RedemptionFailures {
             paidC1Wei, paidPoolWei, _redemptionRequestId);
     }
 
-    // payment calculation: pay redemptionDefaultFactorAgentC1BIPS (>= 1) from agent vault class 1 collateral and
+    // payment calculation: pay redemptionDefaultFactorVaultCollateralBIPS (>= 1) from agent vault collateral and
     // redemptionDefaultFactorPoolBIPS from pool; however, if there is not enough in agent's vault, pay more from pool
-    // assured: _agentC1Wei <= fullCollateralC1, _poolWei <= fullPoolCollateral
+    // assured: _vaultCollateralWei <= fullCollateralC1, _poolWei <= fullPoolCollateral
     function _collateralAmountForRedemption(
         Agent.State storage _agent,
         Redemption.Request storage _request
     )
         private view
-        returns (uint256 _agentC1Wei, uint256 _poolWei)
+        returns (uint256 _vaultCollateralWei, uint256 _poolWei)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        // calculate collateral data for class1
-        Collateral.Data memory cdAgent = AgentCollateral.agentClass1CollateralData(_agent);
-        uint256 maxAgentC1Wei = cdAgent.maxRedemptionCollateral(_agent, _request.valueAMG);
-        // for pool self close redemption, everything is paid from agent's class1
+        // calculate collateral data for vault collateral
+        Collateral.Data memory cdAgent = AgentCollateral.agentVaultCollateralData(_agent);
+        uint256 maxVaultCollateralWei = cdAgent.maxRedemptionCollateral(_agent, _request.valueAMG);
+        // for pool self close redemption, everything is paid from agent's vault collateral
         if (_request.poolSelfClose) {
-            _agentC1Wei = Conversion.convertAmgToTokenWei(_request.valueAMG, cdAgent.amgToTokenWeiPrice);
+            _vaultCollateralWei = Conversion.convertAmgToTokenWei(_request.valueAMG, cdAgent.amgToTokenWeiPrice);
             _poolWei = 0;
-            // if there is not enough class1 collateral, just reduce the payment
-            _agentC1Wei = Math.min(_agentC1Wei, maxAgentC1Wei);
+            // if there is not enough vault collateral, just reduce the payment
+            _vaultCollateralWei = Math.min(_vaultCollateralWei, maxVaultCollateralWei);
         } else {
-            _agentC1Wei = Conversion.convertAmgToTokenWei(_request.valueAMG, cdAgent.amgToTokenWeiPrice)
-                .mulBips(settings.redemptionDefaultFactorAgentC1BIPS);
+            _vaultCollateralWei = Conversion.convertAmgToTokenWei(_request.valueAMG, cdAgent.amgToTokenWeiPrice)
+                .mulBips(settings.redemptionDefaultFactorVaultCollateralBIPS);
             // calculate paid amount and max available amount from the pool
             Collateral.Data memory cdPool = AgentCollateral.poolCollateralData(_agent);
             _poolWei = Conversion.convertAmgToTokenWei(_request.valueAMG, cdPool.amgToTokenWeiPrice)
                 .mulBips(settings.redemptionDefaultFactorPoolBIPS);
             uint256 maxPoolWei = cdPool.maxRedemptionCollateral(_agent, _request.valueAMG);
             // if there is not enough collateral held by agent, pay more from the pool
-            if (_agentC1Wei > maxAgentC1Wei) {
-                uint256 extraPoolAmg = _request.valueAMG.mulDivRoundUp(_agentC1Wei - maxAgentC1Wei, _agentC1Wei);
+            if (_vaultCollateralWei > maxVaultCollateralWei) {
+                uint256 extraPoolAmg =
+                    _request.valueAMG.mulDivRoundUp(_vaultCollateralWei - maxVaultCollateralWei, _vaultCollateralWei);
                 _poolWei += Conversion.convertAmgToTokenWei(extraPoolAmg, cdPool.amgToTokenWeiPrice);
-                _agentC1Wei = maxAgentC1Wei;
+                _vaultCollateralWei = maxVaultCollateralWei;
             }
             // if there is not enough collateral in the pool, just reduce the payment - however this is not likely,
             // since redemptionDefaultFactorPoolBIPS is small or zero, while pool CR is much higher that agent CR

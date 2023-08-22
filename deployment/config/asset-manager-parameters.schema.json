@@ -147,13 +147,13 @@
             "minimum": 0,
             "type": "integer"
         },
-        "class1BuyForFlareFactorBIPS": {
-            "description": "On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock\ncollateral. For this, part of collateral corresponding to FTSO asset value is burned and the rest is released.\nHowever, we cannot burn typical class1 collateral (stablecoins), so the agent must buy them for NAT\nat FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.",
+        "vaultCollateralBuyForFlareFactorBIPS": {
+            "description": "On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock\ncollateral. For this, part of collateral corresponding to FTSO asset value is burned and the rest is released.\nHowever, we cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT\nat FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.",
             "minimum": 0,
             "type": "integer"
         },
-        "class1Collaterals": {
-            "description": "The data about allowed class1 collateral types.",
+        "vaultCollaterals": {
+            "description": "The data about allowed vault collateral types.",
             "items": {
                 "$ref": "#/definitions/CollateralTypeParameters"
             },
@@ -161,6 +161,11 @@
         },
         "collateralPoolFactory": {
             "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'CollateralPoolFactory' in contracts.json.",
+            "pattern": "^\\w+$",
+            "type": "string"
+        },
+        "collateralPoolTokenFactory": {
+            "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'CollateralPoolTokenFactory' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
         },
@@ -175,7 +180,7 @@
             "type": "integer"
         },
         "confirmationByOthersRewardUSD5": {
-            "description": "The user who makes abandoned redemption confirmations gets rewarded by the following amount.\nThe payment is in agent's class1 currency, converted from the usd amount in this setting.",
+            "description": "The user who makes abandoned redemption confirmations gets rewarded by the following amount.\nThe payment is in agent's vault collateral tokens, converted from the usd amount in this setting.",
             "pattern": "^[0-9 ]+$",
             "type": "string"
         },
@@ -233,12 +238,12 @@
             "type": "integer"
         },
         "paymentChallengeRewardBIPS": {
-            "description": "Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).\nThe payment is in agent's class1 currency. This is the proportional part (in BIPS).",
+            "description": "Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).\nThe payment is in agent's vault collateral tokens. This is the proportional part (in BIPS).",
             "minimum": 0,
             "type": "integer"
         },
         "paymentChallengeRewardUSD5": {
-            "description": "Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).\nThe payment is in agent's class1 currency. This is the fixed part, converted from the usd amount in this setting.",
+            "description": "Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).\nThe payment is in agent's vault collateral tokens. This is the fixed part, converted from\nthe usd amount in this setting.",
             "pattern": "^[0-9 ]+$",
             "type": "string"
         },
@@ -246,8 +251,13 @@
             "$ref": "#/definitions/CollateralTypeParameters",
             "description": "Data about the collateral used in the collateral pool, token is always WNat (FLR/SGB)."
         },
-        "redemptionDefaultFactorClass1BIPS": {
-            "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from agent's class 1 collateral.",
+        "priceReader": {
+            "description": "Price reader contract is a simple abstraction of FTSO system.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'SCProofVerifier' in contracts.json.",
+            "pattern": "^\\w+$",
+            "type": "string"
+        },
+        "redemptionDefaultFactorVaultCollateralBIPS": {
+            "description": "On redemption underlying payment failure, redeemer is compensated with\nredemption value recalculated times redemption failure factor.\nThis is the part of factor paid from agent's vault collateral.",
             "minimum": 0,
             "type": "integer"
         },
@@ -271,7 +281,7 @@
             "type": "string"
         },
         "tokenInvalidationTimeMinSeconds": {
-            "description": "Minimum time from the moment token is deprecated to when it becomes invalid and agents still using\nit as class1 get liquidated.",
+            "description": "Minimum time from the moment token is deprecated to when it becomes invalid and agents still using\nit as vault collateral get liquidated.",
             "minimum": 0,
             "type": "integer"
         },
@@ -329,8 +339,8 @@
         "buybackCollateralFactorBIPS",
         "ccbTimeSeconds",
         "chainId",
-        "class1BuyForFlareFactorBIPS",
-        "class1Collaterals",
+        "vaultCollateralBuyForFlareFactorBIPS",
+        "vaultCollaterals",
         "collateralReservationFeeBIPS",
         "confirmationByOthersAfterSeconds",
         "confirmationByOthersRewardUSD5",
@@ -348,7 +358,7 @@
         "paymentChallengeRewardBIPS",
         "paymentChallengeRewardUSD5",
         "poolCollateral",
-        "redemptionDefaultFactorClass1BIPS",
+        "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionDefaultFactorPoolBIPS",
         "redemptionFeeBIPS",
         "requireEOAAddressProof",

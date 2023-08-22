@@ -38,9 +38,9 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     const underlyingAgent1 = "Agent1";
 
 
-    function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
-        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
-        return createTestAgent({ assetManager: assetManager, settings }, owner, underlyingAddress, class1CollateralToken, options);
+    function createAgentVault(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
+        const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager: assetManager, settings }, owner, underlyingAddress, vaultCollateralToken, options);
     }
 
     async function createGovernanceVP() {
@@ -89,7 +89,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     describe("pool token methods", async () => {
 
         it("should buy collateral pool tokens", async () => {
-            const agentVault = await createAgent(owner, underlyingAgent1);
+            const agentVault = await createAgentVault(owner, underlyingAgent1);
             await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(agentInfo.totalPoolCollateralNATWei, toWei(1000));
@@ -121,7 +121,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
         it("should redeem collateral from pool", async () => {
             const natRecipient = "0xDe6E4607008a6B6F4341E046d18297d03e11ECa1";
-            const agentVault = await createAgent(owner, underlyingAgent1);
+            const agentVault = await createAgentVault(owner, underlyingAgent1);
             await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const tokens = agentInfo.totalAgentPoolTokensWei;
@@ -136,44 +136,44 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     });
 
-    it("should deposit class1 from any address - via approve & depositCollateral", async () => {
+    it("should deposit vault collateral from any address - via approve & depositCollateral", async () => {
         await usdc.mintAmount(owner, 2000);
-        const agentVault = await createAgent(owner, underlyingAgent1, { class1CollateralToken: usdc.address });
+        const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
         await usdc.approve(agentVault.address, 1100, { from: owner });
         await agentVault.depositCollateral(usdc.address, 100, { from: owner });
         const votePower = await wNat.votePowerOf(agentVault.address);
         assertWeb3Equal(votePower, 0);
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(agentInfo.totalClass1CollateralWei, 100);
+        assertWeb3Equal(agentInfo.totalVaultCollateralWei, 100);
         await agentVault.depositCollateral(usdc.address, 1000, { from: owner });
         const agentInfo2 = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(agentInfo2.totalClass1CollateralWei, 1100);
+        assertWeb3Equal(agentInfo2.totalVaultCollateralWei, 1100);
     });
 
-    it("should deposit class1 from any address - via transfer & collateralDeposited", async () => {
+    it("should deposit vault collateral from any address - via transfer & updateCollateral", async () => {
         await usdc.mintAmount(owner, 2000);
-        const agentVault = await createAgent(owner, underlyingAgent1, { class1CollateralToken: usdc.address });
+        const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
         await usdc.transfer(agentVault.address, 100, { from: owner });
-        await agentVault.collateralDeposited(usdc.address, { from: owner });
+        await agentVault.updateCollateral(usdc.address, { from: owner });
         const votePower = await wNat.votePowerOf(agentVault.address);
         assertWeb3Equal(votePower, 0);
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(agentInfo.totalClass1CollateralWei, 100);
+        assertWeb3Equal(agentInfo.totalVaultCollateralWei, 100);
         await usdc.transfer(agentVault.address, 1000, { from: owner });
-        await agentVault.collateralDeposited(usdc.address, { from: owner });
+        await agentVault.updateCollateral(usdc.address, { from: owner });
         const agentInfo2 = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(agentInfo2.totalClass1CollateralWei, 1100);
+        assertWeb3Equal(agentInfo2.totalVaultCollateralWei, 1100);
     });
 
-    it("should withdraw class1 from owner", async () => {
+    it("should withdraw vault collateral from owner", async () => {
         const recipient = "0xe34BDff68a5b89216D7f6021c1AB25c012142425";
         // deposit collateral
         await usdc.mintAmount(owner, 2000);
-        const agentVault = await createAgent(owner, underlyingAgent1, { class1CollateralToken: usdc.address });
+        const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
         await usdc.approve(agentVault.address, 1100, { from: owner });
         await agentVault.depositCollateral(usdc.address, 100, { from: owner });
         // withdraw collateral
-        await assetManager.announceClass1CollateralWithdrawal(agentVault.address, 100, { from: owner });
+        await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: owner });
         await time.increase(time.duration.hours(48));
         await agentVault.withdrawCollateral(usdc.address, 100, recipient, { from: owner });
         assertWeb3Equal(await usdc.balanceOf(recipient), toBN(100));
@@ -302,6 +302,19 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await expectRevert(claimPromise, "only owner");
     });
 
+    it("random address shouldn't be able to set auto claiming", async () => {
+        const agentVault = await AgentVault.new(assetManagerMock.address);
+        const contract = await MockContract.new();
+        const res = agentVault.setAutoClaiming(contract.address, [accounts[2]], [accounts[3]], { from: accounts[3] });
+        await expectRevert(res, "only owner");
+    });
+
+    it("should set auto claiming", async () => {
+        const agentVault = await AgentVault.new(assetManagerMock.address);
+        const contract = await MockContract.new();
+        await agentVault.setAutoClaiming(contract.address, [accounts[2]],  [accounts[3]], { from: owner });
+    });
+
     it("should opt out of airdrop distribution", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const distributionMock = await MockContract.new();
@@ -347,7 +360,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     it("should call governanceVP.undelegate() when destroying agent if governanceVP was delegated", async () => {
         const governanceVP = await createGovernanceVP();
         await wNat.setGovernanceVotePower(governanceVP.address, { from: governance });
-        const agentVault = await createAgent(owner, underlyingAgent1);
+        const agentVault = await createAgentVault(owner, underlyingAgent1);
         await agentVault.delegateGovernance(accounts[5], { from: owner });
         await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
         await time.increase(settings.withdrawalWaitMinSeconds);
@@ -376,19 +389,19 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     });
 
     it("should not transfer wnat tokens", async () => {
-        const agentVault = await createAgent(owner, underlyingAgent1);
+        const agentVault = await createAgentVault(owner, underlyingAgent1);
         let res = agentVault.transferExternalToken(usdc.address, 1, { from: owner });
         await expectRevert(res, "only non-collateral tokens");
     });
 
     it("should not transfer if not owner", async () => {
-        const agentVault = await createAgent(owner, underlyingAgent1);
+        const agentVault = await createAgentVault(owner, underlyingAgent1);
         let res = agentVault.transferExternalToken(wNat.address, 1);
         await expectRevert(res, "only owner");
     });
 
     it("should transfer erc20 tokens", async () => {
-        const agentVault = await createAgent(owner, underlyingAgent1);
+        const agentVault = await createAgentVault(owner, underlyingAgent1);
         const token = await ERC20Mock.new("XTOK", "XToken")
         await token.mintAmount(agentVault.address, 10);
         let balance = (await token.balanceOf(agentVault.address)).toString();
@@ -429,6 +442,19 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assertWeb3Equal(delegatedAfter, toBN(0));
     });
 
+    it("should destroy the agentVault contract with token used but 0 token balance in agent vault branch test", async () => {
+        const agentVault = await createAgentVault(owner, underlyingAgent1);
+        //Deposit some token collateral
+        await wNat.deposit({ from: owner, value: toBN(100) })
+        await wNat.approve(agentVault.address, toBN(100), { from: owner })
+        await agentVault.depositCollateral(wNat.address, toBN(100), { from: owner });
+        //Withdraw token so balance is 0
+        await agentVault.withdrawCollateral(wNat.address, toBN(100), accounts[12], { from: owner });
+        await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
+        await time.increase(settings.withdrawalWaitMinSeconds);
+        await assetManager.destroyAgent(agentVault.address, owner, { from: owner });
+    });
+
     it("should payout from a given token", async () => {
         const erc20 = await ERC20Mock.new("XTOK", "XToken");
         const agentVault = await AgentVault.new(assetManagerMock.address);
@@ -443,7 +469,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
             const IAgentVault = artifacts.require("IAgentVault");
             const IIAgentVault = artifacts.require("IIAgentVault");
-            const agentVault = await createAgent(owner, underlyingAgent1);
+            const agentVault = await createAgentVault(owner, underlyingAgent1);
             const iERC165 = await IERC165.at(agentVault.address);
             const iAgentVault = await IAgentVault.at(agentVault.address);
             const iiAgentVault = await IIAgentVault.at(agentVault.address);
@@ -493,7 +519,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
         it("random address shouldn't be able to redeem collateral pool tokens", async () => {
             const natRecipient = "0xDe6E4607008a6B6F4341E046d18297d03e11ECa1";
-            const agentVault = await createAgent(owner, underlyingAgent1);
+            const agentVault = await createAgentVault(owner, underlyingAgent1);
             await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const tokens = agentInfo.totalAgentPoolTokensWei;
@@ -501,6 +527,15 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             await time.increase((await assetManager.getSettings()).withdrawalWaitMinSeconds);
             const res = agentVault.redeemCollateralPoolTokens(tokens, natRecipient, { from: accounts[14] });
             await expectRevert(res, "only owner");
+        });
+    });
+
+    describe("CR calculation", () => {
+        it("check CR calculation if amg==0 and collateral==0", async () => {
+            const agentVault = await createAgentVault(owner, underlyingAgent1);
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assertWeb3Equal(agentInfo.vaultCollateralRatioBIPS, 1e10);
+            assertWeb3Equal(agentInfo.poolCollateralRatioBIPS, 1e10);
         });
     });
 });

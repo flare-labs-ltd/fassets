@@ -1,4 +1,5 @@
 import { constants } from "@openzeppelin/test-helpers";
+import fs from "fs";
 import { IAssetContext } from "../../../lib/fasset/IAssetContext";
 import { InitialAgentData } from "../../../lib/state/TrackedAgentState";
 import { TrackedState } from "../../../lib/state/TrackedState";
@@ -9,8 +10,9 @@ import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { EvmEvent } from "../../../lib/utils/events/common";
 import { sumBN, toBN } from "../../../lib/utils/helpers";
 import { SparseArray } from "../../utils/SparseMatrix";
-import { FuzzingStateAgent } from "./FuzzingStateAgent";
+import { FuzzingAgentState } from "./FuzzingAgentState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
+import { LogFile } from "../../../lib/utils/logging";
 
 export type FuzzingStateLogRecord = {
     text: string;
@@ -32,9 +34,9 @@ export class FuzzingState extends TrackedState {
     fAssetBalance = new SparseArray();
 
     // override agent state type (initialized in AssetState)
-    override agents!: Map<string, FuzzingStateAgent>;
-    override agentsByUnderlying!: Map<string, FuzzingStateAgent>;
-    override agentsByPool!: Map<string, FuzzingStateAgent>;
+    override agents!: Map<string, FuzzingAgentState>;
+    override agentsByUnderlying!: Map<string, FuzzingAgentState>;
+    override agentsByPool!: Map<string, FuzzingAgentState>;
 
     // logs
     failedExpectations: FuzzingStateLogRecord[] = [];
@@ -64,12 +66,12 @@ export class FuzzingState extends TrackedState {
     }
 
     // override with correct state
-    override getAgent(address: string): FuzzingStateAgent | undefined {
+    override getAgent(address: string): FuzzingAgentState | undefined {
         return this.agents.get(address);
     }
 
     protected override newAgent(data: InitialAgentData) {
-        return new FuzzingStateAgent(this, data);
+        return new FuzzingAgentState(this, data);
     }
 
     async checkInvariants(failOnProblems: boolean) {
@@ -129,9 +131,30 @@ export class FuzzingState extends TrackedState {
 
     logAllPoolSummaries() {
         if (!this.logger) return;
-        this.logger.log("\nCOLLATERAL POOL SUMMARIES");
+        this.logger.log("\nCollateral Pool SUMMARIES");
         for (const agent of this.agents.values()) {
             agent.writePoolSummary(this.logger);
+        }
+    }
+
+    writeBalanceTrackingList(dir: string) {
+        for (const agent of this.agents.values()) {
+            try {
+                agent.writeBalanceTrackingList(dir);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    }
+
+    withLogFile(path: string, action: () => void) {
+        const curLogger = this.logger;
+        this.logger = new LogFile(path);
+        try {
+            action();
+        } finally {
+            (this.logger as LogFile).close();
+            this.logger = curLogger;
         }
     }
 }

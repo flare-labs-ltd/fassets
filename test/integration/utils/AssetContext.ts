@@ -3,7 +3,9 @@ import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetM
 import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../../lib/fasset/Conversions";
 import { AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
+import { CollateralPrice } from "../../../lib/state/CollateralPrice";
 import { Prices } from "../../../lib/state/Prices";
+import { TokenPriceReader } from "../../../lib/state/TokenPrice";
 import { AttestationHelper } from "../../../lib/underlying-chain/AttestationHelper";
 import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingChainEvents";
 import { IBlockChain } from "../../../lib/underlying-chain/interfaces/IBlockChain";
@@ -12,17 +14,16 @@ import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
 import { AssetManagerInstance, FAssetInstance, IAddressValidatorInstance, WhitelistInstance } from "../../../typechain-truffle";
-import { createTestCollaterals, createTestLiquidationSettings, createTestSettings } from "../../utils/test-settings";
 import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
+import { createTestCollaterals, createTestLiquidationSettings, createTestSettings } from "../../utils/test-settings";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
-import { TokenPriceReader } from "../../../lib/state/TokenPrice";
-import { CollateralPrice } from "../../../lib/state/CollateralPrice";
 
 const TrivialAddressValidatorMock = artifacts.require('TrivialAddressValidatorMock');
 const WhitelistMock = artifacts.require("WhitelistMock");
+const MockContract = artifacts.require('MockContract');
 
 export interface SettingsOptions {
     // optional settings
@@ -62,7 +63,9 @@ export class AssetContext implements IAssetContext {
     stateConnector = this.common.stateConnector;
     agentVaultFactory = this.common.agentVaultFactory;
     collateralPoolFactory = this.common.collateralPoolFactory;
+    collateralPoolTokenFactory = this.common.collateralPoolTokenFactory;
     scProofVerifier = this.common.scProofVerifier;
+    priceReader = this.common.priceReader;
     ftsoRegistry = this.common.ftsoRegistry;
     ftsoManager = this.common.ftsoManager;
     natInfo = this.common.natInfo;
@@ -162,7 +165,7 @@ export class AssetContext implements IAssetContext {
     }
 
     getCollateralPrice(collateral: CollateralType, trusted: boolean = false) {
-        const priceReader = new TokenPriceReader(this.ftsoRegistry);
+        const priceReader = new TokenPriceReader(this.priceReader);
         return CollateralPrice.forCollateral(priceReader, this.settings, collateral, trusted);
     }
 
@@ -176,6 +179,13 @@ export class AssetContext implements IAssetContext {
         chain.mineTo(Number(lastUnderlyingBlock) + 1);
         chain.skipTime(this.attestationWindowSeconds() + 1);
         chain.mine(chain.finalizationBlocks);
+    }
+
+    async createGovernanceVP() {
+        const governanceVotePower = await MockContract.new();
+        const ownerTokenCall = web3.eth.abi.encodeFunctionCall({ type: 'function', name: 'ownerToken', inputs: [] }, []);
+        await governanceVotePower.givenMethodReturnAddress(ownerTokenCall, this.wNat.address);
+        return governanceVotePower;
     }
 
     static async createTest(common: CommonContext, chainInfo: TestChainInfo, options: SettingsOptions = {}): Promise<AssetContext> {

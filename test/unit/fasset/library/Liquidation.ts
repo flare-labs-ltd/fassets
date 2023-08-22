@@ -1,5 +1,5 @@
 import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AgentStatus, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
@@ -43,8 +43,8 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
 
 
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
-        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
-        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
+        const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
 
     async function depositCollateral(owner: string, agentVault: AgentVaultInstance, amount: BN, token: ERC20MockInstance = usdc) {
@@ -132,6 +132,8 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         assertWeb3Equal(info.status, 4);
         //Calling start liquidation again won't change anything
         await assetManager.startLiquidation(agentVault.address);
+        //Calling liquite won't liquidate anything
+        await assetManager.liquidate(agentVault.address, 1, { from: liquidatorAddress1});
         // assert
         const info1 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info1.status, 4);
@@ -194,6 +196,10 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         await mint(agentVault, underlyingMinter1, minterAddress1);
+        //Starting liquidation now should not do anything
+        await assetManager.startLiquidation(agentVault.address);
+        const info = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info.status, 0);
         // act
         await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
         await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
@@ -249,5 +255,56 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const info2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(info1.status, 1);
         assertWeb3Equal(info2.status, 0);
+    });
+
+    it("agent in ccb, calling getAgentInfo after CR falls under CCB CR should return new Phase", async () => {
+        // init
+        chain.mint(underlyingAgent1, 200);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
+        await mint(agentVault, underlyingMinter1, minterAddress1);
+        const initial_price = await ftsos.asset.getCurrentPrice();
+        const price = initial_price[0];
+        // Change price to put agent in ccb
+        await ftsos.asset.setCurrentPrice(toBNExp(7, 10), 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7, 10), 0);
+        //Change phase to ccb
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        //Price falls event lower
+        await ftsos.asset.setCurrentPrice(toBNExp(7, 12), 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(7,12), 0);
+        //Getting agent info should show status in Liquidation
+        const info2 = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(info1.status, 1);
+        assertWeb3Equal(info2.status, 2);
+    });
+
+    it("should not start liquidation if trusted price is ok for agent", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
+        const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
+        // act
+        await ftsos.asset.setCurrentPrice(toBNExp(8, 12), 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(5, 10), 0);
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        // liquidator "buys" f-assets
+        assertWeb3Equal(info1.status, AgentStatus.NORMAL);
+    });
+
+    it("should ignore trusted price if it is too old", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
+        const minted = await mint(agentVault, underlyingMinter1, minterAddress1);
+        // act
+        await ftsos.asset.setCurrentPrice(toBNExp(8, 12), 0);
+        await ftsos.asset.setCurrentPriceFromTrustedProviders(toBNExp(5, 10), 1000);
+        await assetManager.startLiquidation(agentVault.address);
+        const info1 = await assetManager.getAgentInfo(agentVault.address);
+        // liquidator "buys" f-assets
+        assertWeb3Equal(info1.status, AgentStatus.LIQUIDATION);
     });
 });

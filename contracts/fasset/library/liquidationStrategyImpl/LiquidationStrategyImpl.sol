@@ -27,7 +27,7 @@ library LiquidationStrategyImpl {
     // assumed: agentStatus == LIQUIDATION/FULL_LIQUIDATION && liquidationPhase == LIQUIDATION
     function currentLiquidationFactorBIPS(
         address _agentVault,
-        uint256 _class1CR,
+        uint256 _vaultCR,
         uint256 _poolCR
     )
         external view
@@ -38,29 +38,29 @@ library LiquidationStrategyImpl {
         uint256 step = _currentLiquidationStep(agent);
         uint256 factorBIPS = settings.liquidationCollateralFactorBIPS[step];
         // All premiums are expressed as factor BIPS.
-        // Current algorithm for splitting payment: use liquidationCollateralFactorBIPS for class1 and
+        // Current algorithm for splitting payment: use liquidationCollateralFactorBIPS for vault collateral and
         // pay the rest from pool. If any factor exceeds the CR of that collateral, pay that collateral at
         // its CR and pay more of the other. If both collaterals exceed CR, limit both to their CRs.
-        _c1FactorBIPS = Math.min(settings.liquidationFactorClass1BIPS[step], factorBIPS);
+        _c1FactorBIPS = Math.min(settings.liquidationFactorVaultCollateralBIPS[step], factorBIPS);
         // prevent paying with invalid token (if there is enough of the other tokens)
-        // TODO: should we remove this - is it better to pay with invalidated class1 then with pool?
-        CollateralTypeInt.Data storage class1Collateral = agent.getClass1Collateral();
+        // TODO: should we remove this - is it better to pay with invalidated vault collateral then with pool?
+        CollateralTypeInt.Data storage vaultCollateral = agent.getVaultCollateral();
         CollateralTypeInt.Data storage poolCollateral = agent.getPoolCollateral();
-        if (!class1Collateral.isValid() && poolCollateral.isValid()) {
-            // class1 collateral invalid - pay everything with pool collateral
+        if (!vaultCollateral.isValid() && poolCollateral.isValid()) {
+            // vault collateral invalid - pay everything with pool collateral
             _c1FactorBIPS = 0;
-        } else if (class1Collateral.isValid() && !poolCollateral.isValid()) {
-            // pool collateral - pay everything with class1 collateral
+        } else if (vaultCollateral.isValid() && !poolCollateral.isValid()) {
+            // pool collateral - pay everything with vault collateral
             _c1FactorBIPS = factorBIPS;
         }
         // never exceed CR of tokens
-        if (_c1FactorBIPS > _class1CR) {
-            _c1FactorBIPS = _class1CR;
+        if (_c1FactorBIPS > _vaultCR) {
+            _c1FactorBIPS = _vaultCR;
         }
         _poolFactorBIPS = factorBIPS - _c1FactorBIPS;
         if (_poolFactorBIPS > _poolCR) {
             _poolFactorBIPS = _poolCR;
-            _c1FactorBIPS = Math.min(factorBIPS - _poolFactorBIPS, _class1CR);
+            _c1FactorBIPS = Math.min(factorBIPS - _poolFactorBIPS, _vaultCR);
         }
     }
 

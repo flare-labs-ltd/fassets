@@ -51,8 +51,8 @@ export function isPoolCollateral(collateral: CollateralType) {
     return Number(collateral.collateralClass) === CollateralClass.POOL && Number(collateral.validUntil) === 0;
 }
 
-export function isClass1Collateral(collateral: CollateralType) {
-    return Number(collateral.collateralClass) === CollateralClass.CLASS1 && Number(collateral.validUntil) === 0;
+export function isVaultCollateral(collateral: CollateralType) {
+    return Number(collateral.collateralClass) === CollateralClass.VAULT && Number(collateral.validUntil) === 0;
 }
 
 export function collateralTokenKey(collateralClass: BNish | CollateralClass, token: string) {

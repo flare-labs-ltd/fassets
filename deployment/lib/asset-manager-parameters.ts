@@ -104,12 +104,28 @@ export interface AssetManagerParameters {
     collateralPoolFactory?: string;
 
     /**
+     * The factory contract for creating agent collateral pools.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'CollateralPoolTokenFactory' in contracts.json.
+     * @pattern ^\w+$
+     */
+    collateralPoolTokenFactory?: string;
+
+    /**
      * The proof verifier contract for state connector prrofs.
      * Can be a contract address (0x...) or a name in contracts.json.
      * Optional, default is 'SCProofVerifier' in contracts.json.
      * @pattern ^\w+$
      */
     scProofVerifier?: string;
+
+    /**
+     * Price reader contract is a simple abstraction of FTSO system.
+     * Can be a contract address (0x...) or a name in contracts.json.
+     * Optional, default is 'SCProofVerifier' in contracts.json.
+     * @pattern ^\w+$
+     */
+    priceReader?: string;
 
     /**
      * The agent whitelist contains a list of allowed agent owners.
@@ -200,9 +216,9 @@ export interface AssetManagerParameters {
     poolCollateral: CollateralTypeParameters;
 
     /**
-     * The data about allowed class1 collateral types.
+     * The data about allowed vault collateral types.
      */
-    class1Collaterals: CollateralTypeParameters[];
+    vaultCollaterals: CollateralTypeParameters[];
 
     /**
      * The percentage of minted f-assets that the agent must hold in his underlying address.
@@ -260,10 +276,10 @@ export interface AssetManagerParameters {
     /**
      * On redemption underlying payment failure, redeemer is compensated with
      * redemption value recalculated times redemption failure factor.
-     * This is the part of factor paid from agent's class 1 collateral.
+     * This is the part of factor paid from agent's vault collateral.
      * @minimum 0
      */
-    redemptionDefaultFactorClass1BIPS: integer;
+    redemptionDefaultFactorVaultCollateralBIPS: integer;
 
     /**
      * On redemption underlying payment failure, redeemer is compensated with
@@ -317,21 +333,22 @@ export interface AssetManagerParameters {
 
     /**
      * The user who makes abandoned redemption confirmations gets rewarded by the following amount.
-     * The payment is in agent's class1 currency, converted from the usd amount in this setting.
+     * The payment is in agent's vault collateral tokens, converted from the usd amount in this setting.
      * @pattern ^[0-9 ]+$
      */
     confirmationByOthersRewardUSD5: string;
 
     /**
      * Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).
-     * The payment is in agent's class1 currency. This is the proportional part (in BIPS).
+     * The payment is in agent's vault collateral tokens. This is the proportional part (in BIPS).
      * @minimum 0
      */
     paymentChallengeRewardBIPS: integer;
 
     /**
      * Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).
-     * The payment is in agent's class1 currency. This is the fixed part, converted from the usd amount in this setting.
+     * The payment is in agent's vault collateral tokens. This is the fixed part, converted from
+     * the usd amount in this setting.
      * @pattern ^[0-9 ]+$
      */
     paymentChallengeRewardUSD5: string;
@@ -376,11 +393,11 @@ export interface AssetManagerParameters {
     /**
      * On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock
      * collateral. For this, part of collateral corresponding to FTSO asset value is burned and the rest is released.
-     * However, we cannot burn typical class1 collateral (stablecoins), so the agent must buy them for NAT
+     * However, we cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT
      * at FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.
      * @minimum 0
      */
-    class1BuyForFlareFactorBIPS: integer;
+    vaultCollateralBuyForFlareFactorBIPS: integer;
 
     /**
      * Minimum time after an update of a setting before the same setting can be updated again.
@@ -390,7 +407,7 @@ export interface AssetManagerParameters {
 
     /**
      * Minimum time from the moment token is deprecated to when it becomes invalid and agents still using
-     * it as class1 get liquidated.
+     * it as vault collateral get liquidated.
      * @minimum 0
      */
     tokenInvalidationTimeMinSeconds: integer;

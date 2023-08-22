@@ -56,7 +56,7 @@ export class RedemptionPaymentReceiver extends FuzzingActor {
                     await this.redemptionDefault(scope, request);
                 }
                 const result = await redemptionDefaultPromise; // now it must be fulfiled, by agent or by customer's default call
-                this.comment(`${this.name}, req=${request.requestId}: default received class1=${formatBN(result.redeemedClass1CollateralWei)} pool=${formatBN(result.redeemedPoolCollateralWei)}`);
+                this.comment(`${this.name}, req=${request.requestId}: default received vault=${formatBN(result.redeemedVaultCollateralWei)} pool=${formatBN(result.redeemedPoolCollateralWei)}`);
             }
         } else {
             this.comment(`${this.name}, req=${request.requestId}: Missing redemption, reference=${request.paymentReference}`);
@@ -122,7 +122,7 @@ export class FuzzingCustomer extends FuzzingActor {
         const lots = randomInt(Number(agent.freeCollateralLots));
         if (this.avoidErrors && lots === 0) return;
         const crt = await this.minter.reserveCollateral(agent.agentVault, lots)
-            .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral', 'inappropriate fee amount', 'rc: invalid agent status']));
+            .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral', 'inappropriate fee amount', 'rc: invalid agent status', 'agent not in mint queue']));
         // pay
         const txHash = await this.minter.performMintingPayment(crt);
         // wait for finalization

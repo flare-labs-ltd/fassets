@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol";
+import "../interface/IPriceReader.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 
@@ -148,11 +148,11 @@ library Conversion {
         returns (uint256, uint256, uint256)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        IIFtso ftso = IFtsoRegistry(settings.ftsoRegistry).getFtsoBySymbol(_symbol);
+        IPriceReader priceReader = IPriceReader(settings.priceReader);
         if (_fromTrustedProviders) {
-            return ftso.getCurrentPriceWithDecimalsFromTrustedProviders();
+            return priceReader.getPriceFromTrustedProviders(_symbol);
         } else {
-            return ftso.getCurrentPriceWithDecimals();
+            return priceReader.getPrice(_symbol);
         }
     }
 

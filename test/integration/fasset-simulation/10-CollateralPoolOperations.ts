@@ -1,5 +1,7 @@
-import { expectEvent, expectRevert } from "@openzeppelin/test-helpers";
-import { MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { DAYS, MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { requiredEventArgsFrom } from "../../utils/Web3EventDecoder";
+import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -11,8 +13,6 @@ import { Liquidator } from "../utils/Liquidator";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
-import { impersonateAccount, stopImpersonatingAccount } from "@nomicfoundation/hardhat-network-helpers";
-import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
 
 
 contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral pool operations`, async accounts => {
@@ -57,17 +57,17 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
         // make agent available one lot worth of pool collateral
-        const fullAgentClass1Collateral = toWei(3e8);
+        const fullAgentVaultCollateral = toWei(3e8);
         const fullAgentPoolCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
         // minter mints
         const lots = 100;
         const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
         const txHash1 = await minter.performMintingPayment(crt);
         const minted = await minter.executeMinting(crt, txHash1);
         // agent collects pool fees
-        await agent.agentVault.withdrawPoolFees(minted.poolFeeUBA, agent.ownerHotAddress, { from: agent.ownerHotAddress });
-        assertWeb3Equal(await context.fAsset.balanceOf(agent.ownerHotAddress), minted.poolFeeUBA);
+        await agent.agentVault.withdrawPoolFees(minted.poolFeeUBA, agent.ownerWorkAddress, { from: agent.ownerWorkAddress });
+        assertWeb3Equal(await context.fAsset.balanceOf(agent.ownerWorkAddress), minted.poolFeeUBA);
         // minter transfers f-assets
         await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
         // redeemer redeems
@@ -76,7 +76,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await agent.confirmActiveRedemptionPayment(redemptionRequest, txHash2);
         // agent self-closes pool fees and exits
         await agent.selfClose(minted.poolFeeUBA);
-        await agent.exitAndDestroy(fullAgentClass1Collateral);
+        await agent.exitAndDestroy(fullAgentVaultCollateral);
     });
 
     it("should test for pool collateral payout in the case of liquidation (agent can cover total liquidation value)", async () => {
@@ -84,9 +84,9 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
         const liquidator = await Liquidator.create(context, minterAddress1);
         // make agent available
-        const fullAgentClass1Collateral = toWei(3e8);
+        const fullAgentVaultCollateral = toWei(3e8);
         const fullAgentPoolCollateral = toWei(3e12); // need to be enough to cover asset price increase
-        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
         // minter mints
         const lots = 10;
         const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
@@ -103,8 +103,8 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(minterPoolFAsset, minted.poolFeeUBA);
         assertWeb3Equal(agentPoolFAsset, minted.poolFeeUBA);
         // get agent's collateral ratio to 0.5 by increasing asset price
-        await agent.setClass1CollateralRatioByChangingAssetPrice(MAX_BIPS / 2);
-        assertWeb3Equal(await agent.getCurrentClass1CollateralRatioBIPS(), MAX_BIPS / 2);
+        await agent.setVaultCollateralRatioByChangingAssetPrice(MAX_BIPS / 2);
+        assertWeb3Equal(await agent.getCurrentVaultCollateralRatioBIPS(), MAX_BIPS / 2);
         // minter triggers liquidation
         const poolCollateralBefore = await context.wNat.balanceOf(agent.collateralPool.address);
         const tokenSupplyBefore = await agent.collateralPoolToken.totalSupply();
@@ -119,11 +119,11 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(liquidatedUBA, liquidateUBA);
         assertWeb3Equal(await context.fAsset.balanceOf(minter.address), 0);
         // check that collateral pool helped agent cover all of minter's liquidation
-        const class1Price = await context.getCollateralPrice(agent.class1Collateral());
+        const vaultCollateralPrice = await context.getCollateralPrice(agent.vaultCollateral());
         const wNatPrice = await context.getCollateralPrice(context.collaterals[0]);
-        const minterClass1Reward = await agent.class1Token().balanceOf(minter.address);
+        const minterVaultCollateralReward = await agent.vaultCollateralToken().balanceOf(minter.address);
         const minterWNatReward = await context.wNat.balanceOf(minter.address);
-        const minterRewardUBA = class1Price.convertTokenWeiToUBA(minterClass1Reward).add(wNatPrice.convertTokenWeiToUBA(minterWNatReward));
+        const minterRewardUBA = vaultCollateralPrice.convertTokenWeiToUBA(minterVaultCollateralReward).add(wNatPrice.convertTokenWeiToUBA(minterWNatReward));
         const expectedRewardUBA = liquidatedUBA.mul(toBN(context.liquidationSettings.liquidationCollateralFactorBIPS[0])).divn(MAX_BIPS);
         assert(minterRewardUBA.sub(expectedRewardUBA).abs().lten(2)); // numerical error is at most 2
         // check that agent's tokens covered the liquidation
@@ -147,9 +147,9 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const agentFeeUBA = uba.mul(toBN(agent.settings.feeBIPS)).divn(MAX_BIPS);
         const poolFeeUBA = agentFeeUBA.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
         const mintedUBA = uba.add(poolFeeUBA);
-        const fullAgentClass1Collateral = await agent.getClass1CollateralToMakeCollateralRatioEqualTo(30_000, mintedUBA);
+        const fullAgentVaultCollateral = await agent.getVaultCollateralToMakeCollateralRatioEqualTo(30_000, mintedUBA);
         const fullAgentPoolCollateral = await agent.getPoolCollateralToMakeCollateralRatioEqualTo(30_000, mintedUBA);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
         // minter mints
         const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
         const txHash = await minter.performMintingPayment(crt);
@@ -165,11 +165,11 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const poolCollateralAfter = await context.wNat.balanceOf(agent.collateralPool.address);
         assertWeb3Equal(liquidatedUBA, uba);
         // check that collateral pool helped agent cover all of minter's liquidation
-        const class1Price = await context.getCollateralPrice(agent.class1Collateral());
+        const vaultCollateralPrice = await context.getCollateralPrice(agent.vaultCollateral());
         const wNatPrice = await context.getCollateralPrice(context.collaterals[0]);
-        const minterClass1Reward = await agent.class1Token().balanceOf(minter.address);
+        const minterVaultCollateralReward = await agent.vaultCollateralToken().balanceOf(minter.address);
         const minterWNatReward = await context.wNat.balanceOf(minter.address);
-        const minterRewardUBA = class1Price.convertTokenWeiToUBA(minterClass1Reward).add(wNatPrice.convertTokenWeiToUBA(minterWNatReward));
+        const minterRewardUBA = vaultCollateralPrice.convertTokenWeiToUBA(minterVaultCollateralReward).add(wNatPrice.convertTokenWeiToUBA(minterWNatReward));
         const expectedRewardUBA = liquidatedUBA.mul(toBN(context.liquidationSettings.liquidationCollateralFactorBIPS[0])).divn(MAX_BIPS);
         assert(minterRewardUBA.sub(expectedRewardUBA).abs().lten(2)); // numerical error is at most 2
         assertWeb3Equal(poolCollateralBefore.sub(poolCollateralAfter), minterWNatReward);
@@ -184,9 +184,9 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
         const redeemer = await Redeemer.create(context, minterAddress1, underlyingMinter1);
         // make agent available
-        const fullAgentClass1Collateral = toWei(3e8);
+        const fullAgentVaultCollateral = toWei(3e8);
         const fullAgentPoolCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
         // minter mints
         const lots = 3;
         const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
@@ -230,9 +230,9 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e10));
         // agent deposits into the pool
-        const fullAgentClass1Collateral = toWei(1e7);
+        const fullAgentVaultCollateral = toWei(1e7);
         const fullAgentPoolCollateral = toWei(1e7);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
         // minter mints
         const lots1 = 259;
         const crt1 = await minter.reserveCollateral(agent.vaultAddress, lots1);
@@ -272,9 +272,9 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
         // make agent available one lot worth of pool collateral
-        const fullAgentClass1Collateral = toWei(1e7);
+        const fullAgentVaultCollateral = toWei(1e7);
         const fullAgentPoolCollateral = toWei(1e7);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
         // minter mints
         const lots = 300;
         const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
@@ -285,16 +285,18 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         //Approve enough fassets that will be needed in self close exit.
         await context.fAsset.approve(agent.collateralPool.address, 100000000000, { from: minter.address });
         await agent.collateralPool.enter(0, false, { from: minter.address, value: minterPoolDeposit1 });
-
+        const fAssetBalanceBefore = await context.fAsset.balanceOf(minter.address);
+        const fAssetReqForClose = await agent.collateralPool.fAssetRequiredForSelfCloseExit(toWei(90000));
         const resp = await agent.collateralPool.selfCloseExit(toWei(90000), false, underlyingMinter1, { from: minter.address });
-
+        const fAssetBalanceAfter = await context.fAsset.balanceOf(minter.address);
+        assertWeb3Equal(fAssetBalanceBefore.sub(fAssetBalanceAfter),fAssetReqForClose);
         const info = await agent.getAgentInfo();
         const natShare = toBN(info.totalPoolCollateralNATWei).mul(minterPoolDeposit1).div(await agent.collateralPoolToken.totalSupply());
         //Check for redemption request
         assert.equal((await agent.collateralPoolToken.balanceOf(minter.address)).toString(),"0");
         await expectEvent.inTransaction(resp.tx, context.assetManager, "RedemptionRequested");
         assert.equal((await context.wNat.balanceOf(minter.address)).toString(), natShare.toString());
-        expectEvent(resp, "Exit");
+        expectEvent(resp, "Exited");
     });
 
     it("self close exit test, incomplete self close", async () => {
@@ -302,9 +304,9 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
         // make agent available one lot worth of pool collateral
-        const fullAgentClass1Collateral = toWei(3e8);
+        const fullAgentVaultCollateral = toWei(3e8);
         const fullAgentPoolCollateral = toWei(3e8);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
         // minter mints multiple times to create a lot of tickets
         for (let i = 0; i <= 30; i++) {
             const lots = 1;
@@ -325,17 +327,17 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         //Check for redemption request and incomplete self close
         await expectEvent.inTransaction(resp.tx, context.assetManager, "RedemptionRequested");
         await expectEvent.inTransaction(resp.tx, agent.collateralPool, "IncompleteSelfCloseExit");
-        expectEvent(resp, "Exit");
+        expectEvent(resp, "Exited");
     });
 
-    it("self close exit test payout in class1 collateral", async () => {
+    it("self close exit test payout in vault collateral", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
         // make agent available one lot worth of pool collateral
-        const fullAgentClass1Collateral = toWei(1e7);
+        const fullAgentVaultCollateral = toWei(1e7);
         const fullAgentPoolCollateral = toWei(1e7);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
         // minter mints
         const lots = 300;
         const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
@@ -347,28 +349,32 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await context.fAsset.approve(agent.collateralPool.address, 10000000000, { from: minter.address });
         await agent.collateralPool.enter(0, false, { from: minter.address, value: minterPoolDeposit1 });
 
-        const class1BalanceAgentBefore = await context.usdc.balanceOf(agent.agentVault.address);
-        const class1BalanceRedeemerBefore = await context.usdc.balanceOf(minter.address);
+        const vaultCollateralBalanceAgentBefore = await context.usdc.balanceOf(agent.agentVault.address);
+        const vaultCollateralBalanceRedeemerBefore = await context.usdc.balanceOf(minter.address);
 
-        //Self close exit with class1 collateral payout
+        //Self close exit with vault collateral payout
         const selfCloseAmount = toWei(10000);
+        const fAssetBalanceBefore = await context.fAsset.balanceOf(minter.address);
+        const fAssetReqForClose = await agent.collateralPool.fAssetRequiredForSelfCloseExit(selfCloseAmount);
         const resp = await agent.collateralPool.selfCloseExit(selfCloseAmount, true, underlyingMinter1, { from: minter.address });
+        const fAssetBalanceAfter = await context.fAsset.balanceOf(minter.address);
+        assertWeb3Equal(fAssetBalanceBefore.sub(fAssetBalanceAfter),fAssetReqForClose);
         const info = await agent.getAgentInfo();
         const natShare = toBN(info.totalPoolCollateralNATWei).mul(selfCloseAmount).div(await agent.collateralPoolToken.totalSupply());
-        const class1BalanceAgentAfter = await context.usdc.balanceOf(agent.agentVault.address);
-        const class1BalanceRedeemerAfter = await context.usdc.balanceOf(minter.address);
-        assert.equal(class1BalanceRedeemerAfter.sub(class1BalanceRedeemerBefore).toString(), class1BalanceAgentBefore.sub(class1BalanceAgentAfter).toString());
+        const vaultCollateralBalanceAgentAfter = await context.usdc.balanceOf(agent.agentVault.address);
+        const vaultCollateralBalanceRedeemerAfter = await context.usdc.balanceOf(minter.address);
+        assert.equal(vaultCollateralBalanceRedeemerAfter.sub(vaultCollateralBalanceRedeemerBefore).toString(), vaultCollateralBalanceAgentBefore.sub(vaultCollateralBalanceAgentAfter).toString());
         assert.equal((await context.wNat.balanceOf(minter.address)).toString(), natShare.toString());
-        expectEvent(resp, "Exit");
+        expectEvent(resp, "Exited");
     });
 
     it("withdraw collateral when FAsset is terminated", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
         // make agent available
-        const fullAgentClass1Collateral = toWei(1e7);
+        const fullAgentVaultCollateral = toWei(1e7);
         const fullAgentPoolCollateral = toWei(1e7);
-        await agent.depositCollateralsAndMakeAvailable(fullAgentClass1Collateral, fullAgentPoolCollateral);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
         // minter mints
         const lots = 300;
         const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
@@ -390,6 +396,97 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         //Should revert if there is no collateral to withdraw
         res = agent.collateralPool.withdrawCollateralWhenFAssetTerminated({ from: minter.address });
         await expectRevert(res, "nothing to withdraw");
+    });
+
+    it("should check if agent doesn't pay underlying - the redeemer must only get vault collateral (special case for pool redemptions)", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
+        // make agent available
+        const fullAgentVaultCollateral = toWei(1e7);
+        const fullAgentPoolCollateral = toWei(1e7);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
+        // minter mints
+        const lots = 100;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        const txHash1 = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash1);
+        // minter enters the pool
+        const minterPoolDeposit = toWei(1e7);
+        await context.fAsset.approve(agent.collateralPool.address, context.convertLotsToUBA(lots), { from: minter.address });
+        await agent.collateralPool.enter(0, false, { from: minter.address, value: minterPoolDeposit });
+        // pool collateral drops below exitCR (e.g. to 1) so that minter will have to pay at least one lot of f-assets
+        // (in fact he needs to pay ~50 lots because math)
+        await agent.setPoolCollateralRatioByChangingAssetPrice(10_000);
+        // minters triggers self-close exit
+        const minterTokens = await agent.collateralPoolToken.balanceOf(minter.address);
+        const resp = await agent.collateralPool.selfCloseExit(minterTokens, false, minter.underlyingAddress, { from: minter.address });
+        assertWeb3Equal(await context.wNat.balanceOf(minter.address), minterPoolDeposit);
+        // get redemption request
+        await expectEvent.inTransaction(resp.tx, context.assetManager, "RedemptionRequested");
+        const request = requiredEventArgsFrom(resp, context.assetManager, 'RedemptionRequested');
+        assert(request.valueUBA.gte(context.convertLotsToUBA(1)));
+        assertWeb3Equal(request.paymentAddress, minter.underlyingAddress);
+        assertWeb3Equal(request.agentVault, agent.vaultAddress);
+        // mine some blocks to create overflow blocka
+        for (let i = 0; i <= 2 * context.chainInfo.underlyingBlocksForPayment; i++) {
+            await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
+        }
+        // do default
+        const redeemedLots = context.convertUBAToLots(request.valueUBA);
+        const [redemptionDefaultValueVaultCollateral, redemptionDefaultValuePool] = await agent.getRedemptionPaymentDefaultValue(redeemedLots, true);
+        const redDef = await agent.redemptionPaymentDefault(request);
+        assertWeb3Equal(redDef.redeemedPoolCollateralWei, redemptionDefaultValuePool);
+        assertWeb3Equal(redDef.redeemedPoolCollateralWei, 0);
+        assertWeb3Equal(redDef.redemptionAmountUBA, request.valueUBA);
+        assertWeb3Equal(redDef.redeemedVaultCollateralWei, redemptionDefaultValueVaultCollateral);
+        // check that the redeemer got only vault collateral
+        assertWeb3Equal(await context.usdc.balanceOf(minter.address), redemptionDefaultValueVaultCollateral);
+        assertWeb3Equal(await context.wNat.balanceOf(minter.address), minterPoolDeposit);
+    });
+
+    it("should delegate and undelegate collateral pool's wNat", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        // make agent available
+        const fullAgentVaultCollateral = toWei(1e7);
+        const fullAgentPoolCollateral = toWei(1e7);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
+        // delegate
+        await agent.collateralPool.delegate([accounts[2], accounts[3]], [6_000, 4_000], { from: agentOwner1 });
+        const delegations1 = await context.wNat.delegatesOf(agent.collateralPool.address) as any;
+        assertWeb3Equal(delegations1._delegateAddresses[0], accounts[2]);
+        assertWeb3Equal(delegations1._bips[0], 6000);
+        const votePower1 = await context.wNat.votePowerOf(accounts[2]);
+        assertWeb3Equal(votePower1, fullAgentVaultCollateral.muln(6_000).divn(10_000));
+        // undelegate at block
+        const blockNumber = await web3.eth.getBlockNumber();
+        await agent.collateralPool.revokeDelegationAt(accounts[2], blockNumber, { from: agentOwner1 });
+        const votePower2 = await context.wNat.votePowerOfAt(accounts[2], blockNumber);
+        assertWeb3Equal(votePower2, 0);
+        const votePower3 = await context.wNat.votePowerOfAt(accounts[3], blockNumber);
+        assertWeb3Equal(votePower3, fullAgentVaultCollateral.muln(4_000).divn(10_000));
+        // undelegate
+        await agent.collateralPool.undelegateAll({ from: agentOwner1 });
+        const delegations2 = await context.wNat.delegatesOf(agent.collateralPool.address) as any;
+        assert.equal(delegations2._delegateAddresses.length, 0);
+        const votePower4 = await context.wNat.votePowerOf(accounts[2]);
+        assertWeb3Equal(votePower4, 0);
+        const votePower5 = await context.wNat.votePowerOf(accounts[3]);
+        assertWeb3Equal(votePower5, 0);
+    });
+
+    it("should delegate governance vote power and undelegate", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        // make agent available
+        const fullAgentVaultCollateral = toWei(1e7);
+        const fullAgentPoolCollateral = toWei(1e7);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
+        // set governance vote power
+        const governanceVP = await context.createGovernanceVP();
+        await context.wNat.setGovernanceVotePower(governanceVP.address, { from: governance });
+        // delegate
+        await agent.collateralPool.delegateGovernance(accounts[5], { from: agent.ownerWorkAddress });
+        // undelegate
+        await agent.collateralPool.undelegateGovernance({ from: agent.ownerWorkAddress });
     });
 
 });

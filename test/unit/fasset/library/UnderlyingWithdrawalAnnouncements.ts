@@ -36,8 +36,8 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
 
 
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
-        const class1CollateralToken = options?.class1CollateralToken ?? usdc.address;
-        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, class1CollateralToken, options);
+        const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
+        return createTestAgent({ assetManager, settings, chain, wallet, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
 
     async function initialize() {
@@ -112,6 +112,59 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
         await time.increase(settings.announcedUnderlyingConfirmationMinSeconds);
         const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
+        // assert
+        expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
+        assert.isAbove(Number(eventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);
+    });
+
+    it("should confirm underlying withdrawal both times", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        chain.mint(underlyingAgent1, 500);
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+        const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
+        // act
+        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
+        const blockId = (await chain.getTransactionBlock(txHash))!.number;
+        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
+        await time.increase(settings.announcedUnderlyingConfirmationMinSeconds);
+        const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: agentOwner1 });
+        //Announce underlying withdrawal again and confirm. Because agent is in full liquidation
+        //it will stay in full liquidation
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+        const announcementId2 = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
+        const txHash2 = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId2));
+        const blockId2 = (await chain.getTransactionBlock(txHash2))!.number;
+        const proof2 = await attestationProvider.provePayment(txHash2, underlyingAgent1, null);
+        await time.increase(settings.announcedUnderlyingConfirmationMinSeconds);
+        const res2 = await assetManager.confirmUnderlyingWithdrawal(proof2, agentVault.address, { from: agentOwner1 });
+        // assert
+        expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
+        assert.isAbove(Number(eventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);
+        expectEvent(res2, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash2});
+        assert.isAbove(Number(eventArgs(res2, "UnderlyingWithdrawalConfirmed").announcementId), 0);
+    });
+
+    it("others can confirm underlying withdrawal after some time, empty token ftso symbol conversion test (convertFromUSD5)", async () => {
+        // init
+        const ci = testChainInfo.eth;
+        collaterals = createTestCollaterals(contracts, ci);
+        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
+        //Make vault collateral token have no ftso symbol and a direct price pair (relevant when calculating reward for confirmation later)
+        collaterals[1].tokenFtsoSymbol="";
+        collaterals[1].directPricePair = true;
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        chain.mint(underlyingAgent1, 500);
+        await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });
+        const announcementId = (await assetManager.getAgentInfo(agentVault.address)).announcedUnderlyingWithdrawalId;
+        // act
+        const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 500, PaymentReference.announcedWithdrawal(announcementId));
+        const blockId = (await chain.getTransactionBlock(txHash))!.number;
+        const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, null);
+        const manSettings = await assetManager.getSettings();
+        await time.increase(manSettings.confirmationByOthersAfterSeconds);
+        const res = await assetManager.confirmUnderlyingWithdrawal(proof, agentVault.address, { from: accounts[12] });
         // assert
         expectEvent(res, "UnderlyingWithdrawalConfirmed", {agentVault: agentVault.address, spentUBA: toBN(500), transactionHash: txHash});
         assert.isAbove(Number(eventArgs(res, "UnderlyingWithdrawalConfirmed").announcementId), 0);

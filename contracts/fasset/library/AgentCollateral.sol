@@ -25,7 +25,7 @@ library AgentCollateral {
     {
         Collateral.Data memory poolCollateral = poolCollateralData(_agent);
         return Collateral.CombinedData({
-            agentCollateral: agentClass1CollateralData(_agent),
+            agentCollateral: agentVaultCollateralData(_agent),
             poolCollateral: poolCollateral,
             agentPoolTokens: agentsPoolTokensCollateralData(_agent, poolCollateral)
         });
@@ -38,8 +38,8 @@ library AgentCollateral {
         internal view
         returns (Collateral.Data memory)
     {
-        if (_kind == Collateral.Kind.AGENT_CLASS1) {
-            return agentClass1CollateralData(_agent);
+        if (_kind == Collateral.Kind.VAULT) {
+            return agentVaultCollateralData(_agent);
         } else if (_kind == Collateral.Kind.POOL) {
             return poolCollateralData(_agent);
         } else {
@@ -47,15 +47,15 @@ library AgentCollateral {
         }
     }
 
-    function agentClass1CollateralData(
+    function agentVaultCollateralData(
         Agent.State storage _agent
     )
         internal view
         returns (Collateral.Data memory)
     {
-        CollateralTypeInt.Data storage collateral = _agent.getClass1Collateral();
+        CollateralTypeInt.Data storage collateral = _agent.getVaultCollateral();
         return Collateral.Data({
-            kind: Collateral.Kind.AGENT_CLASS1,
+            kind: Collateral.Kind.VAULT,
             fullCollateral: collateral.token.balanceOf(_agent.vaultAddress()),
             amgToTokenWeiPrice: Conversion.currentAmgPriceInTokenWei(collateral)
         });
@@ -185,11 +185,11 @@ library AgentCollateral {
             _mintingMinCollateralRatioBIPS =
                 Math.max(_agent.mintingPoolCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         } else {
-            _systemMinCollateralRatioBIPS = _agent.getClass1Collateral().minCollateralRatioBIPS;
+            _systemMinCollateralRatioBIPS = _agent.getVaultCollateral().minCollateralRatioBIPS;
             // agent's minCollateralRatioBIPS must be greater than minCollateralRatioBIPS when set, but
             // minCollateralRatioBIPS can change later so we always use the max of both
             _mintingMinCollateralRatioBIPS =
-                Math.max(_agent.mintingClass1CollateralRatioBIPS, _systemMinCollateralRatioBIPS);
+                Math.max(_agent.mintingVaultCollateralRatioBIPS, _systemMinCollateralRatioBIPS);
         }
     }
 
@@ -205,7 +205,7 @@ library AgentCollateral {
         returns (uint256)
     {
         if (_valueAMG == 0) return 0;
-        // Assume: collateral kind is CLASS1 or redemption is NOT a pool self close redemption.
+        // Assume: collateral kind is VAULT or redemption is NOT a pool self close redemption.
         // For pool self close redemptions, pool collateral is never paid, so this method is not used.
         uint256 redeemingAMG = _data.kind == Collateral.Kind.POOL ? _agent.poolRedeemingAMG : _agent.redeemingAMG;
         assert(_valueAMG <= redeemingAMG);

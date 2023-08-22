@@ -30,7 +30,7 @@ library LiquidationStrategy {
 
     function currentLiquidationFactorBIPS(
         Agent.State storage _agent,
-        uint256 _class1CR,
+        uint256 _vaultCR,
         uint256 _poolCR
     )
         internal view
@@ -38,7 +38,7 @@ library LiquidationStrategy {
     {
         address ls = AssetManagerState.getSettings().liquidationStrategy;
         bytes memory data = abi.encodeCall(ILiquidationStrategy(ls).currentLiquidationFactorBIPS,
-            (_agent.vaultAddress(), _class1CR, _poolCR));
+            (_agent.vaultAddress(), _vaultCR, _poolCR));
         bytes memory result = DynamicLibrary.staticDelegateCall(ls, data);
         return abi.decode(result, (uint256, uint256));
     }

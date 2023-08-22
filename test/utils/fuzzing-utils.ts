@@ -63,6 +63,7 @@ export function randomBN(end: BN): BN;
 export function randomBN(start: BN, end: BN): BN;
 export function randomBN(startOrEnd: BN, endOpt?: BN): BN {
     const [start, end] = endOpt !== undefined ? [startOrEnd, endOpt] : [BN_ZERO, startOrEnd];
+    if (start.gte(end)) return start;   // if interval is empty, always return start (e.g. 0 if end is negative)
     const random = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
     return start.add(end.sub(start).mul(toBN(random)).div(toBN(Number.MAX_SAFE_INTEGER)));
 }

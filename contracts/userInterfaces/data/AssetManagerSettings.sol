@@ -25,6 +25,11 @@ library AssetManagerSettings {
         // timelocked
         address collateralPoolFactory;
 
+        // Factory for creating new agent collateral pool tokens.
+        // Type: ICollateralPoolTokenFactory
+        // timelocked
+        address collateralPoolTokenFactory;
+
         // If set, the whitelist contains a list of accounts that can call public methods
         // (minting, redeeming, challenging, etc.)
         // This can be `address(0)`, in which case no whitelist checks are done.
@@ -58,10 +63,10 @@ library AssetManagerSettings {
         // immutable
         address payable burnAddress;
 
-        // FTSO registry from which the system obtains ftso's for nat and asset.
-        // Type: IFtsoRegistry
-        // changed via address updater
-        address ftsoRegistry;
+        // The contract that reads prices from FTSO system in an FTSO version independent way.
+        // Type: IPriceReader
+        // timelocked
+        address priceReader;
 
         // Same as assetToken.decimals()
         // immutable
@@ -144,9 +149,9 @@ library AssetManagerSettings {
         // On redemption underlying payment failure, redeemer is compensated with
         // redemption value recalculated in flare/sgb times redemption failure factor.
         // Expressed in BIPS, e.g. 12000 for factor of 1.2.
-        // This is the part of factor paid from agent's class 1 collateral.
+        // This is the part of factor paid from agent's vault collateral.
         // rate-limited
-        uint32 redemptionDefaultFactorAgentC1BIPS;
+        uint32 redemptionDefaultFactorVaultCollateralBIPS;
 
         // This is the part of redemption factor paid from agent's pool collateral.
         // rate-limited
@@ -173,7 +178,7 @@ library AssetManagerSettings {
         uint16 paymentChallengeRewardBIPS;
 
         // Challenge reward can be composed of two part - fixed and proportional (any of them can be zero).
-        // This is the fixed part (in class 1 collateral token wei).
+        // This is the fixed part (in vault collateral token wei).
         // rate-limited
         uint128 paymentChallengeRewardUSD5;
 
@@ -215,17 +220,17 @@ library AssetManagerSettings {
         uint64 announcedUnderlyingConfirmationMinSeconds;
 
         // Minimum time from the moment token is deprecated to when it becomes invalid and agents still using
-        // it as class1 get liquidated.
+        // it as vault collateral get liquidated.
         // timelocked
         uint64 tokenInvalidationTimeMinSeconds;
 
         // On some rare occasions (stuck minting, locked fassets after termination), the agent has to unlock
         // collateral. For this, part of collateral corresponding to FTSO asset value is burned and the rest
         // is released.
-        // However, we cannot burn typical class1 collateral (stablecoins), so the agent must buy them for NAT
+        // However, we cannot burn typical vault collateral (stablecoins), so the agent must buy them for NAT
         // at FTSO price multiplied with this factor (should be a bit above 1) and then we burn the NATs.
         // timelocked
-        uint32 class1BuyForFlareFactorBIPS;
+        uint32 vaultCollateralBuyForFlareFactorBIPS;
 
         // Amount of seconds that have to pass between available list exit announcement and execution.
         // rate-limited

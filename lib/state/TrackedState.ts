@@ -45,6 +45,7 @@ export class TrackedState {
 
     // settings
     logger?: ILogger;
+    deleteDestroyedAgents = true;
 
     // synthetic events
     pricesUpdated = new TriggerableEvent<void>(this.eventQueue);
@@ -76,6 +77,9 @@ export class TrackedState {
         });
         this.assetManagerEvent('RedemptionRequested').subscribe(args => {
             this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
+        });
+        this.assetManagerEvent('RedeemedInCollateral').subscribe(args => {
+            this.fAssetSupply = this.fAssetSupply.sub(toBN(args.redemptionAmountUBA));
         });
         this.assetManagerEvent('SelfClose').subscribe(args => {
             this.fAssetSupply = this.fAssetSupply.sub(toBN(args.valueUBA));
@@ -122,7 +126,7 @@ export class TrackedState {
 
     private registerAgentHandlers() {
         // agent create / destroy
-        this.assetManagerEvent('AgentCreated').subscribe(args => this.createAgent({ ...args, poolWNat: this.poolWNatColateral.token }));
+        this.assetManagerEvent('AgentVaultCreated').subscribe(args => this.createAgentVault({ ...args, poolWNat: this.poolWNatColateral.token }));
         this.assetManagerEvent('AgentDestroyed').subscribe(args => this.destroyAgent(args.agentVault));
         // status changes
         this.assetManagerEvent('AgentInCCB').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.CCB, args.timestamp));
@@ -195,24 +199,24 @@ export class TrackedState {
     getAgentTriggerAdd(address: string): TrackedAgentState | undefined {
         const agent = this.agents.get(address);
         if (!agent) {
-            void this.createAgentWithCurrentState(address); // create in background
+            void this.createAgentVaultWithCurrentState(address); // create in background
         }
         return agent;
     }
 
-    async createAgentWithCurrentState(address: string) {
+    async createAgentVaultWithCurrentState(address: string) {
         const agentInfo = await this.context.assetManager.getAgentInfo(address);
         const poolWNat = await CollateralPool.at(agentInfo.collateralPool).then(pool => pool.wNat());
-        const agent = this.createAgent({
+        const agent = this.createAgentVault({
             agentVault: address,
-            owner: agentInfo.ownerColdWalletAddress,
+            owner: agentInfo.ownerManagementAddress,
             underlyingAddress: agentInfo.underlyingAddressString,
             collateralPool: agentInfo.collateralPool,
-            class1CollateralToken: agentInfo.class1CollateralToken,
+            vaultCollateralToken: agentInfo.vaultCollateralToken,
             poolWNat: poolWNat,
             feeBIPS: agentInfo.feeBIPS,
             poolFeeShareBIPS: agentInfo.poolFeeShareBIPS,
-            mintingClass1CollateralRatioBIPS: agentInfo.mintingClass1CollateralRatioBIPS,
+            mintingVaultCollateralRatioBIPS: agentInfo.mintingVaultCollateralRatioBIPS,
             mintingPoolCollateralRatioBIPS: agentInfo.mintingPoolCollateralRatioBIPS,
             buyFAssetByAgentFactorBIPS: agentInfo.buyFAssetByAgentFactorBIPS,
             poolExitCollateralRatioBIPS: agentInfo.poolExitCollateralRatioBIPS,
@@ -222,7 +226,7 @@ export class TrackedState {
         agent.initializeState(agentInfo);
     }
 
-    createAgent(data: InitialAgentData) {
+    createAgentVault(data: InitialAgentData) {
         const agent = this.newAgent(data);
         this.agents.set(data.agentVault, agent);
         this.agentsByUnderlying.set(data.underlyingAddress, agent);
@@ -236,7 +240,7 @@ export class TrackedState {
 
     destroyAgent(address: string) {
         const agent = this.getAgent(address);
-        if (agent) {
+        if (agent && this.deleteDestroyedAgents) {
             this.agents.delete(address);
             this.agentsByUnderlying.delete(agent.underlyingAddressString);
             this.agentsByPool.delete(agent.collateralPoolAddress);
@@ -264,7 +268,7 @@ export class TrackedState {
     }
 
     eventInfo(event: EvmEvent) {
-        return `event=${event.event} at ${event.blockNumber}.${event.logIndex}`;
+        return `event=${event.event} at block ${event.blockNumber} (index ${event.logIndex})`;
     }
 
     logAllAgentSummaries() {

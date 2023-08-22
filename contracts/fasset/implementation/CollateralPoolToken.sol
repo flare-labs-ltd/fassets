@@ -3,9 +3,8 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../userInterfaces/ICollateralPoolToken.sol";
-import "./CollateralPool.sol";
+import "../interface/IICollateralPool.sol";
 
 
 contract CollateralPoolToken is ICollateralPoolToken, ERC20, IERC165 {
@@ -35,11 +34,11 @@ contract CollateralPoolToken is ICollateralPoolToken, ERC20, IERC165 {
     }
 
     function transferableBalanceOf(address _account) public view returns (uint256) {
-        return CollateralPool(payable(collateralPool)).transferableTokensOf(_account);
+        return IICollateralPool(collateralPool).transferableTokensOf(_account);
     }
 
     function lockedBalanceOf(address _account) public view returns (uint256) {
-        return CollateralPool(payable(collateralPool)).lockedTokensOf(_account);
+        return IICollateralPool(collateralPool).lockedTokensOf(_account);
     }
 
     function _beforeTokenTransfer(
