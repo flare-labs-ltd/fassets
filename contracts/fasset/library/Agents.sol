@@ -81,6 +81,8 @@ library Agents {
         CollateralTypeInt.Data storage collateral = getPoolCollateral(_agent);
         uint256 minCR = Math.max(_agent.mintingPoolCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
         require(_poolExitCollateralRatioBIPS >= minCR, "value to low");
+        uint256 currentExitCR = _agent.collateralPool.exitCollateralRatioBIPS();
+        require(_poolExitCollateralRatioBIPS <= currentExitCR * 3 / 2, "increase too big");
         _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
     }
 

@@ -435,6 +435,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "value to low")
         });
 
+        it("should not update agent setting pool exit collateral ratio BIPS if increase too big", async () => {
+            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const newExitCR = toBN(agentInfo.poolExitCollateralRatioBIPS).muln(2);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", newExitCR, { from: agentOwner1 });
+            await time.increase(agentPoolExitCRChangeTimelock);
+            let res = assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
+            await expectRevert(res, "increase too big")
+        });
+
         it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
             const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
