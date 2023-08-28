@@ -362,7 +362,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
 
     async function testChangePrices(index: number) {
         for (const [symbol, ftso] of Object.entries(context.ftsos)) {
-            const [minFactor, maxFactor] = CHANGE_PRICE_FACTOR[symbol] ?? CHANGE_PRICE_FACTOR['default'] ?? [0.9, 1.1];
+            const [minFactor, maxFactor] = CHANGE_PRICE_FACTOR?.[symbol] ?? CHANGE_PRICE_FACTOR?.['default'] ?? [0.9, 1.1];
             await _changePriceOnFtso(ftso, randomNum(minFactor, maxFactor));
         }
         await context.ftsoManager.mockFinalizePriceEpoch();
