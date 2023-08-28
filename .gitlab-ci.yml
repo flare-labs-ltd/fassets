@@ -136,8 +136,8 @@ coverage:schedule:
   script:
   - yarn cov
   rules:
+  - if: '$CI_PIPELINE_SOURCE == "web"'
   - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "coverage"'
-    when: always
 
 
 fuzzer:schedule:
@@ -159,5 +159,5 @@ fuzzer:schedule:
     when: always
     expire_in: 30 days
   rules:
+  - if: '$CI_PIPELINE_SOURCE == "web"'
   - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "fuzzer"'
-    when: always
