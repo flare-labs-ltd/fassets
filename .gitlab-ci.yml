@@ -14,10 +14,6 @@ include:
 sast:
   needs: []
 
-
-variables:
-  YARN_CACHE_DIR: "$CI_PROJECT_DIR/.yarn-cache"
-
 default:
   tags:
   - flarenetwork
@@ -96,7 +92,8 @@ test-unit:
 
 test-unit-md:
   extends: test-unit
-  tags: [ flarenetwork-md ]
+  tags:
+  - flarenetwork-md
   parallel:
     matrix:
     - TEST_PATH:
@@ -132,6 +129,8 @@ coverage:schedule:
   extends:
   - .test-node-sc
   stage: test
+  tags:
+  - flarenetwork-lg
   retry: 2
   script:
   - yarn cov
@@ -144,6 +143,8 @@ fuzzer:schedule:
   extends:
   - .test-node-sc
   stage: test
+  tags:
+  - flarenetwork-lg
   timeout: 4 hours
   variables:
     NODE_OPTIONS: "--max_old_space_size=6144"
