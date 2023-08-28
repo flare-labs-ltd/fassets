@@ -32,17 +32,10 @@ default:
     GOVERNANCE_PRIVATE_KEY: "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
     GOVERNANCE_PUBLIC_KEY: "0xeAD9C93b79Ae7C1591b1FB5323BD777E86e150d4"
     GOVERNANCE_EXECUTOR_PUBLIC_KEY: "0xE5904695748fe4A84b40b3fc79De2277660BD1D3"
-  cache:
-    key:
-      files:
-      - yarn.lock
-    paths:
-    - node_modules/
-    policy: pull
   dependencies:
   - build-smart-contracts
   before_script:
-  - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
+  - yarn install --frozen-lockfile
 
 
 
@@ -54,16 +47,9 @@ build-smart-contracts:
   needs: []
   image: node:18
   before_script:
-  - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
+  - yarn install --frozen-lockfile
   script:
   - yarn c
-  cache:
-    key:
-      files:
-      - yarn.lock
-    paths:
-    - node_modules/
-    policy: pull-push
   rules:
   - !reference [coverage:schedule, rules]
   - !reference [fuzzer:schedule, rules]
@@ -120,7 +106,7 @@ test-slither-check:
   - apt update
   - apt install -y python3-pip
   - pip3 install slither-analyzer
-  - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
+  - yarn install --frozen-lockfile
   script:
   - yarn slither
 
