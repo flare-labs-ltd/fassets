@@ -428,36 +428,6 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await collateralPool.enter(ETH(1), false, { value: ETH(1) });
         });
 
-        it("should make one user topup the pool", async () => {
-            // mint some f-assets (target can be anyone)
-            await fAsset.mintAmount(accounts[2], ETH(1));
-            // account0 enters the pool
-            const natToTopup = await getNatRequiredToGetPoolCRAbove(topupCR);
-            const collateral = maxBN(natToTopup, MIN_NAT_TO_ENTER);
-            await collateralPool.enter(0, true, { value: collateral });
-            // check that discount tokens are calculated correctly
-            const tokens = await collateralPoolToken.balanceOf(accounts[0]);
-            assertEqualBN(tokens, collateral.sub(natToTopup).add(applyTopupDiscount(natToTopup)));
-        });
-
-        it("should make two users topup the pool", async () => {
-            // mint some f-assets (target can be anyone)
-            const { 0: priceMul, 1: priceDiv } = await assetManager.assetPriceNatWei();
-            await fAsset.mintAmount(accounts[2], MIN_NAT_TO_ENTER.muln(2).mul(priceDiv).div(priceMul));
-            // account0 enters the pool, but doesn't topup
-            const collateralOfAccount0 = MIN_NAT_TO_ENTER;
-            await collateralPool.enter(0, true, { value: collateralOfAccount0, from: accounts[0] });
-            const tokensOfAccount0 = await collateralPoolToken.balanceOf(accounts[0]);
-            assertEqualBN(tokensOfAccount0, applyTopupDiscount(collateralOfAccount0));
-            // account1 enters the pool and topups
-            const collateralOfAccount1 = await getNatRequiredToGetPoolCRAbove(topupCR);
-            await collateralPool.enter(0, true, { value: collateralOfAccount1, from: accounts[1] });
-            const tokensOfAccount1 = await collateralPoolToken.balanceOf(accounts[1]);
-            const collateralAtTopupPrice = applyTopupDiscount(collateralOfAccount1);
-            const tokensAtTopupPrice = tokensOfAccount0.mul(collateralAtTopupPrice).div(collateralOfAccount0);
-            assertEqualBN(tokensOfAccount1, tokensAtTopupPrice);
-        });
-
         it("should enter the topuped pool without f-assets, then pay off the debt", async () => {
             // mint required f-assets beforehand (topup cr should not change)
             const initialPoolFassets = ETH(5);
@@ -492,6 +462,71 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBN(freeFassetsAfter, debtFassets);
         });
 
+    });
+
+    describe("collateral pool topup discount", async () => {
+
+        it("should make one user topup the pool", async () => {
+            // mint some f-assets (target can be anyone)
+            await fAsset.mintAmount(accounts[2], ETH(1));
+            // account0 enters the pool
+            const natToTopup = await getNatRequiredToGetPoolCRAbove(topupCR);
+            const collateral = maxBN(natToTopup, MIN_NAT_TO_ENTER);
+            await collateralPool.enter(0, true, { value: collateral });
+            // check that discount tokens are calculated correctly
+            const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            const discountedTokens = applyTopupDiscount(natToTopup);
+            const notDiscountedNat = collateral.sub(natToTopup);
+            const notDiscountedTokens = notDiscountedNat.mul(discountedTokens).div(natToTopup);
+            assertEqualBN(tokens, discountedTokens.add(notDiscountedTokens));
+        });
+
+        it("should make two users topup the pool", async () => {
+            // mint some f-assets (target can be anyone)
+            const { 0: priceMul, 1: priceDiv } = await assetManager.assetPriceNatWei();
+            await fAsset.mintAmount(accounts[2], MIN_NAT_TO_ENTER.muln(2).mul(priceDiv).div(priceMul));
+            // account0 enters the pool, but doesn't topup
+            const collateralOfAccount0 = MIN_NAT_TO_ENTER;
+            await collateralPool.enter(0, true, { value: collateralOfAccount0, from: accounts[0] });
+            const tokensOfAccount0 = await collateralPoolToken.balanceOf(accounts[0]);
+            assertEqualBN(tokensOfAccount0, applyTopupDiscount(collateralOfAccount0));
+            // account1 enters the pool and topups
+            const collateralOfAccount1 = await getNatRequiredToGetPoolCRAbove(topupCR);
+            await collateralPool.enter(0, true, { value: collateralOfAccount1, from: accounts[1] });
+            const tokensOfAccount1 = await collateralPoolToken.balanceOf(accounts[1]);
+            const collateralAtTopupPrice = applyTopupDiscount(collateralOfAccount1);
+            const tokensAtTopupPrice = tokensOfAccount0.mul(collateralAtTopupPrice).div(collateralOfAccount0);
+            assertEqualBN(tokensOfAccount1, tokensAtTopupPrice);
+        });
+
+        it("should make sure that topup overflow gets the same amount of tokens as topuping exact amount, then entering with overflow", async () => {
+            // mint some f-assets (target can be anyone)
+            await fAsset.mintAmount(accounts[2], ETH(100));
+            // enter the pool
+            const natToTopup1 = await getNatRequiredToGetPoolCRAbove(topupCR);
+            const collateral = maxBN(natToTopup1, MIN_NAT_TO_ENTER).muln(2);
+            await collateralPool.enter(0, true, { value: collateral });
+            // check that discount tokens are calculated correctly
+            const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            const topupTokens = applyTopupDiscount(natToTopup1);
+            const overflowNat = collateral.sub(natToTopup1);
+            const overflowTokens = overflowNat.mul(topupTokens).div(natToTopup1);
+            assertEqualBN(tokens, topupTokens.add(overflowTokens));
+            // reset the pool and try again with two enters
+            await fAsset.burnAmount(accounts[2], ETH(100));
+            await collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT);
+            await fAsset.mintAmount(accounts[2], ETH(100));
+            // enter the pool the first time
+            const natToTopup2 = await getNatRequiredToGetPoolCRAbove(topupCR);
+            assertEqualBN(natToTopup2, natToTopup1);
+            await collateralPool.enter(0, true, { value: natToTopup2 });
+            const tokens1 = await collateralPoolToken.balanceOf(accounts[0]);
+            assertEqualBN(tokens1, topupTokens);
+            // enter the pool the second time
+            await collateralPool.enter(0, true , { value: overflowNat });
+            const tokens2 = await collateralPoolToken.balanceOf(accounts[0]);
+            assertEqualBN(tokens2, topupTokens.add(overflowTokens));
+        });
     });
 
     describe("exiting collateral pool", async () => {
@@ -1090,6 +1125,34 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             assertEqualBNWithError(account1FreeFassetAfter, account1FreeFassetBefore, BN_ONE);
         });
 
+        // as we cannot update balance when autoclaiming through executors,
+        // this test shows how agent can steal all auto-claimed rewards upon destruction.
+        // This is why `setAutoClaiming` was removed from collateral pool.
+        /* it("coinspect - can steal all auto-claimed rewards upon destruction", async () => {
+            const contract = await MockContract.new();
+            await collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: agent });
+            let totalCollateral = await collateralPool.totalCollateral();
+            let poolwNatBalance = await wNat.balanceOf(collateralPool.address);
+            console.log("\n === Initial Pool State ===");
+            console.log(`Total Collateral accounted: ${totalCollateral}`);
+            console.log(`Pool wNAT balance: ${poolwNatBalance}`);
+            // Simulate auto claims with an inlet of WNAT via depositTo (ultimately mints token to the recipient)
+            await wNat.mintAmount(collateralPool.address, ETH(10));
+            totalCollateral = await collateralPool.totalCollateral();
+            poolwNatBalance = await wNat.balanceOf(collateralPool.address);
+            console.log("\n === After Auto-Claim ===");
+            console.log(`Total Collateral accounted: ${totalCollateral}`);
+            console.log(`Pool wNAT balance: ${poolwNatBalance}`);
+            let balanceOfAgent = await wNat.balanceOf(agent);
+            console.log("\n === Before Pool Destruction ===");
+            console.log(`Agent wNAT balance: ${balanceOfAgent}`);
+            const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
+            await assetManager.callFunctionAt(collateralPool.address, payload);
+            balanceOfAgent = await wNat.balanceOf(agent);
+            console.log("\n === After Pool Destruction ===");
+            console.log(`Agent wNAT balance: ${balanceOfAgent}`);
+        }); */
+
     });
 
     describe("methods for pool liquidation through asset manager", async () => {
@@ -1354,17 +1417,6 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         it("random address shouldn't be able to undelegate governance", async () => {
             const res = collateralPool.undelegateGovernance({ from: accounts[5] });
             await expectRevert(res, "only agent");
-        });
-
-        it("random address shouldn't be able to set auto claiming", async () => {
-            const contract = await MockContract.new();
-            const res = collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: accounts[2] });
-            await expectRevert(res, "only agent");
-        });
-
-        it("should set auto claiming", async () => {
-            const contract = await MockContract.new();
-            await collateralPool.setAutoClaiming(contract.address, [accounts[2]], { from: agent });
         });
 
     });

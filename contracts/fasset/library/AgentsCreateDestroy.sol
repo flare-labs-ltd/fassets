@@ -16,6 +16,7 @@ import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
 import "./AgentSettingsUpdater.sol";
 import "./UnderlyingAddresses.sol";
+import "./StateUpdater.sol";
 
 
 library AgentsCreateDestroy {
@@ -70,10 +71,9 @@ library AgentsCreateDestroy {
         // then removes all in EOA proof transaction (or a transaction before EOA proof) and finally uses the
         // proof of transaction for minting.
         // Since we have a proof of the block N, current block is at least N+1.
-        uint64 leastCurrentBlock = _payment.blockNumber + 1;
-        if (leastCurrentBlock > state.currentUnderlyingBlock) {
-            state.currentUnderlyingBlock = leastCurrentBlock;
-        }
+        // Payment proof doesn't include confirmation blocks, so we set it to 0. The update happens only when
+        // block and timestamp increase anyway, so this cannot make the block number or timestamp approximation worse.
+        StateUpdater.updateCurrentBlock(_payment.blockNumber + 1, _payment.blockTimestamp, 0);
     }
 
     function createAgentVault(

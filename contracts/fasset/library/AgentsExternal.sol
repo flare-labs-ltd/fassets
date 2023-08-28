@@ -100,7 +100,7 @@ library AgentsExternal {
         return withdrawal.allowedAt;
     }
 
-    function withdrawalExecuted(
+    function beforeCollateralWithdrawal(
         IERC20 _token,
         address _agentVault,
         uint256 _amountWei
@@ -117,6 +117,7 @@ library AgentsExternal {
             return;     // we don't care about other token withdrawals from agent vault
         }
         Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(kind);
+        Collateral.Data memory collateralData = AgentCollateral.singleCollateralData(agent, kind);
         // only agents that are not being liquidated can withdraw
         // however, if the agent is in FULL_LIQUIDATION and totally liquidated,
         // the withdrawals must still be possible, otherwise the collateral gets locked forever
@@ -124,6 +125,12 @@ library AgentsExternal {
         require(withdrawal.allowedAt != 0, "withdrawal: not announced");
         require(_amountWei <= withdrawal.amountWei, "withdrawal: more than announced");
         require(block.timestamp > withdrawal.allowedAt, "withdrawal: not allowed yet");
+        // Check that withdrawal doesn't reduce CR below mintingCR (withdrawal is not executed yet, but it balances
+        // with the withdrawal announcement that is still in effect).
+        // This would be equivalent to `collateralData.freeCollateralWei >= 0` if freeCollateralWei was signed,
+        // but actually freeCollateralWei always returns positive part, so it cannot be used in this test.
+        require(collateralData.lockedCollateralWei(agent) <= collateralData.fullCollateral, "withdrawal: CR too low");
+        // (partially) clear withdrawal announcement
         uint256 remaining = withdrawal.amountWei - _amountWei;    // guarded by above require
         withdrawal.amountWei = uint128(remaining);
         if (remaining == 0) {

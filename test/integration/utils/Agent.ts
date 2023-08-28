@@ -130,15 +130,16 @@ export class Agent extends AssetContextClient {
     }
 
     async changeSettings(changes: Partial<Record<AgentSetting, BNish>>) {
-        let validAt = BN_ZERO;
+        let validity: Array<[name: string, validAt: BN]> = [];
         for (const [name, value] of Object.entries(changes)) {
             const res = await this.assetManager.announceAgentSettingUpdate(this.vaultAddress, name, value, { from: this.ownerWorkAddress });
             const announcement = requiredEventArgs(res, 'AgentSettingChangeAnnounced');
-            validAt = maxBN(validAt, toBN(announcement.validAt));
+            validity.push([name, announcement.validAt]);
         }
-        if (validAt.isZero()) return;   // no execute needed
-        await time.increaseTo(validAt);
-        for (const [name, value] of Object.entries(changes)) {
+        validity.sort((v1, v2) => v1[1].cmp(v2[1]));
+        for (const [name, validAt] of validity) {
+            if (validAt.isZero()) continue;   // no execute needed
+            if (validAt.gt(await time.latest())) await time.increaseTo(validAt);
             await this.assetManager.executeAgentSettingUpdate(this.vaultAddress, name, { from: this.ownerWorkAddress });
         }
     }
@@ -231,7 +232,8 @@ export class Agent extends AssetContextClient {
     }
 
     async announceVaultCollateralWithdrawal(amountWei: BNish) {
-        await this.assetManager.announceVaultCollateralWithdrawal(this.vaultAddress, amountWei, { from: this.ownerWorkAddress });
+        const res = await this.assetManager.announceVaultCollateralWithdrawal(this.vaultAddress, amountWei, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, 'VaultCollateralWithdrawalAnnounced');
     }
 
     async withdrawVaultCollateral(amountWei: BNish) {

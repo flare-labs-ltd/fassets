@@ -13,14 +13,15 @@ interface IAgentVault {
      * Deposit vault collateral.
      * Parameter `_token` is explicit to allow depositing before collateral switch.
      * NOTE: owner must call `token.approve(vault, amount)` before calling this method.
-     * NOTE: anybody can call this method, to allow the owner to deposit from any wallet.
+     * NOTE: only the owner of the agent vault may call this method. If the agent wants to deposit from
+     * some other wallet, he can just do `ERC20.transfer()` and then call `updateCollateral()`.
      */
     function depositCollateral(IERC20 _token, uint256 _amount) external;
 
     /**
      * Update collateral after `transfer(vault, some amount)` was called (alternative to depositCollateral).
      * Parameter `_token` is explicit to allow depositing before collateral switch.
-     * NOTE: anybody can call this method, to allow the owner to deposit from any source.
+     * NOTE: only the owner of the agent vault may call this method.
      */
     function updateCollateral(IERC20 _token) external;
 
@@ -83,13 +84,13 @@ interface IAgentVault {
      * Delegate governance vote power for possible NAT collateral token held in this vault.
      * NOTE: only the owner of the agent vault may call this method.
      */
-    function delegateGovernance(address _to) external;
+    function delegateGovernance(IVPToken _token, address _to) external;
 
     /**
      * Undelegate governance vote power for possible NAT collateral token held in this vault.
      * NOTE: only the owner of the agent vault may call this method.
      */
-    function undelegateGovernance() external;
+    function undelegateGovernance(IVPToken _token) external;
 
     /**
      * Claim the FTSO rewards earned by delegating.

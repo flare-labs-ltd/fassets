@@ -21,7 +21,7 @@ contract AssetManagerMock {
     }
 
     function payoutNAT(IIAgentVault _agentVault, address payable _recipient, uint256 _amount) external {
-        _agentVault.payoutNAT(_recipient, _amount);
+        _agentVault.payoutNAT(wNat, _recipient, _amount);
     }
 
     function getWNat() external view returns (IWNat) {

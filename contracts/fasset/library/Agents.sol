@@ -81,6 +81,8 @@ library Agents {
         CollateralTypeInt.Data storage collateral = getPoolCollateral(_agent);
         uint256 minCR = Math.max(_agent.mintingPoolCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
         require(_poolExitCollateralRatioBIPS >= minCR, "value to low");
+        uint256 currentExitCR = _agent.collateralPool.exitCollateralRatioBIPS();
+        require(_poolExitCollateralRatioBIPS <= currentExitCR * 3 / 2, "increase too big");
         _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
     }
 
@@ -238,7 +240,7 @@ library Agents {
             burnDirectNAT(amountNatWei);
             // If there is some overpaid NAT, just send it to the agent's vault.
             if (msg.value > amountNatWei) {
-                vault.depositNat{ value: msg.value - amountNatWei }();
+                vault.depositNat{ value: msg.value - amountNatWei }(Globals.getWNat());
             }
         }
     }
@@ -251,7 +253,7 @@ library Agents {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
-        vault.payoutNAT(settings.burnAddress, _amountNATWei);
+        vault.payoutNAT(Globals.getWNat(), settings.burnAddress, _amountNATWei);
     }
 
     function burnDirectNAT(

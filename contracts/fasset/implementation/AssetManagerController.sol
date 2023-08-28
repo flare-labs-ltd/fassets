@@ -350,6 +350,14 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_AGENT_COLLATERAL_RATIO_CHANGE_TIMELOCK_SECONDS, abi.encode(_value));
     }
 
+    function setAgentSettingUpdateWindowSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
+    external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS, abi.encode(_value));
+    }
+
     function setLiquidationStrategy(
         IIAssetManager[] memory _assetManagers,
         address _liquidationStrategy,

@@ -136,7 +136,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     });
 
-    it("should deposit vault collateral from any address - via approve & depositCollateral", async () => {
+    it("should deposit vault collateral from owner - via approve & depositCollateral", async () => {
         await usdc.mintAmount(owner, 2000);
         const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
         await usdc.approve(agentVault.address, 1100, { from: owner });
@@ -150,7 +150,17 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assertWeb3Equal(agentInfo2.totalVaultCollateralWei, 1100);
     });
 
-    it("should deposit vault collateral from any address - via transfer & updateCollateral", async () => {
+    it("can only deposit by owner - via approve & depositCollateral", async () => {
+        const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
+        const user = accounts[20];
+        await usdc.mintAmount(user, 2000);
+        await usdc.approve(agentVault.address, 1100, { from: user });
+        await expectRevert(agentVault.depositCollateral(usdc.address, 100, { from: user }), "only owner");
+        const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+        assertWeb3Equal(agentInfo.totalVaultCollateralWei, 0);
+    });
+
+    it("should deposit vault collateral from owner - via transfer & updateCollateral", async () => {
         await usdc.mintAmount(owner, 2000);
         const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
         await usdc.transfer(agentVault.address, 100, { from: owner });
@@ -163,6 +173,14 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await agentVault.updateCollateral(usdc.address, { from: owner });
         const agentInfo2 = await assetManager.getAgentInfo(agentVault.address);
         assertWeb3Equal(agentInfo2.totalVaultCollateralWei, 1100);
+    });
+
+    it("can only call updateCollateral by owner", async () => {
+        const agentVault = await createAgentVault(owner, underlyingAgent1, { vaultCollateralToken: usdc.address });
+        const user = accounts[20];
+        await usdc.mintAmount(user, 2000);
+        await usdc.transfer(agentVault.address, 100, { from: user });
+        await expectRevert(agentVault.updateCollateral(usdc.address, { from: user }), "only owner");
     });
 
     it("should withdraw vault collateral from owner", async () => {
@@ -250,7 +268,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     it("cannot delegate governance if not owner", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
-        const res = agentVault.delegateGovernance(accounts[2]);
+        const res = agentVault.delegateGovernance(wNat.address, accounts[2]);
         await expectRevert(res, "only owner")
     });
 
@@ -258,7 +276,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const governanceVP = await createGovernanceVP();
         await wNat.setGovernanceVotePower(governanceVP.address, { from: governance });
-        await agentVault.delegateGovernance(accounts[2], { from: owner });
+        await agentVault.delegateGovernance(wNat.address, accounts[2], { from: owner });
         const delegate = web3.eth.abi.encodeFunctionCall({type: "function", name: "delegate",
             inputs: [{name: "_to", type: "address"}]} as AbiItem,
             [accounts[2]] as any[]);
@@ -268,7 +286,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     it("cannot undelegate governance if not owner", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
-        const res = agentVault.undelegateGovernance();
+        const res = agentVault.undelegateGovernance(wNat.address);
         await expectRevert(res, "only owner")
     });
 
@@ -276,7 +294,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const governanceVP = await createGovernanceVP();
         await wNat.setGovernanceVotePower(governanceVP.address, { from: governance });
-        await agentVault.undelegateGovernance( { from: owner });
+        await agentVault.undelegateGovernance(wNat.address, { from: owner });
         const undelegate = web3.eth.abi.encodeFunctionCall({type: "function", name: "undelegate",
             inputs: []} as AbiItem,
             [] as any[]);
@@ -361,7 +379,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const governanceVP = await createGovernanceVP();
         await wNat.setGovernanceVotePower(governanceVP.address, { from: governance });
         const agentVault = await createAgentVault(owner, underlyingAgent1);
-        await agentVault.delegateGovernance(accounts[5], { from: owner });
+        await agentVault.delegateGovernance(wNat.address, accounts[5], { from: owner });
         await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
         await time.increase(settings.withdrawalWaitMinSeconds);
         await assetManager.destroyAgent(agentVault.address, owner, { from: owner });
@@ -384,7 +402,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     it("cannot call payoutNAT if not asset manager", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
-        const res = agentVault.payoutNAT(accounts[2], 100, { from: accounts[2] });
+        const res = agentVault.payoutNAT(wNat.address, accounts[2], 100, { from: accounts[2] });
         await expectRevert(res, "only asset manager")
     });
 
