@@ -277,9 +277,10 @@ export class FuzzingAgent extends FuzzingActor {
         const agentState = this.agentState(agent);
         // exit available if needed
         if (agentState.publiclyAvailable) {
-            const exitAllowedAt = await agent.announceExitAvailable();
+            const exitAllowedAt = await agent.announceExitAvailable()
+                .catch(e => scope.exitOnExpectedError(e, ['Missing event AvailableAgentExitAnnounced']));
             await this.timeline.flareTimestamp(exitAllowedAt).wait(scope);
-            await agent.exitAvailable()
+            await agent.exitAvailable(false)
                 .catch(e => scope.handleExpectedErrors(e, { continue: ['agent not available'] }));
         }
         // pull out fees
