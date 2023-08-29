@@ -124,7 +124,10 @@ library AgentsExternal {
         require(agent.status == Agent.Status.NORMAL || agent.totalBackedAMG() == 0, "withdrawal: invalid status");
         require(withdrawal.allowedAt != 0, "withdrawal: not announced");
         require(_amountWei <= withdrawal.amountWei, "withdrawal: more than announced");
-        require(block.timestamp > withdrawal.allowedAt, "withdrawal: not allowed yet");
+        require(block.timestamp >= withdrawal.allowedAt, "withdrawal: not allowed yet");
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        require(block.timestamp <= withdrawal.allowedAt + settings.agentTimelockedOperationWindowSeconds,
+            "withdrawal: too late");
         // Check that withdrawal doesn't reduce CR below mintingCR (withdrawal is not executed yet, but it balances
         // with the withdrawal announcement that is still in effect).
         // This would be equivalent to `collateralData.freeCollateralWei >= 0` if freeCollateralWei was signed,

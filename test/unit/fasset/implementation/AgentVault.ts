@@ -192,7 +192,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await agentVault.depositCollateral(usdc.address, 100, { from: owner });
         // withdraw collateral
         await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: owner });
-        await time.increase(time.duration.hours(48));
+        await time.increase(time.duration.hours(1));
         await agentVault.withdrawCollateral(usdc.address, 100, recipient, { from: owner });
         assertWeb3Equal(await usdc.balanceOf(recipient), toBN(100));
     });
