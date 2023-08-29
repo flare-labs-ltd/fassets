@@ -141,14 +141,20 @@ export class FuzzingAgent extends FuzzingActor {
         await this.context.waitForUnderlyingTransactionFinalization(scope, txHash);
         // execute
         const proof = await this.context.attestationProvider.provePayment(txHash, null, agent.underlyingAddress);
-        const res = await this.context.assetManager.selfMint(proof, agent.vaultAddress, lots, { from: this.ownerWorkAddress })
-            .catch(e => scope.exitOnExpectedError(e, ['cannot mint 0 lots', 'not enough free collateral', 'self-mint payment too small',
-                'self-mint invalid agent status', 'invalid self-mint reference', 'self-mint payment too old']));
+        let res = await this.context.assetManager.selfMint(proof, agent.vaultAddress, lots, { from: this.ownerWorkAddress })
+            .catch (e => scope.handleExpectedErrors(e, {
+                continue: ['not enough free collateral', 'self-mint payment too small'],
+                exit: ['self-mint invalid agent status', 'invalid self-mint reference', 'self-mint payment too old', "self-mint not agent's address"],
+            }));
         // 'self-mint payment too small' can happen after lot size change
         // 'invalid self-mint reference' can happen if agent is destroyed and re-created
         // 'self-mint payment too old' can happen when agent self-mints quickly after being created (typically when agent is re-created) and there is time skew
-        const args = requiredEventArgs(res, 'MintingExecuted');
-        // TODO: accounting?
+        if (res == null) {
+            // could not mint because payment too small - just execute self-mint with 0 lots to account for underlying deposit
+            res = await this.context.assetManager.selfMint(proof, agent.vaultAddress, 0, { from: this.ownerWorkAddress })
+                .catch(e => scope.exitOnExpectedError(e, ['self-mint invalid agent status', 'invalid self-mint reference', 'self-mint payment too old', "self-mint not agent's address"]));
+        }
+        const args = requiredEventArgs(res, 'MintingExecuted'); // event must happen even for 0 lots
     }
 
     async selfClose(scope: EventScope) {
@@ -285,9 +291,11 @@ export class FuzzingAgent extends FuzzingActor {
         }
         // pull out fees
         const poolFeeBalance = await agent.poolFeeBalance();
-        await agent.withdrawPoolFees(poolFeeBalance);
-        // self-close agent fee fassets
-        await agent.selfClose(poolFeeBalance);
+        if (poolFeeBalance.gt(BN_ZERO)) {
+            await agent.withdrawPoolFees(poolFeeBalance);
+            // self-close agent fee fassets
+            await agent.selfClose(poolFeeBalance);
+        }
         // conditionally wait until all the agent's tickets are redeemed
         const waitForRedemptions = coinFlip(0.9);
         if (waitForRedemptions) {
@@ -308,9 +316,11 @@ export class FuzzingAgent extends FuzzingActor {
         }
         // redeem pool tokens
         const poolTokenBalance = await agent.poolTokenBalance();
-        const { withdrawalAllowedAt } = await agent.announcePoolTokenRedemption(poolTokenBalance);
-        await this.timeline.flareTimestamp(withdrawalAllowedAt).wait(scope);
-        await agent.redeemCollateralPoolTokens(poolTokenBalance);
+        if (poolTokenBalance.gt(BN_ZERO)) {
+            const { withdrawalAllowedAt } = await agent.announcePoolTokenRedemption(poolTokenBalance);
+            await this.timeline.flareTimestamp(withdrawalAllowedAt).wait(scope);
+            await agent.redeemCollateralPoolTokens(poolTokenBalance);
+        }
         // announce destroy
         const destroyAllowedAt = await agent.announceDestroy()
             .catch(e => scope.exitOnExpectedError(e, [{ error: 'agent still active', when: !waitForRedemptions }]));
