@@ -1394,7 +1394,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("random addresses shouldn't be able to set delegations", async () => {
-            const res = collateralPool.delegate([accounts[2]], [5_000], { from: accounts[5] });
+            const res = collateralPool.delegate(accounts[2], 5_000, { from: accounts[5] });
             await expectRevert(res, "only agent");
         });
 

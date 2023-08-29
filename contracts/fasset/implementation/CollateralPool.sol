@@ -739,14 +739,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     ////////////////////////////////////////////////////////////////////////////////////
     // Delegation of the pool's collateral and airdrop claiming (same as in AgentVault)
 
-    function delegate(
-        address[] memory _to,
-        uint256[] memory _bips
-    )
-        external override
-        onlyAgent
-    {
-        wNat.batchDelegate(_to, _bips);
+    function delegate(address _to, uint256 _bips) external override onlyAgent {
+        wNat.delegate(_to, _bips);
     }
 
     function undelegateAll() external onlyAgent {

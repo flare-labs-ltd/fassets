@@ -451,7 +451,8 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const fullAgentPoolCollateral = toWei(1e7);
         await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
         // delegate
-        await agent.collateralPool.delegate([accounts[2], accounts[3]], [6_000, 4_000], { from: agentOwner1 });
+        await agent.collateralPool.delegate(accounts[2], 6_000, { from: agentOwner1 });
+        await agent.collateralPool.delegate(accounts[3], 4_000, { from: agentOwner1 });
         const delegations1 = await context.wNat.delegatesOf(agent.collateralPool.address) as any;
         assertWeb3Equal(delegations1._delegateAddresses[0], accounts[2]);
         assertWeb3Equal(delegations1._bips[0], 6000);
