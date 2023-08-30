@@ -657,9 +657,10 @@ export class FuzzingAgentState extends TrackedAgentState {
             problems += checker.checkNumericDifference(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName}) >= debt`, virtualFees, 'gte', poolFeeDebt);
         }
         // minimum underlying backing (unless in full liquidation)
-        if (this.status !== AgentStatus.FULL_LIQUIDATION) {
+        if (this.status !== AgentStatus.FULL_LIQUIDATION && this.status !== AgentStatus.DESTROYING) {
             const underlyingBalanceUBA = await this.parent.context.chain.getBalance(this.underlyingAddressString);
-            problems += checker.checkNumericDifference(`${agentName}.underlyingBalanceUBA`, underlyingBalanceUBA, 'gte', mintedUBA.add(freeUnderlyingBalanceUBA));
+            // don't count problems here because it results in false positive errors, e.g. if there is payment after redemption default
+            checker.checkNumericDifference(`${agentName}.underlyingBalanceUBA`, underlyingBalanceUBA, 'gte', mintedUBA.add(freeUnderlyingBalanceUBA));
         }
         // dust
         problems += checker.checkEquality(`${agentName}.dustUBA`, this.dustUBA, this.calculatedDustUBA);

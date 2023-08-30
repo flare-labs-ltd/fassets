@@ -78,7 +78,7 @@
             "minimum": 0,
             "type": "integer"
         },
-        "agentSettingUpdateWindowSeconds": {
+        "agentTimelockedOperationWindowSeconds": {
             "description": "Amount of seconds that an agent is allowed to execute an update once it is allowed.",
             "minimum": 60,
             "type": "integer"
@@ -333,7 +333,7 @@
         "agentCollateralRatioChangeTimelockSeconds",
         "agentExitAvailableTimelockSeconds",
         "agentFeeChangeTimelockSeconds",
-        "agentSettingUpdateWindowSeconds",
+        "agentTimelockedOperationWindowSeconds",
         "announcedUnderlyingConfirmationMinSeconds",
         "assetDecimals",
         "assetMintingDecimals",
@@ -377,4 +377,3 @@
     ],
     "type": "object"
 }
-

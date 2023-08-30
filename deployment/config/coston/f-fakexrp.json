@@ -90,5 +90,5 @@
     "agentExitAvailableTimelockSeconds": 86400,
     "agentFeeChangeTimelockSeconds": 86400,
     "agentCollateralRatioChangeTimelockSeconds": 86400,
-    "agentSettingUpdateWindowSeconds": 3600
+    "agentTimelockedOperationWindowSeconds": 3600
 }

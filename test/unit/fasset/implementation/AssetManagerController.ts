@@ -850,10 +850,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should set agent collateral ratio change timelock seconds", async () => {
-            await expectRevert(assetManagerController.setAgentSettingUpdateWindowSeconds([assetManager.address], 0.5 * MINUTES, { from: governance }),
+            await expectRevert(assetManagerController.setAgentTimelockedOperationWindowSeconds([assetManager.address], 0.5 * MINUTES, { from: governance }),
                 "value too small");
-            const res = await assetManagerController.setAgentSettingUpdateWindowSeconds([assetManager.address], 2 * HOURS, { from: governance });
-            expectEvent(res, "SettingChanged", { name: "agentSettingUpdateWindowSeconds", value: toBN(2 * HOURS) });
+            const res = await assetManagerController.setAgentTimelockedOperationWindowSeconds([assetManager.address], 2 * HOURS, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "agentTimelockedOperationWindowSeconds", value: toBN(2 * HOURS) });
         });
 
         it("should revert setting agent whitelist after timelock when address 0 is provided", async () => {

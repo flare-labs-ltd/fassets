@@ -91,7 +91,7 @@ library SettingsUpdater {
     bytes32 internal constant SET_AGENT_COLLATERAL_RATIO_CHANGE_TIMELOCK_SECONDS =
         keccak256("setAgentCollateralRatioChangeTimelockSeconds((uint256)");
     bytes32 internal constant SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS =
-        keccak256("setAgentSettingUpdateWindowSeconds((uint256)");
+        keccak256("setAgentTimelockedOperationWindowSeconds((uint256)");
 
     function validateAndSet(
         AssetManagerSettings.Data memory _settings
@@ -215,7 +215,7 @@ library SettingsUpdater {
             _setAgentCollateralRatioChangeTimelockSeconds(_params);
         } else if (_method == SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
-            _setAgentSettingUpdateWindowSeconds(_params);
+            _setAgentTimelockedOperationWindowSeconds(_params);
         } else {
             revert("update: invalid method");
         }
@@ -751,7 +751,7 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("agentCollateralRatioChangeTimelockSeconds", value);
     }
 
-    function _setAgentSettingUpdateWindowSeconds(
+    function _setAgentTimelockedOperationWindowSeconds(
         bytes calldata _params
     )
         private
@@ -761,8 +761,8 @@ library SettingsUpdater {
         // validate
         require(value >= 1 minutes, "value too small");
         // update
-        settings.agentSettingUpdateWindowSeconds = value.toUint64();
-        emit AMEvents.SettingChanged("agentSettingUpdateWindowSeconds", value);
+        settings.agentTimelockedOperationWindowSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("agentTimelockedOperationWindowSeconds", value);
     }
 
     function _setLiquidationStrategy(
@@ -830,6 +830,6 @@ library SettingsUpdater {
         require(_settings.confirmationByOthersAfterSeconds >= 2 hours, "must be at least two hours");
         require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, "confirmation time too big");
         require(_settings.vaultCollateralBuyForFlareFactorBIPS >= SafePct.MAX_BIPS, "value too small");
-        require(_settings.agentSettingUpdateWindowSeconds >= 1 hours, "value too small");
+        require(_settings.agentTimelockedOperationWindowSeconds >= 1 hours, "value too small");
     }
 }
