@@ -439,6 +439,8 @@ library SettingsUpdater {
         require(value > 0, "cannot be zero");
         require(value <= settings.lotSizeAMG * 4, "lot size increase too big");
         require(value >= settings.lotSizeAMG / 4, "lot size decrease too big");
+        require(settings.mintingCapAMG == 0 || settings.mintingCapAMG >= value,
+            "lot size bigger than minting cap");
         // update
         settings.lotSizeAMG = value.toUint64();
         emit AMEvents.SettingChanged("lotSizeAMG", value);
@@ -677,6 +679,7 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
+        require(value == 0 || value >= settings.lotSizeAMG, "value too small");
         // update
         settings.mintingCapAMG = value.toUint64();
         emit AMEvents.SettingChanged("mintingCapAMG", value);
@@ -819,6 +822,8 @@ library SettingsUpdater {
         require(_settings.buybackCollateralFactorBIPS > 0, "cannot be zero");
         require(_settings.withdrawalWaitMinSeconds > 0, "cannot be zero");
         require(_settings.lotSizeAMG > 0, "cannot be zero");
+        require(_settings.mintingCapAMG == 0 || _settings.mintingCapAMG >= _settings.lotSizeAMG,
+            "minting cap too small");
         require(_settings.minUnderlyingBackingBIPS > 0, "cannot be zero");
         require(_settings.minUnderlyingBackingBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");

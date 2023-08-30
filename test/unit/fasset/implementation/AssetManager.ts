@@ -925,6 +925,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             let res4 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings4, collaterals, liquidationSettings);
             await expectRevert(res4, "must be at least two hours");
 
+            let newSettings5 = createTestSettings(contracts, testChainInfo.eth);
+            newSettings5.mintingCapAMG = toBN(newSettings5.lotSizeAMG).divn(2);
+            let res5x = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5, collaterals, liquidationSettings);
+            await expectRevert(res5x, "minting cap too small");
+
+            // should work for nonzero cap greater than lot size
+            let newSettings6 = createTestSettings(contracts, testChainInfo.eth);
+            newSettings6.mintingCapAMG = toBN(newSettings6.lotSizeAMG).muln(2);
+            await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings6, collaterals, liquidationSettings);
+
             let liquidationSettings5 = createTestLiquidationSettings();
             liquidationSettings5.liquidationCollateralFactorBIPS = [];
             liquidationSettings5.liquidationFactorVaultCollateralBIPS = [];

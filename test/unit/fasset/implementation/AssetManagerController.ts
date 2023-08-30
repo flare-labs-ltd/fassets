@@ -186,12 +186,16 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should revert setting lot size when increase or decrease is too big", async () => {
             const currentSettings = await assetManager.getSettings();
-            let lotSizeAMG_big = toBN(currentSettings.lotSizeAMG).muln(5);
-            let lotSizeAMG_small = toBN(currentSettings.lotSizeAMG).divn(5);
+            const lotSizeAMG = toBN(currentSettings.lotSizeAMG);
+            let lotSizeAMG_big = lotSizeAMG.muln(5);
+            let lotSizeAMG_small = lotSizeAMG.divn(5);
 
             await expectRevert(waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG_big, { from: governance }), assetManagerController, updateExecutor), "lot size increase too big");
             await expectRevert(waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG_small, { from: governance }), assetManagerController, updateExecutor), "lot size decrease too big");
             await expectRevert(waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], 0, { from: governance }), assetManagerController, updateExecutor), "cannot be zero");
+
+            await waitForTimelock(assetManagerController.setMintingCapAmg([assetManager.address], lotSizeAMG.muln(1.5), { from: governance }), assetManagerController, updateExecutor);
+            await expectRevert(waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG.muln(2), { from: governance }), assetManagerController, updateExecutor), "lot size bigger than minting cap");
         });
 
         it("should revert setting payment challenge reward when increase or decrease is too big", async () => {
@@ -783,9 +787,19 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should set minting cap AMG", async () => {
             const currentSettings = await assetManager.getSettings();
-            let mintingCapAMG_new = toBN(currentSettings.mintingCapAMG).add(toBN(1));
+            let mintingCapAMG_new = toBN(currentSettings.lotSizeAMG).muln(1000);    // 1000 lots
             const res = await assetManagerController.setMintingCapAmg([assetManager.address], mintingCapAMG_new, { from: governance });
             expectEvent(res, "SettingChanged", { name: "mintingCapAMG", value: toBN(mintingCapAMG_new) });
+            // can reset cap to 0
+            await time.increase(1 * DAYS);
+            const res1 = await assetManagerController.setMintingCapAmg([assetManager.address], 0, { from: governance });
+            expectEvent(res1, "SettingChanged", { name: "mintingCapAMG", value: toBN(0) });
+        });
+
+        it("should revert setting minting cap AMG too small", async () => {
+            const currentSettings = await assetManager.getSettings();
+            const pr = assetManagerController.setMintingCapAmg([assetManager.address], toBN(currentSettings.lotSizeAMG).divn(2), { from: governance });
+            await expectRevert(pr, "value too small");
         });
 
         it("should set token invalidation time min seconds after timelock", async () => {
