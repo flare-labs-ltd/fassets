@@ -693,6 +693,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         }
     }
 
+    function depositNat()
+        external payable override
+        onlyAssetManager
+    {
+        _depositWNat();
+    }
+
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function payout(
         address _recipient,
