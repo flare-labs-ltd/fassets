@@ -429,7 +429,7 @@ export interface AssetManagerParameters {
      * change announcement and execution.
      * @minimum 0
      */
-    agentCollateralRatioChangeTimelockSeconds: integer;
+    poolExitAndTopupChangeTimelockSeconds: integer;
 
     /**
      * Amount of seconds that an agent is allowed to execute an update once it is allowed.

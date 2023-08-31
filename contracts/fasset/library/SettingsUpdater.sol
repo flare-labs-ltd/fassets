@@ -88,8 +88,8 @@ library SettingsUpdater {
         keccak256("setAgentExitAvailableTimelockSeconds((uint256)");
     bytes32 internal constant SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS =
         keccak256("setAgentFeeChangeTimelockSeconds((uint256)");
-    bytes32 internal constant SET_AGENT_COLLATERAL_RATIO_CHANGE_TIMELOCK_SECONDS =
-        keccak256("setAgentCollateralRatioChangeTimelockSeconds((uint256)");
+    bytes32 internal constant SET_POOL_EXIT_AND_TOPUP_CHANGE_TIMELOCK_SECONDS =
+        keccak256("setPoolExitAndTopupChangeTimelockSeconds((uint256)");
     bytes32 internal constant SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS =
         keccak256("setAgentTimelockedOperationWindowSeconds((uint256)");
 
@@ -210,9 +210,9 @@ library SettingsUpdater {
         } else if (_method == SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAgentFeeChangeTimelockSeconds(_params);
-        } else if (_method == SET_AGENT_COLLATERAL_RATIO_CHANGE_TIMELOCK_SECONDS) {
+        } else if (_method == SET_POOL_EXIT_AND_TOPUP_CHANGE_TIMELOCK_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
-            _setAgentCollateralRatioChangeTimelockSeconds(_params);
+            _setPoolExitAndTopupChangeTimelockSeconds(_params);
         } else if (_method == SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAgentTimelockedOperationWindowSeconds(_params);
@@ -740,7 +740,7 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("agentFeeChangeTimelockSeconds", value);
     }
 
-    function _setAgentCollateralRatioChangeTimelockSeconds(
+    function _setPoolExitAndTopupChangeTimelockSeconds(
         bytes calldata _params
     )
         private
@@ -748,10 +748,10 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
-        require(value <= settings.agentCollateralRatioChangeTimelockSeconds * 4 + 1 weeks);
+        require(value <= settings.poolExitAndTopupChangeTimelockSeconds * 4 + 1 weeks);
         // update
-        settings.agentCollateralRatioChangeTimelockSeconds = value.toUint64();
-        emit AMEvents.SettingChanged("agentCollateralRatioChangeTimelockSeconds", value);
+        settings.poolExitAndTopupChangeTimelockSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("poolExitAndTopupChangeTimelockSeconds", value);
     }
 
     function _setAgentTimelockedOperationWindowSeconds(

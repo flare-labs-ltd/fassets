@@ -240,10 +240,10 @@ library AssetManagerSettings {
         // rate-limited
         uint64 agentFeeChangeTimelockSeconds;
 
-        // Amount of seconds that have to pass between agent-set collateral ratio (minting, pool exit)
-        // change announcement and execution.
+        // Amount of seconds that have to pass between agent-set settings for pool exit and topup
+        // (exit CR, topup CR, topup bonus) change announcement and execution.
         // rate-limited
-        uint64 agentCollateralRatioChangeTimelockSeconds;
+        uint64 poolExitAndTopupChangeTimelockSeconds;
 
         // Amount of seconds that an agent is allowed to execute an update once it is allowed.
         // rate-limited

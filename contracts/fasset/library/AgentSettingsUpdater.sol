@@ -107,7 +107,7 @@ library AgentSettingsUpdater {
         if (_hash == FEE_BIPS || _hash == POOL_FEE_SHARE_BIPS || _hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS) {
             return settings.agentFeeChangeTimelockSeconds;
         } else {
-            return settings.agentCollateralRatioChangeTimelockSeconds;
+            return settings.poolExitAndTopupChangeTimelockSeconds;
         }
     }
 

@@ -852,15 +852,15 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should revert setting agent collateral ratio change timelock seconds when value is too big", async () => {
             const currentSettings = await assetManager.getSettings();
-            let agentCollateralRatioChangeTimelockSeconds_tooBig = toBN(currentSettings.agentCollateralRatioChangeTimelockSeconds).muln(5).addn(WEEKS);
-            const res = assetManagerController.setAgentCollateralRatioChangeTimelockSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_tooBig, { from: governance });
+            let poolExitAndTopupChangeTimelockSeconds_tooBig = toBN(currentSettings.poolExitAndTopupChangeTimelockSeconds).muln(5).addn(WEEKS);
+            const res = assetManagerController.setPoolExitAndTopupChangeTimelockSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_tooBig, { from: governance });
             await expectRevert.unspecified(res);
         });
 
         it("should set agent collateral ratio change timelock seconds", async () => {
-            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
-            const res = await assetManagerController.setAgentCollateralRatioChangeTimelockSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_new, { from: governance });
-            expectEvent(res, "SettingChanged", { name: "agentCollateralRatioChangeTimelockSeconds", value: toBN(agentCollateralRatioChangeTimelockSeconds_new) });
+            let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
+            const res = await assetManagerController.setPoolExitAndTopupChangeTimelockSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "poolExitAndTopupChangeTimelockSeconds", value: toBN(poolExitAndTopupChangeTimelockSeconds_new) });
         });
 
         it("should set agent collateral ratio change timelock seconds", async () => {
@@ -1303,14 +1303,14 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("random address shouldn't be able to set agent collateral ratio change timelock seconds", async () => {
-            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
-            const res = assetManagerController.setAgentCollateralRatioChangeTimelockSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_new, { from: accounts[12] });
+            let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setPoolExitAndTopupChangeTimelockSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_new, { from: accounts[12] });
             await expectRevert(res, "only governance");
         });
 
         it("random address shouldn't be able to set confirmation by others after seconds", async () => {
-            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
-            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_new, { from: accounts[12] });
+            let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_new, { from: accounts[12] });
             await expectRevert(res, "only governance");
         });
 
@@ -1318,8 +1318,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let assetManager2: AssetManagerInstance;
             let fAsset2: FAssetInstance;
             [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
-            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
-            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager2.address], agentCollateralRatioChangeTimelockSeconds_new, { from: governance });
+            let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager2.address], poolExitAndTopupChangeTimelockSeconds_new, { from: governance });
             await expectRevert(res, "Asset manager not managed");
         });
 

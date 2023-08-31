@@ -63,7 +63,7 @@
             "description": "JSON schema url",
             "type": "string"
         },
-        "agentCollateralRatioChangeTimelockSeconds": {
+        "poolExitAndTopupChangeTimelockSeconds": {
             "description": "Amount of seconds that have to pass between agent-set collateral ratio (minting, pool exit)\nchange announcement and execution.",
             "minimum": 0,
             "type": "integer"
@@ -330,7 +330,7 @@
         }
     },
     "required": [
-        "agentCollateralRatioChangeTimelockSeconds",
+        "poolExitAndTopupChangeTimelockSeconds",
         "agentExitAvailableTimelockSeconds",
         "agentFeeChangeTimelockSeconds",
         "agentTimelockedOperationWindowSeconds",

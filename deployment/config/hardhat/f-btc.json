@@ -80,6 +80,6 @@
     "tokenInvalidationTimeMinSeconds": 86400,
     "agentExitAvailableTimelockSeconds": 86400,
     "agentFeeChangeTimelockSeconds": 86400,
-    "agentCollateralRatioChangeTimelockSeconds": 86400,
+    "poolExitAndTopupChangeTimelockSeconds": 86400,
     "agentTimelockedOperationWindowSeconds": 3600
 }
