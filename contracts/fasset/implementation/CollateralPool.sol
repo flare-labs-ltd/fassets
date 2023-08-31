@@ -339,6 +339,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         external override
         nonReentrant
     {
+        require(_fAssets != 0, "zero f-asset debt payment");
         require(_fAssets <= _fAssetFeeDebtOf[msg.sender], "debt f-asset balance too small");
         require(fAsset.allowance(msg.sender, address(this)) >= _fAssets, "f-asset allowance too small");
         _burnFAssetFeeDebt(msg.sender, _fAssets);

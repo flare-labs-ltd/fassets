@@ -997,6 +997,10 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectRevert(collateralPool.payFAssetFeeDebt(BN_ONE), "debt f-asset balance too small");
         });
 
+        it("should fail at trying to pay zero f-asset debt", async () => {
+            await expectRevert(collateralPool.payFAssetFeeDebt(BN_ZERO), "zero f-asset debt payment");
+        });
+
         it("should fail at trying to pay f-asset debt with too low f-asset allowance", async () => {
             await givePoolFAssetFees(ETH(10));
             const natToEnterEmptyPool = await poolFAssetFeeNatValue();
@@ -1036,9 +1040,9 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // first user enters pool
             await collateralPool.enter(0, true, { value: ETH(10) });
             // pool gets initial f-asset fees
-            await fAsset.mintAmount(collateralPool.address, ETH(1));
+            await givePoolFAssetFees(ETH(1));
             // second user enters pool
-            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[1] });
+            await collateralPool.enter(0, false, { value: ETH(10), from: accounts[1] });
             // accounts[1] pays off the debt
             const debt = await collateralPool.fAssetFeeDebtOf(accounts[1]);
             await collateralPool.payFAssetFeeDebt(debt, { from: accounts[1] });
