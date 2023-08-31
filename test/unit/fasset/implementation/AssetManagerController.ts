@@ -3,8 +3,8 @@ import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/Ass
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp, toBNExp, MINUTES} from "../../../../lib/utils/helpers";
-import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance, WhitelistInstance, SettingsUpdaterInstance } from "../../../../typechain-truffle";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
+import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -236,7 +236,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(res, "SettingChanged", { name: "paymentChallengeRewardBIPS", value: paymentChallengeRewardBIPS_new });
         });
 
-        it("should set time for payment", async () => {
+        it("set time for payment should have timelock", async () => {
             const currentSettings = await assetManager.getSettings();
             let underlyingBlocksForPayment_new = toBN(currentSettings.underlyingBlocksForPayment).muln(2);
             let underlyingSecondsForPayment_new = toBN(currentSettings.underlyingSecondsForPayment).muln(2);
@@ -706,6 +706,31 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(newSettings.underlyingBlocksForPayment, underlyingBlocksForPayment_new);
             assertWeb3Equal(newSettings.underlyingSecondsForPayment, underlyingSecondsForPayment_new);
+        });
+
+        it("change time for payment settings should revert if zero or too high", async () => {
+            // change settings
+            const currentSettings = await assetManager.getSettings();
+            // blocks too high
+            let underlyingBlocksForPayment1 = toBN(Math.round(25 * HOURS / testChainInfo.eth.blockTime));
+            let underlyingSecondsForPayment1 = toBN(currentSettings.underlyingSecondsForPayment).muln(2);
+            const res1 = await assetManagerController.setTimeForPayment([assetManager.address], underlyingBlocksForPayment1, underlyingSecondsForPayment1, { from: governance });
+            await expectRevert(waitForTimelock(res1, assetManagerController, updateExecutor), "value to high");
+            // seconds too high
+            let underlyingBlocksForPayment2 = toBN(currentSettings.underlyingBlocksForPayment).muln(2);
+            let underlyingSecondsForPayment2 = toBN(25 * HOURS);
+            const res2 = await assetManagerController.setTimeForPayment([assetManager.address], underlyingBlocksForPayment2, underlyingSecondsForPayment2, { from: governance });
+            await expectRevert(waitForTimelock(res2, assetManagerController, updateExecutor), "value to high");
+            // blocks zero
+            let underlyingBlocksForPayment3 = 0;
+            let underlyingSecondsForPayment3 = toBN(currentSettings.underlyingSecondsForPayment).muln(2);
+            const res3 = await assetManagerController.setTimeForPayment([assetManager.address], underlyingBlocksForPayment3, underlyingSecondsForPayment3, { from: governance });
+            await expectRevert(waitForTimelock(res3, assetManagerController, updateExecutor), "cannot be zero");
+            // seconds zero
+            let underlyingBlocksForPayment4 = toBN(currentSettings.underlyingBlocksForPayment).muln(2);
+            let underlyingSecondsForPayment4 = 0;
+            const res4 = await assetManagerController.setTimeForPayment([assetManager.address], underlyingBlocksForPayment4, underlyingSecondsForPayment4, { from: governance });
+            await expectRevert(waitForTimelock(res4, assetManagerController, updateExecutor), "cannot be zero");
         });
 
         it("should change collateral settings after timelock", async () => {

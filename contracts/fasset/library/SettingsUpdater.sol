@@ -95,6 +95,8 @@ library SettingsUpdater {
     bytes32 internal constant SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS =
         keccak256("setAgentTimelockedOperationWindowSeconds((uint256)");
 
+    uint256 internal constant MAXIMUM_PROOF_WINDOW = 1 days;
+
     function validateAndSet(
         AssetManagerSettings.Data memory _settings
     )
@@ -281,7 +283,10 @@ library SettingsUpdater {
         (uint256 underlyingBlocks, uint256 underlyingSeconds) =
             abi.decode(_params, (uint256, uint256));
         // validate
-        require(underlyingSeconds <= 1 days);
+        require(underlyingSeconds > 0, "cannot be zero");
+        require(underlyingBlocks > 0, "cannot be zero");
+        require(underlyingSeconds <= MAXIMUM_PROOF_WINDOW, "value to high");
+        require(underlyingBlocks * settings.averageBlockTimeMS / 1000 <= MAXIMUM_PROOF_WINDOW, "value to high");
         // update
         settings.underlyingBlocksForPayment = underlyingBlocks.toUint64();
         settings.underlyingSecondsForPayment = underlyingSeconds.toUint64();
@@ -842,6 +847,11 @@ library SettingsUpdater {
         require(_settings.minUpdateRepeatTimeSeconds > 0, "cannot be zero");
         require(_settings.buybackCollateralFactorBIPS > 0, "cannot be zero");
         require(_settings.withdrawalWaitMinSeconds > 0, "cannot be zero");
+        require(_settings.averageBlockTimeMS > 0, "cannot be zero");
+        require(_settings.underlyingSecondsForPayment <= MAXIMUM_PROOF_WINDOW,
+            "value to high");
+        require(_settings.underlyingBlocksForPayment * _settings.averageBlockTimeMS / 1000 <= MAXIMUM_PROOF_WINDOW,
+            "value to high");
         require(_settings.lotSizeAMG > 0, "cannot be zero");
         require(_settings.mintingCapAMG == 0 || _settings.mintingCapAMG >= _settings.lotSizeAMG,
             "minting cap too small");

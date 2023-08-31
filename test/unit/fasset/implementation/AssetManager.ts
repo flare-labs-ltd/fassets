@@ -894,6 +894,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings20.announcedUnderlyingConfirmationMinSeconds = 2 * HOURS;
             let res20 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings20, collaterals, liquidationSettings);
             await expectRevert(res20, "confirmation time too big");
+
+            let newSettings21 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings21.underlyingSecondsForPayment = 25 * HOURS;
+            let res21 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings21, collaterals, liquidationSettings);
+            await expectRevert(res21, "value to high");
+
+            let newSettings22 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings22.underlyingBlocksForPayment = toBN(Math.round(25 * HOURS / testChainInfo.eth.blockTime));
+            let res22 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings22, collaterals, liquidationSettings);
+            await expectRevert(res22, "value to high");
         });
 
         it("should validate settings - other validators", async () => {
