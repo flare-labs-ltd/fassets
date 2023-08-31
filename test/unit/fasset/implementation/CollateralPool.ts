@@ -235,6 +235,9 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const payload = collateralPool.contract.methods.setTopupCollateralRatioBIPS(setTo).encodeABI();
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
             await expectRevert(prms, "value too high");
+            const payload1 = collateralPool.contract.methods.setTopupCollateralRatioBIPS(0).encodeABI();
+            const prms1 = assetManager.callFunctionAt(collateralPool.address, payload1);
+            await expectRevert(prms1, "must be nonzero");
         });
 
         it("should correctly set topup collateral ratio", async () => {
@@ -249,6 +252,9 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const payload = collateralPool.contract.methods.setTopupTokenPriceFactorBIPS(MAX_BIPS).encodeABI();
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
             await expectRevert(prms, "value too high");
+            const payload1 = collateralPool.contract.methods.setTopupTokenPriceFactorBIPS(0).encodeABI();
+            const prms1 = assetManager.callFunctionAt(collateralPool.address, payload1);
+            await expectRevert(prms1, "must be nonzero");
         });
 
         it("should correctly set topup token discount", async () => {

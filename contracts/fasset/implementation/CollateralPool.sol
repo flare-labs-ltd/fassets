@@ -106,6 +106,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         onlyAssetManager
     {
         require(_topupCollateralRatioBIPS < exitCollateralRatioBIPS, "value too high");
+        require(_topupCollateralRatioBIPS > 0, "must be nonzero");
         topupCollateralRatioBIPS = _topupCollateralRatioBIPS.toUint32();
     }
 
@@ -114,6 +115,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         onlyAssetManager
     {
         require(_topupTokenPriceFactorBIPS < SafePct.MAX_BIPS, "value too high");
+        require(_topupTokenPriceFactorBIPS > 0, "must be nonzero");
         topupTokenPriceFactorBIPS = _topupTokenPriceFactorBIPS.toUint16();
     }
 
