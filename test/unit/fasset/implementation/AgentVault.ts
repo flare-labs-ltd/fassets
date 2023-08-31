@@ -320,19 +320,6 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await expectRevert(claimPromise, "only owner");
     });
 
-    it("random address shouldn't be able to set auto claiming", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const contract = await MockContract.new();
-        const res = agentVault.setAutoClaiming(contract.address, [accounts[2]], [accounts[3]], { from: accounts[3] });
-        await expectRevert(res, "only owner");
-    });
-
-    it("should set auto claiming", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const contract = await MockContract.new();
-        await agentVault.setAutoClaiming(contract.address, [accounts[2]],  [accounts[3]], { from: owner });
-    });
-
     it("should opt out of airdrop distribution", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const distributionMock = await MockContract.new();
