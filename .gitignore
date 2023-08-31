@@ -49,9 +49,6 @@ gasReporterOutput.json
 ## On Unix systems it creates a file
 nul
 
-## Flattened contracts
-flattened
-
 ## Annoying .DS_Store on Mac
 .DS_Store
 
