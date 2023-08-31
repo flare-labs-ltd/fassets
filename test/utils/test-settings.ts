@@ -102,6 +102,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         vaultCollateralBuyForFlareFactorBIPS: toBIPS(1.05),
         mintingPoolHoldingsRequiredBIPS: toBIPS("50%"),
         tokenInvalidationTimeMinSeconds: 1 * DAYS,
+        collateralPoolTokenTimelockSeconds: 1 * HOURS
     };
     return Object.assign(result, options ?? {});
 }

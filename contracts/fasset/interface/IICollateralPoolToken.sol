@@ -9,6 +9,6 @@ import "../../userInterfaces/ICollateralPoolToken.sol";
 interface IICollateralPoolToken is ICollateralPoolToken, IERC165 {
 
     function mint(address _account, uint256 _amount) external;
-    function burn(address _account, uint256 _amount) external;
+    function burn(address _account, uint256 _amount, bool ignoreTimelocked) external;
     function destroy(address payable _recipient) external;
 }

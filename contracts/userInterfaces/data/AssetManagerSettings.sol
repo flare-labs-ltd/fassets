@@ -248,5 +248,8 @@ library AssetManagerSettings {
         // Amount of seconds that an agent is allowed to execute an update once it is allowed.
         // rate-limited
         uint64 agentSettingUpdateWindowSeconds;
+
+        // duration of the timelock for collateral pool tokens after minting
+        uint32 collateralPoolTokenTimelockSeconds;
     }
 }

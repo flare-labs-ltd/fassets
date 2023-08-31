@@ -21,9 +21,9 @@ interface ICollateralPoolToken is IERC20 {
         returns (uint256);
 
     /**
-     * Returns the amount of account's tokens that are locked.
+     * Returns the amount of account's tokens that are timelocked.
      */
-    function lockedBalanceOf(address _account)
+    function timelockedBalanceOf(address _account)
         external view
         returns (uint256);
 }

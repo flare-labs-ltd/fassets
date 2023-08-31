@@ -1237,6 +1237,17 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         _divisor = Conversion.AMG_TOKEN_WEI_PRICE_SCALE * settings.assetMintingGranularityUBA;
     }
 
+    /**
+     * Returns timelock duration during for which collateral pool tokens are locked after minting.
+     */
+    function getCollateralPoolTokenTimelockSeconds()
+        external view override
+        returns (uint256)
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        return settings.collateralPoolTokenTimelockSeconds;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////
     // ERC 165
 

@@ -192,7 +192,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         if (debtFAssetFeeShare > 0) {
             _burnFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
         }
-        token.burn(msg.sender, _tokenShare);
+        token.burn(msg.sender, _tokenShare, false);
         _transferWNat(msg.sender, natShare);
         // emit event
         emit Exited(msg.sender, _tokenShare, natShare, freeFAssetFeeShare, 0);
@@ -289,7 +289,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         if (debtFAssetFeeShare > 0) {
             _burnFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
         }
-        token.burn(msg.sender, _tokenShare);
+        token.burn(msg.sender, _tokenShare, false);
         _transferWNat(msg.sender, natShare);
         // emit event
         emit Exited(msg.sender, _tokenShare, natShare, spentFAssetFees, requiredFAssets);
@@ -648,7 +648,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      * @notice Returns user's debt tokens
      * @param _account  User address
      */
-    function lockedTokensOf(address _account)
+    function debtTokensOf(address _account)
         external view override
         returns (uint256)
     {
@@ -714,7 +714,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
             (uint256 debtFAssetFeeShare,) = _getDebtAndFreeFAssetFeesFromTokenShare(
                 assetData, agentVault, toSlashToken, TokenExitType.KEEP_RATIO);
             _burnFAssetFeeDebt(agentVault, debtFAssetFeeShare);
-            token.burn(agentVault, toSlashToken);
+            token.burn(agentVault, toSlashToken, true);
         }
     }
 
@@ -819,7 +819,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 tokens = token.balanceOf(msg.sender);
         require(tokens > 0, "nothing to withdraw");
         uint256 natShare = tokens.mulDiv(totalCollateral, token.totalSupply());
-        token.burn(msg.sender, tokens); // when f-asset is terminated all tokens are free tokens
+        token.burn(msg.sender, tokens, true); // when f-asset is terminated all tokens are free tokens
         _transferWNat(msg.sender, natShare);
     }
 

@@ -183,6 +183,15 @@ interface IIAssetManager is IAssetManager {
         returns (uint256);
 
     /**
+     * Returns the duration for which the collateral pool tokens are timelocked after minting.
+     * Timelocking is done to battle sandwich attacks aimed at stealing newly deposited f-asset
+     * fees from the pool.
+     */
+    function getCollateralPoolTokenTimelockSeconds()
+        external view
+        returns (uint256);
+
+    /**
      * Check if `_token` is either vault collateral token for `_agentVault` or the pool token.
      * These types of tokens cannot be simply transfered from the agent vault, but can only be
      * withdrawn after announcement if they are not backing any f-assets.

@@ -206,6 +206,8 @@ export class Agent extends AssetContextClient {
         const poolTokenBalance = await this.poolTokenBalance();
         const { withdrawalAllowedAt } = await this.announcePoolTokenRedemption(poolTokenBalance);
         await time.increaseTo(withdrawalAllowedAt);
+        const collateralPoolTokenTimelockSeconds = await this.context.assetManager.getCollateralPoolTokenTimelockSeconds();
+        await time.increase(collateralPoolTokenTimelockSeconds);
         await this.redeemCollateralPoolTokens(poolTokenBalance);
         // ... now the agent should wait for all pool token holders to exit ...
         // destroy (no need to pull out vault collateral first, it will be withdrawn automatically during destroy)

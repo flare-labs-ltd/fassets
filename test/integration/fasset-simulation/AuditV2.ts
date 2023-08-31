@@ -154,6 +154,7 @@ contract(`AuditV2.ts; ${getTestFile(__filename)}; FAsset V2 audit tests`, async 
         await time.increaseTo(withdrawalAllowedAt);
         // === the redemption shouldn't revert anymore ===
         // await expectRevert(agent.redeemCollateralPoolTokens(poolTokenBalance), "ERC20: transfer amount exceeds balance");
+        await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
         await agent.redeemCollateralPoolTokens(poolTokenBalance);
     }
 
