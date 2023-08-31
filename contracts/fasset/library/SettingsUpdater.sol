@@ -280,6 +280,8 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         (uint256 underlyingBlocks, uint256 underlyingSeconds) =
             abi.decode(_params, (uint256, uint256));
+        // validate
+        require(underlyingSeconds <= 1 days);
         // update
         settings.underlyingBlocksForPayment = underlyingBlocks.toUint64();
         settings.underlyingSecondsForPayment = underlyingSeconds.toUint64();
