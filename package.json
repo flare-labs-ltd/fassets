@@ -1,13 +1,13 @@
 {
-  "name": "flare_smart_contracts",
+  "name": "fasset",
   "version": "0.0.1",
-  "description": "Smart contracts implementing FTSO on Flare Network.",
+  "description": "Smart contracts implementing FAsset system.",
   "main": "",
   "repository": {
     "type": "git",
     "url": "git+https://gitlab.com/flarenetwork/fasset.git"
   },
-  "author": "Flare SC team",
+  "author": "Flare Labs",
   "license": "MIT",
   "directories": {},
   "scripts": {
