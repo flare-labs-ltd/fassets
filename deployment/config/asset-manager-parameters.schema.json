@@ -63,11 +63,6 @@
             "description": "JSON schema url",
             "type": "string"
         },
-        "poolExitAndTopupChangeTimelockSeconds": {
-            "description": "Amount of seconds that have to pass between agent-set collateral ratio (minting, pool exit)\nchange announcement and execution.",
-            "minimum": 0,
-            "type": "integer"
-        },
         "agentExitAvailableTimelockSeconds": {
             "description": "Amount of seconds that have to pass between available list exit announcement and execution.",
             "minimum": 0,
@@ -75,6 +70,11 @@
         },
         "agentFeeChangeTimelockSeconds": {
             "description": "Amount of seconds that have to pass between agent fee and pool fee share change announcement and execution.",
+            "minimum": 0,
+            "type": "integer"
+        },
+        "agentMintingCRChangeTimelockSeconds": {
+            "description": "Amount of seconds that have to pass between agent-set minting collateral ratio (vault or pool)\nchange announcement and execution.",
             "minimum": 0,
             "type": "integer"
         },
@@ -244,6 +244,11 @@
             "$ref": "#/definitions/CollateralTypeParameters",
             "description": "Data about the collateral used in the collateral pool, token is always WNat (FLR/SGB)."
         },
+        "poolExitAndTopupChangeTimelockSeconds": {
+            "description": "Amount of seconds that have to pass between agent-set settings for pool exit and topup\n(exit CR, topup CR, topup bonus) change announcement and execution.",
+            "minimum": 0,
+            "type": "integer"
+        },
         "priceReader": {
             "description": "Price reader contract is a simple abstraction of FTSO system.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'SCProofVerifier' in contracts.json.",
             "pattern": "^\\w+$",
@@ -330,9 +335,9 @@
         }
     },
     "required": [
-        "poolExitAndTopupChangeTimelockSeconds",
         "agentExitAvailableTimelockSeconds",
         "agentFeeChangeTimelockSeconds",
+        "agentMintingCRChangeTimelockSeconds",
         "agentTimelockedOperationWindowSeconds",
         "announcedUnderlyingConfirmationMinSeconds",
         "assetDecimals",
@@ -362,6 +367,7 @@
         "paymentChallengeRewardBIPS",
         "paymentChallengeRewardUSD5",
         "poolCollateral",
+        "poolExitAndTopupChangeTimelockSeconds",
         "redemptionDefaultFactorPoolBIPS",
         "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionFeeBIPS",
@@ -377,3 +383,4 @@
     ],
     "type": "object"
 }
+

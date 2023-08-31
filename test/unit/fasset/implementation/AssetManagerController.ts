@@ -850,20 +850,33 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(res, "SettingChanged", { name: "agentFeeChangeTimelockSeconds", value: toBN(agentFeeChangeTimelockSeconds_new) });
         });
 
-        it("should revert setting agent collateral ratio change timelock seconds when value is too big", async () => {
+        it("should revert setting agent minting CR change timelock seconds when value is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let agentMintingCRChangeTimelockSeconds_tooBig = toBN(currentSettings.agentMintingCRChangeTimelockSeconds).muln(5).addn(WEEKS);
+            const res = assetManagerController.setAgentMintingCRChangeTimelockSeconds([assetManager.address], agentMintingCRChangeTimelockSeconds_tooBig, { from: governance });
+            await expectRevert.unspecified(res);
+        });
+
+        it("should set agent minting CR change timelock seconds", async () => {
+            let agentMintingCRChangeTimelockSeconds_new = DAYS;
+            const res = await assetManagerController.setAgentMintingCRChangeTimelockSeconds([assetManager.address], agentMintingCRChangeTimelockSeconds_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "agentMintingCRChangeTimelockSeconds", value: toBN(agentMintingCRChangeTimelockSeconds_new) });
+        });
+
+        it("should revert setting pool exit and topup change timelock seconds when value is too big", async () => {
             const currentSettings = await assetManager.getSettings();
             let poolExitAndTopupChangeTimelockSeconds_tooBig = toBN(currentSettings.poolExitAndTopupChangeTimelockSeconds).muln(5).addn(WEEKS);
             const res = assetManagerController.setPoolExitAndTopupChangeTimelockSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_tooBig, { from: governance });
             await expectRevert.unspecified(res);
         });
 
-        it("should set agent collateral ratio change timelock seconds", async () => {
+        it("should set pool exit and topup change timelock seconds", async () => {
             let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
             const res = await assetManagerController.setPoolExitAndTopupChangeTimelockSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_new, { from: governance });
             expectEvent(res, "SettingChanged", { name: "poolExitAndTopupChangeTimelockSeconds", value: toBN(poolExitAndTopupChangeTimelockSeconds_new) });
         });
 
-        it("should set agent collateral ratio change timelock seconds", async () => {
+        it("should set agent timelocked ops window seconds", async () => {
             await expectRevert(assetManagerController.setAgentTimelockedOperationWindowSeconds([assetManager.address], 0.5 * MINUTES, { from: governance }),
                 "value too small");
             const res = await assetManagerController.setAgentTimelockedOperationWindowSeconds([assetManager.address], 2 * HOURS, { from: governance });
@@ -1302,15 +1315,21 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(res, "only governance");
         });
 
-        it("random address shouldn't be able to set agent collateral ratio change timelock seconds", async () => {
+        it("random address shouldn't be able to set agent minting CR change timelock seconds", async () => {
+            let agentMintingCRChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setAgentMintingCRChangeTimelockSeconds([assetManager.address], agentMintingCRChangeTimelockSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set pool exit and topup change timelock seconds", async () => {
             let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
             const res = assetManagerController.setPoolExitAndTopupChangeTimelockSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_new, { from: accounts[12] });
             await expectRevert(res, "only governance");
         });
 
         it("random address shouldn't be able to set confirmation by others after seconds", async () => {
-            let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
-            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_new, { from: accounts[12] });
+            let confirmationByOthersAfterSeconds_new = DAYS;
+            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager.address], confirmationByOthersAfterSeconds_new, { from: accounts[12] });
             await expectRevert(res, "only governance");
         });
 

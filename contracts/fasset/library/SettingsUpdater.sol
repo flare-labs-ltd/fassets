@@ -88,6 +88,8 @@ library SettingsUpdater {
         keccak256("setAgentExitAvailableTimelockSeconds((uint256)");
     bytes32 internal constant SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS =
         keccak256("setAgentFeeChangeTimelockSeconds((uint256)");
+    bytes32 internal constant SET_AGENT_MINTING_CR_CHANGE_TIMELOCK_SECONDS =
+        keccak256("setAgentMintingCRChangeTimelockSeconds((uint256)");
     bytes32 internal constant SET_POOL_EXIT_AND_TOPUP_CHANGE_TIMELOCK_SECONDS =
         keccak256("setPoolExitAndTopupChangeTimelockSeconds((uint256)");
     bytes32 internal constant SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS =
@@ -210,6 +212,9 @@ library SettingsUpdater {
         } else if (_method == SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAgentFeeChangeTimelockSeconds(_params);
+        } else if (_method == SET_AGENT_MINTING_CR_CHANGE_TIMELOCK_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setAgentMintingCRChangeTimelockSeconds(_params);
         } else if (_method == SET_POOL_EXIT_AND_TOPUP_CHANGE_TIMELOCK_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setPoolExitAndTopupChangeTimelockSeconds(_params);
@@ -734,10 +739,24 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
-        require(value <= settings.agentFeeChangeTimelockSeconds * 4 + 1 weeks);
+        require(value <= settings.agentFeeChangeTimelockSeconds * 4 + 1 days);
         // update
         settings.agentFeeChangeTimelockSeconds = value.toUint64();
         emit AMEvents.SettingChanged("agentFeeChangeTimelockSeconds", value);
+    }
+
+    function _setAgentMintingCRChangeTimelockSeconds(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= settings.agentMintingCRChangeTimelockSeconds * 4 + 1 days);
+        // update
+        settings.agentMintingCRChangeTimelockSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("agentMintingCRChangeTimelockSeconds", value);
     }
 
     function _setPoolExitAndTopupChangeTimelockSeconds(
@@ -748,7 +767,7 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
-        require(value <= settings.poolExitAndTopupChangeTimelockSeconds * 4 + 1 weeks);
+        require(value <= settings.poolExitAndTopupChangeTimelockSeconds * 4 + 1 days);
         // update
         settings.poolExitAndTopupChangeTimelockSeconds = value.toUint64();
         emit AMEvents.SettingChanged("poolExitAndTopupChangeTimelockSeconds", value);
