@@ -378,7 +378,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should correctly update agent setting minting VaultCollateral collateral ratio BIPS", async () => {
-            const agentCollateralRatioChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentCollateralRatioChangeTimelock = (await assetManager.getSettings()).agentMintingCRChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "mintingVaultCollateralRatioBIPS", 25000, { from: agentOwner1 });
             await time.increase(agentCollateralRatioChangeTimelock);
@@ -388,7 +388,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should correctly update agent setting minting pool collateral ratio BIPS", async () => {
-            const agentCollateralRatioChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentCollateralRatioChangeTimelock = (await assetManager.getSettings()).agentMintingCRChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "mintingPoolCollateralRatioBIPS", 25000, { from: agentOwner1 });
             await time.increase(agentCollateralRatioChangeTimelock);
@@ -398,7 +398,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should not update agent setting minting pool collateral ratio BIPS if value too small", async () => {
-            const agentCollateralRatioChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentCollateralRatioChangeTimelock = (await assetManager.getSettings()).agentMintingCRChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "mintingPoolCollateralRatioBIPS", 10, { from: agentOwner1 });
             await time.increase(agentCollateralRatioChangeTimelock);
@@ -417,7 +417,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
-            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", 25000, { from: agentOwner1 });
             await time.increase(agentPoolExitCRChangeTimelock);
@@ -427,7 +427,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should not update agent setting pool exit collateral ratio BIPS if value too low", async () => {
-            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", 2, { from: agentOwner1 });
             await time.increase(agentPoolExitCRChangeTimelock);
@@ -436,7 +436,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should not update agent setting pool exit collateral ratio BIPS if increase too big", async () => {
-            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentPoolExitCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const newExitCR = toBN(agentInfo.poolExitCollateralRatioBIPS).muln(2);
@@ -447,7 +447,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should correctly update agent setting pool exit collateral ratio BIPS", async () => {
-            const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", 25000, { from: agentOwner1 });
             await time.increase(agentPoolTopupCRChangeTimelock);
@@ -457,7 +457,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should not update agent setting pool exit collateral ratio BIPS if value too low", async () => {
-            const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentPoolTopupCRChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", 2, { from: agentOwner1 });
             await time.increase(agentPoolTopupCRChangeTimelock);
@@ -466,7 +466,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should correctly update agent setting pool topup token price factor BIPS", async () => {
-            const agentPoolTopupPriceFactorChangeTimelock = (await assetManager.getSettings()).agentCollateralRatioChangeTimelockSeconds;
+            const agentPoolTopupPriceFactorChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupTokenPriceFactorBIPS", 9000, { from: agentOwner1 });
             await time.increase(agentPoolTopupPriceFactorChangeTimelock);
@@ -894,6 +894,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings20.announcedUnderlyingConfirmationMinSeconds = 2 * HOURS;
             let res20 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings20, collaterals, liquidationSettings);
             await expectRevert(res20, "confirmation time too big");
+
+            let newSettings21 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings21.underlyingSecondsForPayment = 25 * HOURS;
+            let res21 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings21, collaterals, liquidationSettings);
+            await expectRevert(res21, "value to high");
+
+            let newSettings22 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings22.underlyingBlocksForPayment = toBN(Math.round(25 * HOURS / testChainInfo.eth.blockTime));
+            let res22 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings22, collaterals, liquidationSettings);
+            await expectRevert(res22, "value to high");
         });
 
         it("should validate settings - other validators", async () => {
@@ -924,6 +934,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings4.confirmationByOthersAfterSeconds = 1.9 * HOURS;
             let res4 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings4, collaterals, liquidationSettings);
             await expectRevert(res4, "must be at least two hours");
+
+            let newSettings5 = createTestSettings(contracts, testChainInfo.eth);
+            newSettings5.mintingCapAMG = toBN(newSettings5.lotSizeAMG).divn(2);
+            let res5x = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings5, collaterals, liquidationSettings);
+            await expectRevert(res5x, "minting cap too small");
+
+            // should work for nonzero cap greater than lot size
+            let newSettings6 = createTestSettings(contracts, testChainInfo.eth);
+            newSettings6.mintingCapAMG = toBN(newSettings6.lotSizeAMG).muln(2);
+            await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings6, collaterals, liquidationSettings);
 
             let liquidationSettings5 = createTestLiquidationSettings();
             liquidationSettings5.liquidationCollateralFactorBIPS = [];
@@ -1077,8 +1097,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
     describe("minting", () => {
         it("should update the current block", async () => {
+            chain.mine(3);  // make sure block no and timestamp change
             const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
-            await assetManager.updateCurrentBlock(proof);
+            const res = await assetManager.updateCurrentBlock(proof);
+            expectEvent(res, 'CurrentUnderlyingBlockUpdated', { underlyingBlockNumber: proof.blockNumber, underlyingBlockTimestamp: proof.blockTimestamp });
             const currentBlock = await assetManager.currentUnderlyingBlock();
             assertWeb3Equal(currentBlock[0], proof.blockNumber);
             assertWeb3Equal(currentBlock[1], proof.blockTimestamp);

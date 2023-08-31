@@ -106,6 +106,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         onlyAssetManager
     {
         require(_topupCollateralRatioBIPS < exitCollateralRatioBIPS, "value too high");
+        require(_topupCollateralRatioBIPS > 0, "must be nonzero");
         topupCollateralRatioBIPS = _topupCollateralRatioBIPS.toUint32();
     }
 
@@ -114,6 +115,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         onlyAssetManager
     {
         require(_topupTokenPriceFactorBIPS < SafePct.MAX_BIPS, "value too high");
+        require(_topupTokenPriceFactorBIPS > 0, "must be nonzero");
         topupTokenPriceFactorBIPS = _topupTokenPriceFactorBIPS.toUint16();
     }
 
@@ -337,6 +339,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         external override
         nonReentrant
     {
+        require(_fAssets != 0, "zero f-asset debt payment");
         require(_fAssets <= _fAssetFeeDebtOf[msg.sender], "debt f-asset balance too small");
         require(fAsset.allowance(msg.sender, address(this)) >= _fAssets, "f-asset allowance too small");
         _burnFAssetFeeDebt(msg.sender, _fAssets);
@@ -693,6 +696,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         }
     }
 
+    function depositNat()
+        external payable override
+        onlyAssetManager
+    {
+        _depositWNat();
+    }
+
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function payout(
         address _recipient,
@@ -739,14 +749,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     ////////////////////////////////////////////////////////////////////////////////////
     // Delegation of the pool's collateral and airdrop claiming (same as in AgentVault)
 
-    function delegate(
-        address[] memory _to,
-        uint256[] memory _bips
-    )
-        external override
-        onlyAgent
-    {
-        wNat.batchDelegate(_to, _bips);
+    function delegate(address _to, uint256 _bips) external override onlyAgent {
+        wNat.delegate(_to, _bips);
     }
 
     function undelegateAll() external onlyAgent {

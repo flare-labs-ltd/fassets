@@ -71,6 +71,8 @@ library AvailableAgents {
         require(agent.availableAgentsPos != 0, "agent not available");
         require(agent.exitAvailableAfterTs != 0, "exit not announced");
         require(block.timestamp >= agent.exitAvailableAfterTs, "exit too soon");
+        require(block.timestamp <= agent.exitAvailableAfterTs + state.settings.agentTimelockedOperationWindowSeconds,
+            "exit too late");
         uint256 ind = agent.availableAgentsPos - 1;
         if (ind + 1 < state.availableAgents.length) {
             state.availableAgents[ind] = state.availableAgents[state.availableAgents.length - 1];

@@ -192,7 +192,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await agentVault.depositCollateral(usdc.address, 100, { from: owner });
         // withdraw collateral
         await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: owner });
-        await time.increase(time.duration.hours(48));
+        await time.increase(time.duration.hours(1));
         await agentVault.withdrawCollateral(usdc.address, 100, recipient, { from: owner });
         assertWeb3Equal(await usdc.balanceOf(recipient), toBN(100));
     });
@@ -318,19 +318,6 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         const rewardManagerMock = await MockContract.new();
         const claimPromise = agentVault.claimFtsoRewards(rewardManagerMock.address, 5, owner, { from: accounts[2] });
         await expectRevert(claimPromise, "only owner");
-    });
-
-    it("random address shouldn't be able to set auto claiming", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const contract = await MockContract.new();
-        const res = agentVault.setAutoClaiming(contract.address, [accounts[2]], [accounts[3]], { from: accounts[3] });
-        await expectRevert(res, "only owner");
-    });
-
-    it("should set auto claiming", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const contract = await MockContract.new();
-        await agentVault.setAutoClaiming(contract.address, [accounts[2]],  [accounts[3]], { from: owner });
     });
 
     it("should opt out of airdrop distribution", async () => {

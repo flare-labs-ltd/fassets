@@ -425,15 +425,22 @@ export interface AssetManagerParameters {
     agentFeeChangeTimelockSeconds: integer;
 
     /**
-     * Amount of seconds that have to pass between agent-set collateral ratio (minting, pool exit)
+     * Amount of seconds that have to pass between agent-set minting collateral ratio (vault or pool)
      * change announcement and execution.
      * @minimum 0
      */
-    agentCollateralRatioChangeTimelockSeconds: integer;
+    agentMintingCRChangeTimelockSeconds: integer;
+
+    /**
+     * Amount of seconds that have to pass between agent-set settings for pool exit and topup
+     * (exit CR, topup CR, topup bonus) change announcement and execution.
+     * @minimum 0
+     */
+    poolExitAndTopupChangeTimelockSeconds: integer;
 
     /**
      * Amount of seconds that an agent is allowed to execute an update once it is allowed.
      * @minimum 60
      */
-    agentSettingUpdateWindowSeconds: integer;
+    agentTimelockedOperationWindowSeconds: integer;
 }

@@ -69,13 +69,16 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test rewarding for mint default
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const startBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
+            const startTotalCollateralPool = await agent.collateralPool.totalCollateral();
             await agent.mintingPaymentDefault(crt);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const endBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
+            const endTotalCollateralPool = await agent.collateralPool.totalCollateral();
             const poolFee = crFee.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
             assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee.sub(poolFee));
             assertWeb3Equal(endBalancePool.sub(startBalancePool), poolFee);
+            assertWeb3Equal(endTotalCollateralPool.sub(startTotalCollateralPool), poolFee);
             // check that executing minting after calling mintingPaymentDefault will revert
             const txHash = await minter.performMintingPayment(crt);
             await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
@@ -104,13 +107,16 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // test rewarding for mint default
             const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const startBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
+            const startTotalCollateralPool = await agent.collateralPool.totalCollateral();
             await agent.mintingPaymentDefault(crt);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
             const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
             const endBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
+            const endTotalCollateralPool = await agent.collateralPool.totalCollateral();
             const poolFee = crFee.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
             assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee.sub(poolFee));
             assertWeb3Equal(endBalancePool.sub(startBalancePool), poolFee);
+            assertWeb3Equal(endTotalCollateralPool.sub(startTotalCollateralPool), poolFee);
             // check that executing minting after calling mintingPaymentDefault will revert
             const txHash = await minter.performMintingPayment(crt);
             await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");

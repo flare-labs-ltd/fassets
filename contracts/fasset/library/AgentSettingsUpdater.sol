@@ -52,7 +52,7 @@ library AgentSettingsUpdater {
         require(update.validAt != 0, "no pending update");
         require(update.validAt <= block.timestamp, "update not valid yet");
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        require(update.validAt + settings.agentSettingUpdateWindowSeconds >= block.timestamp,
+        require(update.validAt + settings.agentTimelockedOperationWindowSeconds >= block.timestamp,
             "update not valid anymore");
         _executeUpdate(agent, hash, update.value);
         emit AMEvents.AgentSettingChanged(_agentVault, _name, update.value);
@@ -106,8 +106,10 @@ library AgentSettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         if (_hash == FEE_BIPS || _hash == POOL_FEE_SHARE_BIPS || _hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS) {
             return settings.agentFeeChangeTimelockSeconds;
+        } else if (_hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS || _hash == MINTING_POOL_COLLATERAL_RATIO_BIPS) {
+            return settings.agentMintingCRChangeTimelockSeconds;
         } else {
-            return settings.agentCollateralRatioChangeTimelockSeconds;
+            return settings.poolExitAndTopupChangeTimelockSeconds;
         }
     }
 

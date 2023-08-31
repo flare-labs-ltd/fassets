@@ -242,6 +242,9 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const payload = collateralPool.contract.methods.setTopupCollateralRatioBIPS(setTo).encodeABI();
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
             await expectRevert(prms, "value too high");
+            const payload1 = collateralPool.contract.methods.setTopupCollateralRatioBIPS(0).encodeABI();
+            const prms1 = assetManager.callFunctionAt(collateralPool.address, payload1);
+            await expectRevert(prms1, "must be nonzero");
         });
 
         it("should correctly set topup collateral ratio", async () => {
@@ -256,6 +259,9 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             const payload = collateralPool.contract.methods.setTopupTokenPriceFactorBIPS(MAX_BIPS).encodeABI();
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
             await expectRevert(prms, "value too high");
+            const payload1 = collateralPool.contract.methods.setTopupTokenPriceFactorBIPS(0).encodeABI();
+            const prms1 = assetManager.callFunctionAt(collateralPool.address, payload1);
+            await expectRevert(prms1, "must be nonzero");
         });
 
         it("should correctly set topup token discount", async () => {
@@ -1140,6 +1146,10 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectRevert(collateralPool.payFAssetFeeDebt(BN_ONE), "debt f-asset balance too small");
         });
 
+        it("should fail at trying to pay zero f-asset debt", async () => {
+            await expectRevert(collateralPool.payFAssetFeeDebt(BN_ZERO), "zero f-asset debt payment");
+        });
+
         it("should fail at trying to pay f-asset debt with too low f-asset allowance", async () => {
             await givePoolFAssetFees(ETH(10));
             const natToEnterEmptyPool = await poolFAssetFeeNatValue();
@@ -1179,9 +1189,9 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // first user enters pool
             await collateralPool.enter(0, true, { value: ETH(10) });
             // pool gets initial f-asset fees
-            await fAsset.mintAmount(collateralPool.address, ETH(1));
+            await givePoolFAssetFees(ETH(1));
             // second user enters pool
-            await collateralPool.enter(0, true, { value: ETH(10), from: accounts[1] });
+            await collateralPool.enter(0, false, { value: ETH(10), from: accounts[1] });
             // accounts[1] pays off the debt
             const debt = await collateralPool.fAssetFeeDebtOf(accounts[1]);
             await collateralPool.payFAssetFeeDebt(debt, { from: accounts[1] });
@@ -1544,7 +1554,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
         });
 
         it("random addresses shouldn't be able to set delegations", async () => {
-            const res = collateralPool.delegate([accounts[2]], [5_000], { from: accounts[5] });
+            const res = collateralPool.delegate(accounts[2], 5_000, { from: accounts[5] });
             await expectRevert(res, "only agent");
         });
 

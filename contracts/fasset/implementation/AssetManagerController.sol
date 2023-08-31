@@ -342,15 +342,23 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS, abi.encode(_value));
     }
 
-    function setAgentCollateralRatioChangeTimelockSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
+    function setAgentMintingCRChangeTimelockSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
     external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_AGENT_COLLATERAL_RATIO_CHANGE_TIMELOCK_SECONDS, abi.encode(_value));
+            SettingsUpdater.SET_AGENT_MINTING_CR_CHANGE_TIMELOCK_SECONDS, abi.encode(_value));
     }
 
-    function setAgentSettingUpdateWindowSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
+    function setPoolExitAndTopupChangeTimelockSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
+    external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_POOL_EXIT_AND_TOPUP_CHANGE_TIMELOCK_SECONDS, abi.encode(_value));
+    }
+
+    function setAgentTimelockedOperationWindowSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
     external
         onlyImmediateGovernance
     {

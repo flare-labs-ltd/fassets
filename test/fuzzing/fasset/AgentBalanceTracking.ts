@@ -45,7 +45,7 @@ export class BalanceTrackingList {
     }
 
     updateSummary(prev: BalanceTrackingSummary, row: BalanceTrackingRow) {
-        const actualUnderlying = prev.actualUnderlying.add(row.underlyingDeposit);
+        const actualUnderlying = prev.actualUnderlying.add(row.underlyingDeposit).sub(row.underlyingWithdraw);
         const accountedUnderlying = prev.accountedUnderlying.add(row.mintAmount).add(row.mintFeeAgent).add(row.mintFeePool)
             .sub(row.redemptionSpent).sub(row.withdraw).add(row.topup);
         const requiredUnderlying = prev.requiredUnderlying.add(row.mintAmount).add(row.mintFeePool)

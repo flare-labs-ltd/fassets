@@ -203,11 +203,10 @@ export class Agent extends AssetContextClient {
             throw new Error("agent still backing f-assets");
         }
         // redeem pool tokens to empty the pool (this only works in tests where there are no other pool token holders)
+        await time.increase(await this.context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock to expire
         const poolTokenBalance = await this.poolTokenBalance();
         const { withdrawalAllowedAt } = await this.announcePoolTokenRedemption(poolTokenBalance);
         await time.increaseTo(withdrawalAllowedAt);
-        const collateralPoolTokenTimelockSeconds = await this.context.assetManager.getCollateralPoolTokenTimelockSeconds();
-        await time.increase(collateralPoolTokenTimelockSeconds);
         await this.redeemCollateralPoolTokens(poolTokenBalance);
         // ... now the agent should wait for all pool token holders to exit ...
         // destroy (no need to pull out vault collateral first, it will be withdrawn automatically during destroy)

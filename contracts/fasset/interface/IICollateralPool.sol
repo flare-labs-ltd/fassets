@@ -13,6 +13,8 @@ import "./IWNat.sol";
 interface IICollateralPool is ICollateralPool {
     function setPoolToken(address _poolToken) external;
 
+    function depositNat() external payable;
+
     function payout(address _receiver, uint256 _amountWei, uint256 _agentResponsibilityWei) external;
 
     function destroy(address payable _recipient) external;

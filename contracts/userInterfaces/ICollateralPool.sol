@@ -116,10 +116,12 @@ interface ICollateralPool {
      * Delegate FTSO vote power for the wrapped native tokens held in this vault.
      * NOTE: only the owner of the pool's corresponding agent vault may call this method.
      */
-    function delegate(
-        address[] memory _to,
-        uint256[] memory _bips
-    ) external;
+    function delegate(address _to, uint256 _bips) external;
+
+    /**
+     * Clear FTSO delegation.
+     */
+    function undelegateAll() external;
 
     /**
      * Claim the FTSO rewards earned by delegating the vote power for the pool.
