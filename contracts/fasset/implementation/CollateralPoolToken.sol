@@ -119,6 +119,10 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
                 _timelocked += amounts[i];
             }
         }
+        // in agent payout, locked tokens can be burnt without a timelock update,
+        // which makes timelockedBalance > totalBalance
+        uint256 totalBalance = balanceOf(_account);
+        _timelocked = (_timelocked < totalBalance) ? _timelocked : totalBalance;
     }
 
     function nonTimelockedBalanceOf(
@@ -127,10 +131,7 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
         public view
         returns (uint256)
     {
-        uint256 totalBalance = balanceOf(_account);
-        uint256 timelocked = timelockedBalanceOf(_account);
-        // in agent payout, locked tokens can be burnt without an update
-        return (totalBalance > timelocked) ? totalBalance - timelocked : 0;
+        return balanceOf(_account) - timelockedBalanceOf(_account);
     }
 
     function _beforeTokenTransfer(
@@ -148,6 +149,10 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
             uint256 nonTimelocked = balanceOf(_from) - timelocked;
             require(_amount <= nonTimelocked, "insufficient non-timelocked balance");
         }
+        // if ignoreTimelock, then we are spending from timelocked balance,
+        // the reason why it is not updated is because it might not fit in one transaction
+        // (if timelock data is too large), which could block the asset manager from making
+        // agent payout from the pool
     }
 
     // this can be called externally by anyone with different _maxTimelockedEntries,
