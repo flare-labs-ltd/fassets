@@ -443,4 +443,9 @@ export interface AssetManagerParameters {
      * @minimum 60
      */
     agentTimelockedOperationWindowSeconds: integer;
+
+    /**
+     * Amount of seconds that a collateral pool enterer must wait before spending obtained tokens.
+     */
+    collateralPoolTokenTimelockSeconds: integer;
 }

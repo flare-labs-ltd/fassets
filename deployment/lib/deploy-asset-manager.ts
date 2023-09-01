@@ -281,5 +281,6 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         agentMintingCRChangeTimelockSeconds: parameters.agentMintingCRChangeTimelockSeconds,
         poolExitAndTopupChangeTimelockSeconds: parameters.poolExitAndTopupChangeTimelockSeconds,
         agentTimelockedOperationWindowSeconds: parameters.agentTimelockedOperationWindowSeconds,
+        collateralPoolTokenTimelockSeconds: parameters.collateralPoolTokenTimelockSeconds,
     };
 }
