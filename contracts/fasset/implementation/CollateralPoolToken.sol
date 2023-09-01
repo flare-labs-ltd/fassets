@@ -9,8 +9,8 @@ import "../interface/IICollateralPool.sol";
 
 contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
     address public immutable collateralPool;
-    mapping(address => uint256[]) internal timelockedAmounts;
-    mapping(address => uint256[]) internal timelockedEndTimes;
+    mapping(address => uint256[]) private timelockedAmounts;
+    mapping(address => uint256[]) private timelockedEndTimes;
     bool private ignoreTimelocked;
 
     modifier onlyCollateralPool {
