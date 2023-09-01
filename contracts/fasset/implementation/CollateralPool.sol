@@ -126,7 +126,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      */
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function enter(uint256 _fAssets, bool _enterWithFullFAssets)
-        external payable override
+        external payable
         nonReentrant
     {
         AssetData memory assetData = _getAssetData();
@@ -167,7 +167,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      */
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function exit(uint256 _tokenShare, TokenExitType _exitType)
-        external override
+        external
         nonReentrant
         returns (uint256, uint256)
     {
@@ -218,7 +218,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         bool _redeemToCollateral,
         string memory _redeemerUnderlyingAddress
     )
-        external override
+        external
         nonReentrant
     {
         require(_tokenShare > 0, "token share is zero");
@@ -317,7 +317,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      *                  Must be positive and smaller or equal to the sender's reward f-assets
      */
     function withdrawFees(uint256 _fAssets)
-        external override
+        external
         nonReentrant
     {
         require(_fAssets > 0, "trying to withdraw zero f-assets");
@@ -336,7 +336,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      *                  _fAssets must be positive and smaller or equal to the sender's debt f-assets
      */
     function payFAssetFeeDebt(uint256 _fAssets)
-        external override
+        external
         nonReentrant
     {
         require(_fAssets != 0, "zero f-asset debt payment");
@@ -351,7 +351,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     /**
      * @notice Returns the collateral pool token contract used by this contract
      */
-    function poolToken() external view override returns (ICollateralPoolToken) {
+    function poolToken() external view returns (ICollateralPoolToken) {
         return token;
     }
 
@@ -507,7 +507,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         return Math.min(subOrZero(virtualFAssetFees, debtFAssetFees), _assetData.poolFAssetFees);
     }
 
-    function _transferableTokensOf(
+    function _debtFreeTokensOf(
         AssetData memory _assetData,
         address _account
     )
@@ -629,7 +629,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      * @param _account  User address
      */
     function fAssetFeesOf(address _account)
-        external view override
+        external view
         returns (uint256)
     {
         AssetData memory assetData = _getAssetData();
@@ -641,7 +641,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      * @param _account  User address
      */
     function fAssetFeeDebtOf(address _account)
-        external view override
+        external view
         returns (uint256)
     {
         return _fAssetFeeDebtOf[_account];
@@ -651,31 +651,31 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      * @notice Returns user's debt tokens
      * @param _account  User address
      */
-    function debtTokensOf(address _account)
-        external view override
+    function debtLockedTokensOf(address _account)
+        external view
         returns (uint256)
     {
         AssetData memory assetData = _getAssetData();
-        return subOrZero(token.balanceOf(_account), _transferableTokensOf(assetData, _account));
+        return subOrZero(token.balanceOf(_account), _debtFreeTokensOf(assetData, _account));
     }
 
     /**
      * @notice Returns user's free tokens
      * @param _account  User address
      */
-    function transferableTokensOf(address _account)
-        external view override
+    function debtFreeTokensOf(address _account)
+        external view
         returns (uint256)
     {
         AssetData memory assetData = _getAssetData();
-        return _transferableTokensOf(assetData, _account);
+        return _debtFreeTokensOf(assetData, _account);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Methods to allow for liquidation/destruction of the pool by AssetManager or agent
 
     function destroy(address payable _recipient)
-        external override
+        external
         onlyAssetManager
         nonReentrant
     {
@@ -697,7 +697,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     }
 
     function depositNat()
-        external payable override
+        external payable
         onlyAssetManager
     {
         _depositWNat();
@@ -709,7 +709,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 _amount,
         uint256 _agentResponsibilityWei
     )
-        external override
+        external
         onlyAssetManager
         nonReentrant
     {
@@ -730,7 +730,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
 
     // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
     function upgradeWNatContract(IWNat _newWNat)
-        external override
+        external
         onlyAssetManager
         nonReentrant
     {
@@ -749,7 +749,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     ////////////////////////////////////////////////////////////////////////////////////
     // Delegation of the pool's collateral and airdrop claiming (same as in AgentVault)
 
-    function delegate(address _to, uint256 _bips) external override onlyAgent {
+    function delegate(address _to, uint256 _bips) external onlyAgent {
         wNat.delegate(_to, _bips);
     }
 
@@ -773,7 +773,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         IFtsoRewardManager _ftsoRewardManager,
         uint256 _lastRewardEpoch
     )
-        external override
+        external
         onlyAgent
         returns (uint256)
     {
@@ -786,7 +786,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         IDistributionToDelegators _distribution,
         uint256 _month
     )
-        external override
+        external
         onlyAgent
         returns(uint256)
     {
@@ -798,7 +798,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     function optOutOfAirdrop(
         IDistributionToDelegators _distribution
     )
-        external override
+        external
         onlyAgent
     {
         _distribution.optOutOfAirdrop();
@@ -816,7 +816,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
 
     // in case of f-asset termination
     function withdrawCollateralWhenFAssetTerminated()
-        external override
+        external
         nonReentrant
     {
         require(IFAsset(address(fAsset)).terminated(), "f-asset not terminated");

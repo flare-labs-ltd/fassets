@@ -66,22 +66,44 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
         // do nothing since selfdestruct is deprecated
     }
 
-    function transferableBalanceOf(
-        address _account
-    )
-        public view
-        returns (uint256)
-    {
-        return IICollateralPool(collateralPool).transferableTokensOf(_account);
-    }
-
-    function debtBalanceOf(
+    function lockedBalanceOf(
         address _account
     )
         external view
         returns (uint256)
     {
-        return IICollateralPool(collateralPool).debtTokensOf(_account);
+        uint256 debtLockedBalance = debtLockedBalanceOf(_account);
+        uint256 timelockedBalance = timelockedBalanceOf(_account);
+        return (debtLockedBalance > timelockedBalance) ? debtLockedBalance : timelockedBalance;
+    }
+
+    function transferableBalanceOf(
+        address _account
+    )
+        external view
+        returns (uint256)
+    {
+        uint256 debtFreeBalance = debtFreeBalanceOf(_account);
+        uint256 nonTimelockedBalance = nonTimelockedBalanceOf(_account);
+        return (debtFreeBalance < nonTimelockedBalance) ? debtFreeBalance : nonTimelockedBalance;
+    }
+
+    function debtFreeBalanceOf(
+        address _account
+    )
+        public view
+        returns (uint256)
+    {
+        return IICollateralPool(collateralPool).debtFreeTokensOf(_account);
+    }
+
+    function debtLockedBalanceOf(
+        address _account
+    )
+        public view
+        returns (uint256)
+    {
+        return IICollateralPool(collateralPool).debtLockedTokensOf(_account);
     }
 
     function timelockedBalanceOf(
@@ -99,20 +121,32 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
         }
     }
 
+    function nonTimelockedBalanceOf(
+        address _account
+    )
+        public view
+        returns (uint256)
+    {
+        uint256 totalBalance = balanceOf(_account);
+        uint256 timelocked = timelockedBalanceOf(_account);
+        // in agent payout, locked tokens can be burnt without an update
+        return (totalBalance > timelocked) ? totalBalance - timelocked : 0;
+    }
+
     function _beforeTokenTransfer(
         address _from, address /* _to */, uint256 _amount
     )
         internal override
     {
         if (msg.sender != collateralPool) {
-            uint256 transferable = transferableBalanceOf(_from);
+            uint256 transferable = debtFreeBalanceOf(_from);
             require(_amount <= transferable, "insufficient transferable balance");
         }
-        // either user or non-minting collateral pool with ignoreTimelocked flag
+        // either user transfer or non-minting collateral pool with ignoreTimelocked=false flag
         if (!ignoreTimelocked && _from != address(0)) {
             uint256 timelocked = getAndUpdateTimelockedBalanceOf(_from, type(uint256).max);
-            uint256 free = balanceOf(_from) - timelocked;
-            require(_amount <= free, "insufficient non-timelocked balance");
+            uint256 nonTimelocked = balanceOf(_from) - timelocked;
+            require(_amount <= nonTimelocked, "insufficient non-timelocked balance");
         }
     }
 

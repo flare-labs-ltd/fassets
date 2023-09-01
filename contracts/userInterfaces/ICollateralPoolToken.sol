@@ -14,9 +14,30 @@ interface ICollateralPoolToken is IERC20 {
         returns (address);
 
     /**
-     * Returns the amount of tokens that can be transferred by the account.
+     * Returns the amount of tokens that is locked for transfering.
+     */
+    function lockedBalanceOf(address _account)
+        external view
+        returns (uint256);
+
+    /**
+     * Returns the amount of tokens that can be transfered.
      */
     function transferableBalanceOf(address _account)
+        external view
+        returns (uint256);
+
+    /**
+     * Returns the amount of account's tokens that are considered debt.
+     */
+    function debtLockedBalanceOf(address _account)
+        external view
+        returns (uint256);
+
+    /**
+     * Returns the amount of account's tokens that are not considered debt.
+     */
+    function debtFreeBalanceOf(address _account)
         external view
         returns (uint256);
 
@@ -24,6 +45,13 @@ interface ICollateralPoolToken is IERC20 {
      * Returns the amount of account's tokens that are timelocked.
      */
     function timelockedBalanceOf(address _account)
+        external view
+        returns (uint256);
+
+    /**
+     * Returns the amount of account's tokens that are timelocked.
+     */
+    function nonTimelockedBalanceOf(address _account)
         external view
         returns (uint256);
 }

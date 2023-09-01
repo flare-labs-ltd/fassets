@@ -31,9 +31,9 @@ interface IICollateralPool is ICollateralPool {
 
     function wNat() external view returns (IWNat);
 
-    function transferableTokensOf(address _account) external view returns (uint256);
+    function debtFreeTokensOf(address _account) external view returns (uint256);
 
-    function debtTokensOf(address _account) external view returns (uint256);
+    function debtLockedTokensOf(address _account) external view returns (uint256);
 
     function assetManager() external view returns (IIAssetManager);
 }
