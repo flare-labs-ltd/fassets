@@ -1015,6 +1015,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await agentVault.buyCollateralPoolTokens({ from: agentOwner1, value: toWei(10) });
             const _agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(_agentInfo.totalAgentPoolTokensWei, toWei(10));
+            await time.increase(await assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
             // announce withdrawal and execute it (nat to pool token ratio is 1:1 as there are no minted f-assets)
             await assetManager.announceAgentPoolTokenRedemption(agentVault.address, toWei(1), { from: agentOwner1 });
             const agentWithdrawalTimelock = (await assetManager.getSettings()).withdrawalWaitMinSeconds;

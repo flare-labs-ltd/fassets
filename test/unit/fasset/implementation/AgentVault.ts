@@ -125,6 +125,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const tokens = agentInfo.totalAgentPoolTokensWei;
+            await time.increase(await assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
             await assetManager.announceAgentPoolTokenRedemption(agentVault.address, tokens, { from: owner });
             await time.increase((await assetManager.getSettings()).withdrawalWaitMinSeconds);
             await agentVault.redeemCollateralPoolTokens(tokens, natRecipient, { from: owner });
