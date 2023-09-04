@@ -132,6 +132,21 @@ library AgentInfo {
         // Can be used for calculating current liquidation premium, which depends on time since liquidation started.
         uint256 liquidationStartTimestamp;
 
+        // When agent is in liquidation, this is the amount o FAssets that need to be liquidated to bring the agent's
+        // position to safety. When performing liquidation, only up to this amount of FAssets will be liquidated.
+        // If not in liquidation, this value is 0.
+        // Since the liquidation state may need to be upgraded by, call `startLiquidation` before
+        // `getAgentInfo` to get the value that will actually be used in liquidation.
+        uint256 maxLiquidationAmountUBA;
+
+        // When agent is in liquidation, this is the factor (in BIPS) of the converted value of the liquidated
+        // FAssets paid by the vault collateral. If not in liquidation, this value is 0.
+        uint256 liquidationPaymentFactorVaultBIPS;
+
+        // When agent is in liquidation, this is the factor (in BIPS) of the converted value of the liquidated
+        // FAssets paid by the pool collateral. If not in liquidation, this value is 0.
+        uint256 liquidationPaymentFactorPoolBIPS;
+
         // Total underlying balance (backing and free).
         int256 underlyingBalanceUBA;
 
