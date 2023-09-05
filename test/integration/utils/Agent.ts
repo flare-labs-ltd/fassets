@@ -203,6 +203,7 @@ export class Agent extends AssetContextClient {
             throw new Error("agent still backing f-assets");
         }
         // redeem pool tokens to empty the pool (this only works in tests where there are no other pool token holders)
+        await time.increase(await this.context.assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock to expire
         const poolTokenBalance = await this.poolTokenBalance();
         const { withdrawalAllowedAt } = await this.announcePoolTokenRedemption(poolTokenBalance);
         await time.increaseTo(withdrawalAllowedAt);

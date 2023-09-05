@@ -1,13 +1,13 @@
 {
-  "name": "flare_smart_contracts",
+  "name": "fasset",
   "version": "0.0.1",
-  "description": "Smart contracts implementing FTSO on Flare Network.",
+  "description": "Smart contracts implementing FAsset system.",
   "main": "",
   "repository": {
     "type": "git",
     "url": "git+https://gitlab.com/flarenetwork/fasset.git"
   },
-  "author": "Flare SC team",
+  "author": "Flare Labs",
   "license": "MIT",
   "directories": {},
   "engines" : {
@@ -15,8 +15,6 @@
   },
   "scripts": {
     "---------HOOKS": "",
-    "postinstall": "echo Running install in flare-smart-contracts... && cd node_modules/flare-smart-contracts && yarn",
-    "prepare": "yarn flatten-dependencies node_modules/flare-smart-contracts scripts/flatten-files.txt flattened/FlareSmartContracts.sol scripts/flatten-extra-imports.txt",
     "---------TEST---SCRIPTS": "",
     "test": "yarn hardhat test",
     "coverage": "env NODE_OPTIONS=\"--max_old_space_size=8192\" yarn hardhat coverage --testfiles",
@@ -28,7 +26,7 @@
     "fuzzing_fasset": "yarn test test/fuzzing/fasset/FAssetFuzzing.ts",
     "---------COMPILE---SCRIPTS": "",
     "clean": "env rm -rf cache artifacts build typechain typechain-truffle",
-    "clean-all": "yarn clean && env rm -rf flattened node_modules",
+    "clean-all": "yarn clean && env rm -rf node_modules",
     "compile": "yarn hardhat compile --config hardhatSetup.config.ts && yarn typechain-prepare && yarn typechain-truffle-v5",
     "c": "yarn compile",
     "precompile": "env bash scripts/create-events-interface.sh",
@@ -39,6 +37,7 @@
     "flatten": "yarn hardhat flatten",
     "slither": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json 2> /dev/null || true; node node_modules/flare-smart-contracts/scripts/slither-parse.js ./slither.json",
     "slither-show-stderr": "pip3 install slither-analyzer && rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json || true; node node_modules/flare-smart-contracts/scripts/slither-parse.js ./slither.json",
+    "flatten-flare-sc": "yarn flatten-dependencies node_modules/flare-smart-contracts scripts/flatten-files.txt flattened/FlareSmartContracts.sol scripts/flatten-extra-imports.txt",
     "flatten-dependencies": "env bash scripts/flatten-dependencies.sh",
     "generate-attester-code": "env bash scripts/generate-attester-code.sh",
     "ts-compile-watch": "tsc --watch --noEmit",

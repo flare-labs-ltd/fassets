@@ -16,6 +16,12 @@ contract AssetManagerMock {
     event AgentRedemptionInCollateral(uint256 _amountUBA);
     event AgentRedemption(uint256 _amountUBA);
 
+    uint256 internal maxRedemption = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    uint256 internal timelockDuration = 0 days;
+    uint256 public assetPriceMul = 1;
+    uint256 public assetPriceDiv = 2;
+    uint256 public lotSize = 1;
+
     constructor(IWNat _wNat) {
         wNat = _wNat;
     }
@@ -90,6 +96,18 @@ contract AssetManagerMock {
         return fasset.totalSupply();
     }
 
+    function maxRedemptionFromAgent(address /*agentVault*/) external view returns (uint256) {
+        return maxRedemption;
+    }
+
+    function getCollateralPoolTokenTimelockSeconds() external view returns (uint256) {
+        return timelockDuration;
+    }
+
+    function assetPriceNatWei() public view returns (uint256, uint256) {
+        return (assetPriceMul, assetPriceDiv);
+    }
+
     function fAsset()
         external view
         returns (IERC20)
@@ -97,32 +115,23 @@ contract AssetManagerMock {
         return fasset;
     }
 
-    uint256 public assetPriceMul = 1;
-    uint256 public assetPriceDiv = 2;
-
-    function assetPriceNatWei() public view returns (uint256, uint256) {
-        return (assetPriceMul, assetPriceDiv);
-    }
+    /////////////////////////////////////////////////////////////////////////////
+    // artificial setters for testing
 
     function setAssetPriceNatWei(uint256 _mul, uint256 _div) external {
         assetPriceMul = _mul;
         assetPriceDiv = _div;
     }
 
-    uint256 public lotSize = 1;
-
     function setLotSize(uint256 _lotSize) public {
         lotSize = _lotSize;
-    }
-
-    uint256 internal maxRedemption = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-
-    function maxRedemptionFromAgent(address /*agentVault*/) external view returns (uint256) {
-        return maxRedemption;
     }
 
     function setMaxRedemptionFromAgent(uint256 _maxRedemption) external {
         maxRedemption = _maxRedemption;
     }
 
+    function setTimelockDuration(uint256 _timelockDuration) external {
+        timelockDuration = _timelockDuration;
+    }
 }

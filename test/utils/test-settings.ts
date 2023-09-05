@@ -68,6 +68,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         agentWhitelist: contracts.agentWhitelist?.address ?? constants.ZERO_ADDRESS,
         burnAddress: constants.ZERO_ADDRESS,
         chainId: ci.chainId,
+        poolTokenSuffix: ci.symbol,
         collateralReservationFeeBIPS: toBIPS("1%"),
         assetDecimals: ci.decimals,
         assetUnitUBA: toBNExp(1, ci.decimals),
@@ -96,12 +97,14 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         buybackCollateralFactorBIPS: toBIPS(1.1),               // 1.1
         announcedUnderlyingConfirmationMinSeconds: 0,           // should be higher in production (~ state connector response time, in tests sc response time is 0)
         agentFeeChangeTimelockSeconds: 6 * HOURS,
-        agentCollateralRatioChangeTimelockSeconds: 1 * HOURS,
+        agentMintingCRChangeTimelockSeconds: 1 * HOURS,
+        poolExitAndTopupChangeTimelockSeconds: 2 * HOURS,
         agentTimelockedOperationWindowSeconds: 1 * HOURS,
         agentExitAvailableTimelockSeconds: 10 * MINUTES,
         vaultCollateralBuyForFlareFactorBIPS: toBIPS(1.05),
         mintingPoolHoldingsRequiredBIPS: toBIPS("50%"),
         tokenInvalidationTimeMinSeconds: 1 * DAYS,
+        collateralPoolTokenTimelockSeconds: 1 * HOURS
     };
     return Object.assign(result, options ?? {});
 }
@@ -165,10 +168,13 @@ export async function createTestFtsos(ftsoRegistry: FtsoRegistryMockInstance, as
     };
 }
 
+let poolTokenSymbolCounter = 0;
+
 export function createTestAgentSettings(underlyingAddress: string, vaultCollateralTokenAddress: string, options?: Partial<AgentSettings>): AgentSettings {
     const defaults: AgentSettings = {
         underlyingAddressString: underlyingAddress,
         vaultCollateralToken: vaultCollateralTokenAddress,
+        poolTokenSuffix: `AGNT${++poolTokenSymbolCounter}`,
         feeBIPS: toBIPS("10%"),
         poolFeeShareBIPS: toBIPS("40%"),
         mintingVaultCollateralRatioBIPS: toBIPS(1.6),

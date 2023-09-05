@@ -246,6 +246,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         liquidationStrategy: liquidationStrategy,
         burnAddress: parameters.burnAddress,
         chainId: parameters.chainId,
+        poolTokenSuffix: parameters.poolTokenSuffix,
         assetDecimals: parameters.assetDecimals,
         assetUnitUBA: assetUnitUBA,
         assetMintingDecimals: parameters.assetMintingDecimals,
@@ -278,7 +279,9 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         tokenInvalidationTimeMinSeconds: parameters.tokenInvalidationTimeMinSeconds,
         agentExitAvailableTimelockSeconds: parameters.agentExitAvailableTimelockSeconds,
         agentFeeChangeTimelockSeconds: parameters.agentFeeChangeTimelockSeconds,
-        agentCollateralRatioChangeTimelockSeconds: parameters.agentCollateralRatioChangeTimelockSeconds,
+        agentMintingCRChangeTimelockSeconds: parameters.agentMintingCRChangeTimelockSeconds,
+        poolExitAndTopupChangeTimelockSeconds: parameters.poolExitAndTopupChangeTimelockSeconds,
         agentTimelockedOperationWindowSeconds: parameters.agentTimelockedOperationWindowSeconds,
+        collateralPoolTokenTimelockSeconds: parameters.collateralPoolTokenTimelockSeconds,
     };
 }

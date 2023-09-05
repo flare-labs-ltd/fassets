@@ -182,6 +182,12 @@ export interface AssetManagerParameters {
     fAssetSymbol: string;
 
     /**
+     * The suffix to pool token name and symbol that identifies new vault's collateral pool token.
+     * When vault is created, the owner passes own suffix which will be appended to this.
+     */
+    poolTokenSuffix: string;
+
+    /**
      * The number of decimals of precision for minting.
      * Usually it is the same as assetDecimals (e.g. 8 for BTC).
      * But for some asset types e.g. ethereum, the number of asset decimals is 18, so we internally
@@ -425,15 +431,27 @@ export interface AssetManagerParameters {
     agentFeeChangeTimelockSeconds: integer;
 
     /**
-     * Amount of seconds that have to pass between agent-set collateral ratio (minting, pool exit)
+     * Amount of seconds that have to pass between agent-set minting collateral ratio (vault or pool)
      * change announcement and execution.
      * @minimum 0
      */
-    agentCollateralRatioChangeTimelockSeconds: integer;
+    agentMintingCRChangeTimelockSeconds: integer;
+
+    /**
+     * Amount of seconds that have to pass between agent-set settings for pool exit and topup
+     * (exit CR, topup CR, topup bonus) change announcement and execution.
+     * @minimum 0
+     */
+    poolExitAndTopupChangeTimelockSeconds: integer;
 
     /**
      * Amount of seconds that an agent is allowed to execute an update once it is allowed.
      * @minimum 60
      */
     agentTimelockedOperationWindowSeconds: integer;
+
+    /**
+     * Amount of seconds that a collateral pool enterer must wait before spending obtained tokens.
+     */
+    collateralPoolTokenTimelockSeconds: integer;
 }

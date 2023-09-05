@@ -417,6 +417,14 @@ interface IAssetManagerEvents {
         address value);
 
     /**
+     * Current underlying block number or timestamp has been updated.
+     */
+    event CurrentUnderlyingBlockUpdated(
+        uint256 underlyingBlockNumber,
+        uint256 underlyingBlockTimestamp,
+        uint256 updatedAt);
+
+    /**
      * New collateral token has been added.
      */
     event CollateralTypeAdded(

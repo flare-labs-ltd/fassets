@@ -1,4 +1,4 @@
-import { time } from "@openzeppelin/test-helpers";
+import { expectEvent, time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -50,13 +50,18 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
     });
 
     it("update current block - twice", async () => {
+        chain.mine(3);  // make sure block no and timestamp change
         chain.mint(underlyingAgent1, 200);
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingAgent1, 50, PaymentReference.addressOwnership(agentOwner1), { maxFee: 100 });
         await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingAgent1);
 
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
-        await assetManager.updateCurrentBlock(proof);
+        const res = await assetManager.updateCurrentBlock(proof);
+        expectEvent(res, 'CurrentUnderlyingBlockUpdated', { underlyingBlockNumber: proof.blockNumber, underlyingBlockTimestamp: proof.blockTimestamp });
+
+        // when nothing is changed, there should be no event
         const proof2 = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
-        await assetManager.updateCurrentBlock(proof2);;
+        const res2 = await assetManager.updateCurrentBlock(proof2);
+        expectEvent.notEmitted(res2, "CurrentUnderlyingBlockUpdated");
     });
 });

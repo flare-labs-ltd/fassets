@@ -4,6 +4,7 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../userInterfaces/ICollateralPool.sol";
+import "../interface/IIAssetManager.sol";
 import "./IWNat.sol";
 
 /**
@@ -11,6 +12,8 @@ import "./IWNat.sol";
  */
 interface IICollateralPool is ICollateralPool {
     function setPoolToken(address _poolToken) external;
+
+    function depositNat() external payable;
 
     function payout(address _receiver, uint256 _amountWei, uint256 _agentResponsibilityWei) external;
 
@@ -28,7 +31,9 @@ interface IICollateralPool is ICollateralPool {
 
     function wNat() external view returns (IWNat);
 
-    function transferableTokensOf(address _account) external view returns (uint256);
+    function debtFreeTokensOf(address _account) external view returns (uint256);
 
-    function lockedTokensOf(address _account) external view returns (uint256);
+    function debtLockedTokensOf(address _account) external view returns (uint256);
+
+    function assetManager() external view returns (IIAssetManager);
 }

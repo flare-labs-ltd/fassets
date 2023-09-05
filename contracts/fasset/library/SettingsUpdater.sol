@@ -88,10 +88,14 @@ library SettingsUpdater {
         keccak256("setAgentExitAvailableTimelockSeconds((uint256)");
     bytes32 internal constant SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS =
         keccak256("setAgentFeeChangeTimelockSeconds((uint256)");
-    bytes32 internal constant SET_AGENT_COLLATERAL_RATIO_CHANGE_TIMELOCK_SECONDS =
-        keccak256("setAgentCollateralRatioChangeTimelockSeconds((uint256)");
+    bytes32 internal constant SET_AGENT_MINTING_CR_CHANGE_TIMELOCK_SECONDS =
+        keccak256("setAgentMintingCRChangeTimelockSeconds((uint256)");
+    bytes32 internal constant SET_POOL_EXIT_AND_TOPUP_CHANGE_TIMELOCK_SECONDS =
+        keccak256("setPoolExitAndTopupChangeTimelockSeconds((uint256)");
     bytes32 internal constant SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS =
         keccak256("setAgentTimelockedOperationWindowSeconds((uint256)");
+
+    uint256 internal constant MAXIMUM_PROOF_WINDOW = 1 days;
 
     function validateAndSet(
         AssetManagerSettings.Data memory _settings
@@ -210,9 +214,12 @@ library SettingsUpdater {
         } else if (_method == SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAgentFeeChangeTimelockSeconds(_params);
-        } else if (_method == SET_AGENT_COLLATERAL_RATIO_CHANGE_TIMELOCK_SECONDS) {
+        } else if (_method == SET_AGENT_MINTING_CR_CHANGE_TIMELOCK_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
-            _setAgentCollateralRatioChangeTimelockSeconds(_params);
+            _setAgentMintingCRChangeTimelockSeconds(_params);
+        } else if (_method == SET_POOL_EXIT_AND_TOPUP_CHANGE_TIMELOCK_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setPoolExitAndTopupChangeTimelockSeconds(_params);
         } else if (_method == SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAgentTimelockedOperationWindowSeconds(_params);
@@ -275,6 +282,11 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         (uint256 underlyingBlocks, uint256 underlyingSeconds) =
             abi.decode(_params, (uint256, uint256));
+        // validate
+        require(underlyingSeconds > 0, "cannot be zero");
+        require(underlyingBlocks > 0, "cannot be zero");
+        require(underlyingSeconds <= MAXIMUM_PROOF_WINDOW, "value to high");
+        require(underlyingBlocks * settings.averageBlockTimeMS / 1000 <= MAXIMUM_PROOF_WINDOW, "value to high");
         // update
         settings.underlyingBlocksForPayment = underlyingBlocks.toUint64();
         settings.underlyingSecondsForPayment = underlyingSeconds.toUint64();
@@ -439,6 +451,8 @@ library SettingsUpdater {
         require(value > 0, "cannot be zero");
         require(value <= settings.lotSizeAMG * 4, "lot size increase too big");
         require(value >= settings.lotSizeAMG / 4, "lot size decrease too big");
+        require(settings.mintingCapAMG == 0 || settings.mintingCapAMG >= value,
+            "lot size bigger than minting cap");
         // update
         settings.lotSizeAMG = value.toUint64();
         emit AMEvents.SettingChanged("lotSizeAMG", value);
@@ -677,6 +691,7 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
+        require(value == 0 || value >= settings.lotSizeAMG, "value too small");
         // update
         settings.mintingCapAMG = value.toUint64();
         emit AMEvents.SettingChanged("mintingCapAMG", value);
@@ -731,13 +746,13 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
-        require(value <= settings.agentFeeChangeTimelockSeconds * 4 + 1 weeks);
+        require(value <= settings.agentFeeChangeTimelockSeconds * 4 + 1 days);
         // update
         settings.agentFeeChangeTimelockSeconds = value.toUint64();
         emit AMEvents.SettingChanged("agentFeeChangeTimelockSeconds", value);
     }
 
-    function _setAgentCollateralRatioChangeTimelockSeconds(
+    function _setAgentMintingCRChangeTimelockSeconds(
         bytes calldata _params
     )
         private
@@ -745,10 +760,24 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
-        require(value <= settings.agentCollateralRatioChangeTimelockSeconds * 4 + 1 weeks);
+        require(value <= settings.agentMintingCRChangeTimelockSeconds * 4 + 1 days);
         // update
-        settings.agentCollateralRatioChangeTimelockSeconds = value.toUint64();
-        emit AMEvents.SettingChanged("agentCollateralRatioChangeTimelockSeconds", value);
+        settings.agentMintingCRChangeTimelockSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("agentMintingCRChangeTimelockSeconds", value);
+    }
+
+    function _setPoolExitAndTopupChangeTimelockSeconds(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value <= settings.poolExitAndTopupChangeTimelockSeconds * 4 + 1 days);
+        // update
+        settings.poolExitAndTopupChangeTimelockSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("poolExitAndTopupChangeTimelockSeconds", value);
     }
 
     function _setAgentTimelockedOperationWindowSeconds(
@@ -818,7 +847,14 @@ library SettingsUpdater {
         require(_settings.minUpdateRepeatTimeSeconds > 0, "cannot be zero");
         require(_settings.buybackCollateralFactorBIPS > 0, "cannot be zero");
         require(_settings.withdrawalWaitMinSeconds > 0, "cannot be zero");
+        require(_settings.averageBlockTimeMS > 0, "cannot be zero");
+        require(_settings.underlyingSecondsForPayment <= MAXIMUM_PROOF_WINDOW,
+            "value to high");
+        require(_settings.underlyingBlocksForPayment * _settings.averageBlockTimeMS / 1000 <= MAXIMUM_PROOF_WINDOW,
+            "value to high");
         require(_settings.lotSizeAMG > 0, "cannot be zero");
+        require(_settings.mintingCapAMG == 0 || _settings.mintingCapAMG >= _settings.lotSizeAMG,
+            "minting cap too small");
         require(_settings.minUnderlyingBackingBIPS > 0, "cannot be zero");
         require(_settings.minUnderlyingBackingBIPS <= SafePct.MAX_BIPS, "bips value too high");
         require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");

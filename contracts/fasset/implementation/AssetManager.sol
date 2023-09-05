@@ -531,6 +531,10 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
 
     /**
      * Return the collateral reservation fee amount that has to be passed to the reserveCollateral method.
+     * NOTE: the *exact* amount of the collateral fee must be paid. Even if the amount paid in `reserveCollateral` is
+     * more than required, the transaction will revert. This is intentional to protect the minter from accidentally
+     * overpaying, but may cause unexpected reverts if the FTSO prices get published between calls to
+     * `collateralReservationFee` and `reserveCollateral`.
      * @param _lots the number of lots for which to reserve collateral
      * @return _reservationFeeNATWei the amount of reservation fee in NAT wei
      */
@@ -1235,6 +1239,17 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         _multiplier = Conversion.currentAmgPriceInTokenWei(Globals.getPoolCollateral());
         _divisor = Conversion.AMG_TOKEN_WEI_PRICE_SCALE * settings.assetMintingGranularityUBA;
+    }
+
+    /**
+     * Returns timelock duration during for which collateral pool tokens are locked after minting.
+     */
+    function getCollateralPoolTokenTimelockSeconds()
+        external view override
+        returns (uint256)
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        return settings.collateralPoolTokenTimelockSeconds;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////

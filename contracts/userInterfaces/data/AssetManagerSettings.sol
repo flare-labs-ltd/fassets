@@ -30,6 +30,10 @@ library AssetManagerSettings {
         // timelocked
         address collateralPoolTokenFactory;
 
+        // The suffix to pool token name and symbol that identifies new vault's collateral pool token.
+        // When vault is created, the owner passes own suffix which will be appended to this.
+        string poolTokenSuffix;
+
         // If set, the whitelist contains a list of accounts that can call public methods
         // (minting, redeeming, challenging, etc.)
         // This can be `address(0)`, in which case no whitelist checks are done.
@@ -240,13 +244,21 @@ library AssetManagerSettings {
         // rate-limited
         uint64 agentFeeChangeTimelockSeconds;
 
-        // Amount of seconds that have to pass between agent-set collateral ratio (minting, pool exit)
+        // Amount of seconds that have to pass between agent-set minting collateral ratio (vault or pool)
         // change announcement and execution.
         // rate-limited
-        uint64 agentCollateralRatioChangeTimelockSeconds;
+        uint64 agentMintingCRChangeTimelockSeconds;
+
+        // Amount of seconds that have to pass between agent-set settings for pool exit and topup
+        // (exit CR, topup CR, topup bonus) change announcement and execution.
+        // rate-limited
+        uint64 poolExitAndTopupChangeTimelockSeconds;
 
         // Amount of seconds that an agent is allowed to execute an update once it is allowed.
         // rate-limited
         uint64 agentTimelockedOperationWindowSeconds;
+
+        // duration of the timelock for collateral pool tokens after minting
+        uint32 collateralPoolTokenTimelockSeconds;
     }
 }

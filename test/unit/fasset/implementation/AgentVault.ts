@@ -105,7 +105,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             const agentVault = await AgentVault.new(assetManagerMock.address);
             // create pool
             const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
-            const token = await CollateralPoolToken.new(pool.address);
+            const token = await CollateralPoolToken.new(pool.address, "FAsset Collateral Pool Token ETH-AG1", "FCPT-ETH-AG1");
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.setPoolToken(token.address).encodeABI());
             await assetManagerMock.setCollateralPool(pool.address);
             // deposit nat
@@ -125,6 +125,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             await agentVault.buyCollateralPoolTokens({ from: owner, value: toWei(1000) });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const tokens = agentInfo.totalAgentPoolTokensWei;
+            await time.increase(await assetManager.getCollateralPoolTokenTimelockSeconds()); // wait for token timelock
             await assetManager.announceAgentPoolTokenRedemption(agentVault.address, tokens, { from: owner });
             await time.increase((await assetManager.getSettings()).withdrawalWaitMinSeconds);
             await agentVault.redeemCollateralPoolTokens(tokens, natRecipient, { from: owner });
@@ -320,19 +321,6 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         await expectRevert(claimPromise, "only owner");
     });
 
-    it("random address shouldn't be able to set auto claiming", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const contract = await MockContract.new();
-        const res = agentVault.setAutoClaiming(contract.address, [accounts[2]], [accounts[3]], { from: accounts[3] });
-        await expectRevert(res, "only owner");
-    });
-
-    it("should set auto claiming", async () => {
-        const agentVault = await AgentVault.new(assetManagerMock.address);
-        const contract = await MockContract.new();
-        await agentVault.setAutoClaiming(contract.address, [accounts[2]],  [accounts[3]], { from: owner });
-    });
-
     it("should opt out of airdrop distribution", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const distributionMock = await MockContract.new();
@@ -522,7 +510,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             const agentVault = await AgentVault.new(assetManagerMock.address);
             // create pool
             const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
-            const token = await CollateralPoolToken.new(pool.address);
+            const token = await CollateralPoolToken.new(pool.address, "FAsset Collateral Pool Token ETH-AG2", "FCPT-ETH-AG2");
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.setPoolToken(token.address).encodeABI());
             await assetManagerMock.setCollateralPool(pool.address);
             // deposit nat

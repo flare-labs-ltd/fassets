@@ -63,11 +63,6 @@
             "description": "JSON schema url",
             "type": "string"
         },
-        "agentCollateralRatioChangeTimelockSeconds": {
-            "description": "Amount of seconds that have to pass between agent-set collateral ratio (minting, pool exit)\nchange announcement and execution.",
-            "minimum": 0,
-            "type": "integer"
-        },
         "agentExitAvailableTimelockSeconds": {
             "description": "Amount of seconds that have to pass between available list exit announcement and execution.",
             "minimum": 0,
@@ -75,6 +70,11 @@
         },
         "agentFeeChangeTimelockSeconds": {
             "description": "Amount of seconds that have to pass between agent fee and pool fee share change announcement and execution.",
+            "minimum": 0,
+            "type": "integer"
+        },
+        "agentMintingCRChangeTimelockSeconds": {
+            "description": "Amount of seconds that have to pass between agent-set minting collateral ratio (vault or pool)\nchange announcement and execution.",
             "minimum": 0,
             "type": "integer"
         },
@@ -162,6 +162,10 @@
             "pattern": "^\\w+$",
             "type": "string"
         },
+        "collateralPoolTokenTimelockSeconds": {
+            "description": "Amount of seconds that a collateral pool enterer must wait before spending obtained tokens.",
+            "type": "integer"
+        },
         "collateralReservationFeeBIPS": {
             "description": "Collateral reservation fee that must be paid by the minter.\nPayment is in NAT, but is proportional to the value of assets to be minted.",
             "minimum": 0,
@@ -243,6 +247,15 @@
         "poolCollateral": {
             "$ref": "#/definitions/CollateralTypeParameters",
             "description": "Data about the collateral used in the collateral pool, token is always WNat (FLR/SGB)."
+        },
+        "poolExitAndTopupChangeTimelockSeconds": {
+            "description": "Amount of seconds that have to pass between agent-set settings for pool exit and topup\n(exit CR, topup CR, topup bonus) change announcement and execution.",
+            "minimum": 0,
+            "type": "integer"
+        },
+        "poolTokenSuffix": {
+            "description": "The suffix to pool token name and symbol that identifies new vault's collateral pool token.\nWhen vault is created, the owner passes own suffix which will be appended to this.",
+            "type": "string"
         },
         "priceReader": {
             "description": "Price reader contract is a simple abstraction of FTSO system.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'SCProofVerifier' in contracts.json.",
@@ -330,9 +343,9 @@
         }
     },
     "required": [
-        "agentCollateralRatioChangeTimelockSeconds",
         "agentExitAvailableTimelockSeconds",
         "agentFeeChangeTimelockSeconds",
+        "agentMintingCRChangeTimelockSeconds",
         "agentTimelockedOperationWindowSeconds",
         "announcedUnderlyingConfirmationMinSeconds",
         "assetDecimals",
@@ -345,6 +358,7 @@
         "buybackCollateralFactorBIPS",
         "ccbTimeSeconds",
         "chainId",
+        "collateralPoolTokenTimelockSeconds",
         "collateralReservationFeeBIPS",
         "confirmationByOthersAfterSeconds",
         "confirmationByOthersRewardUSD5",
@@ -362,6 +376,8 @@
         "paymentChallengeRewardBIPS",
         "paymentChallengeRewardUSD5",
         "poolCollateral",
+        "poolExitAndTopupChangeTimelockSeconds",
+        "poolTokenSuffix",
         "redemptionDefaultFactorPoolBIPS",
         "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionFeeBIPS",
@@ -377,3 +393,4 @@
     ],
     "type": "object"
 }
+

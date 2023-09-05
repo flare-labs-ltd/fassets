@@ -225,6 +225,23 @@ library Liquidation {
         }
     }
 
+    function getLiquidationFactorsAndMaxAmount(
+        Agent.State storage _agent,
+        CRData memory _cr
+    )
+        internal view
+        returns (uint256 _vaultFactorBIPS, uint256 _poolFactorBIPS, uint256 _maxLiquidatedUBA)
+    {
+        // split liquidation payment between agent vault and pool
+        (_vaultFactorBIPS, _poolFactorBIPS) =
+            LiquidationStrategy.currentLiquidationFactorBIPS(_agent, _cr.vaultCR, _cr.poolCR);
+        // calculate liquidation amount
+        uint256 maxLiquidatedAMG = Math.max(
+            _maxLiquidationAmountAMG(_agent, _cr.vaultCR, _vaultFactorBIPS, Collateral.Kind.VAULT),
+            _maxLiquidationAmountAMG(_agent, _cr.poolCR, _poolFactorBIPS, Collateral.Kind.POOL));
+        _maxLiquidatedUBA = Conversion.convertAmgToUBA(maxLiquidatedAMG.toUint64());
+    }
+
     // Upgrade (CR-based) liquidation phase (NONE -> CCR -> LIQUIDATION), based on agent's collateral ratio.
     // When in full liquidation mode, do nothing.
     function _upgradeLiquidationPhase(

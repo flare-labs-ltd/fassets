@@ -13,6 +13,10 @@ library AgentSettings {
         // with class VAULT.
         IERC20 vaultCollateralToken;
 
+        // The suffix to pool token name and symbol that identifies new vault's collateral pool token.
+        // Must be unique within an asset manager.
+        string poolTokenSuffix;
+
         // Minting fee. Normally charged to minters for publicly available agents, but must be set
         // also for self-minting agents to pay part of it to collateral pool.
         // Fee is paid in underlying currency along with backing assets.

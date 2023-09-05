@@ -3,8 +3,8 @@ import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/Ass
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, DAYS, HOURS, MAX_BIPS, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp, toBNExp, MINUTES} from "../../../../lib/utils/helpers";
-import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance, WhitelistInstance, SettingsUpdaterInstance } from "../../../../typechain-truffle";
+import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
+import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -186,12 +186,16 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should revert setting lot size when increase or decrease is too big", async () => {
             const currentSettings = await assetManager.getSettings();
-            let lotSizeAMG_big = toBN(currentSettings.lotSizeAMG).muln(5);
-            let lotSizeAMG_small = toBN(currentSettings.lotSizeAMG).divn(5);
+            const lotSizeAMG = toBN(currentSettings.lotSizeAMG);
+            let lotSizeAMG_big = lotSizeAMG.muln(5);
+            let lotSizeAMG_small = lotSizeAMG.divn(5);
 
             await expectRevert(waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG_big, { from: governance }), assetManagerController, updateExecutor), "lot size increase too big");
             await expectRevert(waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG_small, { from: governance }), assetManagerController, updateExecutor), "lot size decrease too big");
             await expectRevert(waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], 0, { from: governance }), assetManagerController, updateExecutor), "cannot be zero");
+
+            await waitForTimelock(assetManagerController.setMintingCapAmg([assetManager.address], lotSizeAMG.muln(1.5), { from: governance }), assetManagerController, updateExecutor);
+            await expectRevert(waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG.muln(2), { from: governance }), assetManagerController, updateExecutor), "lot size bigger than minting cap");
         });
 
         it("should revert setting payment challenge reward when increase or decrease is too big", async () => {
@@ -232,7 +236,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(res, "SettingChanged", { name: "paymentChallengeRewardBIPS", value: paymentChallengeRewardBIPS_new });
         });
 
-        it("should set time for payment", async () => {
+        it("set time for payment should have timelock", async () => {
             const currentSettings = await assetManager.getSettings();
             let underlyingBlocksForPayment_new = toBN(currentSettings.underlyingBlocksForPayment).muln(2);
             let underlyingSecondsForPayment_new = toBN(currentSettings.underlyingSecondsForPayment).muln(2);
@@ -704,6 +708,31 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(newSettings.underlyingSecondsForPayment, underlyingSecondsForPayment_new);
         });
 
+        it("change time for payment settings should revert if zero or too high", async () => {
+            // change settings
+            const currentSettings = await assetManager.getSettings();
+            // blocks too high
+            let underlyingBlocksForPayment1 = toBN(Math.round(25 * HOURS / testChainInfo.eth.blockTime));
+            let underlyingSecondsForPayment1 = toBN(currentSettings.underlyingSecondsForPayment).muln(2);
+            const res1 = await assetManagerController.setTimeForPayment([assetManager.address], underlyingBlocksForPayment1, underlyingSecondsForPayment1, { from: governance });
+            await expectRevert(waitForTimelock(res1, assetManagerController, updateExecutor), "value to high");
+            // seconds too high
+            let underlyingBlocksForPayment2 = toBN(currentSettings.underlyingBlocksForPayment).muln(2);
+            let underlyingSecondsForPayment2 = toBN(25 * HOURS);
+            const res2 = await assetManagerController.setTimeForPayment([assetManager.address], underlyingBlocksForPayment2, underlyingSecondsForPayment2, { from: governance });
+            await expectRevert(waitForTimelock(res2, assetManagerController, updateExecutor), "value to high");
+            // blocks zero
+            let underlyingBlocksForPayment3 = 0;
+            let underlyingSecondsForPayment3 = toBN(currentSettings.underlyingSecondsForPayment).muln(2);
+            const res3 = await assetManagerController.setTimeForPayment([assetManager.address], underlyingBlocksForPayment3, underlyingSecondsForPayment3, { from: governance });
+            await expectRevert(waitForTimelock(res3, assetManagerController, updateExecutor), "cannot be zero");
+            // seconds zero
+            let underlyingBlocksForPayment4 = toBN(currentSettings.underlyingBlocksForPayment).muln(2);
+            let underlyingSecondsForPayment4 = 0;
+            const res4 = await assetManagerController.setTimeForPayment([assetManager.address], underlyingBlocksForPayment4, underlyingSecondsForPayment4, { from: governance });
+            await expectRevert(waitForTimelock(res4, assetManagerController, updateExecutor), "cannot be zero");
+        });
+
         it("should change collateral settings after timelock", async () => {
             // change settings
             for (const collateral of collaterals) {
@@ -783,9 +812,19 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should set minting cap AMG", async () => {
             const currentSettings = await assetManager.getSettings();
-            let mintingCapAMG_new = toBN(currentSettings.mintingCapAMG).add(toBN(1));
+            let mintingCapAMG_new = toBN(currentSettings.lotSizeAMG).muln(1000);    // 1000 lots
             const res = await assetManagerController.setMintingCapAmg([assetManager.address], mintingCapAMG_new, { from: governance });
             expectEvent(res, "SettingChanged", { name: "mintingCapAMG", value: toBN(mintingCapAMG_new) });
+            // can reset cap to 0
+            await time.increase(1 * DAYS);
+            const res1 = await assetManagerController.setMintingCapAmg([assetManager.address], 0, { from: governance });
+            expectEvent(res1, "SettingChanged", { name: "mintingCapAMG", value: toBN(0) });
+        });
+
+        it("should revert setting minting cap AMG too small", async () => {
+            const currentSettings = await assetManager.getSettings();
+            const pr = assetManagerController.setMintingCapAmg([assetManager.address], toBN(currentSettings.lotSizeAMG).divn(2), { from: governance });
+            await expectRevert(pr, "value too small");
         });
 
         it("should set token invalidation time min seconds after timelock", async () => {
@@ -836,20 +875,33 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(res, "SettingChanged", { name: "agentFeeChangeTimelockSeconds", value: toBN(agentFeeChangeTimelockSeconds_new) });
         });
 
-        it("should revert setting agent collateral ratio change timelock seconds when value is too big", async () => {
+        it("should revert setting agent minting CR change timelock seconds when value is too big", async () => {
             const currentSettings = await assetManager.getSettings();
-            let agentCollateralRatioChangeTimelockSeconds_tooBig = toBN(currentSettings.agentCollateralRatioChangeTimelockSeconds).muln(5).addn(WEEKS);
-            const res = assetManagerController.setAgentCollateralRatioChangeTimelockSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_tooBig, { from: governance });
+            let agentMintingCRChangeTimelockSeconds_tooBig = toBN(currentSettings.agentMintingCRChangeTimelockSeconds).muln(5).addn(WEEKS);
+            const res = assetManagerController.setAgentMintingCRChangeTimelockSeconds([assetManager.address], agentMintingCRChangeTimelockSeconds_tooBig, { from: governance });
             await expectRevert.unspecified(res);
         });
 
-        it("should set agent collateral ratio change timelock seconds", async () => {
-            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
-            const res = await assetManagerController.setAgentCollateralRatioChangeTimelockSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_new, { from: governance });
-            expectEvent(res, "SettingChanged", { name: "agentCollateralRatioChangeTimelockSeconds", value: toBN(agentCollateralRatioChangeTimelockSeconds_new) });
+        it("should set agent minting CR change timelock seconds", async () => {
+            let agentMintingCRChangeTimelockSeconds_new = DAYS;
+            const res = await assetManagerController.setAgentMintingCRChangeTimelockSeconds([assetManager.address], agentMintingCRChangeTimelockSeconds_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "agentMintingCRChangeTimelockSeconds", value: toBN(agentMintingCRChangeTimelockSeconds_new) });
         });
 
-        it("should set agent collateral ratio change timelock seconds", async () => {
+        it("should revert setting pool exit and topup change timelock seconds when value is too big", async () => {
+            const currentSettings = await assetManager.getSettings();
+            let poolExitAndTopupChangeTimelockSeconds_tooBig = toBN(currentSettings.poolExitAndTopupChangeTimelockSeconds).muln(5).addn(WEEKS);
+            const res = assetManagerController.setPoolExitAndTopupChangeTimelockSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_tooBig, { from: governance });
+            await expectRevert.unspecified(res);
+        });
+
+        it("should set pool exit and topup change timelock seconds", async () => {
+            let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
+            const res = await assetManagerController.setPoolExitAndTopupChangeTimelockSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_new, { from: governance });
+            expectEvent(res, "SettingChanged", { name: "poolExitAndTopupChangeTimelockSeconds", value: toBN(poolExitAndTopupChangeTimelockSeconds_new) });
+        });
+
+        it("should set agent timelocked ops window seconds", async () => {
             await expectRevert(assetManagerController.setAgentTimelockedOperationWindowSeconds([assetManager.address], 0.5 * MINUTES, { from: governance }),
                 "value too small");
             const res = await assetManagerController.setAgentTimelockedOperationWindowSeconds([assetManager.address], 2 * HOURS, { from: governance });
@@ -1288,15 +1340,21 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(res, "only governance");
         });
 
-        it("random address shouldn't be able to set agent collateral ratio change timelock seconds", async () => {
-            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
-            const res = assetManagerController.setAgentCollateralRatioChangeTimelockSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_new, { from: accounts[12] });
+        it("random address shouldn't be able to set agent minting CR change timelock seconds", async () => {
+            let agentMintingCRChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setAgentMintingCRChangeTimelockSeconds([assetManager.address], agentMintingCRChangeTimelockSeconds_new, { from: accounts[12] });
+            await expectRevert(res, "only governance");
+        });
+
+        it("random address shouldn't be able to set pool exit and topup change timelock seconds", async () => {
+            let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setPoolExitAndTopupChangeTimelockSeconds([assetManager.address], poolExitAndTopupChangeTimelockSeconds_new, { from: accounts[12] });
             await expectRevert(res, "only governance");
         });
 
         it("random address shouldn't be able to set confirmation by others after seconds", async () => {
-            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
-            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager.address], agentCollateralRatioChangeTimelockSeconds_new, { from: accounts[12] });
+            let confirmationByOthersAfterSeconds_new = DAYS;
+            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager.address], confirmationByOthersAfterSeconds_new, { from: accounts[12] });
             await expectRevert(res, "only governance");
         });
 
@@ -1304,8 +1362,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let assetManager2: AssetManagerInstance;
             let fAsset2: FAssetInstance;
             [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
-            let agentCollateralRatioChangeTimelockSeconds_new = DAYS;
-            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager2.address], agentCollateralRatioChangeTimelockSeconds_new, { from: governance });
+            let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
+            const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager2.address], poolExitAndTopupChangeTimelockSeconds_new, { from: governance });
             await expectRevert(res, "Asset manager not managed");
         });
 

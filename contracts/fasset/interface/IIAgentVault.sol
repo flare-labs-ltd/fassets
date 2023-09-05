@@ -3,6 +3,7 @@ pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
 import "../../userInterfaces/IAgentVault.sol";
+import "./IIAssetManager.sol";
 import "./IWNat.sol";
 
 
@@ -25,6 +26,9 @@ interface IIAgentVault is IAgentVault {
     // Is nonReentrant to prevent reentrancy, in case this is not the last method called.
     // onlyAssetManager
     function payoutNAT(IWNat _wNat, address payable _recipient, uint256 _amount) external;
+
+    // Returns the asset manager to which this vault belongs.
+    function assetManager() external view returns (IIAssetManager);
 
     // Enables owner checks in the asset manager.
     function isOwner(address _address) external view returns (bool);
