@@ -18,8 +18,14 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
         _;
     }
 
-    constructor(address payable _collateralPool)
-        ERC20("FAsset Collateral Pool Token", "FCPT")
+    constructor(
+        address payable _collateralPool,
+        string memory _suffix
+    )
+        ERC20(
+            string.concat("FAsset Collateral Pool Token ", _suffix),
+            string.concat("FCPT", _suffix)
+        )
     {
         collateralPool = _collateralPool;
     }

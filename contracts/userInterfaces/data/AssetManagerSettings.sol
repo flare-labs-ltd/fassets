@@ -30,6 +30,10 @@ library AssetManagerSettings {
         // timelocked
         address collateralPoolTokenFactory;
 
+        // The suffix to pool token name and symbol that identifies new vault's collateral pool token.
+        // When vault is created, the owner passes own suffix which will be appended to this.
+        string poolTokenSuffix;
+
         // If set, the whitelist contains a list of accounts that can call public methods
         // (minting, redeeming, challenging, etc.)
         // This can be `address(0)`, in which case no whitelist checks are done.

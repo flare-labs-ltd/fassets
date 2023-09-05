@@ -8,7 +8,7 @@ import "./IICollateralPool.sol";
  * @title Collateral pool token factory
  */
 interface ICollateralPoolTokenFactory {
-    function create(IICollateralPool pool)
+    function create(IICollateralPool pool, string memory _suffix)
         external
         returns (address);
 }

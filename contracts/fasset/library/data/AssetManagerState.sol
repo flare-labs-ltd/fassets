@@ -26,6 +26,9 @@ library AssetManagerState {
         mapping(address => address) ownerWorkToMgmtAddress;
         mapping(address => address) ownerMgmtToWorkAddress;
 
+        // makes sure pool tokens have unique names and symbols
+        mapping(string => bool) reservedPoolTokenSuffixes;
+
         // A list of all agents (for use by monitoring or challengers).
         // Type: array of agent vault addresses; when one is deleted, its position is filled with last
         address[] allAgents;

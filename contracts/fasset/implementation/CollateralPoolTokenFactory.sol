@@ -7,11 +7,11 @@ import "./CollateralPoolToken.sol";
 
 
 contract CollateralPoolTokenFactory is ICollateralPoolTokenFactory, IERC165 {
-    function create(IICollateralPool _pool)
+    function create(IICollateralPool _pool, string memory _suffix)
         external override
         returns (address)
     {
-        CollateralPoolToken poolToken = new CollateralPoolToken(payable(address(_pool)));
+        CollateralPoolToken poolToken = new CollateralPoolToken(payable(address(_pool)), _suffix);
         return address(poolToken);
     }
 

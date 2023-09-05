@@ -3,10 +3,12 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "../interface/IIAssetManager.sol";
 import "../interface/ICollateralPoolFactory.sol";
 import "../interface/ICollateralPoolTokenFactory.sol";
 import "../interface/IAgentVaultFactory.sol";
+import "../interface/IIAssetManagerController.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
@@ -25,6 +27,8 @@ library AgentsCreateDestroy {
     using UnderlyingAddressOwnership for UnderlyingAddressOwnership.State;
     using Agent for Agent.State;
     using Agents for Agent.State;
+
+    uint256 internal constant MAX_SUFFIX_LEN = 20;
 
     modifier onlyAgentVaultOwner(address _agentVault) {
         Agents.requireAgentVaultOwner(_agentVault);
@@ -84,6 +88,9 @@ library AgentsCreateDestroy {
         returns (address)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        // reserve suffix quickly to prevent griefing attacks by frontrunning agent creation
+        // with same suffix, wasting agent owner gas
+        _reserveAndValidatePoolTokenSuffix(_settings.poolTokenSuffix);
         // can be called from management or work owner address
         address ownerManagementAddress = _getManagementAddress(msg.sender);
         // management address must be whitelisted
@@ -226,10 +233,28 @@ library AgentsCreateDestroy {
         AssetManagerSettings.Data storage globalSettings = AssetManagerState.getSettings();
         ICollateralPoolFactory collateralPoolFactory =
             ICollateralPoolFactory(globalSettings.collateralPoolFactory);
+        ICollateralPoolTokenFactory poolTokenFactory =
+            ICollateralPoolTokenFactory(globalSettings.collateralPoolTokenFactory);
         IICollateralPool collateralPool = collateralPoolFactory.create(_assetManager, _agentVault, _settings);
-        collateralPool.setPoolToken(
-            ICollateralPoolTokenFactory(globalSettings.collateralPoolTokenFactory).create(collateralPool));
+        string memory tokenSuffix = string.concat(globalSettings.poolTokenSuffix, _settings.poolTokenSuffix);
+        address poolToken = poolTokenFactory.create(collateralPool, tokenSuffix);
+        collateralPool.setPoolToken(poolToken);
         return collateralPool;
+    }
+
+    function _reserveAndValidatePoolTokenSuffix(string memory _suffix)
+        private
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        // reserve unique suffix
+        require(!state.reservedPoolTokenSuffixes[_suffix], "suffix already reserved");
+        state.reservedPoolTokenSuffixes[_suffix] = true;
+        // validate - require only printable ASCII characters (no spaces) and limited length
+        bytes memory suffixb = bytes(_suffix);
+        require(suffixb.length < MAX_SUFFIX_LEN, "suffix too long");
+        for (uint256 i = 0; i < suffixb.length; i++) {
+            require(uint8(suffixb[i]) > 32 && uint8(suffixb[i]) < 127, "invalid character in suffix");
+        }
     }
 
     // Basically the same as `emit AMEvents.AgentVaultCreated`.
