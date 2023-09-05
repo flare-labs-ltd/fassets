@@ -139,6 +139,28 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent2.exitAndDestroy(fullAgentCollateral);
         });
 
+        it("cancel underlying withdrawal", async () => {
+            const fullAgentCollateral = toWei(3e8);
+            const agent1 = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            // make agents available
+            await agent1.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // update block
+            await context.updateUnderlyingBlock();
+            // topup payment
+            const amount = 100;
+            const tx1Hash = await agent1.performTopupPayment(amount);
+            await agent1.confirmTopupPayment(tx1Hash);
+            await agent1.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: amount, mintedUBA: 0 });
+            // underlying withdrawal
+            const underlyingWithdrawal1 = await agent1.announceUnderlyingWithdrawal();
+            await agent1.checkAgentInfo({ announcedUnderlyingWithdrawalId: underlyingWithdrawal1.announcementId });
+            assert.isAbove(Number(underlyingWithdrawal1.announcementId), 0);
+            await time.increase(context.settings.confirmationByOthersAfterSeconds);
+            await agent1.cancelUnderlyingWithdrawal(underlyingWithdrawal1);
+            // agent can exit now
+            await agent1.exitAndDestroy(fullAgentCollateral);
+        });
+
         it("underlying withdrawal (others can confirm underlying withdrawal after some time)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const challenger = await Challenger.create(context, challengerAddress1);

@@ -1,4 +1,4 @@
-import { expectRevert } from "@openzeppelin/test-helpers";
+import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
 import { Approximation } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
@@ -96,6 +96,85 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const tx1Hash = await agent.performRedemptionPayment(request);
             await agent.confirmActiveRedemptionPayment(request, tx1Hash);
             await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare.add(request.feeUBA), redeemingUBA: 0 });
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral);
+        });
+
+        it("mint and redeem f-assets (updating redemption fee and collateral reservation fee)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // mine some blocks to skip the agent creation time
+            mockChain.mine(5);
+            // update block
+            const blockNumber = await context.updateUnderlyingBlock();
+            const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
+            assertWeb3Equal(currentUnderlyingBlock[0], blockNumber);
+            assertWeb3Equal(currentUnderlyingBlock[1], (await context.chain.getBlockAt(blockNumber))?.timestamp);
+            // perform minting
+            const lots = 3;
+            const crFee = await minter.getCollateralReservationFee(lots);
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const lotsUBA = context.convertLotsToUBA(lots);
+            await agent.checkAgentInfo({
+                totalVaultCollateralWei: fullAgentCollateral,
+                reservedUBA: lotsUBA.add(agent.poolFeeShare(crt.feeUBA)) });
+            const burnAddress = context.settings.burnAddress;
+            const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
+            const minted = await minter.executeMinting(crt, txHash);
+            const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
+            assertWeb3Equal(minted.mintedAmountUBA, lotsUBA);
+            const poolFeeShare = crt.feeUBA.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+            assertWeb3Equal(poolFeeShare, minted.poolFeeUBA);
+            const agentFeeShare = crt.feeUBA.sub(poolFeeShare);
+            assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
+            const mintedUBA = crt.valueUBA.add(poolFeeShare);
+            await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
+            // check that fee was burned
+            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
+            // change Collateral reservation fee bips
+            const currentSettings = await context.assetManager.getSettings();
+            await context.setCollateralReservationFeeBips(toBN(currentSettings.collateralReservationFeeBIPS).muln(2));
+            // perform minting again
+            const crFee2 = await minter.getCollateralReservationFee(lots);
+            const crt2 = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash2 = await minter.performMintingPayment(crt2);
+            await agent.checkAgentInfo({
+                totalVaultCollateralWei: fullAgentCollateral,
+                reservedUBA: lotsUBA.add(agent.poolFeeShare(crt2.feeUBA)) });
+            const startBalanceBurnAddress2 = toBN(await web3.eth.getBalance(burnAddress));
+            const minted2 = await minter.executeMinting(crt2, txHash2);
+            const endBalanceBurnAddress2 = toBN(await web3.eth.getBalance(burnAddress));
+            assertWeb3Equal(minted2.mintedAmountUBA, lotsUBA);
+            const poolFeeShare2 = crt2.feeUBA.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+            assertWeb3Equal(poolFeeShare2, minted2.poolFeeUBA);
+            const agentFeeShare2 = crt2.feeUBA.sub(poolFeeShare);
+            assertWeb3Equal(agentFeeShare2, minted2.agentFeeUBA);
+            const mintedUBA2 = crt2.valueUBA.add(poolFeeShare2);
+            await agent.checkAgentInfo({ mintedUBA: mintedUBA.add(mintedUBA2), reservedUBA: 0 });
+            // check that fee was burned
+            assertWeb3Equal(endBalanceBurnAddress2.sub(startBalanceBurnAddress2), crFee2);
+            // redeemer "buys" f-assets
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA.add(minted2.mintedAmountUBA), { from: minter.address });
+            // wait until another setting update is possible
+            time.increase(currentSettings.minUpdateRepeatTimeSeconds);
+            // change redemption fee bips
+            await context.setCollateralReservationFeeBips(toBN(currentSettings.redemptionFeeBIPS).muln(2));
+            // perform redemption
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots*2);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare.add(agentFeeShare2), mintedUBA: poolFeeShare.add(poolFeeShare2), redeemingUBA: lotsUBA.muln(2) });
+            assertWeb3Equal(remainingLots, 0);
+            assert.equal(dustChanges.length, 0);
+            assert.equal(redemptionRequests.length, 1);
+            const request = redemptionRequests[0];
+            assert.equal(request.agentVault, agent.vaultAddress);
+            const tx1Hash = await agent.performRedemptionPayment(request);
+            await agent.confirmActiveRedemptionPayment(request, tx1Hash);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare.add(agentFeeShare2).add(request.feeUBA), redeemingUBA: 0 });
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });
