@@ -120,6 +120,16 @@ coverage:schedule:
   retry: 2
   script:
   - yarn cov
+  artifacts:
+    when: always
+    expire_in: 1 month
+    paths:
+      - ./coverage/
+      - ./coverage.json
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
   rules:
   - if: '$CI_PIPELINE_SOURCE == "web"'
   - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "coverage"'
