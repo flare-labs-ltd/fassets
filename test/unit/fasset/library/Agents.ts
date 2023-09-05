@@ -205,7 +205,9 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
             "invalid character in suffix");
         await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_7", { poolTokenSuffix: "A+B" }),
             "invalid character in suffix");
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_7a", { poolTokenSuffix: "A_B" }),
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_7a", { poolTokenSuffix: "A=B" }),
+            "invalid character in suffix");
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_7b", { poolTokenSuffix: "A_B" }),
             "invalid character in suffix");
         await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_8", { poolTokenSuffix: "-AB" }),
             "invalid character in suffix");
