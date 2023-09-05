@@ -182,6 +182,12 @@ export interface AssetManagerParameters {
     fAssetSymbol: string;
 
     /**
+     * The suffix to pool token name and symbol that identifies new vault's collateral pool token.
+     * When vault is created, the owner passes own suffix which will be appended to this.
+     */
+    poolTokenSuffix: string;
+
+    /**
      * The number of decimals of precision for minting.
      * Usually it is the same as assetDecimals (e.g. 8 for BTC).
      * But for some asset types e.g. ethereum, the number of asset decimals is 18, so we internally

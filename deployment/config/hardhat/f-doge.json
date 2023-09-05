@@ -7,6 +7,7 @@
     "assetDecimals": 8,
     "fAssetName": "F-Dogecoin",
     "fAssetSymbol": "FDOGE",
+    "poolTokenSuffix": "DOGE",
     "assetMintingDecimals": 8,
     "userWhitelist": null,
     "underlyingAddressValidator": [
@@ -82,5 +83,6 @@
     "agentFeeChangeTimelockSeconds": 86400,
     "agentMintingCRChangeTimelockSeconds": 3600,
     "poolExitAndTopupChangeTimelockSeconds": 86400,
-    "agentTimelockedOperationWindowSeconds": 3600
+    "agentTimelockedOperationWindowSeconds": 3600,
+    "collateralPoolTokenTimelockSeconds": 60
 }

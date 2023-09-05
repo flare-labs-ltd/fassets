@@ -105,7 +105,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             const agentVault = await AgentVault.new(assetManagerMock.address);
             // create pool
             const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
-            const token = await CollateralPoolToken.new(pool.address);
+            const token = await CollateralPoolToken.new(pool.address, "ETHAG1");
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.setPoolToken(token.address).encodeABI());
             await assetManagerMock.setCollateralPool(pool.address);
             // deposit nat
@@ -510,7 +510,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
             const agentVault = await AgentVault.new(assetManagerMock.address);
             // create pool
             const pool = await CollateralPool.new(agentVault.address, assetManagerMock.address, fAsset.address, 12000, 13000, 8000);
-            const token = await CollateralPoolToken.new(pool.address);
+            const token = await CollateralPoolToken.new(pool.address, "ETHAG2");
             await assetManagerMock.callFunctionAt(pool.address, pool.contract.methods.setPoolToken(token.address).encodeABI());
             await assetManagerMock.setCollateralPool(pool.address);
             // deposit nat

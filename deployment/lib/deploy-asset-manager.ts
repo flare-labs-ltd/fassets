@@ -246,6 +246,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         liquidationStrategy: liquidationStrategy,
         burnAddress: parameters.burnAddress,
         chainId: parameters.chainId,
+        poolTokenSuffix: parameters.poolTokenSuffix,
         assetDecimals: parameters.assetDecimals,
         assetUnitUBA: assetUnitUBA,
         assetMintingDecimals: parameters.assetMintingDecimals,

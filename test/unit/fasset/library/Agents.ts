@@ -18,6 +18,8 @@ import {
 } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
+const CollateralPool = artifacts.require("CollateralPool");
+const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const RippleAddressValidator = artifacts.require("RippleAddressValidator");
 
 contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accounts => {
@@ -173,6 +175,32 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
         await expectRevert(assetManager.createAgentVault(web3DeepNormalize(agentSettings)),
             "address already claimed");
+    });
+
+    it("should create expected pool token name and symbol", async () => {
+        // init
+        const agent = await createAgent(agentOwner1, underlyingAgent1, { poolTokenSuffix: "AGX" });
+        // act
+        // assert
+        const pool = await CollateralPool.at(await agent.collateralPool());
+        const poolToken = await CollateralPoolToken.at(await pool.poolToken());
+        assert.equal(await poolToken.name(), "FAsset Collateral Pool Token BTCAGX");
+        assert.equal(await poolToken.symbol(), "FCPTBTCAGX");
+    });
+
+    it("should not create agent if pool token is not unique or invalid", async () => {
+        // init
+        const agent = await createAgent(agentOwner1, underlyingAgent1, { poolTokenSuffix: "AGX" });
+        // act
+        // assert
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_1", { poolTokenSuffix: "AGX" }),
+            "suffix already reserved");
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_2", { poolTokenSuffix: "AGX12345678901234567890" }),
+            "suffix too long");
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_3", { poolTokenSuffix: "A B" }),
+            "invalid character in suffix");
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_4", { poolTokenSuffix: "ABČ" }),
+            "invalid character in suffix");
     });
 
     it("should require EOA check to create agent", async () => {
