@@ -184,22 +184,32 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // assert
         const pool = await CollateralPool.at(await agent.collateralPool());
         const poolToken = await CollateralPoolToken.at(await pool.poolToken());
-        assert.equal(await poolToken.name(), "FAsset Collateral Pool Token BTCAGX");
-        assert.equal(await poolToken.symbol(), "FCPTBTCAGX");
+        assert.equal(await poolToken.name(), "FAsset Collateral Pool Token BTC-AGX");
+        assert.equal(await poolToken.symbol(), "FCPT-BTC-AGX");
     });
 
     it("should not create agent if pool token is not unique or invalid", async () => {
         // init
-        const agent = await createAgent(agentOwner1, underlyingAgent1, { poolTokenSuffix: "AGX" });
+        const agent = await createAgent(agentOwner1, underlyingAgent1, { poolTokenSuffix: "AG-X-5" });
         // act
         // assert
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_1", { poolTokenSuffix: "AGX" }),
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_1", { poolTokenSuffix: "AG-X-5" }),
             "suffix already reserved");
         await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_2", { poolTokenSuffix: "AGX12345678901234567890" }),
             "suffix too long");
         await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_3", { poolTokenSuffix: "A B" }),
             "invalid character in suffix");
-        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_4", { poolTokenSuffix: "ABČ" }),
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_5", { poolTokenSuffix: "ABČ" }),
+            "invalid character in suffix");
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_6", { poolTokenSuffix: "ABc" }),
+            "invalid character in suffix");
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_7", { poolTokenSuffix: "A+B" }),
+            "invalid character in suffix");
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_7a", { poolTokenSuffix: "A_B" }),
+            "invalid character in suffix");
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_8", { poolTokenSuffix: "-AB" }),
+            "invalid character in suffix");
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1 + "_9", { poolTokenSuffix: "AB-" }),
             "invalid character in suffix");
     });
 

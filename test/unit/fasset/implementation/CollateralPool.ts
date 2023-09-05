@@ -85,7 +85,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             Math.floor(topupCR*MAX_BIPS),
             Math.floor(topupTokenDiscount*MAX_BIPS)
         );
-        collateralPoolToken = await CollateralPoolToken.new(collateralPool.address, "BTCAG1");
+        collateralPoolToken = await CollateralPoolToken.new(collateralPool.address, "FAsset Collateral Pool Token BTC-AG1", "FCPT-BTC-AG1");
         // set pool token
         const payload = collateralPool.contract.methods.setPoolToken(collateralPoolToken.address).encodeABI();
         await assetManager.callFunctionAt(collateralPool.address, payload);
@@ -296,8 +296,8 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
     describe("collateral pool token tests", async () => {
 
         it("should have correct name and symbol", async () => {
-            expect(await collateralPoolToken.name()).to.equal("FAsset Collateral Pool Token BTCAG1");
-            expect(await collateralPoolToken.symbol()).to.equal("FCPTBTCAG1");
+            expect(await collateralPoolToken.name()).to.equal("FAsset Collateral Pool Token BTC-AG1");
+            expect(await collateralPoolToken.symbol()).to.equal("FCPT-BTC-AG1");
         });
 
         it("should fetch the pool token", async () => {

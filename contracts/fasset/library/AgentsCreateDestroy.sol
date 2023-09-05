@@ -3,7 +3,6 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 import "../interface/IIAssetManager.sol";
 import "../interface/ICollateralPoolFactory.sol";
 import "../interface/ICollateralPoolTokenFactory.sol";
@@ -236,8 +235,8 @@ library AgentsCreateDestroy {
         ICollateralPoolTokenFactory poolTokenFactory =
             ICollateralPoolTokenFactory(globalSettings.collateralPoolTokenFactory);
         IICollateralPool collateralPool = collateralPoolFactory.create(_assetManager, _agentVault, _settings);
-        string memory tokenSuffix = string.concat(globalSettings.poolTokenSuffix, _settings.poolTokenSuffix);
-        address poolToken = poolTokenFactory.create(collateralPool, tokenSuffix);
+        address poolToken =
+            poolTokenFactory.create(collateralPool, globalSettings.poolTokenSuffix, _settings.poolTokenSuffix);
         collateralPool.setPoolToken(poolToken);
         return collateralPool;
     }
@@ -251,9 +250,13 @@ library AgentsCreateDestroy {
         state.reservedPoolTokenSuffixes[_suffix] = true;
         // validate - require only printable ASCII characters (no spaces) and limited length
         bytes memory suffixb = bytes(_suffix);
-        require(suffixb.length < MAX_SUFFIX_LEN, "suffix too long");
-        for (uint256 i = 0; i < suffixb.length; i++) {
-            require(uint8(suffixb[i]) > 32 && uint8(suffixb[i]) < 127, "invalid character in suffix");
+        uint256 len = suffixb.length;
+        require(len < MAX_SUFFIX_LEN, "suffix too long");
+        for (uint256 i = 0; i < len; i++) {
+            bytes1 ch = suffixb[i];
+            // allow A-Z, 0-9 and '-' (but not at start or end)
+            require((ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (i > 0 && i < len - 1 && ch == '-'),
+                "invalid character in suffix");
         }
     }
 
