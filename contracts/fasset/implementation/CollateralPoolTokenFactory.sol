@@ -7,8 +7,8 @@ import "./CollateralPoolToken.sol";
 
 
 contract CollateralPoolTokenFactory is ICollateralPoolTokenFactory, IERC165 {
-    string constant TOKEN_NAME_PREFIX = "FAsset Collateral Pool Token ";
-    string constant TOKEN_SYMBOL_PREFIX = "FCPT-";
+    string internal constant TOKEN_NAME_PREFIX = "FAsset Collateral Pool Token ";
+    string internal constant TOKEN_SYMBOL_PREFIX = "FCPT-";
 
     function create(IICollateralPool _pool, string memory _systemSuffix, string memory _agentSuffix)
         external override

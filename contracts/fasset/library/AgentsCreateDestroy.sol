@@ -255,7 +255,7 @@ library AgentsCreateDestroy {
         for (uint256 i = 0; i < len; i++) {
             bytes1 ch = suffixb[i];
             // allow A-Z, 0-9 and '-' (but not at start or end)
-            require((ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (i > 0 && i < len - 1 && ch == '-'),
+            require((ch >= "A" && ch <= "Z") || (ch >= "0" && ch <= "9") || (i > 0 && i < len - 1 && ch == "-"),
                 "invalid character in suffix");
         }
     }
