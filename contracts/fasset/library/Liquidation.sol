@@ -109,7 +109,7 @@ library Liquidation {
         if (_agent.status == Agent.Status.FULL_LIQUIDATION
             || _agent.status == Agent.Status.DESTROYING) return;
         // if current phase is not LIQUIDATION, restart in LIQUIDATION phase
-        Agent.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_agent);
+        Agent.LiquidationPhase currentPhase = currentLiquidationPhase(_agent);
         if (currentPhase != Agent.LiquidationPhase.LIQUIDATION) {
             _agent.liquidationStartedAt = block.timestamp.toUint64();
             _agent.initialLiquidationPhase = Agent.LiquidationPhase.LIQUIDATION;
@@ -129,7 +129,7 @@ library Liquidation {
         // agent's current collateral ratio
         CRData memory cr = getCollateralRatiosBIPS(_agent);
         // target collateral ratio is minCollateralRatioBIPS for CCB and safetyMinCollateralRatioBIPS for LIQUIDATION
-        Agent.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_agent);
+        Agent.LiquidationPhase currentPhase = currentLiquidationPhase(_agent);
         uint256 targetRatioVaultCollateralBIPS = _targetRatioBIPS(_agent, currentPhase, Collateral.Kind.VAULT);
         uint256 targetRatioPoolBIPS = _targetRatioBIPS(_agent, currentPhase, Collateral.Kind.POOL);
         // if agent is safe, restore status to NORMAL
@@ -142,25 +142,26 @@ library Liquidation {
         }
     }
 
-    // For use in FullAgentInfo.
+    // Current liquidation phase (assumed that liquidation/ccb was started in some past transaction,
+    // so the result only depends on time, not on current collateral ratio).
+    // Beware: the result here can be CCB even if it should be LIQUIDATION because CR dropped.
     function currentLiquidationPhase(
         Agent.State storage _agent
     )
         internal view
         returns (Agent.LiquidationPhase)
     {
-        Agent.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_agent);
-        if (currentPhase != Agent.LiquidationPhase.CCB) return currentPhase;
-        // For CCB we must also check if the CR has dropped below CCB-CR.
-        // Note that we don't need to check this for phase=NORMAL, because in that case the liquidation must
-        // still be triggered via startLiquidation() or liquidate().
-        CRData memory cr = getCollateralRatiosBIPS(_agent);
-        Agent.LiquidationPhase newPhaseVault =
-            _initialLiquidationPhaseForCollateral(cr.vaultCR, _agent.vaultCollateralIndex);
-        Agent.LiquidationPhase newPhasePool =
-            _initialLiquidationPhaseForCollateral(cr.poolCR, _agent.poolCollateralIndex);
-        Agent.LiquidationPhase newPhase = newPhaseVault >= newPhasePool ? newPhaseVault : newPhasePool;
-        return newPhase > currentPhase ? newPhase : currentPhase;
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        Agent.Status status = _agent.status;
+        if (status == Agent.Status.LIQUIDATION) {
+            bool inCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB
+                && block.timestamp <= _agent.liquidationStartedAt + settings.ccbTimeSeconds;
+            return inCCB ? Agent.LiquidationPhase.CCB : Agent.LiquidationPhase.LIQUIDATION;
+        } else if (status == Agent.Status.FULL_LIQUIDATION) {
+            return Agent.LiquidationPhase.LIQUIDATION;
+        } else {    // any other status - NORMAL or DESTROYING
+            return Agent.LiquidationPhase.NONE;
+        }
     }
 
     function getCollateralRatiosBIPS(
@@ -232,6 +233,10 @@ library Liquidation {
         internal view
         returns (uint256 _vaultFactorBIPS, uint256 _poolFactorBIPS, uint256 _maxLiquidatedUBA)
     {
+        Agent.LiquidationPhase currentPhase = currentLiquidationPhase(_agent);
+        if (currentPhase != Agent.LiquidationPhase.LIQUIDATION) {
+            return (0, 0, 0);
+        }
         // split liquidation payment between agent vault and pool
         (_vaultFactorBIPS, _poolFactorBIPS) =
             LiquidationStrategy.currentLiquidationFactorBIPS(_agent, _cr.vaultCR, _cr.poolCR);
@@ -251,7 +256,7 @@ library Liquidation {
         private
         returns (Agent.LiquidationPhase)
     {
-        Agent.LiquidationPhase currentPhase = _timeBasedLiquidationPhase(_agent);
+        Agent.LiquidationPhase currentPhase = currentLiquidationPhase(_agent);
         // calculate new phase for both collaterals and if any is underwater, set its flag
         Agent.LiquidationPhase newPhaseVault =
             _initialLiquidationPhaseForCollateral(_cr.vaultCR, _agent.vaultCollateralIndex);
@@ -320,28 +325,6 @@ library Liquidation {
             return Agent.LiquidationPhase.CCB;
         } else {
             return Agent.LiquidationPhase.LIQUIDATION;
-        }
-    }
-
-    // Current liquidation phase (assumed that liquidation/ccb was started in some past transaction,
-    // so the result only depends on time, not on current collateral ratio).
-    // Beware: the result here can be CCB even if it should be LIQUIDATION because CR dropped.
-    function _timeBasedLiquidationPhase(
-        Agent.State storage _agent
-    )
-        private view
-        returns (Agent.LiquidationPhase)
-    {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        Agent.Status status = _agent.status;
-        if (status == Agent.Status.LIQUIDATION) {
-            bool inCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB
-                && block.timestamp <= _agent.liquidationStartedAt + settings.ccbTimeSeconds;
-            return inCCB ? Agent.LiquidationPhase.CCB : Agent.LiquidationPhase.LIQUIDATION;
-        } else if (status == Agent.Status.FULL_LIQUIDATION) {
-            return Agent.LiquidationPhase.LIQUIDATION;
-        } else {    // any other status - NORMAL or DESTROYING
-            return Agent.LiquidationPhase.NONE;
         }
     }
 

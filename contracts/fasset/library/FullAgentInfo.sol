@@ -64,10 +64,8 @@ library FullAgentInfo {
         _info.dustUBA = Conversion.convertAmgToUBA(agent.dustAMG);
         _info.ccbStartTimestamp = Liquidation.getCCBStartTimestamp(agent);
         _info.liquidationStartTimestamp = Liquidation.getLiquidationStartTimestamp(agent);
-        if (_info.status == AgentInfo.Status.LIQUIDATION || _info.status == AgentInfo.Status.FULL_LIQUIDATION) {
-            (_info.liquidationPaymentFactorVaultBIPS, _info.liquidationPaymentFactorPoolBIPS,
-                _info.maxLiquidationAmountUBA) = Liquidation.getLiquidationFactorsAndMaxAmount(agent, cr);
-        }
+        (_info.liquidationPaymentFactorVaultBIPS, _info.liquidationPaymentFactorPoolBIPS,
+            _info.maxLiquidationAmountUBA) = Liquidation.getLiquidationFactorsAndMaxAmount(agent, cr);
         _info.underlyingBalanceUBA = agent.underlyingBalanceUBA;
         _info.requiredUnderlyingBalanceUBA = UnderlyingBalance.requiredUnderlyingUBA(agent);
         _info.freeUnderlyingBalanceUBA =
