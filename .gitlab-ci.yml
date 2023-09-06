@@ -142,6 +142,7 @@ fuzzer:schedule:
   tags:
   - flarenetwork-lg
   timeout: 4 hours
+  parallel: 3
   variables:
     NODE_OPTIONS: "--max_old_space_size=6144"
     LOOPS: 5000
