@@ -1,6 +1,7 @@
+import "dotenv/config";
+
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-web3";
-import * as dotenv from "dotenv";
 import fs from "fs";
 import glob from "glob";
 import "hardhat-contract-sizer";
@@ -10,7 +11,6 @@ import { HardhatUserConfig, task } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
 import "./type-extensions";
-import { trace } from "./lib/utils/helpers";
 const intercept = require('intercept-stdout');
 
 // allow glob patterns in test file args
@@ -41,8 +41,6 @@ task(TASK_COMPILE)
         });
         await runSuper(args);
     });
-
-dotenv.config();
 
 let accounts = [
     // In Truffle, default account is always the first one.
