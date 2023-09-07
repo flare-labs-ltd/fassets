@@ -397,6 +397,57 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.exitAndDestroy(fullAgentCollateral.sub(vaultCollateralLiquidationReward1).sub(vaultCollateralLiquidationReward2));
         });
 
+        it("ccb due to collateral ratios change (no liquidation due to collateral deposit)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const liquidator = await Liquidator.create(context, liquidatorAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(1e6);
+            const poolFullAgentCollateral = toWei(3e6);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, poolFullAgentCollateral);
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
+                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
+                reservedUBA: 0, redeemingUBA: 0 });
+            // Collateral ratios for class1 token change and that puts agent into ccb
+            await context.setCollateralRatiosForToken(2, context.usdc.address, toBN(context.collaterals[1].minCollateralRatioBIPS).addn(53000),
+                toBN(context.collaterals[1].ccbMinCollateralRatioBIPS).addn(53000), toBN(context.collaterals[1].safetyMinCollateralRatioBIPS).addn(53000));
+            // start ccb
+            const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
+            assert.isTrue(ccb);
+            const info = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
+                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
+                reservedUBA: 0, redeemingUBA: 0,
+                announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.CCB });
+            assertWeb3Equal(info.ccbStartTimestamp, ccbStartTimestamp);
+            const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
+            assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
+            // Owner deposits more collateral
+            await agent.depositVaultCollateral(fullAgentCollateral);
+            const info2 = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.add(fullAgentCollateral),
+                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
+                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
+                reservedUBA: 0, redeemingUBA: 0,
+                announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.NORMAL });
+            assertWeb3Equal(info2.ccbStartTimestamp, 0);
+            assertWeb3Equal(info2.liquidationStartTimestamp, 0);
+            // agent "buys" f-assets
+            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
+            // agent "buys" f-assets
+            await agent.selfClose(minted.mintedAmountUBA);
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral.add(fullAgentCollateral));
+        });
+
         it("liquidation due to price change (agent can be safe again) (vault CR too low)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));

@@ -10,6 +10,7 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
+import { waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -175,6 +176,71 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const tx1Hash = await agent.performRedemptionPayment(request);
             await agent.confirmActiveRedemptionPayment(request, tx1Hash);
             await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare.add(agentFeeShare2).add(request.feeUBA), redeemingUBA: 0 });
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral);
+        });
+
+        it("mint and redeem f-assets with whitelisting", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            await context.createWhitelists();
+            await context.whitelist?.addAddressesToWhitelist([minter.address,redeemer.address], {from: governance});
+            await context.agentWhitelist?.addAddressToWhitelist(agentOwner1, {from: governance});
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // mine some blocks to skip the agent creation time
+            mockChain.mine(5);
+            // update block
+            const blockNumber = await context.updateUnderlyingBlock();
+            const currentUnderlyingBlock = await context.assetManager.currentUnderlyingBlock();
+            assertWeb3Equal(currentUnderlyingBlock[0], blockNumber);
+            assertWeb3Equal(currentUnderlyingBlock[1], (await context.chain.getBlockAt(blockNumber))?.timestamp);
+            // perform minting
+            const lots = 3;
+            const crFee = await minter.getCollateralReservationFee(lots);
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const lotsUBA = context.convertLotsToUBA(lots);
+            await agent.checkAgentInfo({
+                totalVaultCollateralWei: fullAgentCollateral,
+                reservedUBA: lotsUBA.add(agent.poolFeeShare(crt.feeUBA)) });
+            const burnAddress = context.settings.burnAddress;
+            const startBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
+            const minted = await minter.executeMinting(crt, txHash);
+            const endBalanceBurnAddress = toBN(await web3.eth.getBalance(burnAddress));
+            assertWeb3Equal(minted.mintedAmountUBA, lotsUBA);
+            const poolFeeShare = crt.feeUBA.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+            assertWeb3Equal(poolFeeShare, minted.poolFeeUBA);
+            const agentFeeShare = crt.feeUBA.sub(poolFeeShare);
+            assertWeb3Equal(agentFeeShare, minted.agentFeeUBA);
+            const mintedUBA = crt.valueUBA.add(poolFeeShare);
+            await agent.checkAgentInfo({ mintedUBA: mintedUBA, reservedUBA: 0 });
+            // check that fee was burned
+            assertWeb3Equal(endBalanceBurnAddress.sub(startBalanceBurnAddress), crFee);
+            // redeemer "buys" f-assets
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // perform redemption
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare, mintedUBA: poolFeeShare, redeemingUBA: lotsUBA });
+            assertWeb3Equal(remainingLots, 0);
+            assert.equal(dustChanges.length, 0);
+            assert.equal(redemptionRequests.length, 1);
+            const request = redemptionRequests[0];
+            assert.equal(request.agentVault, agent.vaultAddress);
+            const tx1Hash = await agent.performRedemptionPayment(request);
+            await agent.confirmActiveRedemptionPayment(request, tx1Hash);
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA: agentFeeShare.add(request.feeUBA), redeemingUBA: 0 });
+            //Minter gets delisted from whitelist
+            let res = await context.whitelist?.revokeAddress(minter.address, { from: governance });
+            //Wait for timelock
+            if (res != undefined && context.whitelist != undefined) {
+                await waitForTimelock(res,context.whitelist, governance);
+            }
+            //Minter tries to mint again by reserving collateral
+            let tx = minter.reserveCollateral(agent.vaultAddress, lots);
+            await expectRevert(tx, "not whitelisted");
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
         });

@@ -24,6 +24,7 @@ import { TestChainInfo } from "./TestChainInfo";
 const TrivialAddressValidatorMock = artifacts.require('TrivialAddressValidatorMock');
 const WhitelistMock = artifacts.require("WhitelistMock");
 const MockContract = artifacts.require('MockContract');
+const Whitelist = artifacts.require('Whitelist');
 
 export interface SettingsOptions {
     // optional settings
@@ -120,6 +121,25 @@ export class AssetContext implements IAssetContext {
         await waitForTimelock(this.assetManagerController.setCollateralRatiosForToken([this.assetManager.address], collateralClass, token, minCollateralRatioBIPS,
             ccbMinCollateralRatioBIPS, safetyMinCollateralRatioBIPS, { from: this.governance }), this.assetManagerController, this.governance);
         await this.refreshSettings();
+    }
+
+    async setWitelist(whitelist: string) {
+        await waitForTimelock(this.assetManagerController.setWhitelist([this.assetManager.address], whitelist, { from: this.governance }), this.assetManagerController, this.governance);
+        await this.refreshSettings();
+    }
+
+    async setAgentWitelist(whitelist: string) {
+        await waitForTimelock(this.assetManagerController.setAgentWhitelist([this.assetManager.address], whitelist, { from: this.governance }), this.assetManagerController, this.governance);
+        await this.refreshSettings();
+    }
+
+    async createWhitelists() {
+        this.whitelist = await Whitelist.new(this.common.governanceSettings.address, this.governance, true);
+        await this.whitelist.switchToProductionMode({ from: this.governance });
+        this.agentWhitelist = await Whitelist.new(this.common.governanceSettings.address, this.governance, true);
+        await this.agentWhitelist.switchToProductionMode({ from: this.governance });
+        await this.setAgentWitelist(this.agentWhitelist.address);
+        await this.setWitelist(this.whitelist.address);
     }
 
     async updateUnderlyingBlock() {
