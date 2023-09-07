@@ -94,6 +94,8 @@ library SettingsUpdater {
         keccak256("setPoolExitAndTopupChangeTimelockSeconds((uint256)");
     bytes32 internal constant SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS =
         keccak256("setAgentTimelockedOperationWindowSeconds((uint256)");
+    bytes32 internal constant SET_COLLATERAL_POOL_TOKEN_TIMELOCK_SECONDS =
+        keccak256("setCollateralPoolTokenTimelockSeconds((uint256)");
 
     uint256 internal constant MAXIMUM_PROOF_WINDOW = 1 days;
 
@@ -223,6 +225,9 @@ library SettingsUpdater {
         } else if (_method == SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAgentTimelockedOperationWindowSeconds(_params);
+        } else if (_method == SET_COLLATERAL_POOL_TOKEN_TIMELOCK_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setCollateralPoolTokenTimelockSeconds(_params);
         } else {
             revert("update: invalid method");
         }
@@ -794,6 +799,20 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("agentTimelockedOperationWindowSeconds", value);
     }
 
+    function _setCollateralPoolTokenTimelockSeconds(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value >= 1 minutes, "value too small");
+        // update
+        settings.collateralPoolTokenTimelockSeconds = value.toUint32();
+        emit AMEvents.SettingChanged("collateralPoolTokenTimelockSeconds", value);
+    }
+
     function _setLiquidationStrategy(
         bytes calldata _params
     )
@@ -867,5 +886,6 @@ library SettingsUpdater {
         require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, "confirmation time too big");
         require(_settings.vaultCollateralBuyForFlareFactorBIPS >= SafePct.MAX_BIPS, "value too small");
         require(_settings.agentTimelockedOperationWindowSeconds >= 1 hours, "value too small");
+        require(_settings.collateralPoolTokenTimelockSeconds >= 1 minutes, "value too small");
     }
 }
