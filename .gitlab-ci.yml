@@ -67,7 +67,6 @@ test-unit:
     - TEST_PATH:
       - ./test/unit/fasset/library
       - ./test/unit/fasset/mock
-      - ./test/unit/bots
       - ./test/unit/governance
       - ./test/unit/utils
       - ./test/unit/addressValidator
@@ -84,6 +83,7 @@ test-unit-md:
     matrix:
     - TEST_PATH:
       - ./test/unit/fasset/implementation
+      - ./test/unit/bots
 
 
 test-contract-integration:
