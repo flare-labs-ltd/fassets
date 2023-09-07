@@ -317,6 +317,9 @@ export class FuzzingAgent extends FuzzingActor {
         // redeem pool tokens
         const poolTokenBalance = await agent.poolTokenBalance();
         if (poolTokenBalance.gt(BN_ZERO)) {
+            while ((await agent.poolTimelockedBalance()).gt(BN_ZERO)) {
+                await this.timeline.flareSeconds(toBN(this.context.settings.collateralPoolTokenTimelockSeconds)).then(e => e.wait(scope));
+            }
             const { withdrawalAllowedAt } = await agent.announcePoolTokenRedemption(poolTokenBalance);
             await this.timeline.flareTimestamp(withdrawalAllowedAt).wait(scope);
             await agent.redeemCollateralPoolTokens(poolTokenBalance);

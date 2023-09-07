@@ -245,6 +245,10 @@ export class Agent extends AssetContextClient {
         return await this.collateralPoolToken.balanceOf(this.vaultAddress);
     }
 
+    async poolTimelockedBalance() {
+        return await this.collateralPoolToken.timelockedBalanceOf(this.vaultAddress);
+    }
+
     async poolCollateralBalance() {
         const tokens = await this.poolTokenBalance();
         const tokenSupply = await this.collateralPoolToken.totalSupply();
