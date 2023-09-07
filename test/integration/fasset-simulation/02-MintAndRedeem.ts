@@ -161,7 +161,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA.add(minted2.mintedAmountUBA), { from: minter.address });
             // wait until another setting update is possible
-            time.increase(currentSettings.minUpdateRepeatTimeSeconds);
+            await time.increase(currentSettings.minUpdateRepeatTimeSeconds);
             // change redemption fee bips
             await context.setCollateralReservationFeeBips(toBN(currentSettings.redemptionFeeBIPS).muln(2));
             // perform redemption
