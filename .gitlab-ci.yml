@@ -88,6 +88,8 @@ test-unit-md:
 
 test-contract-integration:
   extends: .test-node-sc
+  tags:
+  - flarenetwork-md
   script:
   - yarn test_integration_hh
 
