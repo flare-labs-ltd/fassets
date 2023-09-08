@@ -1,6 +1,7 @@
+import "dotenv/config";
+
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-web3";
-import * as dotenv from "dotenv";
 import fs from "fs/promises";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
@@ -17,8 +18,6 @@ import "./type-extensions";
 // import config used for compilation
 import config from "./hardhatSetup.config";
 
-
-dotenv.config();
 
 task("link-contracts", "Link contracts with external libraries")
     .addVariadicPositionalParam("contracts", "The contract names to link")
