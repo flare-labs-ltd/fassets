@@ -3,14 +3,27 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IICollateralPoolToken.sol";
 import "../interface/IICollateralPool.sol";
 
 
 contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
+    using SafeCast for uint256;
+
+    struct Timelock {
+        uint128 amount;
+        uint64 endTime;
+    }
+
+    struct TimelockQueue {
+        mapping(uint256 => Timelock) data;
+        uint128 start;
+        uint128 end;
+    }
+
     address public immutable collateralPool;
-    mapping(address => uint256[]) private timelockedAmounts;
-    mapping(address => uint256[]) private timelockedEndTimes;
+    mapping(address => TimelockQueue) private timelocksByAccount;
     bool private ignoreTimelocked;
 
     modifier onlyCollateralPool {
@@ -38,9 +51,11 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
         _mint(_account, _amount);
         uint256 timelockDuration = _getTimelockDuration();
         if (timelockDuration > 0 && _amount > 0) {
-            uint256[] storage amounts = timelockedAmounts[_account];
-            timelockedEndTimes[_account].push(block.timestamp + timelockDuration);
-            amounts.push(_amount);
+            TimelockQueue storage timelocks = timelocksByAccount[_account];
+            timelocks.data[timelocks.end++] = Timelock({
+                amount: _amount.toUint128(),
+                endTime: (block.timestamp + timelockDuration).toUint64()
+            });
         }
     }
 
@@ -116,11 +131,12 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
         public view
         returns (uint256 _timelocked)
     {
-        uint256[] storage amounts = timelockedAmounts[_account];
-        uint256[] storage endTimes = timelockedEndTimes[_account];
-        for (uint256 i = 0; i < amounts.length; i++) {
-            if (endTimes[i] > block.timestamp) {
-                _timelocked += amounts[i];
+        TimelockQueue storage timelocks = timelocksByAccount[_account];
+        uint256 end = timelocks.end;
+        for (uint256 i = timelocks.start; i < end; i++) {
+            Timelock storage timelock = timelocks.data[i];
+            if (timelock.endTime > block.timestamp) {
+                _timelocked += timelock.amount;
             }
         }
         // in agent payout, locked tokens can be burnt without a timelock update,
@@ -149,8 +165,10 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
         }
         // either user transfer or non-minting collateral pool with ignoreTimelocked=false flag
         if (!ignoreTimelocked && _from != address(0)) {
-            uint256 timelocked = getAndUpdateTimelockedBalanceOf(_from, type(uint256).max);
-            uint256 nonTimelocked = balanceOf(_from) - timelocked;
+            // 10 is some arbitrary number that is usually enough; however, there isn't much damage
+            // if it is too little - just the non-timelocked balance may be too small and you have to call again
+            cleanupExpiredTimelocks(_from, 10);
+            uint256 nonTimelocked = nonTimelockedBalanceOf(_from);
             require(_amount <= nonTimelocked, "insufficient non-timelocked balance");
         }
         // if ignoreTimelock, then we are spending from timelocked balance,
@@ -162,26 +180,23 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
     // this can be called externally by anyone with different _maxTimelockedEntries,
     // if there are too many timelocked entries to clear in one transaction
     // (should be rare, especially if timelock duration is short - e.g. <= day)
-    function getAndUpdateTimelockedBalanceOf(
-        address _account, uint256 _maxTimelockedEntries
+    function cleanupExpiredTimelocks(
+        address _account,
+        uint256 _maxTimelockedEntries
     )
         public
-        returns (uint256 _timelocked)
+        returns (bool _cleanedAllExpired)
     {
-        uint256[] storage endTimes = timelockedEndTimes[_account];
-        uint256[] storage amounts = timelockedAmounts[_account];
-        uint256 i = 0;
-        while (i < endTimes.length && i < _maxTimelockedEntries) {
-            if (endTimes[i] <= block.timestamp) {
-                endTimes[i] = endTimes[endTimes.length - 1];
-                amounts[i] = amounts[amounts.length - 1];
-                endTimes.pop();
-                amounts.pop();
-            } else {
-                _timelocked += amounts[i];
-                i++;
+        TimelockQueue storage timelocks = timelocksByAccount[_account];
+        uint256 start = timelocks.start;
+        for (uint256 count = 0; count < _maxTimelockedEntries; count++) {
+            if (start >= timelocks.end || timelocks.data[start].endTime > block.timestamp) {
+                break;
             }
+            delete timelocks.data[start++];
         }
+        timelocks.start = start.toUint128();
+        return start >= timelocks.end || timelocks.data[start].endTime > block.timestamp;
     }
 
     function _getTimelockDuration()
