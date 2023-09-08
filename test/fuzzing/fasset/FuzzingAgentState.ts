@@ -647,15 +647,15 @@ export class FuzzingAgentState extends TrackedAgentState {
         const collateralPoolName = this.poolName();
         problems += checker.checkEquality(`${collateralPoolName}.totalPoolFees`, await this.parent.context.fAsset.balanceOf(this.collateralPoolAddress), this.totalPoolFee);
         problems += checker.checkEquality(`${collateralPoolName}.totalPoolTokens`, await collateralPoolToken.totalSupply(), this.poolTokenBalances.total());
-        problems += checker.checkApproxEquality(`${collateralPoolName}.totalPoolFeeDebt`, await collateralPool.totalFAssetFeeDebt(), this.poolFeeDebt.total(), MAX_ERR);
+        problems += checker.checkEquality(`${collateralPoolName}.totalPoolFeeDebt`, await collateralPool.totalFAssetFeeDebt(), this.poolFeeDebt.total(), { maxDiff: MAX_ERR });
         for (const tokenHolder of this.poolTokenBalances.keys()) {
             const tokenHolderName = this.parent.eventFormatter.formatAddress(tokenHolder);
             problems += checker.checkEquality(`${collateralPoolName}.poolTokensOf(${tokenHolderName})`, await collateralPoolToken.balanceOf(tokenHolder), this.poolTokenBalances.get(tokenHolder));
             const poolFeeDebt = await collateralPool.fAssetFeeDebtOf(tokenHolder);
-            problems += checker.checkApproxEquality(`${collateralPoolName}.poolFeeDebtOf(${tokenHolderName})`, poolFeeDebt, this.poolFeeDebt.get(tokenHolder), MAX_ERR);
+            problems += checker.checkEquality(`${collateralPoolName}.poolFeeDebtOf(${tokenHolderName})`, poolFeeDebt, this.poolFeeDebt.get(tokenHolder), { maxDiff: MAX_ERR });
             const virtualFees = await collateralPool.virtualFAssetOf(tokenHolder);
-            problems += checker.checkApproxEquality(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName})`, virtualFees, this.calculateVirtualFeesOf(tokenHolder), MAX_ERR);
-            problems += checker.checkNumericDifference(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName}) >= debt`, virtualFees.addn(MAX_ERR), 'gte', poolFeeDebt);
+            problems += checker.checkEquality(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName})`, virtualFees, this.calculateVirtualFeesOf(tokenHolder), { maxDiff: MAX_ERR });
+            problems += checker.checkNumericDifference(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName}) >= debt`, virtualFees, 'gte', poolFeeDebt, { maxDiff: MAX_ERR });
         }
         // minimum underlying backing (unless in full liquidation)
         if (this.status !== AgentStatus.FULL_LIQUIDATION && this.status !== AgentStatus.DESTROYING) {
