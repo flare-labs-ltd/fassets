@@ -619,55 +619,54 @@ export class FuzzingAgentState extends TrackedAgentState {
             return;
         }
         // this.parent.logger?.log(`STARTING DIFFERENCE CHECK FOR ${agentName} - AFTER GET INFO`);
-        let problems = 0;
         // reserved
         const reservedUBA = this.calculateReservedUBA();
-        problems += checker.checkEquality(`${agentName}.reservedUBA`, agentInfo.reservedUBA, this.reservedUBA);
-        problems += checker.checkEquality(`${agentName}.reservedUBA.cumulative`, agentInfo.reservedUBA, reservedUBA);
+        checker.checkEquality(`${agentName}.reservedUBA`, agentInfo.reservedUBA, this.reservedUBA);
+        checker.checkEquality(`${agentName}.reservedUBA.cumulative`, agentInfo.reservedUBA, reservedUBA);
         // minted
         const mintedUBA = this.calculateMintedUBA();
-        problems += checker.checkEquality(`${agentName}.mintedUBA`, agentInfo.mintedUBA, this.mintedUBA);
-        problems += checker.checkEquality(`${agentName}.mintedUBA.cumulative`, agentInfo.mintedUBA, mintedUBA);
+        checker.checkEquality(`${agentName}.mintedUBA`, agentInfo.mintedUBA, this.mintedUBA);
+        checker.checkEquality(`${agentName}.mintedUBA.cumulative`, agentInfo.mintedUBA, mintedUBA);
         // redeeming
         const redeemingUBA = this.calculateRedeemingUBA();
-        problems += checker.checkEquality(`${agentName}.redeemingUBA`, agentInfo.redeemingUBA, this.redeemingUBA);
-        problems += checker.checkEquality(`${agentName}.redeemingUBA.cumulative`, agentInfo.redeemingUBA, redeemingUBA);
+        checker.checkEquality(`${agentName}.redeemingUBA`, agentInfo.redeemingUBA, this.redeemingUBA);
+        checker.checkEquality(`${agentName}.redeemingUBA.cumulative`, agentInfo.redeemingUBA, redeemingUBA);
         // poolRedeeming
         const poolRedeemingUBA = this.calculatePoolRedeemingUBA();
-        problems += checker.checkEquality(`${agentName}.poolRedeemingUBA`, agentInfo.poolRedeemingUBA, this.poolRedeemingUBA);
-        problems += checker.checkEquality(`${agentName}.poolRedeemingUBA.cumulative`, agentInfo.poolRedeemingUBA, poolRedeemingUBA);
+        checker.checkEquality(`${agentName}.poolRedeemingUBA`, agentInfo.poolRedeemingUBA, this.poolRedeemingUBA);
+        checker.checkEquality(`${agentName}.poolRedeemingUBA.cumulative`, agentInfo.poolRedeemingUBA, poolRedeemingUBA);
         // free balance
         const freeUnderlyingBalanceUBA = this.calculateFreeUnderlyingBalanceUBA();
-        problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA`, agentInfo.freeUnderlyingBalanceUBA, this.freeUnderlyingBalanceUBA);
-        problems += checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA.cumulative`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
+        checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA`, agentInfo.freeUnderlyingBalanceUBA, this.freeUnderlyingBalanceUBA);
+        checker.checkEquality(`${agentName}.underlyingFreeBalanceUBA.cumulative`, agentInfo.freeUnderlyingBalanceUBA, freeUnderlyingBalanceUBA);
         // pool fees
         const MAX_ERR = 10; // virtual fee calculation is approximate and may have rounding errors
         const collateralPool = await CollateralPool.at(this.collateralPoolAddress);
         const collateralPoolToken = await CollateralPoolToken.at(requireNotNull(this.poolTokenAddress));
         const collateralPoolName = this.poolName();
-        problems += checker.checkEquality(`${collateralPoolName}.totalPoolFees`, await this.parent.context.fAsset.balanceOf(this.collateralPoolAddress), this.totalPoolFee);
-        problems += checker.checkEquality(`${collateralPoolName}.totalPoolTokens`, await collateralPoolToken.totalSupply(), this.poolTokenBalances.total());
-        problems += checker.checkEquality(`${collateralPoolName}.totalPoolFeeDebt`, await collateralPool.totalFAssetFeeDebt(), this.poolFeeDebt.total(), { maxDiff: MAX_ERR });
+        checker.checkEquality(`${collateralPoolName}.totalPoolFees`, await this.parent.context.fAsset.balanceOf(this.collateralPoolAddress), this.totalPoolFee);
+        checker.checkEquality(`${collateralPoolName}.totalPoolTokens`, await collateralPoolToken.totalSupply(), this.poolTokenBalances.total());
+        checker.checkEquality(`${collateralPoolName}.totalPoolFeeDebt`, await collateralPool.totalFAssetFeeDebt(), this.poolFeeDebt.total(), { maxDiff: MAX_ERR });
         for (const tokenHolder of this.poolTokenBalances.keys()) {
             const tokenHolderName = this.parent.eventFormatter.formatAddress(tokenHolder);
-            problems += checker.checkEquality(`${collateralPoolName}.poolTokensOf(${tokenHolderName})`, await collateralPoolToken.balanceOf(tokenHolder), this.poolTokenBalances.get(tokenHolder));
+            checker.checkEquality(`${collateralPoolName}.poolTokensOf(${tokenHolderName})`, await collateralPoolToken.balanceOf(tokenHolder), this.poolTokenBalances.get(tokenHolder));
             const poolFeeDebt = await collateralPool.fAssetFeeDebtOf(tokenHolder);
-            problems += checker.checkEquality(`${collateralPoolName}.poolFeeDebtOf(${tokenHolderName})`, poolFeeDebt, this.poolFeeDebt.get(tokenHolder), { maxDiff: MAX_ERR });
+            checker.checkEquality(`${collateralPoolName}.poolFeeDebtOf(${tokenHolderName})`, poolFeeDebt, this.poolFeeDebt.get(tokenHolder), { maxDiff: MAX_ERR });
             const virtualFees = await collateralPool.virtualFAssetOf(tokenHolder);
-            problems += checker.checkEquality(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName})`, virtualFees, this.calculateVirtualFeesOf(tokenHolder), { maxDiff: MAX_ERR });
-            problems += checker.checkNumericDifference(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName}) >= debt`, virtualFees, 'gte', poolFeeDebt, { maxDiff: MAX_ERR });
+            checker.checkEquality(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName})`, virtualFees, this.calculateVirtualFeesOf(tokenHolder), { maxDiff: MAX_ERR });
+            checker.checkNumericDifference(`${collateralPoolName}.virtualPoolFeesOf(${tokenHolderName}) >= debt`, virtualFees, 'gte', poolFeeDebt, { maxDiff: MAX_ERR });
         }
         // minimum underlying backing (unless in full liquidation)
         if (this.status !== AgentStatus.FULL_LIQUIDATION && this.status !== AgentStatus.DESTROYING) {
             const underlyingBalanceUBA = await this.parent.context.chain.getBalance(this.underlyingAddressString);
             // don't count problems here because it results in false positive errors, e.g. if there is payment after redemption default
-            checker.checkNumericDifference(`${agentName}.underlyingBalanceUBA`, underlyingBalanceUBA, 'gte', mintedUBA.add(freeUnderlyingBalanceUBA));
+            checker.checkNumericDifference(`${agentName}.underlyingBalanceUBA`, underlyingBalanceUBA, 'gte', mintedUBA.add(freeUnderlyingBalanceUBA), { severe: false });
         }
         // dust
-        problems += checker.checkEquality(`${agentName}.dustUBA`, this.dustUBA, this.calculatedDustUBA);
+        checker.checkEquality(`${agentName}.dustUBA`, this.dustUBA, this.calculatedDustUBA);
         // status
         if (!(this.status === AgentStatus.CCB && Number(agentInfo.status) === Number(AgentStatus.LIQUIDATION))) {
-            problems += checker.checkStringEquality(`${agentName}.status`, agentInfo.status, this.status);
+            checker.checkStringEquality(`${agentName}.status`, agentInfo.status, this.status);
         } else {
             checker.logger.log(`    ${agentName}.status: CCB -> LIQUIDATION issue, time=${await latestBlockTimestamp() - Number(this.ccbStartTimestamp)}`);
         }
