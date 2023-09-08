@@ -78,13 +78,13 @@ export class FuzzingState extends TrackedState {
         const checker = new FuzzingStateComparator();
         // total supply
         const fAssetSupply = await this.context.fAsset.totalSupply();
-        checker.checkEquality('fAsset supply', fAssetSupply, this.fAssetSupply, true);
+        checker.checkEquality('fAsset supply', fAssetSupply, this.fAssetSupply, { alwaysLog: true });
         // total balances
         const totalBalances = this.fAssetBalance.total();
         checker.checkEquality('fAsset supply / total balances', fAssetSupply, totalBalances);
         // total minted value by all agents
         const totalMintedUBA = sumBN(this.agents.values(), agent => agent.calculateMintedUBA());
-        checker.checkEquality('fAsset supply / total minted by agents', fAssetSupply, totalMintedUBA, true);
+        checker.checkEquality('fAsset supply / total minted by agents', fAssetSupply, totalMintedUBA, { alwaysLog: true });
         // settings
         const actualSettings = await this.context.assetManager.getSettings();
         for (const [key, value] of Object.entries(actualSettings)) {

@@ -1,5 +1,5 @@
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
-import { formatBN, requireNotNull } from "../../../lib/utils/helpers";
+import { BN_ZERO, formatBN, requireNotNull } from "../../../lib/utils/helpers";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { AsyncLock, coinFlip, randomBN, randomChoice } from "../../utils/fuzzing-utils";
 import { FuzzingActor } from "./FuzzingActor";
@@ -47,8 +47,9 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
     async exit(scope: EventScope, full: boolean) {
         await this.lock.run(async () => {
             if (!this.poolInfo) return;
-            const balance = await this.poolInfo.poolToken.balanceOf(this.address);
+            const balance = await this.poolInfo.poolToken.nonTimelockedBalanceOf(this.address);
             const amount = full ? balance : randomBN(balance);
+            if (amount.eq(BN_ZERO)) return;
             const amountFmt = amount.eq(balance) ? `full ${formatBN(balance)}` : `${formatBN(amount)} / ${formatBN(balance)}`;
             const selfCloseFAssetRequired = await this.poolInfo.pool.fAssetRequiredForSelfCloseExit(amount);
             if (selfCloseFAssetRequired.isZero()) {
