@@ -133,7 +133,7 @@ coverage:schedule:
         coverage_format: cobertura
         path: coverage/cobertura-coverage.xml
   rules:
-  - if: '$CI_PIPELINE_SOURCE == "web"'
+  - when: always # To be removed later on. For now on each commit until all tests keep succeeding
   - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "coverage"'
 
 
@@ -159,5 +159,5 @@ fuzzer:schedule:
     when: always
     expire_in: 30 days
   rules:
-  - if: '$CI_PIPELINE_SOURCE == "web"'
+  - when: always # To be removed later on. For now on each commit until all tests keep succeeding
   - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "fuzzer"'
