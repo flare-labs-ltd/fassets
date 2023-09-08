@@ -419,13 +419,23 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 }
                 const timelockedTokens1 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                 assertEqualBN(timelockedTokens1, ETH(100));
-                await time.increase(time.duration.hours(1));
+                // cleanup should have no effect before tokens expire
+                await collateralPoolToken.cleanupExpiredTimelocks(accounts[0], 10);
                 const timelockedTokens2 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
-                assertEqualBN(timelockedTokens2, BN_ZERO);
+                assertEqualBN(timelockedTokens2, ETH(100));
+                // wait for timelocks to expire
+                await time.increase(time.duration.hours(1));
+                // now timelocked should be zero
+                const timelockedTokens3 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
+                assertEqualBN(timelockedTokens3, BN_ZERO);
                 // currently there are 100 open timelock entries, pretend it is too much
                 // and clear them in batches of 10
                 for (let i = 0; i < 10; i++) {
-                    await collateralPoolToken.getAndUpdateTimelockedBalanceOf(accounts[0], 10);
+                    // use call to check result (does nothing, but returns correct result)
+                    const cleanedAllExpired = await collateralPoolToken.cleanupExpiredTimelocks.call(accounts[0], 10);
+                    assert.equal(cleanedAllExpired, i == 9, `all should be cleaned at the last call (i=${i})`);
+                    // now execute the actual cleaning
+                    await collateralPoolToken.cleanupExpiredTimelocks(accounts[0], 10);
                     // timelocked balance should not change
                     const timelockedTokens = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                     assertEqualBN(timelockedTokens, BN_ZERO);
