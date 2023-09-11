@@ -4,7 +4,7 @@ import { ILogger, MemoryLog } from "../../../lib/utils/logging";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 
 type CheckNumericOptions = {
-    alwaysLog?: boolean;    // default false
+    logOn?: 'always' | 'inexact' | 'problem';    // default false
     maxDiff?: BNish;        // default exact match
     severe?: boolean;       // default true
 };
@@ -30,7 +30,7 @@ export class FuzzingStateComparator {
         const actualValueS = JSON.stringify(web3DeepNormalize(actualValue));
         const trackedValueS = JSON.stringify(web3DeepNormalize(trackedValue));
         const different = actualValueS !== trackedValueS;
-        if (different || options.alwaysLog) {
+        if (different || options.logOn === 'always') {
             const actualCmp = different ? '!=' : '==';
             this.logger.log(`    ${different ? 'different' : 'equal'}  ${description}:  actual=${actualValueS} ${actualCmp} tracked=${trackedValueS}`);
         }
@@ -40,16 +40,17 @@ export class FuzzingStateComparator {
 
     checkNumericDifference(description: string, actualValue: BNish, comparison: 'eq' | 'lte' | 'gte', trackedValue: BNish, options: CheckNumericOptions = NO_OPTIONS) {
         const diff = toBN(actualValue).sub(toBN(trackedValue));
-        const diffOk = diff[comparison](BN_ZERO);
+        const exactlyOk = diff[comparison](BN_ZERO);
         const approxEqual = options.maxDiff != null && diff.abs().lte(toBN(options.maxDiff));
-        const problem = !(diffOk || approxEqual);
-        if (problem || options.alwaysLog) {
+        const problem = !(exactlyOk || approxEqual);
+        const logOn = options.logOn ?? 'inexact';
+        if (problem || logOn === 'always' || (logOn === 'inexact' && !exactlyOk)) {
             const actualCmp = diff.eq(BN_ZERO) ? "==" : (diff.lt(BN_ZERO) ? "<" : ">");
             const okMsg = comparison === 'eq' ? 'equal' : (comparison === 'lte' ? 'ok (<=)' : 'ok (>=)');
             const approxOkMsg = (comparison === 'eq' ? 'approx equal' : (comparison === 'lte' ? 'approx ok (~<=)' : 'approx ok (~>=)'));
             const approxSuffix = options.maxDiff != null ? `  [maxDiff=${formatBN(options.maxDiff)}]` : '';
             const problemMsg = comparison === 'eq' ? 'different' : (comparison === 'lte' ? 'problem (too large)' : 'problem (too small)');
-            const msg = problem ? problemMsg : (diffOk ? okMsg : approxOkMsg);
+            const msg = problem ? problemMsg : (exactlyOk ? okMsg : approxOkMsg);
             this.logger.log(`    ${msg}  ${description}:  actual=${formatBN(actualValue)} ${actualCmp} tracked=${formatBN(trackedValue)},  difference=${formatBN(diff)}${approxSuffix}`);
         }
         this.problems += problem && (options.severe ?? true) ? 1 : 0;

@@ -156,7 +156,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         assetManager.updateCollateral(agentVault, wNat);
         token.mint(msg.sender, tokenShare);
         // emit event
-        emit Entered(msg.sender, msg.value, tokenShare, depositedFAsset);
+        emit Entered(msg.sender, msg.value, tokenShare, depositedFAsset, _fAssetFeeDebtOf[msg.sender]);
     }
 
     /**
@@ -197,7 +197,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         token.burn(msg.sender, _tokenShare, false);
         _transferWNat(msg.sender, natShare);
         // emit event
-        emit Exited(msg.sender, _tokenShare, natShare, freeFAssetFeeShare, 0);
+        emit Exited(msg.sender, _tokenShare, natShare, freeFAssetFeeShare, 0, _fAssetFeeDebtOf[msg.sender]);
         return (natShare, freeFAssetFeeShare);
     }
 
@@ -294,7 +294,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         token.burn(msg.sender, _tokenShare, false);
         _transferWNat(msg.sender, natShare);
         // emit event
-        emit Exited(msg.sender, _tokenShare, natShare, spentFAssetFees, requiredFAssets);
+        emit Exited(msg.sender, _tokenShare, natShare, spentFAssetFees, requiredFAssets, _fAssetFeeDebtOf[msg.sender]);
     }
 
     /**
@@ -327,7 +327,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         _mintFAssetFeeDebt(msg.sender, _fAssets);
         _transferFAsset(address(this), msg.sender, _fAssets);
         // emit event
-        emit Exited(msg.sender, 0, 0, freeFAssetFeeShare, 0);
+        emit Exited(msg.sender, 0, 0, freeFAssetFeeShare, 0, _fAssetFeeDebtOf[msg.sender]);
     }
 
     /**
@@ -345,7 +345,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         _burnFAssetFeeDebt(msg.sender, _fAssets);
         _transferFAsset(msg.sender, address(this), _fAssets);
         // emit event
-        emit Entered(msg.sender, 0, 0, _fAssets);
+        emit Entered(msg.sender, 0, 0, _fAssets, _fAssetFeeDebtOf[msg.sender]);
     }
 
     /**
@@ -725,6 +725,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
                 assetData, agentVault, toSlashToken, TokenExitType.KEEP_RATIO);
             _burnFAssetFeeDebt(agentVault, debtFAssetFeeShare);
             token.burn(agentVault, toSlashToken, true);
+            emit Exited(agentVault, toSlashToken, 0, 0, 0, _fAssetFeeDebtOf[agentVault]);
         }
     }
 

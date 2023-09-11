@@ -16,7 +16,8 @@ interface ICollateralPool {
         address indexed tokenHolder,
         uint256 amountNatWei,
         uint256 receivedTokensWei,
-        uint256 addedFAssetFeesUBA);
+        uint256 addedFAssetFeesUBA,
+        uint256 newFAssetFeeDebt);
 
     // In case of self-close exit, `closedFAssetsUBA` is nonzero and includes `receivedFAssetFeesUBA`.
     // Also emitted in case of fee withdrawal - in this case `burnedTokensWei = receivedNatWei = 0`.
@@ -25,7 +26,8 @@ interface ICollateralPool {
         uint256 burnedTokensWei,
         uint256 receivedNatWei,
         uint256 receviedFAssetFeesUBA,
-        uint256 closedFAssetsUBA);
+        uint256 closedFAssetsUBA,
+        uint256 newFAssetFeeDebt);
 
     /**
      * In the case of self-close exit, it can happen that not all tokens could be spent, as agent could
