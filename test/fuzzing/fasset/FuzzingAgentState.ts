@@ -330,16 +330,18 @@ export class FuzzingAgentState extends TrackedAgentState {
     // handlers: pool enter and exit
 
     handlePoolEnter(args: EvmEventArgs<Entered>): void {
-        const debtChange = this.calculatePoolFeeDebtChange(toBN(args.receivedTokensWei), toBN(args.addedFAssetFeesUBA));
-        this.poolFeeDebt.addTo(args.tokenHolder, debtChange);
+        // const debtChange = this.calculatePoolFeeDebtChange(toBN(args.receivedTokensWei), toBN(args.addedFAssetFeesUBA));
+        // this.poolFeeDebt.addTo(args.tokenHolder, debtChange);
+        this.poolFeeDebt.set(args.tokenHolder, toBN(args.newFAssetFeeDebt));
     }
 
     handlePoolExit(args: EvmEventArgs<Exited>): void {
-        const debtChange = this.calculatePoolFeeDebtChange(toBN(args.burnedTokensWei).neg(), toBN(args.receviedFAssetFeesUBA).neg());
-        this.poolFeeDebt.addTo(args.tokenHolder, debtChange);
+        // const debtChange = this.calculatePoolFeeDebtChange(toBN(args.burnedTokensWei).neg(), toBN(args.receviedFAssetFeesUBA).neg());
+        // this.poolFeeDebt.addTo(args.tokenHolder, debtChange);
+        this.poolFeeDebt.set(args.tokenHolder, toBN(args.newFAssetFeeDebt));
     }
 
-    calculatePoolFeeDebtChange(receivedPoolTokens: BN, sentFAssets: BN) {
+    private calculatePoolFeeDebtChange(receivedPoolTokens: BN, sentFAssets: BN) {
         // pool enter and exit events happen after pool tokens and fees are sent or recieved, so we have to
         // calculate the totals before pool tokens were issued/burned and f-assets were sent in/out
         const totalPoolTokens = this.poolTokenBalances.total().sub(receivedPoolTokens);
