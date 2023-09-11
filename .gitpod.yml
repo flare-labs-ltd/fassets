@@ -24,62 +24,62 @@ tasks:
     env:
       TEST_PATH: ./test/unit/fasset/mock
     command: |
-      gp-sync-await install_node_modules
+      gp sync-await install_node_modules
       yarn hardhat test --network hardhat || bash
 
   - name: "Test: unit/fasset/governance"
     env:
       TEST_PATH: ./test/unit/fasset/governance
     command: |
-      gp-sync-await install_node_modules
+      gp sync-await install_node_modules
       yarn hardhat test --network hardhat || bash
 
   - name: "Test: unit/fasset/utils"
     env:
       TEST_PATH: ./test/unit/fasset/utils
     command: |
-      gp-sync-await install_node_modules
+      gp sync-await install_node_modules
       yarn hardhat test --network hardhat || bash
 
   - name: "Test: unit/fasset/addressValidator"
     env:
       TEST_PATH: ./test/unit/fasset/addressValidator
     command: |
-      gp-sync-await install_node_modules
+      gp sync-await install_node_modules
       yarn hardhat test --network hardhat || bash
 
   - name: "Test: unit/fasset/library"
     env:
       TEST_PATH: ./test/unit/fasset/library
     command: |
-      gp-sync-await install_node_modules
+      gp sync-await install_node_modules
       yarn hardhat test --network hardhat || bash
 
   - name: "Test: unit/fasset/implementation"
     env:
       TEST_PATH: ./test/unit/fasset/implementation
     command: |
-      gp-sync-await install_node_modules
+      gp sync-await install_node_modules
       yarn hardhat test --network hardhat || bash
 
   - name: "Test: unit/bots"
     env:
       TEST_PATH: ./test/unit/bots
     command: |
-      gp-sync-await install_node_modules
+      gp sync-await install_node_modules
       yarn hardhat test --network hardhat || bash
 
   - name: "Test: unit/gasReport/GasReport.ts"
     command: |
-      gp-sync-await install_node_modules
+      gp sync-await install_node_modules
       yarn hardhat test --network hardhat test/unit/gasReport/GasReport.ts || bash
 
   - name: "Test: contract integration"
     command: |
-      gp-sync-await install_node_modules
+      gp sync-await install_node_modules
       yarn run test_integration_hh || bash
 
   - name: "Test: linter"
     command: |
-      gp-sync-await install_node_modules
+      gp sync-await install_node_modules
       yarn run lint || bash
