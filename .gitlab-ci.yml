@@ -68,7 +68,6 @@ test-unit:
       - ./test/unit/fasset/mock
       - ./test/unit/governance
       - ./test/unit/utils
-      - ./test/unit/addressValidator
     - TEST_ARG:
       - test/unit/gasReport/GasReport.ts
   script:
@@ -81,6 +80,7 @@ test-unit-md:
   parallel:
     matrix:
     - TEST_PATH:
+      - ./test/unit/addressValidator
       - ./test/unit/fasset/library
       - ./test/unit/fasset/implementation
       - ./test/unit/bots
