@@ -10,76 +10,15 @@ tasks:
     init: |
       yarn install --frozen-lockfile
       gp sync-done install_node_modules
+      exit
 
   - name: Compile contracts
+    before: gp sync-await install_node_modules
     command: |
-      gp sync-await install_node_modules
       yarn run compile
       gp sync-done compile_contracts
-
-
-  # RUN TESTS
-
-  - name: "Test: unit/fasset/mock"
-    env:
-      TEST_PATH: ./test/unit/fasset/mock
-    command: |
-      gp sync-await compile_contracts
-      yarn hardhat test --network hardhat && exit
-
-  - name: "Test: unit/fasset/governance"
-    env:
-      TEST_PATH: ./test/unit/fasset/governance
-    command: |
-      gp sync-await compile_contracts
-      yarn hardhat test --network hardhat && exit
-
-  - name: "Test: unit/fasset/utils"
-    env:
-      TEST_PATH: ./test/unit/fasset/utils
-    command: |
-      gp sync-await compile_contracts
-      yarn hardhat test --network hardhat && exit
-
-  - name: "Test: unit/fasset/addressValidator"
-    env:
-      TEST_PATH: ./test/unit/fasset/addressValidator
-    command: |
-      gp sync-await compile_contracts
-      yarn hardhat test --network hardhat && exit
-
-  - name: "Test: unit/fasset/library"
-    env:
-      TEST_PATH: ./test/unit/fasset/library
-    command: |
-      gp sync-await compile_contracts
-      yarn hardhat test --network hardhat && exit
-
-  - name: "Test: unit/fasset/implementation"
-    env:
-      TEST_PATH: ./test/unit/fasset/implementation
-    command: |
-      gp sync-await compile_contracts
-      yarn hardhat test --network hardhat && exit
-
-  - name: "Test: unit/bots"
-    env:
-      TEST_PATH: ./test/unit/bots
-    command: |
-      gp sync-await compile_contracts
-      yarn hardhat test --network hardhat && exit
-
-  - name: "Test: unit/gasReport/GasReport.ts"
-    command: |
-      gp sync-await compile_contracts
-      yarn hardhat test --network hardhat test/unit/gasReport/GasReport.ts && exit
-
-  - name: "Test: contract integration"
-    command: |
-      gp sync-await compile_contracts
-      yarn run test_integration_hh && exit
+      exit
 
   - name: "Test: linter"
-    command: |
-      gp sync-await install_node_modules
-      yarn run lint && exit
+    before: gp sync-await install_node_modules
+    command: yarn run lint && exit
