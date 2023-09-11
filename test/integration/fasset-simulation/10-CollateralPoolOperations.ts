@@ -79,6 +79,53 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await agent.exitAndDestroy(fullAgentVaultCollateral);
     });
 
+    it("should test minter entering the pool, then redeeming and agent collecting pool fees, testing timelocked tokens", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
+        const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+        // make agent available one lot worth of pool collateral
+        const fullAgentVaultCollateral = toWei(3e8);
+        const fullAgentPoolCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
+        // minter mints
+        const lots = 100;
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        const txHash1 = await minter.performMintingPayment(crt);
+        const minted = await minter.executeMinting(crt, txHash1);
+        //Set timelock to 1 day
+        await context.setCollateralPoolTokenTimelockSeconds(time.duration.days(1));
+        // minter enters pool
+        const minterPoolDeposit = toWei(3e8);
+        await context.fAsset.increaseAllowance(agent.collateralPool.address, toWei(2e8), { from: minter.address });
+        await agent.collateralPool.enter(toWei(2e8), false, { from: minter.address, value: minterPoolDeposit });
+        const timelockedTokens1 = await agent.collateralPoolToken.timelockedBalanceOf(minter.address);
+        const debtFreeBalanceOf = await agent.collateralPoolToken.debtFreeBalanceOf(minter.address);
+        //Whole balance should be timelocked in the beggining
+        assert.equal(timelockedTokens1.toString(), minterPoolDeposit.toString());
+        //Balance should have no debt
+        assert.equal(debtFreeBalanceOf.toString(), minterPoolDeposit.toString());
+        //Minter should not be able to transef pool tokens that are time locked
+        const prms1 = agent.collateralPoolToken.transfer(accounts[1], toWei(2e8), {from: minter.address});
+        await expectRevert(prms1, "insufficient non-timelocked balance");
+        //After 1 day the minter can exit the pool
+        await time.increase(time.duration.days(1));
+        const transferableBalance = await agent.collateralPoolToken.transferableBalanceOf(minter.address);
+        assert.equal(transferableBalance.toString(), minterPoolDeposit.toString());
+        await agent.collateralPool.exit(minterPoolDeposit,0, {from:minter.address});
+        // agent collects pool fees
+        await agent.agentVault.withdrawPoolFees(minted.poolFeeUBA, agent.ownerWorkAddress, { from: agent.ownerWorkAddress });
+        assertWeb3Equal(await context.fAsset.balanceOf(agent.ownerWorkAddress), minted.poolFeeUBA);
+        // minter transfers f-assets
+        await context.fAsset.transfer(redeemer.address, await context.fAsset.balanceOf(minter.address), { from: minter.address });
+        // redeemer redeems
+        const [[redemptionRequest],,] = await redeemer.requestRedemption(lots);
+        const txHash2 = await agent.performRedemptionPayment(redemptionRequest);
+        await agent.confirmActiveRedemptionPayment(redemptionRequest, txHash2);
+        // agent self-closes pool fees and exits
+        await agent.selfClose(minted.poolFeeUBA);
+        await agent.exitAndDestroy(fullAgentVaultCollateral);
+    });
+
     it("should test for pool collateral payout in the case of liquidation (agent can cover total liquidation value)", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
