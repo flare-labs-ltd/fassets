@@ -11,6 +11,7 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
+import { Liquidator } from "../utils/Liquidator";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -81,6 +82,51 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const endVaultCollateralBalance = toBN(await agent.vaultCollateralToken().balanceOf(agent.ownerWorkAddress));
             assertWeb3Equal(endVaultCollateralBalance.sub(startVaultCollateralBalance), withdrawalAmount);
             await expectRevert(agent.announceVaultCollateralWithdrawal(1), "withdrawal: value too high");
+        });
+
+        it("changing collaterals", async () => {
+            const currentSettings = await context.assetManager.getSettings();
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 100;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            const agentInfo = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA) });
+            //Deprecate collateral token
+            await context.assetManagerController.deprecateCollateralType([context.assetManager.address], 2,context.usdc.address,
+                currentSettings.tokenInvalidationTimeMinSeconds, {from: governance});
+            await time.increase(context.settings.tokenInvalidationTimeMinSeconds);
+            //Owner can't switch collateral if there is not enough collateral of the new token
+            const res = context.assetManager.switchVaultCollateral(agent.agentVault.address,context.usdt.address, { from: agent.ownerWorkAddress });
+            await expectRevert(res,"not enough collateral");
+            // Agent deposits new collateral
+            await context.usdt.mintAmount(agent.ownerWorkAddress, fullAgentCollateral);
+            await context.usdt.approve(agent.agentVault.address, fullAgentCollateral, { from: agent.ownerWorkAddress });
+            await agent.agentVault.depositCollateral(context.usdt.address, fullAgentCollateral, { from: agent.ownerWorkAddress });
+            // Agent switches vault collateral and withdraws previous collateral
+            await context.assetManager.switchVaultCollateral(agent.agentVault.address,context.usdt.address, { from: agent.ownerWorkAddress });
+            await agent.agentVault.transferExternalToken(context.usdc.address, fullAgentCollateral,{from: agent.ownerWorkAddress});
+            //Minter mints again
+            const crt2 = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash2 = await minter.performMintingPayment(crt2);
+            const minted2 = await minter.executeMinting(crt2, txHash2);
+            assertWeb3Equal(minted2.mintedAmountUBA, context.convertLotsToUBA(lots));
+            // agent "buys" f-assets
+            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA.add(minted2.mintedAmountUBA), { from: minter.address });
+            // perform self close
+            const [dustChanges, selfClosedUBA] = await agent.selfClose(minted.mintedAmountUBA.add(minted2.mintedAmountUBA));
+            await agent.checkAgentInfo({ freeUnderlyingBalanceUBA:
+                minted.mintedAmountUBA.add(minted2.mintedAmountUBA).add(crt.feeUBA.sub(minted.poolFeeUBA).add(crt2.feeUBA.sub(minted2.poolFeeUBA)))
+                , mintedUBA: minted.poolFeeUBA.add(minted.poolFeeUBA) });
+            assertWeb3Equal(selfClosedUBA, minted.mintedAmountUBA.add(minted2.mintedAmountUBA));
         });
 
         it("topup payment", async () => {

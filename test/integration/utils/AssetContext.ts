@@ -128,6 +128,11 @@ export class AssetContext implements IAssetContext {
         await this.refreshSettings();
     }
 
+    async setCollateralPoolTokenTimelockSeconds(value: BNish) {
+        await waitForTimelock(this.assetManagerController.setCollateralPoolTokenTimelockSeconds([this.assetManager.address], value, { from: this.governance }), this.assetManagerController, this.governance);
+        await this.refreshSettings();
+    }
+
     async setAgentWitelist(whitelist: string) {
         await waitForTimelock(this.assetManagerController.setAgentWhitelist([this.assetManager.address], whitelist, { from: this.governance }), this.assetManagerController, this.governance);
         await this.refreshSettings();

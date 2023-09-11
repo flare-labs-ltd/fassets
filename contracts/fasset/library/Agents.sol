@@ -277,12 +277,12 @@ library Agents {
         assert(collateral.collateralClass == CollateralType.Class.VAULT);
         // agent should never switch to a deprecated or already invalid collateral
         require(collateral.validUntil == 0, "collateral deprecated");
+        // set the new index
+        _agent.vaultCollateralIndex = tokenIndex.toUint16();
         // check there is enough collateral for current mintings
         Collateral.Data memory switchCollateralData = AgentCollateral.agentVaultCollateralData(_agent);
         uint256 crBIPS = AgentCollateral.collateralRatioBIPS(switchCollateralData, _agent);
         require(crBIPS >= collateral.minCollateralRatioBIPS, "not enough collateral");
-        // set the new index
-        _agent.vaultCollateralIndex = tokenIndex.toUint16();
     }
 
     function vaultOwner(
