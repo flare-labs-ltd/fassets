@@ -47,14 +47,16 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
     )
         external
         onlyCollateralPool
+        returns (uint256 _timelockExpiresAt)
     {
         _mint(_account, _amount);
         uint256 timelockDuration = _getTimelockDuration();
+        _timelockExpiresAt = block.timestamp + timelockDuration;
         if (timelockDuration > 0 && _amount > 0) {
             TimelockQueue storage timelocks = timelocksByAccount[_account];
             timelocks.data[timelocks.end++] = Timelock({
                 amount: _amount.toUint128(),
-                endTime: (block.timestamp + timelockDuration).toUint64()
+                endTime: _timelockExpiresAt.toUint64()
             });
         }
     }

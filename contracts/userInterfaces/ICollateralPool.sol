@@ -17,7 +17,8 @@ interface ICollateralPool {
         uint256 amountNatWei,
         uint256 receivedTokensWei,
         uint256 addedFAssetFeesUBA,
-        uint256 newFAssetFeeDebt);
+        uint256 newFAssetFeeDebt,
+        uint256 timelockExpiresAt);
 
     // In case of self-close exit, `closedFAssetsUBA` is nonzero and includes `receivedFAssetFeesUBA`.
     // Also emitted in case of fee withdrawal - in this case `burnedTokensWei = receivedNatWei = 0`.
@@ -46,7 +47,9 @@ interface ICollateralPool {
      * @param _fAssets                 The maximum number of f-assets that can be spent along the deposited NAT
      * @param _enterWithFullFassets    Specifies whether to enter with all "required" f-assets
      */
-    function enter(uint256 _fAssets, bool _enterWithFullFassets) external payable;
+    function enter(uint256 _fAssets, bool _enterWithFullFassets)
+        external payable
+        returns (uint256 _receivedTokens, uint256 _timelockExpiresAt);
 
     /**
      * Exits the pool by redeeming the given amount of pool tokens for a share of NAT and f-asset fees.
