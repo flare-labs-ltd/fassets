@@ -128,6 +128,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     function enter(uint256 _fAssets, bool _enterWithFullFAssets)
         external payable
         nonReentrant
+        returns (uint256, uint256)
     {
         AssetData memory assetData = _getAssetData();
         require(assetData.poolTokenSupply <= assetData.poolNatBalance * MAX_NAT_TO_POOL_TOKEN_RATIO,
@@ -154,9 +155,10 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         _mintFAssetFeeDebt(msg.sender, fAssetShare - depositedFAsset);
         _depositWNat();
         assetManager.updateCollateral(agentVault, wNat);
-        token.mint(msg.sender, tokenShare);
+        uint256 timelockExp = token.mint(msg.sender, tokenShare);
         // emit event
-        emit Entered(msg.sender, msg.value, tokenShare, depositedFAsset, _fAssetFeeDebtOf[msg.sender]);
+        emit Entered(msg.sender, msg.value, tokenShare, depositedFAsset, _fAssetFeeDebtOf[msg.sender], timelockExp);
+        return (tokenShare, timelockExp);
     }
 
     /**
@@ -345,7 +347,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         _burnFAssetFeeDebt(msg.sender, _fAssets);
         _transferFAsset(msg.sender, address(this), _fAssets);
         // emit event
-        emit Entered(msg.sender, 0, 0, _fAssets, _fAssetFeeDebtOf[msg.sender]);
+        emit Entered(msg.sender, 0, 0, _fAssets, _fAssetFeeDebtOf[msg.sender], 0);
     }
 
     /**
