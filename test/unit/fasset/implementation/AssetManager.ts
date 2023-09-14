@@ -615,14 +615,18 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await agentVault.depositCollateral(token.address, toWei(3e8), { from: agentOwner1 });
             const info1 = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(info1.status, 2);
-            //Switch vault collateral and deposit collateral
-            await assetManager.switchVaultCollateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
+            //Deposit vault collateral and switch
             await usdt.mintAmount(agentOwner1, toWei(3e8));
             await usdt.approve(agentVault.address, toWei(3e8), { from: agentOwner1 });
             await agentVault.depositCollateral(usdt.address, toWei(3e8), { from: agentOwner1 });
+            await assetManager.switchVaultCollateral(agentVault.address,collaterals[2].token, { from: agentOwner1 });
             //Random address can't call collateral deposited
             let res = assetManager.updateCollateral(agentVault.address,usdt.address, { from: accounts[5] });
             await expectRevert(res, "only agent vault or pool");
+            let res1 = agentVault.updateCollateral(usdt.address, { from: accounts[5] });
+            await expectRevert(res1, "only owner");
+            //Call collateral deposited from owner address to trigger liquidation end
+            await agentVault.updateCollateral(usdt.address, { from: agentOwner1 });
             //Check that agent is out of liquidation
             const info2 = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(info2.status, 0);
@@ -1288,7 +1292,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     });
 
     describe("agent underlying", () => {
-        
+
         it("should self-close", async () => {
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             const { agentFeeShareUBA } = await mintFassets(agentVault, agentOwner1, underlyingAgent1, agentOwner1, toBN(1));
