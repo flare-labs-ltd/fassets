@@ -544,4 +544,100 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await agent.collateralPool.undelegateGovernance({ from: agent.ownerWorkAddress });
     });
 
+    it("minting, entering collateral pool and collecting fees", async () => {
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+        const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000000000));
+        // make agent available
+        const fullAgentCollateral = toWei(3e8);
+        await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+        // update block
+        await context.updateUnderlyingBlock();
+        // A user enters pool
+        const poolDeposit = toWei(1e8);
+        const user = accounts[12];
+        await agent.collateralPool.enter(0, false, { from: user, value: poolDeposit });
+        // perform collateral
+        const lots = 3;
+        const crFee = await minter.getCollateralReservationFee(lots);
+        const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+        // perform some payment with correct minting reference and wrong amount
+        await minter.performPayment(crt.paymentAddress, 100, crt.paymentReference);
+        // mine some blocks to create overflow block
+        for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
+            await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
+        }
+        // test rewarding for mint default
+        const startBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
+        const startBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
+        const startTotalCollateralPool = await agent.collateralPool.totalCollateral();
+        await agent.mintingPaymentDefault(crt);
+        const userFassetFees = await agent.collateralPool.fAssetFeesOf(user);
+        await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
+        const endBalanceAgent = await context.wNat.balanceOf(agent.agentVault.address);
+        const endBalancePool = await context.wNat.balanceOf(agent.collateralPool.address);
+        const endTotalCollateralPool = await agent.collateralPool.totalCollateral();
+        const poolFee = crFee.mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+        assertWeb3Equal(endBalanceAgent.sub(startBalanceAgent), crFee.sub(poolFee));
+        assertWeb3Equal(endBalancePool.sub(startBalancePool), poolFee);
+        assertWeb3Equal(endTotalCollateralPool.sub(startTotalCollateralPool), poolFee);
+        assertWeb3Equal(userFassetFees, toBN(0));
+        // check that executing minting after calling mintingPaymentDefault will revert
+        const txHash = await minter.performMintingPayment(crt);
+        await expectRevert(minter.executeMinting(crt, txHash), "invalid crt id");
+        // perform minting
+        await time.increase(time.duration.days(7));
+        const lots2 = 3;
+        const crt2 = await minter.reserveCollateral(agent.vaultAddress, lots2);
+        const txHash2 = await minter.performMintingPayment(crt2);
+        const minted = await minter.executeMinting(crt2, txHash2);
+        const poolVirtualFassetFees = (await agent.collateralPool.totalFAssetFees()).add(await agent.collateralPool.totalFAssetFeeDebt());
+        const userPoolTokenBalance = await agent.collateralPoolToken.balanceOf(user);
+        const totalPoolTokens = await agent.collateralPoolToken.totalSupply();
+        const virtualFasset = poolVirtualFassetFees.mul(userPoolTokenBalance).div(totalPoolTokens);
+        const userFassetDebt = await agent.collateralPool.fAssetFeeDebtOf(user);
+        const userFassetFes = Math.min(toBN(await agent.collateralPool.totalFAssetFees()).toNumber(), (virtualFasset.sub(userFassetDebt)).toNumber());
+        assertWeb3Equal(userFassetFes, await agent.collateralPool.fAssetFeesOf(user));
+        const user2 = accounts[13];
+        // user2 "buys" f-assets
+        await context.fAsset.transfer(user2, minted.mintedAmountUBA.divn(2), { from: minter.address });
+        await context.fAsset.increaseAllowance(agent.collateralPool.address, minted.mintedAmountUBA.divn(2), { from: user2});
+        // user2 enters with fassets to have no debt
+        await agent.collateralPool.enter(0, true, { from: user2, value: poolDeposit });
+        assertWeb3Equal(await agent.collateralPool.fAssetFeeDebtOf(user2), 0);
+        const poolVirtualFassetFees2 = (await agent.collateralPool.totalFAssetFees()).add(await agent.collateralPool.totalFAssetFeeDebt());
+        const userPoolTokenBalance2 = await agent.collateralPoolToken.balanceOf(user2);
+        const totalPoolTokens2 = await agent.collateralPoolToken.totalSupply();
+        const virtualFasset2 = poolVirtualFassetFees2.mul(userPoolTokenBalance2).div(totalPoolTokens2);
+        const userFassetDebt2 = await agent.collateralPool.fAssetFeeDebtOf(user2);
+        const userFassetFees2 = Math.min(toBN(await agent.collateralPool.totalFAssetFees()).toNumber(), (virtualFasset2.sub(userFassetDebt2)).toNumber());
+        assertWeb3Equal(userFassetFees2, await agent.collateralPool.fAssetFeesOf(user2));
+        const crt3 = await minter.reserveCollateral(agent.vaultAddress, lots2);
+        const txHash3 = await minter.performMintingPayment(crt3);
+        const minted2 = await minter.executeMinting(crt3, txHash3);
+        //Check pool fees after minting
+        const poolVirtualFassetFees3 = (await agent.collateralPool.totalFAssetFees()).add(await agent.collateralPool.totalFAssetFeeDebt());
+        const totalPoolTokens3 = await agent.collateralPoolToken.totalSupply();
+        //Check fees for user
+        const userPoolTokenBalance3User = await agent.collateralPoolToken.balanceOf(user);
+        const virtualFasset3User = poolVirtualFassetFees3.mul(userPoolTokenBalance3User).div(totalPoolTokens3);
+        const userFassetDebt3User = await agent.collateralPool.fAssetFeeDebtOf(user);
+        const userFassetFees3User = Math.min(toBN(await agent.collateralPool.totalFAssetFees()).toNumber(), (virtualFasset3User.sub(userFassetDebt3User)).toNumber());
+        assertWeb3Equal(userFassetFees3User, await agent.collateralPool.fAssetFeesOf(user));
+        //Check fees for user2
+        const userPoolTokenBalance3User2 = await agent.collateralPoolToken.balanceOf(user2);
+        const virtualFasset3User2 = poolVirtualFassetFees3.mul(userPoolTokenBalance3User2).div(totalPoolTokens3);
+        const userFassetDebt3User2 = await agent.collateralPool.fAssetFeeDebtOf(user2);
+        const userFassetFees3User2 = Math.min(toBN(await agent.collateralPool.totalFAssetFees()).toNumber(), (virtualFasset3User2.sub(userFassetDebt3User2)).toNumber());
+        assertWeb3Equal(userFassetFees3User2, await agent.collateralPool.fAssetFeesOf(user2));
+        // Both users withdraw fees
+        const userFassetsBeforeWith = await context.fAsset.balanceOf(user);
+        const user2FassetsBeforeWith = await context.fAsset.balanceOf(user2);
+        await agent.collateralPool.withdrawFees(userFassetFees3User, {from: user});
+        await agent.collateralPool.withdrawFees(userFassetFees3User2, {from: user2});
+        const userFassetsAfterWith = await context.fAsset.balanceOf(user);
+        const user2FassetsAfterWith = await context.fAsset.balanceOf(user2);
+        assertWeb3Equal(userFassetsAfterWith.sub(userFassetsBeforeWith), userFassetFees3User);
+        assertWeb3Equal(user2FassetsAfterWith.sub(user2FassetsBeforeWith), userFassetFees3User2);
+    });
+
 });

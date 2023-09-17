@@ -10,7 +10,10 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
+import { ERC20MockInstance } from "../../../typechain-truffle";
+import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
 import { waitForTimelock } from "../../utils/fasset/CreateAssetManager";
+import common from "mocha/lib/interfaces/common";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -529,6 +532,32 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(dustChanges.length, 2);    // initially dust is cleared and then re-created
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral);
+        });
+
+        it("change wnat contract and try redeeming collateral pool tokens", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // wait for token timelock
+            await time.increase(await context.assetManager.getCollateralPoolTokenTimelockSeconds());
+            // mine some blocks to skip the agent creation time
+            mockChain.mine(5);
+            // Upgrade wNat contract
+            const ERC20Mock = artifacts.require("ERC20Mock");
+            const newWNat: ERC20MockInstance = await ERC20Mock.new("new wnat", "WNat");
+            await impersonateContract(context.assetManager.address, toBN(512526332000000000), accounts[0]);
+            await agent.collateralPool.upgradeWNatContract(newWNat.address, {from: context.assetManager.address });
+            await stopImpersonatingContract(context.assetManager.address);
+            const agentInfo = await context.assetManager.getAgentInfo(agent.agentVault.address);
+            const tokens = agentInfo.totalAgentPoolTokensWei;
+            await context.assetManager.announceAgentPoolTokenRedemption(agent.agentVault.address, tokens, { from: agentOwner1 });
+            await time.increase((await context.assetManager.getSettings()).withdrawalWaitMinSeconds);
+            const poolTokensBefore = await agent.collateralPoolToken.totalSupply();
+            //Redeem collateral pool tokens
+            await agent.agentVault.redeemCollateralPoolTokens(tokens, agentOwner1, { from: agentOwner1 });
+            const poolTokensAfter = await agent.collateralPoolToken.totalSupply();
+            assertWeb3Equal(poolTokensBefore.sub(poolTokensAfter), tokens);
         });
     });
 });
