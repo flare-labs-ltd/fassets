@@ -26,6 +26,14 @@ default:
   timeout: 3h
   needs:
   - build-smart-contracts
+  cache:
+    policy: pull
+    when: always
+    key:
+      files:
+      - yarn.lock
+    paths:
+    - node_modules
   variables:
     DEPLOYER_PRIVATE_KEY: "0xc5e8f61d1ab959b397eecc0a37a6517b8e67a0e7cf1f4bce5591f3ed80199122"
     GENESIS_GOVERNANCE_PRIVATE_KEY: "0x50777f5a3ce16445e63411bf1e865a2a11d5ca3c4cbc1de00808a52180bd8d3c"
@@ -46,6 +54,14 @@ build-smart-contracts:
   stage: build
   needs: []
   image: node:18
+  cache:
+    policy: pull-push
+    when: on_success
+    key:
+      files:
+      - yarn.lock
+    paths:
+      - node_modules
   before_script:
   - yarn install --frozen-lockfile
   script:
@@ -114,8 +130,7 @@ test-slither-check:
 
 
 coverage:schedule:
-  extends:
-  - .test-node-sc
+  extends: .test-node-sc
   stage: test
   tags:
   - flarenetwork-lg
@@ -139,8 +154,7 @@ coverage:schedule:
 
 
 fuzzer:schedule:
-  extends:
-  - .test-node-sc
+  extends: .test-node-sc
   stage: test
   tags:
   - flarenetwork-lg
