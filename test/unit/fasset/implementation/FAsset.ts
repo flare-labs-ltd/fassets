@@ -92,7 +92,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const burn_amount = 20;
             await fAsset.mint(accounts[1], mint_amount,{ from: assetManager });
             const res = fAsset.burn(accounts[1], burn_amount,{ from: assetManager } );
-            await expectRevert(res, "Burn too big for owner");
+            await expectRevert(res, "f-asset balance too low");
         });
 
         it('should not be able to transfer if terminated', async function () {
