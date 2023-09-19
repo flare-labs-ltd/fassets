@@ -142,7 +142,7 @@ export class FuzzingCustomer extends FuzzingActor {
         this.comment(`${this.name} lots ${lots}   total minted ${mintedLots}   holding ${holdingLots}`);
         if (this.avoidErrors && lots === 0) return;
         const [tickets, remaining] = await this.redeemer.requestRedemption(lots)
-            .catch(e => scope.exitOnExpectedError(e, ['Burn too big for owner', 'redeem 0 lots']));
+            .catch(e => scope.exitOnExpectedError(e, ['f-asset balance too low', 'redeem 0 lots']));
         mintedLots -= lots - Number(remaining);
         this.comment(`${this.name}: Redeeming ${tickets.length} tickets, remaining ${remaining} lots`);
         // wait for all redemption payments or non-payments

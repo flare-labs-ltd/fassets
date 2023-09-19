@@ -217,6 +217,15 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
     });
 }
 
+export async function verifyAssetManagerController(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    const contracts = loadContracts(contractsFile);
+    const { deployer } = loadDeployAccounts(hre);
+    await hre.run("verify:verify", {
+        address: contracts.AssetManagerController!.address,
+        constructorArguments: [contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address]
+    });
+}
+
 export async function switchAllToProductionMode(hre: HardhatRuntimeEnvironment, contractsFile: string) {
     const { deployer } = loadDeployAccounts(hre);
     const contracts = loadContracts(contractsFile);

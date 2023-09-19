@@ -10,7 +10,7 @@ import path from "path";
 import 'solidity-coverage';
 import {
     deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory,
-    deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployWhitelist, switchAllToProductionMode, verifyAssetManager
+    deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployWhitelist, switchAllToProductionMode, verifyAssetManager, verifyAssetManagerController
 } from "./deployment/lib/deploy-asset-manager";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import "./type-extensions";
@@ -65,6 +65,13 @@ task("verify-asset-manager", "Verify deployed asset manager.")
     .setAction(async ({ address, parametersFile, networkConfig }, hre) => {
         const contractsFile = `deployment/deploys/${networkConfig}.json`;
         await verifyAssetManager(hre, parametersFile, contractsFile, address);
+    });
+
+task("verify-asset-manager-controller", "Verify deployed asset manager controller.")
+    .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
+    .setAction(async ({ networkConfig }, hre) => {
+        const contractsFile = `deployment/deploys/${networkConfig}.json`;
+        await verifyAssetManagerController(hre, contractsFile);
     });
 
 task("switch-to-production", "Switch all deployed files to production mode.")

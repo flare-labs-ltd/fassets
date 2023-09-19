@@ -114,6 +114,7 @@ contract FAsset is IFAsset, VPToken, IERC165 {
         override (VPToken)
     {
         require(terminatedAt == 0, "f-asset terminated");
+        require(_from == address(0) || balanceOf(_from) >= _amount, "f-asset balance too low");
         VPToken._beforeTokenTransfer(_from, _to, _amount);
     }
 

@@ -169,7 +169,7 @@ export class FuzzingAgent extends FuzzingActor {
         const amountUBA = randomBN(ownersAssets);
         if (this.avoidErrors && amountUBA.isZero()) return;
         await agent.selfClose(amountUBA)
-            .catch(e => scope.exitOnExpectedError(e, ['Burn too big for owner', 'redeem 0 lots']));
+            .catch(e => scope.exitOnExpectedError(e, ['f-asset balance too low', 'redeem 0 lots']));
     }
 
     async convertDustToTicket(scope: EventScope): Promise<void> {
