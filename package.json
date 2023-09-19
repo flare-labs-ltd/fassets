@@ -49,6 +49,7 @@
     "deploy-mock-stablecoins-coston": "env NETWORK_CONFIG=coston yarn hardhat --network coston run deployment/test/scripts/mock-deploy-stablecoins.ts",
     "full-deploy-coston": "yarn hardhat --network coston deploy-asset-managers --network-config coston --link --deploy-controller --all",
     "full-deploy-coston-test": "env NETWORK_CONFIG=coston yarn hardhat --network coston test --no-compile deployment/test/test-deployed-contracts.ts",
+    "verify-asset-manager-coston": "",
     "console": "yarn hardhat console --no-compile",
     "console-coston": "yarn hardhat console --no-compile --network coston",
     "---------INFO---SCRIPTS": "",
@@ -70,6 +71,7 @@
   },
   "devDependencies": {
     "@gnosis.pm/mock-contract": "4.0.0",
+    "@nomiclabs/hardhat-etherscan": "3.1.7",
     "@nomicfoundation/hardhat-network-helpers": "1.0.8",
     "@nomiclabs/hardhat-truffle5": "2.0.7",
     "@nomiclabs/hardhat-web3": "2.0.0",

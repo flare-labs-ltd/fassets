@@ -2,6 +2,7 @@ import "dotenv/config";
 
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-web3";
+import "@nomiclabs/hardhat-etherscan";
 import fs from "fs";
 import glob from "glob";
 import "hardhat-contract-sizer";
@@ -146,6 +147,48 @@ const config: HardhatUserConfig = {
     gasReporter: {
         showTimeSpent: true,
         outputFile: ".gas-report.txt"
+    },
+    etherscan: {
+        apiKey: {
+            songbird: '0000',
+            flare: '0000',
+            coston: '0000',
+            coston2: '0000',
+        },
+        customChains: [
+            {
+                network: "songbird",
+                chainId: 19,
+                urls: {
+                    apiURL: "https://songbird-explorer.flare.network/api",
+                    browserURL: "https://songbird-explorer.flare.network"
+    }
+            },
+            {
+                network: "flare",
+                chainId: 14,
+                urls: {
+                    apiURL: "https://flare-explorer.flare.network/api",
+                    browserURL: "https://flare-explorer.flare.network"
+                }
+            },
+            {
+                network: "coston",
+                chainId: 16,
+                urls: {
+                    apiURL: "https://coston-explorer.flare.network/api",
+                    browserURL: "https://coston-explorer.flare.network"
+                }
+            },
+            {
+                network: "coston2",
+                chainId: 114,
+                urls: {
+                    apiURL: "https://coston2-explorer.flare.network/api",
+                    browserURL: "https://coston2-explorer.flare.network"
+                }
+            },
+        ]
     }
 };
 

@@ -182,6 +182,41 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     return assetManager;
 }
 
+export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contractsFile: string, assetManagerAddress: string) {
+    const artifacts = hre.artifacts as Truffle.Artifacts;
+
+    const AssetManager = artifacts.require("AssetManager");
+    const FAsset = artifacts.require('FAsset');
+
+    const parameters = assetManagerParameters.load(parametersFile);
+    const contracts = loadContracts(contractsFile);
+
+    const assetManager = await AssetManager.at(assetManagerAddress);
+    const currentSettings = await assetManager.getSettings();
+
+    const fAsset = await FAsset.at(await assetManager.fAsset());
+
+    const [addressValidatorArtifact, addressValidatorConstructorArgs] = parameters.underlyingAddressValidator;
+    const AddressValidator = hre.artifacts.require(addressValidatorArtifact);
+    const addressValidator = await AddressValidator.at(currentSettings.underlyingAddressValidator) as Truffle.ContractInstance;
+
+    const poolCollateral = convertCollateralType(contracts, parameters.poolCollateral, CollateralClass.POOL);
+    const vaultCollateral = parameters.vaultCollaterals.map(p => convertCollateralType(contracts, p, CollateralClass.VAULT));
+    const collateralTypes = [poolCollateral, ...vaultCollateral];
+
+    const liquidationStrategyFactory = liquidationStrategyFactories[parameters.liquidationStrategy]();
+    const liquidationStrategy = currentSettings.liquidationStrategy;
+    const liquidationStrategySettings = liquidationStrategyFactory.schema.validate(parameters.liquidationStrategySettings);
+    const liquidationStrategySettingsEnc = liquidationStrategyFactory.encodeSettings(liquidationStrategySettings)
+
+    const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy, addressValidator.address));
+
+    await hre.run("verify:verify", {
+        address: assetManagerAddress,
+        constructorArguments: [assetManagerSettings, collateralTypes, liquidationStrategySettingsEnc]
+    });
+}
+
 export async function switchAllToProductionMode(hre: HardhatRuntimeEnvironment, contractsFile: string) {
     const { deployer } = loadDeployAccounts(hre);
     const contracts = loadContracts(contractsFile);
