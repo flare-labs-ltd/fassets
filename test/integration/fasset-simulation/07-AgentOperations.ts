@@ -327,5 +327,50 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // TODO: how to destroy agent with terminated f-assets, need collateral pool modification
             //await agent.exitAndDestroyWithTerminatedFAsset(fullAgentCollateral.sub(buybackAgentVaultCollateral));
         });
+
+        it("agent shouldn't be able to withdraw collateral if it makes CR fall to low", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            const fullPoolCollateral = toWei(5e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullPoolCollateral);
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 6;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
+                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
+                reservedUBA: 0, redeemingUBA: 0 });
+            //Agent announces vault collateral withdrawal
+            const agentInfo = await agent.getAgentInfo();
+            const lockedCollateral = toBN(agentInfo.totalVaultCollateralWei).sub(toBN(agentInfo.freeVaultCollateralWei));
+            const withdrawalAmount = toBN(agentInfo.totalVaultCollateralWei).sub(lockedCollateral);
+            //Test withdrawal
+            //Announce vault collateral withdrawal
+            await agent.announceVaultCollateralWithdrawal(withdrawalAmount);
+            await time.increase(context.settings.withdrawalWaitMinSeconds);
+            await agent.withdrawVaultCollateral(withdrawalAmount);
+            //Check that CR is safe
+            const vaultCollateralRatioBIPS = toBN((await agent.getAgentInfo()).vaultCollateralRatioBIPS);
+            const vaultCollateralTypes = (await context.assetManager.getCollateralTypes())[1];
+            assert(vaultCollateralRatioBIPS.gte(toBN(vaultCollateralTypes.safetyMinCollateralRatioBIPS)));
+            //Agent deposits vault collateral back
+            await agent.depositVaultCollateral(withdrawalAmount);
+            //Try to withdraw after price swing
+            //Announce vault collateral withdrawal
+            await agent.announceVaultCollateralWithdrawal(withdrawalAmount);
+            await time.increase(context.settings.withdrawalWaitMinSeconds);
+            //Price changes vault CR
+            await agent.setVaultCollateralRatioByChangingAssetPrice(1000000);
+            //Agent shouldn't be able to withdraw if it would make CR too low
+            const res = agent.withdrawVaultCollateral(withdrawalAmount);
+            await expectRevert(res,"CR too low");
+        });
     });
 });

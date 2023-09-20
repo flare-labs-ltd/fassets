@@ -4,9 +4,10 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interface/IPriceReader.sol";
+import "../interface/IPriceChangeEmitter.sol";
 
 
-contract FakePriceReader is IPriceReader, IERC165 {
+contract FakePriceReader is IPriceReader, IPriceChangeEmitter, IERC165 {
     using SafeCast for *;
 
     struct PricingData {
@@ -56,6 +57,13 @@ contract FakePriceReader is IPriceReader, IERC165 {
         data.trustedTimestamp = block.timestamp.toUint64();
     }
 
+    function finalizePrices()
+        external
+        onlyDataProvider
+    {
+        emit PriceEpochFinalized(address(0), 0);
+    }
+
     function getPrice(string memory _symbol)
         external view
         returns (uint256 _price, uint256 _timestamp, uint256 _priceDecimals)
@@ -80,7 +88,8 @@ contract FakePriceReader is IPriceReader, IERC165 {
         returns (bool)
     {
         return _interfaceId == type(IERC165).interfaceId
-            || _interfaceId == type(IPriceReader).interfaceId;
+            || _interfaceId == type(IPriceReader).interfaceId
+            || _interfaceId == type(IPriceChangeEmitter).interfaceId;
     }
 
     function _getPricingData(string memory _symbol)

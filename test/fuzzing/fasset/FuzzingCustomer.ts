@@ -2,12 +2,13 @@ import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventScope, QualifiedEvent, qualifiedEvent } from "../../../lib/utils/events/ScopedEvents";
 import { EventArgs } from "../../../lib/utils/events/common";
-import { expectErrors, formatBN, minBN, promiseValue } from "../../../lib/utils/helpers";
+import { BN_ZERO, errorIncluded, expectErrors, formatBN, minBN, promiseValue } from "../../../lib/utils/helpers";
 import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { Minter } from "../../integration/utils/Minter";
 import { Redeemer } from "../../integration/utils/Redeemer";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { foreachAsyncParallel, randomChoice, randomInt } from "../../utils/fuzzing-utils";
+import { FAssetSeller } from "./FAssetMarketplace";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 
@@ -84,7 +85,7 @@ export class RedemptionPaymentReceiver extends FuzzingActor {
     }
 }
 
-export class FuzzingCustomer extends FuzzingActor {
+export class FuzzingCustomer extends FuzzingActor implements FAssetSeller {
     minter: Minter;
     redeemer: Redeemer;
 
@@ -166,8 +167,12 @@ export class FuzzingCustomer extends FuzzingActor {
 
     async buyFAssetsFrom(scope: EventScope, receiverAddress: string, amount: BN) {
         const transferAmount = minBN(amount, await this.fAssetBalance());
-        await this.context.fAsset.transfer(receiverAddress, transferAmount, { from: this.address })
-            .catch(e => scope.exitOnExpectedError(e, []));
-        return transferAmount;
+        try {
+            await this.context.fAsset.transfer(receiverAddress, transferAmount, { from: this.address });
+            return transferAmount;
+        } catch (e) {
+            if (errorIncluded(e, ['f-asset balance too low'])) return BN_ZERO;
+            throw e;
+        }
     }
 }

@@ -1,8 +1,9 @@
-import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
 import { FakePriceReaderInstance } from "../../../../typechain-truffle";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { Web3EventDecoder } from "../../../utils/Web3EventDecoder";
 
 const FakePriceReader = artifacts.require('FakePriceReader');
 
@@ -82,16 +83,32 @@ contract(`FakePriceReader.sol; ${getTestFile(__filename)}; FakePriceReader basic
             const pr4 = priceReader.getPriceFromTrustedProviders("USDC");
             await expectRevert(pr4, "price not initialized");
         });
+
+        it("should emit PriceEpochFinalized event", async () => {
+            const res = await priceReader.finalizePrices({ from: provider });
+            expectEvent(res, 'PriceEpochFinalized');
+        });
+
+        it("PriceEpochFinalized event in price reader should have the same signature as the one in FtsoManager", async () => {
+            const res = await priceReader.finalizePrices({ from: provider });
+            const FtsoManagerMock = artifacts.require('FtsoManagerMock');
+            const fakeFtsoManager = await FtsoManagerMock.at(priceReader.address);
+            const decoder = new Web3EventDecoder({ fakeFtsoManager });
+            assert.isTrue(decoder.decodeEvents(res).find(ev => ev.event === 'PriceEpochFinalized') != null, "cannot find correct event signature");
+        });
     });
 
     describe("ERC-165 interface identification", () => {
         it("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as 'IERC165');
             const IPriceReader = artifacts.require("IPriceReader");
+            const IPriceChangeEmitter = artifacts.require("IPriceChangeEmitter");
             const iERC165 = await IERC165.at(priceReader.address);
             const iPriceReader = await IPriceReader.at(priceReader.address);
+            const iPriceChangeEmitter = await IPriceChangeEmitter.at(priceReader.address);
             assert.isTrue(await priceReader.supportsInterface(erc165InterfaceId(iERC165.abi)));
             assert.isTrue(await priceReader.supportsInterface(erc165InterfaceId(iPriceReader.abi)));
+            assert.isTrue(await priceReader.supportsInterface(erc165InterfaceId(iPriceChangeEmitter.abi)));
             assert.isFalse(await priceReader.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
