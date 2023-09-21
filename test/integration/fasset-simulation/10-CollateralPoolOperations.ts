@@ -613,6 +613,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(userFassetFees2, await agent.collateralPool.fAssetFeesOf(user2));
         const crt3 = await minter.reserveCollateral(agent.vaultAddress, lots2);
         const txHash3 = await minter.performMintingPayment(crt3);
+        await minter.executeMinting(crt3, txHash3);
         //Check pool fees after minting
         const poolVirtualFassetFees3 = (await agent.collateralPool.totalFAssetFees()).add(await agent.collateralPool.totalFAssetFeeDebt());
         const totalPoolTokens3 = await agent.collateralPoolToken.totalSupply();
@@ -681,6 +682,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const lots = 3;
         const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
         const txHash = await minter.performMintingPayment(crt);
+        await minter.executeMinting(crt, txHash);
         //Test that user2 gets proportionally a lot more fasset fees than vault or the other user
         const userFassetFees = toBN(await agent.collateralPool.fAssetFeesOf(user));
         const user2FassetFees = toBN(await agent.collateralPool.fAssetFeesOf(user2));
