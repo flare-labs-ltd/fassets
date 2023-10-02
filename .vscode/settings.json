@@ -7,5 +7,8 @@
         "!reference sequence"
     ],
     "slither.solcPath": "",
-    "slither.hiddenDetectors": []
+    "slither.hiddenDetectors": [],
+    "yaml.schemas": {
+        "https://gitpod.io/schemas/gitpod-schema.json": "file:///workspace/fasset/.gitpod.yml"
+    }
 }
