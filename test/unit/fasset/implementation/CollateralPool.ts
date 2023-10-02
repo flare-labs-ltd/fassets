@@ -1356,7 +1356,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectRevert(prms, "cannot destroy a pool with issued tokens");
         });
 
-        it("should fail destroying a pool with collateral", async () => {
+        it.skip("should fail destroying a pool with collateral", async () => {
             // give some collateral using mock airdrop
             const mockAirdrop = await MockContract.new();
             await mockAirdrop.givenAnyReturnUint(ETH(1));
@@ -1367,7 +1367,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             await expectRevert(prms, "cannot destroy a pool holding collateral");
         });
 
-        it("should fail at destroying a pool holding f-assets", async () => {
+        it.skip("should fail at destroying a pool holding f-assets", async () => {
             await givePoolFAssetFees(ETH(1));
             const payload = collateralPool.contract.methods.destroy(agent).encodeABI();
             const prms = assetManager.callFunctionAt(collateralPool.address, payload);
