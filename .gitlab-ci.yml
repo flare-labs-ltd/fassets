@@ -9,7 +9,7 @@ stages:
 - test
 
 include:
-- template: Jobs/SAST.gitlab-ci.yml
+- template: Jobs/SAST.latest.gitlab-ci.yml
 
 sast:
   needs: []
