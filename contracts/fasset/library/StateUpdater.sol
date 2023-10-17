@@ -10,7 +10,7 @@ import "./TransactionAttestation.sol";
 library StateUpdater {
     using SafeCast for uint256;
 
-    function updateCurrentBlock(ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof)
+    function updateCurrentBlock(ConfirmedBlockHeightExists.Proof calldata _proof)
         external
     {
         TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "../generated/interface/ISCProofVerifier.sol";
+import "../stateConnector/interface/ISCProofVerifier.sol";
 import "./data/AssetManagerSettings.sol";
 import "./data/CollateralType.sol";
 import "./data/AgentInfo.sol";
@@ -105,7 +105,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _proof proof that a block with given number and timestamp exists
      */
     function updateCurrentBlock(
-        ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof
+        ConfirmedBlockHeightExists.Proof calldata _proof
     ) external;
 
     /**
@@ -159,7 +159,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _payment proof of payment on the underlying chain
      */
     function proveUnderlyingAddressEOA(
-        ISCProofVerifier.Payment calldata _payment
+        Payment.Proof calldata _payment
     ) external;
 
     /**
@@ -296,7 +296,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _agentVault agent vault address
      */
     function confirmTopupPayment(
-        ISCProofVerifier.Payment calldata _payment,
+        Payment.Proof calldata _payment,
         address _agentVault
     ) external;
 
@@ -325,7 +325,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _agentVault agent vault address
      */
     function confirmUnderlyingWithdrawal(
-        ISCProofVerifier.Payment calldata _payment,
+        Payment.Proof calldata _payment,
         address _agentVault
     ) external;
 
@@ -501,7 +501,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _collateralReservationId collateral reservation id
      */
     function executeMinting(
-        ISCProofVerifier.Payment calldata _payment,
+        Payment.Proof calldata _payment,
         uint256 _collateralReservationId
     ) external;
 
@@ -514,7 +514,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _collateralReservationId id of a collateral reservation created by the minter
      */
     function mintingPaymentDefault(
-        ISCProofVerifier.ReferencedPaymentNonexistence calldata _proof,
+        ReferencedPaymentNonexistence.Proof calldata _proof,
         uint256 _collateralReservationId
     ) external;
 
@@ -531,7 +531,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _collateralReservationId collateral reservation id
      */
     function unstickMinting(
-        ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof,
+        ConfirmedBlockHeightExists.Proof calldata _proof,
         uint256 _collateralReservationId
     ) external payable;
 
@@ -547,7 +547,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _lots number of lots to mint
      */
     function selfMint(
-        ISCProofVerifier.Payment calldata _payment,
+        Payment.Proof calldata _payment,
         address _agentVault,
         uint256 _lots
     ) external;
@@ -594,7 +594,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _redemptionRequestId id of an existing redemption request
      */
     function confirmRedemptionPayment(
-        ISCProofVerifier.Payment calldata _payment,
+        Payment.Proof calldata _payment,
         uint256 _redemptionRequestId
     ) external;
 
@@ -609,7 +609,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _redemptionRequestId id of an existing redemption request
      */
     function redemptionPaymentDefault(
-        ISCProofVerifier.ReferencedPaymentNonexistence calldata _proof,
+        ReferencedPaymentNonexistence.Proof calldata _proof,
         uint256 _redemptionRequestId
     ) external;
 
@@ -624,7 +624,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _redemptionRequestId id of an existing, but already defaulted, redemption request
      */
     function finishRedemptionWithoutPayment(
-        ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof,
+        ConfirmedBlockHeightExists.Proof calldata _proof,
         uint256 _redemptionRequestId
     ) external;
 
@@ -725,7 +725,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _agentVault agent vault address
      */
     function illegalPaymentChallenge(
-        ISCProofVerifier.BalanceDecreasingTransaction calldata _transaction,
+        BalanceDecreasingTransaction.Proof calldata _transaction,
         address _agentVault
     ) external;
 
@@ -739,8 +739,8 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _agentVault agent vault address
      */
     function doublePaymentChallenge(
-        ISCProofVerifier.BalanceDecreasingTransaction calldata _payment1,
-        ISCProofVerifier.BalanceDecreasingTransaction calldata _payment2,
+        BalanceDecreasingTransaction.Proof calldata _payment1,
+        BalanceDecreasingTransaction.Proof calldata _payment2,
         address _agentVault
     ) external;
 
@@ -754,7 +754,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @param _agentVault agent vault address
      */
     function freeBalanceNegativeChallenge(
-        ISCProofVerifier.BalanceDecreasingTransaction[] calldata _payments,
+        BalanceDecreasingTransaction.Proof[] calldata _payments,
         address _agentVault
     ) external;
 }

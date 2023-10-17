@@ -65,6 +65,7 @@
     "dotenv": "16.3.1",
     "eslint": "8.45.0",
     "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#flare-distribution-to-delegators",
+    "state-connector-protocol": "file:../state-connector-protocol",
     "hardhat": "2.17.0",
     "solhint": "3.4.1",
     "solidity-coverage": "0.8.4"

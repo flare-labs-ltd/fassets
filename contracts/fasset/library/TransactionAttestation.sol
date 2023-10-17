@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../generated/interface/ISCProofVerifier.sol";
+import "../../stateConnector/interface/ISCProofVerifier.sol";
 import "./data/AssetManagerState.sol";
 
 
@@ -13,58 +13,58 @@ library TransactionAttestation {
     uint8 internal constant PAYMENT_BLOCKED = 2;
 
     function verifyPaymentSuccess(
-        ISCProofVerifier.Payment calldata _attestationData
+        Payment.Proof calldata Payment.Proof
     )
         internal view
     {
-        require(_attestationData.status == PAYMENT_SUCCESS, "payment failed");
-        verifyPayment(_attestationData);
+        require(_proof.data.responseBody.status == PAYMENT_SUCCESS, "payment failed");
+        verifyPayment(_proof);
     }
 
     function verifyPayment(
-        ISCProofVerifier.Payment calldata _attestationData
+        Payment.Proof calldata _proof
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
         ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
-        require(scProofVerifier.verifyPayment(_settings.chainId, _attestationData),
-            "legal payment not proved");
-        require(_confirmationCannotBeCleanedUp(_attestationData.blockTimestamp), "verified transaction too old");
+        require(_proof.data.sourceId == _settings.chainId, "invalid chain");
+        require(scProofVerifier.verifyPayment(_proof), "legal payment not proved");
+        require(_confirmationCannotBeCleanedUp(_proof.blockTimestamp), "verified transaction too old");
     }
 
     function verifyBalanceDecreasingTransaction(
-        ISCProofVerifier.BalanceDecreasingTransaction calldata _attestationData
+        BalanceDecreasingTransaction.Proof calldata _proof
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
         ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
-        require(scProofVerifier.verifyBalanceDecreasingTransaction(_settings.chainId, _attestationData),
-            "transaction not proved");
-        require(_confirmationCannotBeCleanedUp(_attestationData.blockTimestamp), "verified transaction too old");
+        require(_proof.data.sourceId == _settings.chainId, "invalid chain");
+        require(scProofVerifier.verifyBalanceDecreasingTransaction(_proof), "transaction not proved");
+        require(_confirmationCannotBeCleanedUp(_proof.blockTimestamp), "verified transaction too old");
     }
 
     function verifyConfirmedBlockHeightExists(
-        ISCProofVerifier.ConfirmedBlockHeightExists calldata _attestationData
+        ConfirmedBlockHeightExists.Proof calldata _proof
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
         ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
-        require(scProofVerifier.verifyConfirmedBlockHeightExists(_settings.chainId, _attestationData),
-            "block height not proved");
+        require(_proof.data.sourceId == _settings.chainId, "invalid chain");
+        require(scProofVerifier.verifyConfirmedBlockHeightExists(_proof), "block height not proved");
     }
 
     function verifyReferencedPaymentNonexistence(
-        ISCProofVerifier.ReferencedPaymentNonexistence calldata _attestationData
+        ReferencedPaymentNonexistence.Proof calldata _proof
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
         ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
-        require(scProofVerifier.verifyReferencedPaymentNonexistence(_settings.chainId, _attestationData),
-            "non-payment not proved");
+        require(_proof.data.sourceId == _settings.chainId, "invalid chain");
+        require(scProofVerifier.verifyReferencedPaymentNonexistence(_proof), "non-payment not proved");
     }
 
     function _confirmationCannotBeCleanedUp(uint256 timestamp) private view returns (bool) {

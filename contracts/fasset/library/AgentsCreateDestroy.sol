@@ -59,7 +59,7 @@ library AgentsCreateDestroy {
     }
 
     function claimAddressWithEOAProof(
-        ISCProofVerifier.Payment calldata _payment
+        Payment.Proof calldata _payment
     )
         external
     {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../generated/interface/ISCProofVerifier.sol";
+import "../../stateConnector/interface/ISCProofVerifier.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Redemptions.sol";
@@ -14,7 +14,7 @@ library RedemptionConfirmations {
     using PaymentConfirmations for PaymentConfirmations.State;
 
     function confirmRedemptionPayment(
-        ISCProofVerifier.Payment calldata _payment,
+        Payment.Proof calldata _payment,
         uint64 _redemptionRequestId
     )
         external
@@ -82,7 +82,7 @@ library RedemptionConfirmations {
     function _othersCanConfirmPayment(
         Agent.State storage _agent,
         Redemption.Request storage _request,
-        ISCProofVerifier.Payment calldata _payment
+        Payment.Proof calldata _payment
     )
         private view
         returns (bool)
@@ -102,7 +102,7 @@ library RedemptionConfirmations {
 
     function _validatePayment(
         Redemption.Request storage request,
-        ISCProofVerifier.Payment calldata _payment
+        Payment.Proof calldata _payment
     )
         private view
         returns (bool _paymentValid, string memory _failureReason)
