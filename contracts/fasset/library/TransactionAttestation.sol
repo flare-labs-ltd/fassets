@@ -13,7 +13,7 @@ library TransactionAttestation {
     uint8 internal constant PAYMENT_BLOCKED = 2;
 
     function verifyPaymentSuccess(
-        Payment.Proof calldata Payment.Proof
+        Payment.Proof calldata _proof
     )
         internal view
     {
@@ -30,7 +30,8 @@ library TransactionAttestation {
         ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
         require(_proof.data.sourceId == _settings.chainId, "invalid chain");
         require(scProofVerifier.verifyPayment(_proof), "legal payment not proved");
-        require(_confirmationCannotBeCleanedUp(_proof.blockTimestamp), "verified transaction too old");
+        require(_confirmationCannotBeCleanedUp(_proof.data.responseBody.blockTimestamp),
+            "verified transaction too old");
     }
 
     function verifyBalanceDecreasingTransaction(
@@ -42,7 +43,8 @@ library TransactionAttestation {
         ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
         require(_proof.data.sourceId == _settings.chainId, "invalid chain");
         require(scProofVerifier.verifyBalanceDecreasingTransaction(_proof), "transaction not proved");
-        require(_confirmationCannotBeCleanedUp(_proof.blockTimestamp), "verified transaction too old");
+        require(_confirmationCannotBeCleanedUp(_proof.data.responseBody.blockTimestamp),
+            "verified transaction too old");
     }
 
     function verifyConfirmedBlockHeightExists(

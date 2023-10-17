@@ -28,14 +28,15 @@ library RedemptionFailures {
         // verify transaction
         TransactionAttestation.verifyReferencedPaymentNonexistence(_nonPayment);
         // check non-payment proof
-        require(_nonPayment.paymentReference == PaymentReference.redemption(_redemptionRequestId) &&
-            _nonPayment.destinationAddressHash == request.redeemerUnderlyingAddressHash &&
-            _nonPayment.amount == request.underlyingValueUBA - request.underlyingFeeUBA,
+        require(_nonPayment.data.requestBody.standardPaymentReference ==
+                PaymentReference.redemption(_redemptionRequestId) &&
+            _nonPayment.data.requestBody.destinationAddressHash == request.redeemerUnderlyingAddressHash &&
+            _nonPayment.data.requestBody.amount == request.underlyingValueUBA - request.underlyingFeeUBA,
             "redemption non-payment mismatch");
-        require(_nonPayment.firstOverflowBlockNumber > request.lastUnderlyingBlock &&
-            _nonPayment.firstOverflowBlockTimestamp > request.lastUnderlyingTimestamp,
+        require(_nonPayment.data.responseBody.firstOverflowBlockNumber > request.lastUnderlyingBlock &&
+            _nonPayment.data.responseBody.firstOverflowBlockTimestamp > request.lastUnderlyingTimestamp,
             "redemption default too early");
-        require(_nonPayment.lowerBoundaryBlockNumber <= request.firstUnderlyingBlock,
+        require(_nonPayment.data.requestBody.minimalBlockNumber <= request.firstUnderlyingBlock,
             "redemption non-payment proof window too short");
         // We allow only redeemers or agents to trigger redemption default, since they may want
         // to do it at some particular time. (Agent might want to call default to unstick redemption when
@@ -66,9 +67,10 @@ library RedemptionFailures {
             TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
             // if non-payment proof is still available, should use redemptionPaymentDefault() instead
             // (the last inequality tests that the query window in proof is at least as big as configured)
-            require(_proof.lowestQueryWindowBlockNumber > request.lastUnderlyingBlock
-                && _proof.lowestQueryWindowBlockTimestamp > request.lastUnderlyingTimestamp
-                && _proof.lowestQueryWindowBlockTimestamp + settings.attestationWindowSeconds <= _proof.blockTimestamp,
+            require(_proof.data.responseBody.lowestQueryWindowBlockNumber > request.lastUnderlyingBlock
+                && _proof.data.responseBody.lowestQueryWindowBlockTimestamp > request.lastUnderlyingTimestamp
+                && _proof.data.responseBody.lowestQueryWindowBlockTimestamp + settings.attestationWindowSeconds <=
+                    _proof.data.responseBody.blockTimestamp,
                 "should default first");
             executeDefaultPayment(agent, request, _redemptionRequestId);
         }

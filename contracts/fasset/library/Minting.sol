@@ -32,19 +32,19 @@ library Minting {
         // becomes unresponsive
         require(msg.sender == crt.minter || Agents.isOwner(agent, msg.sender),
             "only minter or agent");
-        require(_payment.paymentReference == PaymentReference.minting(_crtId),
+        require(_payment.data.responseBody.standardPaymentReference == PaymentReference.minting(_crtId),
             "invalid minting reference");
-        require(_payment.receivingAddressHash == agent.underlyingAddressHash,
+        require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
             "not minting agent's address");
         uint256 mintValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
-        require(_payment.receivedAmount >= SafeCast.toInt256(mintValueUBA + crt.underlyingFeeUBA),
+        require(_payment.data.responseBody.receivedAmount >= SafeCast.toInt256(mintValueUBA + crt.underlyingFeeUBA),
             "minting payment too small");
         // we do not allow payments before the underlying block at requests, because the payer should have guessed
         // the payment reference, which is good for nothing except attack attempts
-        require(_payment.blockNumber >= crt.firstUnderlyingBlock,
+        require(_payment.data.responseBody.blockNumber >= crt.firstUnderlyingBlock,
             "minting payment too old");
         // execute minting
-        _performMinting(agent, _crtId, crt.minter, crt.valueAMG, uint256(_payment.receivedAmount),
+        _performMinting(agent, _crtId, crt.minter, crt.valueAMG, uint256(_payment.data.responseBody.receivedAmount),
             calculatePoolFee(agent, crt.underlyingFeeUBA));
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
         Agents.burnDirectNAT(crt.reservationFeeNatWei);
@@ -72,18 +72,18 @@ library Minting {
         checkMintingCap(valueAMG);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 poolFeeUBA = calculatePoolFee(agent, mintValueUBA.mulBips(agent.feeBIPS));
-        require(_payment.paymentReference == PaymentReference.selfMint(_agentVault),
+        require(_payment.data.responseBody.standardPaymentReference == PaymentReference.selfMint(_agentVault),
             "invalid self-mint reference");
-        require(_payment.receivingAddressHash == agent.underlyingAddressHash,
+        require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
             "self-mint not agent's address");
-        require(_payment.receivedAmount >= SafeCast.toInt256(mintValueUBA + poolFeeUBA),
+        require(_payment.data.responseBody.receivedAmount >= SafeCast.toInt256(mintValueUBA + poolFeeUBA),
             "self-mint payment too small");
-        require(_payment.blockNumber >= agent.underlyingBlockAtCreation,
+        require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
             "self-mint payment too old");
         state.paymentConfirmations.confirmIncomingPayment(_payment);
         // case _lots==0 is allowed for self minting because if lot size increases between the underlying payment
         // and selfMint call, the paid assets would otherwise be stuck; in this way they are converted to free balance
-        uint256 receivedAmount = uint256(_payment.receivedAmount);  // guarded by require
+        uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);  // guarded by require
         if (_lots > 0) {
             _performMinting(agent, 0, msg.sender, valueAMG, receivedAmount, poolFeeUBA);
         } else {

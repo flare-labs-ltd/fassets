@@ -30,16 +30,16 @@ library UnderlyingBalance {
         Agents.requireAgentVaultOwner(_agentVault);
         AssetManagerState.State storage state = AssetManagerState.get();
         TransactionAttestation.verifyPaymentSuccess(_payment);
-        require(_payment.receivingAddressHash == agent.underlyingAddressHash,
+        require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
             "not underlying address");
-        require(_payment.paymentReference == PaymentReference.topup(_agentVault),
+        require(_payment.data.responseBody.standardPaymentReference == PaymentReference.topup(_agentVault),
             "not a topup payment");
-        require(_payment.blockNumber >= agent.underlyingBlockAtCreation,
+        require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
             "topup before agent created");
         state.paymentConfirmations.confirmIncomingPayment(_payment);
-        uint256 amountUBA = SafeCast.toUint256(_payment.receivedAmount);
+        uint256 amountUBA = SafeCast.toUint256(_payment.data.responseBody.receivedAmount);
         increaseBalance(agent, amountUBA.toUint128());
-        emit AMEvents.UnderlyingBalanceToppedUp(_agentVault, _payment.transactionHash, amountUBA);
+        emit AMEvents.UnderlyingBalanceToppedUp(_agentVault, _payment.data.requestBody.transactionId, amountUBA);
     }
 
     function updateBalance(

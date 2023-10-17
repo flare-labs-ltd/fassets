@@ -48,15 +48,15 @@ library UnderlyingAddressOwnership {
     )
         internal
     {
-        assert(_payment.sourceAddressHash != 0);
-        Ownership storage ownership = _state.ownership[_payment.sourceAddressHash];
+        assert(_payment.data.responseBody.sourceAddressHash != 0);
+        Ownership storage ownership = _state.ownership[_payment.data.responseBody.sourceAddressHash];
         require(ownership.owner == address(0), "address already claimed");
-        require(_payment.paymentReference == PaymentReference.addressOwnership(_owner),
+        require(_payment.data.responseBody.standardPaymentReference == PaymentReference.addressOwnership(_owner),
             "invalid address ownership proof");
         PaymentConfirmations.confirmSourceDecreasingTransaction(_paymentVerification, _payment);
         ownership.owner = _owner;
         ownership.provedEOA = true;
-        ownership.underlyingBlockOfEOAProof = _payment.blockNumber;
+        ownership.underlyingBlockOfEOAProof = _payment.data.responseBody.blockNumber;
     }
 
     function underlyingBlockOfEOAProof(

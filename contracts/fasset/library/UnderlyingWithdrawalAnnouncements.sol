@@ -44,8 +44,9 @@ library UnderlyingWithdrawalAnnouncements {
         uint64 announcementId = agent.announcedUnderlyingWithdrawalId;
         require(announcementId != 0, "no active announcement");
         bytes32 paymentReference = PaymentReference.announcedWithdrawal(announcementId);
-        require(_payment.paymentReference == paymentReference, "wrong announced pmt reference");
-        require(_payment.sourceAddressHash == agent.underlyingAddressHash,
+        require(_payment.data.responseBody.standardPaymentReference == paymentReference,
+            "wrong announced pmt reference");
+        require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
             "wrong announced pmt source");
         require(isAgent || block.timestamp >
                 agent.underlyingWithdrawalAnnouncedAt + state.settings.confirmationByOthersAfterSeconds,
@@ -58,15 +59,15 @@ library UnderlyingWithdrawalAnnouncements {
         // clear active withdrawal announcement
         agent.announcedUnderlyingWithdrawalId = 0;
         // update free underlying balance and trigger liquidation if negative
-        UnderlyingBalance.updateBalance(agent, -_payment.spentAmount);
+        UnderlyingBalance.updateBalance(agent, -_payment.data.responseBody.spentAmount);
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
             Agents.payoutFromVault(agent, msg.sender,
                 Agents.convertUSD5ToVaultCollateralWei(agent, state.settings.confirmationByOthersRewardUSD5));
         }
         // send event
-        emit AMEvents.UnderlyingWithdrawalConfirmed(_agentVault, _payment.spentAmount,
-            _payment.transactionHash, announcementId);
+        emit AMEvents.UnderlyingWithdrawalConfirmed(_agentVault, _payment.data.responseBody.spentAmount,
+            _payment.data.requestBody.transactionId, announcementId);
     }
 
     function cancelUnderlyingWithdrawal(

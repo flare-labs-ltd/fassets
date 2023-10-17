@@ -28,7 +28,7 @@ library PaymentConfirmations {
     )
         internal
     {
-        _recordPaymentVerification(_state, _payment.transactionHash);
+        _recordPaymentVerification(_state, _payment.data.requestBody.transactionId);
     }
 
     /**
@@ -41,7 +41,9 @@ library PaymentConfirmations {
     )
         internal
     {
-        _recordPaymentVerification(_state, transactionKey(_payment.sourceAddressHash, _payment.transactionHash));
+        bytes32 txKey = transactionKey(_payment.data.responseBody.sourceAddressHash,
+            _payment.data.requestBody.transactionId);
+        _recordPaymentVerification(_state, txKey);
     }
 
     /**
@@ -54,7 +56,8 @@ library PaymentConfirmations {
         internal view
         returns (bool)
     {
-        bytes32 txKey = transactionKey(_transaction.sourceAddressHash, _transaction.transactionHash);
+        bytes32 txKey = transactionKey(_transaction.data.responseBody.sourceAddressHash,
+            _transaction.data.requestBody.transactionId);
         return _state.verifiedPayments[txKey] != 0;
     }
 

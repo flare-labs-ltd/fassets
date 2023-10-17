@@ -76,7 +76,8 @@ library AgentsCreateDestroy {
         // Since we have a proof of the block N, current block is at least N+1.
         // Payment proof doesn't include confirmation blocks, so we set it to 0. The update happens only when
         // block and timestamp increase anyway, so this cannot make the block number or timestamp approximation worse.
-        StateUpdater.updateCurrentBlock(_payment.blockNumber + 1, _payment.blockTimestamp, 0);
+        StateUpdater.updateCurrentBlock(_payment.data.responseBody.blockNumber + 1,
+            _payment.data.responseBody.blockTimestamp, 0);
     }
 
     function createAgentVault(

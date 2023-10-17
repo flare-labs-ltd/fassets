@@ -30,11 +30,12 @@ library RedemptionConfirmations {
         // verify transaction
         TransactionAttestation.verifyPayment(_payment);
         // payment reference must match
-        require(_payment.paymentReference == PaymentReference.redemption(_redemptionRequestId),
+        require(_payment.data.responseBody.standardPaymentReference ==
+                PaymentReference.redemption(_redemptionRequestId),
             "invalid redemption reference");
         // we do not allow payments before the underlying block at requests, because the payer should have guessed
         // the payment reference, which is good for nothing except attack attempts
-        require(_payment.blockNumber >= request.firstUnderlyingBlock,
+        require(_payment.data.responseBody.blockNumber >= request.firstUnderlyingBlock,
             "redemption payment too old");
         // Valid payments are to correct destination, in time, and must have value at least the request payment value.
         (bool paymentValid, string memory failureReason) = _validatePayment(request, _payment);
@@ -42,17 +43,19 @@ library RedemptionConfirmations {
             // release agent collateral
             Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
             // notify
-            if (_payment.status == TransactionAttestation.PAYMENT_SUCCESS) {
-                emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer, _payment.transactionHash,
-                    request.underlyingValueUBA, _payment.spentAmount,  _redemptionRequestId);
+            if (_payment.data.responseBody.status == TransactionAttestation.PAYMENT_SUCCESS) {
+                emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
+                    _payment.data.requestBody.transactionId, request.underlyingValueUBA,
+                    _payment.data.responseBody.spentAmount,  _redemptionRequestId);
             } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
-                emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer, _payment.transactionHash,
-                    request.underlyingValueUBA, _payment.spentAmount, _redemptionRequestId);
+                emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,
+                    _payment.data.requestBody.transactionId, request.underlyingValueUBA,
+                    _payment.data.responseBody.spentAmount, _redemptionRequestId);
             }
         } else {
             // We only need failure reports from agent's underlying address, so disallow others to
             // lower the attack surface in case of report from other address.
-            require(_payment.sourceAddressHash == agent.underlyingAddressHash,
+            require(_payment.data.responseBody.sourceAddressHash == agent.underlyingAddressHash,
                 "confirm failed payment only from agent's address");
             // We do not allow retrying failed payments, so just default here if not defaulted already.
             // This will also release the remaining agent's collateral.
@@ -60,11 +63,12 @@ library RedemptionConfirmations {
                 RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
             }
             // notify
-            emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer, _payment.transactionHash,
-                _payment.spentAmount, _redemptionRequestId, failureReason);
+            emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer,
+                _payment.data.requestBody.transactionId, _payment.data.responseBody.spentAmount,
+                _redemptionRequestId, failureReason);
         }
         // agent has finished with redemption - account for used underlying balance and free the remainder
-        UnderlyingBalance.updateBalance(agent, -_payment.spentAmount);
+        UnderlyingBalance.updateBalance(agent, -_payment.data.responseBody.spentAmount);
         // record source decreasing transaction so that it cannot be challenged
         AssetManagerState.State storage state = AssetManagerState.get();
         state.paymentConfirmations.confirmSourceDecreasingTransaction(_payment);
@@ -97,7 +101,7 @@ library RedemptionConfirmations {
         // - we really only need 3rd party confirmations for payments from agent's underlying address,
         //   to properly account for underlying free balance (unless payment is failed, the collateral also gets
         //   unlocked, but that only benefits the agent, so the agent should take care of that)
-        return _payment.sourceAddressHash == _agent.underlyingAddressHash;
+        return _payment.data.responseBody.sourceAddressHash == _agent.underlyingAddressHash;
     }
 
     function _validatePayment(
@@ -108,17 +112,17 @@ library RedemptionConfirmations {
         returns (bool _paymentValid, string memory _failureReason)
     {
         uint256 paymentValueUBA = uint256(request.underlyingValueUBA) - request.underlyingFeeUBA;
-        if (_payment.status == TransactionAttestation.PAYMENT_FAILED) {
+        if (_payment.data.responseBody.status == TransactionAttestation.PAYMENT_FAILED) {
             return (false, "transaction failed");
-        } else if (_payment.receivingAddressHash != request.redeemerUnderlyingAddressHash) {
+        } else if (_payment.data.responseBody.receivingAddressHash != request.redeemerUnderlyingAddressHash) {
             return (false, "not redeemer's address");
-        } else if (_payment.receivedAmount < int256(paymentValueUBA)) { // safe, paymentValueUBA < 2**128
+        } else if (_payment.data.responseBody.receivedAmount < int256(paymentValueUBA)) { // paymentValueUBA < 2**128
             // for blocked payments, receivedAmount == 0, but it's still receiver's fault
-            if (_payment.status != TransactionAttestation.PAYMENT_BLOCKED) {
+            if (_payment.data.responseBody.status != TransactionAttestation.PAYMENT_BLOCKED) {
                 return (false, "redemption payment too small");
             }
-        } else if (_payment.blockNumber > request.lastUnderlyingBlock &&
-            _payment.blockTimestamp > request.lastUnderlyingTimestamp) {
+        } else if (_payment.data.responseBody.blockNumber > request.lastUnderlyingBlock &&
+            _payment.data.responseBody.blockTimestamp > request.lastUnderlyingTimestamp) {
             return (false, "redemption payment too late");
         } else if (request.status == Redemption.Status.DEFAULTED) {
             // Redemption is already defaulted, although the payment was not too late.

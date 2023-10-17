@@ -14,7 +14,8 @@ library StateUpdater {
         external
     {
         TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
-        updateCurrentBlock(_proof.blockNumber, _proof.blockTimestamp, _proof.numberOfConfirmations);
+        updateCurrentBlock(_proof.data.requestBody.blockNumber, _proof.data.responseBody.blockTimestamp,
+            _proof.data.responseBody.numberOfConfirmations);
     }
 
     function updateCurrentBlock(uint64 _blockNumber, uint64 _blockTimestamp, uint64 _numberOfConfirmations)
