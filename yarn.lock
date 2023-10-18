@@ -8943,9 +8943,9 @@ stacktrace-parser@^0.1.10:
   dependencies:
     type-fest "^0.7.1"
 
-"state-connector-protocol@git+https://gitlab.com/flarenetwork/state-connector-protocol.git#fb328b1abced8becaae9e3425f1616b7af291ef3":
+"state-connector-protocol@git+https://gitlab.com/flarenetwork/state-connector-protocol.git#0d075f73894709c81188e68c273169f4203343dd":
   version "1.0.0"
-  resolved "git+https://gitlab.com/flarenetwork/state-connector-protocol.git#fb328b1abced8becaae9e3425f1616b7af291ef3"
+  resolved "git+https://gitlab.com/flarenetwork/state-connector-protocol.git#0d075f73894709c81188e68c273169f4203343dd"
   dependencies:
     "@openzeppelin/contracts" "^4.9.3"
     ethers "^6.7.1"
