@@ -148,10 +148,10 @@ export interface AssetManagerParameters {
     // F-asset (chain) specific parameters
 
     /**
-     * Chain id as used in the state connector.
+     * Chain name; must match the state connector chainId, when encoded as bytes.
      * @minimum 0
      */
-    chainId: integer;
+    chainName: string;
 
     /**
      * Name of the original asset on the underlying chain.

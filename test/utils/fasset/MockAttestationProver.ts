@@ -1,8 +1,7 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { TxInputOutput, TX_FAILED } from "../../../lib/underlying-chain/interfaces/IBlockChain";
-import { BN_ZERO, toBN } from "../../../lib/utils/helpers";
-import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { DHBalanceDecreasingTransaction, DHConfirmedBlockHeightExists, DHPayment, DHReferencedPaymentNonexistence } from "../../../lib/verification/generated/attestation-hash-types";
+import { BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "state-connector-protocol";
+import { TX_FAILED, TxInputOutput } from "../../../lib/underlying-chain/interfaces/IBlockChain";
+import { BN_ZERO } from "../../../lib/utils/helpers";
 import { MockChain, MockChainTransaction } from "./MockChain";
 
 export class MockAttestationProverError extends Error {
@@ -33,64 +32,50 @@ export class MockAttestationProver {
         public queryWindowSeconds: number,
     ) { }
 
-    payment(transactionHash: string, transactionBlockNumber: number, inUtxo: number, utxo: number): DHPayment {
-        const { transaction, block } = this.findTransaction('payment', transactionHash, transactionBlockNumber);
-        const sourceAddressHash = web3.utils.keccak256(transaction.inputs[inUtxo][0]);
-        const receivingAddressHash = web3.utils.keccak256(transaction.outputs[utxo][0]);
+    payment(transactionHash: string, inUtxo: number, utxo: number): Payment.ResponseBody {
+        const { transaction, block } = this.findTransaction('payment', transactionHash);
+        const sourceAddressHash = web3.utils.keccak256(transaction.inputs[Number(inUtxo)][0]);
+        const receivingAddressHash = web3.utils.keccak256(transaction.outputs[Number(utxo)][0]);
         const spent = totalSpentValue(transaction, sourceAddressHash);
         const received = totalReceivedValue(transaction, receivingAddressHash);
-        const proof: DHPayment = {
-            stateConnectorRound: 0, // filled later
-            blockNumber: toBN(block.number),
-            blockTimestamp: toBN(block.timestamp),
-            transactionHash: transaction.hash,
-            inUtxo: toBN(inUtxo),
-            utxo: toBN(utxo),
+        return {
+            blockNumber: String(block.number),
+            blockTimestamp: String(block.timestamp),
             sourceAddressHash: sourceAddressHash,
-            intendedSourceAddressHash: sourceAddressHash,
             receivingAddressHash: receivingAddressHash,
             intendedReceivingAddressHash: receivingAddressHash,
-            paymentReference: transaction.reference ?? constants.ZERO_BYTES32,
-            spentAmount: spent,
-            intendedSpentAmount: spent,
-            receivedAmount: received,
-            intendedReceivedAmount: received,
+            standardPaymentReference: transaction.reference ?? constants.ZERO_BYTES32,
+            spentAmount: String(spent),
+            intendedSpentAmount: String(spent),
+            receivedAmount: String(received),
+            intendedReceivedAmount: String(received),
             oneToOne: false,    // not needed
-            status: toBN(transaction.status)
+            status: String(transaction.status)
         };
-        return web3DeepNormalize<DHPayment>(proof);
     }
 
-    balanceDecreasingTransaction(transactionHash: string, transactionBlockNumber: number, sourceAddressIndicator: string): DHBalanceDecreasingTransaction {
-        const { transaction, block } = this.findTransaction('balanceDecreasingTransaction', transactionHash, transactionBlockNumber);
+    balanceDecreasingTransaction(transactionHash: string, sourceAddressIndicator: string): BalanceDecreasingTransaction.ResponseBody {
+        const { transaction, block } = this.findTransaction('balanceDecreasingTransaction', transactionHash);
         const sourceAddressHash = sourceAddressIndicator.length >= 10
             ? sourceAddressIndicator                                                        // sourceAddressIndicator can be hash of the address ...
             : web3.utils.keccak256(transaction.inputs[Number(sourceAddressIndicator)][0]);  // ... or hex encoded utxo number
         const spent = totalSpentValue(transaction, sourceAddressHash);
-        const proof: DHBalanceDecreasingTransaction = {
-            stateConnectorRound: 0, // filled later
-            blockNumber: toBN(block.number),
-            blockTimestamp: toBN(block.timestamp),
-            transactionHash: transaction.hash,
+        return {
+            blockNumber: String(block.number),
+            blockTimestamp: String(block.timestamp),
             sourceAddressHash: sourceAddressHash,
-            sourceAddressIndicator: sourceAddressIndicator,
-            spentAmount: spent,
-            paymentReference: transaction.reference ?? constants.ZERO_BYTES32,
+            spentAmount: String(spent),
+            standardPaymentReference: transaction.reference ?? constants.ZERO_BYTES32,
         };
-        return web3DeepNormalize(proof);
     }
 
-    private findTransaction(method: string, transactionHash: string, transactionBlockNumber: number) {
+    private findTransaction(method: string, transactionHash: string) {
         // find transaction
         const transactionIndex = this.chain.transactionIndex[transactionHash];
         if (transactionIndex == null) {
             throw new MockAttestationProverError(`AttestationProver.${method}: transaction hash not found ${transactionHash}`);
         }
         const [blockNumber, txInd] = transactionIndex;
-        // check required block
-        if (blockNumber !== transactionBlockNumber) {
-            throw new MockAttestationProverError(`AttestationProver.${method}: transaction block mismatch: required ${transactionBlockNumber} != actual ${blockNumber}`);
-        }
         // check finalization block
         const finalizationBlockNo = this.chain.blockHeight();
         if (blockNumber + this.chain.finalizationBlocks > finalizationBlockNo) {
@@ -102,7 +87,7 @@ export class MockAttestationProver {
         return { transaction, block };
     }
 
-    referencedPaymentNonexistence(destinationAddressHash: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number): DHReferencedPaymentNonexistence {
+    referencedPaymentNonexistence(destinationAddressHash: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number): ReferencedPaymentNonexistence.ResponseBody {
         // if payment is found, return null
         const [found, lowerBoundaryBlockNumber, overflowBlock] = this.findReferencedPayment(destinationAddressHash, paymentReference, amount, startBlock, endBlock, endTimestamp);
         if (found) {
@@ -115,19 +100,11 @@ export class MockAttestationProver {
             throw new MockAttestationProverError(`AttestationProver.referencedPaymentNonexistence: overflow block not found`);
         }
         // fill result
-        const proof: DHReferencedPaymentNonexistence = {
-            stateConnectorRound: 0, // filled later
-            deadlineTimestamp: toBN(endTimestamp),
-            deadlineBlockNumber: toBN(endBlock),
-            destinationAddressHash: destinationAddressHash,
-            paymentReference: paymentReference,
-            amount: amount,
-            lowerBoundaryBlockNumber: toBN(lowerBoundaryBlockNumber),
-            lowerBoundaryBlockTimestamp: toBN(this.chain.blocks[lowerBoundaryBlockNumber].timestamp),
-            firstOverflowBlockNumber: toBN(overflowBlock),
-            firstOverflowBlockTimestamp: toBN(this.chain.blocks[overflowBlock].timestamp),
+        return {
+            minimalBlockTimestamp: String(this.chain.blocks[lowerBoundaryBlockNumber].timestamp),
+            firstOverflowBlockNumber: String(overflowBlock),
+            firstOverflowBlockTimestamp: String(this.chain.blocks[overflowBlock].timestamp),
         };
-        return web3DeepNormalize(proof);
     }
 
     private findReferencedPayment(destinationAddressHash: string, paymentReference: string, amount: BN, startBlock: number, endBlock: number, endTimestamp: number): [boolean, number, number] {
@@ -148,7 +125,7 @@ export class MockAttestationProver {
         return [false, startBlock, -1];  // not found, but also didn't find overflow block
     }
 
-    confirmedBlockHeightExists(blockNumber: number, queryWindow: number): DHConfirmedBlockHeightExists {
+    confirmedBlockHeightExists(blockNumber: number, queryWindow: number): ConfirmedBlockHeightExists.ResponseBody {
         const finalizationBlockNumber = blockNumber + this.chain.finalizationBlocks;
         if (finalizationBlockNumber > this.chain.blockHeight()) {
             throw new MockAttestationProverError(`AttestationProver.confirmedBlockHeightExists: not yet finalized (${blockNumber})`);
@@ -163,14 +140,11 @@ export class MockAttestationProver {
         // but mock chain doesn't have much history, so this would fail many tests.
         // So we just return lqbNumber = lqbTimestamp = 0 in this case.
         const lowestQueryWindowBlock = startBlockInd >= 0 ? this.chain.blocks[startBlockInd] : null;
-        const proof: DHConfirmedBlockHeightExists = {
-            stateConnectorRound: 0, // filled later
-            blockNumber: toBN(block.number),
-            blockTimestamp: toBN(block.timestamp),
-            numberOfConfirmations: toBN(this.chain.finalizationBlocks),
-            lowestQueryWindowBlockNumber: toBN(lowestQueryWindowBlock?.number ?? 0),
-            lowestQueryWindowBlockTimestamp: toBN(lowestQueryWindowBlock?.timestamp ?? 0),
+        return {
+            blockTimestamp: String(block.timestamp),
+            numberOfConfirmations: String(this.chain.finalizationBlocks),
+            lowestQueryWindowBlockNumber: String(lowestQueryWindowBlock?.number ?? 0),
+            lowestQueryWindowBlockTimestamp: String(lowestQueryWindowBlock?.timestamp ?? 0),
         };
-        return web3DeepNormalize(proof);
     }
 }
