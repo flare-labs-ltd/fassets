@@ -1,5 +1,5 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { ARBase, ARESBase, AttestationDefinitionStore, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MIC_SALT, Payment, ReferencedPaymentNonexistence, decodeAttestationName } from "state-connector-protocol";
+import { ARBase, ARESBase, AttestationDefinitionStore, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MIC_SALT, MerkleTree, Payment, ReferencedPaymentNonexistence, decodeAttestationName } from "state-connector-protocol";
 import { SourceId } from "../../../lib/underlying-chain/attestation-types";
 import { AttestationProof, AttestationRequestId, IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
 import { findRequiredEvent } from "../../../lib/utils/events/truffle";
@@ -8,7 +8,6 @@ import { stringifyJson } from "../../../lib/utils/json-bn";
 import { ILogger } from "../../../lib/utils/logging";
 import { StateConnectorMockInstance } from "../../../typechain-truffle";
 import { AttestationRequest } from "../../../typechain-truffle/IStateConnector";
-import { MerkleTree } from "../MerkleTree";
 import { MockAttestationProver, MockAttestationProverError } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
 
@@ -78,7 +77,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
 
     async submitRequest(request: ARBase): Promise<AttestationRequestId | null> {
         // add message integrity code to request data - for this, we have to obtain the response before submitting request
-        const responseData = this.proveParsedRequest(request, 0);
+        const responseData = this.proveParsedRequest(request);
         if (responseData == null) return null;  // cannot prove request (yet)
         const mic = this.definitionStore.attestationResponseHash(responseData, MIC_SALT);
         if (mic == null) {
@@ -108,13 +107,13 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         return { round, data };
     }
 
-    async obtainProof(round: number, requestData: string): Promise<AttestationProof<any> | null> {
+    async obtainProof(round: number, requestData: string): Promise<AttestationProof<ARESBase> | null> {
         if (round >= this.finalizedRounds.length) return null;  // not yet finalized
         const finalizedRound = this.finalizedRounds[round];
-        const data = finalizedRound.proofs[requestData];
-        if (data == null) return null;   // disproved
-        const merkleProof = finalizedRound.tree.getProofForValue(data.hash) ?? [];
-        return { merkleProof, data }; // proved
+        const proof = finalizedRound.proofs[requestData];
+        if (proof == null) return null;   // disproved
+        const merkleProof = finalizedRound.tree.getProof(proof.hash) ?? [];
+        return { merkleProof, data: proof.response }; // proved
     }
 
     finalizing = false;
@@ -162,13 +161,15 @@ export class MockStateConnectorClient implements IStateConnectorClient {
 
     private proveRequest(requestData: string, stateConnectorRound: number): DHProof | null {
         const request = this.definitionStore.parseRequest<ARBase>(requestData);
-        const response = this.proveParsedRequest(request, stateConnectorRound);
+        const response = this.proveParsedRequest(request);
         if (response == null) return null;
         // verify MIC (message integrity code) - stateConnectorRound field must be 0
         const mic = this.definitionStore.attestationResponseHash(response, MIC_SALT);
         if (mic == null || mic !== request.messageIntegrityCode) {
             throw new StateConnectorClientError(`StateConnectorClient: invalid message integrity code`);
         }
+        // now set correct voting round
+        response.votingRound = String(stateConnectorRound);
         // calculate hash for Merkle tree - requires correct stateConnectorRound field
         const hash = this.definitionStore.attestationResponseHash(response);
         if (hash == null) {
@@ -177,7 +178,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         return { response, hash };
     }
 
-    private proveParsedRequest(parsedRequest: ARBase, round: number): ARESBase | null {
+    private proveParsedRequest(parsedRequest: ARBase): ARESBase | null {
         try {
             const chain = this.supportedChains[parsedRequest.sourceId];
             if (chain == null) throw new StateConnectorClientError(`StateConnectorClient: unsupported chain ${parsedRequest.sourceId}`);
@@ -185,7 +186,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
             return {
                 attestationType: parsedRequest.attestationType,
                 sourceId: parsedRequest.sourceId,
-                votingRound: String(round),
+                votingRound: '0',                   // must be 0 for hash, later set to correct value
                 lowestUsedTimestamp: String(0),     // no window limit in mock
                 requestBody: parsedRequest.requestBody,
                 responseBody: responseBody,
