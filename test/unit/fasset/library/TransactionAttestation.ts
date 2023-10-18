@@ -3,7 +3,6 @@ import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../..
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { randomAddress } from "../../../../lib/utils/helpers";
-import { SourceId } from "../../../../lib/verification/sources/sources";
 import { AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
@@ -11,6 +10,7 @@ import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { SourceId } from "../../../../lib/underlying-chain/attestation-types";
 
 contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction attestation basic tests`, async accounts => {
     const governance = accounts[10];
@@ -62,7 +62,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     });
 
     it("should not verify payment - legal payment not proved", async () => {
-        const chainId: SourceId = 2;
+        const chainId: SourceId = SourceId.DOGE;
         stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         chain.mint(underlyingAgent1, 10001);
@@ -74,7 +74,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     it("should not succeed challenging illegal payment - transaction not proved", async() => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         let txHash = await wallet.addTransaction(underlyingAgent1, randomAddress(), 1, PaymentReference.redemption(0));
-        const chainId: SourceId = 2;
+        const chainId: SourceId = SourceId.DOGE;
         stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
@@ -84,7 +84,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
 
     it("should not update current block - block height not proved", async() => {
         await createAgent(agentOwner1, underlyingAgent1);
-        const chainId: SourceId = 2;
+        const chainId: SourceId = SourceId.DOGE;
         stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));

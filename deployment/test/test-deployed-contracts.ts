@@ -1,11 +1,11 @@
+import hre from "hardhat";
 import { requiredEventArgs } from "../../lib/utils/events/truffle";
-import { createTestAgent } from "../../test/utils/test-settings";
 import { getTestFile } from "../../test/utils/test-helpers";
-import { AssetManagerControllerInstance, IWhitelistInstance, WhitelistInstance } from "../../typechain-truffle";
+import { createTestAgent } from "../../test/utils/test-settings";
+import { AssetManagerControllerInstance, WhitelistInstance } from "../../typechain-truffle";
 import { ChainContracts, loadContracts } from "../lib/contracts";
 import { loadDeployAccounts, requiredEnvironmentVariable } from "../lib/deploy-utils";
-import hre from "hardhat";
-import { SourceId } from "../../lib/verification/sources/sources";
+import { SourceId } from "../../lib/underlying-chain/attestation-types";
 
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AssetManager = artifacts.require('AssetManager');
@@ -54,7 +54,6 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         [SourceId.DOGE]: 'mr8zwdWkSrxQRrhq7D2i4f4CLZoZgF3nja',
         [SourceId.LTC]: 'mjGn3j6vrHwgRzRWsXFT6dP1K5atca7yPx',
         [SourceId.ALGO]: 'TEST_ADDRESS',
-        [SourceId.invalid]: 'TEST_ADDRESS',
     };
 
     it("Can create an agent on all managers", async () => {
@@ -68,7 +67,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
             const settings = await assetManager.getSettings();
             const collaterals = await assetManager.getCollateralTypes();
             // create agent
-            const underlyingAddress = testUnderlyingAddresses[Number(settings.chainId) as SourceId];    // address doesn't matter - won't do anything on underlying chain
+            const underlyingAddress = testUnderlyingAddresses[settings.chainId];    // address doesn't matter - won't do anything on underlying chain
             const agentVault = await createTestAgent({ assetManager, settings }, owner, underlyingAddress, collaterals[1].token);
             // announce destroy (can really destroy later)
             const destroyRes = await assetManager.announceDestroyAgent(agentVault.address, { from: owner });

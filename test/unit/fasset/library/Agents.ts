@@ -114,8 +114,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
         // assert
         const { 0: currentBlock } = await assetManager.currentUnderlyingBlock();
-        assertWeb3Equal(currentBlock, proofBlock.blockNumber);
-        assert.isAbove(Number(currentBlock), Number(proof.blockNumber) + 2);
+        assertWeb3Equal(currentBlock, proofBlock.data.requestBody.blockNumber);
+        assert.isAbove(Number(currentBlock), Number(proof.data.responseBody.blockNumber) + 2);
     });
 
     it("should not prove EOA address - address already claimed", async () => {

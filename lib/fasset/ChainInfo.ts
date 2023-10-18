@@ -1,5 +1,5 @@
 export interface ChainInfo {
-    chainId: number;
+    chainId: string;
     name: string;
     symbol: string;
     decimals: number;
