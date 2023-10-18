@@ -61,7 +61,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "4.9.2",
     "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#flare-distribution-to-delegators",
-    "state-connector-protocol": "git+https://gitlab.com/flarenetwork/state-connector-protocol.git#0d075f73894709c81188e68c273169f4203343dd"
+    "state-connector-protocol": "git+https://gitlab.com/flarenetwork/state-connector-protocol.git#7fe0dce2cb2edee66ded4e32463e7bbb0a7e016b"
   },
   "devDependencies": {
     "@gnosis.pm/mock-contract": "4.0.0",
