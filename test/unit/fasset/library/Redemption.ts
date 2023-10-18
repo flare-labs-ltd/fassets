@@ -512,16 +512,12 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
-
         for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
             await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
         }
-
-        const chainId: SourceId = SourceId.DOGE;
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
             request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        proof.data.responseBody.firstOverflowBlockNumber = toBN(proof.data.responseBody.firstOverflowBlockNumber).addn(1).toString();
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: agentOwner1 });
         await expectRevert(res, 'non-payment not proved');
     });
