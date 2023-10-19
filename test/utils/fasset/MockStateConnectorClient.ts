@@ -11,13 +11,13 @@ import { AttestationRequest } from "../../../typechain-truffle/IStateConnector";
 import { MockAttestationProver, MockAttestationProverError } from "./MockAttestationProver";
 import { MockChain } from "./MockChain";
 
-interface DHProof {
+interface RoundProof {
     response: ARESBase;
     hash: string;
 }
 
 interface FinalizedRound {
-    proofs: { [requestData: string]: DHProof };
+    proofs: { [requestData: string]: RoundProof };
     tree: MerkleTree;
 }
 
@@ -137,7 +137,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
             this.rounds.push([]);
         }
         // verify and collect proof data of requests
-        const proofs: { [data: string]: DHProof } = {};
+        const proofs: { [data: string]: RoundProof } = {};
         for (const reqData of this.rounds[round]) {
             const proof = this.proveRequest(reqData, round);
             if (proof != null) {
@@ -159,7 +159,7 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         }
     }
 
-    private proveRequest(requestData: string, stateConnectorRound: number): DHProof | null {
+    private proveRequest(requestData: string, stateConnectorRound: number): RoundProof | null {
         const request = this.definitionStore.parseRequest<ARBase>(requestData);
         const response = this.proveParsedRequest(request);
         if (response == null) return null;
