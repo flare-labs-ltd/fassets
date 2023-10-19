@@ -1,7 +1,7 @@
 {
     "$schema": "../asset-manager-parameters.schema.json",
     "burnAddress": "0x000000000000000000000000000000000000dEaD",
-    "chainId": 1,
+    "chainName": "LTC",
     "assetName": "Litecoin",
     "assetSymbol": "LTC",
     "assetDecimals": 8,
