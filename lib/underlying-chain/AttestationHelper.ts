@@ -1,8 +1,8 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { ARESBase, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "state-connector-protocol";
+import { BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "state-connector-protocol";
 import { SourceId } from "./SourceId";
 import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
-import { AttestationNotProved, AttestationProof, AttestationRequestId, IStateConnectorClient } from "./interfaces/IStateConnectorClient";
+import { AttestationNotProved, AttestationProof, AttestationRequestId, IStateConnectorClient, OptionalAttestationProof } from "./interfaces/IStateConnectorClient";
 
 export class AttestationHelperError extends Error {
     constructor(message: string) {
@@ -10,7 +10,7 @@ export class AttestationHelperError extends Error {
     }
 }
 
-export function attestationProved(result: AttestationProof<ARESBase> | AttestationNotProved): result is AttestationProof<ARESBase> {
+export function attestationProved(result: OptionalAttestationProof): result is AttestationProof {
     return typeof result === 'object' && result != null;
 }
 
