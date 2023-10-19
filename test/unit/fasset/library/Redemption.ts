@@ -12,7 +12,7 @@ import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
-import { SourceId } from "../../../../lib/underlying-chain/attestation-types";
+import { SourceId } from "../../../../lib/underlying-chain/SourceId";
 
 
 const CollateralPool = artifacts.require("CollateralPool");

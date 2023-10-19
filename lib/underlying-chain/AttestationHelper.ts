@@ -1,6 +1,6 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "state-connector-protocol";
-import { SourceId } from "./attestation-types";
+import { SourceId } from "./SourceId";
 import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
 import { AttestationRequestId, IStateConnectorClient } from "./interfaces/IStateConnectorClient";
 

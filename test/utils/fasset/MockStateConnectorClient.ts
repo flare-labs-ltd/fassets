@@ -1,6 +1,6 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { ARBase, ARESBase, AttestationDefinitionStore, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MIC_SALT, MerkleTree, Payment, ReferencedPaymentNonexistence, decodeAttestationName } from "state-connector-protocol";
-import { SourceId } from "../../../lib/underlying-chain/attestation-types";
+import { SourceId } from "../../../lib/underlying-chain/SourceId";
 import { AttestationProof, AttestationRequestId, IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
 import { findRequiredEvent } from "../../../lib/utils/events/truffle";
 import { filterStackTrace, sleep, toBN, toNumber } from "../../../lib/utils/helpers";

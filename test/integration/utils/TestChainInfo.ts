@@ -1,6 +1,6 @@
 import { encodeAttestationName } from "state-connector-protocol";
 import { ChainInfo } from "../../../lib/fasset/ChainInfo";
-import { SourceId } from "../../../lib/underlying-chain/attestation-types";
+import { SourceId } from "../../../lib/underlying-chain/SourceId";
 
 export interface TestNatInfo {
     name: string;

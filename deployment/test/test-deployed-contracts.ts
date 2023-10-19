@@ -5,7 +5,7 @@ import { createTestAgent } from "../../test/utils/test-settings";
 import { AssetManagerControllerInstance, WhitelistInstance } from "../../typechain-truffle";
 import { ChainContracts, loadContracts } from "../lib/contracts";
 import { loadDeployAccounts, requiredEnvironmentVariable } from "../lib/deploy-utils";
-import { SourceId } from "../../lib/underlying-chain/attestation-types";
+import { SourceId } from "../../lib/underlying-chain/SourceId";
 
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AssetManager = artifacts.require('AssetManager');

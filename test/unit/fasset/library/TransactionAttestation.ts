@@ -2,7 +2,7 @@ import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { SourceId } from "../../../../lib/underlying-chain/attestation-types";
+import { SourceId } from "../../../../lib/underlying-chain/SourceId";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { randomAddress, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
