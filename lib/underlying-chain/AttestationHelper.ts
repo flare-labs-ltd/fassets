@@ -1,13 +1,17 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "state-connector-protocol";
+import { ARESBase, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "state-connector-protocol";
 import { SourceId } from "./SourceId";
 import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
-import { AttestationRequestId, IStateConnectorClient } from "./interfaces/IStateConnectorClient";
+import { AttestationNotProved, AttestationProof, AttestationRequestId, IStateConnectorClient } from "./interfaces/IStateConnectorClient";
 
 export class AttestationHelperError extends Error {
     constructor(message: string) {
         super(message);
     }
+}
+
+export function attestationProved(result: AttestationProof<ARESBase> | AttestationNotProved): result is AttestationProof<ARESBase> {
+    return typeof result === 'object' && result != null;
 }
 
 function findAddressIndex(ios: TxInputOutput[], address: string | null, defaultValue: number) {
@@ -126,6 +130,22 @@ export class AttestationHelper {
         return await this.client.submitRequest(request);
     }
 
+    async obtainPaymentProof(round: number, requestData: string): Promise<Payment.Proof | AttestationNotProved> {
+        return await this.client.obtainProof(round, requestData);
+    }
+
+    async obtainBalanceDecreasingTransactionProof(round: number, requestData: string): Promise<BalanceDecreasingTransaction.Proof | AttestationNotProved> {
+        return await this.client.obtainProof(round, requestData);
+    }
+
+    async obtainReferencedPaymentNonexistenceProof(round: number, requestData: string): Promise<ReferencedPaymentNonexistence.Proof | AttestationNotProved> {
+        return await this.client.obtainProof(round, requestData);
+    }
+
+    async obtainConfirmedBlockHeightExistsProof(round: number, requestData: string): Promise<ConfirmedBlockHeightExists.Proof | AttestationNotProved> {
+        return await this.client.obtainProof(round, requestData);
+    }
+
     async provePayment(transactionHash: string, sourceAddress: string | null, receivingAddress: string | null): Promise<Payment.Proof> {
         const request = await this.requestPaymentProof(transactionHash, sourceAddress, receivingAddress);
         if (request == null) {
@@ -133,7 +153,7 @@ export class AttestationHelper {
         }
         await this.client.waitForRoundFinalization(request.round);
         const result = await this.client.obtainProof(request.round, request.data);
-        if (result == null) {
+        if (!attestationProved(result)) {
             throw new AttestationHelperError("payment: not proved")
         }
         return result;
@@ -146,7 +166,7 @@ export class AttestationHelper {
         }
         await this.client.waitForRoundFinalization(request.round);
         const result = await this.client.obtainProof(request.round, request.data);
-        if (result == null) {
+        if (!attestationProved(result)) {
             throw new AttestationHelperError("balanceDecreasingTransaction: not proved")
         }
         return result;
@@ -159,7 +179,7 @@ export class AttestationHelper {
         }
         await this.client.waitForRoundFinalization(request.round);
         const result = await this.client.obtainProof(request.round, request.data);
-        if (result == null) {
+        if (!attestationProved(result)) {
             throw new AttestationHelperError("referencedPaymentNonexistence: not proved")
         }
         return result;
@@ -172,7 +192,7 @@ export class AttestationHelper {
         }
         await this.client.waitForRoundFinalization(request.round);
         const result = await this.client.obtainProof(request.round, request.data);
-        if (result == null) {
+        if (!attestationProved(result)) {
             throw new AttestationHelperError("confirmedBlockHeightExists: not proved")
         }
         return result;

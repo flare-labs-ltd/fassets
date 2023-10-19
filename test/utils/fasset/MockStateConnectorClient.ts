@@ -1,7 +1,7 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { ARBase, ARESBase, AttestationDefinitionStore, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MIC_SALT, MerkleTree, Payment, ReferencedPaymentNonexistence, decodeAttestationName } from "state-connector-protocol";
 import { SourceId } from "../../../lib/underlying-chain/SourceId";
-import { AttestationProof, AttestationRequestId, IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
+import { AttestationNotProved, AttestationProof, AttestationRequestId, IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
 import { findRequiredEvent } from "../../../lib/utils/events/truffle";
 import { filterStackTrace, sleep, toBN, toNumber } from "../../../lib/utils/helpers";
 import { stringifyJson } from "../../../lib/utils/json-bn";
@@ -107,11 +107,15 @@ export class MockStateConnectorClient implements IStateConnectorClient {
         return { round, data };
     }
 
-    async obtainProof(round: number, requestData: string): Promise<AttestationProof<ARESBase> | null> {
-        if (round >= this.finalizedRounds.length) return null;  // not yet finalized
+    async obtainProof(round: number, requestData: string): Promise<AttestationProof<ARESBase> | AttestationNotProved> {
+        if (round >= this.finalizedRounds.length) {
+            return AttestationNotProved.NOT_FINALIZED;
+        }
         const finalizedRound = this.finalizedRounds[round];
         const proof = finalizedRound.proofs[requestData];
-        if (proof == null) return null;   // disproved
+        if (proof == null) {
+            return AttestationNotProved.DISPROVED;
+        }
         const merkleProof = finalizedRound.tree.getProof(proof.hash) ?? [];
         return { merkleProof, data: proof.response }; // proved
     }
