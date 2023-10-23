@@ -6,7 +6,6 @@ import "flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdate
 import "../interface/IWNat.sol";
 import "../interface/IIAssetManager.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../../generated/interface/ISCProofVerifier.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
 import "../library/SettingsUpdater.sol";

@@ -83,7 +83,7 @@ library AssetManagerSettings {
 
         // Must match attestation data chainId.
         // immutable
-        uint32 chainId;
+        bytes32 chainId;
 
         // Average time between two successive blocks on the underlying chain, in milliseconds.
         // rate-limited

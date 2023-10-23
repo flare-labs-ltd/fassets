@@ -682,8 +682,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         nonReentrant
     {
         require(token.totalSupply() == 0, "cannot destroy a pool with issued tokens");
-        require(totalCollateral == 0, "cannot destroy a pool holding collateral");
-        require(totalFAssetFees == 0, "cannot destroy a pool holding f-assets");
         token.destroy(_recipient);
         // transfer native balance, if any (used to be done by selfdestruct)
         _transferNAT(_recipient, address(this).balance);

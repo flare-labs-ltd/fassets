@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../interface/IStateConnector.sol";
+import "state-connector-protocol/contracts/interface/external/IStateConnector.sol";
+
 
 contract StateConnectorMock is IStateConnector {
     uint256 public constant BUFFER_WINDOW = 90 seconds;

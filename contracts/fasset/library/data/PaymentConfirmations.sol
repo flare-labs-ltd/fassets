@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../../generated/interface/ISCProofVerifier.sol";
+import "../../../stateConnector/interface/ISCProofVerifier.sol";
 
 
 library PaymentConfirmations {
@@ -24,11 +24,11 @@ library PaymentConfirmations {
      */
     function confirmIncomingPayment(
         State storage _state,
-        ISCProofVerifier.Payment calldata _payment
+        Payment.Proof calldata _payment
     )
         internal
     {
-        _recordPaymentVerification(_state, _payment.transactionHash);
+        _recordPaymentVerification(_state, _payment.data.requestBody.transactionId);
     }
 
     /**
@@ -37,11 +37,13 @@ library PaymentConfirmations {
      */
     function confirmSourceDecreasingTransaction(
         State storage _state,
-        ISCProofVerifier.Payment calldata _payment
+        Payment.Proof calldata _payment
     )
         internal
     {
-        _recordPaymentVerification(_state, transactionKey(_payment.sourceAddressHash, _payment.transactionHash));
+        bytes32 txKey = transactionKey(_payment.data.responseBody.sourceAddressHash,
+            _payment.data.requestBody.transactionId);
+        _recordPaymentVerification(_state, txKey);
     }
 
     /**
@@ -49,12 +51,13 @@ library PaymentConfirmations {
      */
     function transactionConfirmed(
         State storage _state,
-        ISCProofVerifier.BalanceDecreasingTransaction calldata _transaction
+        BalanceDecreasingTransaction.Proof calldata _transaction
     )
         internal view
         returns (bool)
     {
-        bytes32 txKey = transactionKey(_transaction.sourceAddressHash, _transaction.transactionHash);
+        bytes32 txKey = transactionKey(_transaction.data.responseBody.sourceAddressHash,
+            _transaction.data.requestBody.transactionId);
         return _state.verifiedPayments[txKey] != 0;
     }
 

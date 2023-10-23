@@ -1,7 +1,7 @@
 {
     "$schema": "../asset-manager-parameters.schema.json",
     "burnAddress": "0x000000000000000000000000000000000000dEaD",
-    "chainId": 0,
+    "chainName": "BTC",
     "assetName": "Bitcoin",
     "assetSymbol": "BTC",
     "assetDecimals": 8,

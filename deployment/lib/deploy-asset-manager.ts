@@ -6,9 +6,10 @@ import { FAssetInstance } from "../../typechain-truffle";
 import { JsonParameterSchema } from "./JsonParameterSchema";
 import { AssetManagerParameters, CollateralTypeParameters } from './asset-manager-parameters';
 import { ChainContracts, loadContracts, newContract, saveContracts } from "./contracts";
-import { ZERO_ADDRESS, loadDeployAccounts, requiredEnvironmentVariable } from './deploy-utils';
+import { ZERO_ADDRESS, loadDeployAccounts } from './deploy-utils';
 import { ILiquidationStrategyFactory } from "./liquidationStrategyFactory/ILiquidationStrategyFactory";
 import { LiquidationStrategyImpl } from "./liquidationStrategyFactory/LiquidationStrategyImpl";
+import { encodeAttestationName } from "state-connector-protocol";
 
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
 
@@ -289,7 +290,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         underlyingAddressValidator: addressValidator,
         liquidationStrategy: liquidationStrategy,
         burnAddress: parameters.burnAddress,
-        chainId: parameters.chainId,
+        chainId: encodeAttestationName(parameters.chainName),
         poolTokenSuffix: parameters.poolTokenSuffix,
         assetDecimals: parameters.assetDecimals,
         assetUnitUBA: assetUnitUBA,

@@ -1,4 +1,5 @@
 import BN from "bn.js";
+import util from "node:util";
 import Web3 from "web3";
 
 export type BNish = BN | number | string;
@@ -464,6 +465,18 @@ export function trace(items: Record<string, any>) {
         const valueS = serialize ? JSON.stringify(deepFormat(value)) : deepFormat(value);
         console.log(`${key} = ${valueS}`);
     }
+}
+
+/**
+ * Improve console.log display by pretty-printing BN end expanding objects.
+ * @param inspectDepth the depth objects in console.log will be expanded
+ */
+export function improveConsoleLog(inspectDepth: number = 10) {
+    const BN = toBN(0).constructor;
+    BN.prototype[util.inspect.custom] = function () {
+        return `BN(${this.toString(10)})`;
+    };
+    util.inspect.defaultOptions.depth = inspectDepth;
 }
 
 /**

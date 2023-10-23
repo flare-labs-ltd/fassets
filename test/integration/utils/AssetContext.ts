@@ -150,7 +150,7 @@ export class AssetContext implements IAssetContext {
     async updateUnderlyingBlock() {
         const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(this.attestationWindowSeconds());
         await this.assetManager.updateCurrentBlock(proof);
-        return toNumber(proof.blockNumber) + toNumber(proof.numberOfConfirmations);
+        return toNumber(proof.data.requestBody.blockNumber) + toNumber(proof.data.responseBody.numberOfConfirmations);
     }
 
     attestationWindowSeconds() {

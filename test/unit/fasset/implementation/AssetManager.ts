@@ -1105,10 +1105,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             chain.mine(3);  // make sure block no and timestamp change
             const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
             const res = await assetManager.updateCurrentBlock(proof);
-            expectEvent(res, 'CurrentUnderlyingBlockUpdated', { underlyingBlockNumber: proof.blockNumber, underlyingBlockTimestamp: proof.blockTimestamp });
+            expectEvent(res, 'CurrentUnderlyingBlockUpdated', { underlyingBlockNumber: proof.data.requestBody.blockNumber, underlyingBlockTimestamp: proof.data.responseBody.blockTimestamp });
             const currentBlock = await assetManager.currentUnderlyingBlock();
-            assertWeb3Equal(currentBlock[0], proof.blockNumber);
-            assertWeb3Equal(currentBlock[1], proof.blockTimestamp);
+            assertWeb3Equal(currentBlock[0], proof.data.requestBody.blockNumber);
+            assertWeb3Equal(currentBlock[1], proof.data.responseBody.blockTimestamp);
         });
 
         it("should execute minting", async () => {

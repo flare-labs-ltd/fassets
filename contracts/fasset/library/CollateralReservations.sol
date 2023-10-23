@@ -72,7 +72,7 @@ library CollateralReservations {
     }
 
     function mintingPaymentDefault(
-        ISCProofVerifier.ReferencedPaymentNonexistence calldata _nonPayment,
+        ReferencedPaymentNonexistence.Proof calldata _nonPayment,
         uint64 _crtId
     )
         external
@@ -83,14 +83,14 @@ library CollateralReservations {
         // check requirements
         TransactionAttestation.verifyReferencedPaymentNonexistence(_nonPayment);
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
-        require(_nonPayment.paymentReference == PaymentReference.minting(_crtId) &&
-            _nonPayment.destinationAddressHash == agent.underlyingAddressHash &&
-            _nonPayment.amount == underlyingValueUBA + crt.underlyingFeeUBA,
+        require(_nonPayment.data.requestBody.standardPaymentReference == PaymentReference.minting(_crtId) &&
+            _nonPayment.data.requestBody.destinationAddressHash == agent.underlyingAddressHash &&
+            _nonPayment.data.requestBody.amount == underlyingValueUBA + crt.underlyingFeeUBA,
             "minting non-payment mismatch");
-        require(_nonPayment.firstOverflowBlockNumber > crt.lastUnderlyingBlock &&
-            _nonPayment.firstOverflowBlockTimestamp > crt.lastUnderlyingTimestamp,
+        require(_nonPayment.data.responseBody.firstOverflowBlockNumber > crt.lastUnderlyingBlock &&
+            _nonPayment.data.responseBody.firstOverflowBlockTimestamp > crt.lastUnderlyingTimestamp,
             "minting default too early");
-        require(_nonPayment.lowerBoundaryBlockNumber <= crt.firstUnderlyingBlock,
+        require(_nonPayment.data.requestBody.minimalBlockNumber <= crt.firstUnderlyingBlock,
             "minting non-payment proof window too short");
         // send event
         uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFee(agent, crt.underlyingFeeUBA);
@@ -104,7 +104,7 @@ library CollateralReservations {
     }
 
     function unstickMinting(
-        ISCProofVerifier.ConfirmedBlockHeightExists calldata _proof,
+        ConfirmedBlockHeightExists.Proof calldata _proof,
         uint64 _crtId
     )
         external
@@ -116,9 +116,10 @@ library CollateralReservations {
         // verify proof
         TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
         // enough time must pass so that proofs are no longer available
-        require(_proof.lowestQueryWindowBlockNumber > crt.lastUnderlyingBlock
-            && _proof.lowestQueryWindowBlockTimestamp > crt.lastUnderlyingTimestamp
-            && _proof.lowestQueryWindowBlockTimestamp + settings.attestationWindowSeconds <= _proof.blockTimestamp,
+        require(_proof.data.responseBody.lowestQueryWindowBlockNumber > crt.lastUnderlyingBlock
+            && _proof.data.responseBody.lowestQueryWindowBlockTimestamp > crt.lastUnderlyingTimestamp
+            && _proof.data.responseBody.lowestQueryWindowBlockTimestamp + settings.attestationWindowSeconds <=
+                _proof.data.responseBody.blockTimestamp,
             "cannot unstick minting yet");
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.unstickMinting)
         Agents.burnDirectNAT(crt.reservationFeeNatWei);

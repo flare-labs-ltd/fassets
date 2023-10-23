@@ -1,4 +1,6 @@
+import { encodeAttestationName } from "state-connector-protocol";
 import { ChainInfo } from "../../../lib/fasset/ChainInfo";
+import { SourceId } from "../../../lib/underlying-chain/SourceId";
 
 export interface TestNatInfo {
     name: string;
@@ -22,7 +24,7 @@ export const testNatInfo: TestNatInfo = {
 
 export const testChainInfo: Record<'eth' | 'btc' | 'xrp', TestChainInfo> = {
     eth: {
-        chainId: 1,
+        chainId: encodeAttestationName("ETH"),
         name: "Ethereum",
         symbol: "ETH",
         decimals: 18,
@@ -35,7 +37,7 @@ export const testChainInfo: Record<'eth' | 'btc' | 'xrp', TestChainInfo> = {
         requireEOAProof: true,
     },
     btc: {
-        chainId: 2,
+        chainId: SourceId.BTC,
         name: "Bitcoin",
         symbol: "BTC",
         decimals: 8,
@@ -48,7 +50,7 @@ export const testChainInfo: Record<'eth' | 'btc' | 'xrp', TestChainInfo> = {
         requireEOAProof: false,
     },
     xrp: {
-        chainId: 3,
+        chainId: SourceId.XRP,
         name: "Ripple",
         symbol: "XRP",
         decimals: 6,

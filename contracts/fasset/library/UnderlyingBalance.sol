@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../generated/interface/ISCProofVerifier.sol";
+import "../../stateConnector/interface/ISCProofVerifier.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/MathUtils.sol";
 import "./data/AssetManagerState.sol";
@@ -21,7 +21,7 @@ library UnderlyingBalance {
     using Agent for Agent.State;
 
     function confirmTopupPayment(
-        ISCProofVerifier.Payment calldata _payment,
+        Payment.Proof calldata _payment,
         address _agentVault
     )
         external
@@ -30,16 +30,16 @@ library UnderlyingBalance {
         Agents.requireAgentVaultOwner(_agentVault);
         AssetManagerState.State storage state = AssetManagerState.get();
         TransactionAttestation.verifyPaymentSuccess(_payment);
-        require(_payment.receivingAddressHash == agent.underlyingAddressHash,
+        require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
             "not underlying address");
-        require(_payment.paymentReference == PaymentReference.topup(_agentVault),
+        require(_payment.data.responseBody.standardPaymentReference == PaymentReference.topup(_agentVault),
             "not a topup payment");
-        require(_payment.blockNumber >= agent.underlyingBlockAtCreation,
+        require(_payment.data.responseBody.blockNumber >= agent.underlyingBlockAtCreation,
             "topup before agent created");
         state.paymentConfirmations.confirmIncomingPayment(_payment);
-        uint256 amountUBA = SafeCast.toUint256(_payment.receivedAmount);
+        uint256 amountUBA = SafeCast.toUint256(_payment.data.responseBody.receivedAmount);
         increaseBalance(agent, amountUBA.toUint128());
-        emit AMEvents.UnderlyingBalanceToppedUp(_agentVault, _payment.transactionHash, amountUBA);
+        emit AMEvents.UnderlyingBalanceToppedUp(_agentVault, _payment.data.requestBody.transactionId, amountUBA);
     }
 
     function updateBalance(

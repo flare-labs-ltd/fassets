@@ -147,10 +147,10 @@
             "minimum": 0,
             "type": "integer"
         },
-        "chainId": {
-            "description": "Chain id as used in the state connector.",
+        "chainName": {
+            "description": "Chain name; must match the state connector chainId, when encoded as bytes.",
             "minimum": 0,
-            "type": "integer"
+            "type": "string"
         },
         "collateralPoolFactory": {
             "description": "The factory contract for creating agent collateral pools.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'CollateralPoolFactory' in contracts.json.",
@@ -357,7 +357,7 @@
         "burnAddress",
         "buybackCollateralFactorBIPS",
         "ccbTimeSeconds",
-        "chainId",
+        "chainName",
         "collateralPoolTokenTimelockSeconds",
         "collateralReservationFeeBIPS",
         "confirmationByOthersAfterSeconds",

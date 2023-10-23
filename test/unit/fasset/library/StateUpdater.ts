@@ -57,7 +57,7 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
 
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         const res = await assetManager.updateCurrentBlock(proof);
-        expectEvent(res, 'CurrentUnderlyingBlockUpdated', { underlyingBlockNumber: proof.blockNumber, underlyingBlockTimestamp: proof.blockTimestamp });
+        expectEvent(res, 'CurrentUnderlyingBlockUpdated', { underlyingBlockNumber: proof.data.requestBody.blockNumber, underlyingBlockTimestamp: proof.data.responseBody.blockTimestamp });
 
         // when nothing is changed, there should be no event
         const proof2 = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
