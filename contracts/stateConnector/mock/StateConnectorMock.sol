@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "state-connector-protocol/contracts/interface/external/IStateConnector.sol";
+import "@flarenetwork/state-connector-protocol/contracts/interface/external/IStateConnector.sol";
 
 
 contract StateConnectorMock is IStateConnector {
