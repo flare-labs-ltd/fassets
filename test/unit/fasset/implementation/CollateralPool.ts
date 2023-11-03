@@ -353,6 +353,8 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
                 await collateralPool.enter(0, true, { value: ETH(100) });
                 const timelockedTokens1 = await collateralPoolToken.timelockedBalanceOf(accounts[0]);
                 assertEqualBN(timelockedTokens1, ETH(100));
+                const transferableTokens1 = await collateralPoolToken.transferableBalanceOf(accounts[0]);
+                assertEqualBN(transferableTokens1, BN_ZERO);
                 const prms1 = collateralPoolToken.transfer(accounts[1], ETH(1));
                 await expectRevert(prms1, "insufficient non-timelocked balance");
                 const prms2 = collateralPool.exit(ETH(1), TokenExitType.KEEP_RATIO);
@@ -785,6 +787,7 @@ contract(`CollateralPool.sol; ${getTestFile(__filename)}; Collateral pool basic 
             // user enters the pool
             await collateralPool.enter(0, true, { value: collateral });
             const tokens = await collateralPoolToken.balanceOf(accounts[0]);
+            // exit
             await collateralPool.exit(tokens, TokenExitType.MINIMIZE_FEE_DEBT);
             const fassets = await fAsset.balanceOf(accounts[0]);
             assertEqualBNWithError(fassets, initialFassets, BN_ONE);

@@ -100,8 +100,10 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await agent.collateralPool.enter(toWei(2e8), false, { from: minter.address, value: minterPoolDeposit });
         const timelockedTokens1 = await agent.collateralPoolToken.timelockedBalanceOf(minter.address);
         const debtFreeBalanceOf = await agent.collateralPoolToken.debtFreeBalanceOf(minter.address);
+        const lockedTokens1 = await agent.collateralPoolToken.lockedBalanceOf(minter.address);
         //Whole balance should be timelocked in the beggining
         assert.equal(timelockedTokens1.toString(), minterPoolDeposit.toString());
+        assert.equal(lockedTokens1.toString(), minterPoolDeposit.toString());
         //Balance should have no debt
         assert.equal(debtFreeBalanceOf.toString(), minterPoolDeposit.toString());
         //Minter should not be able to transef pool tokens that are time locked
@@ -109,6 +111,12 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         await expectRevert(prms1, "insufficient non-timelocked balance");
         //After 1 day the minter can exit the pool
         await time.increase(time.duration.days(1));
+        // check locked balance
+        const timelockedTokens2 = await agent.collateralPoolToken.timelockedBalanceOf(minter.address);
+        const lockedTokens2 = await agent.collateralPoolToken.lockedBalanceOf(minter.address);
+        assert.equal(timelockedTokens2.toString(), "0");
+        assert.equal(lockedTokens2.toString(), "0");
+        //
         const transferableBalance = await agent.collateralPoolToken.transferableBalanceOf(minter.address);
         assert.equal(transferableBalance.toString(), minterPoolDeposit.toString());
         await agent.collateralPool.exit(minterPoolDeposit,0, {from:minter.address});
