@@ -9,7 +9,7 @@ import { ChainContracts, loadContracts, newContract, saveContracts } from "./con
 import { ZERO_ADDRESS, loadDeployAccounts } from './deploy-utils';
 import { ILiquidationStrategyFactory } from "./liquidationStrategyFactory/ILiquidationStrategyFactory";
 import { LiquidationStrategyImpl } from "./liquidationStrategyFactory/LiquidationStrategyImpl";
-import { encodeAttestationName } from "state-connector-protocol";
+import { encodeAttestationName } from "@flarenetwork/state-connector-protocol";
 
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
 

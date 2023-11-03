@@ -1,4 +1,4 @@
-import { encodeAttestationName } from "state-connector-protocol";
+import { encodeAttestationName } from "@flarenetwork/state-connector-protocol";
 import { ChainInfo } from "../../../lib/fasset/ChainInfo";
 import { SourceId } from "../../../lib/underlying-chain/SourceId";
 

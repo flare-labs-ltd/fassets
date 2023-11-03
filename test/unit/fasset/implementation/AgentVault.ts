@@ -16,8 +16,6 @@ const ERC20Mock = artifacts.require("ERC20Mock");
 const AssetManagerMock = artifacts.require("AssetManagerMock");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPool = artifacts.require("CollateralPool");
-const FAssetMock = artifacts.require("FAssetMock");
-const AgentVaultFactory = artifacts.require("AgentVaultFactory");
 
 contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, async accounts => {
     let contracts: TestSettingsContracts;

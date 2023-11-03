@@ -975,6 +975,14 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
+"@flarenetwork/state-connector-protocol@1.0.0-beta.1":
+  version "1.0.0-beta.1"
+  resolved "https://registry.yarnpkg.com/@flarenetwork/state-connector-protocol/-/state-connector-protocol-1.0.0-beta.1.tgz#e17cfbd551d05ec613ccd89dd16373bd02c44950"
+  integrity sha512-Pci/fOmyckCwrNhDuS2VJNPUTc4lHtcJGEv72dzjBJNhnlsIiblIoTDWLJWms+Ij25yaZs++6jnThqNh0pYfzQ==
+  dependencies:
+    "@openzeppelin/contracts" "^4.9.3"
+    ethers "^6.7.1"
+
 "@gnosis.pm/mock-contract@4.0.0":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/@gnosis.pm/mock-contract/-/mock-contract-4.0.0.tgz#eaf500fddcab81b5f6c22280a7b22ff891dd6f87"
@@ -8942,13 +8950,6 @@ stacktrace-parser@^0.1.10:
   integrity sha512-KJP1OCML99+8fhOHxwwzyWrlUuVX5GQ0ZpJTd1DFXhdkrvg1szxfHhawXUZ3g9TkXORQd4/WG68jMlQZ2p8wlg==
   dependencies:
     type-fest "^0.7.1"
-
-"state-connector-protocol@git+https://gitlab.com/flarenetwork/state-connector-protocol.git#7fe0dce2cb2edee66ded4e32463e7bbb0a7e016b":
-  version "1.0.0"
-  resolved "git+https://gitlab.com/flarenetwork/state-connector-protocol.git#7fe0dce2cb2edee66ded4e32463e7bbb0a7e016b"
-  dependencies:
-    "@openzeppelin/contracts" "^4.9.3"
-    ethers "^6.7.1"
 
 statuses@2.0.1:
   version "2.0.1"
