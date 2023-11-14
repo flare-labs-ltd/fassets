@@ -212,66 +212,66 @@
   {
     "name": "SCProofVerifier",
     "contractName": "SCProofVerifier.sol",
-    "address": "0x7B6BebAF6D186DE7c69D4B99625f819AF6fB98fE"
+    "address": "0x764Fdb27db0c91d9F09410Ee6fe1e20deD0eF171"
   },
   {
     "name": "PriceReader",
     "contractName": "PriceReader.sol",
-    "address": "0x364441A0cfcBc5dB89C082805406a6Bb9502E010"
+    "address": "0x38307D4Cc3DF3eBf9001353654F193f46a405291"
   },
   {
     "name": "AgentWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0x2740e86c6e031e35A597dAFD49a1bE38e52Dea29",
+    "address": "0x748d49E1f07ab30b6c4CA536a861D9b69744841d",
     "mustSwitchToProduction": true
   },
   {
     "name": "UserWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0x2F2e203c18596f20e5F83bd0D30989216D2F5810",
+    "address": "0xF171b4963d25b4aB26854F3f830F2805c4966c05",
     "mustSwitchToProduction": true
   },
   {
     "name": "AgentVaultFactory",
     "contractName": "AgentVaultFactory.sol",
-    "address": "0x6343077bb124A18D1705124311936c0A1d88bc38"
+    "address": "0x08Bf2e59c7d1862883fB7cA86E97b3C5bA458A71"
   },
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0x3b022061990FA1dB678AFE6609311644baEFb83F"
+    "address": "0x3eBA87c5D5C52757fCa533b1a1729DF6fe576370"
   },
   {
     "name": "CollateralPoolTokenFactory",
     "contractName": "CollateralPoolTokenFactory.sol",
-    "address": "0x5FED1e57DD553Ec328586B00f4ADaEAe035e2F8c"
+    "address": "0x88fdBEd95A5D227DD8D68f6e8Fcf27825B01DD82"
   },
   {
     "name": "AssetManagerController",
     "contractName": "AssetManagerController.sol",
-    "address": "0xB2b63121ecDc37D0F63966C08db3a76676887360",
+    "address": "0xb2A9566f1DA48bf92B855Be69946316935634786",
     "mustSwitchToProduction": true
   },
   {
     "name": "LiquidationStrategyImpl",
     "contractName": "LiquidationStrategyImpl.sol",
-    "address": "0xf3Ac549Bc139a0d44Ee4E54063F0e8558fDC07ba"
+    "address": "0x1644BeE86c04eE8029c28d3f7F220816b09e41e2"
   },
   {
     "name": "AssetManager_FtestXRP",
     "contractName": "AssetManager.sol",
-    "address": "0x78c5b6289642Af6f47526E3D845395c9a53b3E6B"
+    "address": "0x93CF4820d35Fff1afd44aD54546649D8D2b8e952"
   },
   {
     "name": "FtestXRP",
     "contractName": "FAsset.sol",
-    "address": "0xA86379bC8644Ce1919cc750844E819c0a2cD28dB",
+    "address": "0x4F5ECA4Dc4e1b963986403cFa0C56C65e2b86150",
     "mustSwitchToProduction": true
   },
   {
     "name": "AddressValidator_FtestXRP",
     "contractName": "RippleAddressValidator.sol",
-    "address": "0x75e59c0434ADdE605033313D01df992f3ac43Ece"
+    "address": "0x23B14ae7702656712EBAC77BcC036c92dE4F7A6f"
   },
   {
     "name": "FakePriceReader",
@@ -281,17 +281,17 @@
   {
     "name": "AssetManager_FfakeXRP",
     "contractName": "AssetManager.sol",
-    "address": "0x6EDbc084b01e8851a9Ebe8d96DA6A7E33628aB4e"
+    "address": "0x0385C5C6411a630d9198A9B77B216536A0F798D8"
   },
   {
     "name": "FfakeXRP",
     "contractName": "FAsset.sol",
-    "address": "0x3F38Daa70175430cdA64a83943e12e155eD75706",
+    "address": "0xF228f7f9f6aE58e02F376752621d944A222E84C7",
     "mustSwitchToProduction": true
   },
   {
     "name": "AddressValidator_FfakeXRP",
     "contractName": "RippleAddressValidator.sol",
-    "address": "0xe2b4b320ea04Ab61E2145073dFD7619247547Eae"
+    "address": "0xeAfB7E3292cd79F7A9054E0051d319b9D2A09Fd3"
   }
 ]
