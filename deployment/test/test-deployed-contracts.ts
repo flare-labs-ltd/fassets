@@ -50,8 +50,11 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
 
     const testUnderlyingAddresses = {
         [SourceId.XRP]: 'r9N9XrsUKFJgaAwoL3qtefdjXVxjgxUqWi',
+        [SourceId.testXRP]: 'r9N9XrsUKFJgaAwoL3qtefdjXVxjgxUqWi',
         [SourceId.BTC]: 'mhvLner76vL99PfYFmdzDFqGGqwQyE61xQ',
+        [SourceId.testBTC]: 'mhvLner76vL99PfYFmdzDFqGGqwQyE61xQ',
         [SourceId.DOGE]: 'mr8zwdWkSrxQRrhq7D2i4f4CLZoZgF3nja',
+        [SourceId.testDOGE]: 'mr8zwdWkSrxQRrhq7D2i4f4CLZoZgF3nja',
         [SourceId.LTC]: 'mjGn3j6vrHwgRzRWsXFT6dP1K5atca7yPx',
         [SourceId.ALGO]: 'TEST_ADDRESS',
     };
