@@ -1,7 +1,7 @@
 {
     "$schema": "../asset-manager-parameters.schema.json",
     "burnAddress": "0x000000000000000000000000000000000000dEaD",
-    "chainName": "XRP",
+    "chainName": "testXRP",
     "assetName": "Test XRP",
     "assetSymbol": "testXRP",
     "assetDecimals": 6,
@@ -17,11 +17,11 @@
     "liquidationStrategy": "LiquidationStrategyImpl",
     "liquidationStrategySettings": {
         "$schema": "../LiquidationStrategyImplSettings.schema.json",
-        "liquidationStepSeconds": 90,
+        "liquidationStepSeconds": 180,
         "liquidationCollateralFactorBIPS": [
-            12000,
-            16000,
-            20000
+            10500,
+            11000,
+            11500
         ],
         "liquidationFactorVaultCollateralBIPS": [
             10000,
@@ -83,8 +83,8 @@
     "maxTrustedPriceAgeSeconds": 600,
     "withdrawalWaitMinSeconds": 60,
     "announcedUnderlyingConfirmationMinSeconds": 250,
-    "buybackCollateralFactorBIPS": 10100,
-    "vaultCollateralBuyForFlareFactorBIPS": 10100,
+    "buybackCollateralFactorBIPS": 10030,
+    "vaultCollateralBuyForFlareFactorBIPS": 10000,
     "minUpdateRepeatTimeSeconds": 60,
     "tokenInvalidationTimeMinSeconds": 86400,
     "agentExitAvailableTimelockSeconds": 60,
