@@ -276,7 +276,7 @@
   {
     "name": "FakePriceReader",
     "contractName": "FakePriceReader.sol",
-    "address": "0x4B63A5045b8ac1b726C7E71A3dDa25A1bDeEa135"
+    "address": "0x187A81d96b1bbb34941D460A27ACbCb1e4E98C8F"
   },
   {
     "name": "AssetManager_FfakeXRP",
