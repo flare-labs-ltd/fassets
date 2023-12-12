@@ -183,7 +183,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     return assetManager;
 }
 
-export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contractsFile: string, assetManagerAddress: string) {
+export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contractsFile: string) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const AssetManager = artifacts.require("AssetManager");
@@ -191,6 +191,11 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     const parameters = assetManagerParameters.load(parametersFile);
     const contracts = loadContracts(contractsFile);
+
+    const assetManagerContractName = `AssetManager_${parameters.fAssetSymbol}`;
+    const assetManagerAddress = contracts[assetManagerContractName]!.address;
+
+    console.log(`Verifying ${assetManagerContractName} at ${assetManagerAddress}...`);
 
     const assetManager = await AssetManager.at(assetManagerAddress);
     const currentSettings = await assetManager.getSettings();

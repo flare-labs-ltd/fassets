@@ -26,6 +26,19 @@ task("link-contracts", "Link contracts with external libraries")
         await linkContracts(hre, contracts, mapfile);
     });
 
+task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
+    .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
+    .setAction(async ({ networkConfig }, hre) => {
+        const contractsFile = `deployment/deploys/${networkConfig}.json`;
+        await deploySCProofVerifier(hre, contractsFile);
+        await deployPriceReader(hre, contractsFile);
+        await deployWhitelist(hre, contractsFile, 'Agent');
+        await deployWhitelist(hre, contractsFile, 'User');
+        await deployAgentVaultFactory(hre, contractsFile);
+        await deployCollateralPoolFactory(hre, contractsFile);
+        await deployCollateralPoolTokenFactory(hre, contractsFile);
+    });
+
 task("deploy-asset-managers", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
     .addFlag("link", "Link asset manager before")
     .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and SCProofVerifier")
@@ -41,15 +54,8 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
             const mapfile = `deployment/deploys/${networkConfig}.libraries.json`
             await linkContracts(hre, ["AssetManager"], mapfile);
         }
-        // optionally run the full deploy
+        // optionally run the deploy together with controller
         if (deployController) {
-            await deploySCProofVerifier(hre, contractsFile);
-            await deployPriceReader(hre, contractsFile);
-            await deployWhitelist(hre, contractsFile, 'Agent');
-            await deployWhitelist(hre, contractsFile, 'User');
-            await deployAgentVaultFactory(hre, contractsFile);
-            await deployCollateralPoolFactory(hre, contractsFile);
-            await deployCollateralPoolTokenFactory(hre, contractsFile);
             await deployAssetManagerController(hre, contractsFile, managerParameterFiles);
         } else {
             for (const paramFile of managerParameterFiles) {
@@ -60,11 +66,10 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
 
 task("verify-asset-manager", "Verify deployed asset manager.")
     .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
-    .addParam("address", "The asset manager address.")
     .addParam("parametersFile", "The asset manager config file.")
-    .setAction(async ({ address, parametersFile, networkConfig }, hre) => {
+    .setAction(async ({ parametersFile, networkConfig }, hre) => {
         const contractsFile = `deployment/deploys/${networkConfig}.json`;
-        await verifyAssetManager(hre, parametersFile, contractsFile, address);
+        await verifyAssetManager(hre, parametersFile, contractsFile);
     });
 
 task("verify-asset-manager-controller", "Verify deployed asset manager controller.")

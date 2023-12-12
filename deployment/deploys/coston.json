@@ -249,29 +249,29 @@
   {
     "name": "AssetManagerController",
     "contractName": "AssetManagerController.sol",
-    "address": "0x92CD953acc811d9dA6358E69525243987e1e76fe",
+    "address": "0x7644E5197e178cB04a0948c016E7ACB8401c2028",
     "mustSwitchToProduction": true
   },
   {
     "name": "LiquidationStrategyImpl",
     "contractName": "LiquidationStrategyImpl.sol",
-    "address": "0xD164364D8a01E9F30CF583fD19d7593109062a2B"
+    "address": "0xEB944F980912c14b5302066dd44C9DeBAA0111bf"
   },
   {
     "name": "AssetManager_FtestXRP",
     "contractName": "AssetManager.sol",
-    "address": "0x58cCe8be3E84150BBeAb6F56b96Fd4f4Bf4ab7Fc"
+    "address": "0xEB9900EB5fB4eC73EF177e1904f80F1F589D9d5f"
   },
   {
     "name": "FtestXRP",
     "contractName": "FAsset.sol",
-    "address": "0x3Be202AfDa16bAcD5EB6e71c2938f65b753A531b",
+    "address": "0x33622821E92F71eCb4afBED00f683BC29bCce360",
     "mustSwitchToProduction": true
   },
   {
     "name": "AddressValidator_FtestXRP",
     "contractName": "RippleAddressValidator.sol",
-    "address": "0x7F270577a6eCAe0AD5d5ee1c4Fb4879909dA7BE9"
+    "address": "0xBcE85231f4bE00E4238b3a6aC0c62eda2aE9808d"
   },
   {
     "name": "FakePriceReader",
@@ -281,17 +281,17 @@
   {
     "name": "AssetManager_FfakeXRP",
     "contractName": "AssetManager.sol",
-    "address": "0x6c805b04530Ce0a0E4a569CF70C5b297210932da"
+    "address": "0x1EeaDe8E9300713B91256A15FEc4a83111fcFA0a"
   },
   {
     "name": "FfakeXRP",
     "contractName": "FAsset.sol",
-    "address": "0xbAdb51307c0757908B5e703C8a2B2DB476A795a9",
+    "address": "0x0a6E5D30f164bE2ebD939934F19F1B249f698f1C",
     "mustSwitchToProduction": true
   },
   {
     "name": "AddressValidator_FfakeXRP",
     "contractName": "RippleAddressValidator.sol",
-    "address": "0xE0D0d4574a9998E8AaBE63A3F61B584688944881"
+    "address": "0x0924F575E797C5c2BA1c2f7d6E5F21130CFb580A"
   }
 ]
