@@ -211,6 +211,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      *                                      Must be positive and smaller or equal to the sender's token balance
      * @param _redeemToCollateral           Specifies if agent should redeem f-assets in NAT from his collateral
      * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
+     * @param _executor                     The account that is allowed to execute redemption default
      * @notice F-assets will be redeemed in collateral if their value does not exceed one lot
      * @notice All f-asset fees will be redeemed along with potential additionally required f-assets taken
      *  from the sender's f-asset account
@@ -219,9 +220,10 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     function selfCloseExit(
         uint256 _tokenShare,
         bool _redeemToCollateral,
-        string memory _redeemerUnderlyingAddress
+        string memory _redeemerUnderlyingAddress,
+        address payable _executor
     )
-        external
+        external payable
         nonReentrant
     {
         require(_tokenShare > 0, "token share is zero");
@@ -270,8 +272,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
                 assetManager.redeemFromAgentInCollateral(
                     agentVault, msg.sender, requiredFAssets);
             } else {
-                assetManager.redeemFromAgent(
-                    agentVault, msg.sender, requiredFAssets, _redeemerUnderlyingAddress);
+                // automatically pass `msg.value` to `redeemFromAgent` for the executor fee
+                assetManager.redeemFromAgent{ value: msg.value }(
+                    agentVault, msg.sender, requiredFAssets, _redeemerUnderlyingAddress, _executor);
             }
         }
         // sort out the sender's f-asset fees that were spent on redemption

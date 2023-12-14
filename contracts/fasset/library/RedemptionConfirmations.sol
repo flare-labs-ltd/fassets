@@ -77,6 +77,8 @@ library RedemptionConfirmations {
             Agents.payoutFromVault(agent, msg.sender,
                 Agents.convertUSD5ToVaultCollateralWei(agent, state.settings.confirmationByOthersRewardUSD5));
         }
+        // burn executor fee (or pay executor if the "other" that provided proof is the executor)
+        Redemptions.payOrBurnExecutorFee(request);
         // redemption can make agent healthy, so check and pull out of liquidation
         Liquidation.endLiquidationIfHealthy(agent);
         // delete redemption request at end

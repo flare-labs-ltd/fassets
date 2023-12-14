@@ -105,8 +105,9 @@ interface IIAssetManager is IAssetManager {
         address _agentVault,
         address _receiver,
         uint256 _amountUBA,
-        string memory _receiverUnderlyingAddress
-    ) external;
+        string memory _receiverUnderlyingAddress,
+        address payable _executor
+    ) external payable;
 
     /**
      * Burn fassets from  a single agent and get paid in vault collateral by the agent.

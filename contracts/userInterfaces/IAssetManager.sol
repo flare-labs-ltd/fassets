@@ -471,6 +471,7 @@ interface IAssetManager is IAssetManagerEvents {
      *      copy current agent's published fee; used to prevent agent from front-running reservation request
      *      and increasing fee (that would mean that the minter would have to pay raised fee or forfeit
      *      collateral reservation fee)
+     * @param _executor the account that is allowed to execute minting (besides minter and agent)
      */
     function reserveCollateral(
         address _agentVault,
@@ -570,13 +571,15 @@ interface IAssetManager is IAssetManagerEvents {
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
      * @return _redeemedAmountUBA the actual redeemed amount; may be less then requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function redeem(
         uint256 _lots,
-        string memory _redeemerUnderlyingAddressString
-    ) external
+        string memory _redeemerUnderlyingAddressString,
+        address payable _executor
+    ) external payable
         returns (uint256 _redeemedAmountUBA);
 
     /**

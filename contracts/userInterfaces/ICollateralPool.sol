@@ -77,15 +77,19 @@ interface ICollateralPool {
      *  specified by `_tokenShare`. If it is not enough it moves on to spending total sender's f-asset fees. If they
      *  are not enough, it takes from the sender's f-asset balance. Spending sender's f-asset fees means that
      *  transferable tokens are converted to non-transferable.
+     * In case of self-close via redemption, the user can set executor to trigger possible default.
+     * In this case, some NAT can be sent with transaction, to pay the executor's fee.
      * @param _tokenShare                   The amount of pool tokens to be liquidated
      * @param _redeemToCollateral           Specifies if agent should redeem f-assets in NAT from his collateral
      * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
+     * @param _executor                     The account that is allowed to execute redemption default
      */
     function selfCloseExit(
         uint256 _tokenShare,
         bool _redeemToCollateral,
-        string memory _redeemerUnderlyingAddress
-    ) external;
+        string memory _redeemerUnderlyingAddress,
+        address payable _executor
+    ) external payable;
 
     /**
      * Collect f-asset fees by locking an appropriate ratio of transferable tokens

@@ -41,10 +41,12 @@ library RedemptionFailures {
         // We allow only redeemers or agents to trigger redemption default, since they may want
         // to do it at some particular time. (Agent might want to call default to unstick redemption when
         // the redeemer is unresponsive.)
-        require(msg.sender == request.redeemer || Agents.isOwner(agent, msg.sender),
-            "only redeemer or agent");
-        // pay redeemer in native currency and mark as defaulted
+        require(msg.sender == request.redeemer || msg.sender == request.executor || Agents.isOwner(agent, msg.sender),
+            "only redeemer, executor or agent");
+        // pay redeemer in collateral
         executeDefaultPayment(agent, request, _redemptionRequestId);
+        // pay the executor if the executor called this
+        Redemptions.payOrBurnExecutorFee(request);
         // don't delete redemption request at end - the agent might still confirm failed payment
         request.status = Redemption.Status.DEFAULTED;
     }
@@ -73,6 +75,8 @@ library RedemptionFailures {
                     _proof.data.responseBody.blockTimestamp,
                 "should default first");
             executeDefaultPayment(agent, request, _redemptionRequestId);
+            // burn the executor fee
+            Redemptions.payOrBurnExecutorFee(request);
         }
         // delete redemption request - not needed any more
         Redemptions.deleteRedemptionRequest(_redemptionRequestId);

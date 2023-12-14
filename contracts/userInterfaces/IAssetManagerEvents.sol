@@ -124,7 +124,7 @@ interface IAssetManagerEvents {
         string paymentAddress,
         bytes32 paymentReference,
         address executor,
-        uint256 executorFee);
+        uint256 executorFeeNatWei);
 
     /**
      * Minter paid underlying funds in time and received the fassets.
@@ -176,7 +176,9 @@ interface IAssetManagerEvents {
         uint256 firstUnderlyingBlock,
         uint256 lastUnderlyingBlock,
         uint256 lastUnderlyingTimestamp,
-        bytes32 paymentReference);
+        bytes32 paymentReference,
+        address executor,
+        uint256 executorFeeNatWei);
 
     /**
      * In case there were not enough tickets or more than allowed number would have to be redeemed,
