@@ -122,7 +122,9 @@ library AMEvents {
         uint256 lastUnderlyingBlock,
         uint256 lastUnderlyingTimestamp,
         string paymentAddress,
-        bytes32 paymentReference);
+        bytes32 paymentReference,
+        address executor,
+        uint256 executorFee);
 
     /**
      * Minter paid underlying funds in time and received the fassets.

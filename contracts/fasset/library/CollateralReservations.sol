@@ -18,12 +18,14 @@ library CollateralReservations {
     using SafePct for *;
     using SafeCast for uint256;
     using AgentCollateral for Collateral.CombinedData;
+    using Agent for Agent.State;
 
     function reserveCollateral(
         address _minter,
         address _agentVault,
         uint64 _lots,
-        uint64 _maxMintingFeeBIPS
+        uint64 _maxMintingFeeBIPS,
+        address payable _executor
     )
         external
     {
@@ -43,32 +45,25 @@ library CollateralReservations {
         _reserveCollateral(agent, valueAMG, underlyingFeeUBA);
         // poolCollateral is WNat, so we can use its price
         uint256 reservationFee = _reservationFee(collateralData.poolCollateral.amgToTokenWeiPrice, valueAMG);
-        require(msg.value == reservationFee, "inappropriate fee amount");
+        require(msg.value >= reservationFee, "inappropriate fee amount");
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
         state.newCrtId += PaymentReference.randomizedIdSkip();
         uint64 crtId = state.newCrtId;   // pre-increment - id can never be 0
-        state.crts[crtId] = CollateralReservation.Data({
-            valueAMG: valueAMG,
-            underlyingFeeUBA: underlyingFeeUBA.toUint128(),
-            reservationFeeNatWei: reservationFee.toUint128(),
-            agentVault: _agentVault,
-            minter: _minter,
-            firstUnderlyingBlock: state.currentUnderlyingBlock,
-            lastUnderlyingBlock: lastUnderlyingBlock,
-            lastUnderlyingTimestamp: lastUnderlyingTimestamp
-        });
-        // stack too deep error if used directly in emitted event
-        string storage paymentAddress = agent.underlyingAddressString;
-        emit AMEvents.CollateralReserved(_agentVault,
-            _minter,
-            crtId,
-            underlyingValueUBA,
-            underlyingFeeUBA,
-            state.currentUnderlyingBlock,
-            lastUnderlyingBlock,
-            lastUnderlyingTimestamp,
-            paymentAddress,
-            PaymentReference.minting(crtId));
+        // create in-memory cr and then put it to storage to not go out-of-stack
+        CollateralReservation.Data memory cr;
+        cr.valueAMG = valueAMG;
+        cr.underlyingFeeUBA = underlyingFeeUBA.toUint128();
+        cr.reservationFeeNatWei = reservationFee.toUint128();
+        cr.agentVault = _agentVault;
+        cr.minter = _minter;
+        cr.firstUnderlyingBlock = state.currentUnderlyingBlock;
+        cr.lastUnderlyingBlock = lastUnderlyingBlock;
+        cr.lastUnderlyingTimestamp = lastUnderlyingTimestamp;
+        cr.executor = _executor;
+        cr.executorFeeNatGWei = ((msg.value - reservationFee) / Conversion.GWEI).toUint64();
+        state.crts[crtId] = cr;
+        // emit event
+        _emitCollateralReservationEvent(agent, cr, crtId);
     }
 
     function mintingPaymentDefault(
@@ -96,9 +91,10 @@ library CollateralReservations {
         uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFee(agent, crt.underlyingFeeUBA);
         emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // share collateral reservation fee between the agent's vault and pool
-        uint256 poolFeeShare = crt.reservationFeeNatWei.mulBips(agent.poolFeeShareBIPS);
+        uint256 totalFee = crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI;
+        uint256 poolFeeShare = totalFee.mulBips(agent.poolFeeShareBIPS);
         agent.collateralPool.depositNat{value: poolFeeShare}();
-        IIAgentVault(crt.agentVault).depositNat{value: crt.reservationFeeNatWei - poolFeeShare}(Globals.getWNat());
+        IIAgentVault(crt.agentVault).depositNat{value: totalFee - poolFeeShare}(Globals.getWNat());
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
     }
@@ -183,6 +179,28 @@ library CollateralReservations {
         Minting.checkMintingCap(reservationAMG);
         _agent.reservedAMG += reservationAMG;
         state.totalReservedCollateralAMG += reservationAMG;
+    }
+
+    function _emitCollateralReservationEvent(
+        Agent.State storage _agent,
+        CollateralReservation.Data memory _cr,
+        uint64 _crtId
+    )
+        private
+    {
+        emit AMEvents.CollateralReserved(
+            _agent.vaultAddress(),
+            _cr.minter,
+            _crtId,
+            Conversion.convertAmgToUBA(_cr.valueAMG),
+            _cr.underlyingFeeUBA,
+            _cr.firstUnderlyingBlock,
+            _cr.lastUnderlyingBlock,
+            _cr.lastUnderlyingTimestamp,
+            _agent.underlyingAddressString,
+            PaymentReference.minting(_crtId),
+            _cr.executor,
+            _cr.executorFeeNatGWei * Conversion.GWEI);
     }
 
     function _reservationAMG(

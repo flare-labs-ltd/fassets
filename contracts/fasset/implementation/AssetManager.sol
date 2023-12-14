@@ -515,18 +515,20 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      *      copy current agent's published fee; used to prevent agent from front-running reservation request
      *      and increasing fee (that would mean that the minter would have to pay raised fee or forfeit
      *      collateral reservation fee)
+     * @param _executor the account that is allowed to represent minter in `executeMinting()`
      */
     function reserveCollateral(
         address _agentVault,
         uint256 _lots,
-        uint256 _maxMintingFeeBIPS
+        uint256 _maxMintingFeeBIPS,
+        address payable _executor
     )
         external payable override
         onlyAttached
         onlyWhitelistedSender
     {
         CollateralReservations.reserveCollateral(msg.sender, _agentVault,
-            _lots.toUint64(), _maxMintingFeeBIPS.toUint64());
+            _lots.toUint64(), _maxMintingFeeBIPS.toUint64(), _executor);
     }
 
     /**

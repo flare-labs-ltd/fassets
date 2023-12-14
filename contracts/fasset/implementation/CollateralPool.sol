@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../../utils/lib/SafePct.sol";
+import "../../utils/lib/Transfers.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAssetManager.sol";
 import "../interface/IIAgentVault.sol";
@@ -684,7 +685,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         require(token.totalSupply() == 0, "cannot destroy a pool with issued tokens");
         token.destroy(_recipient);
         // transfer native balance, if any (used to be done by selfdestruct)
-        _transferNAT(_recipient, address(this).balance);
+        Transfers.transferNAT(_recipient, address(this).balance);
         // transfer untracked f-assets and wNat, if any
         uint256 untrackedWNat = wNat.balanceOf(address(this));
         uint256 untrackedFAsset = fAsset.balanceOf(address(this));
@@ -826,16 +827,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 natShare = tokens.mulDiv(totalCollateral, token.totalSupply());
         token.burn(msg.sender, tokens, true); // when f-asset is terminated all tokens are free tokens
         _transferWNat(msg.sender, natShare);
-    }
-
-    function _transferNAT(address payable _recipient, uint256 _amount) private {
-        if (_amount > 0) {
-            /* solhint-disable avoid-low-level-calls */
-            //slither-disable-next-line arbitrary-send-eth
-            (bool success, ) = _recipient.call{value: _amount}("");
-            /* solhint-enable avoid-low-level-calls */
-            require(success, "transfer failed");
-        }
     }
 
     /**

@@ -475,7 +475,8 @@ interface IAssetManager is IAssetManagerEvents {
     function reserveCollateral(
         address _agentVault,
         uint256 _lots,
-        uint256 _maxMintingFeeBIPS
+        uint256 _maxMintingFeeBIPS,
+        address payable _executor
     ) external payable;
 
     /**

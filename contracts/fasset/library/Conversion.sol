@@ -13,6 +13,7 @@ library Conversion {
     uint256 internal constant AMG_TOKEN_WEI_PRICE_SCALE_EXP = 9;
     uint256 internal constant AMG_TOKEN_WEI_PRICE_SCALE = 10 ** AMG_TOKEN_WEI_PRICE_SCALE_EXP;
     uint256 internal constant NAT_WEI = 1e18;
+    uint256 internal constant GWEI = 1e9;
 
     function currentAmgPriceInTokenWei(
         uint256 _tokenType
