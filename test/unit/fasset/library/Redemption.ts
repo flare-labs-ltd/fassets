@@ -1,4 +1,4 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -13,6 +13,7 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { SourceId } from "../../../../lib/underlying-chain/SourceId";
+import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 
 const CollateralPool = artifacts.require("CollateralPool");
@@ -44,9 +45,12 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     const minterAddress1 = accounts[30];
     const redeemerAddress1 = accounts[40];
     const redeemerAddress2 = accounts[41];
+    const executorAddress1 = accounts[45];
+    const executorAddress2 = accounts[46];
     const underlyingMinter1 = "Minter1";
     const underlyingRedeemer1 = "Redeemer1";
     const underlyingRedeemer2 = "Redeemer2";
+    const executorFee = toWei(0.1);
 
     function createAgent(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
@@ -85,7 +89,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const lots = 3;
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress, value: crFee });
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress, value: crFee });
         const crt = requiredEventArgs(resAg, 'CollateralReserved');
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
@@ -95,7 +99,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // redeemer "buys" f-assets
         await fAsset.transfer(redeemerAddress, minted.mintedAmountUBA, { from: minterAddress });
         // redemption request
-        const resR = await assetManager.redeem(lots, underlyingRedeemerAddress, { from: redeemerAddress });
+        const resR = await assetManager.redeem(lots, underlyingRedeemerAddress, executorAddress1, { from: redeemerAddress, value: executorFee });
         const redemptionRequests = filterEvents(resR, 'RedemptionRequested').map(e => e.args);
         const request = redemptionRequests[0];
         return request;
@@ -109,7 +113,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const lots = 3;
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress, value: crFee });
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress, value: crFee });
         const crt = requiredEventArgs(resAg, 'CollateralReserved');
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
@@ -120,7 +124,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await fAsset.transfer(redeemerAddress, minted.mintedAmountUBA, { from: minterAddress });
         // redemption request
         await impersonateContract(collateralPool, toBN(512526332000000000), accounts[0]);
-        const resR = await assetManager.redeemFromAgent(agentVault.address, redeemerAddress, 1000, underlyingRedeemerAddress, { from: collateralPool });
+        const resR = await assetManager.redeemFromAgent(agentVault.address, redeemerAddress, 1000, underlyingRedeemerAddress, executorAddress1, { from: collateralPool, value: executorFee });
         await stopImpersonatingContract(collateralPool);
         const redemptionRequests = filterEvents(resR, 'RedemptionRequested').map(e => e.args);
         const request = redemptionRequests[0];
@@ -135,7 +139,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const lots = 3;
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress, value: crFee });
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress, value: crFee });
         const crt = requiredEventArgs(resAg, 'CollateralReserved');
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
@@ -367,6 +371,27 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         expectEvent(res, 'RedemptionDefault');
     });
 
+    it("should execute redemption payment default - executor", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+
+        // chain.mine(chainInfo.underlyingBlocksForPayment + 1);
+        // chain.skipTimeTo(request.lastUnderlyingTimestamp.toNumber() + 1);
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
+            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
+        }
+
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const executorBalanceStart = toBN(await web3.eth.getBalance(executorAddress1));
+        const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: executorAddress1 });
+        const executorBalanceEnd = toBN(await web3.eth.getBalance(executorAddress1));
+        const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
+        expectEvent(res, 'RedemptionDefault');
+        assertWeb3Equal(executorBalanceEnd.sub(executorBalanceStart), executorFee.sub(gasFee));
+    });
+
     it("should execute redemption payment default - agent", async () => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
@@ -382,7 +407,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         expectEvent(res, 'RedemptionDefault');
     });
 
-    it("should not execute redemption payment default - only redeemer or agent", async () => {
+    it("should not execute redemption payment default - only redeemer, executor or agent", async () => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
@@ -394,7 +419,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
             request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: minterAddress1 });
-        await expectRevert(res, 'only redeemer or agent');
+        await expectRevert(res, 'only redeemer, executor or agent');
     });
 
     it("should not execute redemption payment default - redemption non-payment mismatch", async () => {
@@ -539,7 +564,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
             const lots = 1;
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const crFee = await assetManager.collateralReservationFee(lots);
-            const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+            const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
             const crt = requiredEventArgs(resAg, 'CollateralReserved');
             const paymentAmount = crt.valueUBA.add(crt.feeUBA);
             const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
@@ -552,7 +577,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const lots = allLots+200;
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
         const crt = requiredEventArgs(resAg, 'CollateralReserved');
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
@@ -562,7 +587,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         // redeemer "buys" f-assets
         await fAsset.transfer(redeemerAddress1, minted.mintedAmountUBA, { from: minterAddress1 });
         // redemption request
-        const resR = await assetManager.redeem(lots, underlyingRedeemer1, { from: redeemerAddress1 });
+        const resR = await assetManager.redeem(lots, underlyingRedeemer1, executorAddress1, { from: redeemerAddress1, value: executorFee });
         console.log(resR.receipt.gasUsed);
     });
 
@@ -575,7 +600,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const lots = 1;
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
         const crt = requiredEventArgs(resAg, 'CollateralReserved');
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
@@ -588,10 +613,10 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
         await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
         //Only collateral pool can redeem from agent
-        const rs = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, { from:  accounts[15] });
+        const rs = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, constants.ZERO_ADDRESS, { from:  accounts[15] });
         await expectRevert(rs, "only collateral pool");
         //Redeeming from agent and agent in collateral with amount 0 should not work
-        const resR = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, { from:  collateralPool.address });
+        const resR = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, constants.ZERO_ADDRESS, { from:  collateralPool.address });
         await expectRevert(resR, "redemption of 0");
         const resRC = assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, 0, { from: collateralPool.address });
         await expectRevert(resRC, "redemption of 0");
@@ -610,7 +635,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const lots = 1;
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
         const crt = requiredEventArgs(resAg, 'CollateralReserved');
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
@@ -620,7 +645,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         //Mint from second agent
         const agentInfo2 = await assetManager.getAgentInfo(agentVault2.address);
         const crFee2 = await assetManager.collateralReservationFee(lots);
-        const resAg2 = await assetManager.reserveCollateral(agentVault2.address, lots, agentInfo2.feeBIPS, { from: minterAddress1, value: crFee2 });
+        const resAg2 = await assetManager.reserveCollateral(agentVault2.address, lots, agentInfo2.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee2 });
         const crt2 = requiredEventArgs(resAg2, 'CollateralReserved');
         const paymentAmount2 = crt2.valueUBA.add(crt2.feeUBA);
         const txHash2 = await wallet.addTransaction(underlyingMinter1, crt2.paymentAddress, paymentAmount2, crt2.paymentReference);
@@ -652,7 +677,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const lots = 1;
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
         const crt = requiredEventArgs(resAg, 'CollateralReserved');
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
@@ -666,16 +691,16 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const redeemerXRPAddressTooLong = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjNMRHNFsg";
         const redeemerXRPAddressIncorrect = "rfsk8pNsNeGA8nYWf3PzoRxMRHeAyEtNjN";
         // redemption request, underlying address too short
-        let resR = assetManager.redeem(lots, redeemerXRPAddressTooShort, { from: redeemerAddress1 });
+        let resR = assetManager.redeem(lots, redeemerXRPAddressTooShort, executorAddress1, { from: redeemerAddress1, value: executorFee });
         await expectRevert(resR,"invalid underlying address");
         // redemption request, underlying address too long
-        resR = assetManager.redeem(lots, redeemerXRPAddressTooLong, { from: redeemerAddress1 });
+        resR = assetManager.redeem(lots, redeemerXRPAddressTooLong, executorAddress1, { from: redeemerAddress1 });
         await expectRevert(resR,"invalid underlying address");
         // redemption request, underlying address too short
-        resR = assetManager.redeem(lots, redeemerXRPAddressIncorrect, { from: redeemerAddress1 });
+        resR = assetManager.redeem(lots, redeemerXRPAddressIncorrect, executorAddress1, { from: redeemerAddress1 });
         await expectRevert(resR,"invalid underlying address");
         // redemption request
-        resR = assetManager.redeem(lots, redeemerXRPAddressCorrect, { from: redeemerAddress1 });
+        resR = assetManager.redeem(lots, redeemerXRPAddressCorrect, executorAddress1, { from: redeemerAddress1 });
         expectEvent(await resR, "RedemptionRequested");
     });
 });

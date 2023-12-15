@@ -5,7 +5,7 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { TX_BLOCKED, TX_FAILED } from "../../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, MAX_BIPS, toBIPS, toBN, toWei } from "../../../../lib/utils/helpers";
+import { BNish, MAX_BIPS, requireNotNull, toBIPS, toBN, toWei } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -37,6 +37,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     // addresses
     const agentOwner1 = accounts[20];
     const minterAddress1 = accounts[30];
+    const executorAddress1 = accounts[31];
     // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingAgent1 = "Agent1";
     const underlyingMinter1 = "Minter1";
@@ -62,7 +63,9 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     async function reserveCollateral(agentVault: string, lots: BNish) {
         const agentInfo = await assetManager.getAgentInfo(agentVault);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+        const totalNatFee = crFee.add(toWei(0.1));
+        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, executorAddress1,
+            { from: minterAddress1, value: totalNatFee });
         return requiredEventArgs(res, 'CollateralReserved');
     }
 
@@ -156,7 +159,31 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         assertWeb3Equal(event.redemptionTicketId, 1);
     });
 
-    it("should not execute minting if not agent or minter", async () => {
+    it("should execute minting (executor)", async () => {
+        // init
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { poolFeeShareBIPS });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const crt = await reserveCollateral(agentVault.address, 1);
+        const txHash = await performMintingPayment(crt);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const executorBalanceStart = toBN(await web3.eth.getBalance(executorAddress1));
+        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: executorAddress1 });
+        const executorBalanceEnd = toBN(await web3.eth.getBalance(executorAddress1));
+        const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
+        assertWeb3Equal(executorBalanceEnd.sub(executorBalanceStart), toWei(0.1).sub(gasFee));
+        // assert
+        const event = requiredEventArgs(res, 'MintingExecuted');
+        assertWeb3Equal(event.agentVault, agentVault.address);
+        assertWeb3Equal(event.collateralReservationId, crt.collateralReservationId);
+        assertWeb3Equal(event.mintedAmountUBA, crt.valueUBA);
+        assertWeb3Equal(event.agentFeeUBA, getAgentFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
+        assertWeb3Equal(event.poolFeeUBA, getPoolFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
+        assertWeb3Equal(event.redemptionTicketId, 1);
+    });
+
+    it("should not execute minting if not agent or minter or executor", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
@@ -166,7 +193,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
         const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: accounts[0] });
         // assert
-        await expectRevert(promise, "only minter or agent");
+        await expectRevert(promise, "only minter, executor or agent");
     });
 
     it("should not execute minting if invalid minting reference", async () => {

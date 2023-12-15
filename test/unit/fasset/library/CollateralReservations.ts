@@ -1,4 +1,4 @@
-import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -37,6 +37,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     // addresses
     const agentOwner1 = accounts[20];
     const minterAddress1 = accounts[30];
+    const noExecutorAddress = constants.ZERO_ADDRESS;
     // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingAgent1 = "Agent1";
     const underlyingMinter1 = "Minter1";
@@ -62,7 +63,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     async function reserveCollateral(agentVault: string, lots: BNish) {
         const agentInfo = await assetManager.getAgentInfo(agentVault);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, { from: minterAddress1, value: crFee });
+        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         return requiredEventArgs(res, 'CollateralReserved');
     }
 
@@ -108,7 +109,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, { from: minterAddress1, value: crFee });
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
         const settings = await assetManager.getSettings();
         const lotSize = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
@@ -128,7 +129,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, { from: minterAddress1, value: crFee });
+        const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
         await expectRevert(promise, "agent not in mint queue");
     });
@@ -140,7 +141,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const promise = assetManager.reserveCollateral(agentVault.address, 0, feeBIPS, { from: minterAddress1, value: crFee });
+        const promise = assetManager.reserveCollateral(agentVault.address, 0, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
         await expectRevert(promise, "cannot mint 0 lots");
     });
@@ -156,7 +157,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, { from: minterAddress1, value: crFee });
+        const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
         await expectRevert(promise, "rc: invalid agent status");
     });
@@ -169,7 +170,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 500000000;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, { from: minterAddress1, value: crFee });
+        const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
         await expectRevert(promise, "not enough free collateral");
     });
@@ -182,7 +183,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
-        const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS - 1, { from: minterAddress1, value: crFee });
+        const promise = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS - 1, noExecutorAddress, { from: minterAddress1, value: crFee });
         // assert
         await expectRevert(promise, "agent's fee too high");
     });
@@ -196,10 +197,8 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         // assert
-        const promise1 = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, { from: minterAddress1, value: crFee.subn(1) });
+        const promise1 = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee.subn(1) });
         await expectRevert(promise1, "inappropriate fee amount");
-        const promise2 = assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, { from: minterAddress1, value: crFee.addn(1) });
-        await expectRevert(promise2, "inappropriate fee amount");
     });
 
     it("should not default minting if minting non-payment mismatch", async () => {

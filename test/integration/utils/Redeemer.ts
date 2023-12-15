@@ -1,7 +1,7 @@
 import { DustChanged, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
 import { eventArgs, filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { EventArgs } from "../../../lib/utils/events/common";
-import { BN_ZERO } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish, ZERO_ADDRESS, requireNotNull, toBN } from "../../../lib/utils/helpers";
 import { Agent } from "./Agent";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 
@@ -20,8 +20,10 @@ export class Redeemer extends AssetContextClient {
         return new Redeemer(ctx, address, underlyingAddress);
     }
 
-    async requestRedemption(lots: number): Promise<[requests: EventArgs<RedemptionRequested>[], remainingLots: BN, dustChanges: EventArgs<DustChanged>[]]> {
-        const res = await this.assetManager.redeem(lots, this.underlyingAddress, { from: this.address });
+    async requestRedemption(lots: number, executorAdddress?: string, executorFeeNatWei?: BNish): Promise<[requests: EventArgs<RedemptionRequested>[], remainingLots: BN, dustChanges: EventArgs<DustChanged>[]]> {
+        const executorFee = executorAdddress ? toBN(requireNotNull(executorFeeNatWei, "executor fee required if executor used")) : undefined;
+        const res = await this.assetManager.redeem(lots, this.underlyingAddress, executorAdddress ?? ZERO_ADDRESS,
+            { from: this.address, value: executorFee });
         const redemptionRequests = filterEvents(res, 'RedemptionRequested').map(e => e.args);
         const redemptionIncomplete = eventArgs(res, 'RedemptionRequestIncomplete');
         const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);
@@ -44,7 +46,8 @@ export class Redeemer extends AssetContextClient {
             request.firstUnderlyingBlock.toNumber(),
             request.lastUnderlyingBlock.toNumber(),
             request.lastUnderlyingTimestamp.toNumber());
-        const res = await this.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: this.address });
+        const executorAddress = request.executor !== ZERO_ADDRESS ? request.executor : this.address;
+        const res = await this.assetManager.redemptionPaymentDefault(proof, request.requestId, { from: executorAddress });
         return requiredEventArgs(res, 'RedemptionDefault');
     }
 }

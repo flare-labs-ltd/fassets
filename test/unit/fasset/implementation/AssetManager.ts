@@ -4,7 +4,7 @@ import { decodeLiquidationStrategyImplSettings, encodeLiquidationStrategyImplSet
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, DAYS, HOURS, MAX_BIPS, deepFormat, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, deepFormat, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, AssetManagerContract, AssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -1111,15 +1111,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(currentBlock[1], proof.data.responseBody.blockTimestamp);
         });
 
-        it("should execute minting", async () => {
+        it("should execute minting (by minter)", async () => {
             // create agent vault and make available
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             // reserve collateral
             const minter = accounts[80];
+            const executor = accounts[81];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
-                { from: minter, value: reservationFee });
+            const executorFee = toWei(0.1);
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, executor,
+                { from: minter, value: reservationFee.add(executorFee) });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // make and prove the payment transaction
             const paymentAmount = crt.valueUBA.add(crt.feeUBA);
@@ -1128,9 +1130,45 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 PaymentReference.minting(crt.collateralReservationId));
             const proof = await attestationProvider.provePayment(txHash, "underlying_minter", underlyingAgent1);
             // execute f-asset minting
-            await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minter });
+            const executorBalanceStart = toBN(await web3.eth.getBalance(executor));
+            const minterBalanceStart = toBN(await web3.eth.getBalance(minter));
+            const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minter });
+            const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
+            const executorBalanceEnd = toBN(await web3.eth.getBalance(executor));
+            const minterBalanceEnd = toBN(await web3.eth.getBalance(minter));
             const fassets = await fAsset.balanceOf(minter);
             assertWeb3Equal(fassets, crt.valueUBA);
+            // executor fee got burned - nobody receives it
+            assertWeb3Equal(executorBalanceEnd.sub(executorBalanceStart), BN_ZERO);
+            assertWeb3Equal(minterBalanceEnd.sub(minterBalanceStart), gasFee.neg());
+        });
+
+        it("should execute minting (by executor)", async () => {
+            // create agent vault and make available
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            // reserve collateral
+            const minter = accounts[80];
+            const executor = accounts[81];
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            const reservationFee = await assetManager.collateralReservationFee(1);
+            const executorFee = toWei(0.1);
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, executor,
+                { from: minter, value: reservationFee.add(executorFee) });
+            const crt = findRequiredEvent(tx, "CollateralReserved").args;
+            // make and prove the payment transaction
+            const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+            chain.mint("underlying_minter", paymentAmount);
+            const txHash = await wallet.addTransaction("underlying_minter", underlyingAgent1, paymentAmount,
+                PaymentReference.minting(crt.collateralReservationId));
+            const proof = await attestationProvider.provePayment(txHash, "underlying_minter", underlyingAgent1);
+            // execute f-asset minting
+            const executorBalanceStart = toBN(await web3.eth.getBalance(executor));
+            const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: executor });
+            const executorBalanceEnd = toBN(await web3.eth.getBalance(executor));
+            const gasFee = toBN(res.receipt.gasUsed).mul(toBN(res.receipt.effectiveGasPrice));
+            const fassets = await fAsset.balanceOf(minter);
+            assertWeb3Equal(fassets, crt.valueUBA);
+            assertWeb3Equal(executorBalanceEnd.sub(executorBalanceStart), executorFee.sub(gasFee));
         });
 
         it("should do a minting payment default", async () => {
@@ -1140,8 +1178,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
-                { from: minter, value: reservationFee });
+            const totalFee = reservationFee.add(toWei(0.1));    // 0.1 for executor fee
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, accounts[81],
+                { from: minter, value: totalFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             assertWeb3Equal(crt.valueUBA, lotsToUBA(1));
             // don't mint f-assets for a while
@@ -1158,9 +1197,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertWeb3Equal(def.collateralReservationId, crt.collateralReservationId);
             const poolFeeUBA = mulBIPS(toBN(crt.feeUBA), toBN(agentSettings.poolFeeShareBIPS));
             assertWeb3Equal(def.reservedAmountUBA, toBN(crt.valueUBA).add(poolFeeUBA));
-            // check that agent and pool got wNat
-            const poolShare = mulBIPS(reservationFee, toBN(agentSettings.poolFeeShareBIPS));
-            const agentShare = reservationFee.sub(poolShare);
+            // check that agent and pool got wNat (on default, they must share totalFee - including executor fee)
+            const poolShare = mulBIPS(totalFee, toBN(agentSettings.poolFeeShareBIPS));
+            const agentShare = totalFee.sub(poolShare);
             const agentWnatBalance = await wNat.balanceOf(agentVault.address);
             assertWeb3Equal(agentWnatBalance, agentShare);
             const poolAddress = await assetManager.getCollateralPool(agentVault.address);
@@ -1175,7 +1214,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
                 { from: minter, value: reservationFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // don't mint f-assets for a long time (> 24 hours)
@@ -1223,7 +1262,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
             // redemption request
-            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, { from: redeemer });
+            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
             const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
             // prove redemption payment
             const txhash = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer, 1,
@@ -1243,7 +1282,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
             // redemption request
-            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, { from: redeemer });
+            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
             const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
             // agent doesn't pay for specified time / blocks
             chain.mineTo(redemptionRequest.lastUnderlyingBlock.toNumber()+1);
@@ -1266,6 +1305,43 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assertEqualWithNumError(redeemerWNatBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorPoolBIPS)), toBN(10));
         });
 
+        it("should do a redemption payment default by executor", async () => {
+            // define redeemer and its underlying address
+            const redeemer = accounts[83];
+            const executor = accounts[84];
+            const underlyingRedeemer = "redeemer"
+            // create available agentVault and mint f-assets
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
+            // redemption request
+            const executorFee = toWei(0.1);
+            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, executor, { from: redeemer, value: executorFee });
+            const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
+            // agent doesn't pay for specified time / blocks
+            chain.mineTo(redemptionRequest.lastUnderlyingBlock.toNumber() + 1);
+            chain.skipTimeTo(redemptionRequest.lastUnderlyingTimestamp.toNumber() + 1);
+            // do default
+            const proof = await attestationProvider.proveReferencedPaymentNonexistence(underlyingRedeemer,
+                PaymentReference.redemption(redemptionRequest.requestId), redemptionRequest.valueUBA.sub(redemptionRequest.feeUBA),
+                0, chain.blockHeight() - 1, chain.lastBlockTimestamp() - 1);
+            const executorBalanceStart = toBN(await web3.eth.getBalance(executor));
+            const redemptionDefaultTx = await assetManager.redemptionPaymentDefault(proof, redemptionRequest.requestId, { from: executor });
+            const executorBalanceEnd = toBN(await web3.eth.getBalance(executor));
+            const gasFee = toBN(redemptionDefaultTx.receipt.gasUsed).mul(toBN(redemptionDefaultTx.receipt.effectiveGasPrice));
+            // expect events
+            const redemptionDefault = findRequiredEvent(redemptionDefaultTx, "RedemptionDefault").args;
+            expect(redemptionDefault.agentVault).to.equal(agentVault.address);
+            expect(redemptionDefault.redeemer).to.equal(redeemer);
+            assertWeb3Equal(redemptionDefault.requestId, redemptionRequest.requestId);
+            assertWeb3Equal(executorBalanceEnd.sub(executorBalanceStart), executorFee.sub(gasFee));
+            // expect usdc / wnat balance changes
+            const redeemedAssetUSD = await ubaToUSDWei(redemptionRequest.valueUBA, ftsos.asset);
+            const redeemerUSDCBalanceUSD = await ubaToUSDWei(await usdc.balanceOf(redeemer), ftsos.usdc);
+            const redeemerWNatBalanceUSD = await ubaToUSDWei(await wNat.balanceOf(redeemer), ftsos.nat);
+            assertEqualWithNumError(redeemerUSDCBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorVaultCollateralBIPS)), toBN(10));
+            assertEqualWithNumError(redeemerWNatBalanceUSD, mulBIPS(redeemedAssetUSD, toBN(settings.redemptionDefaultFactorPoolBIPS)), toBN(10));
+        });
+
         it("should finish non-defaulted redemption payment", async () => {
             // define redeemer and its underlying address
             const redeemer = accounts[83];
@@ -1274,7 +1350,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             const { agentFeeShareUBA } = await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
             // default a redemption
-            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, { from: redeemer });
+            const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
             const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
             // don't mint f-assets for a long time (> 24 hours) to escape the provable attestation window
             skipToProofUnavailability(redemptionRequest.lastUnderlyingBlock, redemptionRequest.lastUnderlyingTimestamp);
@@ -1561,7 +1637,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
+            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
                 { from: minter, value: reservationFee });
             await expectRevert(r, "not attached");
         });
@@ -1582,11 +1658,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
             // Try to reserve collateral from non whitelisted address
-            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
+            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
                 { from: minter, value: reservationFee });
             await expectRevert(r, "not whitelisted");
             //Whitelisted account should be able to reserve collateral
-            const res = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
+            const res = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
                 { from: whitelistedAccount, value: reservationFee });
             expectEvent(res,"CollateralReserved");
         });
@@ -1626,7 +1702,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const underlyingRedeemer = "redeemer"
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
             // default a redemption
-            const r = assetManager.redeem(1, underlyingRedeemer, { from: redeemer });
+            const r = assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
             await expectRevert(r, "not whitelisted");
         });
 
@@ -1908,7 +1984,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS,
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
                 { from: minter, value: reservationFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // don't mint f-assets for a long time (> 24 hours)

@@ -1,7 +1,7 @@
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BNish } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish, ZERO_ADDRESS, requireNotNull, toBN } from "../../../lib/utils/helpers";
 import { CollateralReserved } from "../../../typechain-truffle/AssetManager";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { AssetContext, AssetContextClient } from "./AssetContext";
@@ -29,10 +29,12 @@ export class Minter extends AssetContextClient {
         return new Minter(ctx, address, underlyingAddress, wallet);
     }
 
-    async reserveCollateral(agent: string, lots: BNish) {
+    async reserveCollateral(agent: string, lots: BNish, executorAdddress?: string, executorFeeNatWei?: BNish) {
         const agentInfo = await this.assetManager.getAgentInfo(agent);
         const crFee = await this.getCollateralReservationFee(lots);
-        const res = await this.assetManager.reserveCollateral(agent, lots, agentInfo.feeBIPS, { from: this.address, value: crFee });
+        const totalNatFee = executorAdddress ? crFee.add(toBN(requireNotNull(executorFeeNatWei, "executor fee required if executor used"))) : crFee;
+        const res = await this.assetManager.reserveCollateral(agent, lots, agentInfo.feeBIPS, executorAdddress ?? ZERO_ADDRESS,
+            { from: this.address, value: totalNatFee });
         return requiredEventArgs(res, 'CollateralReserved');
     }
 
@@ -43,7 +45,8 @@ export class Minter extends AssetContextClient {
 
     async executeMinting(crt: EventArgs<CollateralReserved>, transactionHash: string) {
         const proof = await this.attestationProvider.provePayment(transactionHash, this.underlyingAddress, crt.paymentAddress);
-        const res = await this.assetManager.executeMinting(proof, crt.collateralReservationId, { from: this.address });
+        const executorAddress = crt.executor !== ZERO_ADDRESS ? crt.executor : this.address;
+        const res = await this.assetManager.executeMinting(proof, crt.collateralReservationId, { from: executorAddress });
         return requiredEventArgs(res, 'MintingExecuted');
     }
 
