@@ -82,6 +82,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const endBalance = await context.usdc.balanceOf(challenger.address);
             // test rewarding
             const reward = await challenger.getChallengerReward(minted.mintedAmountUBA, agent);
+            assert.approximately(Number(reward) / 1e18, 300, 10);
             assertWeb3Equal(endBalance.sub(startBalance), reward);
             // test full liquidation started
             const info = await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(reward), freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), reservedUBA: 0, redeemingUBA: 0, announcedVaultCollateralWithdrawalWei: 0, status: AgentStatus.FULL_LIQUIDATION });

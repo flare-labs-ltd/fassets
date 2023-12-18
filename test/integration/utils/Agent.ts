@@ -126,7 +126,7 @@ export class Agent extends AssetContextClient {
         const ftsoAddress = await this.context.ftsoRegistry.getFtsoBySymbol(this.vaultCollateral().tokenFtsoSymbol);
         const ftso = await Ftso.at(ftsoAddress);
         const { 0: vaultCollateralPrice, 2: vaultCollateralDecimals } = await ftso.getCurrentPriceWithDecimals();
-        return usd5.mul(toWei(10**vaultCollateralDecimals.toNumber())).div(vaultCollateralPrice);
+        return usd5.mul(toWei(10**vaultCollateralDecimals.toNumber())).divn(1e5).div(vaultCollateralPrice);
     }
 
     async changeSettings(changes: Partial<Record<AgentSetting, BNish>>) {

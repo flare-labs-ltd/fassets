@@ -87,6 +87,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA, mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA });
             await challenger.confirmActiveRedemptionPayment(request, tx1Hash, agent);
             const challengerVaultCollateralReward = await agent.usd5ToVaultCollateralWei(toBN(context.settings.confirmationByOthersRewardUSD5));
+            assert.approximately(Number(challengerVaultCollateralReward) / 1e18, 100, 10);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(challengerVaultCollateralReward), freeUnderlyingBalanceUBA: minted.agentFeeUBA.add(request.feeUBA), redeemingUBA: 0 });
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
             const endChallengerVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);

@@ -89,7 +89,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     }
     async function usd5ToVaultCollateralWei(usd5: BN) {
         const { 0: usdcPrice, 2: usdcDecimals } = await ftsos.usdc.getCurrentPriceWithDecimals();
-        return usd5.mul(toWei(10**usdcDecimals.toNumber())).div(usdcPrice);
+        return usd5.mul(toWei(10**usdcDecimals.toNumber()).divn(1e5)).div(usdcPrice);
     }
 
     async function depositUnderlyingAsset(agentVault: AgentVaultInstance, owner: string, underlyingAgent: string, amount: BN) {

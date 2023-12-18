@@ -50,9 +50,10 @@
     "mock-deploy-hardhat": "yarn hardhat --network local run deployment/test/scripts/mock-deploy-dependencies.ts && yarn full-deploy-hardhat && yarn hardhat --network local run --no-compile deployment/test/scripts/mock-deploy-fix-address-updater.ts && yarn full-deploy-hardhat-test && yarn hardhat --network local switch-to-production --network-config hardhat",
     "flare-sc-deploy-hardhat": "env NETWORK_CONFIG=hardhat yarn hardhat --network local run deployment/test/scripts/mock-deploy-stablecoins.ts && yarn full-deploy-hardhat && yarn full-deploy-hardhat-test",
     "deploy-mock-stablecoins-coston": "env NETWORK_CONFIG=coston yarn hardhat --network coston run deployment/test/scripts/mock-deploy-stablecoins.ts",
-    "full-deploy-coston": "yarn hardhat --network coston deploy-asset-managers --network-config coston --link --deploy-controller --all",
+    "deploy-dependencies-coston": "yarn hardhat --network coston deploy-asset-manager-dependencies --network-config coston",
+    "deploy-with-controller-coston": "yarn hardhat --network coston deploy-asset-managers --network-config coston --link --deploy-controller --all",
     "full-deploy-coston-test": "env NETWORK_CONFIG=coston yarn hardhat --network coston test --no-compile deployment/test/test-deployed-contracts.ts",
-    "verify-asset-manager-coston": "yarn hardhat --network coston verify-asset-manager --network-config coston --parameters-file deployment/config/coston/f-testxrp.json",
+    "verify-asset-manager-coston": "yarn hardhat --network coston verify-asset-manager --network-config coston --parameters-file",
     "verify-asset-manager-controller-coston": "yarn hardhat --network coston verify-asset-manager-controller --network-config coston",
     "console": "yarn hardhat console --no-compile",
     "console-coston": "yarn hardhat console --no-compile --network coston",
@@ -65,7 +66,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "4.9.2",
     "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#flare-distribution-to-delegators",
-    "@flarenetwork/state-connector-protocol": "1.0.0-beta.1"
+    "@flarenetwork/state-connector-protocol": "1.0.0-beta.2"
   },
   "devDependencies": {
     "@gnosis.pm/mock-contract": "4.0.0",

@@ -118,7 +118,8 @@ library Conversion {
             return _amountUSD5;
         }
         (uint256 tokenPrice,, uint256 tokenFtsoDec) = readFtsoPrice(_token.tokenFtsoSymbol, false);
-        uint256 expPlus = _token.decimals + tokenFtsoDec;
+        // 5 is for 5 decimals of USD5
+        uint256 expPlus = _token.decimals + tokenFtsoDec - 5;
         return _amountUSD5.mulDiv(10 ** expPlus, tokenPrice);
     }
 

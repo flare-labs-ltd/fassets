@@ -233,6 +233,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const startVaultCollateralBalance = await agent.vaultCollateralToken().balanceOf(challenger.address);
             const res = await challenger.confirmUnderlyingWithdrawal(underlyingWithdrawal, tx1Hash, agent);
             const challengerVaultCollateralReward = await agent.usd5ToVaultCollateralWei(toBN(context.settings.confirmationByOthersRewardUSD5));
+            assert.approximately(Number(challengerVaultCollateralReward) / 1e18, 100, 10);
             await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral.sub(challengerVaultCollateralReward), freeUnderlyingBalanceUBA: 0, announcedUnderlyingWithdrawalId: 0 });
             await expectRevert(challenger.illegalPaymentChallenge(agent, tx1Hash), "chlg: transaction confirmed");
             assertWeb3Equal(res.spentUBA, amount);
