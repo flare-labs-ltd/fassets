@@ -21,23 +21,27 @@ library UnderlyingAddressOwnership {
         mapping (bytes32 => Ownership) ownership;
     }
 
-    function claim(
+    function claimAndTransfer(
         State storage _state,
-        address _owner,
+        address _expectedOwner,
+        address _targetOwner,
         bytes32 _underlyingAddressHash,
         bool _requireEOA
     )
         internal
     {
         Ownership storage ownership = _state.ownership[_underlyingAddressHash];
+        // check that currently unclaimed or owner is the expected owner
         if (ownership.owner == address(0)) {
-            ownership.owner = _owner;
             ownership.provedEOA = false;
             ownership.underlyingBlockOfEOAProof = 0;
         } else {
-            require(ownership.owner == _owner, "address already claimed");
+            require(ownership.owner == _expectedOwner, "address already claimed");
         }
+        // if requireEOA, the proof had to be verified in some previous call
         require(!_requireEOA || ownership.provedEOA, "EOA proof required");
+        // set the new owner
+        ownership.owner = _targetOwner;
     }
 
     function claimWithProof(

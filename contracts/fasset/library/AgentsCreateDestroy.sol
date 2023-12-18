@@ -116,10 +116,11 @@ library AgentsCreateDestroy {
         agent.setFeeBIPS(_settings.feeBIPS);
         agent.setPoolFeeShareBIPS(_settings.poolFeeShareBIPS);
         agent.setBuyFAssetByAgentFactorBIPS(_settings.buyFAssetByAgentFactorBIPS);
-        // claim the address to make sure no other agent is using it
+        // claim the underlying address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
-        state.underlyingAddressOwnership.claim(ownerManagementAddress, underlyingAddressHash,
-            state.settings.requireEOAAddressProof);
+        state.underlyingAddressOwnership.claimAndTransfer(ownerManagementAddress, address(agentVault),
+            underlyingAddressHash, state.settings.requireEOAAddressProof);
+        // set underlying address
         agent.underlyingAddressString = normalizedUnderlyingAddress;
         agent.underlyingAddressHash = underlyingAddressHash;
         uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(underlyingAddressHash);

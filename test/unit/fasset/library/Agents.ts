@@ -73,7 +73,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
         return { contracts, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     }
@@ -167,13 +167,34 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
             "empty underlying address");
     });
 
-    it("should not create agent - address already claimed", async () => {
+    it("should not create agent - address already claimed (with EOA proof)", async () => {
         // init
-        await createAgent(agentOwner1, underlyingAgent1);
+        const ci = testChainInfo.btc;
+        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
         // act
+        await createAgent(agentOwner1, underlyingAgent1);
         // assert
         const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
         await expectRevert(assetManager.createAgentVault(web3DeepNormalize(agentSettings)),
+            "address already claimed");
+    });
+
+    it("should not create agent - address already claimed (no EOA proof)", async () => {
+        // init
+        // act
+        await createAgent(agentOwner1, underlyingAgent1);
+        // assert
+        await expectRevert(createAgent(accounts[1], underlyingAgent1),
+            "address already claimed");
+    });
+
+    it("should not create agent - underlying address used twice", async () => {
+        // init
+        // act
+        await createAgent(agentOwner1, underlyingAgent1);
+        // assert
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1),
             "address already claimed");
     });
 
@@ -217,6 +238,9 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should require EOA check to create agent", async () => {
         // init
+        const ci = testChainInfo.btc;
+        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
         // act
         // assert
         const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
@@ -535,7 +559,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
     });
 
     it("create agent underlying XRP address validation tests", async () => {
-        const ci = testChainInfo.btc;
+        const ci = testChainInfo.xrp;
         const rippleAddressValidator = await RippleAddressValidator.new();
         settings.underlyingAddressValidator = rippleAddressValidator.address;
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
