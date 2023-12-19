@@ -10,14 +10,14 @@ runAsyncMain(async () => {
     const network = requiredEnvironmentVariable('NETWORK_CONFIG');
     const contractsFile = `deployment/deploys/${network}.json`;
     const contracts = loadContracts(contractsFile);
-    await deployStablecoin(contracts, "USDCoin", "USDC");
-    await deployStablecoin(contracts, "Tether", "USDT");
+    await deployStablecoin(contracts, "Test USDCoin", "testUSDC", 6);
+    await deployStablecoin(contracts, "Test Tether", "testUSDT", 6);
     saveContracts(contractsFile, contracts);
 });
 
-async function deployStablecoin(contracts: ChainContracts, name: string, symbol: string) {
+async function deployStablecoin(contracts: ChainContracts, name: string, symbol: string, decimals: number) {
     // create token
     const { deployer } = loadDeployAccounts(hre);
-    const token = await FakeERC20.new(deployer, name, symbol);
+    const token = await FakeERC20.new(deployer, name, symbol, decimals);
     contracts[symbol] = newContract(symbol, 'FakeERC20.sol', token.address);
 }
