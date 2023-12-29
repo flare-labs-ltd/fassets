@@ -42,8 +42,8 @@
     },
     "vaultCollaterals": [
         {
-            "token": "USDC",
-            "decimals": 18,
+            "token": "testUSDC",
+            "decimals": 6,
             "directPricePair": false,
             "assetFtsoSymbol": "testXRP",
             "tokenFtsoSymbol": "testUSDC",
@@ -52,8 +52,8 @@
             "safetyMinCollateralRatioBIPS": 15000
         },
         {
-            "token": "USDT",
-            "decimals": 18,
+            "token": "testUSDT",
+            "decimals": 6,
             "directPricePair": false,
             "assetFtsoSymbol": "testXRP",
             "tokenFtsoSymbol": "testUSDT",

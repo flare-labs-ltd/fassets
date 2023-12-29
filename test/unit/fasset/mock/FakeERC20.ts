@@ -11,7 +11,7 @@ contract(`FakeERC20.sol; ${getTestFile(__filename)}; FakeERC20 basic tests`, asy
     const minter = accounts[10];
 
     async function initialize() {
-        coin = await FakeERC20.new(minter, "A Token", "TOK");
+        coin = await FakeERC20.new(minter, "A Token", "TOK", 10);
         return { coin };
     }
 
@@ -20,18 +20,29 @@ contract(`FakeERC20.sol; ${getTestFile(__filename)}; FakeERC20 basic tests`, asy
     });
 
     describe("method tests", () => {
+        it("can get metadata", async () => {
+            assertWeb3Equal(await coin.name(), "A Token");
+            assertWeb3Equal(await coin.symbol(), "TOK");
+            assertWeb3Equal(await coin.decimals(), "10");
+        });
+
         it("should mint and burn", async () => {
             await coin.mintAmount(accounts[0], 12345, { from: minter });
             assertWeb3Equal(await coin.balanceOf(accounts[0]), 12345);
-            await coin.burnAmount(accounts[0], 10000, { from: minter });
+            await coin.burnAmount(10000, { from: accounts[0] });
             assertWeb3Equal(await coin.balanceOf(accounts[0]), 2345);
         });
 
-        it("only minter can mint and burn", async () => {
+        it("only minter can mint", async () => {
             const pr1 = coin.mintAmount(accounts[0], 12345);
             await expectRevert(pr1, "only minter");
-            const pr2 = coin.burnAmount(accounts[0], 12345);
-            await expectRevert(pr2, "only minter");
+        });
+
+        it("only owner can burn", async () => {
+            await coin.mintAmount(accounts[0], 12345, { from: minter });
+            assertWeb3Equal(await coin.balanceOf(accounts[0]), 12345);
+            const pr2 = coin.burnAmount(12345, { from: minter });
+            await expectRevert(pr2, "ERC20: burn amount exceeds balance");
         });
     });
 

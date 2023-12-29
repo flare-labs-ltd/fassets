@@ -48,8 +48,8 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
     await addressUpdater.addOrUpdateContractNamesAndAddresses(["WNat"], [wNat.address], { from: deployer });
 
     // Stablecoins
-    const usdc = await FakeERC20.new(deployer, "USDCoin", "USDC");
-    const usdt = await FakeERC20.new(deployer, "Tether", "USDT");
+    const usdc = await FakeERC20.new(deployer, "USDCoin", "USDC", 6);
+    const usdt = await FakeERC20.new(deployer, "Tether", "USDT", 6);
 
     // FtsoRegistry
     const ftsoRegistry = await FtsoRegistryMock.new();
