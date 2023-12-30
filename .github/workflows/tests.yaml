@@ -1,0 +1,100 @@
+name: tests
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  unit-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - TEST_PATH: ./test/unit/fasset/library
+        - TEST_PATH: ./test/unit/fasset/mock
+        - TEST_PATH: ./test/unit/bots
+        - TEST_PATH: ./test/unit/governance
+        - TEST_PATH: ./test/unit/utils
+        - TEST_PATH: ./test/unit/fasset/implementation
+        - TEST_ARG: test/unit/gasReport/GasReport.ts
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Install Node.js 18
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+    - name: Install node modules
+      run: yarn install --frozen-lockfile
+    - name: Compile contracts
+      run: yarn run compile
+    - name: Run test
+      run: yarn hardhat test --network hardhat ${{ matrix.TEST_ARG }}
+      env:
+        TEST_PATH: ${{ matrix.TEST_PATH }}
+
+
+  test-contract-integration:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Install Node.js 18
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+    - name: Install node modules
+      run: yarn install --frozen-lockfile
+    - name: Compile contracts
+      run: yarn run compile
+    - name: Run the test
+      run: yarn run test_integration_hh
+
+
+  test-linter:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Install Node.js 18
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+    - name: Install node modules
+      run: yarn install --frozen-lockfile
+    - name: Compile contracts
+      run: yarn run compile
+    - name: Run the test
+      run: yarn run lint
+
+
+  test-slither-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Install Node.js 18
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+    - name: Install slither-analyzer
+      run: sudo apt update -y && sudo apt install -y python3-pip && sudo pip3 install slither-analyzer
+    - name: Install node modules
+      run: yarn install --frozen-lockfile
+    - name: Compile contracts
+      run: yarn run compile
+    - name: Run the test
+      run: yarn run slither

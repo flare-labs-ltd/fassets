@@ -1,124 +1,79 @@
+workflow:
+  rules:
+    - if: '$CI_OPEN_MERGE_REQUESTS != null && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "webide")'
+      when: never
+    - when: always
+
 stages:
-  - build
-  - fuzzer
-  - coverage
-  - test
-
-
-variables:
-  YARN_CACHE_DIR: "$CI_PROJECT_DIR/.yarn-cache"
-
+- build
+- test
 
 include:
-  - template: Jobs/SAST.gitlab-ci.yml
+- template: Jobs/SAST.latest.gitlab-ci.yml
 
 sast:
-  needs:
-  - job: run-tests
-    optional: true
+  needs: []
 
-
-.rules:
-
-  always:
-    # branch pipelines
-    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS == null && $CI_PIPELINE_SOURCE == "web"'
-    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS == null'
-    # MR pipelines
-    - if: '$CI_OPEN_MERGE_REQUESTS != null && $CI_PIPELINE_SOURCE == "web"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_PIPELINE_SOURCE == "web"'
-    # Prevent duplicate MR && branch pipelines
-    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
-      when: never
-
-  manual-web_always:
-    # branch pipelines
-    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS == null && $CI_PIPELINE_SOURCE == "web"'
-    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS == null'
-      when: manual
-    # MR pipelines
-    - if: '$CI_OPEN_MERGE_REQUESTS != null && $CI_PIPELINE_SOURCE == "web"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_PIPELINE_SOURCE == "web"'
-      when: manual
-    # Prevent duplicate MR && branch pipelines
-    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE != "web"'
-      when: never
-
-
-.run-on-selfhosted-runner:
+default:
   tags:
-    - flarenetworks
+  - flarenetwork
 
-
-.test-node:
-  stage: test
-  image: node:latest
-  timeout: 3h
-  rules:
-  - !reference [.rules, always]
-  cache:
-    - key:
-        files:
-          - yarn.lock
-      paths:
-        - .yarn-cache/
-        - node_modules/
-      policy: pull-push
 
 
 .test-node-sc:
-  extends: .test-node
+  stage: test
+  image: node:18
+  timeout: 3h
+  needs:
+  - build-smart-contracts
+  cache:
+    policy: pull
+    when: always
+    key:
+      files:
+      - yarn.lock
+    paths:
+    - node_modules
   variables:
     DEPLOYER_PRIVATE_KEY: "0xc5e8f61d1ab959b397eecc0a37a6517b8e67a0e7cf1f4bce5591f3ed80199122"
     GENESIS_GOVERNANCE_PRIVATE_KEY: "0x50777f5a3ce16445e63411bf1e865a2a11d5ca3c4cbc1de00808a52180bd8d3c"
     GOVERNANCE_PRIVATE_KEY: "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb"
     GOVERNANCE_PUBLIC_KEY: "0xeAD9C93b79Ae7C1591b1FB5323BD777E86e150d4"
     GOVERNANCE_EXECUTOR_PUBLIC_KEY: "0xE5904695748fe4A84b40b3fc79De2277660BD1D3"
-  needs:
-    - build-smart-contracts
-    - job: run-tests
-      optional: true
   dependencies:
-    - build-smart-contracts
+  - build-smart-contracts
   before_script:
-    - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
+  - yarn install --frozen-lockfile
 
 
-run-tests:
-  stage: build
-  image: busybox
-  rules:
-  - !reference [.rules, manual-web_always]
-  script: [ "true" ]
+
+### Jobs
 
 
 build-smart-contracts:
   stage: build
   needs: []
-  image: node:latest
-  before_script:
-    - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
-  script:
-    - yarn c
+  image: node:18
   cache:
-    - key:
-        files:
-          - yarn.lock
-      paths:
-        - .yarn-cache/
-        - node_modules/
-      policy: pull-push
+    policy: pull-push
+    when: on_success
+    key:
+      files:
+      - yarn.lock
+    paths:
+      - node_modules
+  before_script:
+  - yarn install --frozen-lockfile
+  script:
+  - yarn c
   rules:
   - !reference [coverage:schedule, rules]
   - !reference [fuzzer:schedule, rules]
-  - !reference [.rules, manual-web_always]
+  - when: on_success
   artifacts:
     paths:
-      - typechain-truffle
+    - typechain-truffle
     expire_in: 1 week
-
-
-### Jobs
 
 
 test-unit:
@@ -126,25 +81,39 @@ test-unit:
   parallel:
     matrix:
     - TEST_PATH:
-      - ./test/unit/fasset/implementation
-      - ./test/unit/fasset/library
-      - ./test/unit/{bots,governance,utils,fasset/mock,addressValidator}
+      - ./test/unit/fasset/mock
+      - ./test/unit/governance
+      - ./test/unit/utils
     - TEST_ARG:
       - test/unit/gasReport/GasReport.ts
   script:
-    - yarn hardhat test --network hardhat ${TEST_ARG}
+  - yarn hardhat test --network hardhat ${TEST_ARG}
+
+test-unit-md:
+  extends: test-unit
+  tags:
+  - flarenetwork-md
+  parallel:
+    matrix:
+    - TEST_PATH:
+      - ./test/unit/addressValidator
+      - ./test/unit/fasset/library
+      - ./test/unit/fasset/implementation
+      - ./test/unit/bots
 
 
 test-contract-integration:
   extends: .test-node-sc
+  tags:
+  - flarenetwork-md
   script:
-    - yarn test_integration_hh
+  - yarn test_integration_hh
 
 
 test-linter:
   extends: .test-node-sc
   script:
-    - yarn lint
+  - yarn lint
 
 
 test-slither-check:
@@ -152,46 +121,58 @@ test-slither-check:
   variables:
     PIP_BREAK_SYSTEM_PACKAGES: "1"
   before_script:
-    - apt update
-    - apt install -y python3-pip
-    - pip3 install slither-analyzer
-    - yarn install --frozen-lockfile --cache-folder $YARN_CACHE_DIR
+  - apt update
+  - apt install -y python3-pip
+  - pip3 install slither-analyzer
+  - yarn install --frozen-lockfile
   script:
-    - yarn slither
+  - yarn slither
 
 
 coverage:schedule:
-  extends:
-    - .run-on-selfhosted-runner
-    - .test-node-sc
-  stage: coverage
+  extends: .test-node-sc
+  stage: test
+  tags:
+  - flarenetwork-lg
   retry: 2
   script:
-    - yarn cov
-  rules:
-  - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "coverage"'
+  - yarn cov
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
     when: always
+    expire_in: 1 month
+    paths:
+      - ./coverage/
+      - ./coverage.json
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+  rules:
+  - when: always # To be removed later on. For now on each commit until all tests keep succeeding
+  - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "coverage"'
 
 
 fuzzer:schedule:
-  extends:
-    - .run-on-selfhosted-runner
-    - .test-node-sc
-  stage: fuzzer
+  extends: .test-node-sc
+  stage: test
+  tags:
+  - flarenetwork-lg
   timeout: 4 hours
+  parallel: 3
   variables:
     NODE_OPTIONS: "--max_old_space_size=6144"
     LOOPS: 5000
     CHANGE_PRICE_AT: '300,600,...'
     # CHANGE_PRICE_FACTOR: '{"default": [0.9, 1.1]}'
   script:
-    - yarn fuzzing_fasset
+  - yarn fuzzing_fasset
   artifacts:
     paths:
-      - test_logs/fasset-fuzzing.log
+    - test_logs/fasset-fuzzing.log
     name: fasset-fuzzing
     when: always
     expire_in: 30 days
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "fuzzer"'
-      when: always
+  - when: always # To be removed later on. For now on each commit until all tests keep succeeding
+  - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "fuzzer"'

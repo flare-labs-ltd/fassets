@@ -10,6 +10,9 @@
   "author": "Flare Labs",
   "license": "MIT",
   "directories": {},
+  "engines" : {
+    "node" : ">=16 <20"
+  },
   "scripts": {
     "---------HOOKS": "",
     "---------TEST---SCRIPTS": "",
