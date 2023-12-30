@@ -47,6 +47,7 @@ default:
 
 
 .test-node-sc-noschedule:
+  extends: .test-node-sc
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: never
