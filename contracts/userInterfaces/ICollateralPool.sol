@@ -184,11 +184,29 @@ interface ICollateralPool {
         returns (uint16);
 
     /**
+     * Return total amount of collateral in the pool.
+     * This can be different to WNat.balanceOf(poolAddress), because the collateral has to be tracked
+     * to prevent unexpected deposit type of attacks on the pool.
+     */
+    function totalCollateral()
+        external view
+        returns (uint256);
+
+    /**
      * Returns the f-asset fees belonging to this user.
      * This is the amount of f-assets the user can withdraw by burning transferable pool tokens.
      * @param _account User address
      */
     function fAssetFeesOf(address _account)
+        external view
+        returns (uint256);
+
+    /**
+     * Returns the total f-asset fees in the pool.
+     * This can be different to FAsset.balanceOf(poolAddress), because the collateral has to be tracked
+     * to prevent unexpected deposit type of attacks on the pool.
+     */
+    function totalFAssetFees()
         external view
         returns (uint256);
 
@@ -200,6 +218,13 @@ interface ICollateralPool {
      * @param _account User address
      */
     function fAssetFeeDebtOf(address _account)
+        external view
+        returns (uint256);
+
+    /**
+     * Returns the total f-asset fee debt for all users.
+     */
+    function totalFAssetFeeDebt()
         external view
         returns (uint256);
 

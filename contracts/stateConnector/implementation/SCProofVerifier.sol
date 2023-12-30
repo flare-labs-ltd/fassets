@@ -21,7 +21,7 @@ contract SCProofVerifier is ISCProofVerifier {
         external view
         returns (bool _proved)
     {
-        return _proof.merkleProof.verify(
+        return _proof.merkleProof.verifyCalldata(
             merkleRootStorage.merkleRoot(_proof.data.votingRound),
             keccak256(abi.encode(_proof.data))
         );
@@ -33,7 +33,7 @@ contract SCProofVerifier is ISCProofVerifier {
         external view
         returns (bool _proved)
     {
-        return _proof.merkleProof.verify(
+        return _proof.merkleProof.verifyCalldata(
             merkleRootStorage.merkleRoot(_proof.data.votingRound),
             keccak256(abi.encode(_proof.data))
         );
@@ -45,7 +45,7 @@ contract SCProofVerifier is ISCProofVerifier {
         external view
         returns (bool _proved)
     {
-        return _proof.merkleProof.verify(
+        return _proof.merkleProof.verifyCalldata(
             merkleRootStorage.merkleRoot(_proof.data.votingRound),
             keccak256(abi.encode(_proof.data))
         );
@@ -57,7 +57,7 @@ contract SCProofVerifier is ISCProofVerifier {
         external view
         returns (bool _proved)
     {
-        return _proof.merkleProof.verify(
+        return _proof.merkleProof.verifyCalldata(
             merkleRootStorage.merkleRoot(_proof.data.votingRound),
             keccak256(abi.encode(_proof.data))
         );
