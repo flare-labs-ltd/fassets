@@ -66,12 +66,10 @@ build-smart-contracts:
   - yarn install --frozen-lockfile
   script:
   - yarn c
-  rules:
-  - !reference [coverage:schedule, rules]
-  - !reference [fuzzer:schedule, rules]
-  - when: on_success
   artifacts:
     paths:
+    - artifacts
+    - cache
     - typechain-truffle
     expire_in: 1 week
 
@@ -149,9 +147,9 @@ coverage:schedule:
         coverage_format: cobertura
         path: coverage/cobertura-coverage.xml
   rules:
-  - when: always # To be removed later on. For now on each commit until all tests keep succeeding
   - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "coverage"'
-
+    when: on_success
+  - when: never
 
 fuzzer:schedule:
   extends: .test-node-sc
@@ -174,5 +172,6 @@ fuzzer:schedule:
     when: always
     expire_in: 30 days
   rules:
-  - when: always # To be removed later on. For now on each commit until all tests keep succeeding
   - if: '$CI_PIPELINE_SOURCE == "schedule" && $SCHEDULE_NAME == "fuzzer"'
+    when: on_success
+  - when: never

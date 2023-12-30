@@ -1,4 +1,4 @@
 {
-    "filter_paths": "/mock/",
+    "filter_paths": "/mock/|/@openzeppelin/",
     "detectors_to_exclude": "naming-convention"
 }
