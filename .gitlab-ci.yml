@@ -46,6 +46,12 @@ default:
   - yarn install --frozen-lockfile
 
 
+.test-node-sc-noschedule:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - when: on_success
+
 
 ### Jobs
 
@@ -75,7 +81,7 @@ build-smart-contracts:
 
 
 test-unit:
-  extends: .test-node-sc
+  extends: .test-node-sc-noschedule
   tags:
   - flarenetwork-md
   parallel:
@@ -89,7 +95,7 @@ test-unit:
 
 
 test-contract-integration:
-  extends: .test-node-sc
+  extends: .test-node-sc-noschedule
   tags:
   - flarenetwork-md
   script:
@@ -97,13 +103,13 @@ test-contract-integration:
 
 
 test-linter:
-  extends: .test-node-sc
+  extends: .test-node-sc-noschedule
   script:
   - yarn lint
 
 
 test-slither-check:
-  extends: .test-node-sc
+  extends: .test-node-sc-noschedule
   variables:
     PIP_BREAK_SYSTEM_PACKAGES: "1"
   before_script:
