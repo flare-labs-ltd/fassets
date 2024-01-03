@@ -172,6 +172,7 @@ interface IAssetManager is IAssetManagerEvents {
      * @return _agentVault new agent vault address
      */
     function createAgentVault(
+        AddressValidity.Proof calldata _addressProof,
         AgentSettings.Data calldata _settings
     ) external
         returns (address _agentVault);
@@ -577,6 +578,18 @@ interface IAssetManager is IAssetManagerEvents {
         string memory _redeemerUnderlyingAddressString
     ) external
         returns (uint256 _redeemedAmountUBA);
+
+    /**
+     * If the redeemer provides invalid address, the agent should provide the proof of address invalidity
+     * from the state connector. With this, the agent's obligations are fulfiled and they can keep the underlying.
+     * NOTE: may only be called by the owner of the agent vault in the redemption request
+     * @param _proof proof that the address is invalid
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function rejectInvalidRedemption(
+        AddressValidity.Proof calldata _proof,
+        uint256 _redemptionRequestId
+    ) external;
 
     /**
      * After paying to the redeemer, the agent must call this method to unlock the collateral

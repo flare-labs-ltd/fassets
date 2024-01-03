@@ -69,6 +69,17 @@ library TransactionAttestation {
         require(scProofVerifier.verifyReferencedPaymentNonexistence(_proof), "non-payment not proved");
     }
 
+    function verifyAddressValidity(
+        AddressValidity.Proof calldata _proof
+    )
+        internal view
+    {
+        AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
+        ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
+        require(_proof.data.sourceId == _settings.chainId, "invalid chain");
+        require(scProofVerifier.verifyAddressValidity(_proof), "address validity not proved");
+    }
+
     function _confirmationCannotBeCleanedUp(uint256 timestamp) private view returns (bool) {
         return timestamp >= block.timestamp - PaymentConfirmations.VERIFICATION_CLEANUP_DAYS * 1 days;
     }

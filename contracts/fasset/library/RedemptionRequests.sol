@@ -9,7 +9,7 @@ import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./Redemptions.sol";
 import "./Liquidation.sol";
-import "./UnderlyingAddresses.sol";
+import "./TransactionAttestation.sol";
 
 
 library RedemptionRequests {
@@ -128,6 +128,30 @@ library RedemptionRequests {
         return closedUBA;
     }
 
+    function rejectInvalidRedemption(
+        AddressValidity.Proof calldata _proof,
+        uint64 _redemptionRequestId
+    )
+        external
+    {
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
+        Agent.State storage agent = Agent.get(request.agentVault);
+        // only owner can call
+        require(Agents.isOwner(agent, msg.sender), "only agent vault owner");
+        // check proof that address is invalid
+        TransactionAttestation.verifyAddressValidity(_proof);
+        bool valid = _proof.data.responseBody.isValid &&
+            _proof.data.responseBody.standardAddressHash == request.redeemerUnderlyingAddressHash;
+        require(!valid, "address valid");
+        // release agent collateral
+        Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
+        // emit event
+        emit AMEvents.RedemptionRejected(request.agentVault, request.redeemer, request.valueAMG,
+            _redemptionRequestId);
+        // delete redemption request at end
+        Redemptions.deleteRedemptionRequest(_redemptionRequestId);
+    }
+
     function maxRedemptionFromAgent(
         address _agentVault
     )
@@ -180,8 +204,7 @@ library RedemptionRequests {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         // validate redemption address
-        (string memory normalizedUnderlyingAddress, bytes32 underlyingAddressHash) =
-            UnderlyingAddresses.validateAndNormalize(_redeemerUnderlyingAddressString);
+        bytes32 underlyingAddressHash = keccak256(bytes(_redeemerUnderlyingAddressString));
         // create request
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
         uint64 requestId = _newRequestId(_poolSelfClose);
@@ -209,7 +232,7 @@ library RedemptionRequests {
         emit AMEvents.RedemptionRequested(_data.agentVault,
             _redeemer,
             requestId,
-            normalizedUnderlyingAddress,
+            _redeemerUnderlyingAddressString,
             redeemedValueUBA,
             redemptionFeeUBA,
             firstUnderlyingBlock,

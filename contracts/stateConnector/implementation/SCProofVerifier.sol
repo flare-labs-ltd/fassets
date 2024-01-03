@@ -62,4 +62,16 @@ contract SCProofVerifier is ISCProofVerifier {
             keccak256(abi.encode(_proof.data))
         );
     }
+
+    function verifyAddressValidity(
+        AddressValidity.Proof calldata _proof
+    )
+        external view
+        returns (bool _proved)
+    {
+        return _proof.merkleProof.verifyCalldata(
+            merkleRootStorage.merkleRoot(_proof.data.votingRound),
+            keccak256(abi.encode(_proof.data))
+        );
+    }
 }

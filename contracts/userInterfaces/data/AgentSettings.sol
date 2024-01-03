@@ -6,9 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 library AgentSettings {
     struct Data {
-        // Full address on the underlying chain (not hash).
-        string underlyingAddressString;
-
         // The token used as vault collateral. Must be one of the tokens obtained by `getCollateralTypes()`,
         // with class VAULT.
         IERC20 vaultCollateralToken;

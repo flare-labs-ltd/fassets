@@ -16,7 +16,6 @@ import "./Conversion.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
 import "./AgentSettingsUpdater.sol";
-import "./UnderlyingAddresses.sol";
 import "./StateUpdater.sol";
 
 
@@ -82,6 +81,7 @@ library AgentsCreateDestroy {
 
     function createAgentVault(
         IIAssetManager _assetManager,
+        AddressValidity.Proof calldata _addressProof,
         AgentSettings.Data calldata _settings
     )
         external
@@ -95,9 +95,10 @@ library AgentsCreateDestroy {
         address ownerManagementAddress = _getManagementAddress(msg.sender);
         // management address must be whitelisted
         Agents.requireWhitelisted(ownerManagementAddress);
-        // validate underlying address
-        (string memory normalizedUnderlyingAddress, bytes32 underlyingAddressHash) =
-            UnderlyingAddresses.validateAndNormalize(_settings.underlyingAddressString);
+        // require valid address
+        TransactionAttestation.verifyAddressValidity(_addressProof);
+        AddressValidity.ResponseBody memory avb = _addressProof.data.responseBody;
+        require(avb.isValid, "address invalid");
         // create agent vault
         IAgentVaultFactory agentVaultFactory = IAgentVaultFactory(state.settings.agentVaultFactory);
         IIAgentVault agentVault = agentVaultFactory.create(_assetManager);
@@ -119,11 +120,11 @@ library AgentsCreateDestroy {
         // claim the underlying address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
         state.underlyingAddressOwnership.claimAndTransfer(ownerManagementAddress, address(agentVault),
-            underlyingAddressHash, state.settings.requireEOAAddressProof);
+            avb.standardAddressHash, state.settings.requireEOAAddressProof);
         // set underlying address
-        agent.underlyingAddressString = normalizedUnderlyingAddress;
-        agent.underlyingAddressHash = underlyingAddressHash;
-        uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(underlyingAddressHash);
+        agent.underlyingAddressString = avb.standardAddress;
+        agent.underlyingAddressHash = avb.standardAddressHash;
+        uint64 eoaProofBlock = state.underlyingAddressOwnership.underlyingBlockOfEOAProof(avb.standardAddressHash);
         agent.underlyingBlockAtCreation = SafeMath64.max64(state.currentUnderlyingBlock, eoaProofBlock + 1);
         // add collateral pool
         agent.collateralPool = _createCollateralPool(_assetManager, address(agentVault), _settings);
@@ -136,7 +137,7 @@ library AgentsCreateDestroy {
         state.allAgents.push(address(agentVault));
         // notify
         _emitAgentVaultCreated(ownerManagementAddress, address(agentVault), address(agent.collateralPool),
-            normalizedUnderlyingAddress, _settings);
+            avb.standardAddress, _settings);
         return address(agentVault);
     }
 

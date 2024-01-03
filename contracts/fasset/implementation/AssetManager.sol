@@ -176,13 +176,14 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * @return _agentVault the new agent vault address
      */
     function createAgentVault(
+        AddressValidity.Proof calldata _addressProof,
         AgentSettings.Data calldata _settings
     )
         external override
         onlyAttached
         returns (address _agentVault)
     {
-        return AgentsCreateDestroy.createAgentVault(this, _settings);
+        return AgentsCreateDestroy.createAgentVault(this, _addressProof, _settings);
     }
 
     /**
@@ -656,6 +657,22 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         returns (uint256 _redeemedAmountUBA)
     {
         return RedemptionRequests.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
+    }
+
+    /**
+     * If the redeemer provides invalid address, the agent should provide the proof of address invalidity
+     * from the state connector. With this, the agent's obligations are fulfiled and they can keep the underlying.
+     * NOTE: may only be called by the owner of the agent vault in the redemption request
+     * @param _proof proof that the address is invalid
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function rejectInvalidRedemption(
+        AddressValidity.Proof calldata _proof,
+        uint256 _redemptionRequestId
+    )
+        external override
+    {
+        RedemptionRequests.rejectInvalidRedemption(_proof, _redemptionRequestId.toUint64());
     }
 
     /**
