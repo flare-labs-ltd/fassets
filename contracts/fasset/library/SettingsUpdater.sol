@@ -34,8 +34,6 @@ library SettingsUpdater {
         keccak256("setCollateralPoolFactory(address)");
     bytes32 internal constant SET_COLLATERAL_POOL_TOKEN_FACTORY =
         keccak256("setCollateralPoolTokenFactory(address)");
-    bytes32 internal constant SET_UNDERLYING_ADDRESS_VALIDATOR =
-        keccak256("setUnderlyingAddressValidator(address)");
     bytes32 internal constant SET_PRICE_READER =
         keccak256("setPriceReader(address)");
     bytes32 internal constant SET_SC_PROOF_VERIFIER =
@@ -138,9 +136,6 @@ library SettingsUpdater {
         } else if (_method == SET_COLLATERAL_POOL_TOKEN_FACTORY) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setCollateralPoolTokenFactory(_params);
-        } else if (_method == SET_UNDERLYING_ADDRESS_VALIDATOR) {
-            _checkEnoughTimeSinceLastUpdate(_method);
-            _setUnderlyingAddressValidator(_params);
         } else if (_method == SET_PRICE_READER) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setPriceReader(_params);
@@ -385,20 +380,6 @@ library SettingsUpdater {
         // update
         settings.collateralPoolTokenFactory = value;
         emit AMEvents.ContractChanged("collateralPoolTokenFactory", value);
-    }
-
-    function _setUnderlyingAddressValidator(
-        bytes calldata _params
-    )
-        private
-    {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        address value = abi.decode(_params, (address));
-        // validate
-        require(value != address(0), "address zero");
-        // update
-        settings.underlyingAddressValidator = value;
-        emit AMEvents.ContractChanged("underlyingAddressValidator", value);
     }
 
     function _setPriceReader(
@@ -848,7 +829,6 @@ library SettingsUpdater {
         require(_settings.collateralPoolFactory != address(0), "zero collateralPoolFactory address");
         require(_settings.collateralPoolTokenFactory != address(0), "zero collateralPoolTokenFactory address");
         require(_settings.scProofVerifier != address(0), "zero scProofVerifier address");
-        require(_settings.underlyingAddressValidator != address(0), "zero underlyingAddressValidator address");
         require(_settings.priceReader != address(0), "zero priceReader address");
         require(_settings.liquidationStrategy != address(0), "zero liquidationStrategy address");
         require(_settings.agentWhitelist != address(0), "zero agentWhitelist address");

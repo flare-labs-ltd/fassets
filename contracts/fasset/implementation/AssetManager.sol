@@ -663,6 +663,8 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * If the redeemer provides invalid address, the agent should provide the proof of address invalidity
      * from the state connector. With this, the agent's obligations are fulfiled and they can keep the underlying.
      * NOTE: may only be called by the owner of the agent vault in the redemption request
+     * NOTE: also checks that redeemer's address is normalized, so the redeemer must normalize their address,
+     *   otherwise it will be rejected!
      * @param _proof proof that the address is invalid
      * @param _redemptionRequestId id of an existing redemption request
      */

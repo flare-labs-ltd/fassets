@@ -138,8 +138,12 @@ library RedemptionRequests {
         Agent.State storage agent = Agent.get(request.agentVault);
         // only owner can call
         require(Agents.isOwner(agent, msg.sender), "only agent vault owner");
-        // check proof that address is invalid
+        // check proof
         TransactionAttestation.verifyAddressValidity(_proof);
+        // the actual redeemer's address must be validated
+        bytes32 addressHash = keccak256(bytes(_proof.data.requestBody.addressStr));
+        require(addressHash == request.redeemerUnderlyingAddressHash, "wrong address");
+        // and the address must be invalid or not normalized
         bool valid = _proof.data.responseBody.isValid &&
             _proof.data.responseBody.standardAddressHash == request.redeemerUnderlyingAddressHash;
         require(!valid, "address valid");
