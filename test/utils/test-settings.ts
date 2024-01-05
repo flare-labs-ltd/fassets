@@ -9,7 +9,7 @@ import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerInstance, SCProofVerifierInstance,
     CollateralPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
-    IAddressValidatorInstance, IWhitelistInstance, StateConnectorMockInstance, WNatInstance, CollateralPoolTokenFactoryInstance, IPriceReaderInstance
+    IWhitelistInstance, StateConnectorMockInstance, WNatInstance, CollateralPoolTokenFactoryInstance, IPriceReaderInstance
 } from "../../typechain-truffle";
 import { TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
@@ -30,7 +30,6 @@ const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const ERC20Mock = artifacts.require("ERC20Mock");
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
-const TrivialAddressValidatorMock = artifacts.require("TrivialAddressValidatorMock");
 const WhitelistMock = artifacts.require("WhitelistMock");
 
 export interface TestSettingsContracts {
@@ -42,7 +41,6 @@ export interface TestSettingsContracts {
     stateConnector: StateConnectorMockInstance;
     scProofVerifier: SCProofVerifierInstance;
     priceReader: IPriceReaderInstance,
-    addressValidator: IAddressValidatorInstance;
     whitelist?: IWhitelistInstance;
     agentWhitelist: IWhitelistInstance;
     ftsoRegistry: FtsoRegistryMockInstance;
@@ -62,7 +60,6 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         collateralPoolTokenFactory: contracts.collateralPoolTokenFactory.address,
         scProofVerifier: contracts.scProofVerifier.address,
         priceReader: contracts.priceReader.address,
-        underlyingAddressValidator: contracts.addressValidator.address,
         liquidationStrategy: contracts.liquidationStrategy,
         whitelist: contracts.whitelist?.address ?? constants.ZERO_ADDRESS,
         agentWhitelist: contracts.agentWhitelist?.address ?? constants.ZERO_ADDRESS,
@@ -170,9 +167,8 @@ export async function createTestFtsos(ftsoRegistry: FtsoRegistryMockInstance, as
 
 let poolTokenSymbolCounter = 0;
 
-export function createTestAgentSettings(underlyingAddress: string, vaultCollateralTokenAddress: string, options?: Partial<AgentSettings>): AgentSettings {
+export function createTestAgentSettings(vaultCollateralTokenAddress: string, options?: Partial<AgentSettings>): AgentSettings {
     const defaults: AgentSettings = {
-        underlyingAddressString: underlyingAddress,
         vaultCollateralToken: vaultCollateralTokenAddress,
         poolTokenSuffix: `AGNT${++poolTokenSymbolCounter}`,
         feeBIPS: toBIPS("10%"),
@@ -231,8 +227,6 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     // create collateral pool and token factory
     const collateralPoolFactory = await CollateralPoolFactory.new();
     const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new();
-    // create address validator
-    const addressValidator = await TrivialAddressValidatorMock.new();
     // create allow-all agent whitelist
     const agentWhitelist = await WhitelistMock.new(true);
     // create liquidation strategy
@@ -241,7 +235,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     //
     return {
         governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, stateConnector, scProofVerifier,
-        priceReader, addressValidator, agentWhitelist, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
+        priceReader, agentWhitelist, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
 }
 
 export interface CreateTestAgentDeps {
@@ -249,12 +243,12 @@ export interface CreateTestAgentDeps {
     settings: AssetManagerSettings;
     chain?: MockChain;
     wallet?: MockChainWallet;
-    attestationProvider?: AttestationHelper;
+    attestationProvider: AttestationHelper;
 }
 
 export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, underlyingAddress: string, vaultCollateralTokenAddress: string, options?: Partial<AgentSettings>) {
     if (deps.settings.requireEOAAddressProof) {
-        if (!deps.chain || !deps.wallet || !deps.attestationProvider) throw new Error("Missing chain data for EOA proof");
+        if (!deps.chain || !deps.wallet) throw new Error("Missing chain data for EOA proof");
         // mint some funds on underlying address (just enough to make EOA proof)
         deps.chain.mint(underlyingAddress, 101);
         // create and prove transaction from underlyingAddress
@@ -262,9 +256,11 @@ export async function createTestAgent(deps: CreateTestAgentDeps, owner: string, 
         const proof = await deps.attestationProvider.provePayment(txHash, underlyingAddress, underlyingAddress);
         await deps.assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
     }
+    // validate underlying address
+    const addressValidityProof = await deps.attestationProvider.proveAddressValidity(underlyingAddress);
     // create agent
-    const agentSettings = createTestAgentSettings(underlyingAddress, vaultCollateralTokenAddress, options);
-    const response = await deps.assetManager.createAgentVault(web3DeepNormalize(agentSettings), { from: owner });
+    const agentSettings = createTestAgentSettings(vaultCollateralTokenAddress, options);
+    const response = await deps.assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: owner });
     // extract agent vault address from AgentVaultCreated event
     const event = findRequiredEvent(response, 'AgentVaultCreated');
     const agentVaultAddress = event.args.agentVault;

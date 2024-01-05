@@ -21,10 +21,11 @@ contract SCProofVerifier is ISCProofVerifier {
         external view
         returns (bool _proved)
     {
-        return _proof.merkleProof.verifyCalldata(
-            merkleRootStorage.merkleRoot(_proof.data.votingRound),
-            keccak256(abi.encode(_proof.data))
-        );
+        return _proof.data.attestationType == bytes32("Payment") &&
+            _proof.merkleProof.verifyCalldata(
+                merkleRootStorage.merkleRoot(_proof.data.votingRound),
+                keccak256(abi.encode(_proof.data))
+            );
     }
 
     function verifyBalanceDecreasingTransaction(
@@ -33,10 +34,11 @@ contract SCProofVerifier is ISCProofVerifier {
         external view
         returns (bool _proved)
     {
-        return _proof.merkleProof.verifyCalldata(
-            merkleRootStorage.merkleRoot(_proof.data.votingRound),
-            keccak256(abi.encode(_proof.data))
-        );
+        return _proof.data.attestationType == bytes32("BalanceDecreasingTransaction") &&
+            _proof.merkleProof.verifyCalldata(
+                merkleRootStorage.merkleRoot(_proof.data.votingRound),
+                keccak256(abi.encode(_proof.data))
+            );
     }
 
     function verifyReferencedPaymentNonexistence(
@@ -45,10 +47,11 @@ contract SCProofVerifier is ISCProofVerifier {
         external view
         returns (bool _proved)
     {
-        return _proof.merkleProof.verifyCalldata(
-            merkleRootStorage.merkleRoot(_proof.data.votingRound),
-            keccak256(abi.encode(_proof.data))
-        );
+        return _proof.data.attestationType == bytes32("ReferencedPaymentNonexistence") &&
+            _proof.merkleProof.verifyCalldata(
+                merkleRootStorage.merkleRoot(_proof.data.votingRound),
+                keccak256(abi.encode(_proof.data))
+            );
     }
 
     function verifyConfirmedBlockHeightExists(
@@ -57,10 +60,11 @@ contract SCProofVerifier is ISCProofVerifier {
         external view
         returns (bool _proved)
     {
-        return _proof.merkleProof.verifyCalldata(
-            merkleRootStorage.merkleRoot(_proof.data.votingRound),
-            keccak256(abi.encode(_proof.data))
-        );
+        return _proof.data.attestationType == bytes32("ConfirmedBlockHeightExists") &&
+            _proof.merkleProof.verifyCalldata(
+                merkleRootStorage.merkleRoot(_proof.data.votingRound),
+                keccak256(abi.encode(_proof.data))
+            );
     }
 
     function verifyAddressValidity(
@@ -69,9 +73,10 @@ contract SCProofVerifier is ISCProofVerifier {
         external view
         returns (bool _proved)
     {
-        return _proof.merkleProof.verifyCalldata(
-            merkleRootStorage.merkleRoot(_proof.data.votingRound),
-            keccak256(abi.encode(_proof.data))
-        );
+        return _proof.data.attestationType == bytes32("AddressValidity") &&
+            _proof.merkleProof.verifyCalldata(
+                merkleRootStorage.merkleRoot(_proof.data.votingRound),
+                keccak256(abi.encode(_proof.data))
+            );
     }
 }

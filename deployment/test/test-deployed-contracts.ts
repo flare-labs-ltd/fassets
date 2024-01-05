@@ -6,6 +6,7 @@ import { AssetManagerControllerInstance, WhitelistInstance } from "../../typecha
 import { ChainContracts, loadContracts } from "../lib/contracts";
 import { loadDeployAccounts, requiredEnvironmentVariable } from "../lib/deploy-utils";
 import { SourceId } from "../../lib/underlying-chain/SourceId";
+import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
 
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AssetManager = artifacts.require('AssetManager');
@@ -48,36 +49,41 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         }
     });
 
-    const testUnderlyingAddresses = {
-        [SourceId.XRP]: 'r9N9XrsUKFJgaAwoL3qtefdjXVxjgxUqWi',
-        [SourceId.testXRP]: 'r9N9XrsUKFJgaAwoL3qtefdjXVxjgxUqWi',
-        [SourceId.BTC]: 'mhvLner76vL99PfYFmdzDFqGGqwQyE61xQ',
-        [SourceId.testBTC]: 'mhvLner76vL99PfYFmdzDFqGGqwQyE61xQ',
-        [SourceId.DOGE]: 'mr8zwdWkSrxQRrhq7D2i4f4CLZoZgF3nja',
-        [SourceId.testDOGE]: 'mr8zwdWkSrxQRrhq7D2i4f4CLZoZgF3nja',
-        [SourceId.LTC]: 'mjGn3j6vrHwgRzRWsXFT6dP1K5atca7yPx',
-        [SourceId.ALGO]: 'TEST_ADDRESS',
-    };
+    // TODO: creating agent vault now requires SC proof of address validity,
+    // which takes 5 minutes and requires SC API client, so skip it for now
 
-    it("Can create an agent on all managers", async () => {
-        const { deployer } = loadDeployAccounts(hre);
-        const managers = await assetManagerController.getAssetManagers();
-        const owner = requiredEnvironmentVariable('TEST_AGENT_OWNER');
-        await agentWhitelist.addAddressToWhitelist(owner, { from: deployer });
-        for (const mgrAddress of managers) {
-            console.log("Testing manager at", mgrAddress);
-            const assetManager = await AssetManager.at(mgrAddress);
-            const settings = await assetManager.getSettings();
-            const collaterals = await assetManager.getCollateralTypes();
-            // create agent
-            const underlyingAddress = testUnderlyingAddresses[settings.chainId];    // address doesn't matter - won't do anything on underlying chain
-            const agentVault = await createTestAgent({ assetManager, settings }, owner, underlyingAddress, collaterals[1].token);
-            // announce destroy (can really destroy later)
-            const destroyRes = await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
-            const destroyArgs = requiredEventArgs(destroyRes, "AgentDestroyAnnounced");
-            console.log(`    you can destroy agent ${agentVault.address} on asset manager ${mgrAddress} after timestamp ${destroyArgs.destroyAllowedAt}`);
-        }
-        await agentWhitelist.revokeAddress(owner, { from: deployer });
-    });
+    // const testUnderlyingAddresses = {
+    //     [SourceId.XRP]: 'r9N9XrsUKFJgaAwoL3qtefdjXVxjgxUqWi',
+    //     [SourceId.testXRP]: 'r9N9XrsUKFJgaAwoL3qtefdjXVxjgxUqWi',
+    //     [SourceId.BTC]: 'mhvLner76vL99PfYFmdzDFqGGqwQyE61xQ',
+    //     [SourceId.testBTC]: 'mhvLner76vL99PfYFmdzDFqGGqwQyE61xQ',
+    //     [SourceId.DOGE]: 'mr8zwdWkSrxQRrhq7D2i4f4CLZoZgF3nja',
+    //     [SourceId.testDOGE]: 'mr8zwdWkSrxQRrhq7D2i4f4CLZoZgF3nja',
+    //     [SourceId.LTC]: 'mjGn3j6vrHwgRzRWsXFT6dP1K5atca7yPx',
+    //     [SourceId.ALGO]: 'TEST_ADDRESS',
+    // };
+
+    // it("Can create an agent on all managers", async () => {
+    //     const { deployer } = loadDeployAccounts(hre);
+    //     const managers = await assetManagerController.getAssetManagers();
+    //     const owner = requiredEnvironmentVariable('TEST_AGENT_OWNER');
+    //     await agentWhitelist.addAddressToWhitelist(owner, { from: deployer });
+    //     for (const mgrAddress of managers) {
+    //         console.log("Testing manager at", mgrAddress);
+    //         const assetManager = await AssetManager.at(mgrAddress);
+    //         const settings = await assetManager.getSettings();
+    //         const collaterals = await assetManager.getCollateralTypes();
+    //         // create fake attestation provider -
+    //         const attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+    //         // create agent
+    //         const underlyingAddress = testUnderlyingAddresses[settings.chainId];    // address doesn't matter - won't do anything on underlying chain
+    //         const agentVault = await createTestAgent({ assetManager, settings }, owner, underlyingAddress, collaterals[1].token);
+    //         // announce destroy (can really destroy later)
+    //         const destroyRes = await assetManager.announceDestroyAgent(agentVault.address, { from: owner });
+    //         const destroyArgs = requiredEventArgs(destroyRes, "AgentDestroyAnnounced");
+    //         console.log(`    you can destroy agent ${agentVault.address} on asset manager ${mgrAddress} after timestamp ${destroyArgs.destroyAllowedAt}`);
+    //     }
+    //     await agentWhitelist.revokeAddress(owner, { from: deployer });
+    // });
 
 });

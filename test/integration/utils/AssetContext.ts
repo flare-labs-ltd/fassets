@@ -13,7 +13,7 @@ import { IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
-import { AssetManagerInstance, FAssetInstance, IAddressValidatorInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { AssetManagerInstance, FAssetInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
@@ -21,7 +21,6 @@ import { createTestCollaterals, createTestLiquidationSettings, createTestSetting
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
-const TrivialAddressValidatorMock = artifacts.require('TrivialAddressValidatorMock');
 const WhitelistMock = artifacts.require("WhitelistMock");
 const MockContract = artifacts.require('MockContract');
 const Whitelist = artifacts.require('Whitelist');
@@ -46,7 +45,6 @@ export class AssetContext implements IAssetContext {
         public chainEvents: UnderlyingChainEvents,
         public stateConnectorClient: IStateConnectorClient,
         public attestationProvider: AttestationHelper,
-        public addressValidator: IAddressValidatorInstance,
         public whitelist: ContractWithEvents<WhitelistInstance, WhitelistEvents> | undefined,
         public agentWhitelist: ContractWithEvents<WhitelistInstance, WhitelistEvents> | undefined,
         public assetManager: ContractWithEvents<AssetManagerInstance, AssetManagerEvents>,
@@ -243,15 +241,13 @@ export class AssetContext implements IAssetContext {
         // create mock attestation provider
         const stateConnectorClient = new MockStateConnectorClient(common.stateConnector, { [chainInfo.chainId]: chain }, 'on_wait');
         const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId);
-        // create address validator
-        const addressValidator = await TrivialAddressValidatorMock.new();
         // create allow-all agent whitelist
         const agentWhitelist = await WhitelistMock.new(true);
         // create liquidation strategy (dynamic library)
         const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
         const liquidationStrategy = liquidationStrategyLib.address;
         // create collaterals
-        const testSettingsContracts = { ...common, addressValidator, agentWhitelist, liquidationStrategy };
+        const testSettingsContracts = { ...common, agentWhitelist, liquidationStrategy };
         // create settings
         const settings = createTestSettings(testSettingsContracts, chainInfo);
         const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts, chainInfo);
@@ -260,7 +256,7 @@ export class AssetContext implements IAssetContext {
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
             chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings));
         // collect
-        return new AssetContext(common, chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider, addressValidator,
+        return new AssetContext(common, chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider,
             options.whitelist, options.agentWhitelist, assetManager, fAsset, settings, collaterals, liquidationSettings);
     }
 }

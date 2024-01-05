@@ -150,8 +150,8 @@ library RedemptionRequests {
         // release agent collateral
         Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
         // emit event
-        emit AMEvents.RedemptionRejected(request.agentVault, request.redeemer, request.valueAMG,
-            _redemptionRequestId);
+        uint256 valueUBA = Conversion.convertAmgToUBA(request.valueAMG);
+        emit AMEvents.RedemptionRejected(request.agentVault, request.redeemer, valueUBA, _redemptionRequestId);
         // delete redemption request at end
         Redemptions.deleteRedemptionRequest(_redemptionRequestId);
     }
