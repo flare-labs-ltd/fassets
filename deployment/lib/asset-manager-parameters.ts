@@ -199,12 +199,6 @@ export interface AssetManagerParameters {
     assetMintingDecimals: integer;
 
     /**
-     * Underlying address validator in format `[artifactName, constructorParameters]`.
-     * Each asset manager gets its own instance of underlying address validator.
-     */
-    underlyingAddressValidator: [string, any[]];
-
-    /**
      * Liquidation strategy factory name from `deployment/lib/liquidationStrategyFactory`
      * (will be deployed automatically if needed).
      * @pattern ^\w+$

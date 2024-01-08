@@ -10,10 +10,6 @@
     "poolTokenSuffix": "FKXRP",
     "assetMintingDecimals": 6,
     "userWhitelist": null,
-    "underlyingAddressValidator": [
-        "RippleAddressValidator",
-        []
-    ],
     "priceReader": "FakePriceReader",
     "liquidationStrategy": "LiquidationStrategyImpl",
     "liquidationStrategySettings": {

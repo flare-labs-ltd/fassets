@@ -149,10 +149,6 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     const fAsset = await FAsset.new(deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetDecimals);
 
-    const [addressValidatorArtifact, addressValidatorConstructorArgs] = parameters.underlyingAddressValidator;
-    const AddressValidator = hre.artifacts.require(addressValidatorArtifact);
-    const addressValidator = await AddressValidator.new(...addressValidatorConstructorArgs) as Truffle.ContractInstance;
-
     const poolCollateral = convertCollateralType(contracts, parameters.poolCollateral, CollateralClass.POOL);
     const vaultCollateral = parameters.vaultCollaterals.map(p => convertCollateralType(contracts, p, CollateralClass.VAULT));
     const collateralTypes = [poolCollateral, ...vaultCollateral];

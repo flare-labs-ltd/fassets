@@ -10,10 +10,6 @@
     "poolTokenSuffix": "ALGO",
     "assetMintingDecimals": 6,
     "userWhitelist": null,
-    "underlyingAddressValidator": [
-        "TrivialAddressValidatorMock",
-        []
-    ],
     "liquidationStrategy": "LiquidationStrategyImpl",
     "liquidationStrategySettings": {
         "$schema": "../LiquidationStrategyImplSettings.schema.json",
