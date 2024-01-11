@@ -669,7 +669,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const agentInfo1 = await assetManager.getAgentInfo(agentVault.address);
-        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, "MY_VALID_ADDRESS", redeemerAddress1, true);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, "AGENT_ADDRESS", redeemerAddress1, true);
         const agentInfo2 = await assetManager.getAgentInfo(agentVault.address);
         assert.equal(Number(agentInfo2.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 3);
         const proof = await attestationProvider.proveAddressValidity(request.paymentAddress);
@@ -679,4 +679,25 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentInfo3 = await assetManager.getAgentInfo(agentVault.address);
         assert.equal(Number(agentInfo3.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 3);
     });
+
+    it("mint and redeem with address validation - only owner", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, "MY_INVALID_ADDRESS", redeemerAddress1, true);
+        const proof = await attestationProvider.proveAddressValidity(request.paymentAddress);
+        assert.isFalse(proof.data.responseBody.isValid);
+        await expectRevert(assetManager.rejectInvalidRedemption(proof, request.requestId, { from: accounts[0] }),
+            "only agent vault owner");
+    });
+
+    it("mint and redeem with address validation - wrong challenged address", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, "AGENT_ADDRESS", redeemerAddress1, true);
+        const proof = await attestationProvider.proveAddressValidity("SOME_INVALID_ADDRESS");
+        assert.isFalse(proof.data.responseBody.isValid);
+        await expectRevert(assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 }),
+            "wrong address");
+    });
+
 });

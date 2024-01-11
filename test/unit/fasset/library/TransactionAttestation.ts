@@ -11,7 +11,8 @@ import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 
 contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction attestation basic tests`, async accounts => {
     const governance = accounts[10];
@@ -175,4 +176,13 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         await expectRevert(res, "invalid chain")
     });
 
+    it("should not verify address validity - invalid chain", async () => {
+        const chainId: SourceId = SourceId.DOGE;
+        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
+        const proof = await attestationProvider.proveAddressValidity("MY_ADDRESS");
+        const promise = assetManager.createAgentVault(
+            web3DeepNormalize(proof), web3DeepNormalize(createTestAgentSettings(usdc.address)), { from: agentOwner1 });
+        await expectRevert(promise, "invalid chain")
+    });
 });
