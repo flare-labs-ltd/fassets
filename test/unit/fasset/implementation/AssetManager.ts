@@ -1104,6 +1104,19 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const availableAgentDetailedList2 = await assetManager.getAvailableAgentsDetailedList(0, 10);
             assert.equal(availableAgentDetailedList2[0].length, 0);
         });
+
+        it("agent availability - exit too late", async () => {
+            // create an agent
+            let agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            //Announce exit
+            let annRes = await assetManager.announceExitAvailableAgentList(agentVault.address, { from: agentOwner1 });
+            let exitTime = requiredEventArgs(annRes, 'AvailableAgentExitAnnounced').exitAllowedAt;
+            // exit available too late
+            const settings = await assetManager.getSettings();
+            await time.increase(toBN(settings.agentExitAvailableTimelockSeconds).add(toBN(settings.agentTimelockedOperationWindowSeconds).addn(1)));
+            const res = assetManager.exitAvailableAgentList(agentVault.address, { from: agentOwner1 });
+            await expectRevert(res, "exit too late");
+        });
     });
 
     describe("minting", () => {

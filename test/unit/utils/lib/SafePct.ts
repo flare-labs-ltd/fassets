@@ -1,11 +1,10 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { expect } from "chai";
-import { artifacts, contract } from "hardhat";
-import { SafePctMockContract, SafePctMockInstance } from "../../../../typechain-truffle/SafePctMock";
 import { toBN } from "../../../../lib/utils/helpers";
+import { SafePctMockInstance } from "../../../../typechain-truffle/SafePctMock";
 import { getTestFile } from "../../../utils/test-helpers";
 
-const SafePct = artifacts.require("SafePctMock") as SafePctMockContract;
+const SafePct = artifacts.require("SafePctMock");
 
 contract(`SafePct.sol; ${getTestFile(__filename)};  SafePct unit tests`, async accounts => {
     let safePct: SafePctMockInstance;

@@ -1,16 +1,15 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
-import { artifacts, contract } from "hardhat";
-import { SafeMath64MockContract, SafeMath64MockInstance } from "../../../../typechain-truffle";
 import { toBN } from "../../../../lib/utils/helpers";
+import { SafeMath64MockInstance } from "../../../../typechain-truffle";
 import { getTestFile } from "../../../utils/test-helpers";
 
-const SafeMath64 = artifacts.require("SafeMath64Mock") as SafeMath64MockContract;
+const SafeMath64 = artifacts.require("SafeMath64Mock");
 
 contract(`SafeMath64.sol; ${getTestFile(__filename)};  SafeMath64 unit tests`, async accounts => {
     let safeMath64: SafeMath64MockInstance;
     const MAX_UINT64 = toBN(2).pow(toBN(64));
     const MAX_INT64 = toBN(2).pow(toBN(63));
-    
+
     before(async() => {
         safeMath64 = await SafeMath64.new();
     });

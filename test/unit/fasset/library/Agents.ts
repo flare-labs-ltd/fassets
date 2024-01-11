@@ -584,6 +584,19 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
             "withdrawal: not allowed yet");
     });
 
+    it("should not withdraw collateral after too much time passes", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const amount = ether('1');
+        await depositCollateral(agentOwner1, agentVault, amount);
+        await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
+        // act
+        await time.increase(toBN(settings.withdrawalWaitMinSeconds).add(toBN(settings.agentTimelockedOperationWindowSeconds)).addn(100));
+        // assert
+        await expectRevert(agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 }),
+            "withdrawal: too late");
+    });
+
     it("should not withdraw more collateral than announced", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);

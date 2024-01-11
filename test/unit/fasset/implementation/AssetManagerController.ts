@@ -196,6 +196,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
             await waitForTimelock(assetManagerController.setMintingCapAmg([assetManager.address], lotSizeAMG.muln(1.5), { from: governance }), assetManagerController, updateExecutor);
             await expectRevert(waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG.muln(2), { from: governance }), assetManagerController, updateExecutor), "lot size bigger than minting cap");
+            // this should work
+            await waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG.muln(1.2), { from: governance }), assetManagerController, updateExecutor);
         });
 
         it("should revert setting payment challenge reward when increase or decrease is too big", async () => {
