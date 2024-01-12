@@ -1,4 +1,4 @@
-import { expectRevert, time } from "@openzeppelin/test-helpers";
+import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AgentStatus, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
@@ -35,7 +35,9 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
     const agentOwner1 = accounts[20];
     const minterAddress1 = accounts[30];
     const redeemerAddress1 = accounts[40];
+    const noExecutorAddress = constants.ZERO_ADDRESS;
     const liquidatorAddress1 = accounts[60];
+
     // addresses on mock underlying chain can be any string, as long as it is unique
     const underlyingAgent1 = "Agent1";
     const underlyingMinter1 = "Minter1";
@@ -66,7 +68,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
         const lots = 3;
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
-        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, { from: minterAddress, value: crFee });
+        const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, noExecutorAddress, { from: minterAddress, value: crFee });
         const crt = requiredEventArgs(resAg, 'CollateralReserved');
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
@@ -77,7 +79,7 @@ contract(`Liquidation.sol; ${getTestFile(__filename)}; Liquidation basic tests`,
 
     async function redeem(underlyingRedeemerAddress: string, redeemerAddress: string) {
         const lots = 3;
-        const resR = await assetManager.redeem(lots, underlyingRedeemerAddress, { from: redeemerAddress });
+        const resR = await assetManager.redeem(lots, underlyingRedeemerAddress, noExecutorAddress, { from: redeemerAddress });
         const redemptionRequests = filterEvents(resR, 'RedemptionRequested').map(e => e.args);
         const request = redemptionRequests[0];
         return request;

@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import "../../utils/lib/SafeMath64.sol";
+import "../../utils/lib/Transfers.sol";
 import "./data/AssetManagerState.sol";
 import "./Conversion.sol";
 import "./Agents.sol";
@@ -73,6 +74,22 @@ library Redemptions {
         internal
     {
         Globals.getFAsset().burn(_owner, _amountUBA);
+    }
+
+    // pay executor for executor calls, otherwise burn executor fee
+    function payOrBurnExecutorFee(
+        Redemption.Request storage _request
+    )
+        internal
+    {
+        if (_request.executorFeeNatGWei == 0) return;
+        if (msg.sender == _request.executor) {
+            // safe - 1) guarded by nonReentrant in AssetManager.executeMinting, 2) recipient is msg.sender
+            Transfers.transferNAT(_request.executor, _request.executorFeeNatGWei * Conversion.GWEI);
+        } else if (_request.executorFeeNatGWei > 0) {
+            Agents.burnDirectNAT(_request.executorFeeNatGWei * Conversion.GWEI);
+        }
+        _request.executorFeeNatGWei = 0;
     }
 
     function deleteRedemptionRequest(uint64 _redemptionRequestId)

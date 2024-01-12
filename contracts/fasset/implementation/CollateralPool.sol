@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../../utils/lib/SafePct.sol";
+import "../../utils/lib/Transfers.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAssetManager.sol";
 import "../interface/IIAgentVault.sol";
@@ -210,6 +211,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      *                                      Must be positive and smaller or equal to the sender's token balance
      * @param _redeemToCollateral           Specifies if agent should redeem f-assets in NAT from his collateral
      * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
+     * @param _executor                     The account that is allowed to execute redemption default
      * @notice F-assets will be redeemed in collateral if their value does not exceed one lot
      * @notice All f-asset fees will be redeemed along with potential additionally required f-assets taken
      *  from the sender's f-asset account
@@ -218,9 +220,10 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     function selfCloseExit(
         uint256 _tokenShare,
         bool _redeemToCollateral,
-        string memory _redeemerUnderlyingAddress
+        string memory _redeemerUnderlyingAddress,
+        address payable _executor
     )
-        external
+        external payable
         nonReentrant
     {
         require(_tokenShare > 0, "token share is zero");
@@ -269,8 +272,9 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
                 assetManager.redeemFromAgentInCollateral(
                     agentVault, msg.sender, requiredFAssets);
             } else {
-                assetManager.redeemFromAgent(
-                    agentVault, msg.sender, requiredFAssets, _redeemerUnderlyingAddress);
+                // automatically pass `msg.value` to `redeemFromAgent` for the executor fee
+                assetManager.redeemFromAgent{ value: msg.value }(
+                    agentVault, msg.sender, requiredFAssets, _redeemerUnderlyingAddress, _executor);
             }
         }
         // sort out the sender's f-asset fees that were spent on redemption
@@ -684,7 +688,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         require(token.totalSupply() == 0, "cannot destroy a pool with issued tokens");
         token.destroy(_recipient);
         // transfer native balance, if any (used to be done by selfdestruct)
-        _transferNAT(_recipient, address(this).balance);
+        Transfers.transferNAT(_recipient, address(this).balance);
         // transfer untracked f-assets and wNat, if any
         uint256 untrackedWNat = wNat.balanceOf(address(this));
         uint256 untrackedFAsset = fAsset.balanceOf(address(this));
@@ -826,16 +830,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 natShare = tokens.mulDiv(totalCollateral, token.totalSupply());
         token.burn(msg.sender, tokens, true); // when f-asset is terminated all tokens are free tokens
         _transferWNat(msg.sender, natShare);
-    }
-
-    function _transferNAT(address payable _recipient, uint256 _amount) private {
-        if (_amount > 0) {
-            /* solhint-disable avoid-low-level-calls */
-            //slither-disable-next-line arbitrary-send-eth
-            (bool success, ) = _recipient.call{value: _amount}("");
-            /* solhint-enable avoid-low-level-calls */
-            require(success, "transfer failed");
-        }
     }
 
     /**

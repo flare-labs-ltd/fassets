@@ -515,18 +515,20 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      *      copy current agent's published fee; used to prevent agent from front-running reservation request
      *      and increasing fee (that would mean that the minter would have to pay raised fee or forfeit
      *      collateral reservation fee)
+     * @param _executor the account that is allowed to represent minter in `executeMinting()`
      */
     function reserveCollateral(
         address _agentVault,
         uint256 _lots,
-        uint256 _maxMintingFeeBIPS
+        uint256 _maxMintingFeeBIPS,
+        address payable _executor
     )
         external payable override
         onlyAttached
         onlyWhitelistedSender
     {
         CollateralReservations.reserveCollateral(msg.sender, _agentVault,
-            _lots.toUint64(), _maxMintingFeeBIPS.toUint64());
+            _lots.toUint64(), _maxMintingFeeBIPS.toUint64(), _executor);
     }
 
     /**
@@ -644,18 +646,20 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
+     * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
      * @return _redeemedAmountUBA the actual redeemed amount; may be less then requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function redeem(
         uint256 _lots,
-        string memory _redeemerUnderlyingAddressString
+        string memory _redeemerUnderlyingAddressString,
+        address payable _executor
     )
-        external override
+        external payable override
         onlyWhitelistedSender
         returns (uint256 _redeemedAmountUBA)
     {
-        return RedemptionRequests.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString);
+        return RedemptionRequests.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString, _executor);
     }
 
     /**
@@ -1157,11 +1161,12 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         address _agentVault,
         address _receiver,
         uint256 _amountUBA,
-        string memory _receiverUnderlyingAddress
+        string memory _receiverUnderlyingAddress,
+        address payable _executor
     )
-        external override
+        external payable override
     {
-        RedemptionRequests.redeemFromAgent(_agentVault, _receiver, _amountUBA, _receiverUnderlyingAddress);
+        RedemptionRequests.redeemFromAgent(_agentVault, _receiver, _amountUBA, _receiverUnderlyingAddress, _executor);
     }
 
     /**

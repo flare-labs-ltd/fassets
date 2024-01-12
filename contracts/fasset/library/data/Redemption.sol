@@ -21,5 +21,7 @@ library Redemption {
         address agentVault;
         Redemption.Status status;
         bool poolSelfClose;
+        address payable executor;
+        uint64 executorFeeNatGWei;
     }
 }

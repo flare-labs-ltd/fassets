@@ -1,5 +1,5 @@
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
-import { BN_ZERO, formatBN, requireNotNull } from "../../../lib/utils/helpers";
+import { BN_ZERO, ZERO_ADDRESS, formatBN, requireNotNull } from "../../../lib/utils/helpers";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import { AsyncLock, coinFlip, randomBN, randomChoice } from "../../utils/fuzzing-utils";
 import { FuzzingActor } from "./FuzzingActor";
@@ -61,7 +61,7 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
                 this.comment(`${this.formatAddress(this.address)}: self-close exiting pool ${this.formatAddress(this.poolInfo.pool.address)} (${amountFmt}), fassets=${formatBN(selfCloseFAssetRequired)}, toCollateral=${redeemToCollateral}`);
                 await this.runner.fAssetMarketplace.buy(scope, this.address, selfCloseFAssetRequired);
                 await this.context.fAsset.approve(this.poolInfo.pool.address, selfCloseFAssetRequired, { from: this.address });
-                const res = await this.poolInfo.pool.selfCloseExit(amount, redeemToCollateral, this.underlyingAddress, { from: this.address })
+                const res = await this.poolInfo.pool.selfCloseExit(amount, redeemToCollateral, this.underlyingAddress, ZERO_ADDRESS, { from: this.address })
                     .catch(e => scope.exitOnExpectedError(e, ['f-asset allowance too small', 'f-asset balance too low', 'amount of sent tokens is too small after agent max redempton correction']));
                 const redemptionRequest = this.runner.eventDecoder.findEventFrom(res, this.context.assetManager, 'RedemptionRequested');
                 if (redemptionRequest) {

@@ -19,6 +19,8 @@ export const HOURS = 60 * MINUTES;
 export const DAYS = 24 * HOURS;
 export const WEEKS = 7 * DAYS;
 
+export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 /**
  * Asynchronously wait `ms` milliseconds.
  */

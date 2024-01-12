@@ -4,6 +4,7 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "../../utils/lib/Transfers.sol";
 import "../interface/IICollateralPool.sol";
 import "../interface/IWNat.sol";
 import "../interface/IIAgentVault.sol";
@@ -203,7 +204,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
             }
         }
         // transfer native balance, if any (used to be done by selfdestruct)
-        _transferNAT(_recipient, address(this).balance);
+        Transfers.transferNAT(_recipient, address(this).balance);
     }
 
     // Used by asset manager for liquidation and failed redemption.
@@ -256,17 +257,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         internalWithdrawal = true;
         _wNat.withdraw(_amount);
         internalWithdrawal = false;
-        _transferNAT(_recipient, _amount);
-    }
-
-    function _transferNAT(address payable _recipient, uint256 _amount) private {
-        if (_amount > 0) {
-            /* solhint-disable avoid-low-level-calls */
-            //slither-disable-next-line arbitrary-send-eth
-            (bool success, ) = _recipient.call{value: _amount}("");
-            /* solhint-enable avoid-low-level-calls */
-            require(success, "transfer failed");
-        }
+        Transfers.transferNAT(_recipient, _amount);
     }
 
     function _tokenUsed(IERC20 _token, uint256 _flags) private {

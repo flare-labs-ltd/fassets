@@ -3,6 +3,7 @@ pragma solidity 0.8.20;
 
 import "../../stateConnector/interface/ISCProofVerifier.sol";
 import "../../utils/lib/SafePct.sol";
+import "../../utils/lib/Transfers.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
@@ -30,8 +31,8 @@ library Minting {
         TransactionAttestation.verifyPaymentSuccess(_payment);
         // minter or agent can present the proof - agent may do it to unlock the collateral if minter
         // becomes unresponsive
-        require(msg.sender == crt.minter || Agents.isOwner(agent, msg.sender),
-            "only minter or agent");
+        require(msg.sender == crt.minter || msg.sender == crt.executor || Agents.isOwner(agent, msg.sender),
+            "only minter, executor or agent");
         require(_payment.data.responseBody.standardPaymentReference == PaymentReference.minting(_crtId),
             "invalid minting reference");
         require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
@@ -46,8 +47,15 @@ library Minting {
         // execute minting
         _performMinting(agent, _crtId, crt.minter, crt.valueAMG, uint256(_payment.data.responseBody.receivedAmount),
             calculatePoolFee(agent, crt.underlyingFeeUBA));
+        // pay to executor if they called this method
+        uint256 unclaimedExecutorFee = crt.executorFeeNatGWei * Conversion.GWEI;
+        if (msg.sender == crt.executor) {
+            // safe - 1) guarded by nonReentrant in AssetManager.executeMinting, 2) recipient is msg.sender
+            Transfers.transferNAT(crt.executor, unclaimedExecutorFee);
+            unclaimedExecutorFee = 0;
+        }
         // burn collateral reservation fee (guarded against reentrancy in AssetManager.executeMinting)
-        Agents.burnDirectNAT(crt.reservationFeeNatWei);
+        Agents.burnDirectNAT(crt.reservationFeeNatWei + unclaimedExecutorFee);
         // cleanup
         CollateralReservations.releaseCollateralReservation(crt, _crtId);   // crt can't be used after this
     }

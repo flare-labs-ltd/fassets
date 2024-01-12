@@ -12,5 +12,7 @@ library CollateralReservation {
         uint128 reservationFeeNatWei;
         address agentVault;
         address minter;
+        address payable executor;
+        uint64 executorFeeNatGWei;
     }
 }

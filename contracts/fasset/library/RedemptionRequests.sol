@@ -30,7 +30,8 @@ library RedemptionRequests {
     function redeem(
         address _redeemer,
         uint64 _lots,
-        string memory _redeemerUnderlyingAddress
+        string memory _redeemerUnderlyingAddress,
+        address payable _executor
     )
         external
         returns (uint256)
@@ -50,8 +51,10 @@ library RedemptionRequests {
             redeemedLots += redeemedForTicket;
         }
         require(redeemedLots != 0, "redeem 0 lots");
+        uint64 executorFeeNatGWei = (msg.value / redemptionList.length / Conversion.GWEI).toUint64();
         for (uint256 i = 0; i < redemptionList.length; i++) {
-            _createRedemptionRequest(redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress, false);
+            _createRedemptionRequest(redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress, false,
+                _executor, executorFeeNatGWei);
         }
         // notify redeemer of incomplete requests
         if (redeemedLots < _lots) {
@@ -67,7 +70,8 @@ library RedemptionRequests {
         address _agentVault,
         address _redeemer,
         uint256 _amountUBA,
-        string memory _receiverUnderlyingAddress
+        string memory _receiverUnderlyingAddress,
+        address payable _executor
     )
         external
     {
@@ -79,7 +83,8 @@ library RedemptionRequests {
         (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, false);
         // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
-        _createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress, true);
+        _createRedemptionRequest(redemption, _redeemer, _receiverUnderlyingAddress, true,
+            _executor, (msg.value / Conversion.GWEI).toUint64());
         // burn the closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
     }
@@ -174,7 +179,9 @@ library RedemptionRequests {
         AgentRedemptionData memory _data,
         address _redeemer,
         string memory _redeemerUnderlyingAddressString,
-        bool _poolSelfClose
+        bool _poolSelfClose,
+        address payable _executor,
+        uint64 _executorFeeNatGWei
     )
         private
     {
@@ -185,37 +192,49 @@ library RedemptionRequests {
         // create request
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
         uint64 requestId = _newRequestId(_poolSelfClose);
-        (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
-        uint128 redemptionFeeUBA = redeemedValueUBA.mulBips(state.settings.redemptionFeeBIPS).toUint128();
-        uint64 firstUnderlyingBlock = state.currentUnderlyingBlock;
-        state.redemptionRequests[requestId] = Redemption.Request({
-            redeemerUnderlyingAddressHash: underlyingAddressHash,
-            underlyingValueUBA: redeemedValueUBA,
-            firstUnderlyingBlock: firstUnderlyingBlock,
-            lastUnderlyingBlock: lastUnderlyingBlock,
-            lastUnderlyingTimestamp: lastUnderlyingTimestamp,
-            timestamp: block.timestamp.toUint64(),
-            underlyingFeeUBA: redemptionFeeUBA,
-            redeemer: _redeemer,
-            agentVault: _data.agentVault,
-            valueAMG: _data.valueAMG,
-            status: Redemption.Status.ACTIVE,
-            poolSelfClose: _poolSelfClose
-        });
+        // create in-memory request and then put it to storage to not go out-of-stack
+        Redemption.Request memory request;
+        request.redeemerUnderlyingAddressHash = underlyingAddressHash;
+        request.underlyingValueUBA = redeemedValueUBA;
+        request.firstUnderlyingBlock = state.currentUnderlyingBlock;
+        (request.lastUnderlyingBlock, request.lastUnderlyingTimestamp) = _lastPaymentBlock();
+        request.timestamp = block.timestamp.toUint64();
+        request.underlyingFeeUBA = redeemedValueUBA.mulBips(state.settings.redemptionFeeBIPS).toUint128();
+        request.redeemer = _redeemer;
+        request.agentVault = _data.agentVault;
+        request.valueAMG = _data.valueAMG;
+        request.status = Redemption.Status.ACTIVE;
+        request.poolSelfClose = _poolSelfClose;
+        request.executor = _executor;
+        request.executorFeeNatGWei = _executorFeeNatGWei;
+        state.redemptionRequests[requestId] = request;
         // decrease mintedAMG and mark it to redeemingAMG
         // do not add it to freeBalance yet (only after failed redemption payment)
         Agents.startRedeemingAssets(Agent.get(_data.agentVault), _data.valueAMG, _poolSelfClose);
         // emit event to remind agent to pay
-        emit AMEvents.RedemptionRequested(_data.agentVault,
-            _redeemer,
-            requestId,
-            normalizedUnderlyingAddress,
-            redeemedValueUBA,
-            redemptionFeeUBA,
-            firstUnderlyingBlock,
-            lastUnderlyingBlock,
-            lastUnderlyingTimestamp,
-            PaymentReference.redemption(requestId));
+        _emitRedemptionRequestedEvent(request, requestId, normalizedUnderlyingAddress);
+    }
+
+    function _emitRedemptionRequestedEvent(
+        Redemption.Request memory _request,
+        uint64 _requestId,
+        string memory _normalizedUnderlyingAddress
+    )
+        private
+    {
+        emit AMEvents.RedemptionRequested(
+            _request.agentVault,
+            _request.redeemer,
+            _requestId,
+            _normalizedUnderlyingAddress,
+            _request.underlyingValueUBA,
+            _request.underlyingFeeUBA,
+            _request.firstUnderlyingBlock,
+            _request.lastUnderlyingBlock,
+            _request.lastUnderlyingTimestamp,
+            PaymentReference.redemption(_requestId),
+            _request.executor,
+            _request.executorFeeNatGWei * Conversion.GWEI);
     }
 
     function _newRequestId(bool _poolSelfClose)
