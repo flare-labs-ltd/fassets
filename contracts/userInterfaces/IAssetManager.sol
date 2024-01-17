@@ -135,17 +135,6 @@ interface IAssetManager is IAssetManagerEvents {
         returns (CollateralType.Data[] memory);
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // Agent owner management and work address management
-
-    /**
-     * Associate a work address with the agent owner's management address.
-     * Every owner (management address) can have only one work address, so as soon as the new one is set, the old
-     * one stops working.
-     * NOTE: May only be called by an agent on the allowed agent list and only from the management address.
-     */
-    function setOwnerWorkAddress(address _ownerWorkAddress) external;
-
-    ////////////////////////////////////////////////////////////////////////////////////
     // Agent create / destroy
 
     /**
