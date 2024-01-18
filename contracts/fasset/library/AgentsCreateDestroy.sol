@@ -34,11 +34,6 @@ library AgentsCreateDestroy {
         _;
     }
 
-    modifier onlyWhitelistedAgent {
-        Agents.requireWhitelisted(msg.sender);
-        _;
-    }
-
     function claimAddressWithEOAProof(
         Payment.Proof calldata _payment
     )

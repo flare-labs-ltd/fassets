@@ -17,14 +17,6 @@ interface IAgentOwnerRegistry is IWhitelist {
         address workAddress);
 
     /**
-     * Associate a work address with the agent owner's management address.
-     * Every owner (management address) can have only one work address, so as soon as the new one is set, the old
-     * one stops working.
-     * NOTE: May only be called by an agent on the allowed agent list and only from the management address.
-     */
-    function setWorkAddress(address _ownerWorkAddress) external;
-
-    /**
      * Get the (unique) work address for the given management address.
      */
     function getWorkAddress(address _managementAddress)

@@ -235,6 +235,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const addressValidator = await TrivialAddressValidatorMock.new();
     // create allow-all agent whitelist
     const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance, true);
+    await agentOwnerRegistry.setAllowAll(true, { from: governance });
     // create liquidation strategy
     const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
     const liquidationStrategy = liquidationStrategyLib.address;

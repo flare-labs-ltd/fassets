@@ -3,7 +3,7 @@ import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/Ass
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { toBNExp } from "../../../../lib/utils/helpers";
+import { erc165InterfaceId, toBNExp } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentOwnerRegistryInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -185,7 +185,21 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             await agentOwnerRegistry.setWorkAddress(workAddress, { from: agentOwner1 });
             assert.equal(await assetManager.isAgentVaultOwner(agentVault.address, workAddress), true);
         });
+    });
 
 
+    describe("ERC-165 interface identification for Agent Vault", () => {
+        it("should properly respond to supportsInterface", async () => {
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as 'IERC165');
+            const IWhitelist = artifacts.require("IWhitelist");
+            const IAgentOwnerRegistry = artifacts.require("IAgentOwnerRegistry");
+            const iERC165 = await IERC165.at(agentOwnerRegistry.address);
+            const iWhitelist = await IWhitelist.at(agentOwnerRegistry.address);
+            const iAgentOwnerRegistry = await IAgentOwnerRegistry.at(agentOwnerRegistry.address);
+            assert.isTrue(await agentOwnerRegistry.supportsInterface(erc165InterfaceId(iERC165.abi)));
+            assert.isTrue(await agentOwnerRegistry.supportsInterface(erc165InterfaceId(iWhitelist.abi)));
+            assert.isTrue(await agentOwnerRegistry.supportsInterface(erc165InterfaceId(iAgentOwnerRegistry.abi, [iWhitelist.abi])));
+            assert.isFalse(await agentOwnerRegistry.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
+        });
     });
 });

@@ -79,6 +79,22 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
             let res = waitForTimelock(rev, whitelist2, governance);
             await expectRevert(res, "revoke not supported");
         });
+
+        it("should set allowAll", async () => {
+            assert.isFalse(await whitelist.allowAll());
+            await waitForTimelock(whitelist.setAllowAll(true, { from: governance }), whitelist, governance);
+            assert.isTrue(await whitelist.allowAll());
+        });
+
+        it("should allow any address when allowAll is true", async () => {
+            assert.isFalse(await whitelist.isWhitelisted("0x5c0cA8E3e3168e56615B69De71ED6BB113822BE2"));
+            await waitForTimelock(whitelist.setAllowAll(true, { from: governance }), whitelist, governance);
+            assert.isTrue(await whitelist.isWhitelisted("0x5c0cA8E3e3168e56615B69De71ED6BB113822BE2"));
+        });
+
+        it("only governance can set allowAll", async () => {
+            await expectRevert(whitelist.setAllowAll(true, { from: accounts[1] }), "only governance");
+        });
     });
 
     describe("ERC-165 interface identification for Agent Vault", () => {

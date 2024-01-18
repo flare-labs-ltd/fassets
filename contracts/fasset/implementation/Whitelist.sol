@@ -7,13 +7,24 @@ import "../../userInterfaces/IWhitelist.sol";
 
 
 contract Whitelist is IWhitelist, Governed, IERC165 {
+    /**
+     * When true, governance can remove addresses from whitelist.
+     */
     bool public immutable supportsRevoke;
+
+    /**
+     * When true, all addresses are whitelisted.
+     * Default is false.
+     */
+    bool public allowAll;
+
     mapping(address => bool) private whitelist;
 
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, bool _supportsRevoke)
         Governed(_governanceSettings, _initialGovernance)
     {
         supportsRevoke = _supportsRevoke;
+        allowAll = false;
     }
 
     function addAddressToWhitelist(address _address) external onlyImmediateGovernance {
@@ -31,8 +42,12 @@ contract Whitelist is IWhitelist, Governed, IERC165 {
         _removeAddressFromWhitelist(_address);
     }
 
+    function setAllowAll(bool _allowAll) external onlyGovernance {
+        allowAll = _allowAll;
+    }
+
     function isWhitelisted(address _address) public view returns (bool) {
-        return whitelist[_address];
+        return whitelist[_address] || allowAll;
     }
 
     function _addAddressToWhitelist(address _address) private {

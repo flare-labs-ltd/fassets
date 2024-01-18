@@ -25,6 +25,7 @@ const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
 const ERC20Mock = artifacts.require('ERC20Mock');
+const AgentOwnerRegistry = artifacts.require('AgentOwnerRegistry');
 
 const mulBIPS = (x: BN, y: BN) => x.mul(y).div(toBN(MAX_BIPS));
 const divBIPS = (x: BN, y: BN) => x.mul(toBN(MAX_BIPS)).div(y);
@@ -634,11 +635,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const governanceSettings = await GovernanceSettings.new();
             await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
             // create whitelist
-            const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
-            await whitelist.switchToProductionMode({ from: governance });
-            await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
+            const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance, false);
+            await agentOwnerRegistry.switchToProductionMode({ from: governance });
+            await agentOwnerRegistry.addAddressToWhitelist(whitelistedAccount, { from: governance });
             await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentOwnerRegistry(address)")),
-                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
+                web3.eth.abi.encodeParameters(['address'], [agentOwnerRegistry.address]),
                 { from: assetManagerController });
             // assert
             const settings = createTestAgentSettings(underlyingAgent1, usdc.address);

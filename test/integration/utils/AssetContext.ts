@@ -143,10 +143,10 @@ export class AssetContext implements IAssetContext {
     async createWhitelists() {
         const whitelist = await Whitelist.new(this.common.governanceSettings.address, this.governance, true);
         await whitelist.switchToProductionMode({ from: this.governance });
+        await this.setWhitelist(whitelist);
         const agentOwnerRegistry = await AgentOwnerRegistry.new(this.common.governanceSettings.address, this.governance, true);
         await agentOwnerRegistry.switchToProductionMode({ from: this.governance });
         await this.setAgentOwnerRegistry(agentOwnerRegistry);
-        await this.setWhitelist(whitelist);
     }
 
     async updateUnderlyingBlock() {
@@ -249,6 +249,7 @@ export class AssetContext implements IAssetContext {
         const addressValidator = await TrivialAddressValidatorMock.new();
         // create allow-all agent whitelist
         const agentOwnerRegistry = await AgentOwnerRegistry.new(common.governanceSettings.address, common.governance, true);
+        await agentOwnerRegistry.setAllowAll(true, { from: common.governance });
         // create liquidation strategy (dynamic library)
         const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
         const liquidationStrategy = liquidationStrategyLib.address;

@@ -21,7 +21,9 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
      * one stops working.
      * NOTE: May only be called by an agent on the allowed agent list and only from the management address.
      */
-    function setWorkAddress(address _ownerWorkAddress) external {
+    function setWorkAddress(address _ownerWorkAddress)
+        external
+    {
         require(isWhitelisted(msg.sender),
             "agent not whitelisted");
         require(_ownerWorkAddress == address(0) || workToMgmtAddress[_ownerWorkAddress] == address(0),
@@ -42,14 +44,20 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
     /**
      * Get the (unique) work address for the given management address.
      */
-    function getWorkAddress(address _managementAddress) external view returns (address) {
+    function getWorkAddress(address _managementAddress)
+        external view override
+        returns (address)
+    {
         return mgmtToWorkAddress[_managementAddress];
     }
 
     /**
      * Get the (unique) management address for the given work address.
      */
-    function getManagementAddress(address _workAddress) external view returns (address) {
+    function getManagementAddress(address _workAddress)
+        external view override
+        returns (address)
+    {
         return workToMgmtAddress[_workAddress];
     }
 
