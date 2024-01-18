@@ -1169,8 +1169,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(assetManagerController.terminate([assetManager.address], { from: governance }), "asset manager not paused enough");
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP / 2);
             assert.isFalse(await fAsset.terminated());
+            assert.isFalse(await assetManager.terminated());
             await assetManagerController.terminate([assetManager.address], { from: governance })
             assert.isTrue(await fAsset.terminated());
+            assert.isTrue(await assetManager.terminated());
             await expectRevert(assetManagerController.unpause([assetManager.address], { from: governance }), "f-asset terminated");
         });
 
