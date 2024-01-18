@@ -1,5 +1,6 @@
+import Web3 from "web3";
 import { constants } from "@openzeppelin/test-helpers";
-import { BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
+import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
 import { TX_FAILED, TxInputOutput } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { BN_ZERO } from "../../../lib/utils/helpers";
 import { MockChain, MockChainTransaction } from "./MockChain";
@@ -13,7 +14,7 @@ export class MockAttestationProverError extends Error {
 function totalValueFor(ios: TxInputOutput[], address: string) {
     let total = BN_ZERO;
     for (const [a, v] of ios) {
-        if (web3.utils.keccak256(a) === address) total = total.add(v);
+        if (Web3.utils.soliditySha3Raw(a) === address) total = total.add(v);
     }
     return total;
 }
@@ -34,8 +35,8 @@ export class MockAttestationProver {
 
     payment(transactionHash: string, inUtxo: number, utxo: number): Payment.ResponseBody {
         const { transaction, block } = this.findTransaction('payment', transactionHash);
-        const sourceAddressHash = web3.utils.keccak256(transaction.inputs[Number(inUtxo)][0]);
-        const receivingAddressHash = web3.utils.keccak256(transaction.outputs[Number(utxo)][0]);
+        const sourceAddressHash = Web3.utils.soliditySha3Raw(transaction.inputs[Number(inUtxo)][0]);
+        const receivingAddressHash = Web3.utils.soliditySha3Raw(transaction.outputs[Number(utxo)][0]);
         const spent = totalSpentValue(transaction, sourceAddressHash);
         const received = totalReceivedValue(transaction, receivingAddressHash);
         return {
@@ -58,7 +59,7 @@ export class MockAttestationProver {
         const { transaction, block } = this.findTransaction('balanceDecreasingTransaction', transactionHash);
         const sourceAddressHash = sourceAddressIndicator.length >= 10
             ? sourceAddressIndicator                                                        // sourceAddressIndicator can be hash of the address ...
-            : web3.utils.keccak256(transaction.inputs[Number(sourceAddressIndicator)][0]);  // ... or hex encoded utxo number
+            : Web3.utils.soliditySha3Raw(transaction.inputs[Number(sourceAddressIndicator)][0]);  // ... or hex encoded utxo number
         const spent = totalSpentValue(transaction, sourceAddressHash);
         return {
             blockNumber: String(block.number),
@@ -146,5 +147,14 @@ export class MockAttestationProver {
             lowestQueryWindowBlockNumber: String(lowestQueryWindowBlock?.number ?? 0),
             lowestQueryWindowBlockTimestamp: String(lowestQueryWindowBlock?.timestamp ?? 0),
         };
+    }
+
+    addressValidity(addressStr: string): AddressValidity.ResponseBody {
+        const standardAddress = addressStr.trim();
+        return {
+            isValid: standardAddress != "" && !standardAddress.includes("INVALID"), // very fake check
+            standardAddress: standardAddress,
+            standardAddressHash: Web3.utils.soliditySha3Raw(standardAddress),
+        }
     }
 }

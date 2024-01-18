@@ -132,14 +132,16 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
             const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
             await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
-            const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
+            const agentSettings = createTestAgentSettings(usdc.address);
 
             //Revoke address and wait for timelock
             let rev = await agentOwnerRegistry.revokeAddress(agentOwner1, {from: governance});
             await waitForTimelock(rev, agentOwnerRegistry, governance);
 
             //Try to create agent
-            const res = assetManager.createAgentVault(web3DeepNormalize(agentSettings), { from: ownerWorkAddress });
+            const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
+            assert.isTrue(addressValidityProof.data.responseBody.isValid);
+            const res = assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: ownerWorkAddress });
             await expectRevert(res, "agent not whitelisted");
         });
 

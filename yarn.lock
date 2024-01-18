@@ -975,10 +975,10 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
-"@flarenetwork/state-connector-protocol@1.0.0-beta.2":
-  version "1.0.0-beta.2"
-  resolved "https://registry.yarnpkg.com/@flarenetwork/state-connector-protocol/-/state-connector-protocol-1.0.0-beta.2.tgz#297be8e479167e2e260ea345b88c5f0a8fdde173"
-  integrity sha512-qEO0FDLXNVaiLRjRmOTfC+pPWJuQK/0okIgKApLpQ31nokaTkyJRjVYBuyv8DcMosDtna+jju8svrfkkU4lEXQ==
+"@flarenetwork/state-connector-protocol@1.0.0-beta.3":
+  version "1.0.0-beta.3"
+  resolved "https://registry.yarnpkg.com/@flarenetwork/state-connector-protocol/-/state-connector-protocol-1.0.0-beta.3.tgz#212586df636abd105911f0751fb27d22cd8f5da2"
+  integrity sha512-VDkhP+DgVcLj6ibn2ui613349SmjkfhR5pCs4P+DBSerbMVnyWR1yhI8zP4fXrLNcxR2F9qFyn6L9SIBCMGnGw==
   dependencies:
     "@openzeppelin/contracts" "^4.9.3"
     ethers "^6.7.1"

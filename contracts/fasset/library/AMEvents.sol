@@ -181,6 +181,15 @@ library AMEvents {
         uint256 executorFeeNatWei);
 
     /**
+     * Agent rejected the redemption payment because the redeemer's address is invalid.
+     */
+    event RedemptionRejected(
+        address indexed agentVault,
+        address indexed redeemer,
+        uint256 redemptionAmountUBA,
+        uint64 requestId);
+
+    /**
      * In case there were not enough tickets or more than allowed number would have to be redeemed,
      * only partial redemption is done and the `remainingLots` lots of the fassets are returned to
      * the redeemer.

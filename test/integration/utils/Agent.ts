@@ -29,7 +29,7 @@ export const CHECK_DEFAULTS: CheckAgentInfo = {
     announcedVaultCollateralWithdrawalWei: 0, announcedPoolTokensWithdrawalWei: 0, announcedUnderlyingWithdrawalId: 0
 };
 
-export type AgentCreateOptions = Partial<Omit<AgentSettings, 'underlyingAddressString'>>;
+export type AgentCreateOptions = Partial<AgentSettings>;
 
 export class Agent extends AssetContextClient {
     static deepCopyWithObjectCreate = true;
@@ -42,12 +42,12 @@ export class Agent extends AssetContextClient {
         public collateralPoolToken: CollateralPoolTokenInstance,
         public wallet: IBlockChainWallet,
         public settings: AgentSettings,
+        public underlyingAddress: string,
     ) {
         super(context);
     }
 
     vaultAddress = this.agentVault.address;
-    underlyingAddress = this.settings.underlyingAddressString;
 
     static mgmtToWorkOwnerAddress: Map<string, string> = new Map();
     static workToMgmtOwnerAddress: Map<string, string> = new Map();
@@ -83,14 +83,13 @@ export class Agent extends AssetContextClient {
         // create mock wallet
         const wallet = new MockChainWallet(ctx.chain);
         // complete settings
-        const settings = createTestAgentSettings(underlyingAddress, options?.vaultCollateralToken ?? ctx.usdc.address, options);
-        return await Agent.create(ctx, ownerAddress, wallet, settings);
+        const settings = createTestAgentSettings(options?.vaultCollateralToken ?? ctx.usdc.address, options);
+        return await Agent.create(ctx, ownerAddress, underlyingAddress, wallet, settings);
     }
 
-    static async create(ctx: AssetContext, ownerAddress: string, wallet: IBlockChainWallet, settings: AgentSettings) {
+    static async create(ctx: AssetContext, ownerAddress: string, underlyingAddress: string, wallet: IBlockChainWallet, settings: AgentSettings) {
         // create and prove transaction from underlyingAddress if EOA required
         if (ctx.chainInfo.requireEOAProof) {
-            const underlyingAddress = settings.underlyingAddressString;
             const txHash = await wallet.addTransaction(underlyingAddress, underlyingAddress, 1, PaymentReference.addressOwnership(ownerAddress));
             if (ctx.chain.finalizationBlocks > 0) {
                 await ctx.waitForUnderlyingTransactionFinalization(undefined, txHash);
@@ -98,8 +97,10 @@ export class Agent extends AssetContextClient {
             const proof = await ctx.attestationProvider.provePayment(txHash, underlyingAddress, underlyingAddress);
             await ctx.assetManager.proveUnderlyingAddressEOA(proof, { from: ownerAddress });
         }
+        // validate underlying address
+        const addressValidityProof = await ctx.attestationProvider.proveAddressValidity(underlyingAddress);
         // create agent
-        const response = await ctx.assetManager.createAgentVault(web3DeepNormalize(settings), { from: ownerAddress });
+        const response = await ctx.assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(settings), { from: ownerAddress });
         // extract agent vault address from AgentVaultCreated event
         const args = requiredEventArgs(response, 'AgentVaultCreated');
         // get vault contract at agent's vault address address
@@ -111,7 +112,8 @@ export class Agent extends AssetContextClient {
         const collateralPoolToken = await CollateralPoolToken.at(poolTokenAddress);
         // create object
         const ownerManagementAddress = Agent.getManagementAddress(ownerAddress);
-        return new Agent(ctx, ownerManagementAddress, agentVault, collateralPool, collateralPoolToken, wallet, settings);
+        return new Agent(ctx, ownerManagementAddress, agentVault, collateralPool, collateralPoolToken, wallet, settings,
+            addressValidityProof.data.responseBody.standardAddress);
     }
 
     vaultCollateralToken() {

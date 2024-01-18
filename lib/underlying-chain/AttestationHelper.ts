@@ -1,5 +1,5 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
+import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
 import { SourceId } from "./SourceId";
 import { IBlockChain, TxInputOutput } from "./interfaces/IBlockChain";
 import { AttestationNotProved, AttestationProof, AttestationRequestId, IStateConnectorClient, OptionalAttestationProof } from "./interfaces/IStateConnectorClient";
@@ -130,6 +130,18 @@ export class AttestationHelper {
         return await this.client.submitRequest(request);
     }
 
+    async requestAddressValidityProof(underlyingAddress: string): Promise<AttestationRequestId | null> {
+        const request: AddressValidity.Request = {
+            attestationType: AddressValidity.TYPE,
+            sourceId: this.chainId,
+            messageIntegrityCode: constants.ZERO_BYTES32,
+            requestBody: {
+                addressStr: underlyingAddress,
+            },
+        };
+        return await this.client.submitRequest(request);
+    }
+
     async obtainPaymentProof(round: number, requestData: string): Promise<Payment.Proof | AttestationNotProved> {
         return await this.client.obtainProof(round, requestData);
     }
@@ -143,6 +155,10 @@ export class AttestationHelper {
     }
 
     async obtainConfirmedBlockHeightExistsProof(round: number, requestData: string): Promise<ConfirmedBlockHeightExists.Proof | AttestationNotProved> {
+        return await this.client.obtainProof(round, requestData);
+    }
+
+    async obtainAddressValidityProof(round: number, requestData: string): Promise<AddressValidity.Proof | AttestationNotProved> {
         return await this.client.obtainProof(round, requestData);
     }
 
@@ -194,6 +210,19 @@ export class AttestationHelper {
         const result = await this.client.obtainProof(request.round, request.data);
         if (!attestationProved(result)) {
             throw new AttestationHelperError("confirmedBlockHeightExists: not proved")
+        }
+        return result;
+    }
+
+    async proveAddressValidity(underlyingAddress: string): Promise<AddressValidity.Proof> {
+        const request = await this.requestAddressValidityProof(underlyingAddress);
+        if (request == null) {
+            throw new AttestationHelperError("addressValidity: not proved")
+        }
+        await this.client.waitForRoundFinalization(request.round);
+        const result = await this.client.obtainProof(request.round, request.data);
+        if (!attestationProved(result)) {
+            throw new AttestationHelperError("addressValidity: not proved")
         }
         return result;
     }

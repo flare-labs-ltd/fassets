@@ -8,6 +8,9 @@ import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AgentVault = artifacts.require("AgentVault");
@@ -29,6 +32,8 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     let assetManagerMock: AssetManagerMockInstance;
     let collaterals: CollateralType[];
     let fAsset: FAssetInstance;
+    let stateConnectorClient: MockStateConnectorClient;
+    let attestationProvider: AttestationHelper;
 
     const owner = accounts[1];
     const governance = accounts[10];
@@ -38,7 +43,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
 
     function createAgentVault(owner: string, underlyingAddress: string, options?: Partial<AgentSettings>) {
         const vaultCollateralToken = options?.vaultCollateralToken ?? usdc.address;
-        return createTestAgent({ assetManager: assetManager, settings }, owner, underlyingAddress, vaultCollateralToken, options);
+        return createTestAgent({ assetManager, settings, attestationProvider }, owner, underlyingAddress, vaultCollateralToken, options);
     }
 
     async function createGovernanceVP() {
@@ -74,6 +79,10 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
+        // create attestation provider
+        const chain = new MockChain(await time.latest());
+        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
         // create asset manager mock (for tests that use AgentVault.new)
         assetManagerMock = await AssetManagerMock.new(wNat.address);
         await assetManagerMock.setCommonOwner(owner);

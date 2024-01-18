@@ -17,10 +17,11 @@ import {
     createTestSettings
 } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { ARESBase, AddressValidity, Payment } from "@flarenetwork/state-connector-protocol";
+import { SourceId } from "../../../../lib/underlying-chain/SourceId";
 
 const CollateralPool = artifacts.require("CollateralPool");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
-const RippleAddressValidator = artifacts.require("RippleAddressValidator");
 
 contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accounts => {
     const governance = accounts[10];
@@ -73,7 +74,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
-        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
         return { contracts, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     }
@@ -136,8 +137,10 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
-        const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
-        const res = await assetManager.createAgentVault(web3DeepNormalize(agentSettings), { from: agentOwner1 });
+        const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
+        assert.isTrue(addressValidityProof.data.responseBody.isValid);
+        const agentSettings = createTestAgentSettings(usdc.address);
+        const res = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 });
         // assert
         expectEvent(res, "AgentVaultCreated", { owner: agentOwner1, underlyingAddress: underlyingAgent1 });
     });
@@ -151,8 +154,10 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(agentOwner1));
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
-        const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
-        const res = await assetManager.createAgentVault(web3DeepNormalize(agentSettings), { from: ownerWorkAddress });
+        const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
+        assert.isTrue(addressValidityProof.data.responseBody.isValid);
+        const agentSettings = createTestAgentSettings(usdc.address);
+        const res = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: ownerWorkAddress });
         // assert
         // the owner returned in the AgentVaultCreated event must be management address
         expectEvent(res, "AgentVaultCreated", { owner: agentOwner1, underlyingAddress: underlyingAgent1 });
@@ -162,18 +167,44 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // init
         // act
         // assert
-        const agentSettings = createTestAgentSettings("", usdc.address);
-        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(agentSettings), { from: agentOwner1 }),
-            "empty underlying address");
+        const addressValidityProof = await attestationProvider.proveAddressValidity("");
+        assert.isFalse(addressValidityProof.data.responseBody.isValid);
+        assert.isFalse(addressValidityProof.data.responseBody.isValid);
+        const agentSettings = createTestAgentSettings(usdc.address);
+        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
+            "address invalid");
     });
 
-    it("should not create agent - address already claimed", async () => {
+    it("should not create agent - address already claimed (with EOA proof)", async () => {
         // init
-        await createAgent(agentOwner1, underlyingAgent1);
+        const ci = testChainInfo.btc;
+        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
         // act
+        await createAgent(agentOwner1, underlyingAgent1);
         // assert
-        const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
-        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(agentSettings)),
+        const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
+        assert.isTrue(addressValidityProof.data.responseBody.isValid);
+        const agentSettings = createTestAgentSettings(usdc.address);
+        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings)),
+            "address already claimed");
+    });
+
+    it("should not create agent - address already claimed (no EOA proof)", async () => {
+        // init
+        // act
+        await createAgent(agentOwner1, underlyingAgent1);
+        // assert
+        await expectRevert(createAgent(accounts[1], underlyingAgent1),
+            "address already claimed");
+    });
+
+    it("should not create agent - underlying address used twice", async () => {
+        // init
+        // act
+        await createAgent(agentOwner1, underlyingAgent1);
+        // assert
+        await expectRevert(createAgent(agentOwner1, underlyingAgent1),
             "address already claimed");
     });
 
@@ -217,11 +248,86 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
 
     it("should require EOA check to create agent", async () => {
         // init
+        const ci = testChainInfo.btc;
+        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
         // act
         // assert
-        const agentSettings = createTestAgentSettings(underlyingAgent1, usdc.address);
-        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(agentSettings), { from: agentOwner1 }),
+        const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
+        assert.isTrue(addressValidityProof.data.responseBody.isValid);
+        const agentSettings = createTestAgentSettings(usdc.address);
+        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
             "EOA proof required");
+    });
+
+    it("should require proof that address is valid", async () => {
+        // init
+        const ci = testChainInfo.btc;
+        settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        // act
+        // assert
+        const addressValidityProof = await attestationProvider.proveAddressValidity("INVALID_ADDRESS");
+        const agentSettings = createTestAgentSettings(usdc.address);
+        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
+            "address invalid");
+    });
+
+    function createAddressValidityProof(): AddressValidity.Proof {
+        return {
+            data: {
+                "attestationType": "0x4164647265737356616c69646974790000000000000000000000000000000000",
+                "sourceId": SourceId.BTC,
+                "votingRound": "0",
+                "lowestUsedTimestamp": "0",
+                "requestBody": {
+                    "addressStr": "MY_VALID_ADDRESS"
+                },
+                "responseBody": {
+                    "isValid": true,
+                    "standardAddress": "MY_VALID_ADDRESS",
+                    "standardAddressHash": "0x5835bde41ad7151fa621c0d2c59b721c7be4d7df81451a418a8e76f868050272"
+                }
+            },
+            merkleProof: []
+        };
+    }
+
+    async function forceProveResponse(attestationType: string, response: ARESBase) {
+        const definition = stateConnectorClient.definitionStore.getDefinitionForDecodedAttestationType(attestationType);
+        const hash = web3.utils.keccak256(web3.eth.abi.encodeParameters([definition!.responseAbi], [response]));
+        await stateConnectorClient.stateConnector.setMerkleRoot(response.votingRound, hash);
+    }
+
+    it("should require verified proof", async () => {
+        // init
+        const ci = testChainInfo.btc;
+        settings = createTestSettings(contracts, ci);
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        // assert
+        const addressValidityProof: AddressValidity.Proof = createAddressValidityProof();
+        const agentSettings = createTestAgentSettings(usdc.address);
+        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
+            "address validity not proved");
+    });
+
+    it("should require verified proof - wrong attestation type", async () => {
+        // init
+        const ci = testChainInfo.btc;
+        settings = createTestSettings(contracts, ci);
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        // assert
+        const addressValidityProof: AddressValidity.Proof = createAddressValidityProof();
+        const agentSettings = createTestAgentSettings(usdc.address);
+        // should not work with wrong attestation type
+        addressValidityProof.data.attestationType = Payment.TYPE;
+        await forceProveResponse("AddressValidity", addressValidityProof.data);
+        await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 }),
+            "address validity not proved");
+        // should work with correct attestation type
+        addressValidityProof.data.attestationType = AddressValidity.TYPE;
+        await forceProveResponse("AddressValidity", addressValidityProof.data);
+        await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 });
     });
 
     it("only owner can make agent available", async () => {
@@ -478,6 +584,19 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
             "withdrawal: not allowed yet");
     });
 
+    it("should not withdraw collateral after too much time passes", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        const amount = ether('1');
+        await depositCollateral(agentOwner1, agentVault, amount);
+        await assetManager.announceVaultCollateralWithdrawal(agentVault.address, 100, { from: agentOwner1 });
+        // act
+        await time.increase(toBN(settings.withdrawalWaitMinSeconds).add(toBN(settings.agentTimelockedOperationWindowSeconds)).addn(100));
+        // assert
+        await expectRevert(agentVault.withdrawCollateral(usdc.address, 100, agentOwner1, { from: agentOwner1 }),
+            "withdrawal: too late");
+    });
+
     it("should not withdraw more collateral than announced", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
@@ -534,26 +653,26 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await assetManager.convertDustToTicket(agentVault.address);
     });
 
-    it("create agent underlying XRP address validation tests", async () => {
-        const ci = testChainInfo.btc;
-        const rippleAddressValidator = await RippleAddressValidator.new();
-        settings.underlyingAddressValidator = rippleAddressValidator.address;
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
-        const agentXRPAddressCorrect = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjN";
-        const agentXRPAddressTooShort = "rfsK8pNsNeGA8nYWM3PzoRx";
-        const agentXRPAddressTooLong = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjNMRHNFsg";
-        //Incorrect address with out of vocabulary letter
-        const agentXRPAddressIncorrect = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjž";
-        //Create agent, underlying address too short
-        let res = createAgent(agentOwner1, agentXRPAddressTooShort);
-        await expectRevert(res, "invalid underlying address");
-        //Create agent, underlying address too short
-        res = createAgent(agentOwner1, agentXRPAddressTooLong);
-        await expectRevert(res, "invalid underlying address");
-        //Create agent, underlying address too short
-        res = createAgent(agentOwner1, agentXRPAddressIncorrect);
-        await expectRevert(res, "invalid underlying address");
-        //Create agent
-        await createAgent(agentOwner1, agentXRPAddressCorrect);
-    });
+    // it("create agent underlying XRP address validation tests", async () => {
+    //     const ci = testChainInfo.xrp;
+    //     const rippleAddressValidator = await RippleAddressValidator.new();
+    //     settings.underlyingAddressValidator = rippleAddressValidator.address;
+    //     [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+    //     const agentXRPAddressCorrect = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjN";
+    //     const agentXRPAddressTooShort = "rfsK8pNsNeGA8nYWM3PzoRx";
+    //     const agentXRPAddressTooLong = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjNMRHNFsg";
+    //     //Incorrect address with out of vocabulary letter
+    //     const agentXRPAddressIncorrect = "rfsK8pNsNeGA8nYWM3PzoRxMRHeAyEtNjž";
+    //     //Create agent, underlying address too short
+    //     let res = createAgent(agentOwner1, agentXRPAddressTooShort);
+    //     await expectRevert(res, "invalid underlying address");
+    //     //Create agent, underlying address too short
+    //     res = createAgent(agentOwner1, agentXRPAddressTooLong);
+    //     await expectRevert(res, "invalid underlying address");
+    //     //Create agent, underlying address too short
+    //     res = createAgent(agentOwner1, agentXRPAddressIncorrect);
+    //     await expectRevert(res, "invalid underlying address");
+    //     //Create agent
+    //     await createAgent(agentOwner1, agentXRPAddressCorrect);
+    // });
 });

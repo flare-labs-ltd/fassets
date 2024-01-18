@@ -52,11 +52,6 @@ library AssetManagerSettings {
         // changed via address updater
         address scProofVerifier;
 
-        // Pluggable validator for underlying addresses (typically, each chain has different rules).
-        // Type: IAddressValidator
-        // timelocked
-        address underlyingAddressValidator;
-
         // External (dynamically loaded) library for calculation liquidation factors.
         // Type: ILiquidationStrategy (as library)
         // timelocked

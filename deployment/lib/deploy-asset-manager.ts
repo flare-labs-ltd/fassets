@@ -149,10 +149,6 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     const fAsset = await FAsset.new(deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetDecimals);
 
-    const [addressValidatorArtifact, addressValidatorConstructorArgs] = parameters.underlyingAddressValidator;
-    const AddressValidator = hre.artifacts.require(addressValidatorArtifact);
-    const addressValidator = await AddressValidator.new(...addressValidatorConstructorArgs) as Truffle.ContractInstance;
-
     const poolCollateral = convertCollateralType(contracts, parameters.poolCollateral, CollateralClass.POOL);
     const vaultCollateral = parameters.vaultCollaterals.map(p => convertCollateralType(contracts, p, CollateralClass.VAULT));
     const collateralTypes = [poolCollateral, ...vaultCollateral];
@@ -162,7 +158,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const liquidationStrategySettings = liquidationStrategyFactory.schema.validate(parameters.liquidationStrategySettings);
     const liquidationStrategySettingsEnc = liquidationStrategyFactory.encodeSettings(liquidationStrategySettings)
 
-    const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy, addressValidator.address));
+    const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy));
 
     // console.log(JSON.stringify(assetManagerSettings, null, 4));
 
@@ -173,7 +169,6 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const symbol = parameters.fAssetSymbol;
     contracts[`AssetManager_${symbol}`] = newContract(`AssetManager_${symbol}`, "AssetManager.sol", assetManager.address);
     contracts[symbol] = newContract(symbol, "FAsset.sol", fAsset.address, { mustSwitchToProduction: true });
-    contracts[`AddressValidator_${symbol}`] = newContract(`AddressValidator_${symbol}`, `${addressValidatorArtifact}.sol`, addressValidator.address);
     saveContracts(contractsFile, contracts);
 
     if (standalone) {
@@ -202,10 +197,6 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     const fAsset = await FAsset.at(await assetManager.fAsset());
 
-    const [addressValidatorArtifact, addressValidatorConstructorArgs] = parameters.underlyingAddressValidator;
-    const AddressValidator = hre.artifacts.require(addressValidatorArtifact);
-    const addressValidator = await AddressValidator.at(currentSettings.underlyingAddressValidator) as Truffle.ContractInstance;
-
     const poolCollateral = convertCollateralType(contracts, parameters.poolCollateral, CollateralClass.POOL);
     const vaultCollateral = parameters.vaultCollaterals.map(p => convertCollateralType(contracts, p, CollateralClass.VAULT));
     const collateralTypes = [poolCollateral, ...vaultCollateral];
@@ -215,7 +206,7 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const liquidationStrategySettings = liquidationStrategyFactory.schema.validate(parameters.liquidationStrategySettings);
     const liquidationStrategySettingsEnc = liquidationStrategyFactory.encodeSettings(liquidationStrategySettings)
 
-    const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy, addressValidator.address));
+    const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy));
 
     await hre.run("verify:verify", {
         address: assetManagerAddress,
@@ -275,7 +266,7 @@ function convertCollateralType(contracts: ChainContracts, parameters: Collateral
     }
 }
 
-function createAssetManagerSettings(contracts: ChainContracts, parameters: AssetManagerParameters, fAsset: FAssetInstance, liquidationStrategy: string, addressValidator: string): AssetManagerSettings {
+function createAssetManagerSettings(contracts: ChainContracts, parameters: AssetManagerParameters, fAsset: FAssetInstance, liquidationStrategy: string): AssetManagerSettings {
     if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.SCProofVerifier || !contracts.CollateralPoolFactory) {
         throw new Error("Missing contracts");
     }
@@ -292,7 +283,6 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         priceReader: addressFromParameter(contracts, parameters.priceReader ?? 'PriceReader'),
         whitelist: parameters.userWhitelist ? addressFromParameter(contracts, parameters.userWhitelist) : ZERO_ADDRESS,
         agentOwnerRegistry: addressFromParameter(contracts, parameters.agentOwnerRegistry ?? 'AgentOwnerRegistry'),
-        underlyingAddressValidator: addressValidator,
         liquidationStrategy: liquidationStrategy,
         burnAddress: parameters.burnAddress,
         chainId: encodeAttestationName(parameters.chainName),

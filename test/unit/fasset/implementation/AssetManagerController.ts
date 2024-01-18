@@ -196,6 +196,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
             await waitForTimelock(assetManagerController.setMintingCapAmg([assetManager.address], lotSizeAMG.muln(1.5), { from: governance }), assetManagerController, updateExecutor);
             await expectRevert(waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG.muln(2), { from: governance }), assetManagerController, updateExecutor), "lot size bigger than minting cap");
+            // this should work
+            await waitForTimelock(assetManagerController.setLotSizeAmg([assetManager.address], lotSizeAMG.muln(1.2), { from: governance }), assetManagerController, updateExecutor);
         });
 
         it("should revert setting payment challenge reward when increase or decrease is too big", async () => {
@@ -933,16 +935,6 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const res = assetManagerController.setSCProofVerifier([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "address zero");
-        });
-
-        it("should set underlying address validator after timelock", async () => {
-            //Agent factory can't be address zero
-            const prms1 = assetManagerController.setUnderlyingAddressValidator([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
-            await expectRevert(waitForTimelock(prms1, assetManagerController, updateExecutor), "address zero");
-            const addr = randomAddress();
-            const res = await assetManagerController.setUnderlyingAddressValidator([assetManager.address], addr, { from: governance });
-            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
-            expectEvent(timelock_info, "ContractChanged", { name: "underlyingAddressValidator", value: addr });
         });
 
         it("should set state connector proof verifier after timelock", async () => {

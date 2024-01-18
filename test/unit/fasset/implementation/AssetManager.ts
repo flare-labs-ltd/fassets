@@ -112,8 +112,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         const txHash = await wallet.addTransaction(underlyingAddress, underlyingBurnAddr, 1, PaymentReference.addressOwnership(owner));
         const proof = await attestationProvider.provePayment(txHash, underlyingAddress, underlyingBurnAddr);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
-        const settings = createTestAgentSettings(underlyingAddress, usdc.address);
-        const response = await assetManager.createAgentVault(web3DeepNormalize(settings), { from: owner });
+        const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAddress);
+        assert.isTrue(addressValidityProof.data.responseBody.isValid);
+        const settings = createTestAgentSettings(usdc.address);
+        const response = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(settings), { from: owner });
         return AgentVault.at(findRequiredEvent(response, 'AgentVaultCreated').args.agentVault);
     }
 
@@ -136,8 +138,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         const txHash = await wallet.addTransaction(underlyingAddress, underlyingBurnAddr, 1, PaymentReference.addressOwnership(owner));
         const proof = await attestationProvider.provePayment(txHash, underlyingAddress, underlyingBurnAddr);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
-        const settings = createTestAgentSettings(underlyingAddress, collaterals[0].token);
-        const response = await assetManager.createAgentVault(web3DeepNormalize(settings), { from: owner });
+        const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAddress);
+        assert.isTrue(addressValidityProof.data.responseBody.isValid);
+        const settings = createTestAgentSettings(collaterals[0].token);
+        const response = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(settings), { from: owner });
         return AgentVault.at(findRequiredEvent(response, 'AgentVaultCreated').args.agentVault);
     }
 
@@ -642,14 +646,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 web3.eth.abi.encodeParameters(['address'], [agentOwnerRegistry.address]),
                 { from: assetManagerController });
             // assert
-            const settings = createTestAgentSettings(underlyingAgent1, usdc.address);
-            await expectRevert(assetManager.createAgentVault(web3DeepNormalize(settings), { from: agentOwner1 }),
+            const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
+            assert.isTrue(addressValidityProof.data.responseBody.isValid);
+            const settings = createTestAgentSettings(usdc.address);
+            await expectRevert(assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(settings), { from: agentOwner1 }),
                 "not whitelisted");
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const txHash = await wallet.addTransaction(underlyingAgent1, underlyingBurnAddr, 1, PaymentReference.addressOwnership(whitelistedAccount));
             const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingBurnAddr);
             await assetManager.proveUnderlyingAddressEOA(proof, { from: whitelistedAccount });
-            expectEvent(await assetManager.createAgentVault(web3DeepNormalize(settings), { from: whitelistedAccount}), "AgentVaultCreated");
+            expectEvent(await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(settings), { from: whitelistedAccount}), "AgentVaultCreated");
         });
     });
 
@@ -1064,6 +1070,19 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(availableAgentList2[0].length, 0);
             const availableAgentDetailedList2 = await assetManager.getAvailableAgentsDetailedList(0, 10);
             assert.equal(availableAgentDetailedList2[0].length, 0);
+        });
+
+        it("agent availability - exit too late", async () => {
+            // create an agent
+            let agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            //Announce exit
+            let annRes = await assetManager.announceExitAvailableAgentList(agentVault.address, { from: agentOwner1 });
+            let exitTime = requiredEventArgs(annRes, 'AvailableAgentExitAnnounced').exitAllowedAt;
+            // exit available too late
+            const settings = await assetManager.getSettings();
+            await time.increase(toBN(settings.agentExitAvailableTimelockSeconds).add(toBN(settings.agentTimelockedOperationWindowSeconds).addn(1)));
+            const res = assetManager.exitAvailableAgentList(agentVault.address, { from: agentOwner1 });
+            await expectRevert(res, "exit too late");
         });
     });
 
@@ -1856,16 +1875,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             Settings.scProofVerifier = constants.ZERO_ADDRESS;
             let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "zero scProofVerifier address");
-        });
-
-        it("validate settings UnderlyingAddressValidator address cannot be zero", async () => {
-            const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
-            const Collaterals = web3DeepNormalize(collaterals);
-            const Settings = web3DeepNormalize(settings);
-            Settings.fAsset = accounts[5];
-            Settings.underlyingAddressValidator = constants.ZERO_ADDRESS;
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
-            await expectRevert(res, "zero underlyingAddressValidator address");
         });
 
         it("validate settings priceReader address cannot be zero", async () => {

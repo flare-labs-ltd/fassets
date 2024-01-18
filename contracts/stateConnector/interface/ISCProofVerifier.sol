@@ -9,6 +9,7 @@ import "@flarenetwork/state-connector-protocol/contracts/interface/types/Payment
 import "@flarenetwork/state-connector-protocol/contracts/interface/types/ReferencedPaymentNonexistence.sol";
 import "@flarenetwork/state-connector-protocol/contracts/interface/types/BalanceDecreasingTransaction.sol";
 import "@flarenetwork/state-connector-protocol/contracts/interface/types/ConfirmedBlockHeightExists.sol";
+import "@flarenetwork/state-connector-protocol/contracts/interface/types/AddressValidity.sol";
 
 
 interface ISCProofVerifier {
@@ -25,6 +26,10 @@ interface ISCProofVerifier {
         returns (bool _proved);
 
     function verifyConfirmedBlockHeightExists(ConfirmedBlockHeightExists.Proof calldata _proof)
+        external view
+        returns (bool _proved);
+
+    function verifyAddressValidity(AddressValidity.Proof calldata _proof)
         external view
         returns (bool _proved);
 }

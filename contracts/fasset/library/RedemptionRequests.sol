@@ -9,7 +9,7 @@ import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./Redemptions.sol";
 import "./Liquidation.sol";
-import "./UnderlyingAddresses.sol";
+import "./TransactionAttestation.sol";
 
 
 library RedemptionRequests {
@@ -133,6 +133,34 @@ library RedemptionRequests {
         return closedUBA;
     }
 
+    function rejectInvalidRedemption(
+        AddressValidity.Proof calldata _proof,
+        uint64 _redemptionRequestId
+    )
+        external
+    {
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
+        Agent.State storage agent = Agent.get(request.agentVault);
+        // only owner can call
+        require(Agents.isOwner(agent, msg.sender), "only agent vault owner");
+        // check proof
+        TransactionAttestation.verifyAddressValidity(_proof);
+        // the actual redeemer's address must be validated
+        bytes32 addressHash = keccak256(bytes(_proof.data.requestBody.addressStr));
+        require(addressHash == request.redeemerUnderlyingAddressHash, "wrong address");
+        // and the address must be invalid or not normalized
+        bool valid = _proof.data.responseBody.isValid &&
+            _proof.data.responseBody.standardAddressHash == request.redeemerUnderlyingAddressHash;
+        require(!valid, "address valid");
+        // release agent collateral
+        Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
+        // emit event
+        uint256 valueUBA = Conversion.convertAmgToUBA(request.valueAMG);
+        emit AMEvents.RedemptionRejected(request.agentVault, request.redeemer, valueUBA, _redemptionRequestId);
+        // delete redemption request at end
+        Redemptions.deleteRedemptionRequest(_redemptionRequestId);
+    }
+
     function maxRedemptionFromAgent(
         address _agentVault
     )
@@ -187,8 +215,7 @@ library RedemptionRequests {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         // validate redemption address
-        (string memory normalizedUnderlyingAddress, bytes32 underlyingAddressHash) =
-            UnderlyingAddresses.validateAndNormalize(_redeemerUnderlyingAddressString);
+        bytes32 underlyingAddressHash = keccak256(bytes(_redeemerUnderlyingAddressString));
         // create request
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
         uint64 requestId = _newRequestId(_poolSelfClose);
@@ -212,13 +239,13 @@ library RedemptionRequests {
         // do not add it to freeBalance yet (only after failed redemption payment)
         Agents.startRedeemingAssets(Agent.get(_data.agentVault), _data.valueAMG, _poolSelfClose);
         // emit event to remind agent to pay
-        _emitRedemptionRequestedEvent(request, requestId, normalizedUnderlyingAddress);
+        _emitRedemptionRequestedEvent(request, requestId, _redeemerUnderlyingAddressString);
     }
 
     function _emitRedemptionRequestedEvent(
         Redemption.Request memory _request,
         uint64 _requestId,
-        string memory _normalizedUnderlyingAddress
+        string memory _redeemerUnderlyingAddressString
     )
         private
     {
@@ -226,7 +253,7 @@ library RedemptionRequests {
             _request.agentVault,
             _request.redeemer,
             _requestId,
-            _normalizedUnderlyingAddress,
+            _redeemerUnderlyingAddressString,
             _request.underlyingValueUBA,
             _request.underlyingFeeUBA,
             _request.firstUnderlyingBlock,

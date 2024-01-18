@@ -291,21 +291,6 @@
             "minimum": 0,
             "type": "integer"
         },
-        "underlyingAddressValidator": {
-            "description": "Underlying address validator in format `[artifactName, constructorParameters]`.\nEach asset manager gets its own instance of underlying address validator.",
-            "items": [
-                {
-                    "type": "string"
-                },
-                {
-                    "items": {},
-                    "type": "array"
-                }
-            ],
-            "maxItems": 2,
-            "minItems": 2,
-            "type": "array"
-        },
         "underlyingBlocksForPayment": {
             "description": "Number of underlying blocks that the minter or agent is allowed to pay underlying value.\nIf payment not reported in that time, minting/redemption can be challenged and default action triggered.\nCAREFUL: Count starts from the current proved block height, so the minters and agents should\nmake sure that current block height is fresh, otherwise they might not have enough time for payment.",
             "minimum": 0,
@@ -383,7 +368,6 @@
         "redemptionFeeBIPS",
         "requireEOAAddressProof",
         "tokenInvalidationTimeMinSeconds",
-        "underlyingAddressValidator",
         "underlyingBlocksForPayment",
         "underlyingSecondsForPayment",
         "userWhitelist",
