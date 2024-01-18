@@ -178,9 +178,9 @@ library AgentsCreateDestroy {
         external
         onlyAgentVaultOwner(_agentVault)
     {
-        // check that fAsset is terminated is in AssetManager
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
+        require(Globals.getFAsset().terminated(), "f-asset not terminated");
         // Types of various collateral types:
         // - reservedAMG should be 0, since asset manager had to be paused for a month, so all collateral
         //   reservation requests must have been minted or defaulted by now.

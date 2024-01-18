@@ -37,8 +37,6 @@ import "../library/AgentSettingsUpdater.sol";
 contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     using SafeCast for uint256;
 
-    uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
-
     modifier onlyAssetManagerController {
         _checkOnlyAssetManagerController();
         _;
@@ -939,8 +937,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         onlyWhitelistedSender
         returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidVault, uint256 _amountPaidPool)
     {
-        (_liquidatedAmountUBA, _amountPaidVault, _amountPaidPool) =
-            Liquidation.liquidate(_agentVault, _amountUBA);
+        return Liquidation.liquidate(_agentVault, _amountUBA);
     }
 
     /**
@@ -971,10 +968,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         external override
         onlyAssetManagerController
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        if (state.pausedAt == 0) {
-            state.pausedAt = block.timestamp.toUint64();
-        }
+        StateUpdater.pause();
     }
 
     /**
@@ -985,9 +979,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         external override
         onlyAssetManagerController
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        require(!terminated(), "f-asset terminated");
-        state.pausedAt = 0;
+        StateUpdater.unpause();
     }
 
     /**
@@ -1002,10 +994,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         external override
         onlyAssetManagerController
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        require(state.pausedAt != 0 && block.timestamp > state.pausedAt + MINIMUM_PAUSE_BEFORE_STOP,
-            "asset manager not paused enough");
-        Globals.getFAsset().terminate();
+        StateUpdater.terminate();
     }
 
     /**
@@ -1024,7 +1013,6 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
         external payable override
         nonReentrant
     {
-        require(terminated(), "f-asset not terminated");
         AgentsCreateDestroy.buybackAgentCollateral(_agentVault);
     }
 
@@ -1043,7 +1031,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * True if asset manager is terminated.
      */
     function terminated()
-        public view override
+        external view override
         returns (bool)
     {
         return Globals.getFAsset().terminated();

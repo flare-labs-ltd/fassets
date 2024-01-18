@@ -4,11 +4,14 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
+import "./Globals.sol";
 import "./TransactionAttestation.sol";
 
 
 library StateUpdater {
     using SafeCast for uint256;
+
+    uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
 
     function updateCurrentBlock(ConfirmedBlockHeightExists.Proof calldata _proof)
         external
@@ -39,5 +42,31 @@ library StateUpdater {
             emit AMEvents.CurrentUnderlyingBlockUpdated(
                 state.currentUnderlyingBlock, state.currentUnderlyingBlockTimestamp, block.timestamp);
         }
+    }
+
+    function pause()
+        external
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        if (state.pausedAt == 0) {
+            state.pausedAt = block.timestamp.toUint64();
+        }
+    }
+
+    function unpause()
+        external
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        require(!Globals.getFAsset().terminated(), "f-asset terminated");
+        state.pausedAt = 0;
+    }
+
+    function terminate()
+        external
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        require(state.pausedAt != 0 && block.timestamp > state.pausedAt + MINIMUM_PAUSE_BEFORE_STOP,
+            "asset manager not paused enough");
+        Globals.getFAsset().terminate();
     }
 }
