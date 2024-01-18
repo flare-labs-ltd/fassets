@@ -18,10 +18,6 @@ import {
     createTestFtsos, createTestLiquidationSettings, createTestSettings
 } from "../../../utils/test-settings";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
-import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
-import { ZERO_ADDRESS } from "../../../../deployment/lib/deploy-utils";
-import { amgToTokenWeiPrice, convertAmgToTokenWei } from "../../../../lib/fasset/Conversions";
-import { Prices } from "../../../../lib/state/Prices";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -270,36 +266,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     });
 
     describe("update agent settings", () => {
-
-        it("should set owner work address", async () => {
-            // create agent
-            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
-            // set owner work address
-            await assetManager.setOwnerWorkAddress("0xe34BDff68a5b89216D7f6021c1AB25c012142425", { from: agentOwner1 });
-            const OwnerMgmtAndWorkAddresses = await assetManager.getAgentVaultOwner(agentVault.address);
-            assert.equal(OwnerMgmtAndWorkAddresses[0], agentOwner1);
-            assert.equal(OwnerMgmtAndWorkAddresses[1], "0xe34BDff68a5b89216D7f6021c1AB25c012142425");
-            // set owner work address again
-            await assetManager.setOwnerWorkAddress("0x27e80dB1f5a975f4C43C5eC163114E796cdB603D", { from: agentOwner1 });
-            const OwnerMgmtAndWorkAddresses2 = await assetManager.getAgentVaultOwner(agentVault.address);
-            assert.equal(OwnerMgmtAndWorkAddresses2[0], agentOwner1);
-            assert.equal(OwnerMgmtAndWorkAddresses2[1], "0x27e80dB1f5a975f4C43C5eC163114E796cdB603D");
-            // set owner work address again with address 0
-            await assetManager.setOwnerWorkAddress(constants.ZERO_ADDRESS, { from: agentOwner1 });
-            const OwnerMgmtAndWorkAddresses3 = await assetManager.getAgentVaultOwner(agentVault.address);
-            assert.equal(OwnerMgmtAndWorkAddresses3[0], agentOwner1);
-            assert.equal(OwnerMgmtAndWorkAddresses3[1], constants.ZERO_ADDRESS);
-        });
-
-        it("checking agent vault owner with work address should work", async () => {
-            // create agent
-            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
-            const workAddress = "0xe34BDff68a5b89216D7f6021c1AB25c012142425";
-            // set owner work address
-            await assetManager.setOwnerWorkAddress(workAddress, { from: agentOwner1 });
-            assert.equal(await assetManager.isAgentVaultOwner(agentVault.address, workAddress),true);
-        });
-
         it("should fail at announcing agent setting update from non-agent-owner account", async () => {
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await expectRevert(assetManager.announceAgentSettingUpdate(agentVault.address, "feeBIPS", 2000, { from: accounts[80] }),
@@ -671,7 +637,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
             await whitelist.switchToProductionMode({ from: governance });
             await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentWhitelist(address)")),
+            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentOwnerRegistry(address)")),
                 web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
                 { from: assetManagerController });
             // assert
@@ -1921,14 +1887,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "zero liquidationStrategy address");
         });
 
-        it("validate settings agentWhitelist address cannot be zero", async () => {
+        it("validate settings agentOwnerRegistry address cannot be zero", async () => {
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.agentWhitelist = constants.ZERO_ADDRESS;
+            Settings.agentOwnerRegistry = constants.ZERO_ADDRESS;
             let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
-            await expectRevert(res, "zero agentWhitelist address");
+            await expectRevert(res, "zero agentOwnerRegistry address");
         });
 
         it("validate settings confirmationByOthersRewardUSD5 cannot be zero", async () => {

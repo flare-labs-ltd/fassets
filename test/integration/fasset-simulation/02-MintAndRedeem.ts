@@ -189,7 +189,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             await context.createWhitelists();
             await context.whitelist?.addAddressesToWhitelist([minter.address,redeemer.address], {from: governance});
-            await context.agentWhitelist?.addAddressToWhitelist(agentOwner1, {from: governance});
+            await context.agentOwnerRegistry?.addAddressToWhitelist(agentOwner1, {from: governance});
             // make agent available
             const fullAgentCollateral = toWei(3e8);
             await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);

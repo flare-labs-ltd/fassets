@@ -220,7 +220,7 @@
     "address": "0x7734c0382679810b04e9A02C0aaF266f0b79B5e7"
   },
   {
-    "name": "AgentWhitelist",
+    "name": "AgentOwnerRegistry",
     "contractName": "Whitelist.sol",
     "address": "0xD1CD47F79fb289bf7288d3fe4E30b14d70ceA043",
     "mustSwitchToProduction": true

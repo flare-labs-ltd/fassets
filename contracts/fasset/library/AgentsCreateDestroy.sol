@@ -39,25 +39,6 @@ library AgentsCreateDestroy {
         _;
     }
 
-    function setOwnerWorkAddress(address _ownerWorkAddress)
-        external
-        onlyWhitelistedAgent
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        require(_ownerWorkAddress == address(0) || state.ownerWorkToMgmtAddress[_ownerWorkAddress] == address(0),
-            "work address in use");
-        // delete old work to management mapping
-        address oldWorkAddress = state.ownerMgmtToWorkAddress[msg.sender];
-        if (oldWorkAddress != address(0)) {
-            state.ownerWorkToMgmtAddress[oldWorkAddress] = address(0);
-        }
-        // create a new bidirectional mapping
-        state.ownerMgmtToWorkAddress[msg.sender] = _ownerWorkAddress;
-        if (_ownerWorkAddress != address(0)) {
-            state.ownerWorkToMgmtAddress[_ownerWorkAddress] = msg.sender;
-        }
-    }
-
     function claimAddressWithEOAProof(
         Payment.Proof calldata _payment
     )
@@ -281,8 +262,7 @@ library AgentsCreateDestroy {
 
     // Returns management owner's address, given either work or management address.
     function _getManagementAddress(address _ownerAddress) private view returns (address) {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        address ownerManagementAddress = state.ownerWorkToMgmtAddress[_ownerAddress];
+        address ownerManagementAddress = Globals.getAgentOwnerRegistry().getManagementAddress(_ownerAddress);
         return ownerManagementAddress != address(0) ? ownerManagementAddress : _ownerAddress;
     }
 }

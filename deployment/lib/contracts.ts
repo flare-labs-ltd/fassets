@@ -23,7 +23,7 @@ export interface ChainContracts {
     AssetManagerController?: Contract;
     PriceReader?: Contract;
     UserWhitelist?: Contract;
-    AgentWhitelist?: Contract;
+    AgentOwnerRegistry?: Contract;
     // others (asset managers & fassets & everything from flare-smart-contract)
     [key: string]: Contract | undefined;
 }

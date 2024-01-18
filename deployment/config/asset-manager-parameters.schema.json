@@ -88,8 +88,8 @@
             "pattern": "^\\w+$",
             "type": "string"
         },
-        "agentWhitelist": {
-            "description": "The agent whitelist contains a list of allowed agent owners.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'AgentWhitelist' in contracts.json.",
+        "agentOwnerRegistry": {
+            "description": "The agent whitelist contains a list of allowed agent owners.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'AgentOwnerRegistry' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
         },
@@ -393,4 +393,3 @@
     ],
     "type": "object"
 }
-

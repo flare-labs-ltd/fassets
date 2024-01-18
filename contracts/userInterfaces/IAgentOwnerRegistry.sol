@@ -2,10 +2,12 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
+import "./IWhitelist.sol";
+
 /**
  * Agent owner management and work address management
  */
-interface IAgentOwnerAddressMap {
+interface IAgentOwnerRegistry is IWhitelist {
     /**
      * Agent owner's work address has been set.
      */

@@ -118,7 +118,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         nonReentrant
     {
         require(!assetManager.isLockedVaultToken(address(this), _token), "only non-collateral tokens");
-        (address ownerManagementAddress,) = assetManager.getAgentVaultOwner(address(this));
+        address ownerManagementAddress = assetManager.getAgentVaultOwner(address(this));
         _token.safeTransfer(ownerManagementAddress, _amount);
     }
 

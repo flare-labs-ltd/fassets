@@ -9,7 +9,7 @@ import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerInstance, SCProofVerifierInstance,
     CollateralPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
-    IAddressValidatorInstance, IWhitelistInstance, StateConnectorMockInstance, WNatInstance, CollateralPoolTokenFactoryInstance, IPriceReaderInstance
+    IAddressValidatorInstance, IWhitelistInstance, StateConnectorMockInstance, WNatInstance, CollateralPoolTokenFactoryInstance, IPriceReaderInstance, IAgentOwnerRegistryInstance, AgentOwnerRegistryInstance
 } from "../../typechain-truffle";
 import { TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
@@ -31,7 +31,7 @@ const ERC20Mock = artifacts.require("ERC20Mock");
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 const TrivialAddressValidatorMock = artifacts.require("TrivialAddressValidatorMock");
-const WhitelistMock = artifacts.require("WhitelistMock");
+const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
 
 export interface TestSettingsContracts {
     governanceSettings: GovernanceSettingsInstance;
@@ -44,7 +44,7 @@ export interface TestSettingsContracts {
     priceReader: IPriceReaderInstance,
     addressValidator: IAddressValidatorInstance;
     whitelist?: IWhitelistInstance;
-    agentWhitelist: IWhitelistInstance;
+    agentOwnerRegistry: AgentOwnerRegistryInstance;
     ftsoRegistry: FtsoRegistryMockInstance;
     liquidationStrategy: string; // lib address
     wNat: WNatInstance,
@@ -65,7 +65,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         underlyingAddressValidator: contracts.addressValidator.address,
         liquidationStrategy: contracts.liquidationStrategy,
         whitelist: contracts.whitelist?.address ?? constants.ZERO_ADDRESS,
-        agentWhitelist: contracts.agentWhitelist?.address ?? constants.ZERO_ADDRESS,
+        agentOwnerRegistry: contracts.agentOwnerRegistry?.address ?? constants.ZERO_ADDRESS,
         burnAddress: constants.ZERO_ADDRESS,
         chainId: ci.chainId,
         poolTokenSuffix: ci.symbol,
@@ -234,14 +234,14 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     // create address validator
     const addressValidator = await TrivialAddressValidatorMock.new();
     // create allow-all agent whitelist
-    const agentWhitelist = await WhitelistMock.new(true);
+    const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance, true);
     // create liquidation strategy
     const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
     const liquidationStrategy = liquidationStrategyLib.address;
     //
     return {
         governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, stateConnector, scProofVerifier,
-        priceReader, addressValidator, agentWhitelist, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
+        priceReader, addressValidator, agentOwnerRegistry, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
 }
 
 export interface CreateTestAgentDeps {

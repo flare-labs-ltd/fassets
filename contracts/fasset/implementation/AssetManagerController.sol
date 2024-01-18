@@ -93,12 +93,12 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_WHITELIST, abi.encode(_value));
     }
 
-    function setAgentWhitelist(IIAssetManager[] memory _assetManagers, address _value)
+    function setAgentOwnerRegistry(IIAssetManager[] memory _assetManagers, address _value)
         external
         onlyGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_AGENT_WHITELIST, abi.encode(_value));
+            SettingsUpdater.SET_AGENT_OWNER_REGISTRY, abi.encode(_value));
     }
 
     function setAgentVaultFactory(IIAssetManager[] memory _assetManagers, address _value)

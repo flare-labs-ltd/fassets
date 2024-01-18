@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../interface/IIAgentVault.sol";
-import "../interface/IWhitelist.sol";
 import "./data/AssetManagerState.sol";
 import "./data/Collateral.sol";
 import "./AMEvents.sol";
@@ -285,17 +284,6 @@ library Agents {
         require(crBIPS >= collateral.minCollateralRatioBIPS, "not enough collateral");
     }
 
-    function vaultOwner(
-        Agent.State storage _agent
-    )
-        internal view
-        returns (address _ownerManagementAddress, address _ownerWorkAddress)
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        _ownerManagementAddress = _agent.ownerManagementAddress;
-        _ownerWorkAddress = state.ownerMgmtToWorkAddress[_ownerManagementAddress];
-    }
-
     function isOwner(
         Agent.State storage _agent,
         address _address
@@ -303,9 +291,9 @@ library Agents {
         internal view
         returns (bool)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
         address ownerManagementAddress = _agent.ownerManagementAddress;
-        return _address == ownerManagementAddress || _address == state.ownerMgmtToWorkAddress[ownerManagementAddress];
+        return _address == ownerManagementAddress ||
+            _address == Globals.getAgentOwnerRegistry().getWorkAddress(ownerManagementAddress);
     }
 
     function requireWhitelisted(
@@ -313,8 +301,7 @@ library Agents {
     )
         internal view
     {
-        address whitelist = AssetManagerState.getSettings().agentWhitelist;
-        require(IWhitelist(whitelist).isWhitelisted(_ownerManagementAddress),
+        require(Globals.getAgentOwnerRegistry().isWhitelisted(_ownerManagementAddress),
             "agent not whitelisted");
     }
 

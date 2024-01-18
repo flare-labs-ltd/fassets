@@ -22,10 +22,6 @@ library AssetManagerState {
         // mapping((collateralClass, tokenAddress) => collateralTokens index + 1)
         mapping(bytes32 => uint256) collateralTokenIndex;
 
-        // bidirectional mapping between owner's work and management addresses
-        mapping(address => address) ownerWorkToMgmtAddress;
-        mapping(address => address) ownerMgmtToWorkAddress;
-
         // makes sure pool tokens have unique names and symbols
         mapping(string => bool) reservedPoolTokenSuffixes;
 

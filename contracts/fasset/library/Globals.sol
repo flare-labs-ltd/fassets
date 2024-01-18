@@ -2,6 +2,7 @@
 pragma solidity 0.8.20;
 
 import "../interface/IFAsset.sol";
+import "../../userInterfaces/IAgentOwnerRegistry.sol";
 import "./data/AssetManagerState.sol";
 
 
@@ -29,5 +30,13 @@ library Globals {
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         return IFAsset(settings.fAsset);
+    }
+
+    function getAgentOwnerRegistry()
+        internal view
+        returns (IAgentOwnerRegistry)
+    {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        return IAgentOwnerRegistry(settings.agentOwnerRegistry);
     }
 }

@@ -379,11 +379,11 @@ interface IAssetManager is IAssetManagerEvents {
         returns (address);
 
     /**
-     * Return the management and the work address of the owner of the agent identified by `_agentVault`.
+     * Return the management address of the owner of the agent identified by `_agentVault`.
      */
     function getAgentVaultOwner(address _agentVault)
         external view
-        returns (address _ownerManagementAddress, address _ownerWorkAddress);
+        returns (address _ownerManagementAddress);
 
     ////////////////////////////////////////////////////////////////////////////////////
     // List of available agents (i.e. publicly available for minting).

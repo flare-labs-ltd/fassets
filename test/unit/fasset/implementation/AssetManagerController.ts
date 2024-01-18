@@ -917,16 +917,16 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should revert setting agent whitelist after timelock when address 0 is provided", async () => {
-            const res = assetManagerController.setAgentWhitelist([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const res = assetManagerController.setAgentOwnerRegistry([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "address zero");
         });
 
-        it("should set agent whitelist after timelock", async () => {
+        it("should set agent owner address registry after timelock", async () => {
             const addr = randomAddress();
-            const res = await assetManagerController.setAgentWhitelist([assetManager.address], addr, { from: governance });
+            const res = await assetManagerController.setAgentOwnerRegistry([assetManager.address], addr, { from: governance });
             const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
-            expectEvent(timelock_info, "ContractChanged", { name: "agentWhitelist", value: addr });
+            expectEvent(timelock_info, "ContractChanged", { name: "agentOwnerRegistry", value: addr });
         });
 
         it("should revert setting proof verifier after timelock when address 0 is provided", async () => {

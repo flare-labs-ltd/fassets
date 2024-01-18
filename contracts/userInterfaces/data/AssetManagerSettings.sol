@@ -41,11 +41,11 @@ library AssetManagerSettings {
         // timelocked
         address whitelist;
 
-        // If set, the whitelist contains a list of allowed agent owners.
-        // This can be `address(0)`, in which case no whitelist checks are done.
-        // Type: IWhitelist
+        // If set, the owner address registry contains a list of allowed agent owner's
+        // management addresses and mappings from management to work address.
+        // Type: IAgentOwnerRegistry
         // timelocked
-        address agentWhitelist;
+        address agentOwnerRegistry;
 
         // Attestation client verifies and decodes attestation proofs.
         // Type: ISCProofVerifier

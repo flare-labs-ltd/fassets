@@ -26,8 +26,8 @@ library SettingsUpdater {
         keccak256("setTimeForPayment(uint256,uint256)");
     bytes32 internal constant SET_WHITELIST =
         keccak256("setWhitelist(address)");
-    bytes32 internal constant SET_AGENT_WHITELIST =
-        keccak256("setAgentWhitelist(address)");
+    bytes32 internal constant SET_AGENT_OWNER_REGISTRY =
+        keccak256("setAgentOwnerRegistry(address)");
     bytes32 internal constant SET_AGENT_VAULT_FACTORY =
         keccak256("setAgentVaultFactory(address)");
     bytes32 internal constant SET_COLLATERAL_POOL_FACTORY =
@@ -126,9 +126,9 @@ library SettingsUpdater {
         } else if (_method == SET_WHITELIST) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setWhitelist(_params);
-        } else if (_method == SET_AGENT_WHITELIST) {
+        } else if (_method == SET_AGENT_OWNER_REGISTRY) {
             _checkEnoughTimeSinceLastUpdate(_method);
-            _setAgentWhitelist(_params);
+            _setAgentOwnerRegistry(_params);
         } else if (_method == SET_AGENT_VAULT_FACTORY) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAgentVaultFactory(_params);
@@ -331,7 +331,7 @@ library SettingsUpdater {
         emit AMEvents.ContractChanged("whitelist", value);
     }
 
-    function _setAgentWhitelist(
+    function _setAgentOwnerRegistry(
         bytes calldata _params
     )
         private
@@ -341,8 +341,8 @@ library SettingsUpdater {
         // validate
         require(value != address(0), "address zero");
         // update
-        settings.agentWhitelist = value;
-        emit AMEvents.ContractChanged("agentWhitelist", value);
+        settings.agentOwnerRegistry = value;
+        emit AMEvents.ContractChanged("agentOwnerRegistry", value);
     }
 
     function _setAgentVaultFactory(
@@ -851,7 +851,7 @@ library SettingsUpdater {
         require(_settings.underlyingAddressValidator != address(0), "zero underlyingAddressValidator address");
         require(_settings.priceReader != address(0), "zero priceReader address");
         require(_settings.liquidationStrategy != address(0), "zero liquidationStrategy address");
-        require(_settings.agentWhitelist != address(0), "zero agentWhitelist address");
+        require(_settings.agentOwnerRegistry != address(0), "zero agentOwnerRegistry address");
 
         require(_settings.assetUnitUBA > 0, "cannot be zero");
         require(_settings.assetMintingGranularityUBA > 0, "cannot be zero");

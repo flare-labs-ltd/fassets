@@ -2,21 +2,17 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "../../userInterfaces/IAgentOwnerAddressMap.sol";
-import "../interface/IWhitelist.sol";
-import "../../governance/implementation/Governed.sol";
+import "../../userInterfaces/IAgentOwnerRegistry.sol";
+import "./Whitelist.sol";
 
 
-contract AgentOwnerAddressMap is Governed, IAgentOwnerAddressMap {
-    IWhitelist public agentWhitelist;
+contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
     mapping(address => address) private workToMgmtAddress;
     mapping(address => address) private mgmtToWorkAddress;
 
-    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, IWhitelist _agentWhitelist)
-        Governed(_governanceSettings, _initialGovernance)
+    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, bool _supportRevoke)
+        Whitelist(_governanceSettings, _initialGovernance, _supportRevoke)
     {
-        require(address(_agentWhitelist) != address(0), "agent whitelist zero");
-        agentWhitelist = _agentWhitelist;
     }
 
     /**
@@ -26,7 +22,7 @@ contract AgentOwnerAddressMap is Governed, IAgentOwnerAddressMap {
      * NOTE: May only be called by an agent on the allowed agent list and only from the management address.
      */
     function setWorkAddress(address _ownerWorkAddress) external {
-        require(agentWhitelist.isWhitelisted(msg.sender),
+        require(isWhitelisted(msg.sender),
             "agent not whitelisted");
         require(_ownerWorkAddress == address(0) || workToMgmtAddress[_ownerWorkAddress] == address(0),
             "work address in use");
@@ -44,14 +40,6 @@ contract AgentOwnerAddressMap is Governed, IAgentOwnerAddressMap {
     }
 
     /**
-     * Update agent whitelist (by governance).
-     */
-    function setAgentWhitelist(IWhitelist _agentWhitelist) external onlyGovernance {
-        require(address(_agentWhitelist) != address(0), "agent whitelist zero");
-        agentWhitelist = _agentWhitelist;
-    }
-
-    /**
      * Get the (unique) work address for the given management address.
      */
     function getWorkAddress(address _managementAddress) external view returns (address) {
@@ -65,4 +53,15 @@ contract AgentOwnerAddressMap is Governed, IAgentOwnerAddressMap {
         return workToMgmtAddress[_workAddress];
     }
 
+
+    /**
+     * Implementation of ERC-165 interface.
+     */
+    function supportsInterface(bytes4 _interfaceId)
+        public pure override
+        returns (bool)
+    {
+        return Whitelist.supportsInterface(_interfaceId)
+            || _interfaceId == type(IAgentOwnerRegistry).interfaceId;
+    }
 }

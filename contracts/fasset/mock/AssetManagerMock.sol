@@ -44,9 +44,9 @@ contract AssetManagerMock {
     }
 
     function getAgentVaultOwner(address /*_agentVault*/) external view
-        returns (address _ownerManagementAddress, address _ownerWorkAddress)
+        returns (address _ownerManagementAddress)
     {
-        return (commonOwner, address(0));
+        return commonOwner;
     }
 
     function isAgentVaultOwner(address /*_agentVault*/, address _address) external view returns (bool) {

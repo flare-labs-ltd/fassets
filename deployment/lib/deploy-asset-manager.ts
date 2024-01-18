@@ -291,7 +291,7 @@ function createAssetManagerSettings(contracts: ChainContracts, parameters: Asset
         scProofVerifier: addressFromParameter(contracts, parameters.scProofVerifier ?? 'SCProofVerifier'),
         priceReader: addressFromParameter(contracts, parameters.priceReader ?? 'PriceReader'),
         whitelist: parameters.userWhitelist ? addressFromParameter(contracts, parameters.userWhitelist) : ZERO_ADDRESS,
-        agentWhitelist: addressFromParameter(contracts, parameters.agentWhitelist ?? 'AgentWhitelist'),
+        agentOwnerRegistry: addressFromParameter(contracts, parameters.agentOwnerRegistry ?? 'AgentOwnerRegistry'),
         underlyingAddressValidator: addressValidator,
         liquidationStrategy: liquidationStrategy,
         burnAddress: parameters.burnAddress,

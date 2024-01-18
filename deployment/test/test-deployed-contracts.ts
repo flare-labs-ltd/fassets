@@ -2,27 +2,27 @@ import hre from "hardhat";
 import { requiredEventArgs } from "../../lib/utils/events/truffle";
 import { getTestFile } from "../../test/utils/test-helpers";
 import { createTestAgent } from "../../test/utils/test-settings";
-import { AssetManagerControllerInstance, WhitelistInstance } from "../../typechain-truffle";
+import { AgentOwnerRegistryInstance, AssetManagerControllerInstance } from "../../typechain-truffle";
 import { ChainContracts, loadContracts } from "../lib/contracts";
 import { loadDeployAccounts, requiredEnvironmentVariable } from "../lib/deploy-utils";
 import { SourceId } from "../../lib/underlying-chain/SourceId";
 
 const AssetManagerController = artifacts.require('AssetManagerController');
 const AssetManager = artifacts.require('AssetManager');
-const Whitelist = artifacts.require('Whitelist');
+const AgentOwnerRegistry = artifacts.require('AgentOwnerRegistry');
 
 contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, async accounts => {
     let networkConfig: string;
     let contracts: ChainContracts;
 
     let assetManagerController: AssetManagerControllerInstance;
-    let agentWhitelist: WhitelistInstance;
+    let agentOwnerRegistry: AgentOwnerRegistryInstance;
 
     before(async () => {
         networkConfig = requiredEnvironmentVariable('NETWORK_CONFIG');
         contracts = loadContracts(`deployment/deploys/${networkConfig}.json`);
         assetManagerController = await AssetManagerController.at(contracts.AssetManagerController!.address);
-        agentWhitelist = await Whitelist.at(contracts.AgentWhitelist!.address);
+        agentOwnerRegistry = await AgentOwnerRegistry.at(contracts.AgentOwnerRegistry!.address);
     });
 
     // it("Controller must be in production mode", async () => {
@@ -63,7 +63,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         const { deployer } = loadDeployAccounts(hre);
         const managers = await assetManagerController.getAssetManagers();
         const owner = requiredEnvironmentVariable('TEST_AGENT_OWNER');
-        await agentWhitelist.addAddressToWhitelist(owner, { from: deployer });
+        await agentOwnerRegistry.addAddressToWhitelist(owner, { from: deployer });
         for (const mgrAddress of managers) {
             console.log("Testing manager at", mgrAddress);
             const assetManager = await AssetManager.at(mgrAddress);
@@ -77,7 +77,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
             const destroyArgs = requiredEventArgs(destroyRes, "AgentDestroyAnnounced");
             console.log(`    you can destroy agent ${agentVault.address} on asset manager ${mgrAddress} after timestamp ${destroyArgs.destroyAllowedAt}`);
         }
-        await agentWhitelist.revokeAddress(owner, { from: deployer });
+        await agentOwnerRegistry.revokeAddress(owner, { from: deployer });
     });
 
 });

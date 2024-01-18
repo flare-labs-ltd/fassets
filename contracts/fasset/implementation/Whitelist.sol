@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../../governance/implementation/Governed.sol";
-import "../interface/IWhitelist.sol";
+import "../../userInterfaces/IWhitelist.sol";
 
 
 contract Whitelist is IWhitelist, Governed, IERC165 {
@@ -31,7 +31,7 @@ contract Whitelist is IWhitelist, Governed, IERC165 {
         _removeAddressFromWhitelist(_address);
     }
 
-    function isWhitelisted(address _address) external view returns (bool) {
+    function isWhitelisted(address _address) public view returns (bool) {
         return whitelist[_address];
     }
 
@@ -50,7 +50,7 @@ contract Whitelist is IWhitelist, Governed, IERC165 {
      * Implementation of ERC-165 interface.
      */
     function supportsInterface(bytes4 _interfaceId)
-        external pure override
+        public pure virtual override
         returns (bool)
     {
         return _interfaceId == type(IERC165).interfaceId

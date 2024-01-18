@@ -214,8 +214,8 @@ library AgentsExternal {
 
     function getAgentVaultOwner(address _agentVault)
         external view
-        returns (address _ownerManagementAddress, address _ownerWorkAddress)
+        returns (address _ownerManagementAddress)
     {
-        return Agents.vaultOwner(Agent.get(_agentVault));
+        return Agent.get(_agentVault).ownerManagementAddress;
     }
 }

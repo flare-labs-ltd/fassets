@@ -1,7 +1,7 @@
 import { time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../../lib/fasset/Conversions";
-import { AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
+import { AgentOwnerRegistryEvents, AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
 import { CollateralPrice } from "../../../lib/state/CollateralPrice";
 import { Prices } from "../../../lib/state/Prices";
@@ -13,7 +13,7 @@ import { IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
-import { AssetManagerInstance, FAssetInstance, IAddressValidatorInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { AgentOwnerRegistryInstance, AssetManagerInstance, FAssetInstance, IAddressValidatorInstance, IAgentOwnerRegistryInstance, IWhitelistInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
@@ -22,7 +22,7 @@ import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
 const TrivialAddressValidatorMock = artifacts.require('TrivialAddressValidatorMock');
-const WhitelistMock = artifacts.require("WhitelistMock");
+const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
 const MockContract = artifacts.require('MockContract');
 const Whitelist = artifacts.require('Whitelist');
 
@@ -32,7 +32,7 @@ export interface SettingsOptions {
     liquidationSettings?: LiquidationStrategyImplSettings;
     // optional contracts
     whitelist?: ContractWithEvents<WhitelistInstance, WhitelistEvents>;
-    agentWhitelist?: ContractWithEvents<WhitelistInstance, WhitelistEvents>;
+    agentOwnerRegistry?: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>;
 }
 
 // context, specific for each asset manager (includes common context vars)
@@ -48,7 +48,7 @@ export class AssetContext implements IAssetContext {
         public attestationProvider: AttestationHelper,
         public addressValidator: IAddressValidatorInstance,
         public whitelist: ContractWithEvents<WhitelistInstance, WhitelistEvents> | undefined,
-        public agentWhitelist: ContractWithEvents<WhitelistInstance, WhitelistEvents> | undefined,
+        public agentOwnerRegistry: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>,
         public assetManager: ContractWithEvents<AssetManagerInstance, AssetManagerEvents>,
         public fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>,
         // following three settings are initial and may not be fresh
@@ -123,8 +123,9 @@ export class AssetContext implements IAssetContext {
         await this.refreshSettings();
     }
 
-    async setWitelist(whitelist: string) {
-        await waitForTimelock(this.assetManagerController.setWhitelist([this.assetManager.address], whitelist, { from: this.governance }), this.assetManagerController, this.governance);
+    async setWhitelist(whitelist: WhitelistInstance) {
+        this.whitelist = whitelist;
+        await waitForTimelock(this.assetManagerController.setWhitelist([this.assetManager.address], whitelist.address, { from: this.governance }), this.assetManagerController, this.governance);
         await this.refreshSettings();
     }
 
@@ -133,18 +134,19 @@ export class AssetContext implements IAssetContext {
         await this.refreshSettings();
     }
 
-    async setAgentWitelist(whitelist: string) {
-        await waitForTimelock(this.assetManagerController.setAgentWhitelist([this.assetManager.address], whitelist, { from: this.governance }), this.assetManagerController, this.governance);
+    async setAgentOwnerRegistry(agentOwnerRegistry: AgentOwnerRegistryInstance) {
+        this.agentOwnerRegistry = agentOwnerRegistry;
+        await waitForTimelock(this.assetManagerController.setAgentOwnerRegistry([this.assetManager.address], agentOwnerRegistry.address, { from: this.governance }), this.assetManagerController, this.governance);
         await this.refreshSettings();
     }
 
     async createWhitelists() {
-        this.whitelist = await Whitelist.new(this.common.governanceSettings.address, this.governance, true);
-        await this.whitelist.switchToProductionMode({ from: this.governance });
-        this.agentWhitelist = await Whitelist.new(this.common.governanceSettings.address, this.governance, true);
-        await this.agentWhitelist.switchToProductionMode({ from: this.governance });
-        await this.setAgentWitelist(this.agentWhitelist.address);
-        await this.setWitelist(this.whitelist.address);
+        const whitelist = await Whitelist.new(this.common.governanceSettings.address, this.governance, true);
+        await whitelist.switchToProductionMode({ from: this.governance });
+        const agentOwnerRegistry = await AgentOwnerRegistry.new(this.common.governanceSettings.address, this.governance, true);
+        await agentOwnerRegistry.switchToProductionMode({ from: this.governance });
+        await this.setAgentOwnerRegistry(agentOwnerRegistry);
+        await this.setWhitelist(whitelist);
     }
 
     async updateUnderlyingBlock() {
@@ -246,12 +248,12 @@ export class AssetContext implements IAssetContext {
         // create address validator
         const addressValidator = await TrivialAddressValidatorMock.new();
         // create allow-all agent whitelist
-        const agentWhitelist = await WhitelistMock.new(true);
+        const agentOwnerRegistry = await AgentOwnerRegistry.new(common.governanceSettings.address, common.governance, true);
         // create liquidation strategy (dynamic library)
         const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
         const liquidationStrategy = liquidationStrategyLib.address;
         // create collaterals
-        const testSettingsContracts = { ...common, addressValidator, agentWhitelist, liquidationStrategy };
+        const testSettingsContracts = { ...common, addressValidator, agentOwnerRegistry, liquidationStrategy };
         // create settings
         const settings = createTestSettings(testSettingsContracts, chainInfo);
         const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts, chainInfo);
@@ -261,7 +263,7 @@ export class AssetContext implements IAssetContext {
             chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings));
         // collect
         return new AssetContext(common, chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider, addressValidator,
-            options.whitelist, options.agentWhitelist, assetManager, fAsset, settings, collaterals, liquidationSettings);
+            options.whitelist, agentOwnerRegistry ?? options.agentOwnerRegistry, assetManager, fAsset, settings, collaterals, liquidationSettings);
     }
 }
 

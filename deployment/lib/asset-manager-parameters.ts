@@ -130,10 +130,10 @@ export interface AssetManagerParameters {
     /**
      * The agent whitelist contains a list of allowed agent owners.
      * Can be a contract address (0x...) or a name in contracts.json.
-     * Optional, default is 'AgentWhitelist' in contracts.json.
+     * Optional, default is 'AgentOwnerRegistry' in contracts.json.
      * @pattern ^\w+$
      */
-    agentWhitelist?: string;
+    agentOwnerRegistry?: string;
 
     /**
      * If non-null, the whitelist contains a list of accounts that can call public methods

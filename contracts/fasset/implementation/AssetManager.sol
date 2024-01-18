@@ -143,12 +143,6 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
     ////////////////////////////////////////////////////////////////////////////////////
     // Agent handling
 
-    function setOwnerWorkAddress(address _ownerWorkAddress)
-        external override
-    {
-        AgentsCreateDestroy.setOwnerWorkAddress(_ownerWorkAddress);
-    }
-
     /**
      * This method fixes the underlying address to be used by given agent owner.
      * A proof of payment (can be minimal or to itself) from this address must be provided,
@@ -1145,7 +1139,7 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
 
     function getAgentVaultOwner(address _agentVault)
         external view override
-        returns (address _ownerManagementAddress, address _ownerWorkAddress)
+        returns (address _ownerManagementAddress)
     {
         return AgentsExternal.getAgentVaultOwner(_agentVault);
     }
