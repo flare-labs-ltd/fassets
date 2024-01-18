@@ -9,7 +9,7 @@ import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerInstance, SCProofVerifierInstance,
     CollateralPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
-    IWhitelistInstance, StateConnectorMockInstance, WNatInstance, CollateralPoolTokenFactoryInstance, IPriceReaderInstance, IAgentOwnerRegistryInstance, AgentOwnerRegistryInstance
+    IWhitelistInstance, StateConnectorMockInstance, WNatInstance, CollateralPoolTokenFactoryInstance, IPriceReaderInstance, AgentOwnerRegistryInstance
 } from "../../typechain-truffle";
 import { TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";

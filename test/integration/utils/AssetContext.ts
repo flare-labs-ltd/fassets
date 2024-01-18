@@ -13,7 +13,7 @@ import { IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
-import { AgentOwnerRegistryInstance, AssetManagerInstance, FAssetInstance, IAgentOwnerRegistryInstance, IWhitelistInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { AgentOwnerRegistryInstance, AssetManagerInstance, FAssetInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";

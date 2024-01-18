@@ -50,8 +50,10 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         const txHash = await wallet.addTransaction(underlyingAddress, underlyingBurnAddr, 1, PaymentReference.addressOwnership(owner));
         const proof = await attestationProvider.provePayment(txHash, underlyingAddress, underlyingBurnAddr);
         await assetManager.proveUnderlyingAddressEOA(proof, { from: owner });
-        const settings = createTestAgentSettings(underlyingAddress, usdc.address);
-        const response = await assetManager.createAgentVault(web3DeepNormalize(settings), { from: owner });
+        const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAddress);
+        assert.isTrue(addressValidityProof.data.responseBody.isValid);
+        const settings = createTestAgentSettings(usdc.address);
+        const response = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(settings), { from: owner });
         return AgentVault.at(findRequiredEvent(response, 'AgentVaultCreated').args.agentVault);
     }
 
