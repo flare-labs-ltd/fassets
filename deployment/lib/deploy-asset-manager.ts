@@ -47,8 +47,8 @@ export async function deployPriceReader(hre: HardhatRuntimeEnvironment, contract
     saveContracts(contractsFile, contracts);
 }
 
-export async function deployWhitelist(hre: HardhatRuntimeEnvironment, contractsFile: string, kind: 'Agent' | 'User') {
-    console.log(`Deploying ${kind}Whitelist`);
+export async function deployUserWhitelist(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    console.log(`Deploying UserWhitelist`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
@@ -57,10 +57,25 @@ export async function deployWhitelist(hre: HardhatRuntimeEnvironment, contractsF
     const { deployer } = loadDeployAccounts(hre);
     const contracts = loadContracts(contractsFile);
 
-    const revokeSupported = kind === 'Agent';
-    const whitelist = await Whitelist.new(contracts.GovernanceSettings.address, deployer, revokeSupported);
+    const whitelist = await Whitelist.new(contracts.GovernanceSettings.address, deployer, false);
 
-    contracts[`${kind}Whitelist`] = newContract(`${kind}Whitelist`, "Whitelist.sol", whitelist.address, { mustSwitchToProduction: true });
+    contracts[`UserWhitelist`] = newContract(`UserWhitelist`, "Whitelist.sol", whitelist.address, { mustSwitchToProduction: true });
+    saveContracts(contractsFile, contracts);
+}
+
+export async function deployAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+    console.log(`Deploying AgentOwnerRegistry`);
+
+    const artifacts = hre.artifacts as Truffle.Artifacts;
+
+    const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
+
+    const { deployer } = loadDeployAccounts(hre);
+    const contracts = loadContracts(contractsFile);
+
+    const whitelist = await AgentOwnerRegistry.new(contracts.GovernanceSettings.address, deployer, true);
+
+    contracts[`AgentOwnerRegistry`] = newContract(`AgentOwnerRegistry`, "AgentOwnerRegistry.sol", whitelist.address, { mustSwitchToProduction: true });
     saveContracts(contractsFile, contracts);
 }
 

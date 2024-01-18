@@ -243,7 +243,7 @@ export class AssetContext implements IAssetContext {
         // create mock attestation provider
         const stateConnectorClient = new MockStateConnectorClient(common.stateConnector, { [chainInfo.chainId]: chain }, 'on_wait');
         const attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainInfo.chainId);
-        // create allow-all agent whitelist
+        // create allow-all agent owner registry
         const agentOwnerRegistry = await AgentOwnerRegistry.new(common.governanceSettings.address, common.governance, true);
         await agentOwnerRegistry.setAllowAll(true, { from: common.governance });
         // create liquidation strategy (dynamic library)

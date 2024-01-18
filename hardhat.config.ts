@@ -9,8 +9,9 @@ import { task } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
 import {
+    deployAgentOwnerRegistry,
     deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory,
-    deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployWhitelist, switchAllToProductionMode, verifyAssetManager, verifyAssetManagerController
+    deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployUserWhitelist, switchAllToProductionMode, verifyAssetManager, verifyAssetManagerController
 } from "./deployment/lib/deploy-asset-manager";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import "./type-extensions";
@@ -32,8 +33,8 @@ task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Op
         const contractsFile = `deployment/deploys/${networkConfig}.json`;
         await deploySCProofVerifier(hre, contractsFile);
         await deployPriceReader(hre, contractsFile);
-        await deployWhitelist(hre, contractsFile, 'Agent');
-        await deployWhitelist(hre, contractsFile, 'User');
+        await deployAgentOwnerRegistry(hre, contractsFile);
+        await deployUserWhitelist(hre, contractsFile);
         await deployAgentVaultFactory(hre, contractsFile);
         await deployCollateralPoolFactory(hre, contractsFile);
         await deployCollateralPoolTokenFactory(hre, contractsFile);
