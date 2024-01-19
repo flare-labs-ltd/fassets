@@ -156,7 +156,7 @@ library RedemptionRequests {
         Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
         // emit event
         uint256 valueUBA = Conversion.convertAmgToUBA(request.valueAMG);
-        emit AMEvents.RedemptionRejected(request.agentVault, request.redeemer, valueUBA, _redemptionRequestId);
+        emit AMEvents.RedemptionRejected(request.agentVault, request.redeemer, _redemptionRequestId, valueUBA);
         // delete redemption request at end
         Redemptions.deleteRedemptionRequest(_redemptionRequestId);
     }

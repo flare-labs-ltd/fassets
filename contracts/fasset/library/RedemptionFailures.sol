@@ -99,8 +99,8 @@ library RedemptionFailures {
         Agents.endRedeemingAssets(_agent, _request.valueAMG, _request.poolSelfClose);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment
         // it will be (or was already) updated in call to finishRedemptionWithoutPayment (or confirmRedemptionPayment)
-        emit AMEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _request.underlyingValueUBA,
-            paidC1Wei, paidPoolWei, _redemptionRequestId);
+        emit AMEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
+            _request.underlyingValueUBA, paidC1Wei, paidPoolWei);
     }
 
     // payment calculation: pay redemptionDefaultFactorVaultCollateralBIPS (>= 1) from agent vault collateral and

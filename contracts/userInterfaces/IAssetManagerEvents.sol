@@ -11,8 +11,8 @@ interface IAssetManagerEvents {
      */
     event AgentVaultCreated(
         address indexed owner,
-        address agentVault,
-        address collateralPool,
+        address indexed agentVault,
+        address indexed collateralPool,
         string underlyingAddress,
         address vaultCollateralToken,
         uint256 feeBIPS,
@@ -115,7 +115,7 @@ interface IAssetManagerEvents {
     event CollateralReserved(
         address indexed agentVault,
         address indexed minter,
-        uint256 collateralReservationId,
+        uint256 indexed collateralReservationId,
         uint256 valueUBA,
         uint256 feeUBA,
         uint256 firstUnderlyingBlock,
@@ -133,7 +133,7 @@ interface IAssetManagerEvents {
      */
     event MintingExecuted(
         address indexed agentVault,
-        uint256 collateralReservationId,
+        uint256 indexed collateralReservationId,
         uint256 redemptionTicketId,
         uint256 mintedAmountUBA,
         uint256 agentFeeUBA,
@@ -146,7 +146,7 @@ interface IAssetManagerEvents {
     event MintingPaymentDefault(
         address indexed agentVault,
         address indexed minter,
-        uint256 collateralReservationId,
+        uint256 indexed collateralReservationId,
         uint256 reservedAmountUBA);
 
     /**
@@ -156,7 +156,7 @@ interface IAssetManagerEvents {
     event CollateralReservationDeleted(
         address indexed agentVault,
         address indexed minter,
-        uint256 collateralReservationId,
+        uint256 indexed collateralReservationId,
         uint256 reservedAmountUBA);
 
     /**
@@ -169,7 +169,7 @@ interface IAssetManagerEvents {
     event RedemptionRequested(
         address indexed agentVault,
         address indexed redeemer,
-        uint256 requestId,
+        uint256 indexed requestId,
         string paymentAddress,
         uint256 valueUBA,
         uint256 feeUBA,
@@ -186,8 +186,8 @@ interface IAssetManagerEvents {
     event RedemptionRejected(
         address indexed agentVault,
         address indexed redeemer,
-        uint256 redemptionAmountUBA,
-        uint64 requestId);
+        uint64 indexed requestId,
+        uint256 redemptionAmountUBA);
 
     /**
      * In case there were not enough tickets or more than allowed number would have to be redeemed,
@@ -205,10 +205,10 @@ interface IAssetManagerEvents {
     event RedemptionPerformed(
         address indexed agentVault,
         address indexed redeemer,
+        uint64 indexed requestId,
         bytes32 transactionHash,
         uint256 redemptionAmountUBA,
-        int256 spentUnderlyingUBA,
-        uint64 requestId);
+        int256 spentUnderlyingUBA);
 
     /**
      * The time for redemption payment is over and payment proof was not provided.
@@ -220,10 +220,10 @@ interface IAssetManagerEvents {
     event RedemptionDefault(
         address indexed agentVault,
         address indexed redeemer,
+        uint64 indexed requestId,
         uint256 redemptionAmountUBA,
         uint256 redeemedVaultCollateralWei,
-        uint256 redeemedPoolCollateralWei,
-        uint64 requestId);
+        uint256 redeemedPoolCollateralWei);
 
     /**
      * Agent provided the proof that redemption payment was attempted, but failed due to
@@ -234,10 +234,10 @@ interface IAssetManagerEvents {
     event RedemptionPaymentBlocked(
         address indexed agentVault,
         address indexed redeemer,
+        uint64 indexed requestId,
         bytes32 transactionHash,
         uint256 redemptionAmountUBA,
-        int256 spentUnderlyingUBA,
-        uint64 requestId);
+        int256 spentUnderlyingUBA);
 
     /**
      * Agent provided the proof that redemption payment was attempted, but failed due to
@@ -246,9 +246,9 @@ interface IAssetManagerEvents {
     event RedemptionPaymentFailed(
         address indexed agentVault,
         address indexed redeemer,
+        uint64 indexed requestId,
         bytes32 transactionHash,
         int256 spentUnderlyingUBA,
-        uint64 requestId,
         string failureReason);
 
     /**
@@ -340,7 +340,7 @@ interface IAssetManagerEvents {
      */
     event UnderlyingWithdrawalAnnounced(
         address indexed agentVault,
-        uint64 announcementId,
+        uint64 indexed announcementId,
         bytes32 paymentReference);
 
     /**
@@ -351,9 +351,9 @@ interface IAssetManagerEvents {
      */
     event UnderlyingWithdrawalConfirmed(
         address indexed agentVault,
+        uint64 indexed announcementId,
         int256 spentUBA,
-        bytes32 transactionHash,
-        uint64 announcementId);
+        bytes32 transactionHash);
 
     /**
      * After announcing legal underlying withdrawal agent can cancel ongoing withdrawal.
@@ -362,7 +362,7 @@ interface IAssetManagerEvents {
      */
     event UnderlyingWithdrawalCancelled(
         address indexed agentVault,
-        uint64 announcementId);
+        uint64 indexed announcementId);
 
     /**
      * Emitted when the agent tops up the underlying address balance.

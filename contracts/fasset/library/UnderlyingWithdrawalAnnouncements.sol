@@ -66,8 +66,8 @@ library UnderlyingWithdrawalAnnouncements {
                 Agents.convertUSD5ToVaultCollateralWei(agent, state.settings.confirmationByOthersRewardUSD5));
         }
         // send event
-        emit AMEvents.UnderlyingWithdrawalConfirmed(_agentVault, _payment.data.responseBody.spentAmount,
-            _payment.data.requestBody.transactionId, announcementId);
+        emit AMEvents.UnderlyingWithdrawalConfirmed(_agentVault, announcementId,
+            _payment.data.responseBody.spentAmount, _payment.data.requestBody.transactionId);
     }
 
     function cancelUnderlyingWithdrawal(

@@ -44,13 +44,13 @@ library RedemptionConfirmations {
             Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
             // notify
             if (_payment.data.responseBody.status == TransactionAttestation.PAYMENT_SUCCESS) {
-                emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,
+                emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,  _redemptionRequestId,
                     _payment.data.requestBody.transactionId, request.underlyingValueUBA,
-                    _payment.data.responseBody.spentAmount,  _redemptionRequestId);
+                    _payment.data.responseBody.spentAmount);
             } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
-                emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,
+                emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer, _redemptionRequestId,
                     _payment.data.requestBody.transactionId, request.underlyingValueUBA,
-                    _payment.data.responseBody.spentAmount, _redemptionRequestId);
+                    _payment.data.responseBody.spentAmount);
             }
         } else {
             // We only need failure reports from agent's underlying address, so disallow others to
@@ -63,9 +63,8 @@ library RedemptionConfirmations {
                 RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
             }
             // notify
-            emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer,
-                _payment.data.requestBody.transactionId, _payment.data.responseBody.spentAmount,
-                _redemptionRequestId, failureReason);
+            emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer, _redemptionRequestId,
+                _payment.data.requestBody.transactionId, _payment.data.responseBody.spentAmount, failureReason);
         }
         // agent has finished with redemption - account for used underlying balance and free the remainder
         UnderlyingBalance.updateBalance(agent, -_payment.data.responseBody.spentAmount);
