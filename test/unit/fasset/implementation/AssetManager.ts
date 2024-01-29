@@ -1094,9 +1094,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
             const res = await assetManager.updateCurrentBlock(proof);
             expectEvent(res, 'CurrentUnderlyingBlockUpdated', { underlyingBlockNumber: proof.data.requestBody.blockNumber, underlyingBlockTimestamp: proof.data.responseBody.blockTimestamp });
+            const timestamp = await time.latest();
             const currentBlock = await assetManager.currentUnderlyingBlock();
             assertWeb3Equal(currentBlock[0], proof.data.requestBody.blockNumber);
             assertWeb3Equal(currentBlock[1], proof.data.responseBody.blockTimestamp);
+            assertWeb3Equal(currentBlock[2], timestamp);
         });
 
         it("should execute minting (by minter)", async () => {

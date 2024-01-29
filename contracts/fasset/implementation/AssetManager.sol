@@ -480,13 +480,18 @@ contract AssetManager is ReentrancyGuard, IIAssetManager, IERC165 {
      * Get block number and timestamp of the current underlying block.
      * @return _blockNumber current underlying block number tracked by asset manager
      * @return _blockTimestamp current underlying block timestamp tracked by asset manager
+     * @return _lastUpdateTs the timestamp on this chain when the current underlying block was last updated
      */
     function currentUnderlyingBlock()
         external view override
-        returns (uint256 _blockNumber, uint256 _blockTimestamp)
+        returns (uint256 _blockNumber, uint256 _blockTimestamp, uint256 _lastUpdateTs)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return (state.currentUnderlyingBlock, state.currentUnderlyingBlockTimestamp);
+        return (
+            state.currentUnderlyingBlock,
+            state.currentUnderlyingBlockTimestamp,
+            state.currentUnderlyingBlockUpdatedAt
+        );
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
