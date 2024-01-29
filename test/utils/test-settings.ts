@@ -65,7 +65,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         agentOwnerRegistry: contracts.agentOwnerRegistry?.address ?? constants.ZERO_ADDRESS,
         burnAddress: constants.ZERO_ADDRESS,
         chainId: ci.chainId,
-        poolTokenSuffix: ci.symbol,
+        poolTokenSuffix: ci.assetSymbol,
         collateralReservationFeeBIPS: toBIPS("1%"),
         assetDecimals: ci.decimals,
         assetUnitUBA: toBNExp(1, ci.decimals),

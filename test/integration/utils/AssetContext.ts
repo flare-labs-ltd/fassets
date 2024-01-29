@@ -257,7 +257,8 @@ export class AssetContext implements IAssetContext {
         const liquidationSettings = options.liquidationSettings ?? createTestLiquidationSettings();
         // create asset manager
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
-            chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings));
+            chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings),
+            chainInfo.assetName, chainInfo.assetSymbol);
         // collect
         return new AssetContext(common, chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider,
             options.whitelist, agentOwnerRegistry ?? options.agentOwnerRegistry, assetManager, fAsset, settings, collaterals, liquidationSettings);

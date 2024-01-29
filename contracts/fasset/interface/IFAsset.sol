@@ -26,6 +26,16 @@ interface IFAsset {
     function terminate() external;
 
     /**
+     * The name of the underlying asset.
+     */
+    function assetName() external view returns (string memory);
+
+    /**
+     * The symbol of the underlying asset.
+     */
+    function assetSymbol() external view returns (string memory);
+
+    /**
      * Get the asset manager, corresponding to this fAsset.
      * fAssets and asset managers are in 1:1 correspondence.
      */

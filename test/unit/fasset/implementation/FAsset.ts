@@ -12,7 +12,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
     const assetManager = accounts[11];
 
     async function initialize() {
-        fAsset = await FAsset.new(governance, "Ethereum", "ETH", 18);
+        fAsset = await FAsset.new(governance, "FEthereum", "FETH", "Ethereum", "ETH", 18);
         return { fAsset };
     }
 
@@ -21,6 +21,13 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
     });
 
     describe("basic tests", () => {
+        it("metadata should match", async function () {
+            assert.equal(await fAsset.name(), "FEthereum");
+            assert.equal(await fAsset.symbol(), "FETH");
+            assert.equal(await fAsset.assetName(), "Ethereum");
+            assert.equal(await fAsset.assetSymbol(), "ETH");
+            assert.equal(String(await fAsset.decimals()), "18");
+        });
 
         it('should not set asset manager if not governance', async function () {
             const promise = fAsset.setAssetManager(assetManager);

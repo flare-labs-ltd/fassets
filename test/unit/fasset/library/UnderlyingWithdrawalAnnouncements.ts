@@ -57,7 +57,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         settings.announcedUnderlyingConfirmationMinSeconds = toBN(60);
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings(), ci.assetName, ci.assetSymbol);
         return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     }
 
@@ -153,7 +153,7 @@ contract(`UnderlyingWithdrawalAnnouncements.sol; ${getTestFile(__filename)}; Und
         //Make vault collateral token have no ftso symbol and a direct price pair (relevant when calculating reward for confirmation later)
         collaterals[1].tokenFtsoSymbol="";
         collaterals[1].directPricePair = true;
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings(), ci.assetName, ci.assetSymbol);
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         chain.mint(underlyingAgent1, 500);
         await assetManager.announceUnderlyingWithdrawal(agentVault.address, { from: agentOwner1 });

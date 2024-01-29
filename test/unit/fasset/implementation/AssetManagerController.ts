@@ -65,7 +65,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         const encodedLiquidationStrategySettings = encodeLiquidationStrategyImplSettings(liquidationStrategySettings);
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, encodedLiquidationStrategySettings, updateExecutor);
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, encodedLiquidationStrategySettings, ci.assetName, ci.assetSymbol, updateExecutor);
         addressUpdatableMock = await AddressUpdatableMock.new(contracts.addressUpdater.address);
         return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, liquidationStrategySettings, collaterals, settings, assetManager, fAsset, addressUpdatableMock };
     }
@@ -94,7 +94,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let assetManager2: AssetManagerInstance;
             let fAsset2: FAssetInstance;
             const managers_current = await assetManagerController.getAssetManagers();
-            [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
+            [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Wrapped Ether", "FETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), "Ether", "ETH", updateExecutor);
 
             const res1 = await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
             await waitForTimelock(res1, assetManagerController, updateExecutor);
@@ -110,7 +110,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("Asset manager controller should not be attached when add asset manager is called from a different controler", async () => {
             let assetManager2: AssetManagerInstance;
             let fAsset2: FAssetInstance;
-            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
+            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), "Ether", "ETH", updateExecutor);
             await assetManager2.attachController(false, { from: accounts[5] });
             const res1 = await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
             await waitForTimelock(res1, assetManagerController, updateExecutor);
@@ -121,7 +121,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("Asset manager controller should not be unattached when remove asset manager is called from a different controler", async () => {
             let assetManager2: AssetManagerInstance;
             let fAsset2: FAssetInstance;
-            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
+            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), "Ether", "ETH", updateExecutor);
             const res1 = await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
             await waitForTimelock(res1, assetManagerController, updateExecutor);
             const res2 = await assetManagerController.removeAssetManager(assetManager2.address, { from: governance });
@@ -142,7 +142,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let assetManager2: AssetManagerInstance;
             let fAsset2: FAssetInstance;
             const managers_current = await assetManagerController.getAssetManagers();
-            [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
+            [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Wrapped Ether", "FETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), "Ether", "ETH", updateExecutor);
 
             await waitForTimelock(assetManagerController.addAssetManager(assetManager2.address, { from: governance }), assetManagerController, updateExecutor);
             const managers_add = await assetManagerController.getAssetManagers();
@@ -1179,7 +1179,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("controler shouldn't be able to terminate asset manager that he is not managing", async () => {
             let assetManager2: AssetManagerInstance;
             let fAsset2: FAssetInstance;
-            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
+            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), "Ether", "ETH", updateExecutor);
             //Shouldn't be able to terminate unmanaged asset manager
             await expectRevert(assetManagerController.terminate([assetManager2.address], { from: governance }), "Asset manager not managed");
         });
@@ -1363,7 +1363,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("Controler that does not manage an asset manager shouldn't be able to update its settings", async () => {
             let assetManager2: AssetManagerInstance;
             let fAsset2: FAssetInstance;
-            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Ethereum", "ETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), updateExecutor);
+            [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), "Ether", "ETH", updateExecutor);
             let poolExitAndTopupChangeTimelockSeconds_new = DAYS;
             const res = assetManagerController.setConfirmationByOthersAfterSeconds([assetManager2.address], poolExitAndTopupChangeTimelockSeconds_new, { from: governance });
             await expectRevert(res, "Asset manager not managed");

@@ -14,11 +14,13 @@ export async function newAssetManager(
     assetManagerSettings: AssetManagerSettings,
     collateralTokens: CollateralType[],
     encodedLiquidationStrategySettings: string,
-    updateExecutor: string = governanceAddress
+    assetName = name,
+    assetSymbol = symbol,
+    updateExecutor: string = governanceAddress,
 ): Promise<[AssetManagerInstance, FAssetInstance]> {
     const AssetManager = await linkAssetManager();
     const FAsset = artifacts.require('FAsset');
-    const fAsset = await FAsset.new(governanceAddress, name, symbol, decimals);
+    const fAsset = await FAsset.new(governanceAddress, name, symbol, assetName, assetSymbol, decimals);
     const assetManagerControllerAddress = typeof assetManagerController === 'string' ? assetManagerController : assetManagerController.address;
     assetManagerSettings = web3DeepNormalize({
         ...assetManagerSettings,

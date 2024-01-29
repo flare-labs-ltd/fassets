@@ -26,6 +26,16 @@ contract FAsset is IFAsset, VPToken, IERC165 {
      */
     uint64 public terminatedAt = 0;
 
+    /**
+     * The name of the underlying asset.
+     */
+    string public override assetName;
+
+    /**
+     * The symbol of the underlying asset.
+     */
+    string public override assetSymbol;
+
     modifier onlyAssetManager {
         require(msg.sender == assetManager, "only asset manager");
         _;
@@ -35,11 +45,15 @@ contract FAsset is IFAsset, VPToken, IERC165 {
         address _governance,
         string memory _name,
         string memory _symbol,
+        string memory _assetName,
+        string memory _assetSymbol,
         uint8 _decimals
     )
         VPToken(_governance, _name, _symbol)
     {
         _setupDecimals(_decimals);
+        assetName = _assetName;
+        assetSymbol = _assetSymbol;
     }
 
     /**

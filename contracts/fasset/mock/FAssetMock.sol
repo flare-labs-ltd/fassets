@@ -9,9 +9,11 @@ contract FAssetMock is FAsset {
         address _governance,
         string memory _name,
         string memory _symbol,
+        string memory _assetName,
+        string memory _assetSymbol,
         uint8 _decimals
     )
-        FAsset(_governance, _name, _symbol, _decimals)
+        FAsset(_governance, _name, _symbol, _assetName, _assetSymbol, _decimals)
     {}
 
     function mintAmount(address _target, uint256 amount) public {

@@ -210,7 +210,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings(), ci.assetName, ci.assetSymbol);
         return { contracts, AssetManager, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
     }
 
@@ -528,7 +528,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             collaterals[1].validUntil = chain.currentTimestamp()-100;
             settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
             //Creating asset manager should revert because we are trying to addd a vault collateral that is deprecated
-            const res = newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+            const res = newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings(), ci.assetName, ci.assetSymbol);
             await expectRevert(res,"cannot add deprecated token");
         });
 
@@ -737,7 +737,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             collaterals[1].token = collaterals[0].token;
             collaterals[1].tokenFtsoSymbol = collaterals[0].tokenFtsoSymbol;
             settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
-            [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+            [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings(), ci.assetName, ci.assetSymbol);
             const agentVault = await createAvailableAgentWithEOANAT(agentOwner1, underlyingAgent1, toWei(3e8));
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(10));
             // terminate f-asset
@@ -1955,7 +1955,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
             collaterals[0].directPricePair=true;
             collaterals[1].directPricePair=true;
-            [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+            [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings(), ci.assetName, ci.assetSymbol);
             // create agent vault and make available
             const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
             // reserve collateral
@@ -1989,7 +1989,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             collateralsNew = collaterals;
             //Make first collateral be VaultCollateral
             collateralsNew[0].collateralClass = collateralsNew[1].collateralClass;
-            let res = newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collateralsNew, createEncodedTestLiquidationSettings());
+            let res = newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collateralsNew, createEncodedTestLiquidationSettings(), ci.assetName, ci.assetSymbol);
             await expectRevert(res,"not a pool collateral at 0");
         });
 
@@ -2000,7 +2000,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             //Only one collateral should not be enough to create asset manager
             let collateralsNew: CollateralType[];
             collateralsNew=[collaterals[0]];
-            let res = newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collateralsNew, createEncodedTestLiquidationSettings());
+            let res = newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collateralsNew, createEncodedTestLiquidationSettings(), ci.assetName, ci.assetSymbol);
             await expectRevert(res,"at least two collaterals required");
         });
 
@@ -2015,7 +2015,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             //Make second and third collateral be Pool
             collaterals[1].collateralClass = collaterals[0].collateralClass;
             collaterals[2].collateralClass = collaterals[0].collateralClass;
-            let res = newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collateralsNew, createEncodedTestLiquidationSettings());
+            let res = newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collateralsNew, createEncodedTestLiquidationSettings(), ci.assetName, ci.assetSymbol);
             await expectRevert(res,"not a vault collateral");
         });
 

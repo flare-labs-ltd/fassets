@@ -25,8 +25,10 @@ export const testNatInfo: TestNatInfo = {
 export const testChainInfo: Record<'eth' | 'btc' | 'xrp', TestChainInfo> = {
     eth: {
         chainId: encodeAttestationName("ETH"),
-        name: "Ethereum",
-        symbol: "ETH",
+        name: "Wrapped Ether",
+        symbol: "FETH",
+        assetName: "Ether",
+        assetSymbol: "ETH",
         decimals: 18,
         amgDecimals: 9,
         startPrice: 1621.0,
@@ -38,8 +40,10 @@ export const testChainInfo: Record<'eth' | 'btc' | 'xrp', TestChainInfo> = {
     },
     btc: {
         chainId: SourceId.BTC,
-        name: "Bitcoin",
-        symbol: "BTC",
+        name: "Wrapped Bitcoin",
+        symbol: "FBTC",
+        assetName: "Bitcoin",
+        assetSymbol: "BTC",
         decimals: 8,
         amgDecimals: 8,
         startPrice: 25213.0,
@@ -51,8 +55,10 @@ export const testChainInfo: Record<'eth' | 'btc' | 'xrp', TestChainInfo> = {
     },
     xrp: {
         chainId: SourceId.XRP,
-        name: "Ripple",
-        symbol: "XRP",
+        name: "Wrapped XRP",
+        symbol: "FXRP",
+        assetName: "XRP",
+        assetSymbol: "XRP",
         decimals: 6,
         amgDecimals: 6,
         startPrice: 0.53,
