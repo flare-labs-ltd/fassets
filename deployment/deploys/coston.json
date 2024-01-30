@@ -210,6 +210,11 @@
     "address": "0x179ACDe40EEb06702b7C37F7BbcaB663D7048AEf"
   },
   {
+    "name": "testETH",
+    "contractName": "FakeERC20.sol",
+    "address": "0xC63b4A26A80d54AbC679eb3c50bcb79dbCaaCfCa"
+  },
+  {
     "name": "SCProofVerifier",
     "contractName": "SCProofVerifier.sol",
     "address": "0x5E72E30A7Ff32d9fA104Ad37B4647c9E356F1Bd0"

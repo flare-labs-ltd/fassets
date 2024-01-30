@@ -55,6 +55,16 @@
             "minCollateralRatioBIPS": 14000,
             "ccbMinCollateralRatioBIPS": 13000,
             "safetyMinCollateralRatioBIPS": 15000
+        },
+        {
+            "token": "testETH",
+            "decimals": 18,
+            "directPricePair": false,
+            "assetFtsoSymbol": "testETH",
+            "tokenFtsoSymbol": "testUSDT",
+            "minCollateralRatioBIPS": 14000,
+            "ccbMinCollateralRatioBIPS": 13000,
+            "safetyMinCollateralRatioBIPS": 15000
         }
     ],
     "minUnderlyingBackingBIPS": 10000,

@@ -12,6 +12,7 @@ runAsyncMain(async () => {
     const contracts = loadContracts(contractsFile);
     await deployStablecoin(contracts, "Test USDCoin", "testUSDC", 6);
     await deployStablecoin(contracts, "Test Tether", "testUSDT", 6);
+    await deployStablecoin(contracts, "Test Ether", "testETH", 18);
     saveContracts(contractsFile, contracts);
 });
 
