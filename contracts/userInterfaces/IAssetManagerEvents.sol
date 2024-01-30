@@ -134,7 +134,6 @@ interface IAssetManagerEvents {
     event MintingExecuted(
         address indexed agentVault,
         uint256 indexed collateralReservationId,
-        uint256 redemptionTicketId,
         uint256 mintedAmountUBA,
         uint256 agentFeeUBA,
         uint256 poolFeeUBA);
@@ -269,6 +268,30 @@ interface IAssetManagerEvents {
         uint256 valueUBA);
 
     /**
+     * Redemption ticket with given value was created (when minting was executed).
+     */
+    event RedemptionTicketCreated(
+        address indexed agentVault,
+        uint256 indexed redemptionTicketId,
+        uint256 ticketValueUBA);
+
+    /**
+     * Redemption ticket value was changed (partially redeemed).
+     * @param ticketValueUBA the ticket value after update
+     */
+    event RedemptionTicketUpdated(
+        address indexed agentVault,
+        uint256 indexed redemptionTicketId,
+        uint256 ticketValueUBA);
+
+    /**
+     * Redemption ticket was deleted.
+     */
+    event RedemptionTicketDeleted(
+        address indexed agentVault,
+        uint256 indexed redemptionTicketId);
+
+    /**
      * Due to lot size change, some dust was created for this agent during
      * redemption. Value `dustUBA` is the new amount of dust. Dust cannot be directly redeemed,
      * but it can be self-closed or liquidated and if it accumulates to more than 1 lot,
@@ -277,15 +300,6 @@ interface IAssetManagerEvents {
     event DustChanged(
         address indexed agentVault,
         uint256 dustUBA);
-
-    /**
-     * The amount of dust was more than one lot, and the whole lot part of it
-     * was converted to a redemption ticket.
-     */
-    event DustConvertedToTicket(
-        address indexed agentVault,
-        uint256 redemptionTicketId,
-        uint256 valueUBA);
 
     /**
      * Agent entered CCB (collateral call band) due to being on the border of unhealthy.

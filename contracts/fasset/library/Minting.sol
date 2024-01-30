@@ -96,7 +96,7 @@ library Minting {
             _performMinting(agent, 0, msg.sender, valueAMG, receivedAmount, poolFeeUBA);
         } else {
             UnderlyingBalance.increaseBalance(agent, receivedAmount);
-            emit AMEvents.MintingExecuted(_agentVault, 0, 0, 0, receivedAmount, 0);
+            emit AMEvents.MintingExecuted(_agentVault, 0, 0, receivedAmount, 0);
         }
     }
 
@@ -147,8 +147,7 @@ library Minting {
         }
         // create ticket and change dust
         Agents.allocateMintedAssets(_agent, _mintValueAMG + poolFeeAMG);
-        uint64 redemptionTicketId =
-            state.redemptionQueue.createRedemptionTicket(_agent.vaultAddress(), ticketValueAMG);
+        Agents.createRedemptionTicket(_agent, ticketValueAMG);
         Agents.changeDust(_agent, newDustAMG);
         // update agent balance with deposited amount
         UnderlyingBalance.increaseBalance(_agent, _receivedAmountUBA);
@@ -159,7 +158,6 @@ library Minting {
         Globals.getFAsset().mint(address(_agent.collateralPool), _poolFeeUBA);
         _agent.collateralPool.fAssetFeeDeposited(_poolFeeUBA);
         // notify
-        emit AMEvents.MintingExecuted(_agent.vaultAddress(), _crtId, redemptionTicketId,
-            mintValueUBA, agentFeeUBA, _poolFeeUBA);
+        emit AMEvents.MintingExecuted(_agent.vaultAddress(), _crtId, mintValueUBA, agentFeeUBA, _poolFeeUBA);
     }
 }

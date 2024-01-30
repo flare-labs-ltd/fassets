@@ -14,7 +14,6 @@ import "./Liquidation.sol";
 library AgentsExternal {
     using SafePct for uint256;
     using SafeCast for uint256;
-    using RedemptionQueue for RedemptionQueue.State;
     using AgentCollateral for Collateral.Data;
     using Agent for Agent.State;
     using Agents for Agent.State;
@@ -35,12 +34,8 @@ library AgentsExternal {
         if (agent.dustAMG >= state.settings.lotSizeAMG) {
             uint64 remainingDustAMG = agent.dustAMG % state.settings.lotSizeAMG;
             uint64 ticketValueAMG = agent.dustAMG - remainingDustAMG;
-            uint64 ticketId = state.redemptionQueue.createRedemptionTicket(_agentVault, ticketValueAMG);
-            agent.dustAMG = remainingDustAMG;
-            uint256 ticketValueUBA = Conversion.convertAmgToUBA(ticketValueAMG);
-            emit AMEvents.DustConvertedToTicket(_agentVault, ticketId, ticketValueUBA);
-            uint256 dustUBA = Conversion.convertAmgToUBA(remainingDustAMG);
-            emit AMEvents.DustChanged(_agentVault, dustUBA);
+            Agents.createRedemptionTicket(agent, ticketValueAMG);
+            Agents.changeDust(agent, remainingDustAMG);
         }
     }
 

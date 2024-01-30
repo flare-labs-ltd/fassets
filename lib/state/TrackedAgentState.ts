@@ -1,7 +1,7 @@
 import {
-    AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
-    RedeemedInCollateral,
-    RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
+    RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, RedemptionTicketCreated, RedemptionTicketDeleted,
+    RedemptionTicketUpdated, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../typechain-truffle/AssetManager";
 import { AgentInfo, AgentSetting, AgentStatus, CollateralType, CollateralClass } from "../fasset/AssetManagerTypes";
 import { roundUBAToAmg } from "../fasset/Conversions";
@@ -196,11 +196,18 @@ export class TrackedAgentState {
         return !toBN(requestId).and(BN_ONE).isZero();
     }
 
-    // handlers: dust
+    // handlers: tickets
 
-    handleDustConvertedToTicket(args: EvmEventArgs<DustConvertedToTicket>): void {
-        // no change to totals
+    handleRedemptionTicketCreated(args: EvmEventArgs<RedemptionTicketCreated>): void {
     }
+
+    handleRedemptionTicketUpdated(args: EvmEventArgs<RedemptionTicketUpdated>): void {
+    }
+
+    handleRedemptionTicketDeleted(args: EvmEventArgs<RedemptionTicketDeleted>): void {
+    }
+
+    // handlers: dust
 
     handleDustChanged(args: EvmEventArgs<DustChanged>): void {
         this.dustUBA = args.dustUBA;

@@ -157,8 +157,11 @@ export class TrackedState {
         this.assetManagerEvent('UnderlyingWithdrawalAnnounced').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleUnderlyingWithdrawalAnnounced(args));
         this.assetManagerEvent('UnderlyingWithdrawalConfirmed').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleUnderlyingWithdrawalConfirmed(args));
         this.assetManagerEvent('UnderlyingWithdrawalCancelled').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleUnderlyingWithdrawalCancelled(args));
+        // track tickets
+        this.assetManagerEvent('RedemptionTicketCreated').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionTicketCreated(args));
+        this.assetManagerEvent('RedemptionTicketUpdated').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionTicketUpdated(args));
+        this.assetManagerEvent('RedemptionTicketDeleted').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleRedemptionTicketDeleted(args));
         // track dust
-        this.assetManagerEvent('DustConvertedToTicket').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleDustConvertedToTicket(args));
         this.assetManagerEvent('DustChanged').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleDustChanged(args));
         // liquidation
         this.assetManagerEvent('LiquidationPerformed').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleLiquidationPerformed(args));

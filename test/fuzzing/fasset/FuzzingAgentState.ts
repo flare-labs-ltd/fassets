@@ -9,13 +9,13 @@ import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockCha
 import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 import { EvmEvent } from "../../../lib/utils/events/common";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, expectErrors, formatBN, latestBlockTimestamp, minBN, requireNotNull, sumBN, toBN, toHex } from "../../../lib/utils/helpers";
+import { BN_ZERO, expectErrors, formatBN, latestBlockTimestamp, requireNotNull, sumBN, toBN } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
 import {
-    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, DustConvertedToTicket, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
-    RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, SelfClose, UnderlyingBalanceToppedUp,
-    UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
+    AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
+    RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, RedemptionTicketCreated,
+    RedemptionTicketDeleted, RedemptionTicketUpdated, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/AssetManager";
 import { Entered, Exited } from "../../../typechain-truffle/CollateralPool";
 import { SparseArray } from "../../utils/SparseMatrix";
@@ -82,9 +82,6 @@ export class FuzzingAgentState extends TrackedAgentState {
 
     poolTokenAddress?: string;
 
-    // aggregates
-    calculatedDustUBA: BN = BN_ZERO;
-
     // collections
     collateralReservations: Map<number, CollateralReservation> = new Map();
     redemptionTickets: Map<number, RedemptionTicket> = new Map();
@@ -113,7 +110,6 @@ export class FuzzingAgentState extends TrackedAgentState {
 
     override initializeState(agentInfo: AgentInfo) {
         super.initializeState(agentInfo);
-        this.calculatedDustUBA = toBN(agentInfo.dustUBA);
         this.poolTokenBalances.set(this.address, agentInfo.totalAgentPoolTokensWei);
     }
 
@@ -152,13 +148,6 @@ export class FuzzingAgentState extends TrackedAgentState {
         // update underlying free balance
         const depositUBA = toBN(args.mintedAmountUBA).add(args.agentFeeUBA).add(args.poolFeeUBA);
         this.addUnderlyingBalanceChange(args.$event, 'minting', depositUBA);
-        // only whole number of lots will be created as ticket, the remainder is accounted as dust
-        const mintedAmount = toBN(args.mintedAmountUBA).add(toBN(args.poolFeeUBA));
-        const amountWithDust = mintedAmount.add(this.calculatedDustUBA);
-        this.calculatedDustUBA = amountWithDust.mod(this.parent.lotSize());
-        const ticketAmountUBA = amountWithDust.sub(this.calculatedDustUBA);
-        // create redemption ticket
-        this.addRedemptionTicket(args.$event, Number(args.redemptionTicketId), ticketAmountUBA);
         // update balance tracking
         this.addBalanceTrackingRow(args.$event, { requestId: args.collateralReservationId, mintAmount: args.mintedAmountUBA, mintFeeAgent: args.agentFeeUBA, mintFeePool: args.poolFeeUBA });
         // delete collateral reservation
@@ -184,11 +173,6 @@ export class FuzzingAgentState extends TrackedAgentState {
         super.handleRedemptionRequested(args);
         // create request and close tickets
         const request = this.addRedemptionRequest(args);
-        if (this.isPoolSelfCloseRedemption(args.requestId)) {
-            this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.valueUBA));
-        } else {
-            this.closeRedemptionTicketsWholeLots(args.$event, toBN(args.valueUBA));
-        }
         // update balance tracking
         this.addBalanceTrackingRow(args.$event, { requestId: request.id, redemptionRequested: args.valueUBA, redeeming: args.valueUBA, redemptionFee: args.feeUBA });
         this.logAction(`new RedemptionRequest(${request.id}): amount=${formatBN(request.valueUBA)} fee=${formatBN(request.feeUBA)}`, args.$event);
@@ -227,30 +211,32 @@ export class FuzzingAgentState extends TrackedAgentState {
 
     override handleRedeemedInCollateral(args: EvmEventArgs<RedeemedInCollateral>): void {
         super.handleRedeemedInCollateral(args);
-        // close tickets, update free balance
-        this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.redemptionAmountUBA));
         this.addBalanceTrackingRow(args.$event, { redemptionRequested: args.redemptionAmountUBA });
     }
 
     override handleSelfClose(args: EvmEventArgs<SelfClose>): void {
         super.handleSelfClose(args);
-        // close tickets, update free balance
-        this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.valueUBA));
-        // update balance tracking
         this.addBalanceTrackingRow(args.$event, { selfClose: args.valueUBA });
     }
 
-    // handlers: dust
+    // handlers: tickets
 
-    override handleDustConvertedToTicket(args: EvmEventArgs<DustConvertedToTicket>): void {
-        super.handleDustConvertedToTicket(args);
-        // create redemption ticket
-        const ticket = this.newRedemptionTicket(Number(args.redemptionTicketId), toBN(args.valueUBA));
-        this.redemptionTickets.set(ticket.id, ticket);
-        // recalculate dust
-        this.calculatedDustUBA = this.calculatedDustUBA.sub(toBN(args.valueUBA));
-        this.logAction(`new RedemptionTicket(${ticket.id}) [from dust]: amount=${formatBN(ticket.amountUBA)} remaining_dust=${formatBN(this.calculatedDustUBA)}`, args.$event);
+    override handleRedemptionTicketCreated(args: EvmEventArgs<RedemptionTicketCreated>): void {
+        super.handleRedemptionTicketCreated(args);
+        this.addRedemptionTicket(args.$event, Number(args.redemptionTicketId), toBN(args.ticketValueUBA));
     }
+
+    override handleRedemptionTicketUpdated(args: EvmEventArgs<RedemptionTicketUpdated>): void {
+        super.handleRedemptionTicketUpdated(args);
+        this.updateRedemptionTicket(args.$event, Number(args.redemptionTicketId), toBN(args.ticketValueUBA));
+    }
+
+    override handleRedemptionTicketDeleted(args: EvmEventArgs<RedemptionTicketDeleted>): void {
+        super.handleRedemptionTicketDeleted(args);
+        this.deleteRedemptionTicket(args.$event, Number(args.redemptionTicketId));
+    }
+
+    // handlers: dust
 
     override handleDustChanged(args: EvmEventArgs<DustChanged>): void {
         super.handleDustChanged(args);
@@ -290,8 +276,6 @@ export class FuzzingAgentState extends TrackedAgentState {
 
     override handleLiquidationPerformed(args: EvmEventArgs<LiquidationPerformed>): void {
         super.handleLiquidationPerformed(args);
-        // close tickets, update free balance
-        this.closeRedemptionTicketsAnyAmount(args.$event, toBN(args.valueUBA));
     }
 
     // handlers: underlying transactions
@@ -419,74 +403,23 @@ export class FuzzingAgentState extends TrackedAgentState {
     }
 
     addRedemptionTicket(event: EvmEvent, ticketId: number, amountUBA: BN) {
-        const amountWithDust = this.calculatedDustUBA.add(amountUBA);
-        this.calculatedDustUBA = amountWithDust.mod(this.parent.lotSize());
-        const ticketAmount = amountWithDust.sub(this.calculatedDustUBA);
-        const ticket = this.newRedemptionTicket(ticketId, ticketAmount);
+        const ticket = this.newRedemptionTicket(ticketId, amountUBA);
         this.redemptionTickets.set(ticket.id, ticket);
-        this.logAction(`new RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}, new dust=${formatBN(this.calculatedDustUBA)}`, event);
+        this.logAction(`new RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, event);
     }
 
-    closeRedemptionTicketsWholeLots(event: EvmEvent, amountUBA: BN) {
-        const lotSize = this.parent.lotSize();
-        const tickets = Array.from(this.redemptionTickets.values());
-        tickets.sort((a, b) => a.id - b.id);    // sort by ticketId, so that we close them in correct order
-        const amountLots = amountUBA.div(lotSize);
-        let remainingLots = amountLots;
-        let count = 0;
-        for (const ticket of tickets) {
-            if (remainingLots.isZero()) break;
-            const ticketLots = ticket.amountUBA.div(lotSize);
-            const redeemLots = minBN(remainingLots, ticketLots);
-            const redeemUBA = redeemLots.mul(lotSize);
-            remainingLots = remainingLots.sub(redeemLots);
-            const newTicketAmountUBA = ticket.amountUBA.sub(redeemUBA);
-            if (newTicketAmountUBA.lt(lotSize)) {
-                this.calculatedDustUBA = this.calculatedDustUBA.add(newTicketAmountUBA);
-                this.logAction(`delete RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)} created_dust=${formatBN(newTicketAmountUBA)}`, event);
-                this.redemptionTickets.delete(ticket.id);
-            } else {
-                ticket.amountUBA = newTicketAmountUBA;
-                this.logAction(`partial redeemption RedemptionTicket(${ticket.id}): old_amount=${formatBN(ticket.amountUBA)} new_amount=${formatBN(newTicketAmountUBA)}`, event);
-            }
-            ++count;
-        }
-        const redeemedLots = amountLots.sub(remainingLots);
-        const redeemedUBA = redeemedLots.mul(lotSize);
-        const remainingUBA = amountUBA.sub(redeemedUBA);
-        this.expect(remainingUBA.isZero(), `Redemption mismatch redeemedUBA=${formatBN(redeemedUBA)}, amountUBA=${formatBN(amountUBA)} remainingUBA=${formatBN(remainingUBA)}`, event);
-        this.logAction(`redeemed ${count} tickets, ${redeemedLots} lots, remainingUBA=${formatBN(remainingUBA)}, lotSize=${formatBN(lotSize)}`, event);
+    updateRedemptionTicket(event: EvmEvent, ticketId: number, amountUBA: BN) {
+        const ticket = this.redemptionTickets.get(ticketId);
+        if (!ticket) assert.fail(`Invalid redemption ticket id ${ticketId}`);
+        this.logAction(`updated RedemptionTicket(${ticket.id}): oldAmount=${formatBN(ticket.amountUBA)} amount=${formatBN(amountUBA)}`, event);
+        ticket.amountUBA = amountUBA;
     }
 
-    closeRedemptionTicketsAnyAmount(event: EvmEvent, amountUBA: BN) {
-        const lotSize = this.parent.lotSize();
-        const tickets = Array.from(this.redemptionTickets.values());
-        tickets.sort((a, b) => a.id - b.id);    // sort by ticketId, so that we close them in correct order
-        let remainingUBA = amountUBA;
-        // redeem dust
-        const redeemedDust = minBN(remainingUBA, this.calculatedDustUBA);
-        this.calculatedDustUBA = this.calculatedDustUBA.sub(redeemedDust);
-        remainingUBA = remainingUBA.sub(redeemedDust);
-        // redeem tickets
-        let count = 0;
-        for (const ticket of tickets) {
-            if (remainingUBA.isZero()) break;
-            const redeemUBA = minBN(remainingUBA, ticket.amountUBA);
-            remainingUBA = remainingUBA.sub(redeemUBA);
-            const newTicketAmountUBA = ticket.amountUBA.sub(redeemUBA);
-            if (newTicketAmountUBA.lt(lotSize)) {
-                this.calculatedDustUBA = this.calculatedDustUBA.add(newTicketAmountUBA);
-                this.logAction(`delete RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)} created_dust=${formatBN(newTicketAmountUBA)}`, event);
-                this.redemptionTickets.delete(ticket.id);
-            } else {
-                ticket.amountUBA = newTicketAmountUBA;
-                this.logAction(`partial redeemption RedemptionTicket(${ticket.id}): old_amount=${formatBN(ticket.amountUBA)} new_amount=${formatBN(newTicketAmountUBA)}`, event);
-            }
-            ++count;
-        }
-        const redeemedUBA = amountUBA.sub(remainingUBA);
-        this.expect(remainingUBA.isZero(), `Ticket close mismatch closedUBA=${formatBN(redeemedUBA)}, amountUBA=${formatBN(amountUBA)} remainingUBA=${formatBN(remainingUBA)}`, event);
-        this.logAction(`redeemed (any amount) ${count} tickets, redeemed=${formatBN(redeemedUBA)}, remainingUBA=${formatBN(remainingUBA)}, lotSize=${formatBN(lotSize)}`, event);
+    deleteRedemptionTicket(event: EvmEvent, ticketId: number) {
+        const ticket = this.redemptionTickets.get(ticketId);
+        if (!ticket) assert.fail(`Invalid redemption ticket id ${ticketId}`);
+        this.redemptionTickets.delete(ticketId);
+        this.logAction(`deleted RedemptionTicket(${ticket.id}): amount=${formatBN(ticket.amountUBA)}`, event);
     }
 
     newRedemptionRequest(args: EvmEventArgs<RedemptionRequested>): RedemptionRequest {
@@ -664,8 +597,6 @@ export class FuzzingAgentState extends TrackedAgentState {
             // don't count problems here because it results in false positive errors, e.g. if there is payment after redemption default
             checker.checkNumericDifference(`${agentName}.underlyingBalanceUBA`, underlyingBalanceUBA, 'gte', mintedUBA.add(freeUnderlyingBalanceUBA), { severe: false });
         }
-        // dust
-        checker.checkEquality(`${agentName}.dustUBA`, this.dustUBA, this.calculatedDustUBA);
         // status
         if (!(this.status === AgentStatus.CCB && Number(agentInfo.status) === Number(AgentStatus.LIQUIDATION))) {
             checker.checkStringEquality(`${agentName}.status`, agentInfo.status, this.status);

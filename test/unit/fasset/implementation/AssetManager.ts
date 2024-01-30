@@ -1254,6 +1254,9 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // redemption request
             const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
             const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
+            const ticketDeleted = findRequiredEvent(redemptionRequestTx, "RedemptionTicketDeleted").args;
+            assert.equal(ticketDeleted.agentVault, agentVault.address);
+            assertWeb3Equal(ticketDeleted.redemptionTicketId, 1);
             // prove redemption payment
             const txhash = await wallet.addTransaction(underlyingAgent1, underlyingRedeemer, 1,
                 PaymentReference.redemption(redemptionRequest.requestId));

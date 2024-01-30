@@ -17,6 +17,7 @@ library Agents {
     using SafeCast for uint256;
     using SafePct for uint256;
     using Agent for Agent.State;
+    using RedemptionQueue for RedemptionQueue.State;
 
     function setMintingVaultCollateralRatioBIPS(
         Agent.State storage _agent,
@@ -148,6 +149,19 @@ library Agents {
         if (!_poolSelfCloseRedemption) {
             _agent.poolRedeemingAMG = SafeMath64.sub64(_agent.poolRedeemingAMG, _valueAMG, "not enough redeeming");
         }
+    }
+
+    function createRedemptionTicket(
+        Agent.State storage _agent,
+        uint64 _ticketValueAMG
+    )
+        internal
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        address vaultAddress = _agent.vaultAddress();
+        uint64 ticketId = state.redemptionQueue.createRedemptionTicket(vaultAddress, _ticketValueAMG);
+        uint256 ticketValueUBA = Conversion.convertAmgToUBA(_ticketValueAMG);
+        emit AMEvents.RedemptionTicketCreated(vaultAddress, ticketId, ticketValueUBA);
     }
 
     function changeDust(

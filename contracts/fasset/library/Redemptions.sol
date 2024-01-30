@@ -57,13 +57,17 @@ library Redemptions {
         RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(_redemptionTicketId);
         uint64 remainingAMG = ticket.valueAMG - _redeemedAMG;
         if (remainingAMG == 0) {
+            emit AMEvents.RedemptionTicketDeleted(ticket.agentVault, _redemptionTicketId);
             state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
         } else if (remainingAMG < state.settings.lotSizeAMG) {   // dust created
             Agent.State storage agent = Agent.get(ticket.agentVault);
             Agents.increaseDust(agent, remainingAMG);
+            emit AMEvents.RedemptionTicketDeleted(ticket.agentVault, _redemptionTicketId);
             state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
         } else {
             ticket.valueAMG = remainingAMG;
+            uint256 remainingUBA = Conversion.convertAmgToUBA(remainingAMG);
+            emit AMEvents.RedemptionTicketUpdated(ticket.agentVault, _redemptionTicketId, remainingUBA);
         }
     }
 

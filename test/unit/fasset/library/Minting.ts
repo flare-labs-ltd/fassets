@@ -17,6 +17,7 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { lotSize } from "../../../../lib/fasset/Conversions";
 
 contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async accounts => {
     const governance = accounts[10];
@@ -136,7 +137,35 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         assertWeb3Equal(event.mintedAmountUBA, crt.valueUBA);
         assertWeb3Equal(event.agentFeeUBA, getAgentFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
         assertWeb3Equal(event.poolFeeUBA, getPoolFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
-        assertWeb3Equal(event.redemptionTicketId, 1);
+        const ticketCreated = requiredEventArgs(res, "RedemptionTicketCreated");
+        assertWeb3Equal(ticketCreated.agentVault, agentVault.address);
+        assertWeb3Equal(ticketCreated.redemptionTicketId, 1);
+        assertWeb3Equal(ticketCreated.ticketValueUBA, crt.valueUBA);
+    });
+
+    it("should execute minting (minter, many lots)", async () => {
+        // init
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { poolFeeShareBIPS });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const crt = await reserveCollateral(agentVault.address, 30);
+        const txHash = await performMintingPayment(crt);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        // assert
+        const event = requiredEventArgs(res, 'MintingExecuted');
+        assertWeb3Equal(event.agentVault, agentVault.address);
+        assertWeb3Equal(event.collateralReservationId, crt.collateralReservationId);
+        assertWeb3Equal(event.mintedAmountUBA, crt.valueUBA);
+        assertWeb3Equal(event.agentFeeUBA, getAgentFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
+        assertWeb3Equal(event.poolFeeUBA, getPoolFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
+        const ticketCreated = requiredEventArgs(res, "RedemptionTicketCreated");
+        assertWeb3Equal(ticketCreated.agentVault, agentVault.address);
+        assertWeb3Equal(ticketCreated.redemptionTicketId, 1);
+        const lotSz = lotSize(settings);
+        const totalMintedWholeLots = toBN(event.mintedAmountUBA).add(toBN(event.poolFeeUBA)).div(lotSz).mul(lotSz);
+        assertWeb3Equal(ticketCreated.ticketValueUBA, totalMintedWholeLots);
     });
 
     it("should execute minting (agent)", async () => {
@@ -156,7 +185,10 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         assertWeb3Equal(event.mintedAmountUBA, crt.valueUBA);
         assertWeb3Equal(event.agentFeeUBA, getAgentFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
         assertWeb3Equal(event.poolFeeUBA, getPoolFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
-        assertWeb3Equal(event.redemptionTicketId, 1);
+        const ticketCreated = requiredEventArgs(res, "RedemptionTicketCreated");
+        assertWeb3Equal(ticketCreated.agentVault, agentVault.address);
+        assertWeb3Equal(ticketCreated.redemptionTicketId, 1);
+        assertWeb3Equal(ticketCreated.ticketValueUBA, crt.valueUBA);
     });
 
     it("should execute minting (executor)", async () => {
@@ -180,7 +212,10 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         assertWeb3Equal(event.mintedAmountUBA, crt.valueUBA);
         assertWeb3Equal(event.agentFeeUBA, getAgentFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
         assertWeb3Equal(event.poolFeeUBA, getPoolFeeShare(toBN(crt.feeUBA), poolFeeShareBIPS));
-        assertWeb3Equal(event.redemptionTicketId, 1);
+        const ticketCreated = requiredEventArgs(res, "RedemptionTicketCreated");
+        assertWeb3Equal(ticketCreated.agentVault, agentVault.address);
+        assertWeb3Equal(ticketCreated.redemptionTicketId, 1);
+        assertWeb3Equal(ticketCreated.ticketValueUBA, crt.valueUBA);
     });
 
     it("should not execute minting if not agent or minter or executor", async () => {
@@ -310,7 +345,10 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         assertWeb3Equal(event.mintedAmountUBA, paymentAmount);
         assertWeb3Equal(event.agentFeeUBA, 0);
         assertWeb3Equal(event.poolFeeUBA, poolFee);
-        assertWeb3Equal(event.redemptionTicketId, 1);
+        const ticketCreated = requiredEventArgs(res, "RedemptionTicketCreated");
+        assertWeb3Equal(ticketCreated.agentVault, agentVault.address);
+        assertWeb3Equal(ticketCreated.redemptionTicketId, 1);
+        assertWeb3Equal(ticketCreated.ticketValueUBA, event.mintedAmountUBA);
     });
 
     it("should self-mint and increase free balance", async () => {
@@ -333,7 +371,10 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         assertWeb3Equal(event.mintedAmountUBA, paymentAmount.divn(2));
         assertWeb3Equal(event.agentFeeUBA, paymentAmount.divn(2).sub(poolFee));
         assertWeb3Equal(event.poolFeeUBA, poolFee);
-        assertWeb3Equal(event.redemptionTicketId, 1);
+        const ticketCreated = requiredEventArgs(res, "RedemptionTicketCreated");
+        assertWeb3Equal(ticketCreated.agentVault, agentVault.address);
+        assertWeb3Equal(ticketCreated.redemptionTicketId, 1);
+        assertWeb3Equal(ticketCreated.ticketValueUBA, event.mintedAmountUBA);
     });
 
     it("should not self-mint if not agent", async () => {
