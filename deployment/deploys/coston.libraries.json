@@ -2,86 +2,86 @@
   {
     "name": "AgentSettingsUpdater",
     "contractName": "contracts/fasset/library/AgentSettingsUpdater.sol",
-    "address": "0x1124e4E25A22623813BDe4be145c8965e224dbF5"
+    "address": "0xb7fe6C6550Ec06Ee3EC986d1D765d65a90DEe8d0"
   },
   {
     "name": "AgentsCreateDestroy",
     "contractName": "contracts/fasset/library/AgentsCreateDestroy.sol",
-    "address": "0xa8a61bd7aD57522a252E8d642572662d0DAfC18C"
+    "address": "0x5e4D6B3822CcAE14483753AB1357299edd3e4CCC"
   },
   {
     "name": "AgentsExternal",
     "contractName": "contracts/fasset/library/AgentsExternal.sol",
-    "address": "0xD4642b3C13a97EAFF5e037A2e91E12D334C4FaA5"
+    "address": "0xC8b7D3812B24feA0523c7372888d427063B28cf2"
   },
   {
     "name": "AvailableAgents",
     "contractName": "contracts/fasset/library/AvailableAgents.sol",
-    "address": "0x35B76936026bed88ac8cD579322B7866e4369Fe2"
+    "address": "0x19Bcecf72d37663A883c990eF556d418b4dFA588"
   },
   {
     "name": "Challenges",
     "contractName": "contracts/fasset/library/Challenges.sol",
-    "address": "0x3Bf28A47Fac4F659BC3EADE674E61d715c24BBA8"
+    "address": "0x1cB5A3A17018D094c01655803f1af81B032cC4ad"
   },
   {
     "name": "CollateralReservations",
     "contractName": "contracts/fasset/library/CollateralReservations.sol",
-    "address": "0x97F7400362bC0d8bB90b102E67b2E5cecCcC1B81"
+    "address": "0xAaB8Bdf64ce1c92919dFF6dEbC6DEb065c78Fd42"
   },
   {
     "name": "CollateralTypes",
     "contractName": "contracts/fasset/library/CollateralTypes.sol",
-    "address": "0x303A505803E8Be46ea8c8e5896359397C48E4878"
+    "address": "0xf190c4Fb184b7Ce51f7f4983a6ceCa64b70D3DCe"
   },
   {
     "name": "FullAgentInfo",
     "contractName": "contracts/fasset/library/FullAgentInfo.sol",
-    "address": "0xB34dBc126e03BBc95E4BefCa4B0890A788CC0511"
+    "address": "0xB56B301346af18f3BF3f5e8897c591Ad208C7939"
   },
   {
     "name": "Liquidation",
     "contractName": "contracts/fasset/library/Liquidation.sol",
-    "address": "0x6C42962c5071F4Ff39127A3903cd3DA033022F2A"
+    "address": "0xA3aDe400C5f446BD1098b72e005156DA8C6d77c8"
   },
   {
     "name": "Minting",
     "contractName": "contracts/fasset/library/Minting.sol",
-    "address": "0xD914602a1EEA4277bF7aE9bfD13e3B5c1fD407e8"
+    "address": "0x3BD09587f9582cF8397A4D0eA5eBaBDBc6FCF87d"
   },
   {
     "name": "RedemptionConfirmations",
     "contractName": "contracts/fasset/library/RedemptionConfirmations.sol",
-    "address": "0xB65be9229D589cB817257C253e893Fe5e2f3Ef68"
+    "address": "0xd28D1E258957936b002186A965F2C777E567CA06"
   },
   {
     "name": "RedemptionFailures",
     "contractName": "contracts/fasset/library/RedemptionFailures.sol",
-    "address": "0xc1d13C8e5754Fb72d5d88145fB9997df6355EC0F"
+    "address": "0x18756E833817A120d99862f9A7738Ba7EED20BBA"
   },
   {
     "name": "RedemptionRequests",
     "contractName": "contracts/fasset/library/RedemptionRequests.sol",
-    "address": "0xD971224cfCeF2e729DEB3723DfD774194606f866"
+    "address": "0x0DcDfbb64469D9032ef6A0cE3b1b79753205f848"
   },
   {
     "name": "StateUpdater",
     "contractName": "contracts/fasset/library/StateUpdater.sol",
-    "address": "0x6fDfe05E5Dd8ce6Af3bc71094ce2c7167Bc2A46b"
+    "address": "0x7f9437c0cB7B3C3bC233252895F2CdEDe7Dd8576"
   },
   {
     "name": "UnderlyingBalance",
     "contractName": "contracts/fasset/library/UnderlyingBalance.sol",
-    "address": "0xc6Adb9d5f85ED138418318181B9d4deCc54bD9ee"
+    "address": "0x8C46dDb8A811C326EC0df7E54b6ff1716e408111"
   },
   {
     "name": "UnderlyingWithdrawalAnnouncements",
     "contractName": "contracts/fasset/library/UnderlyingWithdrawalAnnouncements.sol",
-    "address": "0x213D1b9640Abec6569cBe05adCC54364F3078DD7"
+    "address": "0x68D1ea09b93eedDb2f431f01444B506E5E5a3474"
   },
   {
     "name": "SettingsUpdater",
     "contractName": "contracts/fasset/library/SettingsUpdater.sol",
-    "address": "0x30A7d5e40E893c65483E29B2665f977B0163e7A2"
+    "address": "0xb162f5B61554c65823D6cC26541730AF73d7f935"
   }
 ]
