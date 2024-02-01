@@ -10,9 +10,35 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
     mapping(address => address) private workToMgmtAddress;
     mapping(address => address) private mgmtToWorkAddress;
 
+    mapping(address => string) private agentName;
+    mapping(address => string) private agentDescription;
+    mapping(address => string) private agentIconUrl;
+
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, bool _supportRevoke)
         Whitelist(_governanceSettings, _initialGovernance, _supportRevoke)
     {
+    }
+
+    /**
+     * Add agent to the whitelist and set data for agent presentation.
+     * If the agent is already whitelisted, only updates agent presentation data.
+     * @param _managementAddress the agent owner's address
+     * @param _name agent owner's name
+     * @param _description agent owner's description
+     * @param _iconUrl url of the agent owner's icon image; governance should check it is in correct format
+     *      and size and it is on a server where it cannot change or be deleted
+     */
+    function whitelistAndDescribeAgent(
+        address _managementAddress,
+        string memory _name,
+        string memory _description,
+        string memory _iconUrl
+    )
+        external
+        onlyImmediateGovernance
+    {
+        _addAddressToWhitelist(_managementAddress);
+        _setAgentData(_managementAddress, _name, _description, _iconUrl);
     }
 
     /**
@@ -42,6 +68,39 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
     }
 
     /**
+     * Return agent owner's name.
+     * @param _managementAddress agent owner's management address
+     */
+    function getAgentName(address _managementAddress)
+        external view override
+        returns (string memory)
+    {
+        return agentName[_managementAddress];
+    }
+
+    /**
+     * Return agent owner's decription.
+     * @param _managementAddress agent owner's management address
+     */
+    function getAgentDescription(address _managementAddress)
+        external view override
+        returns (string memory)
+    {
+        return agentDescription[_managementAddress];
+    }
+
+    /**
+     * Return url of the agent owner's icon.
+     * @param _managementAddress agent owner's management address
+     */
+    function getAgentIconUrl(address _managementAddress)
+        external view override
+        returns (string memory)
+    {
+        return agentIconUrl[_managementAddress];
+    }
+
+    /**
      * Get the (unique) work address for the given management address.
      */
     function getWorkAddress(address _managementAddress)
@@ -61,6 +120,17 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
         return workToMgmtAddress[_workAddress];
     }
 
+    function _setAgentData(
+        address _managementAddress,
+        string memory _name,
+        string memory _description,
+        string memory _iconUrl
+    ) private {
+        agentName[_managementAddress] = _name;
+        agentDescription[_managementAddress] = _description;
+        agentIconUrl[_managementAddress] = _iconUrl;
+        emit AgentDataChanged(_managementAddress, _name, _description, _iconUrl);
+    }
 
     /**
      * Implementation of ERC-165 interface.

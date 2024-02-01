@@ -1,4 +1,4 @@
-import { constants, expectRevert } from "@openzeppelin/test-helpers";
+import { constants, expectEvent, expectRevert } from "@openzeppelin/test-helpers";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
 import { IERC165Contract, WhitelistInstance } from "../../../../typechain-truffle";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
@@ -46,12 +46,22 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
 
         it('should add addresses to the whitelist', async function () {
             let res = await whitelist.addAddressesToWhitelist(whitelistedAddresses, {from: governance});
+            expectEvent(res, "Whitelisted");
             const isWhitelisted0 = await whitelist.isWhitelisted(whitelistedAddresses[0]);
             const isWhitelisted1 = await whitelist.isWhitelisted(whitelistedAddresses[1]);
 
             assert.equal(isWhitelisted0, true);
             assert.equal(isWhitelisted1, true);
-          });
+        });
+
+        it('should not add addresses to the whitelist twice', async function () {
+            let res = await whitelist.addAddressesToWhitelist(whitelistedAddresses, { from: governance });
+            expectEvent(res, "Whitelisted");
+            let res2 = await whitelist.addAddressesToWhitelist(whitelistedAddresses, { from: governance });
+            expectEvent.notEmitted(res2, "Whitelisted");
+            let res3 = await whitelist.addAddressToWhitelist(whitelistedAddresses[0], { from: governance });
+            expectEvent.notEmitted(res3, "Whitelisted");
+        });
 
         it('should revoke addresses from the whitelist', async function () {
             let res_1 = await whitelist.addAddressToWhitelist(whitelistedAddresses[0], {from: governance});
@@ -66,6 +76,20 @@ contract(`Whitelist.sol; ${getTestFile(__filename)}; Whitelist basic tests`, asy
             await waitForTimelock(rev, whitelist, governance);
             const isRevoked = await whitelist.isWhitelisted(whitelistedAddresses[0]);
             assert.equal(isRevoked, false);
+        });
+
+        it('should not revoke addresses from the whitelist twice', async function () {
+            let res = await whitelist.addAddressesToWhitelist(whitelistedAddresses, { from: governance });
+            expectEvent(res, "Whitelisted");
+            let res2w = await whitelist.revokeAddress(whitelistedAddresses[0], { from: governance });
+            let res2 = await waitForTimelock(res2w, whitelist, governance);
+            expectEvent(res2, "WhitelistingRevoked");
+            let res3w = await whitelist.revokeAddress(whitelistedAddresses[0], { from: governance });
+            let res3 = await waitForTimelock(res3w, whitelist, governance);
+            expectEvent.notEmitted(res3, "WhitelistingRevoked");
+            let res4w = await whitelist.revokeAddress(accounts[5], { from: governance });
+            let res4 = await waitForTimelock(res4w, whitelist, governance);
+            expectEvent.notEmitted(res4, "WhitelistingRevoked");
         });
 
         it('should not revoke address from the whitelist if revoke is not supported', async function () {

@@ -1,4 +1,4 @@
-import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
+import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
@@ -99,33 +99,6 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     });
 
     describe("whitelist functions", () => {
-        it("should not set owner work address when not whitelisted", async () => {
-            chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const ownerWorkAddress = accounts[21];
-            const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
-            await expectRevert(res, "agent not whitelisted");
-        });
-
-        it("should set owner work address after whitelisting", async () => {
-            chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const ownerWorkAddress = accounts[21];
-            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner1], {from: governance});
-            await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
-            const res = await agentOwnerRegistry.isWhitelisted(agentOwner1);
-            assert.equal(res,true);
-        });
-
-        it("should not allow setting work address if work address is set on another agent owner", async () => {
-            chain.mint(underlyingAgent1, toBNExp(100, 18));
-            const ownerWorkAddress = accounts[21];
-            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner1], {from: governance});
-            await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
-
-            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner2], {from: governance});
-            const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner2 });
-            await expectRevert(res, "work address in use");
-        });
-
         it("should not create agent from work address after revoking management address", async () => {
             chain.mint(underlyingAgent1, toBNExp(100, 18));
             const ownerWorkAddress = accounts[21];
@@ -154,6 +127,8 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const res = assetManager.proveUnderlyingAddressEOA(proof, { from: agentOwner1 });
             await expectRevert(res, "agent not whitelisted");
         });
+
+
     });
 
     describe("setting work address", () => {
@@ -180,6 +155,33 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             assert.equal(info3.ownerWorkAddress, constants.ZERO_ADDRESS);
         });
 
+        it("should not set owner work address when not whitelisted", async () => {
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            const ownerWorkAddress = accounts[21];
+            const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
+            await expectRevert(res, "agent not whitelisted");
+        });
+
+        it("should set owner work address after whitelisting", async () => {
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            const ownerWorkAddress = accounts[21];
+            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner1], { from: governance });
+            await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
+            const res = await agentOwnerRegistry.isWhitelisted(agentOwner1);
+            assert.equal(res, true);
+        });
+
+        it("should not allow setting work address if work address is set on another agent owner", async () => {
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            const ownerWorkAddress = accounts[21];
+            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner1], { from: governance });
+            await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
+
+            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner2], { from: governance });
+            const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner2 });
+            await expectRevert(res, "work address in use");
+        });
+
         it("checking agent vault owner with work address should work", async () => {
             await agentOwnerRegistry.addAddressToWhitelist(agentOwner1, { from: governance });
             // create agent
@@ -189,8 +191,70 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             await agentOwnerRegistry.setWorkAddress(workAddress, { from: agentOwner1 });
             assert.equal(await assetManager.isAgentVaultOwner(agentVault.address, workAddress), true);
         });
+
+        it("should not set owner work address when not whitelisted", async () => {
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            const ownerWorkAddress = accounts[21];
+            const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
+            await expectRevert(res, "agent not whitelisted");
+        });
+
+        it("should set owner work address after whitelisting", async () => {
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            const ownerWorkAddress = accounts[21];
+            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner1], { from: governance });
+            await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
+            const res = await agentOwnerRegistry.isWhitelisted(agentOwner1);
+            assert.equal(res, true);
+        });
+
+        it("should not allow setting work address if work address is set on another agent owner", async () => {
+            chain.mint(underlyingAgent1, toBNExp(100, 18));
+            const ownerWorkAddress = accounts[21];
+            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner1], { from: governance });
+            await agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner1 });
+
+            await agentOwnerRegistry.addAddressesToWhitelist([agentOwner2], { from: governance });
+            const res = agentOwnerRegistry.setWorkAddress(ownerWorkAddress, { from: agentOwner2 });
+            await expectRevert(res, "work address in use");
+        });
     });
 
+    describe("Agent owner data", () => {
+        it("should set owner data with whitelisting", async () => {
+            const name = "Agent 1";
+            const description = "This is first agent";
+            const iconUrl = "https://some.address/icon.jpg";
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: governance });
+            expectEvent(res, "Whitelisted", { value: agentOwner1 });
+            expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl });
+            assert.equal(await agentOwnerRegistry.isWhitelisted(agentOwner1), true);
+            assert.equal(await agentOwnerRegistry.getAgentName(agentOwner1), name);
+            assert.equal(await agentOwnerRegistry.getAgentDescription(agentOwner1), description);
+            assert.equal(await agentOwnerRegistry.getAgentIconUrl(agentOwner1), iconUrl);
+        });
+
+        it("should set owner data for already whitelisted agent", async () => {
+            const name = "Agent 1";
+            const description = "This is first agent";
+            const iconUrl = "https://some.address/icon.jpg";
+            await agentOwnerRegistry.addAddressToWhitelist(agentOwner1, { from: governance });
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: governance });
+            expectEvent.notEmitted(res, "Whitelisted");
+            expectEvent(res, "AgentDataChanged", { managementAddress: agentOwner1, name, description, iconUrl });
+            assert.equal(await agentOwnerRegistry.isWhitelisted(agentOwner1), true);
+            assert.equal(await agentOwnerRegistry.getAgentName(agentOwner1), name);
+            assert.equal(await agentOwnerRegistry.getAgentDescription(agentOwner1), description);
+            assert.equal(await agentOwnerRegistry.getAgentIconUrl(agentOwner1), iconUrl);
+        });
+
+        it("only governance can set agent data", async () => {
+            const name = "Agent 1";
+            const description = "This is first agent";
+            const iconUrl = "https://some.address/icon.jpg";
+            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: accounts[1] }), "only governance");
+        });
+    });
 
     describe("ERC-165 interface identification for Agent Vault", () => {
         it("should properly respond to supportsInterface", async () => {

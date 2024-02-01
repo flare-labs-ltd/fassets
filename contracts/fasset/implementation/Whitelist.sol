@@ -50,13 +50,15 @@ contract Whitelist is IWhitelist, Governed, IERC165 {
         return whitelist[_address] || allowAll;
     }
 
-    function _addAddressToWhitelist(address _address) private {
+    function _addAddressToWhitelist(address _address) internal {
         require(_address != address(0), "address zero");
+        if (whitelist[_address]) return;
         whitelist[_address] = true;
         emit Whitelisted(_address);
     }
 
-    function _removeAddressFromWhitelist(address _address) private {
+    function _removeAddressFromWhitelist(address _address) internal {
+        if (!whitelist[_address]) return;
         delete whitelist[_address];
         emit WhitelistingRevoked(_address);
     }
