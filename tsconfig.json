@@ -10,6 +10,7 @@
         "forceConsistentCasingInFileNames": true,
         "isolatedModules": true,
         "skipLibCheck": true,
+        "newLine": "lf",
         "outDir": "build",
         "typeRoots": [
             "test/types",

@@ -22,7 +22,7 @@ cd "$SUBPROJECT_DIR"
 yarn
 cd - > /dev/null
 
-if [[ "$SUBPROJECT_DIR" =~ flare-smart-contracts ]]; then
+if [ -f "$SUBPROJECT_DIR/hardhatSetup.config.ts" ]; then
     HHCONFIG="--config hardhatSetup.config.ts"
 fi
 
