@@ -2,7 +2,7 @@
 pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "../interface/ICollateralPoolTokenFactory.sol";
+import "../interfaces/ICollateralPoolTokenFactory.sol";
 import "./CollateralPoolToken.sol";
 
 

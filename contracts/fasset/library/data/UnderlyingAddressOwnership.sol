@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../../../stateConnector/interface/ISCProofVerifier.sol";
+import "../../../stateConnector/interfaces/ISCProofVerifier.sol";
 import "./PaymentConfirmations.sol";
 import "./PaymentReference.sol";
 

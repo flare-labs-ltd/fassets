@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../interface/ILiquidationStrategy.sol";
+import "../interfaces/ILiquidationStrategy.sol";
 import "../../utils/lib/DynamicLibrary.sol";
 import "./data/AssetManagerState.sol";
 

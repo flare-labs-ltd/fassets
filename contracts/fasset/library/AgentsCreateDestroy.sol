@@ -3,11 +3,11 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../interface/IIAssetManager.sol";
-import "../interface/ICollateralPoolFactory.sol";
-import "../interface/ICollateralPoolTokenFactory.sol";
-import "../interface/IAgentVaultFactory.sol";
-import "../interface/IIAssetManagerController.sol";
+import "../interfaces/IIAssetManager.sol";
+import "../interfaces/ICollateralPoolFactory.sol";
+import "../interfaces/ICollateralPoolTokenFactory.sol";
+import "../interfaces/IAgentVaultFactory.sol";
+import "../interfaces/IIAssetManagerController.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";

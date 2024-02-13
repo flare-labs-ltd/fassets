@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@flarenetwork/state-connector-protocol/contracts/interface/external/IMerkleRootStorage.sol";
-import "../interface/ISCProofVerifier.sol";
+import "../interfaces/ISCProofVerifier.sol";
 
 
 contract SCProofVerifier is ISCProofVerifier {

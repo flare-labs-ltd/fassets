@@ -9,12 +9,12 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/Transfers.sol";
-import "../interface/IWNat.sol";
-import "../interface/IIAssetManager.sol";
-import "../interface/IIAgentVault.sol";
-import "../interface/IICollateralPool.sol";
-import "../interface/IFAsset.sol";
-import "../interface/IICollateralPoolToken.sol";
+import "../interfaces/IWNat.sol";
+import "../interfaces/IIAssetManager.sol";
+import "../interfaces/IIAgentVault.sol";
+import "../interfaces/IICollateralPool.sol";
+import "../interfaces/IFAsset.sol";
+import "../interfaces/IICollateralPoolToken.sol";
 
 
 //slither-disable reentrancy    // all possible reentrancies guarded by nonReentrant

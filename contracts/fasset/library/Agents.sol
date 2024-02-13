@@ -4,7 +4,7 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../utils/lib/SafeMath64.sol";
-import "../interface/IIAgentVault.sol";
+import "../interfaces/IIAgentVault.sol";
 import "./data/AssetManagerState.sol";
 import "./data/Collateral.sol";
 import "./AMEvents.sol";

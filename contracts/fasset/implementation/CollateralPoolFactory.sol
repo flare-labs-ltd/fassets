@@ -3,8 +3,8 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../interface/IFAsset.sol";
-import "../interface/ICollateralPoolFactory.sol";
+import "../interfaces/IFAsset.sol";
+import "../interfaces/ICollateralPoolFactory.sol";
 import "./CollateralPool.sol";
 
 

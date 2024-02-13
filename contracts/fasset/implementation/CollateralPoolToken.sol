@@ -4,8 +4,8 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../interface/IICollateralPoolToken.sol";
-import "../interface/IICollateralPool.sol";
+import "../interfaces/IICollateralPoolToken.sol";
+import "../interfaces/IICollateralPool.sol";
 
 
 contract CollateralPoolToken is IICollateralPoolToken, ERC20 {

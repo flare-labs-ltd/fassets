@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
-import "../stateConnector/interface/ISCProofVerifier.sol";
+import "../stateConnector/interfaces/ISCProofVerifier.sol";
 import "./data/AssetManagerSettings.sol";
 import "./data/CollateralType.sol";
 import "./data/AgentInfo.sol";

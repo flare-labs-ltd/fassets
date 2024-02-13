@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "../interface/IWNat.sol";
-import "../interface/IIAgentVault.sol";
-import "../interface/IICollateralPool.sol";
+import "../interfaces/IWNat.sol";
+import "../interfaces/IIAgentVault.sol";
+import "../interfaces/IICollateralPool.sol";
 import "./ERC20Mock.sol";
 
 contract AssetManagerMock {

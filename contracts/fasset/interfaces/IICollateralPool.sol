@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../userInterfaces/ICollateralPool.sol";
-import "../interface/IIAssetManager.sol";
+import "../interfaces/IIAssetManager.sol";
 import "./IWNat.sol";
 
 /**

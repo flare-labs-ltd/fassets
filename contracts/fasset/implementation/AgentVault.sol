@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../../utils/lib/Transfers.sol";
-import "../interface/IICollateralPool.sol";
-import "../interface/IWNat.sol";
-import "../interface/IIAgentVault.sol";
-import "../interface/IIAssetManager.sol";
+import "../interfaces/IICollateralPool.sol";
+import "../interfaces/IWNat.sol";
+import "../interfaces/IIAgentVault.sol";
+import "../interfaces/IIAssetManager.sol";
 
 
 contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {

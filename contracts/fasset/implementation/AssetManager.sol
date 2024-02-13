@@ -3,10 +3,10 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "../interface/IIAgentVault.sol";
-import "../interface/IIAssetManager.sol";
-import "../../stateConnector/interface/ISCProofVerifier.sol";
-import "../interface/IFAsset.sol";
+import "../interfaces/IIAgentVault.sol";
+import "../interfaces/IIAssetManager.sol";
+import "../../stateConnector/interfaces/ISCProofVerifier.sol";
+import "../interfaces/IFAsset.sol";
 import "../library/data/AssetManagerState.sol";
 import "../library/Globals.sol";
 import "../library/LiquidationStrategy.sol";

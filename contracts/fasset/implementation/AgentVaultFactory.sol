@@ -3,7 +3,7 @@ pragma solidity 0.8.20;
 
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "../interface/IAgentVaultFactory.sol";
+import "../interfaces/IAgentVaultFactory.sol";
 import "./AgentVault.sol";
 
 

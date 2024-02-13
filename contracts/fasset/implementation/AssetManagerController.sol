@@ -3,8 +3,8 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdater.sol";
-import "../interface/IWNat.sol";
-import "../interface/IIAssetManager.sol";
+import "../interfaces/IWNat.sol";
+import "../interfaces/IIAssetManager.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
 import "../../governance/implementation/Governed.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
