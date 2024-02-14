@@ -8,32 +8,12 @@ pragma solidity ^0.8.0;
 * Implementation of a diamond.
 /******************************************************************************/
 
-import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { LibDiamond } from "../library/LibDiamond.sol";
-import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
-import { IDiamondLoupe } from  "../interfaces/IDiamondLoupe.sol";
 
 // When no function exists for function called
 error FunctionNotFound(bytes4 _functionSelector);
 
-// This is used in diamond constructor
-// more arguments are added to this struct
-// this avoids stack too deep errors
-struct DiamondArgs {
-    address owner;
-    address init;
-    bytes initCalldata;
-}
-
-contract Diamond {
-
-    constructor(IDiamondCut.FacetCut[] memory _diamondCut, DiamondArgs memory _args) payable {
-        LibDiamond.setContractOwner(_args.owner);
-        LibDiamond.diamondCut(_diamondCut, _args.init, _args.initCalldata);
-
-        // Code can be added here to perform actions and set state variables.
-    }
-
+abstract contract Diamond {
     // Find facet for function that is called and execute the
     // function if a facet is found and return any value.
     fallback() external payable {
