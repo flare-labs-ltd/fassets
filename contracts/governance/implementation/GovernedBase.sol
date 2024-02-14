@@ -12,6 +12,7 @@ import "flare-smart-contracts/contracts/userInterfaces/IGovernanceSettings.sol";
  *   (for example those pre-defined in genesis).
  * @dev This version is compatible with both Flare (where governance settings is in genesis at the address
  *   0x1000000000000000000000000000000000000007) and Songbird (where governance settings is a deployed contract).
+ * @dev It also uses diamond storage for state, so it is safer tp use in diamond structures or proxies.
  **/
 abstract contract GovernedBase {
     struct TimelockedCall {
@@ -19,17 +20,16 @@ abstract contract GovernedBase {
         bytes encodedCall;
     }
 
-    IGovernanceSettings public governanceSettings;
+    struct GovernedState {
+        IGovernanceSettings governanceSettings;
+        bool initialised;
+        bool productionMode;
+        bool executing;
+        address initialGovernance;
+        mapping(bytes4 => TimelockedCall) timelockedCalls;
+    }
 
-    bool private initialised;
-
-    bool public productionMode;
-
-    bool private executing;
-
-    address private initialGovernance;
-
-    mapping(bytes4 => TimelockedCall) public timelockedCalls;
+    bytes32 private constant GOVERNED_STATE = keccak256("fasset.GovernedBase.GovernedState");
 
     event GovernanceCallTimelocked(bytes4 selector, uint256 allowedAfterTimestamp, bytes encodedCall);
     event TimelockedGovernanceCallExecuted(bytes4 selector, uint256 timestamp);
@@ -39,7 +39,8 @@ abstract contract GovernedBase {
     event GovernedProductionModeEntered(address governanceSettings);
 
     modifier onlyGovernance {
-        if (executing || !productionMode) {
+        GovernedState storage state = _getState();
+        if (state.executing || !state.productionMode) {
             _beforeExecute();
             _;
         } else {
@@ -61,16 +62,17 @@ abstract contract GovernedBase {
      * @param _selector The method selector (only one timelocked call per method is stored).
      */
     function executeGovernanceCall(bytes4 _selector) external {
+        GovernedState storage state = _getState();
         require(isExecutor(msg.sender), "only executor");
-        TimelockedCall storage call = timelockedCalls[_selector];
+        TimelockedCall storage call = state.timelockedCalls[_selector];
         require(call.allowedAfterTimestamp != 0, "timelock: invalid selector");
         require(block.timestamp >= call.allowedAfterTimestamp, "timelock: not allowed yet");
         bytes memory encodedCall = call.encodedCall;
-        delete timelockedCalls[_selector];
-        executing = true;
+        delete state.timelockedCalls[_selector];
+        state.executing = true;
         //solhint-disable-next-line avoid-low-level-calls
         (bool success,) = address(this).call(encodedCall);
-        executing = false;
+        state.executing = false;
         emit TimelockedGovernanceCallExecuted(_selector, block.timestamp);
         _passReturnOrRevert(success);
     }
@@ -81,9 +83,10 @@ abstract contract GovernedBase {
      * @param _selector The method selector.
      */
     function cancelGovernanceCall(bytes4 _selector) external onlyImmediateGovernance {
-        require(timelockedCalls[_selector].allowedAfterTimestamp != 0, "timelock: invalid selector");
+        GovernedState storage state = _getState();
+        require(state.timelockedCalls[_selector].allowedAfterTimestamp != 0, "timelock: invalid selector");
         emit TimelockedGovernanceCallCanceled(_selector, block.timestamp);
-        delete timelockedCalls[_selector];
+        delete state.timelockedCalls[_selector];
     }
 
     /**
@@ -92,46 +95,65 @@ abstract contract GovernedBase {
      * governanceSettings.getGovernanceAddress().
      */
     function switchToProductionMode() external {
+        GovernedState storage state = _getState();
         _checkOnlyGovernance();
-        require(!productionMode, "already in production mode");
-        initialGovernance = address(0);
-        productionMode = true;
-        emit GovernedProductionModeEntered(address(governanceSettings));
+        require(!state.productionMode, "already in production mode");
+        state.initialGovernance = address(0);
+        state.productionMode = true;
+        emit GovernedProductionModeEntered(address(state.governanceSettings));
     }
 
     /**
      * @notice Initialize the governance address if not first initialized.
      */
     function initialise(IGovernanceSettings _governanceSettings, address _initialGovernance) public virtual {
-        require(initialised == false, "initialised != false");
+        GovernedState storage state = _getState();
+        require(state.initialised == false, "initialised != false");
         require(address(_governanceSettings) != address(0), "governance settings zero");
         require(_initialGovernance != address(0), "_governance zero");
-        initialised = true;
-        governanceSettings = _governanceSettings;
-        initialGovernance = _initialGovernance;
+        state.initialised = true;
+        state.governanceSettings = _governanceSettings;
+        state.initialGovernance = _initialGovernance;
         emit GovernanceInitialised(_initialGovernance);
+    }
+
+    /**
+     * Returns the governance settings contract address.
+     */
+    function governanceSettings() public view returns (IGovernanceSettings) {
+        return _getState().governanceSettings;
+    }
+
+    /**
+     * True after switching to production mode (see `switchToProductionMode()`).
+     */
+    function productionMode() public view returns (bool) {
+        return _getState().productionMode;
     }
 
     /**
      * Returns the current effective governance address.
      */
     function governance() public view returns (address) {
-        return productionMode ? governanceSettings.getGovernanceAddress() : initialGovernance;
+        GovernedState storage state = _getState();
+        return state.productionMode ? state.governanceSettings.getGovernanceAddress() : state.initialGovernance;
     }
 
     /**
      * Internal function to check if an address is executor.
      */
     function isExecutor(address _address) public view returns (bool) {
-        return initialised && governanceSettings.isExecutor(_address);
+        GovernedState storage state = _getState();
+        return state.initialised && state.governanceSettings.isExecutor(_address);
     }
 
     function _beforeExecute() private {
-        if (executing) {
+        GovernedState storage state = _getState();
+        if (state.executing) {
             // can only be run from executeGovernanceCall(), where we check that only executor can call
             // make sure nothing else gets executed, even in case of reentrancy
             assert(msg.sender == address(this));
-            executing = false;
+            state.executing = false;
         } else {
             // must be called with: productionMode=false
             // must check governance in this case
@@ -140,15 +162,16 @@ abstract contract GovernedBase {
     }
 
     function _recordTimelockedCall(bytes calldata _data) private {
+        GovernedState storage state = _getState();
         _checkOnlyGovernance();
         bytes4 selector;
         //solhint-disable-next-line no-inline-assembly
         assembly {
             selector := calldataload(_data.offset)
         }
-        uint256 timelock = governanceSettings.getTimelock();
+        uint256 timelock = state.governanceSettings.getTimelock();
         uint256 allowedAt = block.timestamp + timelock;
-        timelockedCalls[selector] = TimelockedCall({
+        state.timelockedCalls[selector] = TimelockedCall({
             allowedAfterTimestamp: allowedAt,
             encodedCall: _data
         });
@@ -157,6 +180,14 @@ abstract contract GovernedBase {
 
     function _checkOnlyGovernance() private view {
         require(msg.sender == governance(), "only governance");
+    }
+
+    function _getState() private pure returns (GovernedState storage _state) {
+        bytes32 position = GOVERNED_STATE;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            _state.slot := position
+        }
     }
 
     function _passReturnOrRevert(bool _success) private pure {
