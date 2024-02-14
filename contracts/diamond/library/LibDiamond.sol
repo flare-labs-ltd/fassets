@@ -51,25 +51,6 @@ library LibDiamond {
         }
     }
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
-    function setContractOwner(address _newOwner) internal {
-        DiamondStorage storage ds = diamondStorage();
-        address previousOwner = ds.contractOwner;
-        ds.contractOwner = _newOwner;
-        emit OwnershipTransferred(previousOwner, _newOwner);
-    }
-
-    function contractOwner() internal view returns (address contractOwner_) {
-        contractOwner_ = diamondStorage().contractOwner;
-    }
-
-    function enforceIsContractOwner() internal view {
-        if(msg.sender != diamondStorage().contractOwner) {
-            revert NotContractOwner(msg.sender, diamondStorage().contractOwner);
-        }        
-    }
-
     event DiamondCut(IDiamondCut.FacetCut[] _diamondCut, address _init, bytes _calldata);
 
     // Internal function version of diamondCut

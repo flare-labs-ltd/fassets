@@ -44,7 +44,17 @@ abstract contract GovernedBase {
             _beforeExecute();
             _;
         } else {
-            _recordTimelockedCall(msg.data);
+            _recordTimelockedCall(msg.data, 0);
+        }
+    }
+
+    modifier onlyGovernanceWithTimelockAtLeast(uint256 _minimumTimelock) {
+        GovernedState storage state = _getState();
+        if (state.executing || !state.productionMode) {
+            _beforeExecute();
+            _;
+        } else {
+            _recordTimelockedCall(msg.data, _minimumTimelock);
         }
     }
 
@@ -161,7 +171,7 @@ abstract contract GovernedBase {
         }
     }
 
-    function _recordTimelockedCall(bytes calldata _data) private {
+    function _recordTimelockedCall(bytes calldata _data, uint256 _minimumTimelock) private {
         GovernedState storage state = _getState();
         _checkOnlyGovernance();
         bytes4 selector;
@@ -170,6 +180,9 @@ abstract contract GovernedBase {
             selector := calldataload(_data.offset)
         }
         uint256 timelock = state.governanceSettings.getTimelock();
+        if (timelock < _minimumTimelock) {
+            timelock = _minimumTimelock;
+        }
         uint256 allowedAt = block.timestamp + timelock;
         state.timelockedCalls[selector] = TimelockedCall({
             allowedAfterTimestamp: allowedAt,
