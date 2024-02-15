@@ -40,7 +40,6 @@
     "slither-show-stderr": "yarn install-slither; rm -f ./slither.json 2> /dev/null; slither . --json=./slither.json || true; node node_modules/flare-smart-contracts/scripts/slither-parse.js ./slither.json",
     "flatten-flare-sc": "yarn flatten-dependencies node_modules/flare-smart-contracts scripts/flatten-files.txt flattened/FlareSmartContracts.sol scripts/flatten-extra-imports.txt",
     "flatten-dependencies": "env bash scripts/flatten-dependencies.sh",
-    "generate-attester-code": "env bash scripts/generate-attester-code.sh",
     "ts-compile-watch": "tsc --watch --noEmit",
     "eslint": "eslint \"lib/**/*.ts\" \"test/**/*.ts\"",
     "generate-json-schema": "typescript-json-schema --noExtraProps --required --strictNullChecks",
