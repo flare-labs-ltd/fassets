@@ -23,7 +23,7 @@ library AvailableAgents {
     function makeAvailable(
         address _agentVault
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -44,7 +44,7 @@ library AvailableAgents {
     function announceExit(
         address _agentVault
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
         returns (uint256)
     {
@@ -63,7 +63,7 @@ library AvailableAgents {
     function exit(
         address _agentVault
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -89,7 +89,7 @@ library AvailableAgents {
         uint256 _start,
         uint256 _end
     )
-        external view
+        internal view
         returns (address[] memory _agents, uint256 _totalLength)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -106,7 +106,7 @@ library AvailableAgents {
         uint256 _start,
         uint256 _end
     )
-        external view
+        internal view
         returns (AvailableAgentInfo.Data[] memory _agents, uint256 _totalLength)
     {
         AssetManagerState.State storage state = AssetManagerState.get();

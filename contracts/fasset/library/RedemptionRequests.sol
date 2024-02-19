@@ -33,7 +33,7 @@ library RedemptionRequests {
         string memory _redeemerUnderlyingAddress,
         address payable _executor
     )
-        external
+        internal
         returns (uint256)
     {
         uint256 maxRedeemedTickets = AssetManagerState.getSettings().maxRedeemedTickets;
@@ -73,7 +73,7 @@ library RedemptionRequests {
         string memory _receiverUnderlyingAddress,
         address payable _executor
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireCollateralPool(agent);
@@ -94,7 +94,7 @@ library RedemptionRequests {
         address _redeemer,
         uint256 _amountUBA
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireCollateralPool(agent);
@@ -116,7 +116,7 @@ library RedemptionRequests {
         address _agentVault,
         uint256 _amountUBA
     )
-        external
+        internal
         returns (uint256)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -137,7 +137,7 @@ library RedemptionRequests {
         AddressValidity.Proof calldata _proof,
         uint64 _redemptionRequestId
     )
-        external
+        internal
     {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
@@ -164,7 +164,7 @@ library RedemptionRequests {
     function maxRedemptionFromAgent(
         address _agentVault
     )
-        external view
+        internal view
         returns (uint256)
     {
         Agent.State storage agent = Agent.get(_agentVault);

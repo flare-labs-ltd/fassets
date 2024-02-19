@@ -24,7 +24,7 @@ library UnderlyingBalance {
         Payment.Proof calldata _payment,
         address _agentVault
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireAgentVaultOwner(_agentVault);

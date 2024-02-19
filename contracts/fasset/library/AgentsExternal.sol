@@ -26,7 +26,7 @@ library AgentsExternal {
     function convertDustToTicket(
         address _agentVault
     )
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
@@ -43,7 +43,7 @@ library AgentsExternal {
         address _agentVault,
         IERC20 _token
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         require(msg.sender == _agentVault || msg.sender == address(agent.collateralPool),
@@ -60,7 +60,7 @@ library AgentsExternal {
         address _agentVault,
         uint256 _amountWei
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
         returns (uint256)
     {
@@ -100,7 +100,7 @@ library AgentsExternal {
         address _agentVault,
         uint256 _amountWei
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Collateral.Kind kind;
@@ -139,7 +139,7 @@ library AgentsExternal {
     function upgradeWNatContract(
         address _agentVault
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -157,7 +157,7 @@ library AgentsExternal {
         address _agentVault,
         IERC20 _token
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -171,11 +171,39 @@ library AgentsExternal {
         emit AMEvents.AgentCollateralTypeChanged(_agentVault, uint8(CollateralType.Class.VAULT), address(_token));
     }
 
+    function buybackAgentCollateral(
+        address _agentVault
+    )
+        internal
+        onlyAgentVaultOwner(_agentVault)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        Agent.State storage agent = Agent.get(_agentVault);
+        require(Globals.getFAsset().terminated(), "f-asset not terminated");
+        // Types of various collateral types:
+        // - reservedAMG should be 0, since asset manager had to be paused for a month, so all collateral
+        //   reservation requests must have been minted or defaulted by now.
+        //   However, it may be nonzero due to some forgotten payment proof, so we burn and clear it.
+        // - redeemingAMG and poolRedeemingAMG corresponds to redemptions where f-assets were already burned,
+        //   so the redemption can finish normally even if f-asset is now terminated
+        //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
+        // - mintedAMG must be burned and cleared
+        uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
+        CollateralTypeInt.Data storage collateral = agent.getVaultCollateral();
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
+        uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
+            .mulBips(state.settings.buybackCollateralFactorBIPS);
+        agent.burnVaultCollateral(buybackCollateral);
+        agent.mintedAMG = 0;
+        state.totalReservedCollateralAMG -= agent.reservedAMG;
+        agent.reservedAMG = 0;
+    }
+
     function getAllAgents(
         uint256 _start,
         uint256 _end
     )
-        external view
+        internal view
         returns (address[] memory _agents, uint256 _totalLength)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -192,7 +220,7 @@ library AgentsExternal {
         address _agentVault,
         IERC20 _token
     )
-        external view
+        internal view
         returns (bool)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -200,7 +228,7 @@ library AgentsExternal {
     }
 
     function getFAssetsBackedByPool(address _agentVault)
-        external view
+        internal view
         returns (uint256)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -208,7 +236,7 @@ library AgentsExternal {
     }
 
     function getAgentVaultOwner(address _agentVault)
-        external view
+        internal view
         returns (address _ownerManagementAddress)
     {
         return Agent.get(_agentVault).ownerManagementAddress;

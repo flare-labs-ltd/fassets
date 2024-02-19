@@ -23,7 +23,7 @@ library Minting {
         Payment.Proof calldata _payment,
         uint64 _crtId
     )
-        external
+        internal
     {
         CollateralReservation.Data storage crt = CollateralReservations.getCollateralReservation(_crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
@@ -65,7 +65,7 @@ library Minting {
         address _agentVault,
         uint64 _lots
     )
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);

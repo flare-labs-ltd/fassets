@@ -23,7 +23,7 @@ library Challenges {
         BalanceDecreasingTransaction.Proof calldata _payment,
         address _agentVault
     )
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
@@ -75,7 +75,7 @@ library Challenges {
         BalanceDecreasingTransaction.Proof calldata _payment2,
         address _agentVault
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
@@ -106,7 +106,7 @@ library Challenges {
         BalanceDecreasingTransaction.Proof[] calldata _payments,
         address _agentVault
     )
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);

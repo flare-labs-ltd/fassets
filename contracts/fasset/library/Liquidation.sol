@@ -34,7 +34,7 @@ library Liquidation {
     function startLiquidation(
         address _agentVault
     )
-        external
+        internal
         returns (Agent.LiquidationPhase _liquidationPhase, uint256 _liquidationStartTs)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -57,7 +57,7 @@ library Liquidation {
         address _agentVault,
         uint256 _amountUBA
     )
-        external
+        internal
         returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidC1, uint256 _amountPaidPool)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -92,7 +92,7 @@ library Liquidation {
     function endLiquidation(
         address _agentVault
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         endLiquidationIfHealthy(agent);

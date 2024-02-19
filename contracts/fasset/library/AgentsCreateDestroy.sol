@@ -36,7 +36,7 @@ library AgentsCreateDestroy {
     function claimAddressWithEOAProof(
         Payment.Proof calldata _payment
     )
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         TransactionAttestation.verifyPaymentSuccess(_payment);
@@ -60,7 +60,7 @@ library AgentsCreateDestroy {
         AddressValidity.Proof calldata _addressProof,
         AgentSettings.Data calldata _settings
     )
-        external
+        internal
         returns (address)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -120,7 +120,7 @@ library AgentsCreateDestroy {
     function announceDestroy(
         address _agentVault
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
         returns (uint256)
     {
@@ -143,7 +143,7 @@ library AgentsCreateDestroy {
         address _agentVault,
         address payable _recipient
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -170,34 +170,6 @@ library AgentsCreateDestroy {
         Agent.deleteStorage(agent);
         // notify
         emit AMEvents.AgentDestroyed(_agentVault);
-    }
-
-    function buybackAgentCollateral(
-        address _agentVault
-    )
-        external
-        onlyAgentVaultOwner(_agentVault)
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        Agent.State storage agent = Agent.get(_agentVault);
-        require(Globals.getFAsset().terminated(), "f-asset not terminated");
-        // Types of various collateral types:
-        // - reservedAMG should be 0, since asset manager had to be paused for a month, so all collateral
-        //   reservation requests must have been minted or defaulted by now.
-        //   However, it may be nonzero due to some forgotten payment proof, so we burn and clear it.
-        // - redeemingAMG and poolRedeemingAMG corresponds to redemptions where f-assets were already burned,
-        //   so the redemption can finish normally even if f-asset is now terminated
-        //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
-        // - mintedAMG must be burned and cleared
-        uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
-        CollateralTypeInt.Data storage collateral = agent.getVaultCollateral();
-        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
-        uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
-            .mulBips(state.settings.buybackCollateralFactorBIPS);
-        agent.burnVaultCollateral(buybackCollateral);
-        agent.mintedAMG = 0;
-        state.totalReservedCollateralAMG -= agent.reservedAMG;
-        agent.reservedAMG = 0;
     }
 
     function _createCollateralPool(

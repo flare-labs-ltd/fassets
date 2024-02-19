@@ -100,7 +100,7 @@ library SettingsUpdater {
     function validateAndSet(
         AssetManagerSettings.Data memory _settings
     )
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         _validateSettings(_settings);
@@ -111,7 +111,7 @@ library SettingsUpdater {
         bytes32 _method,
         bytes calldata _params
     )
-        external
+        internal
     {
         if (_method == UPDATE_CONTRACTS) {
             _updateContracts(_params);

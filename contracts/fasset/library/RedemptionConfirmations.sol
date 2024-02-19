@@ -17,7 +17,7 @@ library RedemptionConfirmations {
         Payment.Proof calldata _payment,
         uint64 _redemptionRequestId
     )
-        external
+        internal
     {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);

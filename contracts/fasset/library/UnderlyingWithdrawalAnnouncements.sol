@@ -17,7 +17,7 @@ library UnderlyingWithdrawalAnnouncements {
     function announceUnderlyingWithdrawal(
         address _agentVault
     )
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agents.requireAgentVaultOwner(_agentVault);
@@ -35,7 +35,7 @@ library UnderlyingWithdrawalAnnouncements {
         Payment.Proof calldata _payment,
         address _agentVault
     )
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         TransactionAttestation.verifyPayment(_payment);
@@ -73,7 +73,7 @@ library UnderlyingWithdrawalAnnouncements {
     function cancelUnderlyingWithdrawal(
         address _agentVault
     )
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agents.requireAgentVaultOwner(_agentVault);

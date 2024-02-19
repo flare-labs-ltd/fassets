@@ -24,7 +24,7 @@ library AgentSettingsUpdater {
         string memory _name,
         uint256 _value
     )
-        external
+        internal
         returns (uint256)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -43,7 +43,7 @@ library AgentSettingsUpdater {
         address _agentVault,
         string memory _name
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireAgentVaultOwner(_agentVault);

@@ -27,7 +27,7 @@ library CollateralReservations {
         uint64 _maxMintingFeeBIPS,
         address payable _executor
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireWhitelistedAgentVaultOwner(agent);
@@ -70,7 +70,7 @@ library CollateralReservations {
         ReferencedPaymentNonexistence.Proof calldata _nonPayment,
         uint64 _crtId
     )
-        external
+        internal
     {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
@@ -103,7 +103,7 @@ library CollateralReservations {
         ConfirmedBlockHeightExists.Proof calldata _proof,
         uint64 _crtId
     )
-        external
+        internal
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
@@ -134,7 +134,7 @@ library CollateralReservations {
     function calculateReservationFee(
         uint64 _lots
     )
-        external view
+        internal view
         returns (uint256)
     {
         AssetManagerState.State storage state = AssetManagerState.get();

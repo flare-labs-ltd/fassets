@@ -24,7 +24,7 @@ library FullAgentInfo {
     function getAgentInfo(
         address _agentVault
     )
-        external view
+        internal view
         returns (AgentInfo.Info memory _info)
     {
         Agent.State storage agent = Agent.get(_agentVault);
