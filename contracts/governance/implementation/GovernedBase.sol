@@ -29,8 +29,6 @@ abstract contract GovernedBase {
         mapping(bytes4 => TimelockedCall) timelockedCalls;
     }
 
-    bytes32 private constant GOVERNED_STATE = keccak256("fasset.GovernedBase.GovernedState");
-
     event GovernanceCallTimelocked(bytes4 selector, uint256 allowedAfterTimestamp, bytes encodedCall);
     event TimelockedGovernanceCallExecuted(bytes4 selector, uint256 timestamp);
     event TimelockedGovernanceCallCanceled(bytes4 selector, uint256 timestamp);
@@ -39,7 +37,7 @@ abstract contract GovernedBase {
     event GovernedProductionModeEntered(address governanceSettings);
 
     modifier onlyGovernance {
-        GovernedState storage state = _getState();
+        GovernedState storage state = _governedState();
         if (state.executing || !state.productionMode) {
             _beforeExecute();
             _;
@@ -49,7 +47,7 @@ abstract contract GovernedBase {
     }
 
     modifier onlyGovernanceWithTimelockAtLeast(uint256 _minimumTimelock) {
-        GovernedState storage state = _getState();
+        GovernedState storage state = _governedState();
         if (state.executing || !state.productionMode) {
             _beforeExecute();
             _;
@@ -72,7 +70,7 @@ abstract contract GovernedBase {
      * @param _selector The method selector (only one timelocked call per method is stored).
      */
     function executeGovernanceCall(bytes4 _selector) external {
-        GovernedState storage state = _getState();
+        GovernedState storage state = _governedState();
         require(isExecutor(msg.sender), "only executor");
         TimelockedCall storage call = state.timelockedCalls[_selector];
         require(call.allowedAfterTimestamp != 0, "timelock: invalid selector");
@@ -93,7 +91,7 @@ abstract contract GovernedBase {
      * @param _selector The method selector.
      */
     function cancelGovernanceCall(bytes4 _selector) external onlyImmediateGovernance {
-        GovernedState storage state = _getState();
+        GovernedState storage state = _governedState();
         require(state.timelockedCalls[_selector].allowedAfterTimestamp != 0, "timelock: invalid selector");
         emit TimelockedGovernanceCallCanceled(_selector, block.timestamp);
         delete state.timelockedCalls[_selector];
@@ -105,7 +103,7 @@ abstract contract GovernedBase {
      * governanceSettings.getGovernanceAddress().
      */
     function switchToProductionMode() external {
-        GovernedState storage state = _getState();
+        GovernedState storage state = _governedState();
         _checkOnlyGovernance();
         require(!state.productionMode, "already in production mode");
         state.initialGovernance = address(0);
@@ -117,7 +115,7 @@ abstract contract GovernedBase {
      * @notice Initialize the governance address if not first initialized.
      */
     function initialise(IGovernanceSettings _governanceSettings, address _initialGovernance) public virtual {
-        GovernedState storage state = _getState();
+        GovernedState storage state = _governedState();
         require(state.initialised == false, "initialised != false");
         require(address(_governanceSettings) != address(0), "governance settings zero");
         require(_initialGovernance != address(0), "_governance zero");
@@ -131,21 +129,21 @@ abstract contract GovernedBase {
      * Returns the governance settings contract address.
      */
     function governanceSettings() public view returns (IGovernanceSettings) {
-        return _getState().governanceSettings;
+        return _governedState().governanceSettings;
     }
 
     /**
      * True after switching to production mode (see `switchToProductionMode()`).
      */
     function productionMode() public view returns (bool) {
-        return _getState().productionMode;
+        return _governedState().productionMode;
     }
 
     /**
      * Returns the current effective governance address.
      */
     function governance() public view returns (address) {
-        GovernedState storage state = _getState();
+        GovernedState storage state = _governedState();
         return state.productionMode ? state.governanceSettings.getGovernanceAddress() : state.initialGovernance;
     }
 
@@ -153,12 +151,12 @@ abstract contract GovernedBase {
      * Internal function to check if an address is executor.
      */
     function isExecutor(address _address) public view returns (bool) {
-        GovernedState storage state = _getState();
+        GovernedState storage state = _governedState();
         return state.initialised && state.governanceSettings.isExecutor(_address);
     }
 
     function _beforeExecute() private {
-        GovernedState storage state = _getState();
+        GovernedState storage state = _governedState();
         if (state.executing) {
             // can only be run from executeGovernanceCall(), where we check that only executor can call
             // make sure nothing else gets executed, even in case of reentrancy
@@ -172,7 +170,7 @@ abstract contract GovernedBase {
     }
 
     function _recordTimelockedCall(bytes calldata _data, uint256 _minimumTimelock) private {
-        GovernedState storage state = _getState();
+        GovernedState storage state = _governedState();
         _checkOnlyGovernance();
         bytes4 selector;
         //solhint-disable-next-line no-inline-assembly
@@ -195,8 +193,8 @@ abstract contract GovernedBase {
         require(msg.sender == governance(), "only governance");
     }
 
-    function _getState() private pure returns (GovernedState storage _state) {
-        bytes32 position = GOVERNED_STATE;
+    function _governedState() private pure returns (GovernedState storage _state) {
+        bytes32 position = keccak256("fasset.GovernedBase.GovernedState");
         // solhint-disable-next-line no-inline-assembly
         assembly {
             _state.slot := position

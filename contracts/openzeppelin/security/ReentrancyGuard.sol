@@ -40,8 +40,6 @@ abstract contract ReentrancyGuard {
         uint256 status;
     }
 
-    bytes32 private constant REENTRANCY_GUARD_STATE = keccak256("utils.ReentrancyGuard.ReentrancyGuardState");
-
     /**
      * @dev Prevents a contract from calling itself, directly or indirectly.
      * Calling a `nonReentrant` function from another `nonReentrant`
@@ -60,12 +58,12 @@ abstract contract ReentrancyGuard {
      * Not a big issue if it is never called - just the first nonReentrant method call will use more gas.
      */
     function initializeReentrancyGuard() internal {
-        ReentrancyGuardState storage state = _getState();
+        ReentrancyGuardState storage state = _reentrancyGuardState();
         state.status = _NOT_ENTERED;
     }
 
     function _nonReentrantBefore() private {
-        ReentrancyGuardState storage state = _getState();
+        ReentrancyGuardState storage state = _reentrancyGuardState();
         // On the first call to nonReentrant, state.status will be _NOT_ENTERED
         require(state.status != _ENTERED, "ReentrancyGuard: reentrant call");
 
@@ -74,7 +72,7 @@ abstract contract ReentrancyGuard {
     }
 
     function _nonReentrantAfter() private {
-        ReentrancyGuardState storage state = _getState();
+        ReentrancyGuardState storage state = _reentrancyGuardState();
         // By storing the original value once again, a refund is triggered (see
         // https://eips.ethereum.org/EIPS/eip-2200)
         state.status = _NOT_ENTERED;
@@ -85,12 +83,12 @@ abstract contract ReentrancyGuard {
      * `nonReentrant` function in the call stack.
      */
     function _reentrancyGuardEntered() internal view returns (bool) {
-        ReentrancyGuardState storage state = _getState();
+        ReentrancyGuardState storage state = _reentrancyGuardState();
         return state.status == _ENTERED;
     }
 
-    function _getState() private pure returns (ReentrancyGuardState storage _state) {
-        bytes32 position = REENTRANCY_GUARD_STATE;
+    function _reentrancyGuardState() private pure returns (ReentrancyGuardState storage _state) {
+        bytes32 position = keccak256("utils.ReentrancyGuard.ReentrancyGuardState");
         // solhint-disable-next-line no-inline-assembly
         assembly {
             _state.slot := position
