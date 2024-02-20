@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "../diamond/interfaces/IDiamondLoupe.sol";
 import "./IAssetManagerEvents.sol";
 import "./assetManager/IAgentInfo.sol";
 import "./assetManager/IAvailableAgents.sol";
@@ -23,6 +25,8 @@ import "./assetManager/IUnderlyingTimekeeping.sol";
  * Asset manager publicly callable methods.
  */
 interface IAssetManager is
+    IERC165,
+    IDiamondLoupe,
     IAssetManagerEvents,
     IAgentInfo,
     IAvailableAgents,
