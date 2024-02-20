@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
 import { randomAddress } from "../../../../lib/utils/helpers";
-import { AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { precomputeContractAddress } from "../../../utils/contract-test-helpers";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
@@ -18,7 +18,7 @@ contract(`UnderlyingBalance.sol; ${getTestFile(__filename)};  UnderlyingBalance 
     const governance = accounts[10];
     let assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
-    let assetManager: AssetManagerInstance;
+    let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;

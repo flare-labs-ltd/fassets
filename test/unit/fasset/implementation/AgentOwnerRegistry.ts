@@ -5,7 +5,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { erc165InterfaceId, toBNExp } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentOwnerRegistryInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
+import { AgentOwnerRegistryInstance, AgentVaultInstance, AssetManagerControllerInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -24,7 +24,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     const updateExecutor = accounts[11];
     let assetManagerController: AssetManagerControllerInstance;
     let contracts: TestSettingsContracts;
-    let assetManager: AssetManagerInstance;
+    let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;

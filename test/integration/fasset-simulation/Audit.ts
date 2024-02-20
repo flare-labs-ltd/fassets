@@ -4,7 +4,7 @@ import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { toWei } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../../utils/fasset/MockChain";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { createTestAgentSettings } from "../../utils/test-settings";

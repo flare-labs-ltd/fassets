@@ -2,7 +2,7 @@ import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlo
 import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, ZERO_ADDRESS, requireNotNull, toBN } from "../../../lib/utils/helpers";
-import { CollateralReserved } from "../../../typechain-truffle/AssetManager";
+import { CollateralReserved } from "../../../typechain-truffle/IIAssetManager";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 

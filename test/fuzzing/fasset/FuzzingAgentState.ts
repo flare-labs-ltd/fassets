@@ -16,7 +16,7 @@ import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, RedemptionTicketCreated,
     RedemptionTicketDeleted, RedemptionTicketUpdated, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
-} from "../../../typechain-truffle/AssetManager";
+} from "../../../typechain-truffle/IIAssetManager";
 import { Entered, Exited } from "../../../typechain-truffle/CollateralPool";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { FuzzingState, FuzzingStateLogRecord } from "./FuzzingState";

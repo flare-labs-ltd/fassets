@@ -2,7 +2,7 @@ import {
     AgentAvailable, AgentVaultCreated, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, RedemptionTicketCreated, RedemptionTicketDeleted,
     RedemptionTicketUpdated, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
-} from "../../typechain-truffle/AssetManager";
+} from "../../typechain-truffle/IIAssetManager";
 import { AgentInfo, AgentSetting, AgentStatus, CollateralType, CollateralClass } from "../fasset/AssetManagerTypes";
 import { roundUBAToAmg } from "../fasset/Conversions";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";

@@ -7,7 +7,7 @@ import { findRequiredEvent } from "../../lib/utils/events/truffle";
 import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp } from "../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
-    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerInstance, SCProofVerifierInstance,
+    AddressUpdaterInstance, AgentVaultFactoryInstance, IIAssetManagerInstance, SCProofVerifierInstance,
     CollateralPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
     IWhitelistInstance, StateConnectorMockInstance, WNatInstance, CollateralPoolTokenFactoryInstance, IPriceReaderInstance, AgentOwnerRegistryInstance
 } from "../../typechain-truffle";
@@ -240,7 +240,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
 }
 
 export interface CreateTestAgentDeps {
-    assetManager: AssetManagerInstance;
+    assetManager: IIAssetManagerInstance;
     settings: AssetManagerSettings;
     chain?: MockChain;
     wallet?: MockChainWallet;

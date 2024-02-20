@@ -9,7 +9,7 @@ import { SourceId } from "../../lib/underlying-chain/SourceId";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
 
 const AssetManagerController = artifacts.require('AssetManagerController');
-const AssetManager = artifacts.require('AssetManager');
+const IIAssetManager = artifacts.require('IIAssetManager');
 const AgentOwnerRegistry = artifacts.require('AgentOwnerRegistry');
 
 contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, async accounts => {
@@ -39,7 +39,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
     it("All managers must be attached to this controller", async () => {
         const managers = await assetManagerController.getAssetManagers();
         for (const mgrAddress of managers) {
-            const assetManager = await AssetManager.at(mgrAddress);
+            const assetManager = await IIAssetManager.at(mgrAddress);
             // must be attached...
             const attached = await assetManager.controllerAttached();
             assert.isTrue(attached, "not attached");
@@ -70,7 +70,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
     //     await agentWhitelist.addAddressToWhitelist(owner, { from: deployer });
     //     for (const mgrAddress of managers) {
     //         console.log("Testing manager at", mgrAddress);
-    //         const assetManager = await AssetManager.at(mgrAddress);
+    //         const assetManager = await IIAssetManager.at(mgrAddress);
     //         const settings = await assetManager.getSettings();
     //         const collaterals = await assetManager.getCollateralTypes();
     //         // create fake attestation provider -

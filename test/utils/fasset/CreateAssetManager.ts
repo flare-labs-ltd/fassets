@@ -2,7 +2,7 @@ import { time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { findEvent } from "../../../lib/utils/events/truffle";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance } from "../../../typechain-truffle";
+import { AssetManagerControllerInstance, IIAssetManagerInstance, FAssetInstance } from "../../../typechain-truffle";
 import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
 
 export async function newAssetManager(
@@ -17,7 +17,7 @@ export async function newAssetManager(
     assetName = name,
     assetSymbol = symbol,
     updateExecutor: string = governanceAddress,
-): Promise<[AssetManagerInstance, FAssetInstance]> {
+): Promise<[IIAssetManagerInstance, FAssetInstance]> {
     const AssetManager = await linkAssetManager();
     const FAsset = artifacts.require('FAsset');
     const fAsset = await FAsset.new(governanceAddress, name, symbol, assetName, assetSymbol, decimals);
@@ -50,6 +50,8 @@ export async function waitForTimelock<C extends Truffle.ContractInstance>(respon
         return await (contract as any).executeGovernanceCall(timelock.selector, { from: executorAddress });
     }
 }
+
+// export async function deployFacets()
 
 export async function linkAssetManager() {
     // deploy all libraries

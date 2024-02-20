@@ -4,7 +4,7 @@ import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings 
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
-import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
+import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -23,7 +23,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     const updateExecutor = accounts[11];
     let assetManagerController: AssetManagerControllerInstance;
     let contracts: TestSettingsContracts;
-    let assetManager: AssetManagerInstance;
+    let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
@@ -91,7 +91,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should add and remove asset manager", async () => {
-            let assetManager2: AssetManagerInstance;
+            let assetManager2: IIAssetManagerInstance;
             let fAsset2: FAssetInstance;
             const managers_current = await assetManagerController.getAssetManagers();
             [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Wrapped Ether", "FETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), "Ether", "ETH", updateExecutor);
@@ -108,7 +108,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("Asset manager controller should not be attached when add asset manager is called from a different controler", async () => {
-            let assetManager2: AssetManagerInstance;
+            let assetManager2: IIAssetManagerInstance;
             let fAsset2: FAssetInstance;
             [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), "Ether", "ETH", updateExecutor);
             await assetManager2.attachController(false, { from: accounts[5] });
@@ -119,7 +119,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("Asset manager controller should not be unattached when remove asset manager is called from a different controler", async () => {
-            let assetManager2: AssetManagerInstance;
+            let assetManager2: IIAssetManagerInstance;
             let fAsset2: FAssetInstance;
             [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), "Ether", "ETH", updateExecutor);
             const res1 = await assetManagerController.addAssetManager(assetManager2.address, { from: governance });
@@ -139,7 +139,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should do nothing if removing unexisting asset manager", async () => {
-            let assetManager2: AssetManagerInstance;
+            let assetManager2: IIAssetManagerInstance;
             let fAsset2: FAssetInstance;
             const managers_current = await assetManagerController.getAssetManagers();
             [assetManager2, fAsset2] = await newAssetManager(governance, assetManagerController, "Wrapped Ether", "FETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), "Ether", "ETH", updateExecutor);
@@ -1177,7 +1177,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("controler shouldn't be able to terminate asset manager that he is not managing", async () => {
-            let assetManager2: AssetManagerInstance;
+            let assetManager2: IIAssetManagerInstance;
             let fAsset2: FAssetInstance;
             [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), "Ether", "ETH", updateExecutor);
             //Shouldn't be able to terminate unmanaged asset manager
@@ -1361,7 +1361,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("Controler that does not manage an asset manager shouldn't be able to update its settings", async () => {
-            let assetManager2: AssetManagerInstance;
+            let assetManager2: IIAssetManagerInstance;
             let fAsset2: FAssetInstance;
             [assetManager2, fAsset2] = await newAssetManager(governance, accounts[5], "Wrapped Ether", "FETH", 18, settings, collaterals, createEncodedTestLiquidationSettings(), "Ether", "ETH", updateExecutor);
             let poolExitAndTopupChangeTimelockSeconds_new = DAYS;

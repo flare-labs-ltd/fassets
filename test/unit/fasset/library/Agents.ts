@@ -5,7 +5,7 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -27,7 +27,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
     const governance = accounts[10];
     let assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
-    let assetManager: AssetManagerInstance;
+    let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;

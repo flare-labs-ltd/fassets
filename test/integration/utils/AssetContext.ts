@@ -13,7 +13,7 @@ import { IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
 import { BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
-import { AgentOwnerRegistryInstance, AssetManagerInstance, FAssetInstance, WhitelistInstance } from "../../../typechain-truffle";
+import { AgentOwnerRegistryInstance, IIAssetManagerInstance, FAssetInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
@@ -47,7 +47,7 @@ export class AssetContext implements IAssetContext {
         public attestationProvider: AttestationHelper,
         public whitelist: ContractWithEvents<WhitelistInstance, WhitelistEvents> | undefined,
         public agentOwnerRegistry: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>,
-        public assetManager: ContractWithEvents<AssetManagerInstance, AssetManagerEvents>,
+        public assetManager: ContractWithEvents<IIAssetManagerInstance, AssetManagerEvents>,
         public fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>,
         // following three settings are initial and may not be fresh
         public settings: AssetManagerSettings,

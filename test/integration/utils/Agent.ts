@@ -7,7 +7,7 @@ import { checkEventNotEmited, eventArgs, filterEvents, requiredEventArgs } from 
 import { BN_ZERO, BNish, MAX_BIPS, maxBN, randomAddress, requireNotNull, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AgentVaultInstance, CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
-import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/AssetManager";
+import { CollateralReserved, LiquidationEnded, RedemptionDefault, RedemptionPaymentFailed, RedemptionRequested, UnderlyingWithdrawalAnnounced } from "../../../typechain-truffle/IIAssetManager";
 import { createTestAgentSettings } from "../../utils/test-settings";
 import { Approximation, assertApproximateMatch } from "../../utils/approximation";
 import { AgentCollateral } from "../../utils/fasset/AgentCollateral";

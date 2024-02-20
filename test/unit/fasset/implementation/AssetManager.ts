@@ -6,7 +6,7 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, deepFormat, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentVaultInstance, AssetManagerContract, AssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerContract, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { newAssetManager, linkAssetManager } from "../../../utils/fasset/CreateAssetManager";
@@ -39,7 +39,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
     let AssetManager: AssetManagerContract;
-    let assetManager: AssetManagerInstance;
+    let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;

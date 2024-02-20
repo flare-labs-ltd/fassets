@@ -3,7 +3,7 @@ import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../..
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { DAYS } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -15,7 +15,7 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
     const governance = accounts[10];
     let assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
-    let assetManager: AssetManagerInstance;
+    let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;

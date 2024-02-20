@@ -1,5 +1,5 @@
 import { expectEvent } from "@openzeppelin/test-helpers";
-import { AgentInCCB, LiquidationEnded, LiquidationStarted } from "../../../typechain-truffle/AssetManager";
+import { AgentInCCB, LiquidationEnded, LiquidationStarted } from "../../../typechain-truffle/IIAssetManager";
 import { eventArgs, filterEvents, findEvent, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { BNish, BN_ZERO, toBN } from "../../../lib/utils/helpers";

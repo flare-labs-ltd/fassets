@@ -6,8 +6,8 @@ import { TX_BLOCKED, TX_FAILED } from "../../../../lib/underlying-chain/interfac
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, MAX_BIPS, requireNotNull, toBIPS, toBN, toWei } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
-import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
+import { AgentVaultInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { precomputeContractAddress } from "../../../utils/contract-test-helpers";
 import { AgentCollateral } from "../../../utils/fasset/AgentCollateral";
@@ -23,7 +23,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     const governance = accounts[10];
     let assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
-    let assetManager: AssetManagerInstance;
+    let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;

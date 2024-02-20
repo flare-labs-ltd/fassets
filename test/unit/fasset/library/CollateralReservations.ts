@@ -5,8 +5,8 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, toBN, toWei } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
-import { CollateralReserved } from "../../../../typechain-truffle/AssetManager";
+import { AgentVaultInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -19,7 +19,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     const governance = accounts[10];
     let assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
-    let assetManager: AssetManagerInstance;
+    let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;

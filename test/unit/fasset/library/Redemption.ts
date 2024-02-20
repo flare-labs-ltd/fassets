@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, MAX_BIPS, randomAddress, toBIPS, toBN, toBNExp, toNumber, toWei } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, AssetManagerInstance, CollateralPoolInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, IIAssetManagerInstance, CollateralPoolInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
@@ -21,7 +21,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     const governance = accounts[10];
     let assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
-    let assetManager: AssetManagerInstance;
+    let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
