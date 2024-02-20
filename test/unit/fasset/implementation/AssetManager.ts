@@ -6,10 +6,10 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, deepFormat, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentVaultInstance, AssetManagerContract, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerContract, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance, AssetManagerInitInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
-import { newAssetManager, linkAssetManager } from "../../../utils/fasset/CreateAssetManager";
+import { deployAssetManagerFacets, newAssetManager, newAssetManagerDiamond } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
@@ -18,6 +18,7 @@ import {
     createTestFtsos, createTestLiquidationSettings, createTestSettings
 } from "../../../utils/test-settings";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
+import { DiamondCut } from "../../../utils/diamond";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -26,6 +27,8 @@ const CollateralPool = artifacts.require('CollateralPool');
 const CollateralPoolToken = artifacts.require('CollateralPoolToken');
 const ERC20Mock = artifacts.require('ERC20Mock');
 const AgentOwnerRegistry = artifacts.require('AgentOwnerRegistry');
+const AssetManagerInit = artifacts.require('AssetManagerInit');
+const AssetManager = artifacts.require('AssetManager');
 
 const mulBIPS = (x: BN, y: BN) => x.mul(y).div(toBN(MAX_BIPS));
 const divBIPS = (x: BN, y: BN) => x.mul(toBN(MAX_BIPS)).div(y);
@@ -38,7 +41,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     const governance = accounts[10];
     let assetManagerController = accounts[11];
     let contracts: TestSettingsContracts;
-    let AssetManager: AssetManagerContract;
+    let assetManagerInit: AssetManagerInitInstance;
+    let diamondCuts: DiamondCut[];
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
@@ -195,7 +199,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     async function initialize() {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
-        AssetManager = await linkAssetManager();
+        diamondCuts = await deployAssetManagerFacets();
+        assetManagerInit = await AssetManagerInit.new();
         // save some contracts as globals
         ({ wNat } = contracts);
         usdc = contracts.stablecoins.USDC;
@@ -211,11 +216,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings(), ci.assetName, ci.assetSymbol);
-        return { contracts, AssetManager, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
+        return { contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
     }
 
     beforeEach(async () => {
-        ({ contracts, AssetManager, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
+        ({ contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
     });
 
     describe("set and update settings / properties", () => {
@@ -1840,7 +1845,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const encodedLiquidationStrategySettings = createEncodedTestLiquidationSettings();
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "zero fAsset address");
         });
 
@@ -1850,7 +1855,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
             Settings.agentVaultFactory = constants.ZERO_ADDRESS;
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "zero agentVaultFactory address");
         });
 
@@ -1860,7 +1865,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
             Settings.collateralPoolFactory = constants.ZERO_ADDRESS;
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "zero collateralPoolFactory address");
         });
 
@@ -1870,7 +1875,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
             Settings.collateralPoolTokenFactory = constants.ZERO_ADDRESS;
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "zero collateralPoolTokenFactory address");
         });
 
@@ -1880,7 +1885,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
             Settings.scProofVerifier = constants.ZERO_ADDRESS;
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "zero scProofVerifier address");
         });
 
@@ -1890,7 +1895,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
             Settings.priceReader = constants.ZERO_ADDRESS;
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "zero priceReader address");
         });
 
@@ -1900,7 +1905,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
             Settings.liquidationStrategy = constants.ZERO_ADDRESS;
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "zero liquidationStrategy address");
         });
 
@@ -1910,7 +1915,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
             Settings.agentOwnerRegistry = constants.ZERO_ADDRESS;
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "zero agentOwnerRegistry address");
         });
 
@@ -1920,7 +1925,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
             Settings.confirmationByOthersRewardUSD5 = 0;
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "cannot be zero");
         });
 
@@ -1930,7 +1935,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
             Settings.minUnderlyingBackingBIPS = 0;
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "cannot be zero");
         });
 
@@ -1940,7 +1945,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
             Settings.minUnderlyingBackingBIPS = 20000;
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "bips value too high");
         });
 
@@ -1950,7 +1955,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
             Settings.vaultCollateralBuyForFlareFactorBIPS = 5000;
-            let res = AssetManager.new(Settings, Collaterals, encodedLiquidationStrategySettings);
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals, encodedLiquidationStrategySettings);
             await expectRevert(res, "value too small");
         });
 
