@@ -34,6 +34,8 @@ contract AssetManagerInit is GovernedBase, ReentrancyGuard {
     function _initIERC165() private {
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         ds.supportedInterfaces[type(IERC165).interfaceId] = true;
+        ds.supportedInterfaces[type(IDiamondLoupe).interfaceId] = true;
+        ds.supportedInterfaces[type(IDiamondCut).interfaceId] = true;
         ds.supportedInterfaces[type(IAssetManager).interfaceId] = true;
         ds.supportedInterfaces[type(IIAssetManager).interfaceId] = true;
     }
