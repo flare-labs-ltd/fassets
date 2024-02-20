@@ -199,8 +199,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     async function initialize() {
         const ci = testChainInfo.eth;
         contracts = await createTestContracts(governance);
-        diamondCuts = await deployAssetManagerFacets();
-        assetManagerInit = await AssetManagerInit.new();
+        [diamondCuts, assetManagerInit] = await deployAssetManagerFacets();
         // save some contracts as globals
         ({ wNat } = contracts);
         usdc = contracts.stablecoins.USDC;

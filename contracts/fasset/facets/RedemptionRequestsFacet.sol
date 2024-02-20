@@ -2,14 +2,12 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../userInterfaces/assetManager/IRedemptionRequests.sol";
-import "../interfaces/assetManager/IPoolSelfCloseRedemption.sol";
 import "../library/AgentsExternal.sol";
 import "../library/RedemptionRequests.sol";
 import "./AssetManagerBase.sol";
 
 
-contract RedemptionRequestsFacet is AssetManagerBase, IRedemptionRequests, IPoolSelfCloseRedemption {
+contract RedemptionRequestsFacet is AssetManagerBase {
     using SafeCast for uint256;
 
     /**
@@ -34,7 +32,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, IRedemptionRequests, IPool
         string memory _redeemerUnderlyingAddressString,
         address payable _executor
     )
-        external payable override
+        external payable
         onlyWhitelistedSender
         returns (uint256 _redeemedAmountUBA)
     {
@@ -52,7 +50,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, IRedemptionRequests, IPool
         string memory _receiverUnderlyingAddress,
         address payable _executor
     )
-        external payable override
+        external payable
     {
         RedemptionRequests.redeemFromAgent(_agentVault, _receiver, _amountUBA, _receiverUnderlyingAddress, _executor);
     }
@@ -68,7 +66,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, IRedemptionRequests, IPool
         address _receiver,
         uint256 _amountUBA
     )
-        external override
+        external
     {
         RedemptionRequests.redeemFromAgentInCollateral(_agentVault, _receiver, _amountUBA);
     }
@@ -100,7 +98,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, IRedemptionRequests, IPool
         AddressValidity.Proof calldata _proof,
         uint256 _redemptionRequestId
     )
-        external override
+        external
     {
         RedemptionRequests.rejectInvalidRedemption(_proof, _redemptionRequestId.toUint64());
     }
@@ -119,7 +117,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, IRedemptionRequests, IPool
         address _agentVault,
         uint256 _amountUBA
     )
-        external override
+        external
         returns (uint256 _closedAmountUBA)
     {
         // in SelfClose.selfClose we check that only agent can do this
@@ -139,7 +137,7 @@ contract RedemptionRequestsFacet is AssetManagerBase, IRedemptionRequests, IPool
     function convertDustToTicket(
         address _agentVault
     )
-        external override
+        external
     {
         AgentsExternal.convertDustToTicket(_agentVault);
     }

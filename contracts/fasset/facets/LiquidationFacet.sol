@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/assetManager/ILiquidation.sol";
 import "../library/Liquidation.sol";
 import "./AssetManagerBase.sol";
 
 
-contract LiquidationFacet is AssetManagerBase, ILiquidation {
+contract LiquidationFacet is AssetManagerBase {
     /**
      * Checks that the agent's collateral is too low and if true, starts agent's liquidation.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
@@ -18,7 +17,7 @@ contract LiquidationFacet is AssetManagerBase, ILiquidation {
     function startLiquidation(
         address _agentVault
     )
-        external override
+        external
         onlyWhitelistedSender
         returns (uint8 _liquidationStatus, uint256 _liquidationStartAt)
     {
@@ -44,7 +43,7 @@ contract LiquidationFacet is AssetManagerBase, ILiquidation {
         address _agentVault,
         uint256 _amountUBA
     )
-        external override
+        external
         onlyWhitelistedSender
         returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidVault, uint256 _amountPaidPool)
     {
@@ -62,7 +61,7 @@ contract LiquidationFacet is AssetManagerBase, ILiquidation {
     function endLiquidation(
         address _agentVault
     )
-        external override
+        external
     {
         Liquidation.endLiquidation(_agentVault);
     }

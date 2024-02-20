@@ -2,14 +2,13 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../userInterfaces/assetManager/IMinting.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../library/CollateralReservations.sol";
 import "../library/Minting.sol";
 import "./AssetManagerBase.sol";
 
 
-contract MintingFacet is AssetManagerBase, ReentrancyGuard, IMinting {
+contract MintingFacet is AssetManagerBase, ReentrancyGuard {
     using SafeCast for uint256;
 
     /**
@@ -36,7 +35,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard, IMinting {
         uint256 _maxMintingFeeBIPS,
         address payable _executor
     )
-        external payable override
+        external payable
         onlyAttached
         onlyWhitelistedSender
     {
@@ -56,7 +55,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard, IMinting {
     function collateralReservationFee(
         uint256 _lots
     )
-        external view override
+        external view
         returns (uint256 _reservationFeeNATWei)
     {
         return CollateralReservations.calculateReservationFee(_lots.toUint64());
@@ -75,7 +74,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard, IMinting {
         Payment.Proof calldata _payment,
         uint256 _collateralReservationId
     )
-        external override
+        external
         nonReentrant
     {
         Minting.executeMinting(_payment, _collateralReservationId.toUint64());
@@ -93,7 +92,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard, IMinting {
         ReferencedPaymentNonexistence.Proof calldata _proof,
         uint256 _collateralReservationId
     )
-        external override
+        external
     {
         CollateralReservations.mintingPaymentDefault(_proof, _collateralReservationId.toUint64());
     }
@@ -114,7 +113,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard, IMinting {
         ConfirmedBlockHeightExists.Proof calldata _proof,
         uint256 _collateralReservationId
     )
-        external payable override
+        external payable
         nonReentrant
     {
         CollateralReservations.unstickMinting(_proof, _collateralReservationId.toUint64());
@@ -136,7 +135,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard, IMinting {
         address _agentVault,
         uint256 _lots
     )
-        external override
+        external
         onlyAttached
         nonReentrant
     {

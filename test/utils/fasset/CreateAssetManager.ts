@@ -30,8 +30,7 @@ export async function newAssetManager(
     // 0x8... is not a contract, but it is valid non-zero address so it will work in tests where we don't switch to production mode
     const governanceSettings = options?.governanceSettings ?? "0x8000000000000000000000000000000000000000";
     const updateExecutor = options?.updateExecutor ?? governanceAddress;
-    const diamondCuts = await deployAssetManagerFacets();
-    const assetManagerInit = await AssetManagerInit.new();
+    const [diamondCuts, assetManagerInit] = await deployAssetManagerFacets();
     const fAsset = await FAsset.new(governanceAddress, name, symbol, assetName, assetSymbol, decimals);
     const assetManagerControllerAddress = typeof assetManagerController === 'string' ? assetManagerController : assetManagerController.address;
     assetManagerSettings = web3DeepNormalize({
@@ -73,46 +72,57 @@ export async function waitForTimelock<C extends Truffle.ContractInstance>(respon
     }
 }
 
-export async function deployAssetManagerFacets() {
-    return [
-        await deployFacet('DiamondCutFacet', ['IDiamondCut']),
-        await deployFacet('DiamondLoupeFacet', ['IDiamondLoupe', '@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165']),
-        await deployFacet('AgentInfoFacet', ['IAgentInfo']),
-        await deployFacet('AvailableAgentsFacet', ['IAvailableAgents']),
-        await deployFacet('MintingFacet', ['IMinting']),
-        await deployFacet('RedemptionRequestsFacet', ['IRedemptionRequests', 'IPoolSelfCloseRedemption']),
-        await deployFacet('RedemptionConfirmationsFacet', ['IRedemptionConfirmations']),
-        await deployFacet('RedemptionDefaultsFacet', ['IRedemptionDefaults']),
-        await deployFacet('LiquidationFacet', ['ILiquidation']),
-        await deployFacet('ChallengesFacet', ['IChallenges']),
-        await deployFacet('UnderlyingBalanceFacet', ['IUnderlyingBalance']),
-        await deployFacet('UnderlyingTimekeepingFacet', ['IUnderlyingTimekeeping']),
-        await deployFacet('AgentVaultManagementFacet', ['IAgentVaultManagement']),
-        await deployFacet('AgentSettingsFacet', ['IAgentSettings']),
-        await deployFacet('CollateralTypesFacet', ['ICollateralTypes', 'ICollateralTypesManagement']),
-        await deployFacet('AgentCollateralFacet', ['IAgentCollateral', 'IAgentVaultCollateralHooks']),
-        await deployFacet('SettingsReaderFacet', ['IAssetManagerSettings']),
-        await deployFacet('SettingsManagementFacet', ['ISettingsManagement']),
-        await deployFacet('AgentVaultAndPoolSupportFacet', ['IAgentVaultAndPoolSupport']),
-        await deployFacet('SystemStateManagementFacet', ['ISystemStateManagement']),
+export async function deployAssetManagerFacets(): Promise<[DiamondCut[], AssetManagerInitInstance]> {
+    const assetManagerInit = await AssetManagerInit.new();
+    // create filters
+    const iiAssetManager = await IIAssetManager.at(assetManagerInit.address);
+    const interfaceSelectorMap = new Map(iiAssetManager.abi
+        .filter(it => it.type === 'function')
+        .map(it => [web3.eth.abi.encodeFunctionSignature(it), it]));
+    const interfaceSelectors = new Set(interfaceSelectorMap.keys());
+    // create cuts
+    const diamondCuts = [
+        await deployFacet('DiamondCutFacet', interfaceSelectors),
+        await deployFacet('DiamondLoupeFacet', interfaceSelectors),
+        await deployFacet('AgentInfoFacet', interfaceSelectors),
+        await deployFacet('AvailableAgentsFacet', interfaceSelectors),
+        await deployFacet('MintingFacet', interfaceSelectors),
+        await deployFacet('RedemptionRequestsFacet', interfaceSelectors),
+        await deployFacet('RedemptionConfirmationsFacet', interfaceSelectors),
+        await deployFacet('RedemptionDefaultsFacet', interfaceSelectors),
+        await deployFacet('LiquidationFacet', interfaceSelectors),
+        await deployFacet('ChallengesFacet', interfaceSelectors),
+        await deployFacet('UnderlyingBalanceFacet', interfaceSelectors),
+        await deployFacet('UnderlyingTimekeepingFacet', interfaceSelectors),
+        await deployFacet('AgentVaultManagementFacet', interfaceSelectors),
+        await deployFacet('AgentSettingsFacet', interfaceSelectors),
+        await deployFacet('CollateralTypesFacet', interfaceSelectors),
+        await deployFacet('AgentCollateralFacet', interfaceSelectors),
+        await deployFacet('SettingsReaderFacet', interfaceSelectors),
+        await deployFacet('SettingsManagementFacet', interfaceSelectors),
+        await deployFacet('AgentVaultAndPoolSupportFacet', interfaceSelectors),
+        await deployFacet('SystemStateManagementFacet', interfaceSelectors),
     ];
+    // verify every required selector is included in some cut
+    for (const cut of diamondCuts) {
+        for (const selector of cut.functionSelectors) {
+            interfaceSelectors.delete(selector);
+        }
+    }
+    if (interfaceSelectors.size > 0) {
+        const missing = Array.from(interfaceSelectors).map(sel => interfaceSelectorMap.get(sel)?.name);
+        throw new Error(`Deployed facets are missing methods ${missing.join(", ")}`);
+    }
+    return [diamondCuts, assetManagerInit];
 }
 
-export async function deployFacet(facetName: string, interfaceNames: string[]): Promise<DiamondCut> {
+export async function deployFacet(facetName: string, filterSelectors: Set<string>): Promise<DiamondCut> {
     const contract = artifacts.require(facetName as any) as Truffle.ContractNew<any>;
     const instance = await contract.new() as Truffle.ContractInstance;
-    const instanceSelectors = new Set(instance.abi.map(it => web3.eth.abi.encodeFunctionSignature(it)));
-    const exposedSelectors = new Set<string>();
-    for (const interfaceName of interfaceNames) {
-        const interfaceContract = artifacts.require(interfaceName as any) as Truffle.Contract<any>;
-        const interfaceInstance = await interfaceContract.at(instance.address) as Truffle.ContractInstance;
-        for (const item of interfaceInstance.abi) {
-            const selector = web3.eth.abi.encodeFunctionSignature(item);
-            if (!instanceSelectors.has(selector)) {
-                throw new Error(`Undefined method ${interfaceName}.${item.name} in ${facetName}`);
-            }
-            exposedSelectors.add(selector);
-        }
+    const instanceSelectors = instance.abi.map(it => web3.eth.abi.encodeFunctionSignature(it));
+    const exposedSelectors = instanceSelectors.filter(sel => filterSelectors.has(sel));
+    if (exposedSelectors.length === 0) {
+        throw new Error(`No exposed methods in ${facetName}`);
     }
     return {
         action: FacetCutAction.Add,

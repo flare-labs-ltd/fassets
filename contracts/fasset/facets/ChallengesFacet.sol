@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/assetManager/IChallenges.sol";
 import "../library/Challenges.sol";
 import "./AssetManagerBase.sol";
 
 
-contract ChallengesFacet is AssetManagerBase, IChallenges {
+contract ChallengesFacet is AssetManagerBase {
     /**
      * Called with a proof of payment made from agent's underlying address, for which
      * no valid payment reference exists (valid payment references are from redemption and
@@ -20,7 +19,7 @@ contract ChallengesFacet is AssetManagerBase, IChallenges {
         BalanceDecreasingTransaction.Proof calldata _transaction,
         address _agentVault
     )
-        external override
+        external
         onlyWhitelistedSender
     {
         Challenges.illegalPaymentChallenge(_transaction, _agentVault);
@@ -40,7 +39,7 @@ contract ChallengesFacet is AssetManagerBase, IChallenges {
         BalanceDecreasingTransaction.Proof calldata _payment2,
         address _agentVault
     )
-        external override
+        external
         onlyWhitelistedSender
     {
         Challenges.doublePaymentChallenge(_payment1, _payment2, _agentVault);
@@ -59,7 +58,7 @@ contract ChallengesFacet is AssetManagerBase, IChallenges {
         BalanceDecreasingTransaction.Proof[] calldata _payments,
         address _agentVault
     )
-        external override
+        external
         onlyWhitelistedSender
     {
         Challenges.paymentsMakeFreeBalanceNegative(_payments, _agentVault);

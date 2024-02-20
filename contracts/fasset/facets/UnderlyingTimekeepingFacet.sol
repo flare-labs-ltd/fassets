@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/assetManager/IUnderlyingTimekeeping.sol";
 import "../library/StateUpdater.sol";
 import "./AssetManagerBase.sol";
 
 
-contract UnderlyingTimekeepingFacet is AssetManagerBase, IUnderlyingTimekeeping {
+contract UnderlyingTimekeepingFacet is AssetManagerBase {
     /**
      * Prove that a block with given number and timestamp exists and
      * update the current underlying block info if the provided data higher.
@@ -19,7 +18,7 @@ contract UnderlyingTimekeepingFacet is AssetManagerBase, IUnderlyingTimekeeping 
     function updateCurrentBlock(
         ConfirmedBlockHeightExists.Proof calldata _proof
     )
-        external override
+        external
     {
         StateUpdater.updateCurrentBlock(_proof);
     }
@@ -31,7 +30,7 @@ contract UnderlyingTimekeepingFacet is AssetManagerBase, IUnderlyingTimekeeping 
      * @return _lastUpdateTs the timestamp on this chain when the current underlying block was last updated
      */
     function currentUnderlyingBlock()
-        external view override
+        external view
         returns (uint256 _blockNumber, uint256 _blockTimestamp, uint256 _lastUpdateTs)
     {
         AssetManagerState.State storage state = AssetManagerState.get();

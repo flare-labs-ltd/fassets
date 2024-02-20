@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/assetManager/IAgentInfo.sol";
 import "../library/AgentsExternal.sol";
 import "../library/FullAgentInfo.sol";
 import "./AssetManagerBase.sol";
 
 
-contract AgentInfoFacet is AssetManagerBase, IAgentInfo {
+contract AgentInfoFacet is AssetManagerBase {
     /**
      * Get (a part of) the list of all agents.
      * The list must be retrieved in parts since retrieving the whole list can consume too much gas for one block.
@@ -18,7 +17,7 @@ contract AgentInfoFacet is AssetManagerBase, IAgentInfo {
         uint256 _start,
         uint256 _end
     )
-        external view override
+        external view
         returns (address[] memory _agents, uint256 _totalLength)
     {
         return AgentsExternal.getAllAgents(_start, _end);
@@ -33,21 +32,21 @@ contract AgentInfoFacet is AssetManagerBase, IAgentInfo {
     function getAgentInfo(
         address _agentVault
     )
-        external view override
+        external view
         returns (AgentInfo.Info memory)
     {
         return FullAgentInfo.getAgentInfo(_agentVault);
     }
 
     function getCollateralPool(address _agentVault)
-        external view override
+        external view
         returns (address)
     {
         return address(Agent.get(_agentVault).collateralPool);
     }
 
     function getAgentVaultOwner(address _agentVault)
-        external view override
+        external view
         returns (address _ownerManagementAddress)
     {
         return AgentsExternal.getAgentVaultOwner(_agentVault);

@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/assetManager/IAvailableAgents.sol";
 import "../library/AvailableAgents.sol";
 import "./AssetManagerBase.sol";
 
 
-contract AvailableAgentsFacet is AssetManagerBase, IAvailableAgents {
+contract AvailableAgentsFacet is AssetManagerBase {
     /**
      * Add the agent to the list of publicly available agents.
      * Other agents can only self-mint.
@@ -16,7 +15,7 @@ contract AvailableAgentsFacet is AssetManagerBase, IAvailableAgents {
     function makeAgentAvailable(
         address _agentVault
     )
-        external override
+        external
     {
         AvailableAgents.makeAvailable(_agentVault);
     }
@@ -30,7 +29,7 @@ contract AvailableAgentsFacet is AssetManagerBase, IAvailableAgents {
     function announceExitAvailableAgentList(
         address _agentVault
     )
-        external override
+        external
         returns (uint256 _exitAllowedAt)
     {
         return AvailableAgents.announceExit(_agentVault);
@@ -44,7 +43,7 @@ contract AvailableAgentsFacet is AssetManagerBase, IAvailableAgents {
     function exitAvailableAgentList(
         address _agentVault
     )
-        external override
+        external
     {
         AvailableAgents.exit(_agentVault);
     }
@@ -59,7 +58,7 @@ contract AvailableAgentsFacet is AssetManagerBase, IAvailableAgents {
         uint256 _start,
         uint256 _end
     )
-        external view override
+        external view
         returns (address[] memory _agents, uint256 _totalLength)
     {
         return AvailableAgents.getList(_start, _end);
@@ -78,7 +77,7 @@ contract AvailableAgentsFacet is AssetManagerBase, IAvailableAgents {
         uint256 _start,
         uint256 _end
     )
-        external view override
+        external view
         returns (AvailableAgentInfo.Data[] memory _agents, uint256 _totalLength)
     {
         return AvailableAgents.getListWithInfo(_start, _end);

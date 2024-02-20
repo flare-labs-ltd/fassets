@@ -2,12 +2,11 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../userInterfaces/assetManager/IRedemptionDefaults.sol";
 import "../library/RedemptionFailures.sol";
 import "./AssetManagerBase.sol";
 
 
-contract RedemptionDefaultsFacet is AssetManagerBase, IRedemptionDefaults {
+contract RedemptionDefaultsFacet is AssetManagerBase {
     using SafeCast for uint256;
 
     /**
@@ -24,7 +23,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase, IRedemptionDefaults {
         ReferencedPaymentNonexistence.Proof calldata _proof,
         uint256 _redemptionRequestId
     )
-        external override
+        external
     {
         RedemptionFailures.redemptionPaymentDefault(_proof, _redemptionRequestId.toUint64());
     }
@@ -43,7 +42,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase, IRedemptionDefaults {
         ConfirmedBlockHeightExists.Proof calldata _proof,
         uint256 _redemptionRequestId
     )
-        external override
+        external
     {
         RedemptionFailures.finishRedemptionWithoutPayment(_proof, _redemptionRequestId.toUint64());
     }

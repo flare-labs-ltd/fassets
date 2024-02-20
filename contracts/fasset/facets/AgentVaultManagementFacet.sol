@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/assetManager/IAgentVaultManagement.sol";
 import "../interfaces/IIAssetManager.sol";
 import "../library/AgentsCreateDestroy.sol";
 import "./AssetManagerBase.sol";
 
 
-contract AgentVaultManagementFacet is AssetManagerBase, IAgentVaultManagement {
+contract AgentVaultManagementFacet is AssetManagerBase {
     /**
      * This method fixes the underlying address to be used by given agent owner.
      * A proof of payment (can be minimal or to itself) from this address must be provided,
@@ -21,7 +20,7 @@ contract AgentVaultManagementFacet is AssetManagerBase, IAgentVaultManagement {
     function proveUnderlyingAddressEOA(
         Payment.Proof calldata _payment
     )
-        external override
+        external
     {
         AgentsCreateDestroy.claimAddressWithEOAProof(_payment);
     }
@@ -38,7 +37,7 @@ contract AgentVaultManagementFacet is AssetManagerBase, IAgentVaultManagement {
         AddressValidity.Proof calldata _addressProof,
         AgentSettings.Data calldata _settings
     )
-        external override
+        external
         onlyAttached
         returns (address _agentVault)
     {
@@ -54,7 +53,7 @@ contract AgentVaultManagementFacet is AssetManagerBase, IAgentVaultManagement {
     function announceDestroyAgent(
         address _agentVault
     )
-        external override
+        external
         returns (uint256 _destroyAllowedAt)
     {
         return AgentsCreateDestroy.announceDestroy(_agentVault);
@@ -76,7 +75,7 @@ contract AgentVaultManagementFacet is AssetManagerBase, IAgentVaultManagement {
         address _agentVault,
         address payable _recipient
     )
-        external override
+        external
     {
         AgentsCreateDestroy.destroyAgent(_agentVault, _recipient);
     }

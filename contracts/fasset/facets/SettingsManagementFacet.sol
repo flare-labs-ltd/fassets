@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../interfaces/assetManager/ISettingsManagement.sol";
 import "../library/SettingsUpdater.sol";
 import "./AssetManagerBase.sol";
 
 
-contract SettingsManagementFacet is AssetManagerBase, ISettingsManagement {
+contract SettingsManagementFacet is AssetManagerBase {
     /**
      * Update all settings with validation.
      * This method cannot be called directly, it has to be called through assetManagerController.
@@ -16,7 +15,7 @@ contract SettingsManagementFacet is AssetManagerBase, ISettingsManagement {
         bytes32 _method,
         bytes calldata _params
     )
-        external override
+        external
         onlyAssetManagerController
     {
         SettingsUpdater.callUpdate(_method, _params);

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/assetManager/IUnderlyingBalance.sol";
 import "../library/UnderlyingBalance.sol";
 import "../library/UnderlyingWithdrawalAnnouncements.sol";
 import "./AssetManagerBase.sol";
 
 
-contract UnderlyingBalanceFacet is AssetManagerBase, IUnderlyingBalance {
+contract UnderlyingBalanceFacet is AssetManagerBase {
     /**
      * When the agent tops up his underlying address, it has to be confirmed by calling this method,
      * which updates the underlying free balance value.
@@ -20,7 +19,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase, IUnderlyingBalance {
         Payment.Proof calldata _payment,
         address _agentVault
     )
-        external override
+        external
     {
         UnderlyingBalance.confirmTopupPayment(_payment, _agentVault);
     }
@@ -36,7 +35,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase, IUnderlyingBalance {
     function announceUnderlyingWithdrawal(
         address _agentVault
     )
-        external override
+        external
     {
         UnderlyingWithdrawalAnnouncements.announceUnderlyingWithdrawal(_agentVault);
     }
@@ -54,7 +53,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase, IUnderlyingBalance {
         Payment.Proof calldata _payment,
         address _agentVault
     )
-        external override
+        external
     {
         UnderlyingWithdrawalAnnouncements.confirmUnderlyingWithdrawal(_payment, _agentVault);
     }
@@ -70,7 +69,7 @@ contract UnderlyingBalanceFacet is AssetManagerBase, IUnderlyingBalance {
     function cancelUnderlyingWithdrawal(
         address _agentVault
     )
-        external override
+        external
     {
         UnderlyingWithdrawalAnnouncements.cancelUnderlyingWithdrawal(_agentVault);
     }

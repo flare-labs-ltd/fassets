@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/assetManager/IAgentSettings.sol";
 import "../library/AgentSettingsUpdater.sol";
 import "./AssetManagerBase.sol";
 
 
-contract AgentSettingsFacet is AssetManagerBase, IAgentSettings {
+contract AgentSettingsFacet is AssetManagerBase {
     /**
      * Due to effect on the pool, all agent settings are timelocked.
      * This method announces a setting change. The change can be executed after the timelock expires.
@@ -18,7 +17,7 @@ contract AgentSettingsFacet is AssetManagerBase, IAgentSettings {
         string memory _name,
         uint256 _value
     )
-        external override
+        external
         returns (uint256 _updateAllowedAt)
     {
         return AgentSettingsUpdater.announceUpdate(_agentVault, _name, _value);
@@ -33,7 +32,7 @@ contract AgentSettingsFacet is AssetManagerBase, IAgentSettings {
         address _agentVault,
         string memory _name
     )
-        external override
+        external
     {
         AgentSettingsUpdater.executeUpdate(_agentVault, _name);
     }

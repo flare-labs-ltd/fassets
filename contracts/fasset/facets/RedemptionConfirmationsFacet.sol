@@ -2,12 +2,11 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../../userInterfaces/assetManager/IRedemptionConfirmations.sol";
 import "../library/RedemptionConfirmations.sol";
 import "./AssetManagerBase.sol";
 
 
-contract RedemptionConfirmationsFacet is AssetManagerBase, IRedemptionConfirmations {
+contract RedemptionConfirmationsFacet is AssetManagerBase {
     using SafeCast for uint256;
 
     /**
@@ -29,7 +28,7 @@ contract RedemptionConfirmationsFacet is AssetManagerBase, IRedemptionConfirmati
         Payment.Proof calldata _payment,
         uint256 _redemptionRequestId
     )
-        external override
+        external
     {
         RedemptionConfirmations.confirmRedemptionPayment(_payment, _redemptionRequestId.toUint64());
     }

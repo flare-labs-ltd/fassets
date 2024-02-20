@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../userInterfaces/assetManager/IAgentCollateral.sol";
-import "../interfaces/assetManager/IAgentVaultCollateralHooks.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../library/AgentsExternal.sol";
 import "./AssetManagerBase.sol";
 
 
-contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard, IAgentCollateral, IAgentVaultCollateralHooks {
+contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard {
     /**
      * Agent is going to withdraw `_valueNATWei` amount of collateral from agent vault.
      * This has to be announced and agent must then wait `withdrawalWaitMinSeconds` time.
@@ -22,7 +20,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard, IAgentCollat
         address _agentVault,
         uint256 _valueNATWei
     )
-        external override
+        external
         returns (uint256 _withdrawalAllowedAt)
     {
         return AgentsExternal.announceWithdrawal(Collateral.Kind.VAULT, _agentVault, _valueNATWei);
@@ -41,7 +39,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard, IAgentCollat
         address _agentVault,
         uint256 _valueNATWei
     )
-        external override
+        external
         returns (uint256 _redemptionAllowedAt)
     {
         return AgentsExternal.announceWithdrawal(Collateral.Kind.AGENT_POOL, _agentVault, _valueNATWei);
@@ -56,7 +54,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard, IAgentCollat
         IERC20 _token,
         uint256 _valueNATWei
     )
-        external override
+        external
     {
         // AgentsExternal.beforeCollateralWithdrawal makes sure that only a registered agent vault can call
         AgentsExternal.beforeCollateralWithdrawal(_token, msg.sender, _valueNATWei);
@@ -71,7 +69,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard, IAgentCollat
         address _agentVault,
         IERC20 _token
     )
-        external override
+        external
     {
         // AgentsExternal.depositExecuted makes sure that only agent vault or pool can call
         AgentsExternal.depositExecuted(_agentVault, _token);
@@ -86,7 +84,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard, IAgentCollat
         address _agentVault,
         IERC20 _token
     )
-        external override
+        external
     {
         AgentsExternal.switchVaultCollateral(_agentVault, _token);
     }
@@ -99,7 +97,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard, IAgentCollat
     function upgradeWNatContract(
         address _agentVault
     )
-        external override
+        external
     {
         // AgentsExternal.upgradeWNat checks that only agent owner can call
         AgentsExternal.upgradeWNatContract(_agentVault);
@@ -118,7 +116,7 @@ contract AgentCollateralFacet is AssetManagerBase, ReentrancyGuard, IAgentCollat
     function buybackAgentCollateral(
         address _agentVault
     )
-        external payable override
+        external payable
         nonReentrant
     {
         AgentsExternal.buybackAgentCollateral(_agentVault);

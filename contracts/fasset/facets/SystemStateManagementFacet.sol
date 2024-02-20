@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../interfaces/assetManager/ISystemStateManagement.sol";
 import "../library/StateUpdater.sol";
 import "./AssetManagerBase.sol";
 
 
-contract SystemStateManagementFacet is AssetManagerBase, ISystemStateManagement {
+contract SystemStateManagementFacet is AssetManagerBase {
     /**
      * When `attached` is true, asset manager has been added to the asset manager controller.
      * Even though the asset manager controller address is set at the construction time, the manager may not
@@ -18,7 +17,7 @@ contract SystemStateManagementFacet is AssetManagerBase, ISystemStateManagement 
      * The `attached` can be set to false when the retired asset manager is removed from the controller.
      */
     function attachController(bool attached)
-        external override
+        external
         onlyAssetManagerController
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -31,7 +30,7 @@ contract SystemStateManagementFacet is AssetManagerBase, ISystemStateManagement 
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
     function pause()
-        external override
+        external
         onlyAssetManagerController
     {
         StateUpdater.pause();
@@ -42,7 +41,7 @@ contract SystemStateManagementFacet is AssetManagerBase, ISystemStateManagement 
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
     function unpause()
-        external override
+        external
         onlyAssetManagerController
     {
         StateUpdater.unpause();
@@ -57,7 +56,7 @@ contract SystemStateManagementFacet is AssetManagerBase, ISystemStateManagement 
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
     function terminate()
-        external override
+        external
         onlyAssetManagerController
     {
         StateUpdater.terminate();

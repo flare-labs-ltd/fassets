@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../interfaces/assetManager/IAgentVaultAndPoolSupport.sol";
 import "../library/data/AssetManagerState.sol";
 import "../library/AgentsExternal.sol";
 import "../library/Agents.sol";
 import "./AssetManagerBase.sol";
 
 
-contract AgentVaultAndPoolSupportFacet is AssetManagerBase, IAgentVaultAndPoolSupport {
+contract AgentVaultAndPoolSupportFacet is AssetManagerBase {
     /**
      * Returns price of asset (UBA) in NAT Wei as a fraction.
      */
     function assetPriceNatWei()
-        external view override
+        external view
         returns (uint256 _multiplier, uint256 _divisor)
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
@@ -27,21 +26,21 @@ contract AgentVaultAndPoolSupportFacet is AssetManagerBase, IAgentVaultAndPoolSu
      * withdrawn after announcement if they are not backing any f-assets.
      */
     function isLockedVaultToken(address _agentVault, IERC20 _token)
-        external view override
+        external view
         returns (bool)
     {
         return AgentsExternal.isLockedVaultToken(_agentVault, _token);
     }
 
     function getFAssetsBackedByPool(address _agentVault)
-        external view override
+        external view
         returns (uint256)
     {
         return AgentsExternal.getFAssetsBackedByPool(_agentVault);
     }
 
     function isAgentVaultOwner(address _agentVault, address _address)
-        external view override
+        external view
         returns (bool)
     {
         return Agents.isOwner(Agent.get(_agentVault), _address);
@@ -52,7 +51,7 @@ contract AgentVaultAndPoolSupportFacet is AssetManagerBase, IAgentVaultAndPoolSu
      * @return WNat contract
      */
     function getWNat()
-        external view override
+        external view
         returns (IWNat)
     {
         return Globals.getWNat();
