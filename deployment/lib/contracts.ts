@@ -65,3 +65,7 @@ export function loadContractsList(filename: string): Contract[] {
 export function saveContractsList(filename: string, contractList: Contract[]) {
     writeFileSync(filename, JSON.stringify(contractList, null, 2));
 }
+
+class ContracsManager {
+
+}

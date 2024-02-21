@@ -2,14 +2,15 @@ import BN from "bn.js";
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { AssetManagerSettings, CollateralClass, CollateralType } from '../../lib/fasset/AssetManagerTypes';
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
-import { FAssetInstance } from "../../typechain-truffle";
+import { AssetManagerInitInstance, FAssetInstance } from "../../typechain-truffle";
 import { JsonParameterSchema } from "./JsonParameterSchema";
 import { AssetManagerParameters, CollateralTypeParameters } from './asset-manager-parameters';
 import { ChainContracts, loadContracts, newContract, saveContracts } from "./contracts";
-import { ZERO_ADDRESS, loadDeployAccounts } from './deploy-utils';
+import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts } from './deploy-utils';
 import { ILiquidationStrategyFactory } from "./liquidationStrategyFactory/ILiquidationStrategyFactory";
 import { LiquidationStrategyImpl } from "./liquidationStrategyFactory/LiquidationStrategyImpl";
 import { encodeAttestationName } from "@flarenetwork/state-connector-protocol";
+import { createDiamondCutsForAllAssetManagerFacets, deployAllAssetManagerFacets, deployFacet } from "./deploy-asset-manager-facets";
 
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
 
@@ -154,8 +155,8 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const AssetManager = artifacts.require("AssetManager");
+    const AssetManagerInit = artifacts.require("AssetManagerInit");
     const FAsset = artifacts.require('FAsset');
-
 
     const { deployer } = loadDeployAccounts(hre);
     const parameters = assetManagerParameters.load(parametersFile);
@@ -175,9 +176,16 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy));
 
-    // console.log(JSON.stringify(assetManagerSettings, null, 4));
+    // deploy asset manager diamond
+    const assetManagerInitAddress = await deployFacet(hre, 'AssetManagerInit', contractsFile);
+    await deployAllAssetManagerFacets(hre, contractsFile);
 
-    const assetManager = await AssetManager.new(assetManagerSettings, collateralTypes, liquidationStrategySettingsEnc);
+    const diamondCuts = await createDiamondCutsForAllAssetManagerFacets(hre, contractsFile);
+
+    const initParameters = abiEncodeCall(await AssetManagerInit.at(assetManagerInitAddress),
+        c => c.init(contracts.GovernanceSettings.address, deployer, assetManagerSettings, collateralTypes, liquidationStrategySettingsEnc));
+
+    const assetManager = await AssetManager.new(diamondCuts, assetManagerInitAddress, initParameters);
 
     await fAsset.setAssetManager(assetManager.address, { from: deployer });
 
@@ -196,9 +204,11 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
 export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contractsFile: string) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
-    const AssetManager = artifacts.require("AssetManager");
+    const IIAssetManager = artifacts.require("IIAssetManager");
+    const AssetManagerInit = artifacts.require("AssetManagerInit");
     const FAsset = artifacts.require('FAsset');
 
+    const { deployer } = loadDeployAccounts(hre);
     const parameters = assetManagerParameters.load(parametersFile);
     const contracts = loadContracts(contractsFile);
 
@@ -207,7 +217,7 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     console.log(`Verifying ${assetManagerContractName} at ${assetManagerAddress}...`);
 
-    const assetManager = await AssetManager.at(assetManagerAddress);
+    const assetManager = await IIAssetManager.at(assetManagerAddress);
     const currentSettings = await assetManager.getSettings();
 
     const fAsset = await FAsset.at(await assetManager.fAsset());
@@ -223,9 +233,15 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy));
 
+    const assetManagerInitAddress = contracts['AssetManagerInit']!.address;
+    const diamondCuts = await createDiamondCutsForAllAssetManagerFacets(hre, contractsFile);
+
+    const initParameters = abiEncodeCall(await AssetManagerInit.at(assetManagerInitAddress),
+        c => c.init(contracts.GovernanceSettings.address, deployer, assetManagerSettings, collateralTypes, liquidationStrategySettingsEnc));
+
     await hre.run("verify:verify", {
         address: assetManagerAddress,
-        constructorArguments: [assetManagerSettings, collateralTypes, liquidationStrategySettingsEnc]
+        constructorArguments: [diamondCuts, assetManagerInitAddress, initParameters]
     });
 }
 

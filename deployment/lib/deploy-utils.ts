@@ -33,3 +33,7 @@ export async function deployedCodeMatches(artifact: Artifact, address: string | 
     const code = await readDeployedCode(address);
     return artifact.deployedBytecode === code;
 }
+
+export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, call: (inst: I) => any) {
+    return call(instance.contract.methods).encodeABI();
+}

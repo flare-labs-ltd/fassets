@@ -12,7 +12,7 @@ import {
     deployAgentOwnerRegistry,
     deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory,
     deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployUserWhitelist, switchAllToProductionMode, verifyAssetManager, verifyAssetManagerController
-} from "./deployment/lib/deploy-asset-manager";
+} from "./deployment/lib/deploy-fasset-contracts";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import "./type-extensions";
 
@@ -41,20 +41,14 @@ task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Op
     });
 
 task("deploy-asset-managers", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
-    .addFlag("link", "Link asset manager before")
     .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and SCProofVerifier")
     .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
     .addFlag("all", "Deploy all asset managers (for all parameter files in the directory)")
     .addVariadicPositionalParam("managers", "Asset manager file names (default extension is .json). Must be in the directory deployment/config/${networkConfig}. Alternatively, add -all flag to use all parameter files in the directory.", [])
-    .setAction(async ({ networkConfig, managers, link, deployController, all }, hre) => {
+    .setAction(async ({ networkConfig, managers, deployController, all }, hre) => {
         const configDir = `deployment/config/${networkConfig}`;
         const contractsFile = `deployment/deploys/${networkConfig}.json`;
         const managerParameterFiles = await getManagerFiles(all, configDir, managers);
-        // optionally link the AssetManager
-        if (link) {
-            const mapfile = `deployment/deploys/${networkConfig}.libraries.json`
-            await linkContracts(hre, ["AssetManager"], mapfile);
-        }
         // optionally run the deploy together with controller
         if (deployController) {
             await deployAssetManagerController(hre, contractsFile, managerParameterFiles);
