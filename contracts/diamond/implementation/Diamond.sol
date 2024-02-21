@@ -13,9 +13,11 @@ import { LibDiamond } from "../library/LibDiamond.sol";
 // When no function exists for function called
 error FunctionNotFound(bytes4 _functionSelector);
 
+// solhint-disable no-inline-assembly
 abstract contract Diamond {
     // Find facet for function that is called and execute the
     // function if a facet is found and return any value.
+    // solhint-disable-next-line no-complex-fallback
     fallback() external payable {
         LibDiamond.DiamondStorage storage ds;
         bytes32 position = LibDiamond.DIAMOND_STORAGE_POSITION;

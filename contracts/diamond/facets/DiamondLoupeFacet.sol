@@ -12,6 +12,7 @@ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol
 import { IDiamondLoupe } from "../interfaces/IDiamondLoupe.sol";
 import { LibDiamond } from  "../library/LibDiamond.sol";
 
+// solhint-disable no-inline-assembly
 contract DiamondLoupeFacet is IDiamondLoupe, IERC165 {
     // Diamond Loupe Functions
     ////////////////////////////////////////////////////////////////////

@@ -3,10 +3,11 @@ pragma solidity ^0.8.0;
 
 // Example library to show a simple example of diamond storage
 
+// solhint-disable no-inline-assembly
 library TestLib {
 
-  bytes32 constant DIAMOND_STORAGE_POSITION = keccak256("diamond.standard.test.storage");
-  
+  bytes32 internal constant DIAMOND_STORAGE_POSITION = keccak256("diamond.standard.test.storage");
+
   struct TestState {
       address myAddress;
       uint256 myNum;

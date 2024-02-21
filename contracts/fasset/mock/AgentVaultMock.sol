@@ -16,6 +16,7 @@ contract AgentVaultMock {
     receive() external payable {}
 
     function callFunctionAt(address _contract, bytes memory _payload) external {
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory data) = _contract.call(_payload);
         require(success, string(data));
     }

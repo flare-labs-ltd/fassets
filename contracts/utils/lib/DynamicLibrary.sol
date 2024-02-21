@@ -2,13 +2,12 @@
 pragma solidity 0.8.23;
 
 // solhint-disable no-inline-assembly
-// solhint-disable avoid-low-level-calls
-
 library DynamicLibrary {
     function delegateCall(address _library, bytes memory _data)
         internal
         returns (bytes memory)
     {
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = _library.delegatecall(_data);
         if (success) {
             return result;

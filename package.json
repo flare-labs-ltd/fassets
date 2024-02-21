@@ -28,7 +28,7 @@
     "clean": "env rm -rf cache artifacts build typechain typechain-truffle",
     "clean-all": "yarn clean && env rm -rf node_modules",
     "compile": "yarn hardhat compile --config hardhatSetup.config.ts && yarn typechain-prepare && yarn typechain-truffle-v5",
-    "c": "yarn compile",
+    "c": "yarn compile && yarn lint",
     "precompile": "env bash scripts/create-events-interface.sh",
     "lint": "yarn solhint \"contracts/**/*.sol\"",
     "typechain-prepare": "env bash scripts/remove-flattened-duplicates.sh",
