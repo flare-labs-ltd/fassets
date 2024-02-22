@@ -1,8 +1,8 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ILiquidationStrategyContract } from "../../../typechain-truffle";
-import { ChainContracts, newContract } from "../contracts";
-import { deployedCodeMatches } from "../deploy-utils";
 import { JsonParameterSchema } from "../JsonParameterSchema";
+import { ContractStore } from "../contracts";
+import { deployedCodeMatches } from "../deploy-utils";
 import { ILiquidationStrategyFactory } from "./ILiquidationStrategyFactory";
 import { LiquidationStrategyImplSettings } from "./LiquidationStrategyImplSettings";
 
@@ -11,14 +11,15 @@ export class LiquidationStrategyImpl implements ILiquidationStrategyFactory<Liqu
 
     schema = new JsonParameterSchema<LiquidationStrategyImplSettings>(require('../../../deployment/config/LiquidationStrategyImplSettings.schema.json'));
 
-    async deployLibrary(hre: HardhatRuntimeEnvironment, contracts: ChainContracts): Promise<string> {
+    async deployLibrary(hre: HardhatRuntimeEnvironment, contracts: ContractStore): Promise<string> {
         const liquidationStrategyArtifact = hre.artifacts.readArtifactSync('LiquidationStrategyImpl');
-        if (await deployedCodeMatches(liquidationStrategyArtifact, contracts.LiquidationStrategyImpl?.address)) {
-            return contracts.LiquidationStrategyImpl!.address;
+        const deployedCodeAddress = contracts.get('LiquidationStrategyImpl')?.address;
+        if (await deployedCodeMatches(liquidationStrategyArtifact, deployedCodeAddress)) {
+            return deployedCodeAddress!;
         }
         const LiquidationStrategy = hre.artifacts.require('LiquidationStrategyImpl') as ILiquidationStrategyContract;
         const liquidationStrategy = await LiquidationStrategy.new();
-        contracts.LiquidationStrategyImpl = newContract('LiquidationStrategyImpl', 'LiquidationStrategyImpl.sol', liquidationStrategy.address);
+        contracts.add('LiquidationStrategyImpl', 'LiquidationStrategyImpl.sol', liquidationStrategy.address);
         return liquidationStrategy.address;
     }
 

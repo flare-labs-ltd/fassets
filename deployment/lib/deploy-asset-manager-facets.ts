@@ -1,6 +1,6 @@
 import { Artifact, HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DiamondCut, FacetCutAction } from "../../test/utils/diamond";
-import { loadContracts, newContract, saveContracts } from "./contracts";
+import { ContractStore } from "./contracts";
 import { deployedCodeMatches } from './deploy-utils';
 
 const assetManagerInterfaces = [
@@ -32,37 +32,34 @@ const assetManagerFacets = [
     'SystemStateManagementFacet',
 ];
 
-export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, mapfile: string) {
+export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore) {
     for (const facetName of assetManagerFacets) {
-        await deployFacet(hre, facetName, mapfile);
+        await deployFacet(hre, facetName, contracts);
     }
 }
 
 // deploy facet unless it is already dpeloyed with identical code (facets must be stateless)
-export async function deployFacet(hre: HardhatRuntimeEnvironment, facetName: string, mapfile: string) {
-    const contracts = loadContracts(mapfile);
+export async function deployFacet(hre: HardhatRuntimeEnvironment, facetName: string, contracts: ContractStore) {
     const artifact = hre.artifacts.readArtifactSync(facetName);
-    const alreadyDeployed = await deployedCodeMatches(artifact, contracts[facetName]?.address);
+    const alreadyDeployed = await deployedCodeMatches(artifact, contracts.get(facetName)?.address);
     if (!alreadyDeployed) {
         const contractFactory = hre.artifacts.require(facetName);
         const instance = await contractFactory.new() as Truffle.ContractInstance;
-        contracts[facetName] = newContract(facetName, `${facetName}.sol`, instance.address);
+        contracts.add(facetName, `${facetName}.sol`, instance.address);
         console.log(`Deployed facet ${facetName}`);
-        saveContracts(mapfile, contracts);
         return instance.address;
     } else {
-        return contracts[facetName]!.address;
+        return contracts.getRequired(facetName).address;
     }
 }
 
-export async function createDiamondCutsForAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, mapfile: string) {
-    const contracts = loadContracts(mapfile);
+export async function createDiamondCutsForAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore) {
     const interfaceAbis = assetManagerInterfaces.map(name => hre.artifacts.readArtifactSync(name).abi as AbiItem[]);
     const interfaceSelectorMap = methodSelectorMap(...interfaceAbis);
     const interfaceSelectors = new Set(interfaceSelectorMap.keys());
     const diamondCuts: DiamondCut[] = [];
     for (const facetName of assetManagerFacets) {
-        const facetAddress = contracts[facetName]!.address;
+        const facetAddress = contracts.getRequired(facetName).address;
         const artifact = hre.artifacts.readArtifactSync(facetName);
         diamondCuts.push(await createDiamondCut(artifact, facetAddress, interfaceSelectors));
     }

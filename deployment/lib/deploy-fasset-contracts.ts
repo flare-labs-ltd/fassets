@@ -1,16 +1,16 @@
+import { encodeAttestationName } from "@flarenetwork/state-connector-protocol";
 import BN from "bn.js";
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { AssetManagerSettings, CollateralClass, CollateralType } from '../../lib/fasset/AssetManagerTypes';
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
-import { AssetManagerInitInstance, FAssetInstance } from "../../typechain-truffle";
+import { FAssetInstance } from "../../typechain-truffle";
 import { JsonParameterSchema } from "./JsonParameterSchema";
 import { AssetManagerParameters, CollateralTypeParameters } from './asset-manager-parameters';
-import { ChainContracts, loadContracts, newContract, saveContracts } from "./contracts";
+import { FAssetContractStore } from "./contracts";
+import { createDiamondCutsForAllAssetManagerFacets, deployAllAssetManagerFacets, deployFacet } from "./deploy-asset-manager-facets";
 import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts } from './deploy-utils';
 import { ILiquidationStrategyFactory } from "./liquidationStrategyFactory/ILiquidationStrategyFactory";
 import { LiquidationStrategyImpl } from "./liquidationStrategyFactory/LiquidationStrategyImpl";
-import { encodeAttestationName } from "@flarenetwork/state-connector-protocol";
-import { createDiamondCutsForAllAssetManagerFacets, deployAllAssetManagerFacets, deployFacet } from "./deploy-asset-manager-facets";
 
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
 
@@ -18,37 +18,31 @@ export const liquidationStrategyFactories: Record<string, () => ILiquidationStra
     LiquidationStrategyImpl: () => new LiquidationStrategyImpl(),
 }
 
-export async function deploySCProofVerifier(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+export async function deploySCProofVerifier(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying SCProofVerifier`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const SCProofVerifier = artifacts.require("SCProofVerifier");
 
-    const contracts = loadContracts(contractsFile);
-
     const scProofVerifier = await SCProofVerifier.new(contracts.StateConnector.address);
 
-    contracts.SCProofVerifier = newContract("SCProofVerifier", "SCProofVerifier.sol", scProofVerifier.address);
-    saveContracts(contractsFile, contracts);
+    contracts.add("SCProofVerifier", "SCProofVerifier.sol", scProofVerifier.address);
 }
 
-export async function deployPriceReader(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+export async function deployPriceReader(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying PriceReader`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const PriceReader = artifacts.require("FtsoV1PriceReader");
 
-    const contracts = loadContracts(contractsFile);
-
     const priceReader = await PriceReader.new(contracts.AddressUpdater.address, contracts.FtsoRegistry.address);
 
-    contracts.PriceReader = newContract("PriceReader", "PriceReader.sol", priceReader.address);
-    saveContracts(contractsFile, contracts);
+    contracts.add("PriceReader", "PriceReader.sol", priceReader.address);
 }
 
-export async function deployUserWhitelist(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+export async function deployUserWhitelist(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying UserWhitelist`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
@@ -56,15 +50,13 @@ export async function deployUserWhitelist(hre: HardhatRuntimeEnvironment, contra
     const Whitelist = artifacts.require("Whitelist");
 
     const { deployer } = loadDeployAccounts(hre);
-    const contracts = loadContracts(contractsFile);
 
     const whitelist = await Whitelist.new(contracts.GovernanceSettings.address, deployer, false);
 
-    contracts[`UserWhitelist`] = newContract(`UserWhitelist`, "Whitelist.sol", whitelist.address, { mustSwitchToProduction: true });
-    saveContracts(contractsFile, contracts);
+    contracts.add(`UserWhitelist`, "Whitelist.sol", whitelist.address, { mustSwitchToProduction: true });
 }
 
-export async function deployAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+export async function deployAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying AgentOwnerRegistry`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
@@ -72,60 +64,49 @@ export async function deployAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, c
     const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
 
     const { deployer } = loadDeployAccounts(hre);
-    const contracts = loadContracts(contractsFile);
 
     const whitelist = await AgentOwnerRegistry.new(contracts.GovernanceSettings.address, deployer, true);
 
-    contracts[`AgentOwnerRegistry`] = newContract(`AgentOwnerRegistry`, "AgentOwnerRegistry.sol", whitelist.address, { mustSwitchToProduction: true });
-    saveContracts(contractsFile, contracts);
+    contracts.add("AgentOwnerRegistry", "AgentOwnerRegistry.sol", whitelist.address, { mustSwitchToProduction: true });
 }
 
-export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying AgentVaultFactory`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const AgentVaultFactory = artifacts.require("AgentVaultFactory");
 
-    const contracts = loadContracts(contractsFile);
-
     const agentVaultFactory = await AgentVaultFactory.new();
 
-    contracts.AgentVaultFactory = newContract("AgentVaultFactory", "AgentVaultFactory.sol", agentVaultFactory.address);
-    saveContracts(contractsFile, contracts);
+    contracts.add("AgentVaultFactory", "AgentVaultFactory.sol", agentVaultFactory.address);
 }
 
-export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying CollateralPoolFactory`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 
-    const contracts = loadContracts(contractsFile);
-
     const collateralPoolFactory = await CollateralPoolFactory.new();
 
-    contracts.CollateralPoolFactory = newContract("CollateralPoolFactory", "CollateralPoolFactory.sol", collateralPoolFactory.address);
-    saveContracts(contractsFile, contracts);
+    contracts.add("CollateralPoolFactory", "CollateralPoolFactory.sol", collateralPoolFactory.address);
 }
 
-export async function deployCollateralPoolTokenFactory(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+export async function deployCollateralPoolTokenFactory(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying CollateralPoolTokenFactory`);
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 
-    const contracts = loadContracts(contractsFile);
-
     const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new();
 
-    contracts.CollateralPoolTokenFactory = newContract("CollateralPoolTokenFactory", "CollateralPoolTokenFactory.sol", collateralPoolTokenFactory.address);
-    saveContracts(contractsFile, contracts);
+    contracts.add("CollateralPoolTokenFactory", "CollateralPoolTokenFactory.sol", collateralPoolTokenFactory.address);
 }
 
-export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, contractsFile: string, managerParameterFiles: string[]) {
+export async function deployAssetManagerController(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore, managerParameterFiles: string[]) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     console.log(`Deploying AssetManagerController`);
@@ -133,17 +114,15 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
     const AssetManagerController = artifacts.require("AssetManagerController");
 
     const { deployer } = loadDeployAccounts(hre);
-    const contracts = loadContracts(contractsFile);
 
     const assetManagerController = await AssetManagerController.new(contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address);
 
-    contracts.AssetManagerController = newContract("AssetManagerController", "AssetManagerController.sol", assetManagerController.address, { mustSwitchToProduction: true });
-    saveContracts(contractsFile, contracts);
+    contracts.add("AssetManagerController", "AssetManagerController.sol", assetManagerController.address, { mustSwitchToProduction: true });
 
     // add asset managers before switching to production governance
     for (const parameterFile of managerParameterFiles) {
         console.log(`   deploying AssetManager with config ${parameterFile}`);
-        const assetManager = await deployAssetManager(hre, parameterFile, contractsFile, false);
+        const assetManager = await deployAssetManager(hre, parameterFile, contracts, false);
         await assetManagerController.addAssetManager(assetManager.address, { from: deployer });
     }
 
@@ -151,7 +130,7 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
 }
 
 // assumes AssetManager contract artifact has been linked already
-export async function deployAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contractsFile: string, standalone: boolean) {
+export async function deployAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contracts: FAssetContractStore, standalone: boolean) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const AssetManager = artifacts.require("AssetManager");
@@ -160,8 +139,6 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     const { deployer } = loadDeployAccounts(hre);
     const parameters = assetManagerParameters.load(parametersFile);
-
-    const contracts = loadContracts(contractsFile);
 
     const fAsset = await FAsset.new(deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals);
 
@@ -177,10 +154,10 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy));
 
     // deploy asset manager diamond
-    const assetManagerInitAddress = await deployFacet(hre, 'AssetManagerInit', contractsFile);
-    await deployAllAssetManagerFacets(hre, contractsFile);
+    const assetManagerInitAddress = await deployFacet(hre, 'AssetManagerInit', contracts);
+    await deployAllAssetManagerFacets(hre, contracts);
 
-    const diamondCuts = await createDiamondCutsForAllAssetManagerFacets(hre, contractsFile);
+    const diamondCuts = await createDiamondCutsForAllAssetManagerFacets(hre, contracts);
 
     const initParameters = abiEncodeCall(await AssetManagerInit.at(assetManagerInitAddress),
         c => c.init(contracts.GovernanceSettings.address, deployer, assetManagerSettings, collateralTypes, liquidationStrategySettingsEnc));
@@ -190,9 +167,8 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     await fAsset.setAssetManager(assetManager.address, { from: deployer });
 
     const symbol = parameters.fAssetSymbol;
-    contracts[`AssetManager_${symbol}`] = newContract(`AssetManager_${symbol}`, "AssetManager.sol", assetManager.address);
-    contracts[symbol] = newContract(symbol, "FAsset.sol", fAsset.address, { mustSwitchToProduction: true });
-    saveContracts(contractsFile, contracts);
+    contracts.add(`AssetManager_${symbol}`, "AssetManager.sol", assetManager.address);
+    contracts.add(symbol, "FAsset.sol", fAsset.address, { mustSwitchToProduction: true });
 
     if (standalone) {
         console.log(`NOTE: perform governance call 'AssetManagerController(${contracts.AssetManagerController?.address}).addAssetManager(${assetManager.address})'`);
@@ -201,7 +177,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     return assetManager;
 }
 
-export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contractsFile: string) {
+export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contracts: FAssetContractStore) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
     const IIAssetManager = artifacts.require("IIAssetManager");
@@ -210,10 +186,9 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     const { deployer } = loadDeployAccounts(hre);
     const parameters = assetManagerParameters.load(parametersFile);
-    const contracts = loadContracts(contractsFile);
 
     const assetManagerContractName = `AssetManager_${parameters.fAssetSymbol}`;
-    const assetManagerAddress = contracts[assetManagerContractName]!.address;
+    const assetManagerAddress = contracts.getRequired(assetManagerContractName).address;
 
     console.log(`Verifying ${assetManagerContractName} at ${assetManagerAddress}...`);
 
@@ -233,8 +208,8 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy));
 
-    const assetManagerInitAddress = contracts['AssetManagerInit']!.address;
-    const diamondCuts = await createDiamondCutsForAllAssetManagerFacets(hre, contractsFile);
+    const assetManagerInitAddress = contracts.getRequired('AssetManagerInit').address;
+    const diamondCuts = await createDiamondCutsForAllAssetManagerFacets(hre, contracts);
 
     const initParameters = abiEncodeCall(await AssetManagerInit.at(assetManagerInitAddress),
         c => c.init(contracts.GovernanceSettings.address, deployer, assetManagerSettings, collateralTypes, liquidationStrategySettingsEnc));
@@ -245,8 +220,7 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
     });
 }
 
-export async function verifyAssetManagerController(hre: HardhatRuntimeEnvironment, contractsFile: string) {
-    const contracts = loadContracts(contractsFile);
+export async function verifyAssetManagerController(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     const { deployer } = loadDeployAccounts(hre);
     await hre.run("verify:verify", {
         address: contracts.AssetManagerController!.address,
@@ -254,26 +228,25 @@ export async function verifyAssetManagerController(hre: HardhatRuntimeEnvironmen
     });
 }
 
-export async function switchAllToProductionMode(hre: HardhatRuntimeEnvironment, contractsFile: string) {
+export async function switchAllToProductionMode(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     const { deployer } = loadDeployAccounts(hre);
-    const contracts = loadContracts(contractsFile);
 
     const GovernedBase = artifacts.require("contracts/governance/implementation/GovernedBase.sol:GovernedBase" as 'GovernedBase');
 
-    for (const contract of Object.values(contracts)) {
+    for (const contract of contracts.list()) {
         if (contract?.mustSwitchToProduction) {
             console.log(`Switching to production: ${contract.name}`);
             const instance = await GovernedBase.at(contract.address);
             await instance.switchToProductionMode({ from: deployer });
             delete contract.mustSwitchToProduction;
-            saveContracts(contractsFile, contracts);
+            contracts.save();
         }
     }
 }
 
-function addressFromParameter(contracts: ChainContracts, addressOrName: string) {
+function addressFromParameter(contracts: FAssetContractStore, addressOrName: string) {
     if (addressOrName.startsWith('0x')) return addressOrName;
-    const contract = contracts[addressOrName];
+    const contract = contracts.get(addressOrName);
     if (contract != null) return contract.address;
     throw new Error(`Missing contract ${addressOrName}`);
 }
@@ -282,7 +255,7 @@ function parseBN(s: string) {
     return new BN(s.replace(/_/g, ''), 10);
 }
 
-function convertCollateralType(contracts: ChainContracts, parameters: CollateralTypeParameters, collateralClass: CollateralClass): CollateralType {
+function convertCollateralType(contracts: FAssetContractStore, parameters: CollateralTypeParameters, collateralClass: CollateralClass): CollateralType {
     return {
         collateralClass: collateralClass,
         token: addressFromParameter(contracts, parameters.token),
@@ -297,7 +270,7 @@ function convertCollateralType(contracts: ChainContracts, parameters: Collateral
     }
 }
 
-function createAssetManagerSettings(contracts: ChainContracts, parameters: AssetManagerParameters, fAsset: FAssetInstance, liquidationStrategy: string): AssetManagerSettings {
+function createAssetManagerSettings(contracts: FAssetContractStore, parameters: AssetManagerParameters, fAsset: FAssetInstance, liquidationStrategy: string): AssetManagerSettings {
     if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.SCProofVerifier || !contracts.CollateralPoolFactory) {
         throw new Error("Missing contracts");
     }

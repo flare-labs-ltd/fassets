@@ -1,6 +1,6 @@
 import hre from "hardhat";
 import { runAsyncMain } from "../../../lib/utils/helpers";
-import { ChainContracts, loadContracts, newContract, saveContracts } from "../../lib/contracts";
+import { FAssetContractStore } from "../../lib/contracts";
 import { loadDeployAccounts, requiredEnvironmentVariable } from "../../lib/deploy-utils";
 
 const FakeERC20 = artifacts.require('FakeERC20');
@@ -9,16 +9,15 @@ const FakeERC20 = artifacts.require('FakeERC20');
 runAsyncMain(async () => {
     const network = requiredEnvironmentVariable('NETWORK_CONFIG');
     const contractsFile = `deployment/deploys/${network}.json`;
-    const contracts = loadContracts(contractsFile);
+    const contracts = new FAssetContractStore(contractsFile, true);
     await deployStablecoin(contracts, "Test USDCoin", "testUSDC", 6);
     await deployStablecoin(contracts, "Test Tether", "testUSDT", 6);
     await deployStablecoin(contracts, "Test Ether", "testETH", 18);
-    saveContracts(contractsFile, contracts);
 });
 
-async function deployStablecoin(contracts: ChainContracts, name: string, symbol: string, decimals: number) {
+async function deployStablecoin(contracts: FAssetContractStore, name: string, symbol: string, decimals: number) {
     // create token
     const { deployer } = loadDeployAccounts(hre);
     const token = await FakeERC20.new(deployer, name, symbol, decimals);
-    contracts[symbol] = newContract(symbol, 'FakeERC20.sol', token.address);
+    contracts.add(symbol, 'FakeERC20.sol', token.address);
 }
