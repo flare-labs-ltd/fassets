@@ -1,10 +1,10 @@
 import hre from "hardhat";
 import { requiredEventArgs } from "../../lib/utils/events/truffle";
-import { getTestFile } from "../../test/utils/test-helpers";
+import { getTestFile, itSkipIf } from "../../test/utils/test-helpers";
 import { createTestAgent } from "../../test/utils/test-settings";
 import { AgentOwnerRegistryInstance, AssetManagerControllerInstance } from "../../typechain-truffle";
 import { FAssetContractStore } from "../lib/contracts";
-import { loadDeployAccounts, requiredEnvironmentVariable } from "../lib/deploy-utils";
+import { loadDeployAccounts, networkConfigName, requiredEnvironmentVariable } from "../lib/deploy-utils";
 import { SourceId } from "../../lib/underlying-chain/SourceId";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
 import { MockStateConnectorClient } from "../../test/utils/fasset/MockStateConnectorClient";
@@ -16,14 +16,14 @@ const IIAssetManager = artifacts.require('IIAssetManager');
 const AgentOwnerRegistry = artifacts.require('AgentOwnerRegistry');
 
 contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, async accounts => {
-    let networkConfig: string;
+    const networkConfig = networkConfigName(hre);
+
     let contracts: FAssetContractStore;
 
     let assetManagerController: AssetManagerControllerInstance;
     let agentOwnerRegistry: AgentOwnerRegistryInstance;
 
     before(async () => {
-        networkConfig = requiredEnvironmentVariable('NETWORK_CONFIG');
         contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, false);
         assetManagerController = await AssetManagerController.at(contracts.AssetManagerController!.address);
         agentOwnerRegistry = await AgentOwnerRegistry.at(contracts.AgentOwnerRegistry!.address);
@@ -66,8 +66,7 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         [SourceId.ALGO]: 'TEST_ADDRESS',
     };
 
-    it("Can create an agent on all managers", async () => {
-        if (networkConfig !== 'hardhat') return;
+    itSkipIf(networkConfig !== 'hardhat')("Can create an agent on all managers", async () => {
         const { deployer } = loadDeployAccounts(hre);
         const managers = await assetManagerController.getAssetManagers();
         const owner = requiredEnvironmentVariable('TEST_AGENT_OWNER');
