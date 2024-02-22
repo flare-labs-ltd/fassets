@@ -37,3 +37,8 @@ export async function deployedCodeMatches(artifact: Artifact, address: string | 
 export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, call: (inst: I) => any) {
     return call(instance.contract.methods).encodeABI();
 }
+
+// we use hardhat.json for network with name 'local'
+export function networkConfigName(hre: HardhatRuntimeEnvironment) {
+    return hre.network.name === 'local' ? 'hardhat' : hre.network.name;
+}

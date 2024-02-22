@@ -29,21 +29,21 @@
     },
     "vaultCollaterals": [
         {
-            "token": "USDC",
+            "token": "testUSDC",
             "decimals": 18,
             "directPricePair": false,
             "assetFtsoSymbol": "ALGO",
-            "tokenFtsoSymbol": "USDC",
+            "tokenFtsoSymbol": "testUSDC",
             "minCollateralRatioBIPS": 14000,
             "ccbMinCollateralRatioBIPS": 13000,
             "safetyMinCollateralRatioBIPS": 15000
         },
         {
-            "token": "USDT",
+            "token": "testUSDT",
             "decimals": 18,
             "directPricePair": false,
             "assetFtsoSymbol": "ALGO",
-            "tokenFtsoSymbol": "USDT",
+            "tokenFtsoSymbol": "testUSDT",
             "minCollateralRatioBIPS": 15000,
             "ccbMinCollateralRatioBIPS": 14000,
             "safetyMinCollateralRatioBIPS": 16000

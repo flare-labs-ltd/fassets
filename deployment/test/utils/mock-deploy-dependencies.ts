@@ -11,12 +11,12 @@ const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const FtsoManagerMock = artifacts.require('FtsoManagerMock');
 const FtsoMock = artifacts.require('FtsoMock');
 const VPContract = artifacts.require('VPContract');
-const FakeERC20 = artifacts.require('FakeERC20');
 
 const ftsoList: Array<[string, string, number, number]> = [
     ['NAT', 'FtsoNat', 5, 0.20],
-    ['USDC', 'FtsoUSDC', 5, 1.01],
-    ['USDT', 'FtsoUSDT', 5, 0.99],
+    ['testUSDC', 'FtsoUSDC', 5, 1.01],
+    ['testUSDT', 'FtsoUSDT', 5, 0.99],
+    ['testETH', 'FtsoETH', 5, 3000],
     ['ALGO', 'FtsoAlgo', 5, 0.30],
     ['BTC', 'FtsoBtc', 5, 20_000],
     ['DOGE', 'FtsoDoge', 5, 0.05],
@@ -47,10 +47,6 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
     await wNat.setReadVpContract(vpContract.address, { from: deployer });
     await addressUpdater.addOrUpdateContractNamesAndAddresses(["WNat"], [wNat.address], { from: deployer });
 
-    // Stablecoins
-    const usdc = await FakeERC20.new(deployer, "USDCoin", "USDC", 6);
-    const usdt = await FakeERC20.new(deployer, "Tether", "USDT", 6);
-
     // FtsoRegistry
     const ftsoRegistry = await FtsoRegistryMock.new();
     await addressUpdater.addOrUpdateContractNamesAndAddresses(["FtsoRegistry"], [ftsoRegistry.address], { from: deployer });
@@ -65,8 +61,6 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
     contracts.add('AddressUpdater', 'AddressUpdater.sol', addressUpdater.address);
     contracts.add('StateConnector', 'StateConnectorMock.sol', stateConnector.address);
     contracts.add('WNat', 'WNat.sol', wNat.address);
-    contracts.add('USDC', 'FakeERC20.sol', usdc.address);
-    contracts.add('USDT', 'FakeERC20.sol', usdt.address);
     contracts.add('FtsoRegistry', 'FtsoRegistryMock.sol', ftsoRegistry.address);
     contracts.add('FtsoManager', 'FtsoManagerMock.sol', ftsoManager.address);
 

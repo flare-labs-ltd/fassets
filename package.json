@@ -47,7 +47,7 @@
     "---------DEPLOY---SCRIPTS": "",
     "full-deploy-hardhat": "yarn hardhat --network local deploy-asset-manager-dependencies --network-config hardhat && yarn hardhat --network local deploy-asset-managers --network-config hardhat --deploy-controller --all",
     "full-deploy-hardhat-test": "env NETWORK_CONFIG=hardhat yarn hardhat --network local test --no-compile deployment/test/test-deployed-contracts.ts",
-    "mock-deploy-hardhat": "yarn hardhat --network local run deployment/test/scripts/mock-deploy-dependencies.ts && yarn full-deploy-hardhat && yarn hardhat --network local run --no-compile deployment/test/scripts/mock-deploy-fix-address-updater.ts && yarn full-deploy-hardhat-test && yarn hardhat --network local switch-to-production --network-config hardhat",
+    "mock-deploy-hardhat": "yarn hardhat --network local run deployment/test/scripts/mock-deploy-dependencies.ts && env NETWORK_CONFIG=hardhat yarn hardhat --network local run deployment/test/scripts/mock-deploy-stablecoins.ts && yarn full-deploy-hardhat && yarn hardhat --network local run --no-compile deployment/test/scripts/mock-deploy-fix-address-updater.ts && yarn full-deploy-hardhat-test && yarn hardhat --network local switch-to-production --network-config hardhat",
     "flare-sc-deploy-hardhat": "env NETWORK_CONFIG=hardhat yarn hardhat --network local run deployment/test/scripts/mock-deploy-stablecoins.ts && yarn full-deploy-hardhat && yarn full-deploy-hardhat-test",
     "deploy-mock-stablecoins-coston": "env NETWORK_CONFIG=coston yarn hardhat --network coston run deployment/test/scripts/mock-deploy-stablecoins.ts",
     "deploy-dependencies-coston": "yarn hardhat --network coston deploy-asset-manager-dependencies --network-config coston",
