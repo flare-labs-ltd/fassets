@@ -6,8 +6,6 @@
 
 **getSettings** - Get complete current settings.
 
-**getLiquidationSettings** - Get settings for current liquidation strategy. Format depends on the liquidation strategy implementation.
-
 **controllerAttached** - When `controllerAttached` is true, asset manager has been added to the asset manager controller. This is required for the asset manager to be operational (create agent and minting don't work otherwise).
 
 **paused** - True if the asset manager is paused. In the paused state, minting is disabled, but all other operations (e.g. redemptions, liquidation) still work. Paused asset manager can be later unpaused.

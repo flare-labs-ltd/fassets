@@ -334,7 +334,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     }
 
     function setAgentMintingCRChangeTimelockSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
-    external
+        external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
@@ -342,7 +342,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     }
 
     function setPoolExitAndTopupChangeTimelockSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
-    external
+        external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
@@ -350,7 +350,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     }
 
     function setAgentTimelockedOperationWindowSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
-    external
+        external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
@@ -358,34 +358,31 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     }
 
     function setCollateralPoolTokenTimelockSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
-    external
+        external
         onlyImmediateGovernance
     {
         _setValueOnManagers(_assetManagers,
             SettingsUpdater.SET_COLLATERAL_POOL_TOKEN_TIMELOCK_SECONDS, abi.encode(_value));
     }
 
-    function setLiquidationStrategy(
-        IIAssetManager[] memory _assetManagers,
-        address _liquidationStrategy,
-        bytes memory _encodedInitialSettings
-    )
+    function setLiquidationStepSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_LIQUIDATION_STRATEGY, abi.encode(_liquidationStrategy, _encodedInitialSettings));
+            SettingsUpdater.SET_LIQUIDATION_STEP_SECONDS, abi.encode(_value));
     }
 
-    function updateLiquidationStrategySettings(
+    function setLiquidationPaymentFactors(
         IIAssetManager[] memory _assetManagers,
-        bytes memory _encodedSettings
+        uint256[] memory _paymentFactors,
+        uint256[] memory _vaultCollateralFactors
     )
         external
         onlyGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.UPDATE_LIQUIDATION_STRATEGY_SETTINGS, _encodedSettings);
+            SettingsUpdater.SET_LIQUIDATION_PAYMENT_FACTORS, abi.encode(_paymentFactors, _vaultCollateralFactors));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

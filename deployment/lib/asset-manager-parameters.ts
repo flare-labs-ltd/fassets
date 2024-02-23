@@ -199,18 +199,6 @@ export interface AssetManagerParameters {
     assetMintingDecimals: integer;
 
     /**
-     * Liquidation strategy factory name from `deployment/lib/liquidationStrategyFactory`
-     * (will be deployed automatically if needed).
-     * @pattern ^\w+$
-     */
-    liquidationStrategy: string;
-
-    /**
-     * Liquidation strategy initial settings.
-     */
-    liquidationStrategySettings: any;
-
-    /**
      * Data about the collateral used in the collateral pool, token is always WNat (FLR/SGB).
      */
     poolCollateral: CollateralTypeParameters;
@@ -358,6 +346,28 @@ export interface AssetManagerParameters {
      * @minimum 0
      */
     ccbTimeSeconds: integer;
+
+    /**
+     * If there was no liquidator for the current liquidation offer,
+     * go to the next step of liquidation after a certain period of time.
+     * @minimum 1
+     */
+    liquidationStepSeconds: integer;
+
+    /**
+     * Factor with which to multiply the asset price in native currency to obtain the payment to the liquidator.
+     * Expressed in BIPS, e.g. [12000, 16000, 20000] means that the liquidator will be paid 1.2, 1.6 and 2.0
+     * times the market price of the liquidated assets after each `liquidationStepSeconds`.
+     * Values in the array must increase and be greater than 100%.
+     */
+    liquidationCollateralFactorBIPS: integer[];
+
+    /**
+     * How much of the liquidation is paid in vault collateral.
+     * Expressed in BIPS relative to the liquidated FAsset value at current price.
+     * The remainder will be paid in pool NAT collateral.
+     */
+    liquidationFactorVaultCollateralBIPS: integer[];
 
     /**
      * Maximum age that trusted price feed is valid.

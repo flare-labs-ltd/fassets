@@ -60,10 +60,10 @@ export class Liquidator extends AssetContextClient {
         const ccbTime = ccb ? toBN(settings.ccbTimeSeconds) : BN_ZERO;
         const liquidationStart = toBN(liquidationStartedAt).add(ccbTime);
         const startTs = toBN(liquidationPerformedAt);
-        const step = Math.min(this.context.liquidationSettings.liquidationCollateralFactorBIPS.length - 1,
-            startTs.sub(liquidationStart).div(toBN(this.context.liquidationSettings.liquidationStepSeconds)).toNumber());
+        const step = Math.min(this.context.settings.liquidationCollateralFactorBIPS.length - 1,
+            startTs.sub(liquidationStart).div(toBN(this.context.settings.liquidationStepSeconds)).toNumber());
         // premiums are expressed as percentage of minCollateralRatio
-        return toBN(this.context.liquidationSettings.liquidationCollateralFactorBIPS[step]);
+        return toBN(this.context.settings.liquidationCollateralFactorBIPS[step]);
     }
 
     async getLiquidationRewardVaultCollateral(liquidatedAmountUBA: BNish, factorBIPS: BNish) {
@@ -78,10 +78,10 @@ export class Liquidator extends AssetContextClient {
         const ccbTime = ccb ? toBN(settings.ccbTimeSeconds) : BN_ZERO;
         const liquidationStart = toBN(liquidationStartedAt).add(ccbTime);
         const startTs = toBN(liquidationPerformedAt);
-        const step = Math.min(this.context.liquidationSettings.liquidationFactorVaultCollateralBIPS.length - 1,
-            startTs.sub(liquidationStart).div(toBN(this.context.liquidationSettings.liquidationStepSeconds)).toNumber());
+        const step = Math.min(this.context.settings.liquidationFactorVaultCollateralBIPS.length - 1,
+            startTs.sub(liquidationStart).div(toBN(this.context.settings.liquidationStepSeconds)).toNumber());
         // premiums are expressed as percentage of minCollateralRatio
-        const factorBIPS = toBN(this.context.liquidationSettings.liquidationFactorVaultCollateralBIPS[step]);
+        const factorBIPS = toBN(this.context.settings.liquidationFactorVaultCollateralBIPS[step]);
         // max premium is equal to agents collateral ratio (so that all liquidators get at least this much)
         return factorBIPS.lt(toBN(collateralRatioBIPS)) ? factorBIPS : toBN(collateralRatioBIPS);
     }

@@ -3,7 +3,6 @@ pragma solidity 0.8.23;
 
 import "../library/data/AssetManagerState.sol";
 import "../library/Globals.sol";
-import "../library/LiquidationStrategy.sol";
 import "./AssetManagerBase.sol";
 
 
@@ -56,17 +55,6 @@ contract SettingsReaderFacet is AssetManagerBase {
     function controllerAttached() external view  returns (bool) {
         AssetManagerState.State storage state = AssetManagerState.get();
         return state.attached;
-    }
-
-    /**
-     * Get settings for current liquidation strategy. Format depends on the liquidation strategy implementation.
-     * @return the current settings
-     */
-    function getLiquidationSettings()
-        external view
-        returns (bytes memory)
-    {
-        return LiquidationStrategy.getSettings();
     }
 
     /**

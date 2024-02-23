@@ -52,11 +52,6 @@ library AssetManagerSettings {
         // changed via address updater
         address scProofVerifier;
 
-        // External (dynamically loaded) library for calculation liquidation factors.
-        // Type: ILiquidationStrategy (as library)
-        // timelocked
-        address liquidationStrategy;
-
         // The address where bunrned NAt is sent.
         // (E.g. collateral reservation fee is burned on successful minting.)
         // immutable
@@ -255,5 +250,22 @@ library AssetManagerSettings {
 
         // duration of the timelock for collateral pool tokens after minting
         uint32 collateralPoolTokenTimelockSeconds;
+
+        // If there was no liquidator for the current liquidation offer,
+        // go to the next step of liquidation after a certain period of time.
+        // rate-limited
+        uint64 liquidationStepSeconds;
+
+        // Factor with which to multiply the asset price in native currency to obtain the payment
+        // to the liquidator.
+        // Expressed in BIPS, e.g. [12000, 16000, 20000] means that the liquidator will be paid 1.2, 1.6 and 2.0
+        // times the market price of the liquidated assets after each `liquidationStepSeconds`.
+        // Values in the array must increase and be greater than 100%.
+        // rate-limited
+        uint256[] liquidationCollateralFactorBIPS;
+
+        // How much of the liquidation is paid in vault collateral.
+        // The remainder will be paid in pool NAT collateral.
+        uint256[] liquidationFactorVaultCollateralBIPS;
     }
 }

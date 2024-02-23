@@ -9,14 +9,8 @@ import { AssetManagerParameters, CollateralTypeParameters } from './asset-manage
 import { FAssetContractStore } from "./contracts";
 import { createDiamondCutsForAllAssetManagerFacets, deployAllAssetManagerFacets, deployFacet } from "./deploy-asset-manager-facets";
 import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts } from './deploy-utils';
-import { ILiquidationStrategyFactory } from "./liquidationStrategyFactory/ILiquidationStrategyFactory";
-import { LiquidationStrategyImpl } from "./liquidationStrategyFactory/LiquidationStrategyImpl";
 
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
-
-export const liquidationStrategyFactories: Record<string, () => ILiquidationStrategyFactory<any>> = {
-    LiquidationStrategyImpl: () => new LiquidationStrategyImpl(),
-}
 
 export async function deploySCProofVerifier(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     console.log(`Deploying SCProofVerifier`);
@@ -146,12 +140,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const vaultCollateral = parameters.vaultCollaterals.map(p => convertCollateralType(contracts, p, CollateralClass.VAULT));
     const collateralTypes = [poolCollateral, ...vaultCollateral];
 
-    const liquidationStrategyFactory = liquidationStrategyFactories[parameters.liquidationStrategy]();
-    const liquidationStrategy = await liquidationStrategyFactory.deployLibrary(hre, contracts);
-    const liquidationStrategySettings = liquidationStrategyFactory.schema.validate(parameters.liquidationStrategySettings);
-    const liquidationStrategySettingsEnc = liquidationStrategyFactory.encodeSettings(liquidationStrategySettings)
-
-    const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy));
+    const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset));
 
     // deploy asset manager diamond
     const assetManagerInitAddress = await deployFacet(hre, 'AssetManagerInit', contracts);
@@ -160,7 +149,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const diamondCuts = await createDiamondCutsForAllAssetManagerFacets(hre, contracts);
 
     const initParameters = abiEncodeCall(await AssetManagerInit.at(assetManagerInitAddress),
-        c => c.init(contracts.GovernanceSettings.address, deployer, assetManagerSettings, collateralTypes, liquidationStrategySettingsEnc));
+        c => c.init(contracts.GovernanceSettings.address, deployer, assetManagerSettings, collateralTypes));
 
     const assetManager = await AssetManager.new(diamondCuts, assetManagerInitAddress, initParameters);
 
@@ -193,7 +182,6 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
     console.log(`Verifying ${assetManagerContractName} at ${assetManagerAddress}...`);
 
     const assetManager = await IIAssetManager.at(assetManagerAddress);
-    const currentSettings = await assetManager.getSettings();
 
     const fAsset = await FAsset.at(await assetManager.fAsset());
 
@@ -201,18 +189,13 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const vaultCollateral = parameters.vaultCollaterals.map(p => convertCollateralType(contracts, p, CollateralClass.VAULT));
     const collateralTypes = [poolCollateral, ...vaultCollateral];
 
-    const liquidationStrategyFactory = liquidationStrategyFactories[parameters.liquidationStrategy]();
-    const liquidationStrategy = currentSettings.liquidationStrategy;
-    const liquidationStrategySettings = liquidationStrategyFactory.schema.validate(parameters.liquidationStrategySettings);
-    const liquidationStrategySettingsEnc = liquidationStrategyFactory.encodeSettings(liquidationStrategySettings)
-
-    const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset, liquidationStrategy));
+    const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset));
 
     const assetManagerInitAddress = contracts.getRequired('AssetManagerInit').address;
     const diamondCuts = await createDiamondCutsForAllAssetManagerFacets(hre, contracts);
 
     const initParameters = abiEncodeCall(await AssetManagerInit.at(assetManagerInitAddress),
-        c => c.init(contracts.GovernanceSettings.address, deployer, assetManagerSettings, collateralTypes, liquidationStrategySettingsEnc));
+        c => c.init(contracts.GovernanceSettings.address, deployer, assetManagerSettings, collateralTypes));
 
     await hre.run("verify:verify", {
         address: assetManagerAddress,
@@ -270,7 +253,7 @@ function convertCollateralType(contracts: FAssetContractStore, parameters: Colla
     }
 }
 
-function createAssetManagerSettings(contracts: FAssetContractStore, parameters: AssetManagerParameters, fAsset: FAssetInstance, liquidationStrategy: string): AssetManagerSettings {
+function createAssetManagerSettings(contracts: FAssetContractStore, parameters: AssetManagerParameters, fAsset: FAssetInstance): AssetManagerSettings {
     if (!contracts.AssetManagerController || !contracts.AgentVaultFactory || !contracts.SCProofVerifier || !contracts.CollateralPoolFactory) {
         throw new Error("Missing contracts");
     }
@@ -287,7 +270,6 @@ function createAssetManagerSettings(contracts: FAssetContractStore, parameters: 
         priceReader: addressFromParameter(contracts, parameters.priceReader ?? 'PriceReader'),
         whitelist: parameters.userWhitelist ? addressFromParameter(contracts, parameters.userWhitelist) : ZERO_ADDRESS,
         agentOwnerRegistry: addressFromParameter(contracts, parameters.agentOwnerRegistry ?? 'AgentOwnerRegistry'),
-        liquidationStrategy: liquidationStrategy,
         burnAddress: parameters.burnAddress,
         chainId: encodeAttestationName(parameters.chainName),
         poolTokenSuffix: parameters.poolTokenSuffix,
@@ -314,6 +296,9 @@ function createAssetManagerSettings(contracts: FAssetContractStore, parameters: 
         paymentChallengeRewardBIPS: parameters.paymentChallengeRewardBIPS,
         paymentChallengeRewardUSD5: parseBN(parameters.paymentChallengeRewardUSD5),
         ccbTimeSeconds: parameters.ccbTimeSeconds,
+        liquidationStepSeconds: parameters.liquidationStepSeconds,
+        liquidationCollateralFactorBIPS: parameters.liquidationCollateralFactorBIPS,
+        liquidationFactorVaultCollateralBIPS: parameters.liquidationFactorVaultCollateralBIPS,
         maxTrustedPriceAgeSeconds: parameters.maxTrustedPriceAgeSeconds,
         withdrawalWaitMinSeconds: parameters.withdrawalWaitMinSeconds,
         announcedUnderlyingConfirmationMinSeconds: parameters.announcedUnderlyingConfirmationMinSeconds,

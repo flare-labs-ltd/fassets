@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
-import "./LiquidationStrategy.sol";
 import "./Globals.sol";
 import "./CollateralTypes.sol";
 
@@ -64,10 +63,6 @@ library SettingsUpdater {
         keccak256("setWithdrawalOrDestroyWaitMinSeconds(uint256)");
     bytes32 internal constant SET_CCB_TIME_SECONDS =
         keccak256("setCcbTimeSeconds(uint256)");
-    bytes32 internal constant SET_LIQUIDATION_STRATEGY =
-        keccak256("setLiquidationStrategy(address,bytes)");
-    bytes32 internal constant UPDATE_LIQUIDATION_STRATEGY_SETTINGS =
-        keccak256("updateLiquidationStrategySettings(bytes)");
     bytes32 internal constant SET_ATTESTATION_WINDOW_SECONDS =
         keccak256("setAttestationWindowSeconds(uint256)");
     bytes32 internal constant SET_AVERAGE_BLOCK_TIME_MS =
@@ -75,25 +70,29 @@ library SettingsUpdater {
     bytes32 internal constant SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS =
         keccak256("setAnnouncedUnderlyingConfirmationMinSeconds(uint256)");
     bytes32 internal constant SET_MINTING_POOL_HOLDINGS_REQUIRED_BIPS =
-        keccak256("setMintingPoolHoldingsRequiredBIPS((uint256)");
+        keccak256("setMintingPoolHoldingsRequiredBIPS(uint256)");
     bytes32 internal constant SET_MINTING_CAP_AMG =
-        keccak256("setMintingCapAMG((uint256)");
+        keccak256("setMintingCapAMG(uint256)");
     bytes32 internal constant SET_TOKEN_INVALIDATION_TIME_MIN_SECONDS =
-        keccak256("setTokenInvalidationTimeMinSeconds((uint256)");
+        keccak256("setTokenInvalidationTimeMinSeconds(uint256)");
     bytes32 internal constant SET_VAULT_COLLATERAL_BUY_FOR_FLARE_FACTOR_BIPS =
-        keccak256("setVaultCollateralBuyForFlareFactorBIPS((uint256)");
+        keccak256("setVaultCollateralBuyForFlareFactorBIPS(uint256)");
     bytes32 internal constant SET_AGENT_EXIT_AVAILABLE_TIMELOCK_SECONDS =
-        keccak256("setAgentExitAvailableTimelockSeconds((uint256)");
+        keccak256("setAgentExitAvailableTimelockSeconds(uint256)");
     bytes32 internal constant SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS =
-        keccak256("setAgentFeeChangeTimelockSeconds((uint256)");
+        keccak256("setAgentFeeChangeTimelockSeconds(uint256)");
     bytes32 internal constant SET_AGENT_MINTING_CR_CHANGE_TIMELOCK_SECONDS =
-        keccak256("setAgentMintingCRChangeTimelockSeconds((uint256)");
+        keccak256("setAgentMintingCRChangeTimelockSeconds(uint256)");
     bytes32 internal constant SET_POOL_EXIT_AND_TOPUP_CHANGE_TIMELOCK_SECONDS =
-        keccak256("setPoolExitAndTopupChangeTimelockSeconds((uint256)");
+        keccak256("setPoolExitAndTopupChangeTimelockSeconds(uint256)");
     bytes32 internal constant SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS =
-        keccak256("setAgentTimelockedOperationWindowSeconds((uint256)");
+        keccak256("setAgentTimelockedOperationWindowSeconds(uint256)");
     bytes32 internal constant SET_COLLATERAL_POOL_TOKEN_TIMELOCK_SECONDS =
-        keccak256("setCollateralPoolTokenTimelockSeconds((uint256)");
+        keccak256("setCollateralPoolTokenTimelockSeconds(uint256)");
+    bytes32 internal constant SET_LIQUIDATION_STEP_SECONDS =
+        keccak256("setLiquidationStepSeconds(uint256)");
+    bytes32 internal constant SET_LIQUIDATION_PAYMENT_FACTORS =
+        keccak256("setLiquidationPaymentFactors(uint256[],uint256[])");
 
     uint256 internal constant MAXIMUM_PROOF_WINDOW = 1 days;
 
@@ -175,12 +174,6 @@ library SettingsUpdater {
         } else if (_method == SET_CCB_TIME_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setCcbTimeSeconds(_params);
-        } else if (_method == SET_LIQUIDATION_STRATEGY) {
-            _checkEnoughTimeSinceLastUpdate(_method);
-            _setLiquidationStrategy(_params);
-        } else if (_method == UPDATE_LIQUIDATION_STRATEGY_SETTINGS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
-            _updateLiquidationStrategySettings(_params);
         } else if (_method == SET_ATTESTATION_WINDOW_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setAttestationWindowSeconds(_params);
@@ -223,6 +216,12 @@ library SettingsUpdater {
         } else if (_method == SET_COLLATERAL_POOL_TOKEN_TIMELOCK_SECONDS) {
             _checkEnoughTimeSinceLastUpdate(_method);
             _setCollateralPoolTokenTimelockSeconds(_params);
+        } else if (_method == SET_LIQUIDATION_STEP_SECONDS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setLiquidationStepSeconds(_params);
+        } else if (_method == SET_LIQUIDATION_PAYMENT_FACTORS) {
+            _checkEnoughTimeSinceLastUpdate(_method);
+            _setLiquidationPaymentFactors(_params);
         } else {
             revert("update: invalid method");
         }
@@ -794,29 +793,54 @@ library SettingsUpdater {
         emit AMEvents.SettingChanged("collateralPoolTokenTimelockSeconds", value);
     }
 
-    function _setLiquidationStrategy(
+    function _setLiquidationStepSeconds(bytes calldata _params) private {
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 stepSeconds = abi.decode(_params, (uint256));
+        // validate
+        require(stepSeconds > 0, "cannot be zero");
+        require(stepSeconds <= settings.liquidationStepSeconds * 2, "increase too big");
+        require(stepSeconds >= settings.liquidationStepSeconds / 2, "decrease too big");
+        // update
+        settings.liquidationStepSeconds = stepSeconds.toUint64();
+        emit AMEvents.SettingChanged("liquidationStepSeconds", stepSeconds);
+    }
+
+    function _setLiquidationPaymentFactors(
         bytes calldata _params
     )
         private
     {
         AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
-        (address liquidationStrategy, bytes memory initialSettings) = abi.decode(_params, (address, bytes));
+        (uint256[] memory liquidationFactors, uint256[] memory vaultCollateralFactors) =
+            abi.decode(_params, (uint256[], uint256[]));
         // validate
-        require(liquidationStrategy != address(0), "address zero");
-        // update contract
-        settings.liquidationStrategy = liquidationStrategy;
-        emit AMEvents.ContractChanged("liquidationStrategy", liquidationStrategy);
-        // initialize
-        LiquidationStrategy.initialize(initialSettings);
+        _validateLiquidationFactors(liquidationFactors, vaultCollateralFactors);
+        // update
+        delete settings.liquidationCollateralFactorBIPS;
+        delete settings.liquidationFactorVaultCollateralBIPS;
+        for (uint256 i = 0; i < liquidationFactors.length; i++) {
+            settings.liquidationCollateralFactorBIPS.push(liquidationFactors[i].toUint32());
+            settings.liquidationFactorVaultCollateralBIPS.push(vaultCollateralFactors[i].toUint32());
+        }
+        // emit events
+        emit AMEvents.SettingArrayChanged("liquidationCollateralFactorBIPS", liquidationFactors);
+        emit AMEvents.SettingArrayChanged("liquidationFactorVaultCollateralBIPS", vaultCollateralFactors);
     }
 
-    function _updateLiquidationStrategySettings(
-        bytes calldata _params
+    function _validateLiquidationFactors(
+        uint256[] memory liquidationFactors,
+        uint256[] memory vaultCollateralFactors
     )
-        private
+        private pure
     {
-        // just pass to LiquidationStrategy.updateSettings, it will do the decoding and validation
-        LiquidationStrategy.updateSettings(_params);
+        require(liquidationFactors.length == vaultCollateralFactors.length, "lengths not equal");
+        require(liquidationFactors.length >= 1, "at least one factor required");
+        for (uint256 i = 0; i < liquidationFactors.length; i++) {
+            // per item validations
+            require(liquidationFactors[i] > SafePct.MAX_BIPS, "factor not above 1");
+            require(vaultCollateralFactors[i] <= liquidationFactors[i], "vault collateral factor higher than total");
+            require(i == 0 || liquidationFactors[i] > liquidationFactors[i - 1], "factors not increasing");
+        }
     }
 
     function _validateSettings(
@@ -830,7 +854,6 @@ library SettingsUpdater {
         require(_settings.collateralPoolTokenFactory != address(0), "zero collateralPoolTokenFactory address");
         require(_settings.scProofVerifier != address(0), "zero scProofVerifier address");
         require(_settings.priceReader != address(0), "zero priceReader address");
-        require(_settings.liquidationStrategy != address(0), "zero liquidationStrategy address");
         require(_settings.agentOwnerRegistry != address(0), "zero agentOwnerRegistry address");
 
         require(_settings.assetUnitUBA > 0, "cannot be zero");
@@ -867,5 +890,8 @@ library SettingsUpdater {
         require(_settings.vaultCollateralBuyForFlareFactorBIPS >= SafePct.MAX_BIPS, "value too small");
         require(_settings.agentTimelockedOperationWindowSeconds >= 1 hours, "value too small");
         require(_settings.collateralPoolTokenTimelockSeconds >= 1 minutes, "value too small");
+        require(_settings.liquidationStepSeconds > 0, "cannot be zero");
+        _validateLiquidationFactors(_settings.liquidationCollateralFactorBIPS,
+            _settings.liquidationFactorVaultCollateralBIPS);
     }
 }

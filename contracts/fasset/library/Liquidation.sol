@@ -12,7 +12,7 @@ import "./Agents.sol";
 import "./Conversion.sol";
 import "./Redemptions.sol";
 import "./AgentCollateral.sol";
-import "./LiquidationStrategy.sol";
+import "./LiquidationPaymentStrategy.sol";
 
 
 library Liquidation {
@@ -239,7 +239,7 @@ library Liquidation {
         }
         // split liquidation payment between agent vault and pool
         (_vaultFactorBIPS, _poolFactorBIPS) =
-            LiquidationStrategy.currentLiquidationFactorBIPS(_agent, _cr.vaultCR, _cr.poolCR);
+            LiquidationPaymentStrategy.currentLiquidationFactorBIPS(_agent, _cr.vaultCR, _cr.poolCR);
         // calculate liquidation amount
         uint256 maxLiquidatedAMG = Math.max(
             _maxLiquidationAmountAMG(_agent, _cr.vaultCR, _vaultFactorBIPS, Collateral.Kind.VAULT),
@@ -296,7 +296,7 @@ library Liquidation {
     {
         // split liquidation payment between agent vault and pool
         (uint256 vaultFactor, uint256 poolFactor) =
-            LiquidationStrategy.currentLiquidationFactorBIPS(_agent, _cr.vaultCR, _cr.poolCR);
+            LiquidationPaymentStrategy.currentLiquidationFactorBIPS(_agent, _cr.vaultCR, _cr.poolCR);
         // calculate liquidation amount
         uint256 maxLiquidatedAMG = Math.max(
             _maxLiquidationAmountAMG(_agent, _cr.vaultCR, vaultFactor, Collateral.Kind.VAULT),

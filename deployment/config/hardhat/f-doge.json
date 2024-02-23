@@ -10,13 +10,6 @@
     "poolTokenSuffix": "DOGE",
     "assetMintingDecimals": 8,
     "userWhitelist": null,
-    "liquidationStrategy": "LiquidationStrategyImpl",
-    "liquidationStrategySettings": {
-        "$schema": "../LiquidationStrategyImplSettings.schema.json",
-        "liquidationStepSeconds": 90,
-        "liquidationCollateralFactorBIPS": [12000, 16000, 20000],
-        "liquidationFactorVaultCollateralBIPS": [10000, 10000, 10000]
-    },
     "poolCollateral": {
         "token": "WNat",
         "decimals": 18,
@@ -68,6 +61,17 @@
     "paymentChallengeRewardBIPS": 0,
     "paymentChallengeRewardUSD5": "300 00000",
     "ccbTimeSeconds": 180,
+    "liquidationStepSeconds": 90,
+    "liquidationCollateralFactorBIPS": [
+        12000,
+        16000,
+        20000
+    ],
+    "liquidationFactorVaultCollateralBIPS": [
+        10000,
+        10000,
+        10000
+    ],
     "maxTrustedPriceAgeSeconds": 600,
     "withdrawalWaitMinSeconds": 60,
     "announcedUnderlyingConfirmationMinSeconds": 250,

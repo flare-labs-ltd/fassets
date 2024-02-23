@@ -1,41 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../data/AssetManagerState.sol";
-import "./LiquidationStrategyImplSettings.sol";
-import "../Agents.sol";
-import "../CollateralTypes.sol";
+import "./data/AssetManagerState.sol";
+import "./Agents.sol";
+import "./CollateralTypes.sol";
 
-library LiquidationStrategyImpl {
+library LiquidationPaymentStrategy {
+    using Agent for Agent.State;
     using Agents for Agent.State;
     using CollateralTypes for CollateralTypeInt.Data;
-
-    function initialize(bytes memory _encodedSettings) external {
-        LiquidationStrategyImplSettings.verifyAndUpdate(_encodedSettings);
-    }
-
-    function updateSettings(bytes memory _encodedSettings) external {
-        LiquidationStrategyImplSettings.verifyAndUpdate(_encodedSettings);
-    }
-
-    function getSettings() external view returns (bytes memory) {
-        return LiquidationStrategyImplSettings.getEncoded();
-    }
 
     // Liquidation premium step (depends on time, but is capped by the current collateral ratio)
     // assumed: agentStatus == LIQUIDATION/FULL_LIQUIDATION && liquidationPhase == LIQUIDATION
     function currentLiquidationFactorBIPS(
-        address _agentVault,
+        Agent.State storage _agent,
         uint256 _vaultCR,
         uint256 _poolCR
     )
-        external view
+        internal view
         returns (uint256 _c1FactorBIPS, uint256 _poolFactorBIPS)
     {
-        LiquidationStrategyImplSettings.Data storage settings = LiquidationStrategyImplSettings.get();
-        Agent.State storage agent = Agent.get(_agentVault);
-        uint256 step = _currentLiquidationStep(agent);
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        uint256 step = _currentLiquidationStep(_agent);
         uint256 factorBIPS = settings.liquidationCollateralFactorBIPS[step];
         // All premiums are expressed as factor BIPS.
         // Current algorithm for splitting payment: use liquidationCollateralFactorBIPS for vault collateral and
@@ -44,8 +30,8 @@ library LiquidationStrategyImpl {
         _c1FactorBIPS = Math.min(settings.liquidationFactorVaultCollateralBIPS[step], factorBIPS);
         // prevent paying with invalid token (if there is enough of the other tokens)
         // TODO: should we remove this - is it better to pay with invalidated vault collateral then with pool?
-        CollateralTypeInt.Data storage vaultCollateral = agent.getVaultCollateral();
-        CollateralTypeInt.Data storage poolCollateral = agent.getPoolCollateral();
+        CollateralTypeInt.Data storage vaultCollateral = _agent.getVaultCollateral();
+        CollateralTypeInt.Data storage poolCollateral = _agent.getPoolCollateral();
         if (!vaultCollateral.isValid() && poolCollateral.isValid()) {
             // vault collateral invalid - pay everything with pool collateral
             _c1FactorBIPS = 0;
@@ -72,12 +58,11 @@ library LiquidationStrategyImpl {
         private view
         returns (uint256)
     {
-        AssetManagerSettings.Data storage globalSettings = AssetManagerState.getSettings();
-        LiquidationStrategyImplSettings.Data storage settings = LiquidationStrategyImplSettings.get();
+        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
         // calculate premium step based on time since liquidation started
         bool startedInCCB = _agent.status == Agent.Status.LIQUIDATION
             && _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;
-        uint256 ccbTime = startedInCCB ? globalSettings.ccbTimeSeconds : 0;
+        uint256 ccbTime = startedInCCB ? settings.ccbTimeSeconds : 0;
         uint256 liquidationStart = _agent.liquidationStartedAt + ccbTime;
         uint256 step = (block.timestamp - liquidationStart) / settings.liquidationStepSeconds;
         return Math.min(step, settings.liquidationCollateralFactorBIPS.length - 1);

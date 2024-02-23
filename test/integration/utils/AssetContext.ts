@@ -2,7 +2,6 @@ import { time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../../lib/fasset/Conversions";
 import { AgentOwnerRegistryEvents, AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
-import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../lib/fasset/LiquidationStrategyImpl";
 import { CollateralPrice } from "../../../lib/state/CollateralPrice";
 import { Prices } from "../../../lib/state/Prices";
 import { TokenPriceReader } from "../../../lib/state/TokenPrice";
@@ -17,7 +16,7 @@ import { AgentOwnerRegistryInstance, IIAssetManagerInstance, FAssetInstance, Whi
 import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { createTestCollaterals, createTestLiquidationSettings, createTestSettings } from "../../utils/test-settings";
+import { createTestCollaterals, createTestSettings } from "../../utils/test-settings";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
@@ -28,7 +27,6 @@ const Whitelist = artifacts.require('Whitelist');
 export interface SettingsOptions {
     // optional settings
     collaterals?: CollateralType[];
-    liquidationSettings?: LiquidationStrategyImplSettings;
     // optional contracts
     whitelist?: ContractWithEvents<WhitelistInstance, WhitelistEvents>;
     agentOwnerRegistry?: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>;
@@ -52,7 +50,6 @@ export class AssetContext implements IAssetContext {
         // following three settings are initial and may not be fresh
         public settings: AssetManagerSettings,
         public collaterals: CollateralType[],
-        public liquidationSettings: LiquidationStrategyImplSettings,
     ) {
     }
 
@@ -246,22 +243,17 @@ export class AssetContext implements IAssetContext {
         // create allow-all agent owner registry
         const agentOwnerRegistry = await AgentOwnerRegistry.new(common.governanceSettings.address, common.governance, true);
         await agentOwnerRegistry.setAllowAll(true, { from: common.governance });
-        // create liquidation strategy (dynamic library)
-        const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
-        const liquidationStrategy = liquidationStrategyLib.address;
         // create collaterals
-        const testSettingsContracts = { ...common, agentOwnerRegistry, liquidationStrategy };
+        const testSettingsContracts = { ...common, agentOwnerRegistry };
         // create settings
         const settings = createTestSettings(testSettingsContracts, chainInfo);
         const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts, chainInfo);
-        const liquidationSettings = options.liquidationSettings ?? createTestLiquidationSettings();
         // create asset manager
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
-            chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, encodeLiquidationStrategyImplSettings(liquidationSettings),
-            chainInfo.assetName, chainInfo.assetSymbol);
+            chainInfo.name, chainInfo.symbol, chainInfo.decimals, settings, collaterals, chainInfo.assetName, chainInfo.assetSymbol);
         // collect
         return new AssetContext(common, chainInfo, chain, chainEvents, stateConnectorClient, attestationProvider,
-            options.whitelist, agentOwnerRegistry ?? options.agentOwnerRegistry, assetManager, fAsset, settings, collaterals, liquidationSettings);
+            options.whitelist, agentOwnerRegistry ?? options.agentOwnerRegistry, assetManager, fAsset, settings, collaterals);
     }
 }
 

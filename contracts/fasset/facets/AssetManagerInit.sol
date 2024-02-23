@@ -10,7 +10,6 @@ import "../../diamond/library/LibDiamond.sol";
 import "../library/data/AssetManagerState.sol";
 import "../library/SettingsUpdater.sol";
 import "../library/CollateralTypes.sol";
-import "../library/LiquidationStrategy.sol";
 
 
 contract AssetManagerInit is GovernedBase, ReentrancyGuard {
@@ -18,8 +17,7 @@ contract AssetManagerInit is GovernedBase, ReentrancyGuard {
         IGovernanceSettings _governanceSettings,
         address _initialGovernance,
         AssetManagerSettings.Data memory _settings,
-        CollateralType.Data[] memory _initialCollateralTypes,
-        bytes memory _initialLiquidationSettings
+        CollateralType.Data[] memory _initialCollateralTypes
     )
         external
     {
@@ -27,7 +25,6 @@ contract AssetManagerInit is GovernedBase, ReentrancyGuard {
         ReentrancyGuard.initializeReentrancyGuard();
         SettingsUpdater.validateAndSet(_settings);
         CollateralTypes.initialize(_initialCollateralTypes);
-        LiquidationStrategy.initialize(_initialLiquidationSettings);
         _initIERC165();
     }
 

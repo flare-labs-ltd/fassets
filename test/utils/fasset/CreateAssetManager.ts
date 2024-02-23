@@ -19,7 +19,6 @@ export async function newAssetManager(
     decimals: number,
     assetManagerSettings: AssetManagerSettings,
     collateralTokens: CollateralType[],
-    encodedLiquidationStrategySettings: string,
     assetName = name,
     assetSymbol = symbol,
     options?: {
@@ -39,7 +38,7 @@ export async function newAssetManager(
         fAsset: fAsset.address
     });
     collateralTokens = web3DeepNormalize(collateralTokens);
-    const assetManager = await newAssetManagerDiamond(diamondCuts, assetManagerInit, governanceSettings, governanceAddress, assetManagerSettings, collateralTokens, encodedLiquidationStrategySettings);
+    const assetManager = await newAssetManagerDiamond(diamondCuts, assetManagerInit, governanceSettings, governanceAddress, assetManagerSettings, collateralTokens);
     if (typeof assetManagerController !== 'string') {
         const res = await assetManagerController.addAssetManager(assetManager.address, { from: governanceAddress });
         await waitForTimelock(res, assetManagerController, updateExecutor);
@@ -52,11 +51,11 @@ export async function newAssetManager(
 }
 
 export async function newAssetManagerDiamond(diamondCuts: DiamondCut[], assetManagerInit: AssetManagerInitInstance, governanceSettings: string | GovernanceSettingsInstance,
-    governanceAddress: string, assetManagerSettings: AssetManagerSettings, collateralTokens: CollateralType[], encodedLiquidationStrategySettings: string)
+    governanceAddress: string, assetManagerSettings: AssetManagerSettings, collateralTokens: CollateralType[])
 {
     const governanceSettingsAddress = typeof governanceSettings === 'string' ? governanceSettings : governanceSettings.address;
     const initParameters = abiEncodeCall(assetManagerInit,
-        c => c.init(governanceSettingsAddress, governanceAddress, assetManagerSettings, collateralTokens, encodedLiquidationStrategySettings));
+        c => c.init(governanceSettingsAddress, governanceAddress, assetManagerSettings, collateralTokens));
     const assetManagerDiamond = await AssetManager.new(diamondCuts, assetManagerInit.address, initParameters);
     return await IIAssetManager.at(assetManagerDiamond.address);
 }

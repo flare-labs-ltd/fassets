@@ -54,14 +54,6 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents {
         returns (AssetManagerSettings.Data memory);
 
     /**
-     * Get settings for current liquidation strategy. Format depends on the liquidation strategy implementation.
-     * @return the current settings
-     */
-    function getLiquidationSettings()
-        external view
-        returns (bytes memory);
-
-    /**
      * When `controllerAttached` is true, asset manager has been added to the asset manager controller.
      * This is required for the asset manager to be operational (create agent and minting don't work otherwise).
      */
