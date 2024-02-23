@@ -81,7 +81,7 @@ export async function deployAssetManagerFacets(): Promise<[DiamondCut[], AssetMa
     const interfaceSelectors = new Set(interfaceSelectorMap.keys());
     // create cuts
     const diamondCuts = [
-        await deployFacet('DiamondCutFacet', interfaceSelectors),
+        await deployFacet('AssetManagerDiamondCutFacet', interfaceSelectors),
         await deployFacet('DiamondLoupeFacet', interfaceSelectors),
         await deployFacet('AgentInfoFacet', interfaceSelectors),
         await deployFacet('AvailableAgentsFacet', interfaceSelectors),

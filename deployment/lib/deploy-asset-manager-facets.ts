@@ -10,7 +10,7 @@ const assetManagerInterfaces = [
 const assetManagerInitContract = 'AssetManagerInit';
 
 const assetManagerFacets = [
-    'DiamondCutFacet',
+    'AssetManagerDiamondCutFacet',
     'DiamondLoupeFacet',
     'AgentInfoFacet',
     'AvailableAgentsFacet',

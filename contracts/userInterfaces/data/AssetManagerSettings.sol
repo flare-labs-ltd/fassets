@@ -267,5 +267,9 @@ library AssetManagerSettings {
         // How much of the liquidation is paid in vault collateral.
         // The remainder will be paid in pool NAT collateral.
         uint256[] liquidationFactorVaultCollateralBIPS;
+
+        // Minimum time that the system must wait before performing diamond cut.
+        // The actual timelock is the maximum of this setting and GovernanceSettings.timelock.
+        uint64 diamondCutMinTimelockSeconds;
     }
 }

@@ -6,16 +6,17 @@ pragma solidity ^0.8.0;
 * EIP-2535 Diamonds: https://eips.ethereum.org/EIPS/eip-2535
 /******************************************************************************/
 
-import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
-import { LibDiamond } from "../library/LibDiamond.sol";
+import { IDiamondCut } from "../../diamond/interfaces/IDiamondCut.sol";
+import { LibDiamond } from "../../diamond/library/LibDiamond.sol";
 import { GovernedBase } from "../../governance/implementation/GovernedBase.sol";
+import { Globals } from "../library/Globals.sol";
+
+// DiamondCutFacet that also respects diamondCutMinTimelockSeconds setting.
 
 // Remember to add the loupe functions from DiamondLoupeFacet to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard
 
-contract DiamondCutFacet is IDiamondCut, GovernedBase {
-    uint256 internal constant MINIMUM_CUT_TIMELOCK = 1 weeks;
-
+contract AssetManagerDiamondCutFacet is IDiamondCut, GovernedBase {
     /// @notice Add/replace/remove any number of functions and optionally execute
     ///         a function with delegatecall
     /// @param _diamondCut Contains the facet addresses and function selectors
@@ -28,7 +29,7 @@ contract DiamondCutFacet is IDiamondCut, GovernedBase {
         bytes calldata _calldata
     )
         external override
-        onlyGovernanceWithTimelockAtLeast(MINIMUM_CUT_TIMELOCK)
+        onlyGovernanceWithTimelockAtLeast(Globals.getSettings().diamondCutMinTimelockSeconds)
     {
         LibDiamond.diamondCut(_diamondCut, _init, _calldata);
     }

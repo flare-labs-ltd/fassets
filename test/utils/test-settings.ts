@@ -3,7 +3,7 @@ import { AgentSettings, AssetManagerSettings, CollateralType, CollateralClass } 
 import { PaymentReference } from "../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../lib/utils/events/truffle";
-import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp } from "../../lib/utils/helpers";
+import { DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, toBIPS, toBNExp } from "../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance, AgentVaultFactoryInstance, IIAssetManagerInstance, SCProofVerifierInstance,
@@ -102,6 +102,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         liquidationStepSeconds: 90,
         liquidationCollateralFactorBIPS: [toBIPS(1.2), toBIPS(1.6), toBIPS(2.0)],
         liquidationFactorVaultCollateralBIPS: [toBIPS(1), toBIPS(1), toBIPS(1)],
+        diamondCutMinTimelockSeconds: 1 * WEEKS,
     };
     return Object.assign(result, options ?? {});
 }

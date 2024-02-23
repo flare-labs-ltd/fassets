@@ -458,4 +458,10 @@ export interface AssetManagerParameters {
      * Amount of seconds that a collateral pool enterer must wait before spending obtained tokens.
      */
     collateralPoolTokenTimelockSeconds: integer;
+
+    /**
+     * Minimum time that the system must wait before performing diamond cut.
+     * The actual timelock is the maximum of this setting and GovernanceSettings.timelock.
+     */
+    diamondCutMinTimelockSeconds: integer;
 }

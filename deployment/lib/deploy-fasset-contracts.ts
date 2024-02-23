@@ -312,5 +312,6 @@ function createAssetManagerSettings(contracts: FAssetContractStore, parameters: 
         poolExitAndTopupChangeTimelockSeconds: parameters.poolExitAndTopupChangeTimelockSeconds,
         agentTimelockedOperationWindowSeconds: parameters.agentTimelockedOperationWindowSeconds,
         collateralPoolTokenTimelockSeconds: parameters.collateralPoolTokenTimelockSeconds,
+        diamondCutMinTimelockSeconds: parameters.diamondCutMinTimelockSeconds,
     };
 }

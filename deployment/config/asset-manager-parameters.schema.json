@@ -181,6 +181,10 @@
             "pattern": "^[0-9 ]+$",
             "type": "string"
         },
+        "diamondCutMinTimelockSeconds": {
+            "description": "Minimum time that the system must wait before performing diamond cut.\nThe actual timelock is the maximum of this setting and GovernanceSettings.timelock.",
+            "type": "integer"
+        },
         "fAssetName": {
             "description": "The name of the f-asset.",
             "type": "string"
@@ -358,6 +362,7 @@
         "collateralReservationFeeBIPS",
         "confirmationByOthersAfterSeconds",
         "confirmationByOthersRewardUSD5",
+        "diamondCutMinTimelockSeconds",
         "fAssetName",
         "fAssetSymbol",
         "liquidationCollateralFactorBIPS",
