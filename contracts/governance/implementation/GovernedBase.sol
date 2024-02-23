@@ -37,8 +37,7 @@ abstract contract GovernedBase {
     event GovernedProductionModeEntered(address governanceSettings);
 
     modifier onlyGovernance {
-        GovernedState storage state = _governedState();
-        if (state.executing || !state.productionMode) {
+        if (_timeToExecute()) {
             _beforeExecute();
             _;
         } else {
@@ -47,8 +46,7 @@ abstract contract GovernedBase {
     }
 
     modifier onlyGovernanceWithTimelockAtLeast(uint256 _minimumTimelock) {
-        GovernedState storage state = _governedState();
-        if (state.executing || !state.productionMode) {
+        if (_timeToExecute()) {
             _beforeExecute();
             _;
         } else {
@@ -172,11 +170,7 @@ abstract contract GovernedBase {
     function _recordTimelockedCall(bytes calldata _data, uint256 _minimumTimelock) private {
         GovernedState storage state = _governedState();
         _checkOnlyGovernance();
-        bytes4 selector;
-        //solhint-disable-next-line no-inline-assembly
-        assembly {
-            selector := calldataload(_data.offset)
-        }
+        bytes4 selector = bytes4(_data);
         uint256 timelock = state.governanceSettings.getTimelock();
         if (timelock < _minimumTimelock) {
             timelock = _minimumTimelock;
@@ -187,6 +181,11 @@ abstract contract GovernedBase {
             encodedCall: _data
         });
         emit GovernanceCallTimelocked(selector, allowedAt, _data);
+    }
+
+    function _timeToExecute() private view returns (bool) {
+        GovernedState storage state = _governedState();
+        return state.executing || !state.productionMode;
     }
 
     function _checkOnlyGovernance() private view {
