@@ -57,7 +57,7 @@ library RedemptionFailures {
     )
         internal
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
         Agents.requireAgentVaultOwner(agent);
@@ -113,7 +113,7 @@ library RedemptionFailures {
         private view
         returns (uint256 _vaultCollateralWei, uint256 _poolWei)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // calculate collateral data for vault collateral
         Collateral.Data memory cdAgent = AgentCollateral.agentVaultCollateralData(_agent);
         uint256 maxVaultCollateralWei = cdAgent.maxRedemptionCollateral(_agent, _request.valueAMG);

@@ -8,7 +8,7 @@ import "../../userInterfaces/IAssetManager.sol";
 import "../interfaces/IIAssetManager.sol";
 import "../../diamond/library/LibDiamond.sol";
 import "../library/data/AssetManagerState.sol";
-import "../library/SettingsUpdater.sol";
+import "../library/SettingsInitializer.sol";
 import "../library/CollateralTypes.sol";
 
 
@@ -23,7 +23,7 @@ contract AssetManagerInit is GovernedBase, ReentrancyGuard {
     {
         GovernedBase.initialise(_governanceSettings, _initialGovernance);
         ReentrancyGuard.initializeReentrancyGuard();
-        SettingsUpdater.validateAndSet(_settings);
+        SettingsInitializer.validateAndSet(_settings);
         CollateralTypes.initialize(_initialCollateralTypes);
         _initIERC165();
     }

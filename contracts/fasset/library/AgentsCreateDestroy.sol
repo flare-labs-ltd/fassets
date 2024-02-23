@@ -76,7 +76,7 @@ library AgentsCreateDestroy {
         AddressValidity.ResponseBody memory avb = _addressProof.data.responseBody;
         require(avb.isValid, "address invalid");
         // create agent vault
-        IAgentVaultFactory agentVaultFactory = IAgentVaultFactory(state.settings.agentVaultFactory);
+        IAgentVaultFactory agentVaultFactory = IAgentVaultFactory(Globals.getSettings().agentVaultFactory);
         IIAgentVault agentVault = agentVaultFactory.create(_assetManager);
         // set initial status
         Agent.State storage agent = Agent.getWithoutCheck(address(agentVault));
@@ -96,7 +96,7 @@ library AgentsCreateDestroy {
         // claim the underlying address to make sure no other agent is using it
         // for chains where this is required, also checks that address was proved to be EOA
         state.underlyingAddressOwnership.claimAndTransfer(ownerManagementAddress, address(agentVault),
-            avb.standardAddressHash, state.settings.requireEOAAddressProof);
+            avb.standardAddressHash, Globals.getSettings().requireEOAAddressProof);
         // set underlying address
         agent.underlyingAddressString = avb.standardAddress;
         agent.underlyingAddressHash = avb.standardAddressHash;
@@ -124,7 +124,7 @@ library AgentsCreateDestroy {
         onlyAgentVaultOwner(_agentVault)
         returns (uint256)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         // all minting must stop and all minted assets must have been cleared
         require(agent.availableAgentsPos == 0, "agent still available");
@@ -180,7 +180,7 @@ library AgentsCreateDestroy {
         private
         returns (IICollateralPool)
     {
-        AssetManagerSettings.Data storage globalSettings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage globalSettings = Globals.getSettings();
         ICollateralPoolFactory collateralPoolFactory =
             ICollateralPoolFactory(globalSettings.collateralPoolFactory);
         ICollateralPoolTokenFactory poolTokenFactory =

@@ -8,6 +8,7 @@ import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/MathUtils.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
+import "./Globals.sol";
 import "./Agents.sol";
 import "./Conversion.sol";
 import "./Redemptions.sol";
@@ -151,7 +152,7 @@ library Liquidation {
         internal view
         returns (Agent.LiquidationPhase)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.Status status = _agent.status;
         if (status == Agent.Status.LIQUIDATION) {
             bool inCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB
@@ -216,7 +217,7 @@ library Liquidation {
     {
         Agent.Status status = _agent.status;
         if (status == Agent.Status.LIQUIDATION) {
-            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+            AssetManagerSettings.Data storage settings = Globals.getSettings();
             bool startedInCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;
             return _agent.liquidationStartedAt + (startedInCCB ? settings.ccbTimeSeconds : 0);
         } else if (status == Agent.Status.FULL_LIQUIDATION) {
@@ -355,7 +356,7 @@ library Liquidation {
         private view
         returns (uint256)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // for full liquidation, all minted amount can be liquidated
         if (_agent.status == Agent.Status.FULL_LIQUIDATION) {
             return _agent.mintedAMG;
@@ -371,7 +372,7 @@ library Liquidation {
         uint256 maxLiquidatedAMG = uint256(_agent.mintedAMG)
             .mulDivRoundUp(targetRatioBIPS - _collateralRatioBIPS, targetRatioBIPS - _factorBIPS);
         // round up to whole number of lots
-        maxLiquidatedAMG = maxLiquidatedAMG.roundUp(state.settings.lotSizeAMG);
+        maxLiquidatedAMG = maxLiquidatedAMG.roundUp(settings.lotSizeAMG);
         return Math.min(maxLiquidatedAMG, _agent.mintedAMG);
     }
 

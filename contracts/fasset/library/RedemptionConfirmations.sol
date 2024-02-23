@@ -74,7 +74,7 @@ library RedemptionConfirmations {
         // if the confirmation was done by someone else than agent, pay some reward from agent's vault
         if (!isAgent) {
             Agents.payoutFromVault(agent, msg.sender,
-                Agents.convertUSD5ToVaultCollateralWei(agent, state.settings.confirmationByOthersRewardUSD5));
+                Agents.convertUSD5ToVaultCollateralWei(agent, Globals.getSettings().confirmationByOthersRewardUSD5));
         }
         // burn executor fee (or pay executor if the "other" that provided proof is the executor)
         Redemptions.payOrBurnExecutorFee(request);
@@ -92,7 +92,7 @@ library RedemptionConfirmations {
         private view
         returns (bool)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // others can confirm payments only after several hours
         if (block.timestamp <= _request.timestamp + settings.confirmationByOthersAfterSeconds) return false;
         // others can confirm only payments arriving from agent's underlying address

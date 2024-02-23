@@ -32,7 +32,7 @@ library StateUpdater {
             changed = true;
         }
         uint256 finalizationBlockTimestamp = _blockTimestamp +
-            _numberOfConfirmations * state.settings.averageBlockTimeMS / 1000;
+            _numberOfConfirmations * Globals.getSettings().averageBlockTimeMS / 1000;
         if (finalizationBlockTimestamp > state.currentUnderlyingBlockTimestamp) {
             state.currentUnderlyingBlockTimestamp = finalizationBlockTimestamp.toUint64();
             changed = true;

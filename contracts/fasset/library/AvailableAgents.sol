@@ -50,7 +50,7 @@ library AvailableAgents {
     {
         Agent.State storage agent = Agent.get(_agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 exitAfterTs = agent.exitAvailableAfterTs;
         if (exitAfterTs == 0) {
             exitAfterTs = block.timestamp + settings.agentExitAvailableTimelockSeconds;
@@ -67,11 +67,12 @@ library AvailableAgents {
         onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
         require(agent.exitAvailableAfterTs != 0, "exit not announced");
         require(block.timestamp >= agent.exitAvailableAfterTs, "exit too soon");
-        require(block.timestamp <= agent.exitAvailableAfterTs + state.settings.agentTimelockedOperationWindowSeconds,
+        require(block.timestamp <= agent.exitAvailableAfterTs + settings.agentTimelockedOperationWindowSeconds,
             "exit too late");
         uint256 ind = agent.availableAgentsPos - 1;
         if (ind + 1 < state.availableAgents.length) {

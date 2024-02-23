@@ -13,8 +13,6 @@ import "./CollateralTypeInt.sol";
 
 library AssetManagerState {
     struct State {
-        AssetManagerSettings.Data settings;
-
         // All collateral types, used for vault or pool.
         // Pool collateral (always WNat) has index 0.
         CollateralTypeInt.Data[] collateralTokens;
@@ -94,16 +92,5 @@ library AssetManagerState {
         assembly {
             _state.slot := position
         }
-    }
-
-    function getSettings() internal view returns (AssetManagerSettings.Data storage) {
-        // Only direct constants are allowed in inline assembly, so we assign it here
-        bytes32 position = STATE_POSITION;
-        AssetManagerState.State storage state;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            state.slot := position
-        }
-        return state.settings;
     }
 }

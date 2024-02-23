@@ -20,7 +20,7 @@ library LiquidationPaymentStrategy {
         internal view
         returns (uint256 _c1FactorBIPS, uint256 _poolFactorBIPS)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 step = _currentLiquidationStep(_agent);
         uint256 factorBIPS = settings.liquidationCollateralFactorBIPS[step];
         // All premiums are expressed as factor BIPS.
@@ -58,7 +58,7 @@ library LiquidationPaymentStrategy {
         private view
         returns (uint256)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // calculate premium step based on time since liquidation started
         bool startedInCCB = _agent.status == Agent.Status.LIQUIDATION
             && _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;

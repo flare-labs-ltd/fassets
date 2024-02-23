@@ -3,6 +3,7 @@ pragma solidity 0.8.23;
 
 import "../../userInterfaces/IWhitelist.sol";
 import "../library/data/AssetManagerState.sol";
+import "../library/Globals.sol";
 
 
 abstract contract AssetManagerBase {
@@ -22,8 +23,8 @@ abstract contract AssetManagerBase {
     }
 
     function _checkOnlyAssetManagerController() private view {
-        require(msg.sender == AssetManagerState.getSettings().assetManagerController,
-            "only asset manager controller");
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        require(msg.sender == settings.assetManagerController, "only asset manager controller");
     }
 
     function _checkOnlyAttached() private view {
@@ -31,7 +32,7 @@ abstract contract AssetManagerBase {
     }
 
     function _checkOnlyWhitelistedSender() private view {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         if (settings.whitelist != address(0)) {
             require(IWhitelist(settings.whitelist).isWhitelisted(msg.sender), "not whitelisted");
         }

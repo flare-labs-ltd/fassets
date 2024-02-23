@@ -28,11 +28,11 @@ library AgentsExternal {
     )
         internal
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         // if dust is more than 1 lot, create a new redemption ticket
-        if (agent.dustAMG >= state.settings.lotSizeAMG) {
-            uint64 remainingDustAMG = agent.dustAMG % state.settings.lotSizeAMG;
+        if (agent.dustAMG >= settings.lotSizeAMG) {
+            uint64 remainingDustAMG = agent.dustAMG % settings.lotSizeAMG;
             uint64 ticketValueAMG = agent.dustAMG - remainingDustAMG;
             Agents.createRedemptionTicket(agent, ticketValueAMG);
             Agents.changeDust(agent, remainingDustAMG);
@@ -71,7 +71,7 @@ library AgentsExternal {
         require(agent.status == Agent.Status.NORMAL || agent.totalBackedAMG() == 0, "withdrawal ann: invalid status");
         Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(_kind);
         if (_amountWei > withdrawal.amountWei) {
-            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+            AssetManagerSettings.Data storage settings = Globals.getSettings();
             Collateral.Data memory collateralData = AgentCollateral.singleCollateralData(agent, _kind);
             // announcement increased - must check there is enough free collateral and then lock it
             // in this case the wait to withdrawal restarts from this moment
@@ -120,7 +120,7 @@ library AgentsExternal {
         require(withdrawal.allowedAt != 0, "withdrawal: not announced");
         require(_amountWei <= withdrawal.amountWei, "withdrawal: more than announced");
         require(block.timestamp >= withdrawal.allowedAt, "withdrawal: not allowed yet");
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(block.timestamp <= withdrawal.allowedAt + settings.agentTimelockedOperationWindowSeconds,
             "withdrawal: too late");
         // Check that withdrawal doesn't reduce CR below mintingCR (withdrawal is not executed yet, but it balances
@@ -192,7 +192,7 @@ library AgentsExternal {
         CollateralTypeInt.Data storage collateral = agent.getVaultCollateral();
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
         uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
-            .mulBips(state.settings.buybackCollateralFactorBIPS);
+            .mulBips(Globals.getSettings().buybackCollateralFactorBIPS);
         agent.burnVaultCollateral(buybackCollateral);
         agent.mintedAMG = 0;
         state.totalReservedCollateralAMG -= agent.reservedAMG;

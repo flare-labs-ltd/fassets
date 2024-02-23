@@ -36,7 +36,7 @@ library RedemptionRequests {
         internal
         returns (uint256)
     {
-        uint256 maxRedeemedTickets = AssetManagerState.getSettings().maxRedeemedTickets;
+        uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
         AgentRedemptionList memory redemptionList = AgentRedemptionList({
             length: 0,
             items: new AgentRedemptionData[](maxRedeemedTickets)
@@ -179,14 +179,15 @@ library RedemptionRequests {
         returns (uint64 _redeemedLots)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint64 ticketId = state.redemptionQueue.firstTicketId;
         if (ticketId == 0) {
             return 0;    // empty redemption queue
         }
         RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(ticketId);
-        uint64 maxRedeemLots = ticket.valueAMG / state.settings.lotSizeAMG;
+        uint64 maxRedeemLots = ticket.valueAMG / settings.lotSizeAMG;
         _redeemedLots = SafeMath64.min64(_lots, maxRedeemLots);
-        uint64 redeemedAMG = _redeemedLots * state.settings.lotSizeAMG;
+        uint64 redeemedAMG = _redeemedLots * settings.lotSizeAMG;
         address agentVault = ticket.agentVault;
         // find list index for ticket's agent
         uint256 index = 0;
@@ -226,7 +227,7 @@ library RedemptionRequests {
         request.firstUnderlyingBlock = state.currentUnderlyingBlock;
         (request.lastUnderlyingBlock, request.lastUnderlyingTimestamp) = _lastPaymentBlock();
         request.timestamp = block.timestamp.toUint64();
-        request.underlyingFeeUBA = redeemedValueUBA.mulBips(state.settings.redemptionFeeBIPS).toUint128();
+        request.underlyingFeeUBA = redeemedValueUBA.mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128();
         request.redeemer = _redeemer;
         request.agentVault = _data.agentVault;
         request.valueAMG = _data.valueAMG;
@@ -282,11 +283,12 @@ library RedemptionRequests {
         returns (uint64 _lastUnderlyingBlock, uint64 _lastUnderlyingTimestamp)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // timeshift amortizes for the time that passed from the last underlying block update
         uint64 timeshift = block.timestamp.toUint64() - state.currentUnderlyingBlockUpdatedAt;
         _lastUnderlyingBlock =
-            state.currentUnderlyingBlock + state.settings.underlyingBlocksForPayment;
+            state.currentUnderlyingBlock + settings.underlyingBlocksForPayment;
         _lastUnderlyingTimestamp =
-            state.currentUnderlyingBlockTimestamp + timeshift + state.settings.underlyingSecondsForPayment;
+            state.currentUnderlyingBlockTimestamp + timeshift + settings.underlyingSecondsForPayment;
     }
 }

@@ -15,7 +15,7 @@ contract SettingsReaderFacet is AssetManagerBase {
         external view
         returns (AssetManagerSettings.Data memory)
     {
-        return AssetManagerState.getSettings();
+        return Globals.getSettings();
     }
 
     /**
@@ -35,7 +35,7 @@ contract SettingsReaderFacet is AssetManagerBase {
         external view
         returns (uint256 _lotSizeUBA)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         return settings.lotSizeAMG * settings.assetMintingGranularityUBA;
     }
 
@@ -46,7 +46,7 @@ contract SettingsReaderFacet is AssetManagerBase {
         external view
         returns (address)
     {
-        return AssetManagerState.getSettings().assetManagerController;
+        return Globals.getSettings().assetManagerController;
     }
 
     /**
@@ -64,7 +64,7 @@ contract SettingsReaderFacet is AssetManagerBase {
         external view
         returns (uint256)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         return settings.collateralPoolTokenTimelockSeconds;
     }
 

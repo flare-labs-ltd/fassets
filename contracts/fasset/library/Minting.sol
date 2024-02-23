@@ -76,7 +76,7 @@ library Minting {
         require(state.pausedAt == 0, "minting paused");
         require(agent.status == Agent.Status.NORMAL, "self-mint invalid agent status");
         require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
-        uint64 valueAMG = _lots * state.settings.lotSizeAMG;
+        uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
         checkMintingCap(valueAMG);
         uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 poolFeeUBA = calculatePoolFee(agent, mintValueUBA.mulBips(agent.feeBIPS));
@@ -106,9 +106,10 @@ library Minting {
         internal view
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        uint256 mintingCapAMG = state.settings.mintingCapAMG;
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        uint256 mintingCapAMG = settings.mintingCapAMG;
         if (mintingCapAMG == 0) return;     // minting cap disabled
-        uint256 totalMintedUBA = IERC20(state.settings.fAsset).totalSupply();
+        uint256 totalMintedUBA = IERC20(settings.fAsset).totalSupply();
         uint256 totalAMG = state.totalReservedCollateralAMG + Conversion.convertUBAToAmg(totalMintedUBA);
         require(totalAMG + _increaseAMG <= mintingCapAMG, "minting cap exceeded");
     }
@@ -134,14 +135,14 @@ library Minting {
     )
         private
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // Add pool fee to dust (usually less than 1 lot), but if dust exceeds 1 lot, add as much as possible
         // to the created ticket. At the end, there will always be less than 1 lot of dust left.
         uint64 poolFeeAMG = Conversion.convertUBAToAmg(_poolFeeUBA);
         uint64 newDustAMG = _agent.dustAMG + poolFeeAMG;
         uint64 ticketValueAMG = _mintValueAMG;
-        if (newDustAMG >= state.settings.lotSizeAMG) {
-            uint64 remainder = newDustAMG % state.settings.lotSizeAMG;
+        if (newDustAMG >= settings.lotSizeAMG) {
+            uint64 remainder = newDustAMG % settings.lotSizeAMG;
             ticketValueAMG += newDustAMG - remainder;
             newDustAMG = remainder;
         }

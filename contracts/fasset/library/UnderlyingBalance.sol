@@ -76,7 +76,7 @@ library UnderlyingBalance {
         internal view
         returns (uint256)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 backedUBA = uint256(_agent.mintedAMG + _agent.redeemingAMG) * settings.assetMintingGranularityUBA;
         return backedUBA.mulBips(settings.minUnderlyingBackingBIPS);
     }

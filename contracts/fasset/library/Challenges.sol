@@ -26,6 +26,7 @@ library Challenges {
         internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
         // this also prevents double challenges
@@ -52,9 +53,9 @@ library Challenges {
                     && (redemption.status == Redemption.Status.ACTIVE ||
                         redemption.status == Redemption.Status.DEFAULTED)
                     && (_payment.data.responseBody.blockNumber <=
-                            redemption.lastUnderlyingBlock + state.settings.underlyingBlocksForPayment ||
+                            redemption.lastUnderlyingBlock + settings.underlyingBlocksForPayment ||
                         _payment.data.responseBody.blockTimestamp <=
-                            redemption.lastUnderlyingTimestamp + state.settings.underlyingSecondsForPayment);
+                            redemption.lastUnderlyingTimestamp + settings.underlyingSecondsForPayment);
                 require(!redemptionActive, "matching redemption active");
             }
             if (PaymentReference.isValid(paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
@@ -156,7 +157,7 @@ library Challenges {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // start full liquidation
         Liquidation.startFullLiquidation(_agent);
         // calculate the reward

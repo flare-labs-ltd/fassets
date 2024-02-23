@@ -240,7 +240,7 @@ library Agents {
             // If vault collateral is NAT, just burn directly.
             burnVaultNATCollateral(_agent, _amountVaultCollateralWei);
         } else {
-            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+            AssetManagerSettings.Data storage settings = Globals.getSettings();
             IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
             // Calculate NAT amount the agent has to pay to receive the "burned" vault collateral tokens.
             // The price is FTSO price plus configurable premium (vaultCollateralBuyForFlareFactorBIPS).
@@ -264,7 +264,7 @@ library Agents {
     )
         internal
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         IIAgentVault vault = IIAgentVault(_agent.vaultAddress());
         vault.payoutNAT(Globals.getWNat(), settings.burnAddress, _amountNATWei);
     }
@@ -274,7 +274,7 @@ library Agents {
     )
         internal
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         settings.burnAddress.transfer(_amountNATWei);
     }
 

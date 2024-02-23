@@ -4,10 +4,10 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
-import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Globals.sol";
 import "./CollateralTypes.sol";
+import "./SettingsValidators.sol";
 
 library SettingsUpdater {
     using SafeCast for uint256;
@@ -93,18 +93,6 @@ library SettingsUpdater {
         keccak256("setLiquidationStepSeconds(uint256)");
     bytes32 internal constant SET_LIQUIDATION_PAYMENT_FACTORS =
         keccak256("setLiquidationPaymentFactors(uint256[],uint256[])");
-
-    uint256 internal constant MAXIMUM_PROOF_WINDOW = 1 days;
-
-    function validateAndSet(
-        AssetManagerSettings.Data memory _settings
-    )
-        internal
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        _validateSettings(_settings);
-        state.settings = _settings;
-    }
 
     function callUpdate(
         bytes32 _method,
@@ -242,7 +230,7 @@ library SettingsUpdater {
         private
     {
         UpdaterState storage _state = _getUpdaterState();
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 lastUpdate = _state.lastUpdate[_method];
         require(lastUpdate == 0 || block.timestamp >= lastUpdate + settings.minUpdateRepeatTimeSeconds,
             "too close to previous update");
@@ -254,7 +242,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
 
         (address controller, IWNat wNat) = abi.decode(_params, (address, IWNat));
 
@@ -278,14 +266,13 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         (uint256 underlyingBlocks, uint256 underlyingSeconds) =
             abi.decode(_params, (uint256, uint256));
         // validate
         require(underlyingSeconds > 0, "cannot be zero");
         require(underlyingBlocks > 0, "cannot be zero");
-        require(underlyingSeconds <= MAXIMUM_PROOF_WINDOW, "value to high");
-        require(underlyingBlocks * settings.averageBlockTimeMS / 1000 <= MAXIMUM_PROOF_WINDOW, "value to high");
+        SettingsValidators.validateTimeForPayment(underlyingBlocks, underlyingSeconds, settings.averageBlockTimeMS);
         // update
         settings.underlyingBlocksForPayment = underlyingBlocks.toUint64();
         settings.underlyingSecondsForPayment = underlyingSeconds.toUint64();
@@ -298,7 +285,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         (uint256 rewardNATWei, uint256 rewardBIPS) = abi.decode(_params, (uint256, uint256));
         // validate
         require(rewardNATWei <= (settings.paymentChallengeRewardUSD5 * 4) + 100 ether, "increase too big");
@@ -317,7 +304,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         address value = abi.decode(_params, (address));
         // validate
         // update
@@ -330,7 +317,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         address value = abi.decode(_params, (address));
         // validate
         require(value != address(0), "address zero");
@@ -344,7 +331,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         address value = abi.decode(_params, (address));
         // validate
         require(value != address(0), "address zero");
@@ -358,7 +345,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         address value = abi.decode(_params, (address));
         // validate
         require(value != address(0), "address zero");
@@ -372,7 +359,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         address value = abi.decode(_params, (address));
         // validate
         require(value != address(0), "address zero");
@@ -386,7 +373,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         address value = abi.decode(_params, (address));
         // validate
         require(value != address(0), "address zero");
@@ -400,7 +387,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         address value = abi.decode(_params, (address));
         // validate
         require(value != address(0), "address zero");
@@ -414,7 +401,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
@@ -428,7 +415,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         // huge lot size increase is very dangerous, because it breaks redemption
@@ -448,7 +435,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         // huge lot size increase is very dangerous, because it breaks redemption
@@ -467,7 +454,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
@@ -483,7 +470,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
@@ -500,7 +487,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
@@ -517,7 +504,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         (uint256 vaultF, uint256 poolF) = abi.decode(_params, (uint256, uint256));
         // validate
         require(vaultF + poolF > SafePct.MAX_BIPS, "bips value too low");
@@ -537,7 +524,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value >= 2 hours, "must be at least two hours");
@@ -551,7 +538,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
@@ -567,7 +554,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
@@ -583,7 +570,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         // making this value small doesn't present huge danger, so we don't limit decrease
@@ -599,7 +586,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
@@ -615,7 +602,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value >= 1 days, "window too small");
@@ -629,7 +616,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value > 0, "cannot be zero");
@@ -645,7 +632,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value <= 1 hours, "confirmation time too big");
@@ -659,7 +646,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value <= settings.mintingPoolHoldingsRequiredBIPS * 4 + SafePct.MAX_BIPS, "value too big");
@@ -673,7 +660,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value == 0 || value >= settings.lotSizeAMG, "value too small");
@@ -687,7 +674,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         // update
@@ -700,7 +687,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value >= SafePct.MAX_BIPS, "value too small");
@@ -714,7 +701,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value <= settings.agentExitAvailableTimelockSeconds * 4 + 1 weeks);
@@ -728,7 +715,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value <= settings.agentFeeChangeTimelockSeconds * 4 + 1 days);
@@ -742,7 +729,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value <= settings.agentMintingCRChangeTimelockSeconds * 4 + 1 days);
@@ -756,7 +743,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value <= settings.poolExitAndTopupChangeTimelockSeconds * 4 + 1 days);
@@ -770,7 +757,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value >= 1 minutes, "value too small");
@@ -784,7 +771,7 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
         require(value >= 1 minutes, "value too small");
@@ -794,7 +781,7 @@ library SettingsUpdater {
     }
 
     function _setLiquidationStepSeconds(bytes calldata _params) private {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 stepSeconds = abi.decode(_params, (uint256));
         // validate
         require(stepSeconds > 0, "cannot be zero");
@@ -810,11 +797,11 @@ library SettingsUpdater {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         (uint256[] memory liquidationFactors, uint256[] memory vaultCollateralFactors) =
             abi.decode(_params, (uint256[], uint256[]));
         // validate
-        _validateLiquidationFactors(liquidationFactors, vaultCollateralFactors);
+        SettingsValidators.validateLiquidationFactors(liquidationFactors, vaultCollateralFactors);
         // update
         delete settings.liquidationCollateralFactorBIPS;
         delete settings.liquidationFactorVaultCollateralBIPS;
@@ -825,73 +812,5 @@ library SettingsUpdater {
         // emit events
         emit AMEvents.SettingArrayChanged("liquidationCollateralFactorBIPS", liquidationFactors);
         emit AMEvents.SettingArrayChanged("liquidationFactorVaultCollateralBIPS", vaultCollateralFactors);
-    }
-
-    function _validateLiquidationFactors(
-        uint256[] memory liquidationFactors,
-        uint256[] memory vaultCollateralFactors
-    )
-        private pure
-    {
-        require(liquidationFactors.length == vaultCollateralFactors.length, "lengths not equal");
-        require(liquidationFactors.length >= 1, "at least one factor required");
-        for (uint256 i = 0; i < liquidationFactors.length; i++) {
-            // per item validations
-            require(liquidationFactors[i] > SafePct.MAX_BIPS, "factor not above 1");
-            require(vaultCollateralFactors[i] <= liquidationFactors[i], "vault collateral factor higher than total");
-            require(i == 0 || liquidationFactors[i] > liquidationFactors[i - 1], "factors not increasing");
-        }
-    }
-
-    function _validateSettings(
-        AssetManagerSettings.Data memory _settings
-    )
-        private pure
-    {
-        require(_settings.fAsset != address(0), "zero fAsset address");
-        require(_settings.agentVaultFactory != address(0), "zero agentVaultFactory address");
-        require(_settings.collateralPoolFactory != address(0), "zero collateralPoolFactory address");
-        require(_settings.collateralPoolTokenFactory != address(0), "zero collateralPoolTokenFactory address");
-        require(_settings.scProofVerifier != address(0), "zero scProofVerifier address");
-        require(_settings.priceReader != address(0), "zero priceReader address");
-        require(_settings.agentOwnerRegistry != address(0), "zero agentOwnerRegistry address");
-
-        require(_settings.assetUnitUBA > 0, "cannot be zero");
-        require(_settings.assetMintingGranularityUBA > 0, "cannot be zero");
-        require(_settings.underlyingBlocksForPayment > 0, "cannot be zero");
-        require(_settings.underlyingSecondsForPayment > 0, "cannot be zero");
-        require(_settings.redemptionFeeBIPS > 0, "cannot be zero");
-        require(_settings.collateralReservationFeeBIPS > 0, "cannot be zero");
-        require(_settings.confirmationByOthersRewardUSD5 > 0, "cannot be zero");
-        require(_settings.maxRedeemedTickets > 0, "cannot be zero");
-        require(_settings.ccbTimeSeconds > 0, "cannot be zero");
-        require(_settings.maxTrustedPriceAgeSeconds > 0, "cannot be zero");
-        require(_settings.minUpdateRepeatTimeSeconds > 0, "cannot be zero");
-        require(_settings.buybackCollateralFactorBIPS > 0, "cannot be zero");
-        require(_settings.withdrawalWaitMinSeconds > 0, "cannot be zero");
-        require(_settings.averageBlockTimeMS > 0, "cannot be zero");
-        require(_settings.underlyingSecondsForPayment <= MAXIMUM_PROOF_WINDOW,
-            "value to high");
-        require(_settings.underlyingBlocksForPayment * _settings.averageBlockTimeMS / 1000 <= MAXIMUM_PROOF_WINDOW,
-            "value to high");
-        require(_settings.lotSizeAMG > 0, "cannot be zero");
-        require(_settings.mintingCapAMG == 0 || _settings.mintingCapAMG >= _settings.lotSizeAMG,
-            "minting cap too small");
-        require(_settings.minUnderlyingBackingBIPS > 0, "cannot be zero");
-        require(_settings.minUnderlyingBackingBIPS <= SafePct.MAX_BIPS, "bips value too high");
-        require(_settings.collateralReservationFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
-        require(_settings.redemptionFeeBIPS <= SafePct.MAX_BIPS, "bips value too high");
-        uint256 redemptionFactorBIPS =
-            _settings.redemptionDefaultFactorVaultCollateralBIPS + _settings.redemptionDefaultFactorPoolBIPS;
-        require(redemptionFactorBIPS > SafePct.MAX_BIPS, "bips value too low");
-        require(_settings.attestationWindowSeconds >= 1 days, "window too small");
-        require(_settings.confirmationByOthersAfterSeconds >= 2 hours, "must be at least two hours");
-        require(_settings.announcedUnderlyingConfirmationMinSeconds <= 1 hours, "confirmation time too big");
-        require(_settings.vaultCollateralBuyForFlareFactorBIPS >= SafePct.MAX_BIPS, "value too small");
-        require(_settings.agentTimelockedOperationWindowSeconds >= 1 hours, "value too small");
-        require(_settings.collateralPoolTokenTimelockSeconds >= 1 minutes, "value too small");
-        require(_settings.liquidationStepSeconds > 0, "cannot be zero");
-        _validateLiquidationFactors(_settings.liquidationCollateralFactorBIPS,
-            _settings.liquidationFactorVaultCollateralBIPS);
     }
 }

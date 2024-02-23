@@ -15,7 +15,7 @@ contract AgentVaultAndPoolSupportFacet is AssetManagerBase {
         external view
         returns (uint256 _multiplier, uint256 _divisor)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         _multiplier = Conversion.currentAmgPriceInTokenWei(Globals.getPoolCollateral());
         _divisor = Conversion.AMG_TOKEN_WEI_PRICE_SCALE * settings.assetMintingGranularityUBA;
     }

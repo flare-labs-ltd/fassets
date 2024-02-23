@@ -4,6 +4,7 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
+import "./Globals.sol";
 import "./AMEvents.sol";
 
 
@@ -66,7 +67,7 @@ library CollateralTypes {
     )
         internal
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         CollateralTypeInt.Data storage token = CollateralTypes.get(_collateralClass, _token);
         require(isValid(token), "token not valid");
         require(_invalidationTimeSec >= settings.tokenInvalidationTimeMinSeconds, "deprecation time to short");
