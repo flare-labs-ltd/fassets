@@ -1,7 +1,13 @@
 import { Artifact, HardhatRuntimeEnvironment } from 'hardhat/types';
-import { DiamondCut, FacetCutAction } from "../../test/utils/diamond";
+import { IDiamondCutInstance, IDiamondLoupeInstance } from '../../typechain-truffle';
 import { ContractStore } from "./contracts";
 import { deployedCodeMatches } from './deploy-utils';
+
+export enum FacetCutAction { Add = 0, Replace = 1, Remove = 2 };
+
+export type DiamondCut = Parameters<IDiamondCutInstance["diamondCut"]>[0][0];
+
+export type DiamondFacet = Awaited<ReturnType<IDiamondLoupeInstance["facets"]>>[0];
 
 const assetManagerInterfaces = [
     'IIAssetManager'
@@ -38,7 +44,7 @@ export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment
     }
 }
 
-// deploy facet unless it is already dpeloyed with identical code (facets must be stateless)
+// deploy facet unless it is already dpeloyed with identical code (facets must be stateless and have zero-arg constructor)
 export async function deployFacet(hre: HardhatRuntimeEnvironment, facetName: string, contracts: ContractStore) {
     const artifact = hre.artifacts.readArtifactSync(facetName);
     const alreadyDeployed = await deployedCodeMatches(artifact, contracts.get(facetName)?.address);

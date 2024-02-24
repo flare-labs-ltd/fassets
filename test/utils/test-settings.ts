@@ -102,7 +102,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         liquidationStepSeconds: 90,
         liquidationCollateralFactorBIPS: [toBIPS(1.2), toBIPS(1.6), toBIPS(2.0)],
         liquidationFactorVaultCollateralBIPS: [toBIPS(1), toBIPS(1), toBIPS(1)],
-        diamondCutMinTimelockSeconds: 1 * WEEKS,
+        diamondCutMinTimelockSeconds: 1 * HOURS,
     };
     return Object.assign(result, options ?? {});
 }

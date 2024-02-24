@@ -2,7 +2,7 @@
 pragma solidity 0.8.23;
 
 import "flare-smart-contracts/contracts/userInterfaces/IGovernanceSettings.sol";
-
+import "../interfaces/IGoverned.sol";
 
 /**
  * @title Governed Base
@@ -14,7 +14,7 @@ import "flare-smart-contracts/contracts/userInterfaces/IGovernanceSettings.sol";
  *   0x1000000000000000000000000000000000000007) and Songbird (where governance settings is a deployed contract).
  * @dev It also uses diamond storage for state, so it is safer tp use in diamond structures or proxies.
  **/
-abstract contract GovernedBase {
+abstract contract GovernedBase is IGoverned {
     struct TimelockedCall {
         uint256 allowedAfterTimestamp;
         bytes encodedCall;
@@ -28,13 +28,6 @@ abstract contract GovernedBase {
         address initialGovernance;
         mapping(bytes4 => TimelockedCall) timelockedCalls;
     }
-
-    event GovernanceCallTimelocked(bytes4 selector, uint256 allowedAfterTimestamp, bytes encodedCall);
-    event TimelockedGovernanceCallExecuted(bytes4 selector, uint256 timestamp);
-    event TimelockedGovernanceCallCanceled(bytes4 selector, uint256 timestamp);
-
-    event GovernanceInitialised(address initialGovernance);
-    event GovernedProductionModeEntered(address governanceSettings);
 
     modifier onlyGovernance {
         if (_timeToExecute()) {
@@ -54,7 +47,7 @@ abstract contract GovernedBase {
         }
     }
 
-    modifier onlyImmediateGovernance () {
+    modifier onlyImmediateGovernance {
         _checkOnlyGovernance();
         _;
     }
@@ -100,9 +93,8 @@ abstract contract GovernedBase {
      * This enables timelocks and the governance is afterwards obtained by calling
      * governanceSettings.getGovernanceAddress().
      */
-    function switchToProductionMode() external {
+    function switchToProductionMode() external onlyImmediateGovernance {
         GovernedState storage state = _governedState();
-        _checkOnlyGovernance();
         require(!state.productionMode, "already in production mode");
         state.initialGovernance = address(0);
         state.productionMode = true;

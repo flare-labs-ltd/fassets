@@ -33,6 +33,7 @@ contract AssetManagerInit is GovernedBase, ReentrancyGuard {
         ds.supportedInterfaces[type(IERC165).interfaceId] = true;
         ds.supportedInterfaces[type(IDiamondLoupe).interfaceId] = true;
         ds.supportedInterfaces[type(IDiamondCut).interfaceId] = true;
+        ds.supportedInterfaces[type(IGoverned).interfaceId] = true;
         ds.supportedInterfaces[type(IAssetManager).interfaceId] = true;
         ds.supportedInterfaces[type(IIAssetManager).interfaceId] = true;
     }
