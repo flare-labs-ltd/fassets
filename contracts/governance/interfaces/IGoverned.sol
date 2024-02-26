@@ -8,7 +8,7 @@ interface IGoverned {
     /**
      * Governance call was timelocked. It can be executed after `allowedAfterTimestamp` by one of the executors.
      * @param encodedCall ABI encoded call data, to be used in executeGovernanceCall
-     * @param encodedCallHash keccak256 hash of the ABI encoded call data (can be used in cancelGovernanceCall)
+     * @param encodedCallHash keccak256 hash of the ABI encoded call data
      * @param allowedAfterTimestamp the earliest timestamp when the call can be executed
      */
     event GovernanceCallTimelocked(bytes encodedCall, bytes32 encodedCallHash, uint256 allowedAfterTimestamp);
@@ -51,10 +51,10 @@ interface IGoverned {
     /**
      * Cancel a timelocked governance call before it has been executed.
      * @dev Only governance can call this method.
-     * @param _encodedCallHash keccak256 hash of ABI encoded call data (signature and parameters).
-     *      You should use `encodedCallHash` parameter from `GovernanceCallTimelocked` event.
+     * @param _encodedCall ABI encoded call data (signature and parameters).
+     *      You should use `encodedCall` parameter from `GovernanceCallTimelocked` event.
      */
-    function cancelGovernanceCall(bytes32 _encodedCallHash) external;
+    function cancelGovernanceCall(bytes calldata _encodedCall) external;
 
     /**
      * Enter the production mode after all the initial governance settings have been set.

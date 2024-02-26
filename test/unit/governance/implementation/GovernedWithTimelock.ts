@@ -91,7 +91,7 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
         const res = await mock.increaseA(10, { from: governance });
         const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
         await time.increase(3600);
-        const cancelRes = await mock.cancelGovernanceCall(encodedCallHash, { from: governance });
+        const cancelRes = await mock.cancelGovernanceCall(encodedCall, { from: governance });
         expectEvent(cancelRes, "TimelockedGovernanceCallCanceled", { encodedCallHash });
         // shouldn't execute after cancel
         await expectRevert(mock.executeGovernanceCall(encodedCall, { from: executor }),
@@ -106,7 +106,7 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
         const execRes = await mock.executeGovernanceCall(encodedCall, { from: executor });
         expectEvent(execRes, "TimelockedGovernanceCallExecuted", { encodedCallHash });
         // shouldn't execute after cancel
-        await expectRevert(mock.cancelGovernanceCall(encodedCallHash, { from: governance }),
+        await expectRevert(mock.cancelGovernanceCall(encodedCall, { from: governance }),
             "timelock: invalid selector");
         assertWeb3Equal(await mock.a(), 10);
     });
@@ -135,7 +135,7 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
         const res = await mock.increaseA(10, { from: governance });
         const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
         await time.increase(3600);
-        await expectRevert(mock.cancelGovernanceCall(encodedCallHash, { from: executor }),
+        await expectRevert(mock.cancelGovernanceCall(encodedCall, { from: executor }),
             "only governance");
     });
 });

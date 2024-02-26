@@ -74,13 +74,14 @@ abstract contract GovernedBase is IGoverned {
     /**
      * Cancel a timelocked governance call before it has been executed.
      * @dev Only governance can call this method.
-     * @param _encodedCallHash keccak256 hash of ABI encoded call data (signature and parameters).
+     * @param _encodedCall ABI encoded call data (signature and parameters).
      */
-    function cancelGovernanceCall(bytes32 _encodedCallHash) external override onlyImmediateGovernance {
+    function cancelGovernanceCall(bytes calldata _encodedCall) external override onlyImmediateGovernance {
         GovernedState storage state = _governedState();
-        require(state.timelockedCalls[_encodedCallHash] != 0, "timelock: invalid selector");
-        emit TimelockedGovernanceCallCanceled(_encodedCallHash);
-        delete state.timelockedCalls[_encodedCallHash];
+        bytes32 encodedCallHash = keccak256(_encodedCall);
+        require(state.timelockedCalls[encodedCallHash] != 0, "timelock: invalid selector");
+        emit TimelockedGovernanceCallCanceled(encodedCallHash);
+        delete state.timelockedCalls[encodedCallHash];
     }
 
     /**
