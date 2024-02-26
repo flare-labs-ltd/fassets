@@ -5,6 +5,7 @@ import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AssetManagerControllerInstance, IIAssetManagerInstance, FAssetInstance, GovernanceSettingsInstance, AssetManagerInitInstance } from "../../../typechain-truffle";
 import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
 import { DiamondCut, FacetCutAction } from "../diamond";
+import { abiEncodeCall } from "../../../lib/utils/helpers";
 
 const IIAssetManager = artifacts.require('IIAssetManager');
 const AssetManager = artifacts.require('AssetManager');
@@ -67,7 +68,7 @@ export async function waitForTimelock<C extends Truffle.ContractInstance>(respon
     if (timelockEvent) {
         const timelock = timelockEvent.args;
         await time.increaseTo(Number(timelock.allowedAfterTimestamp) + 1);
-        return await (contract as any).executeGovernanceCall(timelock.selector, { from: executorAddress });
+        return await (contract as any).executeGovernanceCall(timelock.encodedCall, { from: executorAddress });
     }
 }
 
@@ -128,8 +129,4 @@ export async function deployFacet(facetName: string, filterSelectors: Set<string
         facetAddress: instance.address,
         functionSelectors: [...exposedSelectors]
     };
-}
-
-export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, call: (inst: I) => any) {
-    return call(instance.contract.methods).encodeABI();
 }

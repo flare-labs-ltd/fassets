@@ -4,6 +4,7 @@ import { GovernedWithTimelockMockInstance } from "../../../../typechain-truffle"
 import { testDeployGovernanceSettings } from "../../../utils/contract-test-helpers";
 import { getTestFile } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { abiEncodeCall } from "../../../../lib/utils/helpers";
 
 const GovernedWithTimelockMock = artifacts.require("GovernedWithTimelockMock");
 
@@ -38,74 +39,74 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
 
     it("can execute after time", async () => {
         const res = await mock.changeA(15, { from: governance });
-        const { selector } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
+        const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
         await time.increase(3600);
-        const execRes = await mock.executeGovernanceCall(selector, { from: executor });
-        expectEvent(execRes, "TimelockedGovernanceCallExecuted", { selector: selector });
+        const execRes = await mock.executeGovernanceCall(encodedCall, { from: executor });
+        expectEvent(execRes, "TimelockedGovernanceCallExecuted", { encodedCallHash });
         assertWeb3Equal(await mock.a(), 15);
     });
 
     it("cannot execute before time", async () => {
         const res = await mock.changeA(15, { from: governance });
-        const { selector } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
+        const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
         await time.increase(3000);  // should be 3600
-        await expectRevert(mock.executeGovernanceCall(selector, { from: executor }),
+        await expectRevert(mock.executeGovernanceCall(encodedCall, { from: executor }),
             "timelock: not allowed yet");
         assertWeb3Equal(await mock.a(), 0);
     });
 
-    it("must use valid selector to execute", async () => {
+    it("must use valid calldata to execute", async () => {
         const res = await mock.changeA(15, { from: governance });
         findRequiredEvent(res, 'GovernanceCallTimelocked').args;
         await time.increase(3600);  // should be 3600
-        const useSelector = "0xffffffff";
-        await expectRevert(mock.executeGovernanceCall(useSelector, { from: executor }),
+        const useCallData = abiEncodeCall(mock, (m) => m.changeA(16));
+        await expectRevert(mock.executeGovernanceCall(useCallData, { from: executor }),
             "timelock: invalid selector");
         assertWeb3Equal(await mock.a(), 0);
     });
 
     it("cannot execute same timelocked method twice", async () => {
         const res = await mock.increaseA(10, { from: governance });
-        const { selector } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
+        const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
         await time.increase(3600);
-        const execRes = await mock.executeGovernanceCall(selector, { from: executor });
-        expectEvent(execRes, "TimelockedGovernanceCallExecuted", { selector: selector });
+        const execRes = await mock.executeGovernanceCall(encodedCall, { from: executor });
+        expectEvent(execRes, "TimelockedGovernanceCallExecuted", { encodedCallHash });
         assertWeb3Equal(await mock.a(), 10);
         // shouldn't execute again
-        await expectRevert(mock.executeGovernanceCall(selector, { from: executor }),
+        await expectRevert(mock.executeGovernanceCall(encodedCall, { from: executor }),
             "timelock: invalid selector");
         assertWeb3Equal(await mock.a(), 10);
     });
 
     it("passes reverts correctly", async () => {
         const res = await mock.changeWithRevert(15, { from: governance });
-        const { selector } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
+        const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
         await time.increase(3600);
-        await expectRevert(mock.executeGovernanceCall(selector, { from: executor }),
+        await expectRevert(mock.executeGovernanceCall(encodedCall, { from: executor }),
             "this is revert");
         assertWeb3Equal(await mock.a(), 0);
     });
 
     it("can cancel timelocked call", async () => {
         const res = await mock.increaseA(10, { from: governance });
-        const { selector } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
+        const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
         await time.increase(3600);
-        const cancelRes = await mock.cancelGovernanceCall(selector, { from: governance });
-        expectEvent(cancelRes, "TimelockedGovernanceCallCanceled", { selector: selector });
+        const cancelRes = await mock.cancelGovernanceCall(encodedCallHash, { from: governance });
+        expectEvent(cancelRes, "TimelockedGovernanceCallCanceled", { encodedCallHash });
         // shouldn't execute after cancel
-        await expectRevert(mock.executeGovernanceCall(selector, { from: executor }),
+        await expectRevert(mock.executeGovernanceCall(encodedCall, { from: executor }),
             "timelock: invalid selector");
         assertWeb3Equal(await mock.a(), 0);
     });
 
     it("cannot cancel an already executed timelocked call", async () => {
         const res = await mock.increaseA(10, { from: governance });
-        const { selector } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
+        const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
         await time.increase(3600);
-        const execRes = await mock.executeGovernanceCall(selector, { from: executor });
-        expectEvent(execRes, "TimelockedGovernanceCallExecuted", { selector: selector });
+        const execRes = await mock.executeGovernanceCall(encodedCall, { from: executor });
+        expectEvent(execRes, "TimelockedGovernanceCallExecuted", { encodedCallHash });
         // shouldn't execute after cancel
-        await expectRevert(mock.cancelGovernanceCall(selector, { from: governance }),
+        await expectRevert(mock.cancelGovernanceCall(encodedCallHash, { from: governance }),
             "timelock: invalid selector");
         assertWeb3Equal(await mock.a(), 10);
     });
@@ -125,16 +126,16 @@ contract(`GovernedWithTimelock.sol; ${getTestFile(__filename)}; GovernedWithTime
 
     it("only an executor can execute a timelocked call", async () => {
         const res = await mock.changeA(15, { from: governance });
-        const { selector } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
+        const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
         await time.increase(3600);
-        await expectRevert(mock.executeGovernanceCall(selector, { from: accounts[5] }), "only executor");
+        await expectRevert(mock.executeGovernanceCall(encodedCall, { from: accounts[5] }), "only executor");
     });
 
     it("only governance can cancel a timelocked call", async () => {
         const res = await mock.increaseA(10, { from: governance });
-        const { selector } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
+        const { encodedCall, encodedCallHash } = findRequiredEvent(res, 'GovernanceCallTimelocked').args;
         await time.increase(3600);
-        await expectRevert(mock.cancelGovernanceCall(selector, { from: executor }),
+        await expectRevert(mock.cancelGovernanceCall(encodedCallHash, { from: executor }),
             "only governance");
     });
 });

@@ -15,18 +15,13 @@ import "../interfaces/IGoverned.sol";
  * @dev It also uses diamond storage for state, so it is safer tp use in diamond structures or proxies.
  **/
 abstract contract GovernedBase is IGoverned {
-    struct TimelockedCall {
-        uint256 allowedAfterTimestamp;
-        bytes encodedCall;
-    }
-
     struct GovernedState {
         IGovernanceSettings governanceSettings;
         bool initialised;
         bool productionMode;
         bool executing;
         address initialGovernance;
-        mapping(bytes4 => TimelockedCall) timelockedCalls;
+        mapping(bytes32 encodedCallHash => uint256 allowedAfterTimestamp) timelockedCalls;
     }
 
     modifier onlyGovernance {
@@ -58,34 +53,34 @@ abstract contract GovernedBase is IGoverned {
     /**
      * @notice Execute the timelocked governance calls once the timelock period expires.
      * @dev Only executor can call this method.
-     * @param _selector The method selector (only one timelocked call per method is stored).
+     * @param _encodedCall ABI encoded call data (signature and parameters).
      */
-    function executeGovernanceCall(bytes4 _selector) external {
+    function executeGovernanceCall(bytes calldata _encodedCall) external override {
         GovernedState storage state = _governedState();
         require(isExecutor(msg.sender), "only executor");
-        TimelockedCall storage call = state.timelockedCalls[_selector];
-        require(call.allowedAfterTimestamp != 0, "timelock: invalid selector");
-        require(block.timestamp >= call.allowedAfterTimestamp, "timelock: not allowed yet");
-        bytes memory encodedCall = call.encodedCall;
-        delete state.timelockedCalls[_selector];
+        bytes32 encodedCallHash = keccak256(_encodedCall);
+        uint256 allowedAfterTimestamp = state.timelockedCalls[encodedCallHash];
+        require(allowedAfterTimestamp != 0, "timelock: invalid selector");
+        require(block.timestamp >= allowedAfterTimestamp, "timelock: not allowed yet");
+        delete state.timelockedCalls[encodedCallHash];
         state.executing = true;
         //solhint-disable-next-line avoid-low-level-calls
-        (bool success,) = address(this).call(encodedCall);
+        (bool success,) = address(this).call(_encodedCall);
         state.executing = false;
-        emit TimelockedGovernanceCallExecuted(_selector, block.timestamp);
+        emit TimelockedGovernanceCallExecuted(encodedCallHash);
         _passReturnOrRevert(success);
     }
 
     /**
      * Cancel a timelocked governance call before it has been executed.
      * @dev Only governance can call this method.
-     * @param _selector The method selector.
+     * @param _encodedCallHash keccak256 hash of ABI encoded call data (signature and parameters).
      */
-    function cancelGovernanceCall(bytes4 _selector) external onlyImmediateGovernance {
+    function cancelGovernanceCall(bytes32 _encodedCallHash) external override onlyImmediateGovernance {
         GovernedState storage state = _governedState();
-        require(state.timelockedCalls[_selector].allowedAfterTimestamp != 0, "timelock: invalid selector");
-        emit TimelockedGovernanceCallCanceled(_selector, block.timestamp);
-        delete state.timelockedCalls[_selector];
+        require(state.timelockedCalls[_encodedCallHash] != 0, "timelock: invalid selector");
+        emit TimelockedGovernanceCallCanceled(_encodedCallHash);
+        delete state.timelockedCalls[_encodedCallHash];
     }
 
     /**
@@ -138,7 +133,7 @@ abstract contract GovernedBase is IGoverned {
     }
 
     /**
-     * Internal function to check if an address is executor.
+     * Check if an address is one of the executors defined in governanceSettings.
      */
     function isExecutor(address _address) public view returns (bool) {
         GovernedState storage state = _governedState();
@@ -159,20 +154,17 @@ abstract contract GovernedBase is IGoverned {
         }
     }
 
-    function _recordTimelockedCall(bytes calldata _data, uint256 _minimumTimelock) private {
+    function _recordTimelockedCall(bytes calldata _encodedCall, uint256 _minimumTimelock) private {
         GovernedState storage state = _governedState();
         _checkOnlyGovernance();
-        bytes4 selector = bytes4(_data);
+        bytes32 encodedCallHash = keccak256(_encodedCall);
         uint256 timelock = state.governanceSettings.getTimelock();
         if (timelock < _minimumTimelock) {
             timelock = _minimumTimelock;
         }
         uint256 allowedAt = block.timestamp + timelock;
-        state.timelockedCalls[selector] = TimelockedCall({
-            allowedAfterTimestamp: allowedAt,
-            encodedCall: _data
-        });
-        emit GovernanceCallTimelocked(selector, allowedAt, _data);
+        state.timelockedCalls[encodedCallHash] = allowedAt;
+        emit GovernanceCallTimelocked(_encodedCall, encodedCallHash, allowedAt);
     }
 
     function _timeToExecute() private view returns (bool) {

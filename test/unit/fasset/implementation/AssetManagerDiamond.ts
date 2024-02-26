@@ -88,10 +88,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
             const timelocked = requiredEventArgs(res, "GovernanceCallTimelocked");
             // assert
             await time.increase(300);
-            await expectRevert(assetManager.executeGovernanceCall(timelocked.selector, { from: executor }),
+            await expectRevert(assetManager.executeGovernanceCall(timelocked.encodedCall, { from: executor }),
                 "timelock: not allowed yet");
             await time.increase(3600);
-            await assetManager.executeGovernanceCall(timelocked.selector, { from: executor });
+            await assetManager.executeGovernanceCall(timelocked.encodedCall, { from: executor });
         });
 
         it("if diamondCutMinTimelockSeconds is small, GovernanceSettings.timelock applies", async () => {
@@ -113,10 +113,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
             const timelocked = requiredEventArgs(res, "GovernanceCallTimelocked");
             // assert
             await time.increase(30);
-            await expectRevert(assetManager2.executeGovernanceCall(timelocked.selector, { from: executor }),
+            await expectRevert(assetManager2.executeGovernanceCall(timelocked.encodedCall, { from: executor }),
                 "timelock: not allowed yet");
             await time.increase(60);
-            await assetManager2.executeGovernanceCall(timelocked.selector, { from: executor });
+            await assetManager2.executeGovernanceCall(timelocked.encodedCall, { from: executor });
         });
     });
 });

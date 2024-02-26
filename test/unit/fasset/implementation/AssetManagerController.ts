@@ -162,7 +162,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let encodedCall: string = assetManagerController.contract.methods.setWhitelist([assetManager.address], whitelist.address).encodeABI();
             let res = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
             let allowedAfterTimestamp = (await time.latest()).addn(60);
-            expectEvent(res, "GovernanceCallTimelocked", { selector: encodedCall.slice(0, 10), allowedAfterTimestamp, encodedCall })
+            expectEvent(res, "GovernanceCallTimelocked", { encodedCallHash: web3.utils.keccak256(encodedCall), allowedAfterTimestamp, encodedCall });
         });
 
         it("should execute set whitelist", async () => {
@@ -176,7 +176,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         it("should not execute set whitelist", async () => {
             const res1 = await assetManagerController.setWhitelist([assetManager.address], whitelist.address, { from: governance });
             const timelock = requiredEventArgs(res1, 'GovernanceCallTimelocked');
-            let res = assetManagerController.executeGovernanceCall(timelock.selector, { from: updateExecutor });
+            let res = assetManagerController.executeGovernanceCall(timelock.encodedCall, { from: updateExecutor });
             await expectRevert(res, "timelock: not allowed yet");
         });
 
@@ -724,10 +724,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             for (const collateral of collaterals) {
                 const res = await assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.collateralClass, collateral.token, 2_2000, 1_8000, 2_4000, { from: governance });
                 const timelock = requiredEventArgs(res, 'GovernanceCallTimelocked');
-                await expectRevert(assetManagerController.executeGovernanceCall(timelock.selector), "only executor");
+                await expectRevert(assetManagerController.executeGovernanceCall(timelock.encodedCall), "only executor");
                 const res1 = await assetManagerController.setTimeForPayment([assetManager.address], 10, 120, { from: governance });
                 const timelock1 = requiredEventArgs(res1, 'GovernanceCallTimelocked');
-                await expectRevert(assetManagerController.executeGovernanceCall(timelock1.selector), "only executor");
+                await expectRevert(assetManagerController.executeGovernanceCall(timelock1.encodedCall), "only executor");
             }
         });
 
@@ -736,7 +736,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             for (const collateral of collaterals) {
                 const res = await assetManagerController.setCollateralRatiosForToken([assetManager.address], collateral.collateralClass, collateral.token, 2_2000, 1_8000, 2_4000, { from: governance });
                 const timelock = requiredEventArgs(res, 'GovernanceCallTimelocked');
-                await expectRevert(assetManagerController.executeGovernanceCall(timelock.selector, { from: updateExecutor }),
+                await expectRevert(assetManagerController.executeGovernanceCall(timelock.encodedCall, { from: updateExecutor }),
                     "timelock: not allowed yet");
                 // assert no changes
                 const collateralInfo = await assetManager.getCollateralType(collateral.collateralClass, collateral.token);
@@ -754,7 +754,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const res = await assetManagerController.setTimeForPayment([assetManager.address], underlyingBlocksForPayment_new, underlyingSecondsForPayment_new, { from: governance });
             const timelock = requiredEventArgs(res, 'GovernanceCallTimelocked');
 
-            await expectRevert(assetManagerController.executeGovernanceCall(timelock.selector, { from: updateExecutor }), "timelock: not allowed yet");
+            await expectRevert(assetManagerController.executeGovernanceCall(timelock.encodedCall, { from: updateExecutor }), "timelock: not allowed yet");
             // assert no changes
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             assertWeb3Equal(newSettings.underlyingBlocksForPayment, settings.underlyingBlocksForPayment);
