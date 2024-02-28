@@ -1,12 +1,13 @@
-import { constants } from '@openzeppelin/test-helpers';
+import { constants, expectRevert } from '@openzeppelin/test-helpers';
 import { DiamondCutFacetInstance, DiamondLoupeFacetInstance } from '../../../typechain-truffle';
 import { DiamondCut, DiamondSelectors, FacetCutAction } from '../../utils/diamond';
 import { TestSettingsContracts, createTestContracts } from '../../utils/test-settings';
 import { deployDiamond } from './deploy';
 import { loadFixtureCopyVars } from '../../utils/test-helpers';
-import { requireNotNull } from '../../../lib/utils/helpers';
+import { ZERO_ADDRESS, requireNotNull } from '../../../lib/utils/helpers';
 
 const DiamondCutFacet = artifacts.require('DiamondCutFacet');
+const MockDiamond = artifacts.require('MockDiamond');
 const DiamondLoupeFacet = artifacts.require('DiamondLoupeFacet');
 const Test1Facet = artifacts.require('Test1Facet');
 const Test2Facet = artifacts.require('Test2Facet');
@@ -298,4 +299,138 @@ contract('DiamondTest', async function (accounts) {
         assert.isFalse(selectors.includes(sel10), 'Contains sel10');
         assert.isFalse(selectors.includes(sel5), 'Contains sel5');
     });
+
+    it('should revert if no function selectors are passed to diamondCut', async () => {
+        let res = diamondCutFacet.diamondCut(
+            [{
+                facetAddress: constants.ZERO_ADDRESS,
+                action: FacetCutAction.Remove,
+                functionSelectors: []
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        await expectRevert(res, "NoSelectorsProvidedForFacetForCut");
+    });
+
+    it('should revert if functions are to be added to address zero', async () => {
+        const test1FacetCode = await Test1Facet.new();
+        const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(['supportsInterface(bytes4)']);
+        let res = diamondCutFacet.diamondCut(
+            [{
+                facetAddress: ZERO_ADDRESS,
+                action: FacetCutAction.Add,
+                functionSelectors: selectors.selectors
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        await expectRevert(res, "CannotAddSelectorsToZeroAddress");
+    });
+
+    it('should revert if functions that already exist are added to diamond', async () => {
+        const test1FacetCode = await createTest1Facet();
+        const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(['supportsInterface(bytes4)']);
+        let result = diamondCutFacet.diamondCut(
+            [{
+                facetAddress: test1FacetCode.address,
+                action: FacetCutAction.Add,
+                functionSelectors: selectors.selectors
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        await expectRevert(result, "CannotAddFunctionToDiamondThatAlreadyExists");
+    });
+
+    it('should revert if facet address is zero', async () => {
+        const test1FacetCode = await createTest1Facet();
+        const selectors = DiamondSelectors.fromABI(test1FacetCode).restrict(['supportsInterface(bytes4)']);
+        let result = diamondCutFacet.diamondCut(
+            [{
+                facetAddress: constants.ZERO_ADDRESS,
+                action: FacetCutAction.Replace,
+                functionSelectors: selectors.selectors
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        await expectRevert(result, "CannotReplaceFunctionsFromFacetWithZeroAddress");
+    });
+
+    it('should revert if facet function is to be replaced with the same function from the same facet', async () => {
+        const test1FacetCode = await createTest1Facet();
+        const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(['supportsInterface(bytes4)']);
+        let result = diamondCutFacet.diamondCut(
+            [{
+                facetAddress: test1FacetCode.address,
+                action: FacetCutAction.Replace,
+                functionSelectors: selectors.selectors
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        await expectRevert(result, "CannotReplaceFunctionWithTheSameFunctionFromTheSameFacet");
+    });
+
+    it('should revert if function to be replaced does not exist', async () => {
+        const test1FacetCode = await createTest1Facet();
+        const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(['supportsInterface(bytes4)']);
+        let result = diamondCutFacet.diamondCut(
+            [{
+                facetAddress: test1FacetCode.address,
+                action: FacetCutAction.Replace,
+                // Random selector that does not exist
+                functionSelectors: ['0x28f3b533']
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        await expectRevert(result, "CannotReplaceFunctionThatDoesNotExists");
+    });
+
+    it('should revert if facet address is not zero when removing functions', async () => {
+        const test1FacetCode = await createTest1Facet();
+        const functionsToKeep = ['test1Func1()', 'test1Func5()', 'test1Func6()', 'test1Func19()', 'test1Func20()'];
+        const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(functionsToKeep);
+        let result = diamondCutFacet.diamondCut(
+            [{
+                facetAddress: test1FacetCode.address,
+                action: FacetCutAction.Remove,
+                functionSelectors: selectors.selectors
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        await expectRevert(result, "RemoveFacetAddressMustBeZeroAddress");
+    });
+
+    it('should revert if function to be removed does not exist', async () => {
+        const test1FacetCode = await createTest1Facet();
+        const functionsToKeep = ['test1Func1()', 'test1Func5()', 'test1Func6()', 'test1Func19()', 'test1Func20()'];
+        const selectors = DiamondSelectors.fromABI(test1FacetCode).remove(functionsToKeep);
+        let result = diamondCutFacet.diamondCut(
+            [{
+                facetAddress: constants.ZERO_ADDRESS,
+                action: FacetCutAction.Remove,
+                functionSelectors: [selectors.selectors[0],'0x28f3e533']
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        await expectRevert(result, "CannotRemoveFunctionThatDoesNotExist");
+    });
+
+    it('should revert if address to have functions replaced has no code', async () => {
+        let result = diamondCutFacet.diamondCut(
+            [{
+                // Address with no code
+                facetAddress: accounts[0],
+                action: FacetCutAction.Replace,
+                functionSelectors: ['0x28f3b533']
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        await expectRevert(result, "NoBytecodeAtAddress");
+    });
+
+    it('should revert if diamond cut initialization fails', async () => {
+        const test1FacetCode = await createTest1Facet();
+        const test1Facet = await Test1Facet.at(diamondCutAddr);
+        const selectors = DiamondSelectors.fromABI(test1Facet).restrict(['supportsInterface(bytes4)']);
+        const testFacetAddress = test1FacetCode.address;
+        console.log("nene");
+        let result = diamondCutFacet.diamondCut(
+            [{
+                facetAddress: constants.ZERO_ADDRESS,
+                action: FacetCutAction.Remove,
+                functionSelectors: selectors.selectors
+            }],
+            testFacetAddress, constants.ZERO_ADDRESS, { gas: 800000 });
+        await expectRevert(result, "InitializationFunctionReverted");
+    });
+
 });

@@ -1926,6 +1926,33 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "value too small");
         });
 
+        it("validate settings averageBLockTimeMS cannot be address zero", async () => {
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.averageBlockTimeMS = constants.ZERO_ADDRESS;
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
+            await expectRevert(res, "cannot be zero");
+        });
+
+        it("validate settings agentTimelockedOperationWindowSeconds cannot be too small", async () => {
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.agentTimelockedOperationWindowSeconds = 60;
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
+            await expectRevert(res, "value too small");
+        });
+
+        it("validate settings collateralPoolTokenTimelockSeconds cannot be too small", async () => {
+            const Collaterals = web3DeepNormalize(collaterals);
+            const Settings = web3DeepNormalize(settings);
+            Settings.fAsset = accounts[5];
+            Settings.collateralPoolTokenTimelockSeconds = 10;
+            let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
+            await expectRevert(res, "value too small");
+        });
+
         it("Should unstick minting, where token direct price pair is true", async () => {
             const ci = testChainInfo.eth;
             collaterals = createTestCollaterals(contracts, ci);
