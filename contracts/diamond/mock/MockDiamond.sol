@@ -11,4 +11,6 @@ contract MockDiamond is Diamond {
         LibDiamond.diamondCut(_diamondCut, _init, _initCalldata);
         // Code can be added here to perform actions and set state variables.
     }
+
+    function testFunc() external {}
 }

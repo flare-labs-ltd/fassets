@@ -433,4 +433,50 @@ contract('DiamondTest', async function (accounts) {
         await expectRevert(result, "InitializationFunctionReverted");
     });
 
+    it('should revert if functions to be removed are immutable (defined directly in the diamond)', async () => {
+        const Diamond = artifacts.require("MockDiamond");
+        const diamond = await Diamond.at(diamondAddress);
+        const selectors = DiamondSelectors.fromABI(diamond);
+        // Add functions defined directly in the diamond
+        await diamondCutFacet.diamondCut(
+            [{
+                facetAddress: diamondAddress,
+                action: FacetCutAction.Add,
+                functionSelectors: selectors.selectors
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        // Try to remove functions defined directly in the diamond
+        let result = diamondCutFacet.diamondCut(
+            [{
+                facetAddress: constants.ZERO_ADDRESS,
+                action: FacetCutAction.Remove,
+                functionSelectors: selectors.selectors
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        await expectRevert(result, "CannotRemoveImmutableFunction");
+    });
+
+    it('should revert if functions to be replaced are immutable (defined directly in the diamond)', async () => {
+        const Diamond = artifacts.require("MockDiamond");
+        const diamond = await Diamond.at(diamondAddress);
+        const selectors = DiamondSelectors.fromABI(diamond);
+        // Add functions defined directly in the diamond
+        await diamondCutFacet.diamondCut(
+            [{
+                facetAddress: diamondAddress,
+                action: FacetCutAction.Add,
+                functionSelectors: selectors.selectors
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        // Try to replace functions defined directly in the diamond
+        let result = diamondCutFacet.diamondCut(
+            [{
+                facetAddress: diamondAddress,
+                action: FacetCutAction.Replace,
+                functionSelectors: selectors.selectors
+            }],
+            constants.ZERO_ADDRESS, '0x', { gas: 800000 });
+        await expectRevert(result, "CannotReplaceImmutableFunction");
+    });
+
 });
