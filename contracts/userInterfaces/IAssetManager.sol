@@ -49,7 +49,8 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents {
         returns (uint256 _lotSizeUBA);
 
     /**
-     * Return asset minting granularity - smallest unit of f-asset stored internally within this asset manager instance.
+     * Return asset minting granularity - smallest unit of f-asset stored internally
+     * within this asset manager instance.
      */
     function assetMintingGranularityUBA()
         external view
