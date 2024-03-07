@@ -214,4 +214,5 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
     function isAgentVaultOwner(address _agentVault, address _address)
         external view
         returns (bool);
+
 }

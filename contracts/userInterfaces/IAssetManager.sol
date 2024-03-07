@@ -35,12 +35,33 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents {
         returns (IERC20);
 
     /**
+     * Get the price reader contract used by this asset manager instance.
+     */
+    function priceReader()
+        external view
+        returns (address);
+
+    /**
      * Return lot size in UBA (underlying base amount - smallest amount on underlying chain, e.g. satoshi).
      */
     function lotSize()
         external view
         returns (uint256 _lotSizeUBA);
 
+    /**
+     * Return asset minting granularity - smallest unit of f-asset stored internally within this asset manager instance.
+     */
+    function assetMintingGranularityUBA()
+        external view
+        returns (uint256);
+
+    /**
+     * Return asset minting decimals - the number of decimals of precision for minting.
+
+     */
+    function assetMintingDecimals()
+        external view
+        returns (uint256);
 
     ////////////////////////////////////////////////////////////////////////////////////
     // System settings
@@ -380,6 +401,39 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents {
     function getAgentVaultOwner(address _agentVault)
         external view
         returns (address _ownerManagementAddress);
+
+    /**
+     * Return vault collateral ERC20 token chosen by the agent identified by `_agentVault`.
+     */
+    function getAgentVaultCollateralToken(address _agentVault)
+        external view
+        returns (IERC20);
+
+    /**
+     * Return full vault collateral (free + locked) deposited in the vault `_agentVault`.
+     */
+    function getAgentFullVaultCollateral(address _agentVault)
+        external view
+        returns (uint256);
+
+    /**
+     * Return full pool NAT collateral (free + locked) deposited in the vault `_agentVault`.
+     */
+    function getAgentFullPoolCollateral(address _agentVault)
+        external view
+        returns (uint256);
+
+    /**
+     * Return the current liquidation factors and max liquidation amount of the agent
+     * identified by `_agentVault`.
+     */
+    function getAgentLiquidationFactorsAndMaxAmount(address _agentVault)
+        external view
+        returns (
+            uint256 liquidationPaymentFactorVaultBIPS,
+            uint256 liquidationPaymentFactorPoolBIPS,
+            uint256 maxLiquidationAmountUBA
+        );
 
     ////////////////////////////////////////////////////////////////////////////////////
     // List of available agents (i.e. publicly available for minting).

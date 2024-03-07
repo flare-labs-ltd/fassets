@@ -29,6 +29,16 @@ contract SettingsReaderFacet is AssetManagerBase {
     }
 
     /**
+     * Get the price reader contract used by this asset manager instance.
+     */
+    function priceReader()
+        external view
+        returns (address)
+    {
+        return Globals.getSettings().priceReader;
+    }
+
+    /**
      * return lot size in UBA.
      */
     function lotSize()
@@ -37,6 +47,26 @@ contract SettingsReaderFacet is AssetManagerBase {
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         return settings.lotSizeAMG * settings.assetMintingGranularityUBA;
+    }
+
+    /**
+     * return AMG in UBA.
+     */
+    function assetMintingGranularityUBA()
+        external view
+        returns (uint256)
+    {
+        return Globals.getSettings().assetMintingGranularityUBA;
+    }
+
+    /**
+     * return asset minting decimals.
+     */
+    function assetMintingDecimals()
+        external view
+        returns (uint256)
+    {
+        return Globals.getSettings().assetMintingDecimals;
     }
 
     /**

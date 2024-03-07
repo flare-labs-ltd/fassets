@@ -51,4 +51,36 @@ contract AgentInfoFacet is AssetManagerBase {
     {
         return AgentsExternal.getAgentVaultOwner(_agentVault);
     }
+
+    function getAgentVaultCollateralToken(address _agentVault)
+        external view
+        returns (IERC20)
+    {
+        return AgentsExternal.getVaultCollateralToken(_agentVault);
+    }
+
+    function getAgentFullVaultCollateral(address _agentVault)
+        external view
+        returns (uint256)
+    {
+        return AgentsExternal.getFullCollateral(_agentVault, Collateral.Kind.VAULT);
+    }
+
+    function getAgentFullPoolCollateral(address _agentVault)
+        external view
+        returns (uint256)
+    {
+        return AgentsExternal.getFullCollateral(_agentVault, Collateral.Kind.POOL);
+    }
+
+    function getAgentLiquidationFactorsAndMaxAmount(address _agentVault)
+        external view
+        returns (
+            uint256 liquidationPaymentFactorVaultBIPS,
+            uint256 liquidationPaymentFactorPoolBIPS,
+            uint256 maxLiquidationAmountUBA
+        )
+    {
+        return AgentsExternal.getLiquidationFactorsAndMaxAmount(_agentVault);
+    }
 }

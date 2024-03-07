@@ -241,4 +241,32 @@ library AgentsExternal {
     {
         return Agent.get(_agentVault).ownerManagementAddress;
     }
+
+    function getVaultCollateralToken(address _agentVault)
+        internal view
+        returns (IERC20)
+    {
+        return Agent.get(_agentVault).getVaultCollateral().token;
+    }
+
+    function getFullCollateral(address _agentVault, Collateral.Kind _kind)
+        internal view
+        returns (uint256)
+    {
+        Collateral.Data memory collateral = AgentCollateral.singleCollateralData(Agent.get(_agentVault), _kind);
+        return collateral.fullCollateral;
+    }
+
+    function getLiquidationFactorsAndMaxAmount(address _agentVault)
+        internal view
+        returns (
+            uint256 liquidationPaymentFactorVaultBIPS,
+            uint256 liquidationPaymentFactorPoolBIPS,
+            uint256 maxLiquidationAmountUBA
+        )
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
+        return Liquidation.getLiquidationFactorsAndMaxAmount(agent, cr);
+    }
 }

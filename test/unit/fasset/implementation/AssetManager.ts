@@ -2035,4 +2035,55 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(r3,true);
         });
     });
+
+    describe("reading system properties", () => {
+
+        describe("reading settings", () => {
+            it("should read price reader", async () => {
+                const priceReader = await assetManager.priceReader();
+                expect(priceReader).to.not.be.equal(constants.ZERO_ADDRESS);
+                expect(priceReader).to.equal(settings.priceReader);
+            })
+            it("should read AMG UBA", async () => {
+                const amgUba = await assetManager.assetMintingGranularityUBA();
+                expect(amgUba.toString()).to.not.equal("0");
+                expect(amgUba.toString()).to.equal(settings.assetMintingGranularityUBA.toString());
+            })
+            it("should read asset minting decimals", async () => {
+                const assetMintingDecimals = await assetManager.assetMintingDecimals();
+                expect(assetMintingDecimals.toString()).to.not.equal("0");
+                expect(assetMintingDecimals.toString()).to.equal(settings.assetMintingDecimals.toString());
+            })
+        })
+
+        describe("reading agent info", () => {
+            it("should read agent's vault collateral token", async () => {
+                const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+                const collateralToken = await assetManager.getAgentVaultCollateralToken(agentVault.address)
+                expect(collateralToken).to.equal(usdc.address);
+            })
+            it("should read agent's full vault and pool collaterals", async () => {
+                const vaultCollateralDeposit = toWei(3e8);
+                const poolCollateralDeposit = toWei(3e10);
+                await usdc.mintAmount(agentOwner1, vaultCollateralDeposit);
+                await usdc.approve(assetManager.address, vaultCollateralDeposit, { from: agentOwner1 });
+                const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1, vaultCollateralDeposit, poolCollateralDeposit);
+                const fullVaultCollateral = await assetManager.getAgentFullVaultCollateral(agentVault.address);
+                expect(fullVaultCollateral.toString()).to.equal(vaultCollateralDeposit.toString());
+                const fullPoolCollateral = await assetManager.getAgentFullPoolCollateral(agentVault.address);
+                expect(fullPoolCollateral.toString()).to.equal(poolCollateralDeposit.toString());
+            })
+            it("should get agent's liquidation params", async () => {
+                const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+                const {
+                    0: liquidationPaymentFactorVaultBIPS,
+                    1: liquidationPaymentFactorPoolBIPS,
+                    2: maxLiquidationAmountUBA
+                } = await assetManager.getAgentLiquidationFactorsAndMaxAmount(agentVault.address);
+                expect(liquidationPaymentFactorVaultBIPS.toString()).to.equal("0");
+                expect(liquidationPaymentFactorPoolBIPS.toString()).to.equal("0");
+                expect(maxLiquidationAmountUBA.toString()).to.equal("0");
+            })
+        })
+    })
 });
