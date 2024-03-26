@@ -8,7 +8,7 @@ pragma solidity ^0.8.0;
 
 import { IDiamondCut } from "../../diamond/interfaces/IDiamondCut.sol";
 import { LibDiamond } from "../../diamond/library/LibDiamond.sol";
-import { GovernedBase } from "../../governance/implementation/GovernedBase.sol";
+import { GovernedFacet } from "../../diamond/facets/GovernedFacet.sol";
 import { Globals } from "../library/Globals.sol";
 
 // DiamondCutFacet that also respects diamondCutMinTimelockSeconds setting.
@@ -16,7 +16,7 @@ import { Globals } from "../library/Globals.sol";
 // Remember to add the loupe functions from DiamondLoupeFacet to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard
 
-contract AssetManagerDiamondCutFacet is IDiamondCut, GovernedBase {
+contract AssetManagerDiamondCutFacet is IDiamondCut, GovernedFacet {
     /// @notice Add/replace/remove any number of functions and optionally execute
     ///         a function with delegatecall
     /// @param _diamondCut Contains the facet addresses and function selectors

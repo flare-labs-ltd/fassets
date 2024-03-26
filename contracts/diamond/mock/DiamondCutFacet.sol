@@ -8,12 +8,12 @@ pragma solidity ^0.8.0;
 
 import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
 import { LibDiamond } from "../library/LibDiamond.sol";
-import { GovernedBase } from "../../governance/implementation/GovernedBase.sol";
+import { GovernedFacet } from "../facets/GovernedFacet.sol";
 
 // Remember to add the loupe functions from DiamondLoupeFacet to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard
 
-contract DiamondCutFacet is IDiamondCut, GovernedBase {
+contract DiamondCutFacet is IDiamondCut, GovernedFacet {
     /// @notice Add/replace/remove any number of functions and optionally execute
     ///         a function with delegatecall
     /// @param _diamondCut Contains the facet addresses and function selectors
