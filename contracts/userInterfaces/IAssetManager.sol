@@ -481,8 +481,8 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents {
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
-     * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request)
-     *   or the agent owner (= owner of the agent vault in CR).
+     * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request),
+     *   the executor appointed by the minter, or the agent owner (= owner of the agent vault in CR).
      * @param _payment proof of the underlying payment (must contain exact `value + fee` amount and correct
      *      payment reference)
      * @param _collateralReservationId collateral reservation id
@@ -606,7 +606,8 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents {
      * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
      * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
      * remaining collateral.
-     * NOTE: may only be called by the redeemer (= creator of the redemption request)
+     * NOTE: may only be called by the redeemer (= creator of the redemption request),
+     *   the executor appointed by the redeemer,
      *   or the agent owner (= owner of the agent vault in the redemption request)
      * @param _proof proof that the agent didn't pay with correct payment reference on the underlying chain
      * @param _redemptionRequestId id of an existing redemption request
