@@ -1,0 +1,287 @@
+[
+  {
+    "name": "StateConnector",
+    "contractName": "StateConnector.sol",
+    "address": "0x1000000000000000000000000000000000000001"
+  },
+  {
+    "name": "FlareDaemon",
+    "contractName": "FlareDaemon.sol",
+    "address": "0x1000000000000000000000000000000000000002"
+  },
+  {
+    "name": "PriceSubmitter",
+    "contractName": "PriceSubmitter.sol",
+    "address": "0x1000000000000000000000000000000000000003"
+  },
+  {
+    "name": "DistributionTreasury",
+    "contractName": "DistributionTreasury.sol",
+    "address": "0x062b351bdBF365B51dd34bC25c8eDe43100E4cbC"
+  },
+  {
+    "name": "IncentivePoolTreasury",
+    "contractName": "IncentivePoolTreasury.sol",
+    "address": "0x1000000000000000000000000000000000000005"
+  },
+  {
+    "name": "InitialAirdrop",
+    "contractName": "InitialAirdrop.sol",
+    "address": "0x8fB61aAbd150D2A236202Acc3F2CAFbf0aB41166"
+  },
+  {
+    "name": "GovernanceSettings",
+    "contractName": "GovernanceSettings.sol",
+    "address": "0x1000000000000000000000000000000000000007"
+  },
+  {
+    "name": "AddressUpdater",
+    "contractName": "AddressUpdater.sol",
+    "address": "0x707C840D053f28DF75223C151fA7aFa6d7eB3354"
+  },
+  {
+    "name": "InflationAllocation",
+    "contractName": "InflationAllocation.sol",
+    "address": "0xfa1903401A0cf7048A94C63D5dc5B4f36ff7b176"
+  },
+  {
+    "name": "Inflation",
+    "contractName": "Inflation.sol",
+    "address": "0x98B8e9B5830F04Fe3b8d56A2f8455E337037ba28"
+  },
+  {
+    "name": "Supply",
+    "contractName": "Supply.sol",
+    "address": "0x0496dcb45cDf498e3b797050f0469a0DE24F02e9"
+  },
+  {
+    "name": "FtsoRewardManager",
+    "contractName": "FtsoRewardManager.sol",
+    "address": "0x16E6A0b7a26518c336Bca0E935782C22A9EE07Fd"
+  },
+  {
+    "name": "CleanupBlockNumberManager",
+    "contractName": "CleanupBlockNumberManager.sol",
+    "address": "0xEaA8968E9B70dd2559066E3e801Df1596a4CFA23"
+  },
+  {
+    "name": "Escrow",
+    "contractName": "Escrow.sol",
+    "address": "0x05ad5ABCA6738f94C7b6CdFd9Da7E47F34966F01"
+  },
+  {
+    "name": "ValidatorRewardManager",
+    "contractName": "ValidatorRewardManager.sol",
+    "address": "0x33913AcE907F682E305f36d7538D3cCd37E2cA5B"
+  },
+  {
+    "name": "FtsoRegistry",
+    "contractName": "FtsoRegistry.sol",
+    "address": "0x48Da21ce34966A64E267CeFb78012C0282D0Ac87"
+  },
+  {
+    "name": "VoterWhitelister",
+    "contractName": "VoterWhitelister.sol",
+    "address": "0xa497f1Ed4edeA8151fECe457aa26e1D6A4318B6A"
+  },
+  {
+    "name": "DistributionToDelegators",
+    "contractName": "DistributionToDelegators.sol",
+    "address": "0xbd33bDFf04C357F7FC019E72D0504C24CF4Aa010"
+  },
+  {
+    "name": "IncentivePoolAllocation",
+    "contractName": "IncentivePoolAllocation.sol",
+    "address": "0xfaf3bDB0c455ef633A0B61E9424bcbC75FfaE29a"
+  },
+  {
+    "name": "IncentivePool",
+    "contractName": "IncentivePool.sol",
+    "address": "0x6892bDbBb14e1c9bD46Bf31E7BaC94d038fc82a6"
+  },
+  {
+    "name": "ValidatorRegistry",
+    "contractName": "ValidatorRegistry.sol",
+    "address": "0x4CDEBD06352B3eB6e3Eec31Be70aB8931De46Ffe"
+  },
+  {
+    "name": "FtsoManager",
+    "contractName": "FtsoManager.sol",
+    "address": "0x4F52e61907B0ED9f26b88F16B2510a4CA524d6d0"
+  },
+  {
+    "name": "WNat",
+    "contractName": "WNat.sol",
+    "address": "0xC67DCE33D7A8efA5FfEB961899C73fe01bCe9273"
+  },
+  {
+    "name": "CombinedNat",
+    "contractName": "CombinedNat.sol",
+    "address": "0xa9ef58F5CFf9e282d759e36b249011729a74E7dd"
+  },
+  {
+    "name": "GovernanceVotePower",
+    "contractName": "GovernanceVotePower.sol",
+    "address": "0x8e4A2c063E1C82C9f5cb96489c0d2b6d78dF0538"
+  },
+  {
+    "name": "FtsoWnat",
+    "contractName": "Ftso.sol",
+    "address": "0xD2Ce99c898Df43F7774432BA57153ff79B9f2AFf"
+  },
+  {
+    "name": "FtsoTestXrp",
+    "contractName": "Ftso.sol",
+    "address": "0x9fFF391F0A1bb7393E3Abc67477d93cfcbA4F907"
+  },
+  {
+    "name": "FtsoTestLtc",
+    "contractName": "Ftso.sol",
+    "address": "0x6B39CfC2513De4F4381AC3F7D5aD68fBAeBaB283"
+  },
+  {
+    "name": "FtsoTestXlm",
+    "contractName": "Ftso.sol",
+    "address": "0x6175e63fc4dd91e1A100b4cB35F314CD7615c6d8"
+  },
+  {
+    "name": "FtsoTestDoge",
+    "contractName": "Ftso.sol",
+    "address": "0x20d2F840231A2dF5fAf0031D12e611Ac3D7Bce3c"
+  },
+  {
+    "name": "FtsoTestAda",
+    "contractName": "Ftso.sol",
+    "address": "0x7cC235691B10e478A25D4CE7dDF028CA0fbe1233"
+  },
+  {
+    "name": "FtsoTestAlgo",
+    "contractName": "Ftso.sol",
+    "address": "0x6E5C9E3C2747921D5eAd15e64Bb14be9D853e653"
+  },
+  {
+    "name": "FtsoTestBtc",
+    "contractName": "Ftso.sol",
+    "address": "0xBABAA833f7C0efeC6965C09A0bc6E445374f65e7"
+  },
+  {
+    "name": "FtsoTestEth",
+    "contractName": "Ftso.sol",
+    "address": "0x6D861767198e7D7a33E459f41e4809C350FaA627"
+  },
+  {
+    "name": "FtsoTestFil",
+    "contractName": "Ftso.sol",
+    "address": "0xC9d0E3Ef07FF407E1329730bA82c866c7fA50274"
+  },
+  {
+    "name": "FtsoTestArb",
+    "contractName": "Ftso.sol",
+    "address": "0x88B58afF82dE0541992C72d89207FC1c2209F58A"
+  },
+  {
+    "name": "FtsoTestAvax",
+    "contractName": "Ftso.sol",
+    "address": "0xB2f59C3C34A9c41E227B55E992F66Dc1385b106B"
+  },
+  {
+    "name": "FtsoTestBnb",
+    "contractName": "Ftso.sol",
+    "address": "0x53d47339903b6fB259f7D8f8C809b573190D04F9"
+  },
+  {
+    "name": "FtsoTestMatic",
+    "contractName": "Ftso.sol",
+    "address": "0x28d15d6394DB51BEfBaccaE9DB55C0eb4c56a14A"
+  },
+  {
+    "name": "FtsoTestSol",
+    "contractName": "Ftso.sol",
+    "address": "0x3fF5011e32e3161cbc58ee1E4f45bB56b2df3Cae"
+  },
+  {
+    "name": "FtsoTestUsdc",
+    "contractName": "Ftso.sol",
+    "address": "0x12Df0c2D3B2e79Fc0BC1Dd9d5a35b0599613479a"
+  },
+  {
+    "name": "FtsoTestUsdt",
+    "contractName": "Ftso.sol",
+    "address": "0x4F41650697247c562332a92558221c9A35F9C1EF"
+  },
+  {
+    "name": "FtsoTestXdc",
+    "contractName": "Ftso.sol",
+    "address": "0x017F6B006ef7B47191CB6b2D1C0444B028bA9952"
+  },
+  {
+    "name": "PollingFoundation",
+    "contractName": "PollingFoundation.sol",
+    "address": "0x48a59E8F8f29dA3dD1C2C2Fe54209f219535BFBA"
+  },
+  {
+    "name": "FlareAssetRegistry",
+    "contractName": "FlareAssetRegistry.sol",
+    "address": "0xC79E6Dc1817DddcB4206a0aDbb56832F476F4b67"
+  },
+  {
+    "name": "WNatRegistryProvider",
+    "contractName": "WNatRegistryProvider.sol",
+    "address": "0x8F438C5Fe273ac88085f5A7813b03cAfb3cAB129"
+  },
+  {
+    "name": "ClaimSetupManager",
+    "contractName": "ClaimSetupManager.sol",
+    "address": "0x5Ddb590530EF66775E6225671eaBD94959e9AE0e"
+  },
+  {
+    "name": "DelegationAccount",
+    "contractName": "DelegationAccount.sol",
+    "address": "0xA46ae6f0b180862236e5A309B1463EA02D3aD307"
+  },
+  {
+    "name": "FlareContractRegistry",
+    "contractName": "FlareContractRegistry.sol",
+    "address": "0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019"
+  },
+  {
+    "name": "PollingFtso",
+    "contractName": "PollingFtso.sol",
+    "address": "0x501A498e8FDA589038d6526C2153a9fdc9d8eDD2"
+  },
+  {
+    "name": "AddressBinder",
+    "contractName": "AddressBinder.sol",
+    "address": "0x332aa9e37D64CAAF70ae5dBe8EFC2FC7611934Ae"
+  },
+  {
+    "name": "PChainStakeMirrorMultiSigVoting",
+    "contractName": "PChainStakeMirrorMultiSigVoting.sol",
+    "address": "0x37c5d6DCCb4421A47E3931584B306fBc00288aE9"
+  },
+  {
+    "name": "PChainStakeMirrorVerifier",
+    "contractName": "PChainStakeMirrorVerifier.sol",
+    "address": "0xd61d6bEfB3B5C3e1D13b43C46CC1cebA3505a7aF"
+  },
+  {
+    "name": "PChainStakeMirror",
+    "contractName": "PChainStakeMirror.sol",
+    "address": "0xd2a1Bb23eB350814a30Dd6f9de78Bb2C8fdD9F1D"
+  },
+  {
+    "name": "testUSDC",
+    "contractName": "FakeERC20.sol",
+    "address": "0x30e2F4EcC079D4BD7fABc0fA99de93Bc1FEa2244"
+  },
+  {
+    "name": "testUSDT",
+    "contractName": "FakeERC20.sol",
+    "address": "0xf3803ECA2C08E5Be901118BD1A6bCB0Cb01B6d6A"
+  },
+  {
+    "name": "testETH",
+    "contractName": "FakeERC20.sol",
+    "address": "0x07dABfe7fC6f4e88CF1355BD09a2766bF93050cf"
+  }
+]
