@@ -1,5 +1,5 @@
-import { expectRevert, time } from "@openzeppelin/test-helpers";
-import { MAX_BIPS, toBN, toWei } from "../../../lib/utils/helpers";
+import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { Approximation } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -14,6 +14,7 @@ import { ERC20MockInstance } from "../../../typechain-truffle";
 import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
 import { waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import common from "mocha/lib/interfaces/common";
+import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations`, async accounts => {
     const governance = accounts[10];
@@ -439,6 +440,63 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 freeUnderlyingBalanceUBA: minted2.agentFeeUBA.add(request2.feeUBA),
                 mintedUBA: context.convertLotsToUBA(3).add(minted2.poolFeeUBA) });
             await expectRevert(agent2.announceVaultCollateralWithdrawal(fullAgentCollateral), "withdrawal: value too high");
+        });
+
+        it("mint and redeem f-assets (many redemption tickets, get RedemptionRequestIncomplete)", async () => {
+            const N = 25;
+            const MT = 20;  // max tickets redeemed
+            const fullAgentCollateral = toWei(3e8);
+            const agents: Agent[] = [];
+            const underlyingAddress = (i: number) => `${underlyingAgent1}_vault_${i}`;
+            for (let i = 0; i < N; i++) {
+                const agent = await Agent.createTest(context, agentOwner1, underlyingAddress(i));
+                await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+                agents.push(agent);
+            }
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // perform minting
+            let totalMinted = BN_ZERO;
+            for (const agent of agents) {
+                await context.updateUnderlyingBlock();
+                const crt = await minter.reserveCollateral(agent.vaultAddress, 1);
+                const txHash = await minter.performMintingPayment(crt);
+                const minted = await minter.executeMinting(crt, txHash);
+                assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(1));
+                totalMinted = totalMinted.add(toBN(minted.mintedAmountUBA));
+            }
+            // redeemer "buys" f-assets
+            await context.fAsset.transfer(redeemer.address, totalMinted, { from: minter.address });
+            // request redemption
+            const executorFee = toBNExp(N + 0.5, 9);  // 25.5 gwei, 0.5 gwei should be lost
+            const executor = accounts[88];
+            await context.updateUnderlyingBlock();
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(N, executor, executorFee);
+            // validate redemption requests
+            assertWeb3Equal(remainingLots, N - MT);  // should only redeem 20 tickets out of 25
+            assert.equal(redemptionRequests.length, MT);
+            const totalExecutorFee = sumBN(redemptionRequests, rq => toBN(rq.executorFeeNatWei));
+            assertWeb3Equal(totalExecutorFee, toBNExp(N, 9));
+            assert.equal(dustChanges.length, 0);
+            // pay for all requests
+            const mockChain = context.chain as MockChain;
+            mockChain.automine = false;
+            const rdTxHashes: string[] = [];
+            for (let i = 0; i < redemptionRequests.length; i++) {
+                const request = redemptionRequests[i];
+                const agent = agents[i];
+                assert.equal(request.agentVault, agent.vaultAddress);
+                const txHash = await agent.performRedemptionPayment(request);
+                rdTxHashes.push(txHash);
+            }
+            mockChain.mine();
+            mockChain.automine = true;
+            // confirm all requests
+            for (let i = 0; i < rdTxHashes.length; i++) {
+                const request = redemptionRequests[i];
+                const agent = agents[i];
+                await agent.confirmActiveRedemptionPayment(request, rdTxHashes[i]);
+            }
         });
 
         it("mint and redeem f-assets (one redemption ticket - two redeemers)", async () => {
