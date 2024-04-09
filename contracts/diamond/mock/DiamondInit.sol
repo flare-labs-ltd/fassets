@@ -13,6 +13,7 @@ import { LibDiamond } from "../library/LibDiamond.sol";
 import { IDiamondLoupe } from "../interfaces/IDiamondLoupe.sol";
 import { IDiamondCut } from "../interfaces/IDiamondCut.sol";
 import { IGovernanceSettings, GovernedBase } from "../../governance/implementation/GovernedBase.sol";
+import { GovernedFacet } from "../facets/GovernedFacet.sol";
 
 // It is expected that this contract is customized if you want to deploy your diamond
 // with data from a deployment script. Use the init function to initialize state variables
@@ -21,7 +22,7 @@ import { IGovernanceSettings, GovernedBase } from "../../governance/implementati
 // Adding parameters to the `init` or other functions you add here can make a single deployed
 // DiamondInit contract reusable accross upgrades, and can be used for multiple diamonds.
 
-contract DiamondInit is GovernedBase {
+contract DiamondInit is GovernedFacet {
 
     // You can add parameters to this function in order to pass in
     // data to set your own state variables

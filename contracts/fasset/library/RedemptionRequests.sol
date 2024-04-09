@@ -51,10 +51,13 @@ library RedemptionRequests {
             redeemedLots += redeemedForTicket;
         }
         require(redeemedLots != 0, "redeem 0 lots");
-        uint64 executorFeeNatGWei = (msg.value / redemptionList.length / Conversion.GWEI).toUint64();
+        uint256 executorFeeNatGWei = msg.value / Conversion.GWEI;
         for (uint256 i = 0; i < redemptionList.length; i++) {
+            // distribute executor fee over redemption request with at most 1 gwei leftover
+            uint256 currentExecutorFeeNatGWei = executorFeeNatGWei / (redemptionList.length - i);
+            executorFeeNatGWei -= currentExecutorFeeNatGWei;
             _createRedemptionRequest(redemptionList.items[i], _redeemer, _redeemerUnderlyingAddress, false,
-                _executor, executorFeeNatGWei);
+                _executor, currentExecutorFeeNatGWei.toUint64());
         }
         // notify redeemer of incomplete requests
         if (redeemedLots < _lots) {

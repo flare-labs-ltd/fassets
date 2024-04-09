@@ -4,6 +4,7 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../../governance/implementation/GovernedBase.sol";
+import "../../diamond/facets/GovernedFacet.sol";
 import "../../userInterfaces/IAssetManager.sol";
 import "../interfaces/IIAssetManager.sol";
 import "../../diamond/library/LibDiamond.sol";
@@ -12,7 +13,7 @@ import "../library/SettingsInitializer.sol";
 import "../library/CollateralTypes.sol";
 
 
-contract AssetManagerInit is GovernedBase, ReentrancyGuard {
+contract AssetManagerInit is GovernedFacet, ReentrancyGuard {
     function init(
         IGovernanceSettings _governanceSettings,
         address _initialGovernance,
