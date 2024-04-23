@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../stateConnector/interfaces/ISCProofVerifier.sol";
@@ -23,9 +23,10 @@ library Challenges {
         BalanceDecreasingTransaction.Proof calldata _payment,
         address _agentVault
     )
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
         // this also prevents double challenges
@@ -52,9 +53,9 @@ library Challenges {
                     && (redemption.status == Redemption.Status.ACTIVE ||
                         redemption.status == Redemption.Status.DEFAULTED)
                     && (_payment.data.responseBody.blockNumber <=
-                            redemption.lastUnderlyingBlock + state.settings.underlyingBlocksForPayment ||
+                            redemption.lastUnderlyingBlock + settings.underlyingBlocksForPayment ||
                         _payment.data.responseBody.blockTimestamp <=
-                            redemption.lastUnderlyingTimestamp + state.settings.underlyingSecondsForPayment);
+                            redemption.lastUnderlyingTimestamp + settings.underlyingSecondsForPayment);
                 require(!redemptionActive, "matching redemption active");
             }
             if (PaymentReference.isValid(paymentReference, PaymentReference.ANNOUNCED_WITHDRAWAL)) {
@@ -75,7 +76,7 @@ library Challenges {
         BalanceDecreasingTransaction.Proof calldata _payment2,
         address _agentVault
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         // if the agent is already being fully liquidated, no need for more challenges
@@ -106,7 +107,7 @@ library Challenges {
         BalanceDecreasingTransaction.Proof[] calldata _payments,
         address _agentVault
     )
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         Agent.State storage agent = Agent.get(_agentVault);
@@ -156,7 +157,7 @@ library Challenges {
     )
         private
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // start full liquidation
         Liquidation.startFullLiquidation(_agent);
         // calculate the reward

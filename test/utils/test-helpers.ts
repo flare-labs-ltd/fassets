@@ -19,3 +19,7 @@ export function getTestFile(myFile: string) {
 export function loadFixtureCopyVars<T>(fixture: () => Promise<T>): Promise<T> {
     return loadFixture(fixture).then(deepCopy);
 }
+
+export function itSkipIf(condition: boolean) {
+    return condition ? it.skip : it;
+}

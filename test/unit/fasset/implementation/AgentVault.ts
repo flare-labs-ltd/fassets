@@ -2,11 +2,11 @@ import { setBalance } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { erc165InterfaceId, toBN, toWei } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, AssetManagerMockInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerControllerInstance, IIAssetManagerInstance, AssetManagerMockInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { TestFtsos, TestSettingsContracts, createEncodedTestLiquidationSettings, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -28,7 +28,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
     let assetManagerController: AssetManagerControllerInstance;
     let ftsos: TestFtsos;
     let settings: AssetManagerSettings;
-    let assetManager: AssetManagerInstance;
+    let assetManager: IIAssetManagerInstance;
     let assetManagerMock: AssetManagerMockInstance;
     let collaterals: CollateralType[];
     let fAsset: FAssetInstance;
@@ -53,13 +53,13 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         return governanceVotePower;
     }
 
-    async function getCollateralPool(assetManager: AssetManagerInstance, agentVault: AgentVaultInstance): Promise<CollateralPoolInstance> {
+    async function getCollateralPool(assetManager: IIAssetManagerInstance, agentVault: AgentVaultInstance): Promise<CollateralPoolInstance> {
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const collateralPool = await CollateralPool.at(agentInfo.collateralPool);
         return collateralPool;
     }
 
-    async function getCollateralPoolToken(assetManager: AssetManagerInstance, agentVault: AgentVaultInstance): Promise<CollateralPoolTokenInstance> {
+    async function getCollateralPoolToken(assetManager: IIAssetManagerInstance, agentVault: AgentVaultInstance): Promise<CollateralPoolTokenInstance> {
         const collateralPool = await getCollateralPool(assetManager, agentVault);
         return CollateralPoolToken.at(await collateralPool.token());
     }
@@ -77,7 +77,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci);
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, createEncodedTestLiquidationSettings());
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals);
         await assetManagerController.addAssetManager(assetManager.address, { from: governance });
         // create attestation provider
         const chain = new MockChain(await time.latest());

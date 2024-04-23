@@ -6,7 +6,7 @@ import { EventScope, EventSubscription } from "../../../lib/utils/events/ScopedE
 import { EventArgs } from "../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { BN_ZERO, MAX_BIPS, checkedCast, formatBN, minBN, sleep, toBN, toWei } from "../../../lib/utils/helpers";
-import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 import { Agent, AgentCreateOptions } from "../../integration/utils/Agent";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { MockChain } from "../../utils/fasset/MockChain";

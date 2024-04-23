@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -23,7 +23,7 @@ library AvailableAgents {
     function makeAvailable(
         address _agentVault
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -44,13 +44,13 @@ library AvailableAgents {
     function announceExit(
         address _agentVault
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
         returns (uint256)
     {
         Agent.State storage agent = Agent.get(_agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 exitAfterTs = agent.exitAvailableAfterTs;
         if (exitAfterTs == 0) {
             exitAfterTs = block.timestamp + settings.agentExitAvailableTimelockSeconds;
@@ -63,15 +63,16 @@ library AvailableAgents {
     function exit(
         address _agentVault
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         require(agent.availableAgentsPos != 0, "agent not available");
         require(agent.exitAvailableAfterTs != 0, "exit not announced");
         require(block.timestamp >= agent.exitAvailableAfterTs, "exit too soon");
-        require(block.timestamp <= agent.exitAvailableAfterTs + state.settings.agentTimelockedOperationWindowSeconds,
+        require(block.timestamp <= agent.exitAvailableAfterTs + settings.agentTimelockedOperationWindowSeconds,
             "exit too late");
         uint256 ind = agent.availableAgentsPos - 1;
         if (ind + 1 < state.availableAgents.length) {
@@ -89,7 +90,7 @@ library AvailableAgents {
         uint256 _start,
         uint256 _end
     )
-        external view
+        internal view
         returns (address[] memory _agents, uint256 _totalLength)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -106,7 +107,7 @@ library AvailableAgents {
         uint256 _start,
         uint256 _end
     )
-        external view
+        internal view
         returns (AvailableAgentInfo.Data[] memory _agents, uint256 _totalLength)
     {
         AssetManagerState.State storage state = AssetManagerState.get();

@@ -12,12 +12,14 @@ import {
     deployAgentOwnerRegistry,
     deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory,
     deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployUserWhitelist, switchAllToProductionMode, verifyAssetManager, verifyAssetManagerController
-} from "./deployment/lib/deploy-asset-manager";
+} from "./deployment/lib/deploy-fasset-contracts";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import "./type-extensions";
 
 // import config used for compilation
 import config from "./hardhatSetup.config";
+import { FAssetContractStore } from "./deployment/lib/contracts";
+import { networkConfigName } from "./deployment/lib/deploy-utils";
 
 
 task("link-contracts", "Link contracts with external libraries")
@@ -28,63 +30,57 @@ task("link-contracts", "Link contracts with external libraries")
     });
 
 task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
-    .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
-    .setAction(async ({ networkConfig }, hre) => {
-        const contractsFile = `deployment/deploys/${networkConfig}.json`;
-        await deploySCProofVerifier(hre, contractsFile);
-        await deployPriceReader(hre, contractsFile);
-        await deployAgentOwnerRegistry(hre, contractsFile);
-        await deployUserWhitelist(hre, contractsFile);
-        await deployAgentVaultFactory(hre, contractsFile);
-        await deployCollateralPoolFactory(hre, contractsFile);
-        await deployCollateralPoolTokenFactory(hre, contractsFile);
+    .setAction(async ({ }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await deploySCProofVerifier(hre, contracts);
+        await deployPriceReader(hre, contracts);
+        await deployAgentOwnerRegistry(hre, contracts);
+        await deployUserWhitelist(hre, contracts);
+        await deployAgentVaultFactory(hre, contracts);
+        await deployCollateralPoolFactory(hre, contracts);
+        await deployCollateralPoolTokenFactory(hre, contracts);
     });
 
 task("deploy-asset-managers", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
-    .addFlag("link", "Link asset manager before")
     .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and SCProofVerifier")
-    .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
     .addFlag("all", "Deploy all asset managers (for all parameter files in the directory)")
     .addVariadicPositionalParam("managers", "Asset manager file names (default extension is .json). Must be in the directory deployment/config/${networkConfig}. Alternatively, add -all flag to use all parameter files in the directory.", [])
-    .setAction(async ({ networkConfig, managers, link, deployController, all }, hre) => {
+    .setAction(async ({ managers, deployController, all }, hre) => {
+        const networkConfig = networkConfigName(hre);
         const configDir = `deployment/config/${networkConfig}`;
-        const contractsFile = `deployment/deploys/${networkConfig}.json`;
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         const managerParameterFiles = await getManagerFiles(all, configDir, managers);
-        // optionally link the AssetManager
-        if (link) {
-            const mapfile = `deployment/deploys/${networkConfig}.libraries.json`
-            await linkContracts(hre, ["AssetManager"], mapfile);
-        }
         // optionally run the deploy together with controller
         if (deployController) {
-            await deployAssetManagerController(hre, contractsFile, managerParameterFiles);
+            await deployAssetManagerController(hre, contracts, managerParameterFiles);
         } else {
             for (const paramFile of managerParameterFiles) {
-                await deployAssetManager(hre, paramFile, contractsFile, true);
+                await deployAssetManager(hre, paramFile, contracts, true);
             }
         }
     });
 
 task("verify-asset-manager", "Verify deployed asset manager.")
-    .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
     .addParam("parametersFile", "The asset manager config file.")
-    .setAction(async ({ parametersFile, networkConfig }, hre) => {
-        const contractsFile = `deployment/deploys/${networkConfig}.json`;
-        await verifyAssetManager(hre, parametersFile, contractsFile);
+    .setAction(async ({ parametersFile }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await verifyAssetManager(hre, parametersFile, contracts);
     });
 
 task("verify-asset-manager-controller", "Verify deployed asset manager controller.")
-    .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
-    .setAction(async ({ networkConfig }, hre) => {
-        const contractsFile = `deployment/deploys/${networkConfig}.json`;
-        await verifyAssetManagerController(hre, contractsFile);
+    .setAction(async ({ }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await verifyAssetManagerController(hre, contracts);
     });
 
 task("switch-to-production", "Switch all deployed files to production mode.")
-    .addParam("networkConfig", "The network config name, e.g. `local`, `songbird`, `flare`. Must have matching directory deployment/config/${networkConfig} and file deployment/deploys/${networkConfig}.json containing contract addresses.")
-    .setAction(async ({ networkConfig }, hre) => {
-        const contractsFile = `deployment/deploys/${networkConfig}.json`;
-        await switchAllToProductionMode(hre, contractsFile);
+    .setAction(async ({ }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await switchAllToProductionMode(hre, contracts);
     });
 
 async function getManagerFiles(all: boolean, configDir: string, managers: string[]) {

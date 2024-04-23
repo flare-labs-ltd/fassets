@@ -1,13 +1,28 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "../interfaces/IFAsset.sol";
+import "../interfaces/IWNat.sol";
+import "../../userInterfaces/data/AssetManagerSettings.sol";
 import "../../userInterfaces/IAgentOwnerRegistry.sol";
 import "./data/AssetManagerState.sol";
 
 
 // global state helpers
 library Globals {
+    bytes32 internal constant ASSET_MANAGER_SETTINGS_POSITION = keccak256("fasset.AssetManager.Settings");
+
+    function getSettings()
+        internal pure
+        returns (AssetManagerSettings.Data storage _settings)
+    {
+        bytes32 position = ASSET_MANAGER_SETTINGS_POSITION;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            _settings.slot := position
+        }
+    }
+
     function getWNat()
         internal view
         returns (IWNat)
@@ -28,7 +43,7 @@ library Globals {
         internal view
         returns (IFAsset)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         return IFAsset(settings.fAsset);
     }
 
@@ -36,7 +51,7 @@ library Globals {
         internal view
         returns (IAgentOwnerRegistry)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         return IAgentOwnerRegistry(settings.agentOwnerRegistry);
     }
 }

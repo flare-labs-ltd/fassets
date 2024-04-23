@@ -78,6 +78,11 @@
             "minimum": 0,
             "type": "integer"
         },
+        "agentOwnerRegistry": {
+            "description": "The agent whitelist contains a list of allowed agent owners.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'AgentOwnerRegistry' in contracts.json.",
+            "pattern": "^\\w+$",
+            "type": "string"
+        },
         "agentTimelockedOperationWindowSeconds": {
             "description": "Amount of seconds that an agent is allowed to execute an update once it is allowed.",
             "minimum": 60,
@@ -85,11 +90,6 @@
         },
         "agentVaultFactory": {
             "description": "The factory contract for creating agent vaults.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'AgentVaultFactory' in contracts.json.",
-            "pattern": "^\\w+$",
-            "type": "string"
-        },
-        "agentOwnerRegistry": {
-            "description": "The agent whitelist contains a list of allowed agent owners.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'AgentOwnerRegistry' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
         },
@@ -181,6 +181,10 @@
             "pattern": "^[0-9 ]+$",
             "type": "string"
         },
+        "diamondCutMinTimelockSeconds": {
+            "description": "Minimum time that the system must wait before performing diamond cut.\nThe actual timelock is the maximum of this setting and GovernanceSettings.timelock.",
+            "type": "integer"
+        },
         "fAssetName": {
             "description": "The name of the f-asset.",
             "type": "string"
@@ -190,13 +194,24 @@
             "pattern": "^\\w+$",
             "type": "string"
         },
-        "liquidationStrategy": {
-            "description": "Liquidation strategy factory name from `deployment/lib/liquidationStrategyFactory`\n(will be deployed automatically if needed).",
-            "pattern": "^\\w+$",
-            "type": "string"
+        "liquidationCollateralFactorBIPS": {
+            "description": "Factor with which to multiply the asset price in native currency to obtain the payment to the liquidator.\nExpressed in BIPS, e.g. [12000, 16000, 20000] means that the liquidator will be paid 1.2, 1.6 and 2.0\ntimes the market price of the liquidated assets after each `liquidationStepSeconds`.\nValues in the array must increase and be greater than 100%.",
+            "items": {
+                "type": "number"
+            },
+            "type": "array"
         },
-        "liquidationStrategySettings": {
-            "description": "Liquidation strategy initial settings."
+        "liquidationFactorVaultCollateralBIPS": {
+            "description": "How much of the liquidation is paid in vault collateral.\nExpressed in BIPS relative to the liquidated FAsset value at current price.\nThe remainder will be paid in pool NAT collateral.",
+            "items": {
+                "type": "number"
+            },
+            "type": "array"
+        },
+        "liquidationStepSeconds": {
+            "description": "If there was no liquidator for the current liquidation offer,\ngo to the next step of liquidation after a certain period of time.",
+            "minimum": 1,
+            "type": "integer"
         },
         "lotSize": {
             "description": "Lot size in base unit of underlying asset (e.g. satoshi or wei).\nMay change, which affects subsequent mintings and redemptions.",
@@ -347,10 +362,12 @@
         "collateralReservationFeeBIPS",
         "confirmationByOthersAfterSeconds",
         "confirmationByOthersRewardUSD5",
+        "diamondCutMinTimelockSeconds",
         "fAssetName",
         "fAssetSymbol",
-        "liquidationStrategy",
-        "liquidationStrategySettings",
+        "liquidationCollateralFactorBIPS",
+        "liquidationFactorVaultCollateralBIPS",
+        "liquidationStepSeconds",
         "lotSize",
         "maxRedeemedTickets",
         "maxTrustedPriceAgeSeconds",
@@ -377,3 +394,4 @@
     ],
     "type": "object"
 }
+

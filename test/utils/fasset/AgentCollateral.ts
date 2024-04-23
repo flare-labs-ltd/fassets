@@ -1,6 +1,6 @@
 import { AgentInfo, AssetManagerSettings, CollateralClass } from "../../../lib/fasset/AssetManagerTypes";
 import { BN_ZERO, MAX_BIPS, exp10, maxBN, minBN, toBN } from "../../../lib/utils/helpers";
-import { AssetManagerInstance } from "../../../typechain-truffle";
+import { IIAssetManagerInstance } from "../../../typechain-truffle";
 import { CollateralData, CollateralDataFactory, CollateralKind } from "./CollateralData";
 
 const CollateralPool = artifacts.require("CollateralPool");
@@ -17,7 +17,7 @@ export class AgentCollateral {
 
     }
 
-    static async create(assetManager: AssetManagerInstance, settings: AssetManagerSettings, agentVault: string) {
+    static async create(assetManager: IIAssetManagerInstance, settings: AssetManagerSettings, agentVault: string) {
         const agentInfo = await assetManager.getAgentInfo(agentVault);
         const collateralPool = await CollateralPool.at(agentInfo.collateralPool);
         const collateralPoolToken = await CollateralPoolToken.at(await collateralPool.poolToken());

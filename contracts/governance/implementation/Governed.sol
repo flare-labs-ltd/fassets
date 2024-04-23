@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import { GovernedBase } from "./GovernedBase.sol";
 import { IGovernanceSettings } from "flare-smart-contracts/contracts/userInterfaces/IGovernanceSettings.sol";
@@ -9,7 +9,7 @@ import { IGovernanceSettings } from "flare-smart-contracts/contracts/userInterfa
  * @title Governed
  * @dev For deployed, governed contracts, enforce non-zero addresses at create time.
  **/
-contract Governed is GovernedBase {
+abstract contract Governed is GovernedBase {
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance) {
         initialise(_governanceSettings, _initialGovernance);
     }

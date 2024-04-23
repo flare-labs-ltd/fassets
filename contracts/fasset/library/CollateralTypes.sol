@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
+import "./Globals.sol";
 import "./AMEvents.sol";
 
 
@@ -13,7 +14,7 @@ library CollateralTypes {
     function initialize(
         CollateralType.Data[] memory _data
     )
-        external
+        internal
     {
         require(_data.length >= 2, "at least two collaterals required");
         // initial pool collateral token
@@ -30,7 +31,7 @@ library CollateralTypes {
     function add(
         CollateralType.Data memory _data
     )
-        external
+        internal
     {
         require(_data.collateralClass == CollateralType.Class.VAULT, "not a vault collateral");
         _add(_data);
@@ -43,7 +44,7 @@ library CollateralTypes {
         uint256 _ccbMinCollateralRatioBIPS,
         uint256 _safetyMinCollateralRatioBIPS
     )
-        external
+        internal
     {
         bool ratiosValid =
             SafePct.MAX_BIPS < _ccbMinCollateralRatioBIPS &&
@@ -64,9 +65,9 @@ library CollateralTypes {
         IERC20 _token,
         uint256 _invalidationTimeSec
     )
-        external
+        internal
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         CollateralTypeInt.Data storage token = CollateralTypes.get(_collateralClass, _token);
         require(isValid(token), "token not valid");
         require(_invalidationTimeSec >= settings.tokenInvalidationTimeMinSeconds, "deprecation time to short");
@@ -78,7 +79,7 @@ library CollateralTypes {
     function setPoolWNatCollateralType(
         CollateralType.Data memory _data
     )
-        external
+        internal
     {
         uint256 index = _add(_data);
         _setPoolCollateralTypeIndex(index);
@@ -88,7 +89,7 @@ library CollateralTypes {
         CollateralType.Class _collateralClass,
         IERC20 _token
     )
-        external view
+        internal view
         returns (CollateralType.Data memory)
     {
         CollateralTypeInt.Data storage token = CollateralTypes.get(_collateralClass, _token);
@@ -96,7 +97,7 @@ library CollateralTypes {
     }
 
     function getAllInfos()
-        external view
+        internal view
         returns (CollateralType.Data[] memory _result)
     {
         AssetManagerState.State storage state = AssetManagerState.get();

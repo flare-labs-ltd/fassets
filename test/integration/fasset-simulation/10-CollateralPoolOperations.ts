@@ -179,7 +179,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const minterVaultCollateralReward = await agent.vaultCollateralToken().balanceOf(minter.address);
         const minterWNatReward = await context.wNat.balanceOf(minter.address);
         const minterRewardUBA = vaultCollateralPrice.convertTokenWeiToUBA(minterVaultCollateralReward).add(wNatPrice.convertTokenWeiToUBA(minterWNatReward));
-        const expectedRewardUBA = liquidatedUBA.mul(toBN(context.liquidationSettings.liquidationCollateralFactorBIPS[0])).divn(MAX_BIPS);
+        const expectedRewardUBA = liquidatedUBA.mul(toBN(context.settings.liquidationCollateralFactorBIPS[0])).divn(MAX_BIPS);
         assert(minterRewardUBA.sub(expectedRewardUBA).abs().lten(2)); // numerical error is at most 2
         // check that agent's tokens covered the liquidation
         assertWeb3Equal(poolCollateralBefore.sub(poolCollateralAfter), minterWNatReward);
@@ -226,7 +226,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         const minterVaultCollateralReward = await agent.vaultCollateralToken().balanceOf(minter.address);
         const minterWNatReward = await context.wNat.balanceOf(minter.address);
         const minterRewardUBA = vaultCollateralPrice.convertTokenWeiToUBA(minterVaultCollateralReward).add(wNatPrice.convertTokenWeiToUBA(minterWNatReward));
-        const expectedRewardUBA = liquidatedUBA.mul(toBN(context.liquidationSettings.liquidationCollateralFactorBIPS[0])).divn(MAX_BIPS);
+        const expectedRewardUBA = liquidatedUBA.mul(toBN(context.settings.liquidationCollateralFactorBIPS[0])).divn(MAX_BIPS);
         assert(minterRewardUBA.sub(expectedRewardUBA).abs().lten(2)); // numerical error is at most 2
         assertWeb3Equal(poolCollateralBefore.sub(poolCollateralAfter), minterWNatReward);
         // check that all of agent's tokens and none of poolContributor were spent

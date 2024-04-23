@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -24,7 +24,7 @@ library UnderlyingBalance {
         Payment.Proof calldata _payment,
         address _agentVault
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
@@ -76,7 +76,7 @@ library UnderlyingBalance {
         internal view
         returns (uint256)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 backedUBA = uint256(_agent.mintedAMG + _agent.redeemingAMG) * settings.assetMintingGranularityUBA;
         return backedUBA.mulBips(settings.minUnderlyingBackingBIPS);
     }

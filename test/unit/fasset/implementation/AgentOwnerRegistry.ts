@@ -1,17 +1,16 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
-import { LiquidationStrategyImplSettings, encodeLiquidationStrategyImplSettings } from "../../../../lib/fasset/LiquidationStrategyImpl";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { erc165InterfaceId, toBNExp } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentOwnerRegistryInstance, AgentVaultInstance, AssetManagerControllerInstance, AssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
+import { AgentOwnerRegistryInstance, AgentVaultInstance, AssetManagerControllerInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestLiquidationSettings, createTestSettings } from "../../../utils/test-settings";
+import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
 
 const Whitelist = artifacts.require('Whitelist');
@@ -24,7 +23,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     const updateExecutor = accounts[11];
     let assetManagerController: AssetManagerControllerInstance;
     let contracts: TestSettingsContracts;
-    let assetManager: AssetManagerInstance;
+    let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
@@ -37,8 +36,6 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     let attestationProvider: AttestationHelper;
     let whitelist: WhitelistInstance;
     let agentOwnerRegistry: AgentOwnerRegistryInstance;
-
-    let liquidationStrategySettings: LiquidationStrategyImplSettings;
 
     const underlyingBurnAddr = "Burn";
     const agentOwner1 = accounts[20];
@@ -77,24 +74,22 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         // create asset manager controller
         assetManagerController = await AssetManagerController.new(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
         await assetManagerController.switchToProductionMode({ from: governance });
-        // crate liquidation strategy settings
-        liquidationStrategySettings = createTestLiquidationSettings();
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
-        const encodedLiquidationStrategySettings = encodeLiquidationStrategyImplSettings(liquidationStrategySettings);
-        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, encodedLiquidationStrategySettings, ci.assetName, ci.assetSymbol, updateExecutor);
+        [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals,
+            ci.assetName, ci.assetSymbol, { governanceSettings: contracts.governanceSettings, updateExecutor });
 
         agentOwnerRegistry = await AgentOwnerRegistry.new(contracts.governanceSettings.address, governance, true);
         await agentOwnerRegistry.switchToProductionMode({ from: governance });
 
         const res = await assetManagerController.setAgentOwnerRegistry([assetManager.address], agentOwnerRegistry.address, { from: governance });
         await waitForTimelock(res, assetManagerController, updateExecutor);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, liquidationStrategySettings, collaterals, settings, assetManager, fAsset, agentOwnerRegistry };
+        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, liquidationStrategySettings, collaterals, settings, assetManager, fAsset, agentOwnerRegistry } =
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry } =
             await loadFixtureCopyVars(initialize));
     });
 

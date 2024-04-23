@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interfaces/IPriceReader.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
+import "./Globals.sol";
 
 library Conversion {
     using SafePct for uint256;
@@ -40,7 +41,7 @@ library Conversion {
         internal view
         returns (uint256 _ftsoPrice, uint256 _trustedPrice)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         (uint256 ftsoPrice, uint256 assetTimestamp, uint256 tokenTimestamp) =
             currentAmgPriceInTokenWeiWithTs(_token, false);
         (uint256 trustedPrice, uint256 assetTimestampTrusted, uint256 tokenTimestampTrusted) =
@@ -57,7 +58,7 @@ library Conversion {
         internal view
         returns (uint256)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // safe multiplication - both values are 64 bit
         return uint256(_valueAMG) * settings.assetMintingGranularityUBA;
     }
@@ -68,7 +69,7 @@ library Conversion {
         internal view
         returns (uint64)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         return SafeCast.toUint64(_valueUBA / settings.assetMintingGranularityUBA);
     }
 
@@ -78,7 +79,7 @@ library Conversion {
         internal view
         returns (uint256)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         return _valueUBA - (_valueUBA % settings.assetMintingGranularityUBA);
     }
 
@@ -88,7 +89,7 @@ library Conversion {
         internal view
         returns (uint256)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // safe multiplication - all values are 64 bit
         return uint256(_lots) * settings.lotSizeAMG * settings.assetMintingGranularityUBA;
     }
@@ -149,7 +150,7 @@ library Conversion {
         internal view
         returns (uint256, uint256, uint256)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         IPriceReader priceReader = IPriceReader(settings.priceReader);
         if (_fromTrustedProviders) {
             return priceReader.getPriceFromTrustedProviders(_symbol);
@@ -168,7 +169,7 @@ library Conversion {
         internal view
         returns (uint256)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 expPlus = _tokenDecimals + _tokenFtsoDecimals + AMG_TOKEN_WEI_PRICE_SCALE_EXP;
         uint256 expMinus = settings.assetMintingDecimals + _assetFtsoDecimals;
         // If negative, price would probably always be 0 after division, so this is forbidden.

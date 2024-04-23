@@ -1,7 +1,7 @@
 import hre from "hardhat";
 import { runAsyncMain } from "../../../lib/utils/helpers";
-import { ChainContracts, loadContracts, newContract, saveContracts } from "../../lib/contracts";
-import { loadDeployAccounts, requiredEnvironmentVariable } from "../../lib/deploy-utils";
+import { FAssetContractStore } from "../../lib/contracts";
+import { loadDeployAccounts, networkConfigName } from "../../lib/deploy-utils";
 
 const IFtsoRegistry = artifacts.require('flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol:IFtsoRegistry' as 'IFtsoRegistry');
 const FtsoPriceReader = artifacts.require('FtsoV1PriceReader');
@@ -9,14 +9,13 @@ const FakePriceReader = artifacts.require('FakePriceReader');
 
 // only use when deploying on full flare deploy on hardhat local network (i.e. `deploy_local_hardhat_commands` was run in flare-smart-contracts project)
 runAsyncMain(async () => {
-    const network = requiredEnvironmentVariable('NETWORK_CONFIG');
+    const network = networkConfigName(hre);
     const contractsFile = `deployment/deploys/${network}.json`;
-    const contracts = loadContracts(contractsFile);
+    const contracts = new FAssetContractStore(contractsFile, true);
     await deployFakePriceReader(contracts);
-    saveContracts(contractsFile, contracts);
 });
 
-async function deployFakePriceReader(contracts: ChainContracts) {
+async function deployFakePriceReader(contracts: FAssetContractStore) {
     // create token
     const { deployer } = loadDeployAccounts(hre);
     const priceReader = await FakePriceReader.new(deployer, { from: deployer});
@@ -32,5 +31,5 @@ async function deployFakePriceReader(contracts: ChainContracts) {
         await priceReader.setPriceFromTrustedProviders(symbol, price, { from: deployer });
     }
     // priceReader.
-    contracts["FakePriceReader"] = newContract("FakePriceReader", 'FakePriceReader.sol', priceReader.address);
+    contracts.add("FakePriceReader", 'FakePriceReader.sol', priceReader.address);
 }

@@ -10,21 +10,6 @@
     "poolTokenSuffix": "TXRP",
     "assetMintingDecimals": 6,
     "userWhitelist": null,
-    "liquidationStrategy": "LiquidationStrategyImpl",
-    "liquidationStrategySettings": {
-        "$schema": "../LiquidationStrategyImplSettings.schema.json",
-        "liquidationStepSeconds": 180,
-        "liquidationCollateralFactorBIPS": [
-            10500,
-            11000,
-            11500
-        ],
-        "liquidationFactorVaultCollateralBIPS": [
-            10000,
-            10000,
-            10000
-        ]
-    },
     "poolCollateral": {
         "token": "WNat",
         "decimals": 18,
@@ -86,6 +71,17 @@
     "paymentChallengeRewardBIPS": 0,
     "paymentChallengeRewardUSD5": "300 00000",
     "ccbTimeSeconds": 180,
+    "liquidationStepSeconds": 180,
+    "liquidationCollateralFactorBIPS": [
+        10500,
+        11000,
+        11500
+    ],
+    "liquidationFactorVaultCollateralBIPS": [
+        10000,
+        10000,
+        10000
+    ],
     "maxTrustedPriceAgeSeconds": 600,
     "withdrawalWaitMinSeconds": 60,
     "announcedUnderlyingConfirmationMinSeconds": 250,
@@ -98,5 +94,6 @@
     "agentMintingCRChangeTimelockSeconds": 120,
     "poolExitAndTopupChangeTimelockSeconds": 120,
     "agentTimelockedOperationWindowSeconds": 3600,
-    "collateralPoolTokenTimelockSeconds": 60
+    "collateralPoolTokenTimelockSeconds": 60,
+    "diamondCutMinTimelockSeconds": 7200
 }

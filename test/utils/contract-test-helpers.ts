@@ -2,12 +2,12 @@ import { constants, time } from "@openzeppelin/test-helpers";
 import { network } from "hardhat";
 import * as rlp from "rlp";
 import { toBN } from "../../lib/utils/helpers";
-import { GovernedBaseContract } from "../../typechain-truffle";
+import { AllEvents as IGovernedEvents } from "../../typechain-truffle/IGoverned";
 import { Web3EventDecoder } from "./Web3EventDecoder";
 
 const SuicidalMock = artifacts.require("SuicidalMock");
 const GovernanceSettings = artifacts.require("GovernanceSettings");
-const GovernedBase = artifacts.require("contracts/governance/implementation/GovernedBase.sol:GovernedBase" as any) as any as GovernedBaseContract;
+const GovernedBase = artifacts.require("contracts/governance/implementation/GovernedBase.sol:GovernedBase" as "GovernedBase");
 
 export function precomputeContractAddress(deployer: string, nonce: number) {
     const rlpEnc = '0x' + rlp.encode([deployer, nonce]).toString('hex');
@@ -49,13 +49,13 @@ export async function executeTimelockedGovernanceCall(contract: Truffle.Contract
     const eventDecoder = new Web3EventDecoder({ contract, contractGoverned });  // also needed to decode events from GovernedBase artifact
     const governanceSettings = await GovernanceSettings.at(await contractGoverned.governanceSettings());
     const governance = await governanceSettings.getGovernanceAddress();
-    const response = await methodCall(governance);
+    const response = await methodCall(governance) as Truffle.TransactionResponse<IGovernedEvents>;
     const timelockEvent = eventDecoder.findEvent(response, 'GovernanceCallTimelocked');
     if (timelockEvent) {
         const executor = (await governanceSettings.getExecutors())[0];
         const timelock = timelockEvent.args;
         await time.increaseTo(timelock.allowedAfterTimestamp.toNumber() + 1);
-        await contractGoverned.executeGovernanceCall(timelock.selector, { from: executor });
+        await contractGoverned.executeGovernanceCall(timelock.encodedCall, { from: executor });
     }
 }
 

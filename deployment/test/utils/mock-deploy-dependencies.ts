@@ -1,8 +1,8 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { ChainContracts, newContract, saveContracts } from "../../lib/contracts";
-import { loadDeployAccounts, requiredEnvironmentVariable } from "../../lib/deploy-utils";
 import { toBNExp } from '../../../lib/utils/helpers';
 import { testDeployGovernanceSettings } from "../../../test/utils/contract-test-helpers";
+import { ContractStore } from "../../lib/contracts";
+import { loadDeployAccounts, requiredEnvironmentVariable } from "../../lib/deploy-utils";
 
 const AddressUpdater = artifacts.require('AddressUpdater');
 const StateConnectorMock = artifacts.require('StateConnectorMock');
@@ -11,12 +11,12 @@ const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
 const FtsoManagerMock = artifacts.require('FtsoManagerMock');
 const FtsoMock = artifacts.require('FtsoMock');
 const VPContract = artifacts.require('VPContract');
-const FakeERC20 = artifacts.require('FakeERC20');
 
 const ftsoList: Array<[string, string, number, number]> = [
     ['NAT', 'FtsoNat', 5, 0.20],
-    ['USDC', 'FtsoUSDC', 5, 1.01],
-    ['USDT', 'FtsoUSDT', 5, 0.99],
+    ['testUSDC', 'FtsoUSDC', 5, 1.01],
+    ['testUSDT', 'FtsoUSDT', 5, 0.99],
+    ['testETH', 'FtsoETH', 5, 3000],
     ['ALGO', 'FtsoAlgo', 5, 0.30],
     ['BTC', 'FtsoBtc', 5, 20_000],
     ['DOGE', 'FtsoDoge', 5, 0.05],
@@ -47,10 +47,6 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
     await wNat.setReadVpContract(vpContract.address, { from: deployer });
     await addressUpdater.addOrUpdateContractNamesAndAddresses(["WNat"], [wNat.address], { from: deployer });
 
-    // Stablecoins
-    const usdc = await FakeERC20.new(deployer, "USDCoin", "USDC", 6);
-    const usdt = await FakeERC20.new(deployer, "Tether", "USDT", 6);
-
     // FtsoRegistry
     const ftsoRegistry = await FtsoRegistryMock.new();
     await addressUpdater.addOrUpdateContractNamesAndAddresses(["FtsoRegistry"], [ftsoRegistry.address], { from: deployer });
@@ -60,16 +56,13 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
     await addressUpdater.addOrUpdateContractNamesAndAddresses(["FtsoManager"], [ftsoManager.address], { from: deployer });
 
     // create contracts
-    const contracts: ChainContracts = {
-        GovernanceSettings: newContract('GovernanceSettings', 'GovernanceSettings.sol', governanceSettings.address),
-        AddressUpdater: newContract('AddressUpdater', 'AddressUpdater.sol', addressUpdater.address),
-        StateConnector: newContract('StateConnector', 'StateConnectorMock.sol', stateConnector.address),
-        WNat: newContract('WNat', 'WNat.sol', wNat.address),
-        USDC: newContract('USDC', 'FakeERC20.sol', usdc.address),
-        USDT: newContract('USDT', 'FakeERC20.sol', usdt.address),
-        FtsoRegistry: newContract('FtsoRegistry', 'FtsoRegistryMock.sol', ftsoRegistry.address),
-        FtsoManager: newContract('FtsoManager', 'FtsoManagerMock.sol', ftsoManager.address),
-    };
+    const contracts = new ContractStore(contractsFile, true);
+    contracts.add('GovernanceSettings', 'GovernanceSettings.sol', governanceSettings.address);
+    contracts.add('AddressUpdater', 'AddressUpdater.sol', addressUpdater.address);
+    contracts.add('StateConnector', 'StateConnectorMock.sol', stateConnector.address);
+    contracts.add('WNat', 'WNat.sol', wNat.address);
+    contracts.add('FtsoRegistry', 'FtsoRegistryMock.sol', ftsoRegistry.address);
+    contracts.add('FtsoManager', 'FtsoManagerMock.sol', ftsoManager.address);
 
     // add FTSOs
     for (const [symbol, contractName, decimals, initPrice] of ftsoList) {
@@ -77,7 +70,7 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
         await ftso.setCurrentPrice(toBNExp(initPrice, decimals), 0);
         await ftso.setCurrentPriceFromTrustedProviders(toBNExp(initPrice, decimals), 0);
         await ftsoRegistry.addFtso(ftso.address);
-        contracts[contractName] = newContract(contractName, "Ftso.sol", ftso.address);
+        contracts.add(contractName, "Ftso.sol", ftso.address);
     }
 
     // console.log('FTSO indices:', (await ftsoRegistry.getSupportedIndices()).map(Number));
@@ -87,7 +80,4 @@ export async function mockDeployDependencies(hre: HardhatRuntimeEnvironment, con
     // switch to production
     await addressUpdater.switchToProductionMode();
     await wNat.switchToProductionMode();
-
-    // save contracts
-    saveContracts(contractsFile, contracts);
 }

@@ -8,7 +8,7 @@ import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { ScopedRunner } from "../../../lib/utils/events/ScopedRunner";
 import { sleep, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { ILogger, NullLog } from "../../../lib/utils/logging";
-import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 import { InterceptorEvmEvents } from "../../fuzzing/fasset/InterceptorEvmEvents";
 import { TruffleTransactionInterceptor } from "../../fuzzing/fasset/TransactionInterceptor";
 import { Agent } from "../../integration/utils/Agent";

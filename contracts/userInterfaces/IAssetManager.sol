@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "../diamond/interfaces/IDiamondLoupe.sol";
 import "../stateConnector/interfaces/ISCProofVerifier.sol";
 import "./data/AssetManagerSettings.sol";
 import "./data/CollateralType.sol";
@@ -13,7 +15,7 @@ import "./IAssetManagerEvents.sol";
 /**
  * Asset manager publicly callable methods.
  */
-interface IAssetManager is IAssetManagerEvents {
+interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents {
     ////////////////////////////////////////////////////////////////////////////////////
     // Basic system information
 
@@ -33,12 +35,34 @@ interface IAssetManager is IAssetManagerEvents {
         returns (IERC20);
 
     /**
+     * Get the price reader contract used by this asset manager instance.
+     */
+    function priceReader()
+        external view
+        returns (address);
+
+    /**
      * Return lot size in UBA (underlying base amount - smallest amount on underlying chain, e.g. satoshi).
      */
     function lotSize()
         external view
         returns (uint256 _lotSizeUBA);
 
+    /**
+     * Return asset minting granularity - smallest unit of f-asset stored internally
+     * within this asset manager instance.
+     */
+    function assetMintingGranularityUBA()
+        external view
+        returns (uint256);
+
+    /**
+     * Return asset minting decimals - the number of decimals of precision for minting.
+
+     */
+    function assetMintingDecimals()
+        external view
+        returns (uint256);
 
     ////////////////////////////////////////////////////////////////////////////////////
     // System settings
@@ -50,14 +74,6 @@ interface IAssetManager is IAssetManagerEvents {
     function getSettings()
         external view
         returns (AssetManagerSettings.Data memory);
-
-    /**
-     * Get settings for current liquidation strategy. Format depends on the liquidation strategy implementation.
-     * @return the current settings
-     */
-    function getLiquidationSettings()
-        external view
-        returns (bytes memory);
 
     /**
      * When `controllerAttached` is true, asset manager has been added to the asset manager controller.
@@ -387,6 +403,39 @@ interface IAssetManager is IAssetManagerEvents {
         external view
         returns (address _ownerManagementAddress);
 
+    /**
+     * Return vault collateral ERC20 token chosen by the agent identified by `_agentVault`.
+     */
+    function getAgentVaultCollateralToken(address _agentVault)
+        external view
+        returns (IERC20);
+
+    /**
+     * Return full vault collateral (free + locked) deposited in the vault `_agentVault`.
+     */
+    function getAgentFullVaultCollateral(address _agentVault)
+        external view
+        returns (uint256);
+
+    /**
+     * Return full pool NAT collateral (free + locked) deposited in the vault `_agentVault`.
+     */
+    function getAgentFullPoolCollateral(address _agentVault)
+        external view
+        returns (uint256);
+
+    /**
+     * Return the current liquidation factors and max liquidation amount of the agent
+     * identified by `_agentVault`.
+     */
+    function getAgentLiquidationFactorsAndMaxAmount(address _agentVault)
+        external view
+        returns (
+            uint256 liquidationPaymentFactorVaultBIPS,
+            uint256 liquidationPaymentFactorPoolBIPS,
+            uint256 maxLiquidationAmountUBA
+        );
+
     ////////////////////////////////////////////////////////////////////////////////////
     // List of available agents (i.e. publicly available for minting).
 
@@ -487,8 +536,8 @@ interface IAssetManager is IAssetManagerEvents {
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
-     * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request)
-     *   or the agent owner (= owner of the agent vault in CR).
+     * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request),
+     *   the executor appointed by the minter, or the agent owner (= owner of the agent vault in CR).
      * @param _payment proof of the underlying payment (must contain exact `value + fee` amount and correct
      *      payment reference)
      * @param _collateralReservationId collateral reservation id
@@ -612,7 +661,8 @@ interface IAssetManager is IAssetManagerEvents {
      * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
      * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
      * remaining collateral.
-     * NOTE: may only be called by the redeemer (= creator of the redemption request)
+     * NOTE: may only be called by the redeemer (= creator of the redemption request),
+     *   the executor appointed by the redeemer,
      *   or the agent owner (= owner of the agent vault in the redemption request)
      * @param _proof proof that the agent didn't pay with correct payment reference on the underlying chain
      * @param _redemptionRequestId id of an existing redemption request

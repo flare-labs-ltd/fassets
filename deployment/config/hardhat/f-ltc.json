@@ -10,13 +10,6 @@
     "poolTokenSuffix": "LTC",
     "assetMintingDecimals": 8,
     "userWhitelist": null,
-    "liquidationStrategy": "LiquidationStrategyImpl",
-    "liquidationStrategySettings": {
-        "$schema": "../LiquidationStrategyImplSettings.schema.json",
-        "liquidationStepSeconds": 90,
-        "liquidationCollateralFactorBIPS": [12000, 16000, 20000],
-        "liquidationFactorVaultCollateralBIPS": [10000, 10000, 10000]
-    },
     "poolCollateral": {
         "token": "WNat",
         "decimals": 18,
@@ -29,21 +22,21 @@
     },
     "vaultCollaterals": [
         {
-            "token": "USDC",
+            "token": "testUSDC",
             "decimals": 18,
             "directPricePair": false,
             "assetFtsoSymbol": "LTC",
-            "tokenFtsoSymbol": "USDC",
+            "tokenFtsoSymbol": "testUSDC",
             "minCollateralRatioBIPS": 14000,
             "ccbMinCollateralRatioBIPS": 13000,
             "safetyMinCollateralRatioBIPS": 15000
         },
         {
-            "token": "USDT",
+            "token": "testUSDT",
             "decimals": 18,
             "directPricePair": false,
             "assetFtsoSymbol": "LTC",
-            "tokenFtsoSymbol": "USDT",
+            "tokenFtsoSymbol": "testUSDT",
             "minCollateralRatioBIPS": 15000,
             "ccbMinCollateralRatioBIPS": 14000,
             "safetyMinCollateralRatioBIPS": 16000
@@ -68,6 +61,17 @@
     "paymentChallengeRewardBIPS": 0,
     "paymentChallengeRewardUSD5": "300 00000",
     "ccbTimeSeconds": 180,
+    "liquidationStepSeconds": 90,
+    "liquidationCollateralFactorBIPS": [
+        12000,
+        16000,
+        20000
+    ],
+    "liquidationFactorVaultCollateralBIPS": [
+        10000,
+        10000,
+        10000
+    ],
     "maxTrustedPriceAgeSeconds": 600,
     "withdrawalWaitMinSeconds": 60,
     "announcedUnderlyingConfirmationMinSeconds": 250,
@@ -80,5 +84,6 @@
     "agentMintingCRChangeTimelockSeconds": 3600,
     "poolExitAndTopupChangeTimelockSeconds": 86400,
     "agentTimelockedOperationWindowSeconds": 3600,
-    "collateralPoolTokenTimelockSeconds": 60
+    "collateralPoolTokenTimelockSeconds": 60,
+    "diamondCutMinTimelockSeconds": 7200
 }

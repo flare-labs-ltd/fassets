@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "../../stateConnector/interfaces/ISCProofVerifier.sol";
 import "../../utils/lib/SafePct.sol";
@@ -20,7 +20,7 @@ library RedemptionFailures {
         ReferencedPaymentNonexistence.Proof calldata _nonPayment,
         uint64 _redemptionRequestId
     )
-        external
+        internal
     {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
@@ -55,9 +55,9 @@ library RedemptionFailures {
         ConfirmedBlockHeightExists.Proof calldata _proof,
         uint64 _redemptionRequestId
     )
-        external
+        internal
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
         Agents.requireAgentVaultOwner(agent);
@@ -113,7 +113,7 @@ library RedemptionFailures {
         private view
         returns (uint256 _vaultCollateralWei, uint256 _poolWei)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // calculate collateral data for vault collateral
         Collateral.Data memory cdAgent = AgentCollateral.agentVaultCollateralData(_agent);
         uint256 maxVaultCollateralWei = cdAgent.maxRedemptionCollateral(_agent, _request.valueAMG);
