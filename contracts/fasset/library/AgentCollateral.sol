@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -162,7 +162,7 @@ library AgentCollateral {
         internal view
         returns (uint256)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         (uint256 minCollateralRatio,) = mintingMinCollateralRatio(_agent, _data.kind);
         return Conversion.convertAmgToTokenWei(settings.lotSizeAMG, _data.amgToTokenWeiPrice)
             .mulBips(minCollateralRatio);
@@ -177,7 +177,7 @@ library AgentCollateral {
     {
         if (_kind == Collateral.Kind.AGENT_POOL) {
             (uint256 mintingPoolMin, uint256 systemPoolMin) = mintingMinCollateralRatio(_agent, Collateral.Kind.POOL);
-            uint256 mintingPoolHoldingsRequiredBIPS = AssetManagerState.getSettings().mintingPoolHoldingsRequiredBIPS;
+            uint256 mintingPoolHoldingsRequiredBIPS = Globals.getSettings().mintingPoolHoldingsRequiredBIPS;
             _systemMinCollateralRatioBIPS = mintingPoolHoldingsRequiredBIPS.mulBips(systemPoolMin);
             _mintingMinCollateralRatioBIPS = mintingPoolHoldingsRequiredBIPS.mulBips(mintingPoolMin);
         } else if (_kind == Collateral.Kind.POOL) {

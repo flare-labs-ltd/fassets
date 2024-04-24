@@ -3,7 +3,7 @@ import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { toBN, toWei } from "../../../lib/utils/helpers";
-import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./data/AssetManagerState.sol";
@@ -14,7 +14,7 @@ library StateUpdater {
     uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
 
     function updateCurrentBlock(ConfirmedBlockHeightExists.Proof calldata _proof)
-        external
+        internal
     {
         TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);
         updateCurrentBlock(_proof.data.requestBody.blockNumber, _proof.data.responseBody.blockTimestamp,
@@ -32,7 +32,7 @@ library StateUpdater {
             changed = true;
         }
         uint256 finalizationBlockTimestamp = _blockTimestamp +
-            _numberOfConfirmations * state.settings.averageBlockTimeMS / 1000;
+            _numberOfConfirmations * Globals.getSettings().averageBlockTimeMS / 1000;
         if (finalizationBlockTimestamp > state.currentUnderlyingBlockTimestamp) {
             state.currentUnderlyingBlockTimestamp = finalizationBlockTimestamp.toUint64();
             changed = true;
@@ -45,7 +45,7 @@ library StateUpdater {
     }
 
     function pause()
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         if (state.pausedAt == 0) {
@@ -54,7 +54,7 @@ library StateUpdater {
     }
 
     function unpause()
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         require(!Globals.getFAsset().terminated(), "f-asset terminated");
@@ -62,7 +62,7 @@ library StateUpdater {
     }
 
     function terminate()
-        external
+        internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         require(state.pausedAt != 0 && block.timestamp > state.pausedAt + MINIMUM_PAUSE_BEFORE_STOP,

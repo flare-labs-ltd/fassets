@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../data/AssetManagerState.sol";
-import {Conversion} from "../Conversion.sol";
+import "../Conversion.sol";
+
 
 /**
  * @title Conversion mock contract
@@ -11,7 +12,7 @@ import {Conversion} from "../Conversion.sol";
  **/
 contract ConversionMock {
     function setAssetDecimals(uint256 assetDecimals, uint256 assetMintingDecimals) external {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         settings.assetDecimals = SafeCast.toUint8(assetDecimals);
         settings.assetMintingDecimals = SafeCast.toUint8(assetMintingDecimals);
         settings.assetUnitUBA = SafeCast.toUint64(10 ** assetDecimals);

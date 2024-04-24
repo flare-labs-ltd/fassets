@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -26,13 +26,13 @@ library AgentsExternal {
     function convertDustToTicket(
         address _agentVault
     )
-        external
+        internal
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.State storage agent = Agent.get(_agentVault);
         // if dust is more than 1 lot, create a new redemption ticket
-        if (agent.dustAMG >= state.settings.lotSizeAMG) {
-            uint64 remainingDustAMG = agent.dustAMG % state.settings.lotSizeAMG;
+        if (agent.dustAMG >= settings.lotSizeAMG) {
+            uint64 remainingDustAMG = agent.dustAMG % settings.lotSizeAMG;
             uint64 ticketValueAMG = agent.dustAMG - remainingDustAMG;
             Agents.createRedemptionTicket(agent, ticketValueAMG);
             Agents.changeDust(agent, remainingDustAMG);
@@ -43,7 +43,7 @@ library AgentsExternal {
         address _agentVault,
         IERC20 _token
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         require(msg.sender == _agentVault || msg.sender == address(agent.collateralPool),
@@ -60,7 +60,7 @@ library AgentsExternal {
         address _agentVault,
         uint256 _amountWei
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
         returns (uint256)
     {
@@ -71,7 +71,7 @@ library AgentsExternal {
         require(agent.status == Agent.Status.NORMAL || agent.totalBackedAMG() == 0, "withdrawal ann: invalid status");
         Agent.WithdrawalAnnouncement storage withdrawal = agent.withdrawalAnnouncement(_kind);
         if (_amountWei > withdrawal.amountWei) {
-            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+            AssetManagerSettings.Data storage settings = Globals.getSettings();
             Collateral.Data memory collateralData = AgentCollateral.singleCollateralData(agent, _kind);
             // announcement increased - must check there is enough free collateral and then lock it
             // in this case the wait to withdrawal restarts from this moment
@@ -100,7 +100,7 @@ library AgentsExternal {
         address _agentVault,
         uint256 _amountWei
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Collateral.Kind kind;
@@ -120,7 +120,7 @@ library AgentsExternal {
         require(withdrawal.allowedAt != 0, "withdrawal: not announced");
         require(_amountWei <= withdrawal.amountWei, "withdrawal: more than announced");
         require(block.timestamp >= withdrawal.allowedAt, "withdrawal: not allowed yet");
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(block.timestamp <= withdrawal.allowedAt + settings.agentTimelockedOperationWindowSeconds,
             "withdrawal: too late");
         // Check that withdrawal doesn't reduce CR below mintingCR (withdrawal is not executed yet, but it balances
@@ -139,7 +139,7 @@ library AgentsExternal {
     function upgradeWNatContract(
         address _agentVault
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -157,7 +157,7 @@ library AgentsExternal {
         address _agentVault,
         IERC20 _token
     )
-        external
+        internal
         onlyAgentVaultOwner(_agentVault)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -171,11 +171,39 @@ library AgentsExternal {
         emit AMEvents.AgentCollateralTypeChanged(_agentVault, uint8(CollateralType.Class.VAULT), address(_token));
     }
 
+    function buybackAgentCollateral(
+        address _agentVault
+    )
+        internal
+        onlyAgentVaultOwner(_agentVault)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        Agent.State storage agent = Agent.get(_agentVault);
+        require(Globals.getFAsset().terminated(), "f-asset not terminated");
+        // Types of various collateral types:
+        // - reservedAMG should be 0, since asset manager had to be paused for a month, so all collateral
+        //   reservation requests must have been minted or defaulted by now.
+        //   However, it may be nonzero due to some forgotten payment proof, so we burn and clear it.
+        // - redeemingAMG and poolRedeemingAMG corresponds to redemptions where f-assets were already burned,
+        //   so the redemption can finish normally even if f-asset is now terminated
+        //   If there are stuck redemptions due to lack of proof, agent should use finishRedemptionWithoutPayment.
+        // - mintedAMG must be burned and cleared
+        uint64 mintingAMG = agent.reservedAMG + agent.mintedAMG;
+        CollateralTypeInt.Data storage collateral = agent.getVaultCollateral();
+        uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(collateral);
+        uint256 buybackCollateral = Conversion.convertAmgToTokenWei(mintingAMG, amgToTokenWeiPrice)
+            .mulBips(Globals.getSettings().buybackCollateralFactorBIPS);
+        agent.burnVaultCollateral(buybackCollateral);
+        agent.mintedAMG = 0;
+        state.totalReservedCollateralAMG -= agent.reservedAMG;
+        agent.reservedAMG = 0;
+    }
+
     function getAllAgents(
         uint256 _start,
         uint256 _end
     )
-        external view
+        internal view
         returns (address[] memory _agents, uint256 _totalLength)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
@@ -192,7 +220,7 @@ library AgentsExternal {
         address _agentVault,
         IERC20 _token
     )
-        external view
+        internal view
         returns (bool)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -200,7 +228,7 @@ library AgentsExternal {
     }
 
     function getFAssetsBackedByPool(address _agentVault)
-        external view
+        internal view
         returns (uint256)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -208,9 +236,37 @@ library AgentsExternal {
     }
 
     function getAgentVaultOwner(address _agentVault)
-        external view
+        internal view
         returns (address _ownerManagementAddress)
     {
         return Agent.get(_agentVault).ownerManagementAddress;
+    }
+
+    function getVaultCollateralToken(address _agentVault)
+        internal view
+        returns (IERC20)
+    {
+        return Agent.get(_agentVault).getVaultCollateral().token;
+    }
+
+    function getFullCollateral(address _agentVault, Collateral.Kind _kind)
+        internal view
+        returns (uint256)
+    {
+        Collateral.Data memory collateral = AgentCollateral.singleCollateralData(Agent.get(_agentVault), _kind);
+        return collateral.fullCollateral;
+    }
+
+    function getLiquidationFactorsAndMaxAmount(address _agentVault)
+        internal view
+        returns (
+            uint256 liquidationPaymentFactorVaultBIPS,
+            uint256 liquidationPaymentFactorPoolBIPS,
+            uint256 maxLiquidationAmountUBA
+        )
+    {
+        Agent.State storage agent = Agent.get(_agentVault);
+        Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
+        return Liquidation.getLiquidationFactorsAndMaxAmount(agent, cr);
     }
 }

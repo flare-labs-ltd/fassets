@@ -1,5 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
-import { MintingExecuted } from "../../typechain-truffle/AssetManager";
+import { MintingExecuted } from "../../typechain-truffle/IIAssetManager";
 import { TrackedAgentState } from "../state/TrackedAgentState";
 import { TrackedState } from "../state/TrackedState";
 import { EvmEventArgs } from "../utils/events/IEvmEvents";

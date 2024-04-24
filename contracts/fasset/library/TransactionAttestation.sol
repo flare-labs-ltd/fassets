@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "../../stateConnector/interfaces/ISCProofVerifier.sol";
 import "./data/AssetManagerState.sol";
+import "./Globals.sol";
 
 
 library TransactionAttestation {
@@ -26,7 +27,7 @@ library TransactionAttestation {
     )
         internal view
     {
-        AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage _settings = Globals.getSettings();
         ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
         require(_proof.data.sourceId == _settings.chainId, "invalid chain");
         require(scProofVerifier.verifyPayment(_proof), "legal payment not proved");
@@ -39,7 +40,7 @@ library TransactionAttestation {
     )
         internal view
     {
-        AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage _settings = Globals.getSettings();
         ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
         require(_proof.data.sourceId == _settings.chainId, "invalid chain");
         require(scProofVerifier.verifyBalanceDecreasingTransaction(_proof), "transaction not proved");
@@ -52,7 +53,7 @@ library TransactionAttestation {
     )
         internal view
     {
-        AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage _settings = Globals.getSettings();
         ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
         require(_proof.data.sourceId == _settings.chainId, "invalid chain");
         require(scProofVerifier.verifyConfirmedBlockHeightExists(_proof), "block height not proved");
@@ -63,7 +64,7 @@ library TransactionAttestation {
     )
         internal view
     {
-        AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage _settings = Globals.getSettings();
         ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
         require(_proof.data.sourceId == _settings.chainId, "invalid chain");
         require(scProofVerifier.verifyReferencedPaymentNonexistence(_proof), "non-payment not proved");
@@ -74,7 +75,7 @@ library TransactionAttestation {
     )
         internal view
     {
-        AssetManagerSettings.Data storage _settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage _settings = Globals.getSettings();
         ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
         require(_proof.data.sourceId == _settings.chainId, "invalid chain");
         require(scProofVerifier.verifyAddressValidity(_proof), "address validity not proved");

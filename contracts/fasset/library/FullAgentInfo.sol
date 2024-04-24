@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -24,7 +24,7 @@ library FullAgentInfo {
     function getAgentInfo(
         address _agentVault
     )
-        external view
+        internal view
         returns (AgentInfo.Info memory _info)
     {
         Agent.State storage agent = Agent.get(_agentVault);

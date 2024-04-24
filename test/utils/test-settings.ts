@@ -1,13 +1,12 @@
 import { constants } from "@openzeppelin/test-helpers";
 import { AgentSettings, AssetManagerSettings, CollateralType, CollateralClass } from "../../lib/fasset/AssetManagerTypes";
-import { encodeLiquidationStrategyImplSettings, LiquidationStrategyImplSettings } from "../../lib/fasset/LiquidationStrategyImpl";
 import { PaymentReference } from "../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../lib/utils/events/truffle";
-import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp } from "../../lib/utils/helpers";
+import { DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, toBIPS, toBNExp } from "../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
-    AddressUpdaterInstance, AgentVaultFactoryInstance, AssetManagerInstance, SCProofVerifierInstance,
+    AddressUpdaterInstance, AgentVaultFactoryInstance, IIAssetManagerInstance, SCProofVerifierInstance,
     CollateralPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
     IWhitelistInstance, StateConnectorMockInstance, WNatInstance, CollateralPoolTokenFactoryInstance, IPriceReaderInstance, AgentOwnerRegistryInstance
 } from "../../typechain-truffle";
@@ -44,7 +43,6 @@ export interface TestSettingsContracts {
     whitelist?: IWhitelistInstance;
     agentOwnerRegistry: AgentOwnerRegistryInstance;
     ftsoRegistry: FtsoRegistryMockInstance;
-    liquidationStrategy: string; // lib address
     wNat: WNatInstance,
     stablecoins: Record<string, ERC20MockInstance>,
 }
@@ -60,7 +58,6 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         collateralPoolTokenFactory: contracts.collateralPoolTokenFactory.address,
         scProofVerifier: contracts.scProofVerifier.address,
         priceReader: contracts.priceReader.address,
-        liquidationStrategy: contracts.liquidationStrategy,
         whitelist: contracts.whitelist?.address ?? constants.ZERO_ADDRESS,
         agentOwnerRegistry: contracts.agentOwnerRegistry?.address ?? constants.ZERO_ADDRESS,
         burnAddress: constants.ZERO_ADDRESS,
@@ -101,7 +98,11 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         vaultCollateralBuyForFlareFactorBIPS: toBIPS(1.05),
         mintingPoolHoldingsRequiredBIPS: toBIPS("50%"),
         tokenInvalidationTimeMinSeconds: 1 * DAYS,
-        collateralPoolTokenTimelockSeconds: 1 * HOURS
+        collateralPoolTokenTimelockSeconds: 1 * HOURS,
+        liquidationStepSeconds: 90,
+        liquidationCollateralFactorBIPS: [toBIPS(1.2), toBIPS(1.6), toBIPS(2.0)],
+        liquidationFactorVaultCollateralBIPS: [toBIPS(1), toBIPS(1), toBIPS(1)],
+        diamondCutMinTimelockSeconds: 1 * HOURS,
     };
     return Object.assign(result, options ?? {});
 }
@@ -146,14 +147,6 @@ export function createTestCollaterals(contracts: TestSettingsContracts, ci: Chai
     return [poolCollateral, usdcCollateral, usdtCollateral];
 }
 
-export function createTestLiquidationSettings(): LiquidationStrategyImplSettings {
-    return {
-        liquidationStepSeconds: 90,
-        liquidationCollateralFactorBIPS: [toBIPS(1.2), toBIPS(1.6), toBIPS(2.0)],
-        liquidationFactorVaultCollateralBIPS: [toBIPS(1), toBIPS(1), toBIPS(1)],
-    };
-}
-
 export type TestFtsos = Record<'nat' | 'usdc' | 'usdt' | 'asset', FtsoMockInstance>;
 
 export async function createTestFtsos(ftsoRegistry: FtsoRegistryMockInstance, assetChainInfo: TestChainInfo): Promise<TestFtsos> {
@@ -181,10 +174,6 @@ export function createTestAgentSettings(vaultCollateralTokenAddress: string, opt
         poolTopupTokenPriceFactorBIPS: toBIPS(0.8),
     };
     return { ...defaults, ...(options ?? {}) };
-}
-
-export function createEncodedTestLiquidationSettings() {
-    return encodeLiquidationStrategyImplSettings(createTestLiquidationSettings());
 }
 
 export async function createFtsoMock(ftsoRegistry: FtsoRegistryMockInstance, ftsoSymbol: string, initialPrice: number, decimals: number = 5): Promise<FtsoMockInstance> {
@@ -230,17 +219,14 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     // create allow-all agent whitelist
     const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance, true);
     await agentOwnerRegistry.setAllowAll(true, { from: governance });
-    // create liquidation strategy
-    const liquidationStrategyLib = await artifacts.require("LiquidationStrategyImpl").new();
-    const liquidationStrategy = liquidationStrategyLib.address;
     //
     return {
         governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, stateConnector, scProofVerifier,
-        priceReader, agentOwnerRegistry, ftsoRegistry, wNat, liquidationStrategy, stablecoins };
+        priceReader, agentOwnerRegistry, ftsoRegistry, wNat, stablecoins };
 }
 
 export interface CreateTestAgentDeps {
-    assetManager: AssetManagerInstance;
+    assetManager: IIAssetManagerInstance;
     settings: AssetManagerSettings;
     chain?: MockChain;
     wallet?: MockChainWallet;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/Transfers.sol";
@@ -27,7 +27,7 @@ library Redemptions {
             Agents.decreaseDust(_agent, _closedAMG);
         }
         // redemption tickets
-        uint256 maxRedeemedTickets = state.settings.maxRedeemedTickets;
+        uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
         for (uint256 i = 0; i < maxRedeemedTickets && _closedAMG < _amountAMG; i++) {
             // each loop, firstTicketId will change since we delete the first ticket
             uint64 ticketId = state.redemptionQueue.agents[_agent.vaultAddress()].firstTicketId;
@@ -59,7 +59,7 @@ library Redemptions {
         if (remainingAMG == 0) {
             emit AMEvents.RedemptionTicketDeleted(ticket.agentVault, _redemptionTicketId);
             state.redemptionQueue.deleteRedemptionTicket(_redemptionTicketId);
-        } else if (remainingAMG < state.settings.lotSizeAMG) {   // dust created
+        } else if (remainingAMG < Globals.getSettings().lotSizeAMG) {   // dust created
             Agent.State storage agent = Agent.get(ticket.agentVault);
             Agents.increaseDust(agent, remainingAMG);
             emit AMEvents.RedemptionTicketDeleted(ticket.agentVault, _redemptionTicketId);
@@ -111,7 +111,7 @@ library Redemptions {
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         uint64 resultAMG = _agent.dustAMG;
-        uint256 maxRedeemedTickets = state.settings.maxRedeemedTickets;
+        uint256 maxRedeemedTickets = Globals.getSettings().maxRedeemedTickets;
         uint64 ticketId = state.redemptionQueue.agents[_agent.vaultAddress()].firstTicketId;
         for (uint256 i = 0; ticketId != 0 && i < maxRedeemedTickets; i++) {
             RedemptionQueue.Ticket storage ticket = state.redemptionQueue.getTicket(ticketId);

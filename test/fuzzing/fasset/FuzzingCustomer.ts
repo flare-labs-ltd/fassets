@@ -3,7 +3,7 @@ import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlo
 import { EventScope, QualifiedEvent, qualifiedEvent } from "../../../lib/utils/events/ScopedEvents";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { BN_ZERO, errorIncluded, expectErrors, formatBN, minBN, promiseValue } from "../../../lib/utils/helpers";
-import { RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 import { Minter } from "../../integration/utils/Minter";
 import { Redeemer } from "../../integration/utils/Redeemer";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";

@@ -24,7 +24,7 @@ library AgentSettingsUpdater {
         string memory _name,
         uint256 _value
     )
-        external
+        internal
         returns (uint256)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -43,7 +43,7 @@ library AgentSettingsUpdater {
         address _agentVault,
         string memory _name
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireAgentVaultOwner(_agentVault);
@@ -51,7 +51,7 @@ library AgentSettingsUpdater {
         Agent.SettingUpdate storage update = agent.settingUpdates[hash];
         require(update.validAt != 0, "no pending update");
         require(update.validAt <= block.timestamp, "update not valid yet");
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(update.validAt + settings.agentTimelockedOperationWindowSeconds >= block.timestamp,
             "update not valid anymore");
         _executeUpdate(agent, hash, update.value);
@@ -103,7 +103,7 @@ library AgentSettingsUpdater {
     }
 
     function _getTimelock(bytes32 _hash) private view returns (uint64) {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         if (_hash == FEE_BIPS || _hash == POOL_FEE_SHARE_BIPS || _hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS) {
             return settings.agentFeeChangeTimelockSeconds;
         } else if (_hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS || _hash == MINTING_POOL_COLLATERAL_RATIO_BIPS) {

@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
+import "../../diamond/interfaces/IDiamondCut.sol";
+import "../../governance/interfaces/IGoverned.sol";
 import "../../userInterfaces/IAssetManager.sol";
 import "./IWNat.sol";
 
-// Asset Manager methods used in AgentVault and AssetManagerController
-interface IIAssetManager is IAssetManager {
+
+/**
+ * Asset Manager methods used internally in AgentVault, CollateralPool and AssetManagerController.
+ */
+interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
     ////////////////////////////////////////////////////////////////////////////////////
     // Settings update
 
@@ -209,4 +214,5 @@ interface IIAssetManager is IAssetManager {
     function isAgentVaultOwner(address _agentVault, address _address)
         external view
         returns (bool);
+
 }

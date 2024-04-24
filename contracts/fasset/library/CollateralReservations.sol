@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interfaces/IIAgentVault.sol";
@@ -27,7 +27,7 @@ library CollateralReservations {
         uint64 _maxMintingFeeBIPS,
         address payable _executor
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireWhitelistedAgentVaultOwner(agent);
@@ -39,7 +39,7 @@ library CollateralReservations {
         require(agent.status == Agent.Status.NORMAL, "rc: invalid agent status");
         require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
         require(_maxMintingFeeBIPS >= agent.feeBIPS, "agent's fee too high");
-        uint64 valueAMG = _lots * state.settings.lotSizeAMG;
+        uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
         uint256 underlyingValueUBA = Conversion.convertAmgToUBA(valueAMG);
         uint256 underlyingFeeUBA = underlyingValueUBA.mulBips(agent.feeBIPS);
         _reserveCollateral(agent, valueAMG, underlyingFeeUBA);
@@ -70,7 +70,7 @@ library CollateralReservations {
         ReferencedPaymentNonexistence.Proof calldata _nonPayment,
         uint64 _crtId
     )
-        external
+        internal
     {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
@@ -103,9 +103,9 @@ library CollateralReservations {
         ConfirmedBlockHeightExists.Proof calldata _proof,
         uint64 _crtId
     )
-        external
+        internal
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
@@ -134,12 +134,13 @@ library CollateralReservations {
     function calculateReservationFee(
         uint64 _lots
     )
-        external view
+        internal view
         returns (uint256)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 amgToTokenWeiPrice = Conversion.currentAmgPriceInTokenWei(state.poolCollateralIndex);
-        return _reservationFee(amgToTokenWeiPrice, _lots * state.settings.lotSizeAMG);
+        return _reservationFee(amgToTokenWeiPrice, _lots * settings.lotSizeAMG);
     }
 
     function releaseCollateralReservation(
@@ -220,12 +221,13 @@ library CollateralReservations {
         returns (uint64 _lastUnderlyingBlock, uint64 _lastUnderlyingTimestamp)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // timeshift amortizes for the time that passed from the last underlying block update
         uint64 timeshift = block.timestamp.toUint64() - state.currentUnderlyingBlockUpdatedAt;
         _lastUnderlyingBlock =
-            state.currentUnderlyingBlock + state.settings.underlyingBlocksForPayment;
+            state.currentUnderlyingBlock + settings.underlyingBlocksForPayment;
         _lastUnderlyingTimestamp =
-            state.currentUnderlyingBlockTimestamp + timeshift + state.settings.underlyingSecondsForPayment;
+            state.currentUnderlyingBlockTimestamp + timeshift + settings.underlyingSecondsForPayment;
     }
 
     function _reservationFee(
@@ -236,6 +238,6 @@ library CollateralReservations {
         returns (uint256)
     {
         uint256 valueNATWei = Conversion.convertAmgToTokenWei(_valueAMG, amgToTokenWeiPrice);
-        return valueNATWei.mulBips(AssetManagerState.getSettings().collateralReservationFeeBIPS);
+        return valueNATWei.mulBips(Globals.getSettings().collateralReservationFeeBIPS);
     }
 }

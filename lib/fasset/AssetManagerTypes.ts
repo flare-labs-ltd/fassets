@@ -1,6 +1,6 @@
-import { AssetManagerContract, AssetManagerInstance } from "../../typechain-truffle";
+import { AssetManagerContract, AssetManagerInitInstance, IIAssetManagerInstance } from "../../typechain-truffle";
 
-type _AssetManagerSettings = Parameters<AssetManagerContract['new']>[0];
+type _AssetManagerSettings = Parameters<AssetManagerInitInstance['init']>[2];
 export interface AssetManagerSettings extends _AssetManagerSettings {}
 
 export enum CollateralClass {
@@ -8,10 +8,10 @@ export enum CollateralClass {
     VAULT = 2,
 }
 
-type _CollateralType = Parameters<AssetManagerContract['new']>[1][0];
+type _CollateralType = Parameters<AssetManagerInitInstance['init']>[3][0];
 export interface CollateralType extends _CollateralType {}
 
-type _AgentSettings = Parameters<AssetManagerInstance['createAgentVault']>[1];
+type _AgentSettings = Parameters<IIAssetManagerInstance['createAgentVault']>[1];
 export interface AgentSettings extends _AgentSettings {}
 
 // status as returned from GetAgentInfo
@@ -23,10 +23,10 @@ export enum AgentStatus {
     DESTROYING = 4,         // agent announced destroy, cannot mint again; all existing mintings have been redeemed before
 }
 
-type _AgentInfo = Awaited<ReturnType<AssetManagerInstance['getAgentInfo']>>;
+type _AgentInfo = Awaited<ReturnType<IIAssetManagerInstance['getAgentInfo']>>;
 export interface AgentInfo extends _AgentInfo {}
 
-type _AvailableAgentInfo = Awaited<ReturnType<AssetManagerInstance['getAvailableAgentsDetailedList']>>[0][0];
+type _AvailableAgentInfo = Awaited<ReturnType<IIAssetManagerInstance['getAvailableAgentsDetailedList']>>[0][0];
 export interface AvailableAgentInfo extends _AvailableAgentInfo {}
 
 export type AgentSetting = "feeBIPS" | "poolFeeShareBIPS" | "mintingVaultCollateralRatioBIPS" | "mintingPoolCollateralRatioBIPS" |

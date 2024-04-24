@@ -1,7 +1,7 @@
 import { time } from "@openzeppelin/test-helpers";
 import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 import { expectErrors } from "../../../lib/utils/helpers";
-import { MintingExecuted } from "../../../typechain-truffle/AssetManager";
+import { MintingExecuted } from "../../../typechain-truffle/IIAssetManager";
 import { FuzzingActor } from "./FuzzingActor";
 import { FuzzingRunner } from "./FuzzingRunner";
 import { FuzzingAgentState } from "./FuzzingAgentState";

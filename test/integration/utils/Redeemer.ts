@@ -1,4 +1,4 @@
-import { DustChanged, RedemptionRequested } from "../../../typechain-truffle/AssetManager";
+import { DustChanged, RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 import { eventArgs, filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
 import { EventArgs } from "../../../lib/utils/events/common";
 import { BN_ZERO, BNish, ZERO_ADDRESS, requireNotNull, toBN } from "../../../lib/utils/helpers";

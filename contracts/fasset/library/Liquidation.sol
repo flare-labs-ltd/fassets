@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -8,11 +8,12 @@ import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/MathUtils.sol";
 import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
+import "./Globals.sol";
 import "./Agents.sol";
 import "./Conversion.sol";
 import "./Redemptions.sol";
 import "./AgentCollateral.sol";
-import "./LiquidationStrategy.sol";
+import "./LiquidationPaymentStrategy.sol";
 
 
 library Liquidation {
@@ -34,7 +35,7 @@ library Liquidation {
     function startLiquidation(
         address _agentVault
     )
-        external
+        internal
         returns (Agent.LiquidationPhase _liquidationPhase, uint256 _liquidationStartTs)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -57,7 +58,7 @@ library Liquidation {
         address _agentVault,
         uint256 _amountUBA
     )
-        external
+        internal
         returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidC1, uint256 _amountPaidPool)
     {
         Agent.State storage agent = Agent.get(_agentVault);
@@ -92,7 +93,7 @@ library Liquidation {
     function endLiquidation(
         address _agentVault
     )
-        external
+        internal
     {
         Agent.State storage agent = Agent.get(_agentVault);
         endLiquidationIfHealthy(agent);
@@ -151,7 +152,7 @@ library Liquidation {
         internal view
         returns (Agent.LiquidationPhase)
     {
-        AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         Agent.Status status = _agent.status;
         if (status == Agent.Status.LIQUIDATION) {
             bool inCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB
@@ -216,7 +217,7 @@ library Liquidation {
     {
         Agent.Status status = _agent.status;
         if (status == Agent.Status.LIQUIDATION) {
-            AssetManagerSettings.Data storage settings = AssetManagerState.getSettings();
+            AssetManagerSettings.Data storage settings = Globals.getSettings();
             bool startedInCCB = _agent.initialLiquidationPhase == Agent.LiquidationPhase.CCB;
             return _agent.liquidationStartedAt + (startedInCCB ? settings.ccbTimeSeconds : 0);
         } else if (status == Agent.Status.FULL_LIQUIDATION) {
@@ -239,7 +240,7 @@ library Liquidation {
         }
         // split liquidation payment between agent vault and pool
         (_vaultFactorBIPS, _poolFactorBIPS) =
-            LiquidationStrategy.currentLiquidationFactorBIPS(_agent, _cr.vaultCR, _cr.poolCR);
+            LiquidationPaymentStrategy.currentLiquidationFactorBIPS(_agent, _cr.vaultCR, _cr.poolCR);
         // calculate liquidation amount
         uint256 maxLiquidatedAMG = Math.max(
             _maxLiquidationAmountAMG(_agent, _cr.vaultCR, _vaultFactorBIPS, Collateral.Kind.VAULT),
@@ -296,7 +297,7 @@ library Liquidation {
     {
         // split liquidation payment between agent vault and pool
         (uint256 vaultFactor, uint256 poolFactor) =
-            LiquidationStrategy.currentLiquidationFactorBIPS(_agent, _cr.vaultCR, _cr.poolCR);
+            LiquidationPaymentStrategy.currentLiquidationFactorBIPS(_agent, _cr.vaultCR, _cr.poolCR);
         // calculate liquidation amount
         uint256 maxLiquidatedAMG = Math.max(
             _maxLiquidationAmountAMG(_agent, _cr.vaultCR, vaultFactor, Collateral.Kind.VAULT),
@@ -355,7 +356,7 @@ library Liquidation {
         private view
         returns (uint256)
     {
-        AssetManagerState.State storage state = AssetManagerState.get();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
         // for full liquidation, all minted amount can be liquidated
         if (_agent.status == Agent.Status.FULL_LIQUIDATION) {
             return _agent.mintedAMG;
@@ -371,7 +372,7 @@ library Liquidation {
         uint256 maxLiquidatedAMG = uint256(_agent.mintedAMG)
             .mulDivRoundUp(targetRatioBIPS - _collateralRatioBIPS, targetRatioBIPS - _factorBIPS);
         // round up to whole number of lots
-        maxLiquidatedAMG = maxLiquidatedAMG.roundUp(state.settings.lotSizeAMG);
+        maxLiquidatedAMG = maxLiquidatedAMG.roundUp(settings.lotSizeAMG);
         return Math.min(maxLiquidatedAMG, _agent.mintedAMG);
     }
 

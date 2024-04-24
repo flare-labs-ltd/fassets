@@ -1,4 +1,4 @@
-import { RedemptionRequested } from "../../typechain-truffle/AssetManager";
+import { RedemptionRequested } from "../../typechain-truffle/IIAssetManager";
 import { AgentStatus } from "../fasset/AssetManagerTypes";
 import { PaymentReference } from "../fasset/PaymentReference";
 import { TrackedAgentState } from "../state/TrackedAgentState";

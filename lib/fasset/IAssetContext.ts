@@ -1,4 +1,4 @@
-import { AssetManagerControllerInstance, AssetManagerInstance, FAssetInstance, IERC20Instance, IFtsoInstance, IFtsoManagerInstance, IFtsoRegistryInstance, IPriceReaderInstance, WNatInstance } from "../../typechain-truffle";
+import { AssetManagerControllerInstance, IIAssetManagerInstance, FAssetInstance, IERC20Instance, IFtsoInstance, IFtsoManagerInstance, IFtsoRegistryInstance, IPriceReaderInstance, WNatInstance } from "../../typechain-truffle";
 import { AttestationHelper } from "../underlying-chain/AttestationHelper";
 import { IBlockChain } from "../underlying-chain/interfaces/IBlockChain";
 import { UnderlyingChainEvents } from "../underlying-chain/UnderlyingChainEvents";
@@ -38,7 +38,7 @@ export interface IAssetContext {
     wNat: ContractWithEvents<WNatInstance, WNatEvents>;
     natFtso: ContractWithEvents<IFtsoInstance, FtsoEvents>;
     fAsset: ContractWithEvents<FAssetInstance, FAssetEvents>;
-    assetManager: ContractWithEvents<AssetManagerInstance, AssetManagerEvents>;
+    assetManager: ContractWithEvents<IIAssetManagerInstance, AssetManagerEvents>;
     stablecoins: Record<string, ContractWithEvents<IERC20Instance, ERC20Events>>;
     ftsos: Record<string, ContractWithEvents<IFtsoInstance, FtsoEvents>>;
     priceReader: ContractWithEvents<IPriceReaderInstance, PriceReaderEvents>;
