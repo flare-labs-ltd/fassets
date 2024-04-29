@@ -17,7 +17,6 @@ const ftsoList: Array<[string, string, number, number]> = [
     ['testUSDC', 'FtsoUSDC', 5, 1.01],
     ['testUSDT', 'FtsoUSDT', 5, 0.99],
     ['testETH', 'FtsoETH', 5, 3000],
-    ['ALGO', 'FtsoAlgo', 5, 0.30],
     ['BTC', 'FtsoBtc', 5, 20_000],
     ['DOGE', 'FtsoDoge', 5, 0.05],
     ['LTC', 'FtsoLtc', 5, 50],

@@ -63,7 +63,6 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         [SourceId.DOGE]: 'mr8zwdWkSrxQRrhq7D2i4f4CLZoZgF3nja',
         [SourceId.testDOGE]: 'mr8zwdWkSrxQRrhq7D2i4f4CLZoZgF3nja',
         [SourceId.LTC]: 'mjGn3j6vrHwgRzRWsXFT6dP1K5atca7yPx',
-        [SourceId.ALGO]: 'TEST_ADDRESS',
     };
 
     itSkipIf(networkConfig !== 'hardhat')("Can create an agent on all managers", async () => {
