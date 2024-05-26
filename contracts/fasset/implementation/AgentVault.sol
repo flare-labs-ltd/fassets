@@ -70,13 +70,15 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
     function redeemCollateralPoolTokens(uint256 _amount, address payable _recipient)
         external
         onlyOwner
+        nonReentrant
     {
         IICollateralPool pool = IICollateralPool(address(collateralPool()));
-        IWNat wNat = pool.wNat();
         assetManager.beforeCollateralWithdrawal(pool.poolToken(), _amount);
+        internalWithdrawal = true;
         (uint256 natShare, uint256 fassetShare) =
             pool.exit(_amount, ICollateralPool.TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
-        _withdrawWNatTo(wNat, _recipient, natShare);
+        internalWithdrawal = false;
+        Transfers.transferNAT(_recipient, natShare);
         assetManager.fAsset().safeTransfer(_recipient, fassetShare);
     }
 

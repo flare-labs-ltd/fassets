@@ -198,7 +198,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
             _burnFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
         }
         token.burn(msg.sender, _tokenShare, false);
-        _transferWNat(msg.sender, natShare);
+        _withdrawWNatTo(payable(msg.sender), natShare);
         // emit event
         emit Exited(msg.sender, _tokenShare, natShare, freeFAssetFeeShare, 0, _fAssetFeeDebtOf[msg.sender]);
         return (natShare, freeFAssetFeeShare);
@@ -209,7 +209,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
      *  f-assets in a way that either preserves the pool collateral ratio or keeps it above exit CR
      * @param _tokenShare                   The amount of pool tokens to be liquidated
      *                                      Must be positive and smaller or equal to the sender's token balance
-     * @param _redeemToCollateral           Specifies if agent should redeem f-assets in NAT from his collateral
+     * @param _redeemToCollateral           Specifies if redeemed f-assets should be exchanged to vault collateral
+     *                                      by the agent
      * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
      * @param _executor                     The account that is allowed to execute redemption default
      * @notice F-assets will be redeemed in collateral if their value does not exceed one lot
@@ -298,7 +299,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
             _burnFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
         }
         token.burn(msg.sender, _tokenShare, false);
-        _transferWNat(msg.sender, natShare);
+        _withdrawWNatTo(payable(msg.sender), natShare);
         // emit event
         emit Exited(msg.sender, _tokenShare, natShare, spentFAssetFees, requiredFAssets, _fAssetFeeDebtOf[msg.sender]);
     }
@@ -602,6 +603,21 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         if (_amount > 0) {
             totalCollateral -= _amount;
             wNat.safeTransfer(_to, _amount);
+        }
+    }
+
+    function _withdrawWNatTo(
+        address payable _recipient,
+        uint256 _amount
+    )
+        internal
+    {
+        if (_amount > 0) {
+            totalCollateral -= _amount;
+            internalWithdrawal = true;
+            wNat.withdraw(_amount);
+            internalWithdrawal = false;
+            Transfers.transferNAT(_recipient, _amount);
         }
     }
 

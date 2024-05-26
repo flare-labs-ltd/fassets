@@ -80,7 +80,8 @@ interface ICollateralPool {
      * In case of self-close via redemption, the user can set executor to trigger possible default.
      * In this case, some NAT can be sent with transaction, to pay the executor's fee.
      * @param _tokenShare                   The amount of pool tokens to be liquidated
-     * @param _redeemToCollateral           Specifies if agent should redeem f-assets in NAT from his collateral
+     * @param _redeemToCollateral           Specifies if redeemed f-assets should be exchanged to vault collateral
+     *                                      by the agent
      * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
      * @param _executor                     The account that is allowed to execute redemption default
      */
