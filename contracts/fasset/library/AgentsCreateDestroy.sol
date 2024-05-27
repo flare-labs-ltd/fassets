@@ -172,6 +172,14 @@ library AgentsCreateDestroy {
         emit AMEvents.AgentDestroyed(_agentVault);
     }
 
+    function isPoolTokenSuffixReserved(string memory _suffix)
+        internal view
+        returns (bool)
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        return state.reservedPoolTokenSuffixes[_suffix];
+    }
+
     function _createCollateralPool(
         IIAssetManager _assetManager,
         address _agentVault,

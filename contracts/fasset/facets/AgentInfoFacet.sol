@@ -2,6 +2,7 @@
 pragma solidity 0.8.23;
 
 import "../library/AgentsExternal.sol";
+import "../library/AgentsCreateDestroy.sol";
 import "../library/FullAgentInfo.sol";
 import "./AssetManagerBase.sol";
 
@@ -21,6 +22,17 @@ contract AgentInfoFacet is AssetManagerBase {
         returns (address[] memory _agents, uint256 _totalLength)
     {
         return AgentsExternal.getAllAgents(_start, _end);
+    }
+
+    /**
+     * Check if the collateral pool token has been used already by some vault.
+     * @param _suffix the suffix to check
+     */
+    function isPoolTokenSuffixReserved(string memory _suffix)
+        external view
+        returns (bool)
+    {
+        return AgentsCreateDestroy.isPoolTokenSuffixReserved(_suffix);
     }
 
     /**

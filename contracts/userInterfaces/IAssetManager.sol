@@ -211,6 +211,15 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents {
         address payable _recipient
     ) external;
 
+    /**
+     * Check if the collateral pool token has been used already by some vault.
+     * @param _suffix the suffix to check
+     */
+    function isPoolTokenSuffixReserved(
+        string memory _suffix
+    ) external view
+        returns (bool);
+
     ////////////////////////////////////////////////////////////////////////////////////
     // Agent settings update
 

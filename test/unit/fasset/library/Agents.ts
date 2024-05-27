@@ -160,6 +160,13 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         expectEvent(res, "AgentVaultCreated", { owner: agentOwner1, underlyingAddress: underlyingAgent1 });
     });
 
+    it("should detect if pool token suffix is reserved", async () => {
+        const suffix = "SUFFX1";
+        assert.isFalse(await assetManager.isPoolTokenSuffixReserved(suffix));
+        await createAgent(agentOwner1, underlyingAgent1, { poolTokenSuffix: suffix });
+        assert.isTrue(await assetManager.isPoolTokenSuffixReserved(suffix));
+    });
+
     it("should require underlying address to not be empty", async () => {
         // init
         // act
