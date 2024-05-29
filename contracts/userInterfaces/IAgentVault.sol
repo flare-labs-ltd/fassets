@@ -59,6 +59,9 @@ interface IAgentVault {
      * This method allows the agent to convert collateral pool tokens back to NAT.
      * Prior announcement is required by calling `assetManager.announceAgentPoolTokenRedemption(...)`.
      * NOTE: only the owner of the agent vault may call this method.
+     * NOTE: using unknown address as `_recipient` may make the caller vulnerable to gas wasting attacks
+     * (but not reentrancy attacks). It is recommended that `_recipient` is one of the addresses controlled by
+     * the agent vault owner, e.g. owner's management or work address.
      */
     function redeemCollateralPoolTokens(uint256 _amount, address payable _recipient) external;
 
