@@ -55,7 +55,7 @@
     ],
     "minUnderlyingBackingBIPS": 10000,
     "mintingCap": "0",
-    "lotSize": "10 000000",
+    "lotSize": "20 000000",
     "requireEOAAddressProof": false,
     "collateralReservationFeeBIPS": 10,
     "mintingPoolHoldingsRequiredBIPS": 5000,
