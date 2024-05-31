@@ -203,6 +203,17 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
     });
 }
 
+export async function verifyFAssetToken(hre: HardhatRuntimeEnvironment, parametersFile: string, contracts: FAssetContractStore) {
+    const { deployer } = loadDeployAccounts(hre);
+    const parameters = assetManagerParameters.load(parametersFile);
+    const fAssetAddress = contracts.getRequired(parameters.fAssetSymbol).address;
+    console.log(`Verifying ${parameters.fAssetSymbol} at ${fAssetAddress}...`);
+    await hre.run("verify:verify", {
+        address: fAssetAddress,
+        constructorArguments: [deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals]
+    });
+}
+
 export async function verifyAssetManagerController(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     const { deployer } = loadDeployAccounts(hre);
     await hre.run("verify:verify", {

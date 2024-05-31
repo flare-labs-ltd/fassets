@@ -11,15 +11,16 @@ import 'solidity-coverage';
 import {
     deployAgentOwnerRegistry,
     deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory,
-    deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployUserWhitelist, switchAllToProductionMode, verifyAssetManager, verifyAssetManagerController
+    deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployUserWhitelist, switchAllToProductionMode, verifyAssetManager, verifyAssetManagerController,
+    verifyFAssetToken
 } from "./deployment/lib/deploy-fasset-contracts";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import "./type-extensions";
 
 // import config used for compilation
-import config from "./hardhatSetup.config";
 import { FAssetContractStore } from "./deployment/lib/contracts";
 import { networkConfigName } from "./deployment/lib/deploy-utils";
+import config from "./hardhatSetup.config";
 
 
 task("link-contracts", "Link contracts with external libraries")
@@ -67,6 +68,14 @@ task("verify-asset-manager", "Verify deployed asset manager.")
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await verifyAssetManager(hre, parametersFile, contracts);
+    });
+
+task("verify-fasset-token", "Verify deployed fasset token.")
+    .addParam("parametersFile", "The asset manager config file.")
+    .setAction(async ({ parametersFile }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await verifyFAssetToken(hre, parametersFile, contracts);
     });
 
 task("verify-asset-manager-controller", "Verify deployed asset manager controller.")
