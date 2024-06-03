@@ -202,17 +202,17 @@
   {
     "name": "testUSDC",
     "contractName": "FakeERC20.sol",
-    "address": "0x988136EC5228b0b637CfcE14bFEc53D0C4ddC27d"
+    "address": "0xeBf4179831E9f20099e2da516E209FB0Dd68E2d2"
   },
   {
     "name": "testUSDT",
     "contractName": "FakeERC20.sol",
-    "address": "0x179ACDe40EEb06702b7C37F7BbcaB663D7048AEf"
+    "address": "0x48373950d5adF84cC86517B809cDd917f052fca1"
   },
   {
     "name": "testETH",
     "contractName": "FakeERC20.sol",
-    "address": "0xC63b4A26A80d54AbC679eb3c50bcb79dbCaaCfCa"
+    "address": "0xCc255bC593100C1FC19E9c5389D2ecE2E9C72ff0"
   },
   {
     "name": "SCProofVerifier",
@@ -227,13 +227,13 @@
   {
     "name": "AgentOwnerRegistry",
     "contractName": "AgentOwnerRegistry.sol",
-    "address": "0x746cBEAa5F4CAB057f70e10c2001b3137Ac223B7",
+    "address": "0xDb6c11b8D074D4488f5fFd0129AA5F91C4f00fb6",
     "mustSwitchToProduction": true
   },
   {
     "name": "UserWhitelist",
     "contractName": "Whitelist.sol",
-    "address": "0x06f1BFA2524E6176FBc223223772ead166cb968f",
+    "address": "0x1475e2b6F4403d1bd333D7Ca0Ee52401D940E6ba",
     "mustSwitchToProduction": true
   },
   {
@@ -281,7 +281,7 @@
   {
     "name": "FakePriceReader",
     "contractName": "FakePriceReader.sol",
-    "address": "0x187A81d96b1bbb34941D460A27ACbCb1e4E98C8F"
+    "address": "0x0664EE5762F14c6f87007bAEEbE69Bbf366a5897"
   },
   {
     "name": "AssetManager_FfakeXRP",

@@ -1,5 +1,5 @@
 import hre from "hardhat";
-import { runAsyncMain } from "../../../lib/utils/helpers";
+import { runAsyncMain, sleep } from "../../../lib/utils/helpers";
 import { FAssetContractStore } from "../../lib/contracts";
 import { loadDeployAccounts, networkConfigName } from "../../lib/deploy-utils";
 
@@ -29,6 +29,7 @@ async function deployFakePriceReader(contracts: FAssetContractStore) {
         await priceReader.setDecimals(symbol, decimals, { from: deployer });
         await priceReader.setPrice(symbol, price, { from: deployer });
         await priceReader.setPriceFromTrustedProviders(symbol, price, { from: deployer });
+        await sleep(5000);
     }
     // priceReader.
     contracts.add("FakePriceReader", 'FakePriceReader.sol', priceReader.address);
