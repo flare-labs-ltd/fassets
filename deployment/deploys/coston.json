@@ -254,50 +254,35 @@
   {
     "name": "AssetManagerController",
     "contractName": "AssetManagerController.sol",
-    "address": "0x1ED89A5D90cBc5e110B8007eB1165bc97f9Ef455",
+    "address": "0x8A3859A63AD1D7b0cb18bF5aFd2bf74A3E864806",
     "mustSwitchToProduction": true
   },
   {
-    "name": "LiquidationStrategyImpl",
-    "contractName": "LiquidationStrategyImpl.sol",
-    "address": "0x27b552f164DC2D2990E4024af6c5F17DD076691f"
-  },
-  {
-    "name": "AssetManager_FtestXRP",
+    "name": "AssetManager_FTestXRP",
     "contractName": "AssetManager.sol",
-    "address": "0x71d999F6012452a2333b24f9a8cB5cFDEBe9442e"
+    "address": "0x901E620B91fBFa32f68738Ef9027Cdb76F21d208"
   },
   {
-    "name": "FtestXRP",
+    "name": "FTestXRP",
     "contractName": "FAsset.sol",
-    "address": "0xf3f7E1bFc7c3b9e46a613933F28542a24F28a670",
+    "address": "0x5905Df703221d4Ea311E85edEa860734b2072C7d",
     "mustSwitchToProduction": true
   },
   {
-    "name": "AddressValidator_FtestXRP",
-    "contractName": "RippleAddressValidator.sol",
-    "address": "0xBcE85231f4bE00E4238b3a6aC0c62eda2aE9808d"
+    "name": "AssetManager_FSimCoinX",
+    "contractName": "AssetManager.sol",
+    "address": "0x130FF35017840A7E36b649fD17f451FD11639bc0"
+  },
+  {
+    "name": "FSimCoinX",
+    "contractName": "FAsset.sol",
+    "address": "0xbEF35635E549F4D7b6913d084ECdAd80EA0acc29",
+    "mustSwitchToProduction": true
   },
   {
     "name": "FakePriceReader",
     "contractName": "FakePriceReader.sol",
     "address": "0x0664EE5762F14c6f87007bAEEbE69Bbf366a5897"
-  },
-  {
-    "name": "AssetManager_FfakeXRP",
-    "contractName": "AssetManager.sol",
-    "address": "0xfe81f51a250Fa29e45088c2A2914F94B74BAE972"
-  },
-  {
-    "name": "FfakeXRP",
-    "contractName": "FAsset.sol",
-    "address": "0xB7b945D215b49196e1D814e910aCD9836f364edd",
-    "mustSwitchToProduction": true
-  },
-  {
-    "name": "AddressValidator_FfakeXRP",
-    "contractName": "RippleAddressValidator.sol",
-    "address": "0x0924F575E797C5c2BA1c2f7d6E5F21130CFb580A"
   },
   {
     "name": "AssetManagerInit",
