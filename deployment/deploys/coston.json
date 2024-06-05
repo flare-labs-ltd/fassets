@@ -217,7 +217,7 @@
   {
     "name": "SCProofVerifier",
     "contractName": "SCProofVerifier.sol",
-    "address": "0xCa8B43918980875B6a510C87E117F4310e13631e"
+    "address": "0x6Bd0DBbDB84F667d5C450E517760375c8Ad8De71"
   },
   {
     "name": "PriceReader",
@@ -239,17 +239,17 @@
   {
     "name": "AgentVaultFactory",
     "contractName": "AgentVaultFactory.sol",
-    "address": "0xc9Cf9aeCFedc864D1781f505fbd1c179F902cBE5"
+    "address": "0xb12B5fC4CC3FcCEc8AF4625E90A07DE58584A3FA"
   },
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0x6571a3da5509b04593E7121838f9B9AA40533BbF"
+    "address": "0x702D73fCB2AE3d3faf54c496F5a4499aA12DBe4D"
   },
   {
     "name": "CollateralPoolTokenFactory",
     "contractName": "CollateralPoolTokenFactory.sol",
-    "address": "0xee2E00B800367F28f3E33ABBBf747942c39EdcA3"
+    "address": "0xe5C3B2085f219FfF6d22C5C0694d55e5519CaA53"
   },
   {
     "name": "AssetManagerController",
