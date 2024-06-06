@@ -222,6 +222,48 @@ export async function verifyAssetManagerController(hre: HardhatRuntimeEnvironmen
     });
 }
 
+export async function verifyCollateralPool(hre: HardhatRuntimeEnvironment, poolAddress: string) {
+    const artifacts = hre.artifacts as Truffle.Artifacts;
+
+    const CollateralPool = artifacts.require("CollateralPool");
+    const CollateralPoolToken = artifacts.require("CollateralPoolToken");
+
+    const cp = await CollateralPool.at(poolAddress);
+    const vault = await cp.agentVault();
+    const assetManager = await cp.assetManager();
+    const fasset = await cp.fAsset();
+    const exitCollateralRatioBIPS = await cp.exitCollateralRatioBIPS();
+    const topupCollateralRatioBIPS = await cp.topupCollateralRatioBIPS();
+    const topupTokenPriceFactorBIPS = await cp.topupTokenPriceFactorBIPS();
+
+    try {
+        console.log(`Verifying CollateralPool at ${poolAddress}`);
+        await hre.run("verify:verify", {
+            address: poolAddress,
+            constructorArguments: [vault, assetManager, fasset, String(exitCollateralRatioBIPS), String(topupCollateralRatioBIPS), String(topupTokenPriceFactorBIPS)]
+        });
+    } catch (e: any) {
+        console.error(`Error verifying CollateralPool: ${e.message ?? e}`);
+        process.exitCode = 1;
+    }
+
+    const tokenAddress = await cp.poolToken();
+    const cpt = await CollateralPoolToken.at(tokenAddress);
+    const cptName = await cpt.name();
+    const cptSymbol = await cpt.symbol();
+
+    try {
+        console.log(`Verifying CollateralPoolToken at ${tokenAddress}`);
+        await hre.run("verify:verify", {
+            address: tokenAddress,
+            constructorArguments: [poolAddress, cptName, cptSymbol]
+        });
+    } catch (e: any) {
+        console.error(`Error verifying CollateralPoolToken: ${e.message ?? e}`);
+        process.exitCode = 1;
+    }
+}
+
 export async function switchAllToProductionMode(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
     const { deployer } = loadDeployAccounts(hre);
 

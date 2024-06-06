@@ -9,10 +9,9 @@ import { task } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
 import {
-    deployAgentOwnerRegistry,
-    deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory,
-    deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployUserWhitelist, switchAllToProductionMode, verifyAssetManager, verifyAssetManagerController,
-    verifyFAssetToken
+    deployAgentOwnerRegistry, deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory,
+    deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployUserWhitelist, switchAllToProductionMode,
+    verifyAssetManager, verifyAssetManagerController, verifyCollateralPool, verifyFAssetToken
 } from "./deployment/lib/deploy-fasset-contracts";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import "./type-extensions";
@@ -31,7 +30,7 @@ task("link-contracts", "Link contracts with external libraries")
     });
 
 task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
-    .setAction(async ({ }, hre) => {
+    .setAction(async ({}, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await deploySCProofVerifier(hre, contracts);
@@ -79,14 +78,20 @@ task("verify-fasset-token", "Verify deployed fasset token.")
     });
 
 task("verify-asset-manager-controller", "Verify deployed asset manager controller.")
-    .setAction(async ({ }, hre) => {
+    .setAction(async ({}, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await verifyAssetManagerController(hre, contracts);
     });
 
+task("verify-collateral-pool", "Verify deployed collateral pool and its corresponding collateral pool token.")
+    .addPositionalParam("poolAddress", "Collateral pool address.")
+    .setAction(async ({ poolAddress }, hre) => {
+        await verifyCollateralPool(hre, poolAddress);
+    });
+
 task("switch-to-production", "Switch all deployed files to production mode.")
-    .setAction(async ({ }, hre) => {
+    .setAction(async ({}, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await switchAllToProductionMode(hre, contracts);
