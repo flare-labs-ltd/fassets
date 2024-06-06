@@ -56,6 +56,7 @@
     "verify-asset-manager-coston": "yarn hardhat --network coston verify-asset-manager --parameters-file",
     "verify-fasset-token-coston": "yarn hardhat --network coston verify-fasset-token --parameters-file",
     "verify-asset-manager-controller-coston": "yarn hardhat --network coston verify-asset-manager-controller",
+    "verify-collateral-pool-coston": "yarn hardhat --network coston verify-collateral-pool",
     "console": "yarn hardhat console --no-compile",
     "console-coston": "yarn hardhat console --no-compile --network coston",
     "---------INFO---SCRIPTS": "",
