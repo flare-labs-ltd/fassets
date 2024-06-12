@@ -18,5 +18,5 @@ async function deployStablecoin(contracts: FAssetContractStore, name: string, sy
     // create token
     const { deployer } = loadDeployAccounts(hre);
     const token = await FakeERC20.new(contracts.GovernanceSettings.address, deployer, name, symbol, decimals);
-    contracts.add(symbol, 'FakeERC20.sol', token.address);
+    contracts.add(symbol, 'FakeERC20.sol', token.address, { mustSwitchToProduction: true });
 }
