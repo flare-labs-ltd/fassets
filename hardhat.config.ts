@@ -2,118 +2,201 @@ import "dotenv/config";
 
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-web3";
-import fs from "fs/promises";
+import "@nomicfoundation/hardhat-verify";
+import fs from "fs";
+import glob from "glob";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
-import { task } from "hardhat/config";
+import { TASK_COMPILE, TASK_TEST_GET_TEST_FILES } from 'hardhat/builtin-tasks/task-names';
+import { HardhatUserConfig, task } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
-import {
-    deployAgentOwnerRegistry, deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory,
-    deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployUserWhitelist, switchAllToProductionMode,
-    verifyAssetManager, verifyAssetManagerController, verifyCollateralPool, verifyFAssetToken
-} from "./deployment/lib/deploy-fasset-contracts";
-import { linkContracts } from "./deployment/lib/link-contracts";
 import "./type-extensions";
+const intercept = require('intercept-stdout');
 
-// import config used for compilation
-import { FAssetContractStore } from "./deployment/lib/contracts";
-import { networkConfigName } from "./deployment/lib/deploy-utils";
-import config from "./hardhatSetup.config";
+// more complex tasks
+import "./hardhat-tasks.config";
 
+// allow glob patterns in test file args
+task(TASK_TEST_GET_TEST_FILES, async ({ testFiles }: { testFiles: string[] }, { config }) => {
+    const cwd = process.cwd();
+    if (testFiles.length === 0) {
+        const testPath = path.relative(cwd, config.paths.tests).replace(/\\/g, '/');    // glob doesn't work with windows paths
+        testFiles = [testPath + '/**/*.{js,ts}'];
+    }
+    return testFiles.flatMap(pattern => glob.sync(pattern) as string[])
+        .map(fname => path.resolve(cwd, fname));
+});
 
-task("link-contracts", "Link contracts with external libraries")
-    .addVariadicPositionalParam("contracts", "The contract names to link")
-    .addOptionalParam("mapfile", "Name for the map file with deployed library mapping addresses; if omitted, no map file is read or created")
-    .setAction(async ({ contracts, mapfile }, hre) => {
-        await linkContracts(hre, contracts, mapfile);
+// Override solc compile task and filter out useless warnings
+task(TASK_COMPILE)
+    .setAction(async (args, hre, runSuper) => {
+        intercept((text: any) => {
+            if (/MockContract.sol/.test(text) && text.match(/Warning: SPDX license identifier not provided in source file/)) return '';
+            if (/MockContract.sol/.test(text) &&
+                /Warning: This contract has a payable fallback function, but no receive ether function/.test(text)) return '';
+            if (/FlareSmartContracts.sol/.test(text) &&
+                /Warning: Visibility for constructor is ignored./.test(text)) return '';
+            if (/VPToken.sol/.test(text) &&
+                /Warning: Visibility for constructor is ignored./.test(text)) return '';
+            if (/ReentrancyGuard.sol/.test(text) &&
+                /Warning: Visibility for constructor is ignored/.test(text)) return '';
+            return text;
+        });
+        await runSuper(args);
     });
 
-task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
-    .setAction(async ({}, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        await deploySCProofVerifier(hre, contracts);
-        await deployPriceReader(hre, contracts);
-        await deployAgentOwnerRegistry(hre, contracts);
-        await deployUserWhitelist(hre, contracts);
-        await deployAgentVaultFactory(hre, contracts);
-        await deployCollateralPoolFactory(hre, contracts);
-        await deployCollateralPoolTokenFactory(hre, contracts);
-    });
+let accounts = [
+    // In Truffle, default account is always the first one.
+    ...(process.env.DEPLOYER_PRIVATE_KEY ? [{ privateKey: process.env.DEPLOYER_PRIVATE_KEY, balance: "100000000000000000000000000000000" }] : []),
+    ...JSON.parse(fs.readFileSync('test-1020-accounts.json').toString()).slice(0, process.env.TENDERLY == 'true' ? 150 : 2000).filter((x: any) => x.privateKey != process.env.DEPLOYER_PRIVATE_KEY),
+    ...(process.env.GENESIS_GOVERNANCE_PRIVATE_KEY ? [{ privateKey: process.env.GENESIS_GOVERNANCE_PRIVATE_KEY, balance: "100000000000000000000000000000000" }] : []),
+    ...(process.env.GOVERNANCE_PRIVATE_KEY ? [{ privateKey: process.env.GOVERNANCE_PRIVATE_KEY, balance: "100000000000000000000000000000000" }] : []),
+];
 
-task("deploy-asset-managers", "Deploy some or all asset managers. Optionally also deploys asset manager controller.")
-    .addFlag("deployController", "Also deploy AssetManagerController, AgentVaultFactory and SCProofVerifier")
-    .addFlag("all", "Deploy all asset managers (for all parameter files in the directory)")
-    .addVariadicPositionalParam("managers", "Asset manager file names (default extension is .json). Must be in the directory deployment/config/${networkConfig}. Alternatively, add -all flag to use all parameter files in the directory.", [])
-    .setAction(async ({ managers, deployController, all }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const configDir = `deployment/config/${networkConfig}`;
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        const managerParameterFiles = await getManagerFiles(all, configDir, managers);
-        // optionally run the deploy together with controller
-        if (deployController) {
-            await deployAssetManagerController(hre, contracts, managerParameterFiles);
-        } else {
-            for (const paramFile of managerParameterFiles) {
-                await deployAssetManager(hre, paramFile, contracts, true);
+const config: HardhatUserConfig = {
+    defaultNetwork: "hardhat",
+
+    networks: {
+        develop: {
+            url: "http://127.0.0.1:9650/ext/bc/C/rpc",
+            gas: 10000000,
+            timeout: 40000,
+            accounts: accounts.map((x: any) => x.privateKey)
+        },
+        scdev: {
+            url: "http://127.0.0.1:9650/ext/bc/C/rpc",
+            gas: 8000000,
+            timeout: 40000,
+            accounts: accounts.map((x: any) => x.privateKey)
+        },
+        staging: {
+            url: process.env.STAGING_RPC || "http://127.0.0.1:9650/ext/bc/C/rpc",
+            timeout: 40000,
+            accounts: accounts.map((x: any) => x.privateKey)
+        },
+        songbird: {
+            url: process.env.SONGBIRD_RPC || "https://songbird-api.flare.network/ext/C/rpc",
+            timeout: 40000,
+            accounts: accounts.map((x: any) => x.privateKey)
+        },
+        flare: {
+            url: process.env.FLARE_RPC || "https://flare-api.flare.network/ext/C/rpc",
+            timeout: 40000,
+            accounts: accounts.map((x: any) => x.privateKey)
+        },
+        coston: {
+            url: process.env.COSTON_RPC || "https://coston-api.flare.network/ext/C/rpc",
+            timeout: 40000,
+            accounts: accounts.map((x: any) => x.privateKey)
+        },
+        coston2: {
+            url: process.env.COSTON2_RPC || "https://coston2-api.flare.network/ext/C/rpc",
+            timeout: 40000,
+            accounts: accounts.map((x: any) => x.privateKey)
+        },
+        hardhat: {
+            accounts,
+            allowUnlimitedContractSize: true,
+            blockGasLimit: 125000000 // 10x ETH gas
+        },
+        local: {
+            url: 'http://127.0.0.1:8545',
+            chainId: 31337,
+            accounts: accounts.map((x: any) => x.privateKey)
+        }
+    },
+    solidity: {
+        compilers: [
+            {
+                version: "0.8.23",
+                settings: {
+                    evmVersion: "london",
+                    optimizer: {
+                        enabled: true,
+                        runs: 200
+                    }
+                }
+            },
+            {
+                version: "0.7.6",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 200
+                    }
+                }
+            }
+        ],
+        overrides: {
+            "contracts/utils/Imports.sol": {
+                version: "0.6.12",
+                settings: {}
+            },
+            "@gnosis.pm/mock-contract/contracts/MockContract.sol": {
+                version: "0.6.12",
+                settings: {}
             }
         }
-    });
-
-task("verify-asset-manager", "Verify deployed asset manager.")
-    .addParam("parametersFile", "The asset manager config file.")
-    .setAction(async ({ parametersFile }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        await verifyAssetManager(hre, parametersFile, contracts);
-    });
-
-task("verify-fasset-token", "Verify deployed fasset token.")
-    .addParam("parametersFile", "The asset manager config file.")
-    .setAction(async ({ parametersFile }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        await verifyFAssetToken(hre, parametersFile, contracts);
-    });
-
-task("verify-asset-manager-controller", "Verify deployed asset manager controller.")
-    .setAction(async ({}, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        await verifyAssetManagerController(hre, contracts);
-    });
-
-task("verify-collateral-pool", "Verify deployed collateral pool and its corresponding collateral pool token.")
-    .addPositionalParam("poolAddress", "Collateral pool address.")
-    .setAction(async ({ poolAddress }, hre) => {
-        await verifyCollateralPool(hre, poolAddress);
-    });
-
-task("switch-to-production", "Switch all deployed files to production mode.")
-    .setAction(async ({}, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        await switchAllToProductionMode(hre, contracts);
-    });
-
-async function getManagerFiles(all: boolean, configDir: string, managers: string[]) {
-    if (all) {
-        // get all files from the config dir
-        const managerFiles = await fs.readdir(configDir, { withFileTypes: true });
-        return managerFiles
-            .filter(f => f.isFile() && f.name.endsWith('.json'))
-            .map(f => path.join(configDir, f.name));
-    } else if (managers.length > 0) {
-        // use files provided on command line, optionally adding suffix '.json'
-        return managers.map((name: string) => {
-            const parts = path.parse(name);
-            return path.join(configDir, `${parts.name}${parts.ext || '.json'}`);
-        });
-    } else {
-        console.error('Provide a nonempty list of managers to deploy or --all to use all parameter files in the directory.');
-        process.exit(1);
+    },
+    paths: {
+        sources: "./contracts/",
+        tests: process.env.TEST_PATH || "./test/{unit,integration}",
+        cache: "./cache",
+        artifacts: "./artifacts"
+    },
+    mocha: {
+        timeout: 1000000000
+    },
+    gasReporter: {
+        showTimeSpent: true,
+        outputFile: ".gas-report.txt"
+    },
+    etherscan: {
+        apiKey: {
+            songbird: '0000',
+            flare: '0000',
+            coston: '0000',
+            coston2: '0000',
+        },
+        customChains: [
+            {
+                network: "songbird",
+                chainId: 19,
+                urls: {
+                    apiURL: "https://songbird-explorer.flare.network/api",
+                    browserURL: "https://songbird-explorer.flare.network"
+                }
+            },
+            {
+                network: "flare",
+                chainId: 14,
+                urls: {
+                    apiURL: "https://flare-explorer.flare.network/api",
+                    browserURL: "https://flare-explorer.flare.network"
+                }
+            },
+            {
+                network: "coston",
+                chainId: 16,
+                urls: {
+                    apiURL: "https://coston-explorer.flare.network/api",
+                    browserURL: "https://coston-explorer.flare.network/"
+                }
+            },
+            {
+                network: "coston2",
+                chainId: 114,
+                urls: {
+                    apiURL: "https://coston2-explorer.flare.network/api",
+                    browserURL: "https://coston2-explorer.flare.network"
+                }
+            },
+        ]
+    },
+    sourcify: {
+        enabled: false
     }
-}
+};
 
 export default config;
