@@ -28,7 +28,8 @@
         "./typechain-truffle"
     ],
     "files": [
-        "./hardhat.config.ts",
+        "hardhat.config.ts",
+        "hardhat-tasks.config.ts",
         "./type-extensions.ts",
     ]
 }
