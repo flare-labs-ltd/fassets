@@ -242,12 +242,12 @@
   {
     "name": "CollateralPoolFactory",
     "contractName": "CollateralPoolFactory.sol",
-    "address": "0x702D73fCB2AE3d3faf54c496F5a4499aA12DBe4D"
+    "address": "0x4d321c850FF60dc807307792b6ef01334cF864cc"
   },
   {
     "name": "CollateralPoolTokenFactory",
     "contractName": "CollateralPoolTokenFactory.sol",
-    "address": "0xe5C3B2085f219FfF6d22C5C0694d55e5519CaA53"
+    "address": "0xED5414f2b60a96a6be213371E5C42efEAC4213FA"
   },
   {
     "name": "AssetManagerController",

@@ -39,10 +39,10 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     uint256 public constant MIN_TOKEN_SUPPLY_AFTER_EXIT = 1 ether;
     uint256 public constant MIN_NAT_BALANCE_AFTER_EXIT = 1 ether;
 
-    address public immutable agentVault;
-    IIAssetManager public immutable assetManager;
-    IERC20 public immutable fAsset;
-    IICollateralPoolToken public token; // practically immutable
+    address public agentVault;   // immutable because there is no setter, but made mutable for simpler verification
+    IIAssetManager public assetManager; // practically immutable because there is no setter
+    IERC20 public fAsset;               // practically immutable because there is no setter
+    IICollateralPoolToken public token; // only changed once at deploy time
 
     IWNat public wNat;
     uint32 public exitCollateralRatioBIPS;

@@ -22,7 +22,7 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
         uint128 end;
     }
 
-    address public immutable collateralPool;
+    address public collateralPool;  // immutable because there is no setter, but made mutable for simpler verification
     mapping(address => TimelockQueue) private timelocksByAccount;
     bool private ignoreTimelocked;
 
