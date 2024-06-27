@@ -1581,17 +1581,19 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const IDiamondLoupe = artifacts.require("IDiamondLoupe");
             const IDiamondCut = artifacts.require("IDiamondCut");
             const IGoverned = artifacts.require("IGoverned");
+            const IAgentPing = artifacts.require("IAgentPing");
             const iERC165 = await IERC165.at(assetManager.address);
             const iDiamondLoupe = await IDiamondLoupe.at(assetManager.address);
             const iDiamondCut = await IDiamondCut.at(assetManager.address);
             const iGoverned = await IGoverned.at(assetManager.address);
+            const iAgentPing = await IAgentPing.at(assetManager.address);
             const iAssetManager = await IAssetManager.at(assetManager.address);
             const iiAssetManager = await IIAssetManager.at(assetManager.address);
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iERC165.abi)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iDiamondLoupe.abi)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iDiamondCut.abi)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iGoverned.abi)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iAssetManager.abi, [iERC165.abi, iDiamondLoupe.abi])));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iAssetManager.abi, [iERC165.abi, iDiamondLoupe.abi, iAgentPing.abi])));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iiAssetManager.abi, [iAssetManager.abi, iGoverned.abi, iDiamondCut.abi])));
             assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });

@@ -10,12 +10,13 @@ import "./data/AgentInfo.sol";
 import "./data/AgentSettings.sol";
 import "./data/AvailableAgentInfo.sol";
 import "./IAssetManagerEvents.sol";
+import "./IAgentPing.sol";
 
 
 /**
  * Asset manager publicly callable methods.
  */
-interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents {
+interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPing {
     ////////////////////////////////////////////////////////////////////////////////////
     // Basic system information
 

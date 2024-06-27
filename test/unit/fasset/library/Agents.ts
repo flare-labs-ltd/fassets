@@ -657,6 +657,20 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         await assetManager.convertDustToTicket(agentVault.address);
     });
 
+    it("bot should respond to agent ping", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1);
+        // act
+        const ping = await assetManager.agentPing(agentVault.address, 1);
+        expectEvent(ping, "AgentPing", { agentVault: agentVault.address, query: "1" });
+        // assert
+        // only owner can respond
+        await expectRevert(assetManager.agentPingResponse(agentVault.address, 1, "some data", { from: accounts[0] }), "only agent vault owner");
+        // response must emit event with owner's address
+        const response = await assetManager.agentPingResponse(agentVault.address, 1, "some data", { from: agentOwner1 });
+        expectEvent(response, "AgentPingResponse", { agentVault: agentVault.address, owner: agentOwner1, query: "1", response: "some data" });
+    });
+
     // it("create agent underlying XRP address validation tests", async () => {
     //     const ci = testChainInfo.xrp;
     //     const rippleAddressValidator = await RippleAddressValidator.new();
