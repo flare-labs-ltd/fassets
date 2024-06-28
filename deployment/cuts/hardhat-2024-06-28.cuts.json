@@ -1,6 +1,6 @@
 {
     "$schema": "./diamond-cuts.schema.json",
-    "diamond": "AssetManager_FXRP",
+    "diamond": ["AssetManager_FBTC", "AssetManager_FXRP"],
     "facets": [
         {
             "contract": "AgentPingFacet",

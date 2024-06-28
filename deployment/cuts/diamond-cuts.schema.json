@@ -52,7 +52,17 @@
             "type": "string"
         },
         "diamond": {
-            "type": "string"
+            "anyOf": [
+                {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                {
+                    "type": "string"
+                }
+            ]
         },
         "facets": {
             "items": {

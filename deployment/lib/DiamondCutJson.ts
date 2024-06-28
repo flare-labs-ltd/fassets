@@ -10,7 +10,7 @@ export interface DiamondCutJsonInit {
 }
 
 export interface DiamondCutJson {
-    diamond: string; // address of diamond or name in contracts.json
+    diamond: string | string[]; // address(es) of diamond(s) or name(s) in contracts.json
     facets: DiamondCutJsonFacet[];
     init?: DiamondCutJsonInit;
 }
