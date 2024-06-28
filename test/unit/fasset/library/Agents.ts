@@ -661,8 +661,8 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         // act
-        const ping = await assetManager.agentPing(agentVault.address, 1);
-        expectEvent(ping, "AgentPing", { agentVault: agentVault.address, query: "1" });
+        const ping = await assetManager.agentPing(agentVault.address, 1, { from: accounts[18] });
+        expectEvent(ping, "AgentPing", { sender: accounts[18], agentVault: agentVault.address, query: "1" });
         // assert
         // only owner can respond
         await expectRevert(assetManager.agentPingResponse(agentVault.address, 1, "some data", { from: accounts[0] }), "only agent vault owner");
