@@ -4,7 +4,7 @@ import { findEvent } from "../../../lib/utils/events/truffle";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
 import { AssetManagerControllerInstance, IIAssetManagerInstance, FAssetInstance, GovernanceSettingsInstance, AssetManagerInitInstance } from "../../../typechain-truffle";
 import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
-import { DiamondCut, FacetCutAction } from "../diamond";
+import { DiamondCut, FacetCutAction } from "../../../lib/utils/diamond";
 import { abiEncodeCall } from "../../../lib/utils/helpers";
 
 const IIAssetManager = artifacts.require('IIAssetManager');

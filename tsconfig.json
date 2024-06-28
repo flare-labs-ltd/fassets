@@ -30,6 +30,6 @@
     "files": [
         "hardhat.config.ts",
         "hardhat-tasks.config.ts",
-        "./type-extensions.ts",
+        "./type-extensions.ts"
     ]
 }

@@ -19,6 +19,7 @@ import "./type-extensions";
 // import config used for compilation
 import { FAssetContractStore } from "./deployment/lib/contracts";
 import { networkConfigName } from "./deployment/lib/deploy-utils";
+import { deployCuts } from "./deployment/lib/deploy-cuts";
 
 
 task("link-contracts", "Link contracts with external libraries")
@@ -95,6 +96,16 @@ task("switch-to-production", "Switch all deployed files to production mode.")
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await switchAllToProductionMode(hre, contracts);
     });
+
+task("diamond-cut", "Create diamond cut defined by JSON file.")
+    .addPositionalParam("json", "Diamond cut JSON definition file")
+    .addFlag("execute", "Execute diamond cut; if not set, just print calldata. Execute is automatically disabled in production mode.")
+    .setAction(async ({ json, execute }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await deployCuts(hre, contracts, json, execute);
+    });
+
 
 async function getManagerFiles(all: boolean, configDir: string, managers: string[]) {
     if (all) {

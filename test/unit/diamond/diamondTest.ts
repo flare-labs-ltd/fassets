@@ -1,6 +1,6 @@
 import { constants, expectRevert } from '@openzeppelin/test-helpers';
 import { DiamondCutFacetInstance, DiamondLoupeFacetInstance } from '../../../typechain-truffle';
-import { DiamondCut, DiamondSelectors, FacetCutAction } from '../../utils/diamond';
+import { DiamondCut, DiamondSelectors, FacetCutAction } from '../../../lib/utils/diamond';
 import { TestSettingsContracts, createTestContracts } from '../../utils/test-settings';
 import { deployDiamond } from './deploy';
 import { loadFixtureCopyVars } from '../../utils/test-helpers';

@@ -49,6 +49,11 @@ export class ContractStore {
         return value;
     }
 
+    public getAddress(addressOrName: string) {
+        if (addressOrName.startsWith('0x')) return addressOrName;
+        return this.getRequired(addressOrName).address;
+    }
+
     public add(name: string, contractName: string, address: string, options?: NewContractOptions) {
         this.addContract({ name, contractName, address, ...(options ?? {}) });
     }
