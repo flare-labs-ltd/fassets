@@ -3,13 +3,12 @@ import { DiamondCut, FacetCutAction } from '../../lib/utils/diamond';
 import { ContractStore } from "./contracts";
 import { deployedCodeMatches } from './deploy-utils';
 
-const assetManagerInterfaces = [
+const assetManagerInterfaces: string[] = [
     'IIAssetManager'
 ];
 
 // allow deploy and later add interfaces as diamond cut (for test deploys)
-const assetManagerOptionalInterfaces = [
-    'IAgentPing'
+const assetManagerOptionalInterfaces: string[] = [
 ];
 
 const assetManagerInitContract = 'AssetManagerInit';
@@ -35,6 +34,7 @@ const assetManagerFacets = [
     'SettingsManagementFacet',
     'AgentVaultAndPoolSupportFacet',
     'SystemStateManagementFacet',
+    'AgentPingFacet'
 ];
 
 export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore) {

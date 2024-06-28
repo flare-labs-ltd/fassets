@@ -1593,6 +1593,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iDiamondLoupe.abi)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iDiamondCut.abi)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iGoverned.abi)));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iAgentPing.abi)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iAssetManager.abi, [iERC165.abi, iDiamondLoupe.abi, iAgentPing.abi])));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iiAssetManager.abi, [iAssetManager.abi, iGoverned.abi, iDiamondCut.abi])));
             assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
