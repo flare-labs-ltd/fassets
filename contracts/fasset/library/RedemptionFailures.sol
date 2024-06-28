@@ -77,9 +77,11 @@ library RedemptionFailures {
             executeDefaultPayment(agent, request, _redemptionRequestId);
             // burn the executor fee
             Redemptions.payOrBurnExecutorFee(request);
+            // make sure it cannot be defaulted again
+            request.status = Redemption.Status.DEFAULTED;
         }
-        // delete redemption request - not needed any more
-        Redemptions.deleteRedemptionRequest(_redemptionRequestId);
+        // we do not delete redemption request here, because we cannot be certain that proofs have expired,
+        // so deleting the request could lead to successful challenge of the agent that paid, but the proof expired
     }
 
     function executeDefaultPayment(
