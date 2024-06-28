@@ -322,7 +322,7 @@
   {
     "name": "RedemptionDefaultsFacet",
     "contractName": "RedemptionDefaultsFacet.sol",
-    "address": "0x783812bfbD8D009A91E2F861c3daf105baf25FB9"
+    "address": "0xAb2d645431F61804CDF80A511294Ab0eb064e2b8"
   },
   {
     "name": "LiquidationFacet",
@@ -383,5 +383,10 @@
     "name": "SystemStateManagementFacet",
     "contractName": "SystemStateManagementFacet.sol",
     "address": "0x7F9918B5c7A7914748Ceb6174Ffc71bAC46E6346"
+  },
+  {
+    "name": "AgentPingFacet",
+    "contractName": "AgentPingFacet.sol",
+    "address": "0x70b1152f934Ddf108635b9d11f83466e693846e8"
   }
 ]
