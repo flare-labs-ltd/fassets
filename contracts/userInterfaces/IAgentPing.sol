@@ -4,25 +4,25 @@ pragma solidity 0.8.23;
 interface IAgentPing {
     /**
      * Agent bot liveness check.
-     * @param sender the account that triggered ping; helps bot decide whether it is important to answer
      * @param agentVault the agent vault whose owner bot to ping
+     * @param sender the account that triggered ping; helps bot decide whether it is important to answer
      * @param query off-chain defined id of the query
      */
     event AgentPing(
-        address indexed sender,
         address indexed agentVault,
+        address indexed sender,
         uint256 query);
 
     /**
      * Response to agent bot liveness check.
-     * @param owner owner of the agent vault (management address)
      * @param agentVault the pinged agent vault
+     * @param owner owner of the agent vault (management address)
      * @param query repeated `query` from the AgentPing event
      * @param response response data to the query
      */
     event AgentPingResponse(
-        address indexed owner,
         address indexed agentVault,
+        address indexed owner,
         uint256 query,
         string response);
 

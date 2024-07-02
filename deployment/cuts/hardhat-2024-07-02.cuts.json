@@ -1,0 +1,14 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FBTC", "AssetManager_FXRP"],
+    "facets": [
+        {
+            "contract": "AgentPingFacet",
+            "exposedInterfaces": ["IAgentPing"]
+        }
+    ],
+    "init": {
+        "contract": "AgentPingFacet",
+        "method": "initAgentPingFacet"
+    }
+}

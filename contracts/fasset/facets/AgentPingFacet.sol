@@ -17,12 +17,12 @@ contract AgentPingFacet is AssetManagerBase, IAgentPing {
     }
 
     function agentPing(address _agentVault, uint256 _query) external {
-        emit AgentPing(msg.sender, _agentVault, _query);
+        emit AgentPing(_agentVault, msg.sender, _query);
     }
 
     function agentPingResponse(address _agentVault, uint256 _query, string memory _response) external {
         Agent.State storage agent = Agent.get(_agentVault);
         Agents.requireAgentVaultOwner(agent);
-        emit AgentPingResponse(agent.ownerManagementAddress, _agentVault, _query, _response);
+        emit AgentPingResponse(_agentVault, agent.ownerManagementAddress, _query, _response);
     }
 }
