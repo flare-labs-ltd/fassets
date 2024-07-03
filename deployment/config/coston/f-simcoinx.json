@@ -9,7 +9,7 @@
     "fAssetSymbol": "FSimCoinX",
     "poolTokenSuffix": "SIMX",
     "assetMintingDecimals": 6,
-    "userWhitelist": null,
+    "userWhitelist": "UserWhitelist",
     "priceReader": "FakePriceReader",
     "poolCollateral": {
         "token": "WNat",
