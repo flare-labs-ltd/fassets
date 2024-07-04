@@ -1,17 +1,22 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
 import { FakeERC20Instance } from "../../../../typechain-truffle";
+import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
+import { waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 
 const FakeERC20 = artifacts.require('FakeERC20');
+const GovernanceSettings = artifacts.require('GovernanceSettings');
 
 contract(`FakeERC20.sol; ${getTestFile(__filename)}; FakeERC20 basic tests`, async accounts => {
     let coin: FakeERC20Instance;
-    const minter = accounts[10];
+    const governance = accounts[10];
 
     async function initialize() {
-        coin = await FakeERC20.new(minter, "A Token", "TOK", 10);
+        const governanceSettings = await GovernanceSettings.new();
+        await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
+        coin = await FakeERC20.new(governanceSettings.address, governance, "A Token", "TOK", 10);
         return { coin };
     }
 
@@ -27,21 +32,29 @@ contract(`FakeERC20.sol; ${getTestFile(__filename)}; FakeERC20 basic tests`, asy
         });
 
         it("should mint and burn", async () => {
-            await coin.mintAmount(accounts[0], 12345, { from: minter });
+            await coin.mintAmount(accounts[0], 12345, { from: governance });
             assertWeb3Equal(await coin.balanceOf(accounts[0]), 12345);
             await coin.burnAmount(10000, { from: accounts[0] });
             assertWeb3Equal(await coin.balanceOf(accounts[0]), 2345);
         });
 
-        it("only minter can mint", async () => {
+        it("only governance can mint", async () => {
             const pr1 = coin.mintAmount(accounts[0], 12345);
-            await expectRevert(pr1, "only minter");
+            await expectRevert(pr1, "only governance");
+        });
+
+        it("only timelocked governance can mint in production mode", async () => {
+            await coin.switchToProductionMode({ from: governance });
+            const pr1 = coin.mintAmount(accounts[0], 12345, { from: governance });
+            assertWeb3Equal(await coin.balanceOf(accounts[0]), 0);
+            await waitForTimelock(pr1, coin, governance);
+            assertWeb3Equal(await coin.balanceOf(accounts[0]), 12345);
         });
 
         it("only owner can burn", async () => {
-            await coin.mintAmount(accounts[0], 12345, { from: minter });
+            await coin.mintAmount(accounts[0], 12345, { from: governance });
             assertWeb3Equal(await coin.balanceOf(accounts[0]), 12345);
-            const pr2 = coin.burnAmount(12345, { from: minter });
+            const pr2 = coin.burnAmount(12345, { from: governance });
             await expectRevert(pr2, "ERC20: burn amount exceeds balance");
         });
     });

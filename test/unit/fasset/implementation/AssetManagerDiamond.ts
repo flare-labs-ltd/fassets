@@ -5,7 +5,7 @@ import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { executeTimelockedGovernanceCall } from "../../../utils/contract-test-helpers";
-import { DiamondCut, DiamondSelectors, FacetCutAction } from "../../../utils/diamond";
+import { DiamondCut, DiamondSelectors, FacetCutAction } from "../../../../lib/utils/diamond";
 import { deployAssetManagerFacets, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";

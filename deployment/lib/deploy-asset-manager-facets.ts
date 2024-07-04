@@ -1,16 +1,14 @@
 import { Artifact, HardhatRuntimeEnvironment } from 'hardhat/types';
-import { IDiamondCutInstance, IDiamondLoupeInstance } from '../../typechain-truffle';
+import { DiamondCut, FacetCutAction } from '../../lib/utils/diamond';
 import { ContractStore } from "./contracts";
 import { deployedCodeMatches } from './deploy-utils';
 
-export enum FacetCutAction { Add = 0, Replace = 1, Remove = 2 };
-
-export type DiamondCut = Parameters<IDiamondCutInstance["diamondCut"]>[0][0];
-
-export type DiamondFacet = Awaited<ReturnType<IDiamondLoupeInstance["facets"]>>[0];
-
-const assetManagerInterfaces = [
+const assetManagerInterfaces: string[] = [
     'IIAssetManager'
+];
+
+// allow deploy and later add interfaces as diamond cut (for test deploys)
+const assetManagerOptionalInterfaces: string[] = [
 ];
 
 const assetManagerInitContract = 'AssetManagerInit';
@@ -36,6 +34,7 @@ const assetManagerFacets = [
     'SettingsManagementFacet',
     'AgentVaultAndPoolSupportFacet',
     'SystemStateManagementFacet',
+    'AgentPingFacet'
 ];
 
 export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore) {
@@ -60,8 +59,7 @@ export async function deployFacet(hre: HardhatRuntimeEnvironment, facetName: str
 }
 
 export async function createDiamondCutsForAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore) {
-    const interfaceAbis = assetManagerInterfaces.map(name => hre.artifacts.readArtifactSync(name).abi as AbiItem[]);
-    const interfaceSelectorMap = methodSelectorMap(...interfaceAbis);
+    const interfaceSelectorMap = createInterfaceSelectorMap(hre, assetManagerInterfaces);
     const interfaceSelectors = new Set(interfaceSelectorMap.keys());
     const diamondCuts: DiamondCut[] = [];
     for (const facetName of assetManagerFacets) {
@@ -74,6 +72,10 @@ export async function createDiamondCutsForAllAssetManagerFacets(hre: HardhatRunt
         for (const selector of cut.functionSelectors) {
             interfaceSelectors.delete(selector);
         }
+    }
+    const optionalInterfaceMap = createInterfaceSelectorMap(hre, assetManagerOptionalInterfaces);
+    for (const selector of optionalInterfaceMap.keys()) {
+        interfaceSelectors.delete(selector);
     }
     if (interfaceSelectors.size > 0) {
         const missing = Array.from(interfaceSelectors).map(sel => interfaceSelectorMap.get(sel)?.name);
@@ -95,7 +97,12 @@ export async function createDiamondCut(artifact: Artifact, address: string, sele
     };
 }
 
-function methodSelectorMap(...abis: AbiItem[][]) {
+export function createInterfaceSelectorMap(hre: HardhatRuntimeEnvironment, interfaces: string[]) {
+    const interfaceAbis = interfaces.map(name => hre.artifacts.readArtifactSync(name).abi as AbiItem[]);
+    return methodSelectorMap(...interfaceAbis);
+}
+
+export function methodSelectorMap(...abis: AbiItem[][]) {
     return new Map(abis.flat(1)
         .filter(it => it.type === 'function')
         .map(it => [web3.eth.abi.encodeFunctionSignature(it), it]));

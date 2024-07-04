@@ -1,4 +1,4 @@
-import { DiamondCut, DiamondSelectors, FacetCutAction } from '../../utils/diamond';
+import { DiamondCut, DiamondSelectors, FacetCutAction } from '../../../lib/utils/diamond';
 
 export async function deployDiamond(governanceSettingsAddress: string, initialGovernance: string) {
     // Deploy DiamondInit

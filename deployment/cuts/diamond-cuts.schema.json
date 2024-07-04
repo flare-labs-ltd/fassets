@@ -1,0 +1,83 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
+    "definitions": {
+        "DiamondCutJsonFacet": {
+            "additionalProperties": false,
+            "properties": {
+                "contract": {
+                    "type": "string"
+                },
+                "exposedInterfaces": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "methods": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "required": [
+                "contract"
+            ],
+            "type": "object"
+        },
+        "DiamondCutJsonInit": {
+            "additionalProperties": false,
+            "properties": {
+                "args": {
+                    "items": {},
+                    "type": "array"
+                },
+                "contract": {
+                    "type": "string"
+                },
+                "method": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "contract",
+                "method"
+            ],
+            "type": "object"
+        }
+    },
+    "properties": {
+        "$schema": {
+            "type": "string"
+        },
+        "diamond": {
+            "anyOf": [
+                {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                {
+                    "type": "string"
+                }
+            ]
+        },
+        "facets": {
+            "items": {
+                "$ref": "#/definitions/DiamondCutJsonFacet"
+            },
+            "type": "array"
+        },
+        "init": {
+            "$ref": "#/definitions/DiamondCutJsonInit"
+        }
+    },
+    "required": [
+        "diamond",
+        "facets"
+    ],
+    "type": "object"
+}
+

@@ -3,26 +3,26 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "../../governance/implementation/Governed.sol";
 
 
-contract FakeERC20 is ERC20, IERC165 {
-    address public immutable minter;
-
+contract FakeERC20 is ERC20, Governed, IERC165 {
     uint8 private immutable decimals_;
 
-    modifier onlyMinter {
-        require(msg.sender == minter, "only minter");
-        _;
-    }
-
-    constructor(address _minter, string memory _name, string memory _symbol, uint8 _decimals)
+    constructor(
+        IGovernanceSettings _governanceSettings,
+        address _initialGovernance,
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals
+    )
         ERC20(_name, _symbol)
+        Governed(_governanceSettings, _initialGovernance)
     {
-        minter = _minter;
         decimals_ = _decimals;
     }
 
-    function mintAmount(address _target, uint256 amount) public onlyMinter {
+    function mintAmount(address _target, uint256 amount) public onlyGovernance {
         _mint(_target, amount);
     }
 

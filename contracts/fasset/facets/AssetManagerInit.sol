@@ -37,5 +37,6 @@ contract AssetManagerInit is GovernedFacet, ReentrancyGuard {
         ds.supportedInterfaces[type(IGoverned).interfaceId] = true;
         ds.supportedInterfaces[type(IAssetManager).interfaceId] = true;
         ds.supportedInterfaces[type(IIAssetManager).interfaceId] = true;
+        ds.supportedInterfaces[type(IAgentPing).interfaceId] = true;
     }
 }

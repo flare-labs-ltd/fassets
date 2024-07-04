@@ -2,7 +2,7 @@ import { expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { EventArgs } from "../../../lib/utils/events/common";
-import { toBN, toWei } from "../../../lib/utils/helpers";
+import { DAYS, toBN, toWei } from "../../../lib/utils/helpers";
 import { RedemptionRequested } from "../../../typechain-truffle/IIAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
@@ -173,6 +173,48 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(liquidationStarted.agentVault, agent.agentVault.address);
             // check that agent cannot exit
             await expectRevert(agent.exitAndDestroy(fullAgentCollateral.sub(reward)), "agent still backing f-assets");
+        });
+
+        it("agent cannot be challenged after expiring payment, even if paid", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            const challenger = await Challenger.create(context, challengerAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            // redeemer "buys" f-assets
+            await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
+            // perform redemption
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
+            const request = redemptionRequests[0];
+            await agent.checkAgentInfo({
+                totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: minted.agentFeeUBA,
+                mintedUBA: minted.poolFeeUBA, reservedUBA: 0, redeemingUBA: request.valueUBA
+            });
+            // perform payment, but do not prove it
+            const paymentAmount = request.valueUBA.sub(request.feeUBA);
+            const txhash = await agent.performPayment(request.paymentAddress, paymentAmount, request.paymentReference);
+            // wait 24h
+            mockChain.mine(100);
+            await time.increase(1 * DAYS);
+            mockChain.skipTime(1 * DAYS);
+            mockChain.mine(100);
+            // expire payment
+            const redDef = await agent.finishRedemptionWithoutPayment(request);
+            assertWeb3Equal(redDef.requestId, request.requestId);
+            // try to challenge
+            await expectRevert(challenger.illegalPaymentChallenge(agent, txhash), "matching redemption active");
+            // check agent status
+            await agent.checkAgentInfo({ status: AgentStatus.NORMAL, redeemingUBA: 0 }, false);
         });
 
         it("free balance negative challenge - multiple transactions", async () => {

@@ -154,9 +154,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), res.redeemedVaultCollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res.redeemedPoolCollateralWei);
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), res.redeemedPoolCollateralWei);
-            // check that confirming redemption payment after calling finishRedemptionWithoutPayment will revert
-            const tx1Hash = await agent.performRedemptionPayment(request);
-            await expectRevert(agent.confirmDefaultedRedemptionPayment(request, tx1Hash), "invalid request id");
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedVaultCollateralWei));
         });
@@ -216,9 +213,6 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), res.redeemedVaultCollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), res.redeemedPoolCollateralWei);
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), res.redeemedPoolCollateralWei);
-            // check that confirming redemption payment after calling finishRedemptionWithoutPayment will revert
-            const tx1Hash = await agent.performRedemptionPayment(request);
-            await expectRevert(agent.confirmDefaultedRedemptionPayment(request, tx1Hash), "invalid request id");
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(res.redeemedVaultCollateralWei));
         });
@@ -522,10 +516,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             assertWeb3Equal(startVaultCollateralBalanceAgent.sub(endVaultCollateralBalanceAgent), redDef.redeemedVaultCollateralWei);
             assertWeb3Equal(endPoolBalanceRedeemer.sub(startPoolBalanceRedeemer), redDef.redeemedPoolCollateralWei);
             assertWeb3Equal(startPoolBalanceAgent.sub(endPoolBalanceAgent), redDef.redeemedPoolCollateralWei);
-            // check that confirming redemption payment after calling finishRedemptionWithoutPayment will revert
-            const tx1Hash = await agent.performRedemptionPayment(request);
-            await expectRevert(agent.confirmDefaultedRedemptionPayment(request, tx1Hash), "invalid request id");
-            await expectRevert(agent.finishRedemptionWithoutPayment(request), "invalid request id");
+            // finishRedemptionWithoutPayment has effect equal to default - cannot default again
+            await expectRevert(agent.redemptionPaymentDefault(request), "invalid redemption status");
+            // finishRedemptionWithoutPayment again is a no-op
+            const redDef2 = await agent.finishRedemptionWithoutPayment(request);
+            assert.isUndefined(redDef2);
             // agent can exit now
             await agent.exitAndDestroy(fullAgentCollateral.sub(redDef.redeemedVaultCollateralWei));
         });
