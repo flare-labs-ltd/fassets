@@ -97,10 +97,13 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
         it("should properly respond to supportsInterface", async () => {
             const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as 'IERC165');
             const IPriceReader = artifacts.require("IPriceReader");
+            const IPricePublisher = artifacts.require("IPricePublisher");
             const iERC165 = await IERC165.at(priceStore.address);
             const iPriceReader = await IPriceReader.at(priceStore.address);
+            const iPricePublisher = await IPricePublisher.at(priceStore.address);
             assert.isTrue(await priceStore.supportsInterface(erc165InterfaceId(iERC165.abi)));
             assert.isTrue(await priceStore.supportsInterface(erc165InterfaceId(iPriceReader.abi)));
+            assert.isTrue(await priceStore.supportsInterface(erc165InterfaceId(iPricePublisher.abi)));
             assert.isFalse(await priceStore.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });

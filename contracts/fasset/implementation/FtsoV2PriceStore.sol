@@ -121,7 +121,7 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
 
             // calculate trusted prices for the same voting round
             bytes memory trustedPrices = submittedTrustedPrices[feedId][votingRoundId];
-            if (trustedPrices.length >= 4 * trustedProvidersThreshold) {
+            if (trustedPrices.length > 0 && trustedPrices.length >= 4 * trustedProvidersThreshold) {
                 // calculate median price
                 uint256 medianPrice = _calculateMedian(trustedPrices);
                 // store the median price
