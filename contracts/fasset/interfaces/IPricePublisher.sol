@@ -23,7 +23,7 @@ interface IPricePublisher {
     struct TrustedProviderFeed {
         bytes21 id;
         uint32 value;
-        uint8 decimals;
+        int8 decimals;
     }
 
     /**

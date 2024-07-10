@@ -25,11 +25,11 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
     struct PriceStore {
         uint32 votingRoundId;
         uint32 value;
-        uint8 decimals;
+        int8 decimals;
 
         uint32 trustedVotingRoundId;
         uint32 trustedValue;
-        uint8 trustedDecimals;
+        int8 trustedDecimals;
     }
 
     /// Timestamp when the first voting epoch started, in seconds since UNIX epoch.
@@ -107,7 +107,6 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
             }
             bytes21 feedId = feedIds[i];
             require(feed.id == feedId, "feed id mismatch");
-            require(feed.decimals >= 0, "decimals must be non-negative");
             require(feed.value >= 0, "value must be non-negative");
 
             bytes32 feedHash = keccak256(abi.encode(feed));
@@ -117,7 +116,7 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
             PriceStore storage priceStore = latestPrices[feedId];
             priceStore.votingRoundId = feed.votingRoundId;
             priceStore.value = uint32(feed.value);
-            priceStore.decimals = uint8(feed.decimals);
+            priceStore.decimals = feed.decimals;
 
             // calculate trusted prices for the same voting round
             bytes memory trustedPrices = submittedTrustedPrices[feedId][votingRoundId];
@@ -170,7 +169,7 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
     function updateSettings(
         bytes21[] calldata _feedIds,
         string[] calldata _symbols,
-        uint8[] calldata _trustedDecimals
+        int8[] calldata _trustedDecimals
     )
         external onlyGovernance
     {
@@ -227,7 +226,15 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         bytes21 feedId = symbolToFeedId[_symbol];
         require(feedId != bytes21(0), "symbol not supported");
         PriceStore storage feed = latestPrices[feedId];
-        return (feed.value, _getEndTimestamp(feed.votingRoundId), feed.decimals);
+        _price = feed.value;
+        _timestamp = _getEndTimestamp(feed.votingRoundId);
+        int256 decimals = feed.decimals; // int8
+        if (decimals < 0) {
+            _priceDecimals = 0;
+            _price *= 10 ** uint256(-decimals);
+        } else {
+            _priceDecimals = uint256(decimals);
+        }
     }
 
     /**
@@ -240,7 +247,15 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         bytes21 feedId = symbolToFeedId[_symbol];
         require(feedId != bytes21(0), "symbol not supported");
         PriceStore storage feed = latestPrices[feedId];
-        return (feed.trustedValue, _getEndTimestamp(feed.trustedVotingRoundId), feed.trustedDecimals);
+        _price = feed.trustedValue;
+        _timestamp = _getEndTimestamp(feed.trustedVotingRoundId);
+        int256 decimals = feed.trustedDecimals; // int8
+        if (decimals < 0) {
+            _priceDecimals = 0;
+            _price *= 10 ** uint256(-decimals);
+        } else {
+            _priceDecimals = uint256(decimals);
+        }
     }
 
     /**
