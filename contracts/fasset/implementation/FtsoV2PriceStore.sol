@@ -224,7 +224,9 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         external view
         returns (uint256 _price, uint256 _timestamp, uint256 _priceDecimals)
     {
-        PriceStore storage feed = latestPrices[symbolToFeedId[_symbol]];
+        bytes21 feedId = symbolToFeedId[_symbol];
+        require(feedId != bytes21(0), "symbol not supported");
+        PriceStore storage feed = latestPrices[feedId];
         return (feed.value, _getEndTimestamp(feed.votingRoundId), feed.decimals);
     }
 
@@ -235,7 +237,9 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
         external view
         returns (uint256 _price, uint256 _timestamp, uint256 _priceDecimals)
     {
-        PriceStore storage feed = latestPrices[symbolToFeedId[_symbol]];
+        bytes21 feedId = symbolToFeedId[_symbol];
+        require(feedId != bytes21(0), "symbol not supported");
+        PriceStore storage feed = latestPrices[feedId];
         return (feed.trustedValue, _getEndTimestamp(feed.trustedVotingRoundId), feed.trustedDecimals);
     }
 
