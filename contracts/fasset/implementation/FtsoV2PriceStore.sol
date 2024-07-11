@@ -89,7 +89,7 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
      */
     function publishPrices(FeedWithProof[] calldata _proofs) external {
         uint32 votingRoundId = 0;
-        require(_proofs.length == feedIds.length, "all prices must be provided");
+        require(_proofs.length == feedIds.length, "wrong number of proofs");
         for (uint256 i = 0; i < _proofs.length; i++) {
             FeedWithProof calldata proof = _proofs[i];
             Feed calldata feed = proof.body;
