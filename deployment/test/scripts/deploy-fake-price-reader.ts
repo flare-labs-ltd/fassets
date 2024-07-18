@@ -1,7 +1,7 @@
 import hre from "hardhat";
 import { runAsyncMain, sleep } from "../../../lib/utils/helpers";
 import { FAssetContractStore } from "../../lib/contracts";
-import { loadDeployAccounts, networkConfigName } from "../../lib/deploy-utils";
+import { loadDeployAccounts, networkConfigName, waitFinalize } from "../../lib/deploy-utils";
 
 const IFtsoRegistry = artifacts.require('flare-smart-contracts/contracts/userInterfaces/IFtsoRegistry.sol:IFtsoRegistry' as 'IFtsoRegistry');
 const FtsoPriceReader = artifacts.require('FtsoV1PriceReader');
@@ -18,7 +18,7 @@ runAsyncMain(async () => {
 async function deployFakePriceReader(contracts: FAssetContractStore) {
     // create token
     const { deployer } = loadDeployAccounts(hre);
-    const priceReader = await FakePriceReader.new(deployer, { from: deployer});
+    const priceReader = await waitFinalize(hre, deployer, () => FakePriceReader.new(deployer, { from: deployer}));
     // set initial prices
     const ftsoRegistry = await IFtsoRegistry.at(contracts.FtsoRegistry.address);
     const ftsoPriceReader = await FtsoPriceReader.at(contracts.PriceReader!.address);
@@ -26,10 +26,9 @@ async function deployFakePriceReader(contracts: FAssetContractStore) {
     for (const symbol of symbols) {
         const { 0: price, 1: timestamp, 2: decimals } = await ftsoPriceReader.getPrice(symbol);
         console.log(`Setting price for ${symbol}, decimals=${decimals} price=${price}`);
-        await priceReader.setDecimals(symbol, decimals, { from: deployer });
-        await priceReader.setPrice(symbol, price, { from: deployer });
-        await priceReader.setPriceFromTrustedProviders(symbol, price, { from: deployer });
-        await sleep(5000);
+        await waitFinalize(hre, deployer, () => priceReader.setDecimals(symbol, decimals, { from: deployer }));
+        await waitFinalize(hre, deployer, () => priceReader.setPrice(symbol, price, { from: deployer }));
+        await waitFinalize(hre, deployer, () => priceReader.setPriceFromTrustedProviders(symbol, price, { from: deployer }));
     }
     // priceReader.
     contracts.add("FakePriceReader", 'FakePriceReader.sol', priceReader.address);

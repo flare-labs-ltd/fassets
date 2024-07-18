@@ -42,3 +42,35 @@ export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, c
 export function networkConfigName(hre: HardhatRuntimeEnvironment) {
     return hre.network.name === 'local' ? 'hardhat' : hre.network.name;
 }
+
+function sleep(ms: number) {
+    return new Promise<void>(resolve => setTimeout(() => resolve(), ms));
+}
+
+export type WaitFinalizeOptions = { extraBlocks: number, retries: number, sleepMS: number }
+export const waitFinalizeDefaults: WaitFinalizeOptions = { extraBlocks: 1, retries: 3, sleepMS: 1000 };
+
+/**
+ * Finalization wrapper for web3/truffle. Needed on Flare network since account nonce has to increase
+ * to have the transaction confirmed.
+ */
+export async function waitFinalize<T>(hre: HardhatRuntimeEnvironment, address: string, func: () => Promise<T>, options: WaitFinalizeOptions = waitFinalizeDefaults) {
+    if (hre.network.name === 'local' || hre.network.name === 'hardhat') {
+        return await func();
+    }
+    let nonce = await hre.web3.eth.getTransactionCount(address);
+    let res = await func();
+    while (await hre.web3.eth.getTransactionCount(address) == nonce) {
+        await sleep(options.sleepMS);
+    }
+    for (let i = 0; i < options.retries; i++) {
+        const block = await hre.web3.eth.getBlockNumber();
+        while (await hre.web3.eth.getBlockNumber() - block < options.extraBlocks) {
+            await sleep(options.sleepMS);
+        }
+        // only end if the nonce didn't revert (and repeat up to 3 times)
+        if (await hre.web3.eth.getTransactionCount(address) > nonce) break;
+        console.warn(`Nonce reverted after ${i + 1} retries, retrying again...`);
+    }
+    return res;
+}
