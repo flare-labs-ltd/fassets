@@ -1343,7 +1343,60 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(1).add(agentFeeShareUBA));
         });
-    });
+
+        it("should extend redemption payment time", async () => {
+            // define redeemer and its underlying address
+            const redeemer = accounts[83];
+            const underlyingRedeemer = "redeemer"
+            // create available agentVault and mint f-assets
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(10));
+            // perform redemption requests
+            const times1: number[] = [];
+            const blocks1: number[] = [];
+            for (let i = 0; i < 10; i++) {
+                const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
+                const timestamp = chain.lastBlockTimestamp();
+                const block = chain.blockHeight();
+                const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
+                times1.push(Number(redemptionRequest.lastUnderlyingTimestamp) - timestamp);
+                blocks1.push(Number(redemptionRequest.lastUnderlyingBlock) - Number(block));
+            }
+            for (let i = 1; i < 10; i++) {
+                assert.equal(times1[i] - times1[i - 1], 10);
+                assert.isAtLeast(blocks1[i], blocks1[i - 1]);
+            }
+            assert.isAtLeast(blocks1[9] - blocks1[0], 5);
+        });
+
+        it("should not extend redemption payment time when setting is 0", async () => {
+            // define redeemer and its underlying address
+            const redeemer = accounts[83];
+            const underlyingRedeemer = "redeemer"
+            // create available agentVault and mint f-assets
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(10));
+            // set redemptionPaymentExtensionSeconds setting to 0 (needs two steps due to validation)
+            await assetManager.setRedemptionPaymentExtensionSeconds(3, { from: governance });
+            await assetManager.setRedemptionPaymentExtensionSeconds(0, { from: governance });
+            // default a redemption
+            const times1: number[] = [];
+            const blocks1: number[] = [];
+            for (let i = 0; i < 10; i++) {
+                const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
+                const timestamp = chain.lastBlockTimestamp();
+                const block = chain.blockHeight();
+                const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
+                times1.push(Number(redemptionRequest.lastUnderlyingTimestamp) - timestamp);
+                blocks1.push(Number(redemptionRequest.lastUnderlyingBlock) - Number(block));
+                // console.log(times1[i], blocks1[i]);
+            }
+            for (let i = 1; i < 10; i++) {
+                assert.isAtMost(times1[i] - times1[i - 1], 2);
+                assert.isAtMost(blocks1[i] - blocks1[i - 1], 2);
+            }
+        });
+});
 
     describe("agent underlying", () => {
 
