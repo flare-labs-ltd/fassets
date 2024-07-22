@@ -45,7 +45,7 @@ library RedemptionTimeExtension {
         state.redemptionPaymentExtensionSeconds = _value.toUint64();
     }
 
-    function getRedemptionPaymentExtensionSeconds()
+    function redemptionPaymentExtensionSeconds()
         internal view
         returns (uint256)
     {

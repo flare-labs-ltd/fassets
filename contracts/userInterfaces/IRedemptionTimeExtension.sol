@@ -7,7 +7,7 @@ interface IRedemptionTimeExtension {
     function setRedemptionPaymentExtensionSeconds(uint256 _value)
         external;
 
-    function getRedemptionPaymentExtensionSeconds()
+    function redemptionPaymentExtensionSeconds()
         external view
         returns (uint256);
 }

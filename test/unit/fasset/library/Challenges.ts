@@ -1,10 +1,10 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerInitSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { toBNExp, toWei } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -24,7 +24,7 @@ contract(`Challenges.sol; ${getTestFile(__filename)}; Challenges basic tests`, a
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
-    let settings: AssetManagerSettings;
+    let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;

@@ -1,11 +1,11 @@
-import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
+import { AgentSettings, AssetManagerInitSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, toBN, toWei } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
@@ -24,7 +24,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
-    let settings: AssetManagerSettings;
+    let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
     let chainInfo: TestChainInfo;

@@ -1,21 +1,23 @@
+import { ARESBase, AddressValidity, Payment } from "@flarenetwork/state-connector-protocol";
 import { ether, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentSetting, AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSetting, AgentSettings, AssetManagerInitSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { SourceId } from "../../../../lib/underlying-chain/SourceId";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentVaultInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
-import { TestFtsos, TestSettingsContracts, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts,
-    createTestFtsos, createTestSettings } from "../../../utils/test-settings";
+import {
+    TestFtsos, TestSettingsContracts, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts,
+    createTestFtsos, createTestSettings
+} from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { ARESBase, AddressValidity, Payment } from "@flarenetwork/state-connector-protocol";
-import { SourceId } from "../../../../lib/underlying-chain/SourceId";
 
 const CollateralPool = artifacts.require("CollateralPool");
 const CollateralPoolToken = artifacts.require("CollateralPoolToken");
@@ -28,7 +30,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
     let fAsset: FAssetInstance;
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
-    let settings: AssetManagerSettings;
+    let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;

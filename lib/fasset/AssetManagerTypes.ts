@@ -3,6 +3,10 @@ import { AssetManagerContract, AssetManagerInitInstance, IIAssetManagerInstance 
 type _AssetManagerSettings = Parameters<AssetManagerInitInstance['init']>[2];
 export interface AssetManagerSettings extends _AssetManagerSettings {}
 
+export interface AssetManagerInitSettings extends AssetManagerSettings {
+    redemptionPaymentExtensionSeconds: string | number | BN;
+}
+
 export enum CollateralClass {
     POOL = 1,
     VAULT = 2,

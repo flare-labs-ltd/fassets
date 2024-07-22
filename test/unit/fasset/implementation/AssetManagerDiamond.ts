@@ -1,11 +1,11 @@
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerInitSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { DiamondCut, DiamondSelectors, FacetCutAction } from "../../../../lib/utils/diamond";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { executeTimelockedGovernanceCall } from "../../../utils/contract-test-helpers";
-import { DiamondCut, DiamondSelectors, FacetCutAction } from "../../../../lib/utils/diamond";
 import { deployAssetManagerFacets, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
@@ -24,7 +24,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
-    let settings: AssetManagerSettings;
+    let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
@@ -97,7 +97,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
         it("if diamondCutMinTimelockSeconds is small, GovernanceSettings.timelock applies", async () => {
             // init
             const ci = testChainInfo.xrp;
-            const settings2: AssetManagerSettings = { ...settings, diamondCutMinTimelockSeconds: 0 };
+            const settings2: AssetManagerInitSettings = { ...settings, diamondCutMinTimelockSeconds: 0 };
             const [assetManager2] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings2, collaterals, ci.assetName, ci.assetSymbol,
                 { governanceSettings: contracts.governanceSettings, updateExecutor: executor });
             await assetManager2.switchToProductionMode({ from: governance });

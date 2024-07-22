@@ -1,10 +1,10 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerInitSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { filterEvents, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, MAX_BIPS, randomAddress, toBIPS, toBN, toBNExp, toNumber, toWei } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, IIAssetManagerInstance, CollateralPoolInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, CollateralPoolInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { impersonateContract, stopImpersonatingContract } from "../../../utils/contract-test-helpers";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
@@ -26,7 +26,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
-    let settings: AssetManagerSettings;
+    let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
     let chainInfo: TestChainInfo;

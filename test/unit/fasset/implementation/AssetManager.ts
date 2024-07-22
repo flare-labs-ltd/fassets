@@ -1,11 +1,12 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralClass, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerInitSettings, AssetManagerSettings, CollateralClass, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { DiamondCut } from "../../../../lib/utils/diamond";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentVaultInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance, AssetManagerInitInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { deployAssetManagerFacets, newAssetManager, newAssetManagerDiamond } from "../../../utils/fasset/CreateAssetManager";
@@ -14,7 +15,6 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
-import { DiamondCut } from "../../../../lib/utils/diamond";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -44,7 +44,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
-    let settings: AssetManagerSettings;
+    let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
@@ -235,6 +235,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const resSettings = web3ResultStruct(await assetManager.getSettings());
             settings.fAsset = fAsset.address;
             settings.assetManagerController = assetManagerController;
+            (resSettings as AssetManagerInitSettings).redemptionPaymentExtensionSeconds = await assetManager.redemptionPaymentExtensionSeconds();
             assertWeb3DeepEqual(resSettings, settings);
             assert.equal(await assetManager.assetManagerController(), assetManagerController);
         });

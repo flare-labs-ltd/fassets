@@ -1,8 +1,8 @@
 import { expectEvent, time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerInitSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
-import { IIAssetManagerInstance, FAssetInstance } from "../../../../typechain-truffle";
+import { FAssetInstance, IIAssetManagerInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
@@ -17,7 +17,7 @@ contract(`StateUpdater.sol; ${getTestFile(__filename)}; StateUpdater basic tests
     let assetManager: IIAssetManagerInstance;
     let fAsset: FAssetInstance;
     let ftsos: TestFtsos;
-    let settings: AssetManagerSettings;
+    let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;

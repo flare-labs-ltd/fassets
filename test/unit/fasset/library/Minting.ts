@@ -1,12 +1,13 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerInitSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { lotSize } from "../../../../lib/fasset/Conversions";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { TX_BLOCKED, TX_FAILED } from "../../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, MAX_BIPS, requireNotNull, toBIPS, toBN, toWei } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, WNatInstance } from "../../../../typechain-truffle";
+import { BNish, MAX_BIPS, toBIPS, toBN, toWei } from "../../../../lib/utils/helpers";
+import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { precomputeContractAddress } from "../../../utils/contract-test-helpers";
@@ -17,7 +18,6 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
-import { lotSize } from "../../../../lib/fasset/Conversions";
 
 contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async accounts => {
     const governance = accounts[10];
@@ -28,7 +28,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
-    let settings: AssetManagerSettings;
+    let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
