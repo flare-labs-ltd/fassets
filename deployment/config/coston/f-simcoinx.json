@@ -96,5 +96,6 @@
     "poolExitAndTopupChangeTimelockSeconds": 120,
     "agentTimelockedOperationWindowSeconds": 3600,
     "collateralPoolTokenTimelockSeconds": 60,
-    "diamondCutMinTimelockSeconds": 7200
+    "diamondCutMinTimelockSeconds": 7200,
+    "redemptionPaymentExtensionSeconds": 30
 }

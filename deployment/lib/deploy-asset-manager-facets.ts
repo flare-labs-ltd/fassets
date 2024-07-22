@@ -9,6 +9,7 @@ const assetManagerInterfaces: string[] = [
 
 // allow deploy and later add interfaces as diamond cut (for test deploys)
 const assetManagerOptionalInterfaces: string[] = [
+    'IRedemptionTimeExtension'
 ];
 
 const assetManagerInitContract = 'AssetManagerInit';

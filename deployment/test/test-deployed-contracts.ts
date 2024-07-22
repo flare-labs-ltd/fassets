@@ -52,6 +52,16 @@ contract(`test-deployed-contracts; ${getTestFile(__filename)}; Deploy tests`, as
         }
     });
 
+    it("Additional settings are set", async () => {
+        const managers = await assetManagerController.getAssetManagers();
+        for (const mgrAddress of managers) {
+            const assetManager = await IIAssetManager.at(mgrAddress);
+            // check redemptionPaymentExtensionSeconds
+            const redemptionPaymentExtensionSeconds = await assetManager.redemptionPaymentExtensionSeconds();
+            assert.equal(Number(redemptionPaymentExtensionSeconds), 30);
+        }
+    });
+
     // TODO: creating agent vault now requires SC proof of address validity,
     // which takes 5 minutes and requires SC API client, so skip it for now
 

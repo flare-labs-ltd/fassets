@@ -7,7 +7,8 @@ import { FAssetInstance } from "../../typechain-truffle";
 import { JsonParameterSchema } from "./JsonParameterSchema";
 import { AssetManagerParameters, CollateralTypeParameters } from './asset-manager-parameters';
 import { FAssetContractStore } from "./contracts";
-import { createDiamondCutsForAllAssetManagerFacets, deployAllAssetManagerFacets, deployFacet } from "./deploy-asset-manager-facets";
+import { checkAllAssetManagerMethodsImplemented, createDiamondCutsForAllAssetManagerFacets, deployAllAssetManagerFacets, deployFacet } from "./deploy-asset-manager-facets";
+import { deployCutsOnDiamond } from "./deploy-cuts";
 import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts, waitFinalize } from './deploy-utils';
 
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
@@ -70,8 +71,21 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     await waitFinalize(hre, deployer, () => fAsset.setAssetManager(assetManager.address, { from: deployer }));
 
+    // perform additional cuts (with own init methods)
+    await deployCutsOnDiamond(hre, contracts,
+        {
+            diamond: assetManager.address,
+            facets: [{ contract: "RedemptionTimeExtensionFacet", exposedInterfaces: ["IRedemptionTimeExtension"] }],
+            init: { contract: "RedemptionTimeExtensionFacet", method: "initRedemptionTimeExtensionFacet", args: [parameters.redemptionPaymentExtensionSeconds] },
+        },
+        { execute: true, verbose: false });
+
+    // everything from IIAssetManager must be implemented now
+    await checkAllAssetManagerMethodsImplemented(hre, assetManager.address);
+
+    // save to contracts
     const symbol = parameters.fAssetSymbol;
-    contracts.add(`AssetManager_${symbol}`, "AssetManager.sol", assetManager.address);
+    contracts.add(`AssetManager_${symbol}`, "AssetManager.sol", assetManager.address, { mustSwitchToProduction: true });
     contracts.add(symbol, "FAsset.sol", fAsset.address, { mustSwitchToProduction: true });
 
     if (standalone) {

@@ -292,6 +292,10 @@
             "minimum": 0,
             "type": "integer"
         },
+        "redemptionPaymentExtensionSeconds": {
+            "description": "When there are many redemption requests in short time, agent gets\nup to this amount of extra payment time per redemeption.",
+            "type": "integer"
+        },
         "requireEOAAddressProof": {
             "description": "For some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address.\nThis must be done by presenting a payment proof from that address.",
             "type": "boolean"
@@ -383,6 +387,7 @@
         "redemptionDefaultFactorPoolBIPS",
         "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionFeeBIPS",
+        "redemptionPaymentExtensionSeconds",
         "requireEOAAddressProof",
         "tokenInvalidationTimeMinSeconds",
         "underlyingBlocksForPayment",
