@@ -10,6 +10,7 @@ import { abiEncodeCall } from "../../../lib/utils/helpers";
 const IIAssetManager = artifacts.require('IIAssetManager');
 const AssetManager = artifacts.require('AssetManager');
 const AssetManagerInit = artifacts.require('AssetManagerInit');
+const GovernedFacet = artifacts.require('GovernedFacet');
 const FAsset = artifacts.require('FAsset');
 
 export async function newAssetManager(
@@ -76,10 +77,10 @@ export async function deployAssetManagerFacets(): Promise<[DiamondCut[], AssetMa
     const assetManagerInit = await AssetManagerInit.new();
     // create filters
     const iiAssetManager = await IIAssetManager.at(assetManagerInit.address);
-    const interfaceSelectorMap = new Map(iiAssetManager.abi
-        .filter(it => it.type === 'function')
-        .map(it => [web3.eth.abi.encodeFunctionSignature(it), it]));
+    const interfaceSelectorMap = getInterfaceSelectorMap(iiAssetManager.abi);
     const interfaceSelectors = new Set(interfaceSelectorMap.keys());
+    const governedFacet = await GovernedFacet.at(assetManagerInit.address);
+    const governedFacetSelectors = new Set(getInterfaceSelectorMap(governedFacet.abi).keys());
     // create cuts
     const diamondCuts = [
         await deployFacet('AssetManagerDiamondCutFacet', interfaceSelectors),
@@ -103,6 +104,7 @@ export async function deployAssetManagerFacets(): Promise<[DiamondCut[], AssetMa
         await deployFacet('AgentVaultAndPoolSupportFacet', interfaceSelectors),
         await deployFacet('SystemStateManagementFacet', interfaceSelectors),
         await deployFacet('AgentPingFacet', interfaceSelectors),
+        await deployFacet('RedemptionTimeExtensionFacet', interfaceSelectors, governedFacetSelectors),
     ];
     // verify every required selector is included in some cut
     for (const cut of diamondCuts) {
@@ -117,11 +119,18 @@ export async function deployAssetManagerFacets(): Promise<[DiamondCut[], AssetMa
     return [diamondCuts, assetManagerInit];
 }
 
-export async function deployFacet(facetName: string, filterSelectors: Set<string>): Promise<DiamondCut> {
+function getInterfaceSelectorMap(abiItems: AbiItem[]) {
+    const interfaceSelectorPairs = abiItems
+        .filter(it => it.type === 'function')
+        .map(it => [web3.eth.abi.encodeFunctionSignature(it), it] as const);
+    return new Map(interfaceSelectorPairs);
+}
+
+export async function deployFacet(facetName: string, filterSelectors: Set<string>, excludeSelectors: Set<string> = new Set()): Promise<DiamondCut> {
     const contract = artifacts.require(facetName as any) as Truffle.ContractNew<any>;
     const instance = await contract.new() as Truffle.ContractInstance;
     const instanceSelectors = instance.abi.map(it => web3.eth.abi.encodeFunctionSignature(it));
-    const exposedSelectors = instanceSelectors.filter(sel => filterSelectors.has(sel));
+    const exposedSelectors = instanceSelectors.filter(sel => filterSelectors.has(sel) && !excludeSelectors.has(sel));
     if (exposedSelectors.length === 0) {
         throw new Error(`No exposed methods in ${facetName}`);
     }

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
+import "./data/RedemptionTimeExtension.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./Redemptions.sol";
@@ -228,7 +229,7 @@ library RedemptionRequests {
         request.redeemerUnderlyingAddressHash = underlyingAddressHash;
         request.underlyingValueUBA = redeemedValueUBA;
         request.firstUnderlyingBlock = state.currentUnderlyingBlock;
-        (request.lastUnderlyingBlock, request.lastUnderlyingTimestamp) = _lastPaymentBlock();
+        (request.lastUnderlyingBlock, request.lastUnderlyingTimestamp) = _lastPaymentBlock(_data.agentVault);
         request.timestamp = block.timestamp.toUint64();
         request.underlyingFeeUBA = redeemedValueUBA.mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128();
         request.redeemer = _redeemer;
@@ -281,16 +282,19 @@ library RedemptionRequests {
         return requestId;
     }
 
-    function _lastPaymentBlock()
-        private view
+    function _lastPaymentBlock(address _agentVault)
+        private
         returns (uint64 _lastUnderlyingBlock, uint64 _lastUnderlyingTimestamp)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        // timeshift amortizes for the time that passed from the last underlying block update
-        uint64 timeshift = block.timestamp.toUint64() - state.currentUnderlyingBlockUpdatedAt;
+        // timeshift amortizes for the time that passed from the last underlying block update;
+        // it also adds redemption time extension when there are many redemption requests in short time
+        uint64 timeshift = block.timestamp.toUint64() - state.currentUnderlyingBlockUpdatedAt
+            + RedemptionTimeExtension.extendTimeForRedemption(_agentVault);
+        uint64 blockshift = (uint256(timeshift) * 1000 / settings.averageBlockTimeMS).toUint64();
         _lastUnderlyingBlock =
-            state.currentUnderlyingBlock + settings.underlyingBlocksForPayment;
+            state.currentUnderlyingBlock + blockshift + settings.underlyingBlocksForPayment;
         _lastUnderlyingTimestamp =
             state.currentUnderlyingBlockTimestamp + timeshift + settings.underlyingSecondsForPayment;
     }

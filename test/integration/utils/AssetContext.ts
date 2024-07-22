@@ -216,6 +216,13 @@ export class AssetContext implements IAssetContext {
         return Prices.getPrices(this, this.settings, this.collaterals);
     }
 
+    skipToExpiration(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {
+        const chain = this.chain as MockChain;
+        chain.skipTimeTo(Number(lastUnderlyingTimestamp) + 1);
+        chain.mineTo(Number(lastUnderlyingBlock) + 1);
+        chain.mine(chain.finalizationBlocks);
+    }
+
     skipToProofUnavailability(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {
         const chain = this.chain as MockChain;
         chain.skipTimeTo(Number(lastUnderlyingTimestamp) + 1);

@@ -44,6 +44,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
     async function initialize() {
         commonContext = await CommonContext.createTest(governance);
         context = await AssetContext.createTest(commonContext, testChainInfo.xrp);
+        await context.updateUnderlyingBlock();
         return { commonContext, context };
     }
 
@@ -255,6 +256,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         assertWeb3Equal(await agent.collateralPool.fAssetFeesOf(minter.address), 0);
         // minter makes and defaults redemption
         const [[redemptionRequest],,] = await redeemer.requestRedemption(lots);
+
         for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment+100; i++) {
             await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
         }
@@ -585,7 +587,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         // perform some payment with correct minting reference and wrong amount
         await minter.performPayment(crt.paymentAddress, 100, crt.paymentReference);
         // mine some blocks to create overflow block
-        for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
+        for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment + 10; i++) {
             await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
         }
         // test rewarding for mint default
