@@ -5,11 +5,15 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../../userInterfaces/data/AssetManagerSettings.sol";
 import "../../userInterfaces/IRedemptionTimeExtension.sol";
 import "../library/data/RedemptionTimeExtension.sol";
+import "../library/SettingsUpdater.sol";
 import "../../diamond/library/LibDiamond.sol";
 import "../../diamond/facets/GovernedFacet.sol";
 import "./AssetManagerBase.sol";
 
 contract RedemptionTimeExtensionFacet is AssetManagerBase, GovernedFacet, IRedemptionTimeExtension {
+    bytes32 internal constant SET_REDEMPTION_PAYMENT_EXTENSION_SECONDS =
+        keccak256("RedemptionTimeExtensionFacet.setRedemptionPaymentExtensionSeconds(uint256)");
+
     // this method is not accessible through diamond proxy
     // it is only used for initialization when the contract is added after proxy deploy
     function initRedemptionTimeExtensionFacet(uint256 _redemptionPaymentExtensionSeconds)
@@ -26,6 +30,7 @@ contract RedemptionTimeExtensionFacet is AssetManagerBase, GovernedFacet, IRedem
         external
         onlyImmediateGovernance
     {
+        SettingsUpdater.checkEnoughTimeSinceLastUpdate(SET_REDEMPTION_PAYMENT_EXTENSION_SECONDS);
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 currentValue = RedemptionTimeExtension.redemptionPaymentExtensionSeconds();
         require(_value <= currentValue * 4 + settings.averageBlockTimeMS / 1000, "increase too big");
