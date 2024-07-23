@@ -39,7 +39,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     uint256 public constant MIN_TOKEN_SUPPLY_AFTER_EXIT = 1 ether;
     uint256 public constant MIN_NAT_BALANCE_AFTER_EXIT = 1 ether;
 
-    address public agentVault;   // immutable because there is no setter, but made mutable for simpler verification
+    address public agentVault;          // practically immutable because there is no setter
     IIAssetManager public assetManager; // practically immutable because there is no setter
     IERC20 public fAsset;               // practically immutable because there is no setter
     IICollateralPoolToken public token; // only changed once at deploy time
@@ -49,6 +49,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     uint32 public topupCollateralRatioBIPS;
     uint16 public topupTokenPriceFactorBIPS;
     bool private internalWithdrawal;
+    bool private initialized;
 
     mapping(address => uint256) private _fAssetFeeDebtOf;
     uint256 public totalFAssetFeeDebt;
@@ -65,6 +66,8 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         _;
     }
 
+    // Only used in some tests.
+    // The implementation in production will always be deployed with all zero addresses and parameters.
     constructor (
         address _agentVault,
         address _assetManager,
@@ -73,10 +76,28 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint32 _topupCollateralRatioBIPS,
         uint16 _topupTokenPriceFactorBIPS
     ) {
+        initialize(_agentVault, _assetManager, _fAsset,
+            _exitCollateralRatioBIPS, _topupCollateralRatioBIPS, _topupTokenPriceFactorBIPS);
+    }
+
+    function initialize(
+        address _agentVault,
+        address _assetManager,
+        address _fAsset,
+        uint32 _exitCollateralRatioBIPS,
+        uint32 _topupCollateralRatioBIPS,
+        uint16 _topupTokenPriceFactorBIPS
+    )
+        public
+    {
+        require(!initialized, "already initialized");
+        initialized = true;
+        // init vars
         agentVault = _agentVault;
         assetManager = IIAssetManager(_assetManager);
         fAsset = IERC20(_fAsset);
-        wNat = assetManager.getWNat();
+        // for proxy implementation, assetManager will be 0
+        wNat = address(assetManager) != address(0) ? assetManager.getWNat() : IWNat(address(0));
         exitCollateralRatioBIPS = _exitCollateralRatioBIPS;
         topupCollateralRatioBIPS = _topupCollateralRatioBIPS;
         topupTokenPriceFactorBIPS = _topupTokenPriceFactorBIPS;

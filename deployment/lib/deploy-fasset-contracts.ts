@@ -69,10 +69,13 @@ export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, co
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
+    const AgentVault = artifacts.require("AgentVault");
     const AgentVaultFactory = artifacts.require("AgentVaultFactory");
 
-    const agentVaultFactory = await AgentVaultFactory.new();
+    const agentVaultImplementation = await AgentVault.new(ZERO_ADDRESS);
+    const agentVaultFactory = await AgentVaultFactory.new(agentVaultImplementation.address);
 
+    contracts.add("AgentVaultProxyImplementation", "AgentVault.sol", agentVaultImplementation.address);
     contracts.add("AgentVaultFactory", "AgentVaultFactory.sol", agentVaultFactory.address);
 }
 
@@ -81,10 +84,13 @@ export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
+    const CollateralPool = artifacts.require("CollateralPool");
     const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 
-    const collateralPoolFactory = await CollateralPoolFactory.new();
+    const collateralPoolImplementation = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, 0);
+    const collateralPoolFactory = await CollateralPoolFactory.new(collateralPoolImplementation.address);
 
+    contracts.add("CollateralPoolProxyImplementation", "CollateralPool.sol", collateralPoolImplementation.address);
     contracts.add("CollateralPoolFactory", "CollateralPoolFactory.sol", collateralPoolFactory.address);
 }
 
@@ -93,10 +99,13 @@ export async function deployCollateralPoolTokenFactory(hre: HardhatRuntimeEnviro
 
     const artifacts = hre.artifacts as Truffle.Artifacts;
 
+    const CollateralPoolToken = artifacts.require("CollateralPoolToken");
     const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 
-    const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new();
+    const collateralPoolTokenImplementation = await CollateralPoolToken.new(ZERO_ADDRESS, "", "");
+    const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(collateralPoolTokenImplementation.address);
 
+    contracts.add("CollateralPoolTokenProxyImplementation", "CollateralPoolToken.sol", collateralPoolTokenImplementation.address);
     contracts.add("CollateralPoolTokenFactory", "CollateralPoolTokenFactory.sol", collateralPoolTokenFactory.address);
 }
 

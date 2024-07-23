@@ -3,16 +3,26 @@ pragma solidity 0.8.23;
 
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "../interfaces/IAgentVaultFactory.sol";
 import "./AgentVault.sol";
 
 
 contract AgentVaultFactory is IAgentVaultFactory, IERC165 {
+    address public implementation;
+
+    constructor(address _implementation) {
+        implementation = _implementation;
+    }
+
     /**
      * @notice Creates new agent vault
      */
     function create(IIAssetManager _assetManager) external returns (IIAgentVault) {
-        return new AgentVault(_assetManager);
+        address clone = Clones.clone(implementation);
+        AgentVault agentVault = AgentVault(payable(clone));
+        agentVault.initialize(_assetManager);
+        return agentVault;
     }
 
     /**

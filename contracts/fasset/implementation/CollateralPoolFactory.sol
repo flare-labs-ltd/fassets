@@ -3,6 +3,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "../interfaces/IFAsset.sol";
 import "../interfaces/ICollateralPoolFactory.sol";
 import "./CollateralPool.sol";
@@ -10,6 +11,12 @@ import "./CollateralPool.sol";
 
 contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
     using SafeCast for uint256;
+
+    address public implementation;
+
+    constructor(address _implementation) {
+        implementation = _implementation;
+    }
 
     function create(
         IIAssetManager _assetManager,
@@ -20,7 +27,9 @@ contract CollateralPoolFactory is ICollateralPoolFactory, IERC165 {
         returns (IICollateralPool)
     {
         address fAsset = address(_assetManager.fAsset());
-        IICollateralPool pool = new CollateralPool(_agentVault, address(_assetManager), fAsset,
+        address clone = Clones.clone(implementation);
+        CollateralPool pool = CollateralPool(payable(clone));
+        pool.initialize(_agentVault, address(_assetManager), fAsset,
             _settings.poolExitCollateralRatioBIPS.toUint32(),
             _settings.poolTopupCollateralRatioBIPS.toUint32(),
             _settings.poolTopupTokenPriceFactorBIPS.toUint16());
