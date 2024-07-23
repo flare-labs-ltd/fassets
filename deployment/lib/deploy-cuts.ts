@@ -8,18 +8,22 @@ import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts, waitFinalize } from ".
 
 const diamondCutJsonSchema = new JsonParameterSchema<DiamondCutJson>(require('../cuts/diamond-cuts.schema.json'));
 
-export async function deployCuts(hre: HardhatRuntimeEnvironment, contracts: ContractStore, cutsJSonFile: string, execute: boolean) {
+export type DiamondCutsOptions = { execute?: boolean, verbose?: boolean };
+export type SingleDiamondCuts = DiamondCutJson & { diamond: string };
+
+export async function deployCuts(hre: HardhatRuntimeEnvironment, contracts: ContractStore, cutsJSonFile: string, options: DiamondCutsOptions) {
     const cuts = diamondCutJsonSchema.load(cutsJSonFile);
     const diamondNames = Array.isArray(cuts.diamond) ? cuts.diamond : [cuts.diamond];
     for (const diamondName of diamondNames) {
-        await deployCutsOnDiamond(hre, contracts, diamondName, cuts, execute);
+        const diamondCuts: SingleDiamondCuts = { ...cuts, diamond: diamondName };
+        await deployCutsOnDiamond(hre, contracts, diamondCuts, options);
     }
 }
 
-export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contracts: ContractStore, diamondName: string, cuts: Pick<DiamondCutJson, "facets" | "init">, execute: boolean) {
+export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contracts: ContractStore, cuts: SingleDiamondCuts, options: DiamondCutsOptions = {}) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
     const { deployer } = loadDeployAccounts(hre);
-    const diamondAddress = contracts.getAddress(diamondName);
+    const diamondAddress = contracts.getAddress(cuts.diamond);
     //
     const IDiamondLoupe = artifacts.require("IDiamondLoupe");
     const diamondLoupeInstance = await IDiamondLoupe.at(diamondAddress);
@@ -33,14 +37,17 @@ export async function deployCutsOnDiamond(hre: HardhatRuntimeEnvironment, contra
     const IDiamondCut = artifacts.require("DiamondCutFacet");
     const diamondCutInstance = await IDiamondCut.at(diamondAddress);
     const productionMode = await diamondCutInstance.productionMode();
-    if (execute && !productionMode) {
-        await waitFinalize(hre, deployer, () => diamondCutInstance.diamondCut(diamondCuts, initAddress, initCalldata, { from: deployer }));
-    } else {
-        console.log(`------------------------------- ${diamondName} ---------------------------------`);
+    const executeCuts = options.execute && !productionMode;
+    if (options.verbose || !executeCuts) {
+        console.log(`------------------------------- ${cuts.diamond} ---------------------------------`);
         console.log(`CUTS:`, diamondCuts);
         console.log(`INIT:`, [initAddress, initCalldata]);
         console.log("INIT (decoded):", cuts.init);
-        console.log(`---- Diamond cut not executed. Data for manual execution on ${diamondName}: ----`);
+    }
+    if (executeCuts) {
+        await waitFinalize(hre, deployer, () => diamondCutInstance.diamondCut(diamondCuts, initAddress, initCalldata, { from: deployer }));
+    } else {
+        console.log(`---- Diamond cut not executed. Data for manual execution on ${cuts.diamond}: ----`);
         console.log("ADDRESS:", diamondAddress);
         console.log("CALLDATA:", abiEncodeCall(diamondCutInstance, (inst) => inst.diamondCut(diamondCuts, initAddress, initCalldata)));
     }
