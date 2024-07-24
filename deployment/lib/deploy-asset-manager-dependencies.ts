@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { FAssetContractStore } from "./contracts";
-import { loadDeployAccounts, ZERO_ADDRESS } from "./deploy-utils";
+import { loadDeployAccounts, waitFinalize, ZERO_ADDRESS } from "./deploy-utils";
 
 
 export async function deploySCProofVerifier(hre: HardhatRuntimeEnvironment, contracts: FAssetContractStore) {
@@ -10,7 +10,9 @@ export async function deploySCProofVerifier(hre: HardhatRuntimeEnvironment, cont
 
     const SCProofVerifier = artifacts.require("SCProofVerifier");
 
-    const scProofVerifier = await SCProofVerifier.new(contracts.StateConnector.address);
+    const { deployer } = loadDeployAccounts(hre);
+
+    const scProofVerifier = await waitFinalize(hre, deployer, () => SCProofVerifier.new(contracts.StateConnector.address, { from: deployer }));
 
     contracts.add("SCProofVerifier", "SCProofVerifier.sol", scProofVerifier.address);
 }
@@ -22,7 +24,9 @@ export async function deployPriceReader(hre: HardhatRuntimeEnvironment, contract
 
     const PriceReader = artifacts.require("FtsoV1PriceReader");
 
-    const priceReader = await PriceReader.new(contracts.AddressUpdater.address, contracts.FtsoRegistry.address);
+    const { deployer } = loadDeployAccounts(hre);
+
+    const priceReader = await waitFinalize(hre, deployer, () => PriceReader.new(contracts.AddressUpdater.address, contracts.FtsoRegistry.address, { from: deployer }));
 
     contracts.add("PriceReader", "PriceReader.sol", priceReader.address);
 }
@@ -36,7 +40,7 @@ export async function deployUserWhitelist(hre: HardhatRuntimeEnvironment, contra
 
     const { deployer } = loadDeployAccounts(hre);
 
-    const whitelist = await Whitelist.new(contracts.GovernanceSettings.address, deployer, false);
+    const whitelist = await waitFinalize(hre, deployer, () => Whitelist.new(contracts.GovernanceSettings.address, deployer, false, { from: deployer }));
 
     contracts.add(`UserWhitelist`, "Whitelist.sol", whitelist.address, { mustSwitchToProduction: true });
 }
@@ -50,7 +54,7 @@ export async function deployAgentOwnerRegistry(hre: HardhatRuntimeEnvironment, c
 
     const { deployer } = loadDeployAccounts(hre);
 
-    const whitelist = await AgentOwnerRegistry.new(contracts.GovernanceSettings.address, deployer, true);
+    const whitelist = await waitFinalize(hre, deployer, () => AgentOwnerRegistry.new(contracts.GovernanceSettings.address, deployer, true, { from: deployer }));
 
     contracts.add("AgentOwnerRegistry", "AgentOwnerRegistry.sol", whitelist.address, { mustSwitchToProduction: true });
 }
@@ -63,8 +67,10 @@ export async function deployAgentVaultFactory(hre: HardhatRuntimeEnvironment, co
     const AgentVault = artifacts.require("AgentVault");
     const AgentVaultFactory = artifacts.require("AgentVaultFactory");
 
-    const agentVaultImplementation = await AgentVault.new(ZERO_ADDRESS);
-    const agentVaultFactory = await AgentVaultFactory.new(agentVaultImplementation.address);
+    const { deployer } = loadDeployAccounts(hre);
+
+    const agentVaultImplementation = await waitFinalize(hre, deployer, () => AgentVault.new(ZERO_ADDRESS, { from: deployer }));
+    const agentVaultFactory = await waitFinalize(hre, deployer, () => AgentVaultFactory.new(agentVaultImplementation.address, { from: deployer }));
 
     contracts.add("AgentVaultProxyImplementation", "AgentVault.sol", agentVaultImplementation.address);
     contracts.add("AgentVaultFactory", "AgentVaultFactory.sol", agentVaultFactory.address);
@@ -78,8 +84,10 @@ export async function deployCollateralPoolFactory(hre: HardhatRuntimeEnvironment
     const CollateralPool = artifacts.require("CollateralPool");
     const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 
-    const collateralPoolImplementation = await CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, 0);
-    const collateralPoolFactory = await CollateralPoolFactory.new(collateralPoolImplementation.address);
+    const { deployer } = loadDeployAccounts(hre);
+
+    const collateralPoolImplementation = await waitFinalize(hre, deployer, () => CollateralPool.new(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, 0, { from: deployer }));
+    const collateralPoolFactory = await waitFinalize(hre, deployer, () => CollateralPoolFactory.new(collateralPoolImplementation.address, { from: deployer }));
 
     contracts.add("CollateralPoolProxyImplementation", "CollateralPool.sol", collateralPoolImplementation.address);
     contracts.add("CollateralPoolFactory", "CollateralPoolFactory.sol", collateralPoolFactory.address);
@@ -93,8 +101,10 @@ export async function deployCollateralPoolTokenFactory(hre: HardhatRuntimeEnviro
     const CollateralPoolToken = artifacts.require("CollateralPoolToken");
     const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 
-    const collateralPoolTokenImplementation = await CollateralPoolToken.new(ZERO_ADDRESS, "", "");
-    const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(collateralPoolTokenImplementation.address);
+    const { deployer } = loadDeployAccounts(hre);
+
+    const collateralPoolTokenImplementation = await waitFinalize(hre, deployer, () => CollateralPoolToken.new(ZERO_ADDRESS, "", "", { from: deployer }));
+    const collateralPoolTokenFactory = await waitFinalize(hre, deployer, () => CollateralPoolTokenFactory.new(collateralPoolTokenImplementation.address, { from: deployer }));
 
     contracts.add("CollateralPoolTokenProxyImplementation", "CollateralPoolToken.sol", collateralPoolTokenImplementation.address);
     contracts.add("CollateralPoolTokenFactory", "CollateralPoolTokenFactory.sol", collateralPoolTokenFactory.address);

@@ -8,7 +8,7 @@ import { JsonParameterSchema } from "./JsonParameterSchema";
 import { AssetManagerParameters, CollateralTypeParameters } from './asset-manager-parameters';
 import { FAssetContractStore } from "./contracts";
 import { createDiamondCutsForAllAssetManagerFacets, deployAllAssetManagerFacets, deployFacet } from "./deploy-asset-manager-facets";
-import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts } from './deploy-utils';
+import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts, waitFinalize } from './deploy-utils';
 
 export const assetManagerParameters = new JsonParameterSchema<AssetManagerParameters>(require('../config/asset-manager-parameters.schema.json'));
 
@@ -21,7 +21,8 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
 
     const { deployer } = loadDeployAccounts(hre);
 
-    const assetManagerController = await AssetManagerController.new(contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address);
+    const assetManagerController = await waitFinalize(hre, deployer,
+        () => AssetManagerController.new(contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address, { from: deployer }));
 
     contracts.add("AssetManagerController", "AssetManagerController.sol", assetManagerController.address, { mustSwitchToProduction: true });
 
@@ -29,7 +30,7 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
     for (const parameterFile of managerParameterFiles) {
         console.log(`   deploying AssetManager with config ${parameterFile}`);
         const assetManager = await deployAssetManager(hre, parameterFile, contracts, false);
-        await assetManagerController.addAssetManager(assetManager.address, { from: deployer });
+        await waitFinalize(hre, deployer, () => assetManagerController.addAssetManager(assetManager.address, { from: deployer }));
     }
 
     console.log(`NOTE: perform governance call 'AddressUpdater(${contracts.AddressUpdater.address}).addOrUpdateContractNamesAndAddresses(["AssetManagerController"], [${assetManagerController.address}])'`);
@@ -46,7 +47,8 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const { deployer } = loadDeployAccounts(hre);
     const parameters = assetManagerParameters.load(parametersFile);
 
-    const fAsset = await FAsset.new(deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals);
+    const fAsset = await waitFinalize(hre, deployer,
+        () => FAsset.new(deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals, { from: deployer }));
 
     const poolCollateral = convertCollateralType(contracts, parameters.poolCollateral, CollateralClass.POOL);
     const vaultCollateral = parameters.vaultCollaterals.map(p => convertCollateralType(contracts, p, CollateralClass.VAULT));
@@ -55,17 +57,18 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const assetManagerSettings = web3DeepNormalize(createAssetManagerSettings(contracts, parameters, fAsset));
 
     // deploy asset manager diamond
-    const assetManagerInitAddress = await deployFacet(hre, 'AssetManagerInit', contracts);
-    await deployAllAssetManagerFacets(hre, contracts);
+    const assetManagerInitAddress = await deployFacet(hre, 'AssetManagerInit', contracts, deployer);
+    await deployAllAssetManagerFacets(hre, contracts, deployer);
 
     const diamondCuts = await createDiamondCutsForAllAssetManagerFacets(hre, contracts);
 
     const initParameters = abiEncodeCall(await AssetManagerInit.at(assetManagerInitAddress),
         c => c.init(contracts.GovernanceSettings.address, deployer, assetManagerSettings, collateralTypes));
 
-    const assetManager = await AssetManager.new(diamondCuts, assetManagerInitAddress, initParameters);
+    const assetManager = await waitFinalize(hre, deployer,
+        () => AssetManager.new(diamondCuts, assetManagerInitAddress, initParameters, { from: deployer }));
 
-    await fAsset.setAssetManager(assetManager.address, { from: deployer });
+    await waitFinalize(hre, deployer, () => fAsset.setAssetManager(assetManager.address, { from: deployer }));
 
     const symbol = parameters.fAssetSymbol;
     contracts.add(`AssetManager_${symbol}`, "AssetManager.sol", assetManager.address);
@@ -87,15 +90,11 @@ export async function switchAllToProductionMode(hre: HardhatRuntimeEnvironment, 
         if (contract?.mustSwitchToProduction) {
             console.log(`Switching to production: ${contract.name}`);
             const instance = await GovernedBase.at(contract.address);
-            await instance.switchToProductionMode({ from: deployer });
+            await waitFinalize(hre, deployer, () => instance.switchToProductionMode({ from: deployer }));
             delete contract.mustSwitchToProduction;
             contracts.save();
         }
     }
-}
-
-function parseBN(s: string) {
-    return new BN(s.replace(/_/g, ''), 10);
 }
 
 export function convertCollateralType(contracts: FAssetContractStore, parameters: CollateralTypeParameters, collateralClass: CollateralClass): CollateralType {
@@ -174,4 +173,8 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         collateralPoolTokenTimelockSeconds: parameters.collateralPoolTokenTimelockSeconds,
         diamondCutMinTimelockSeconds: parameters.diamondCutMinTimelockSeconds,
     };
+}
+
+function parseBN(s: string) {
+    return new BN(s.replace(/_/g, ''), 10);
 }
