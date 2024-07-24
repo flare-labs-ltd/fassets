@@ -27,6 +27,8 @@ const StateConnector = artifacts.require('StateConnectorMock');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const ERC20Mock = artifacts.require("ERC20Mock");
+const CollateralPool = artifacts.require("CollateralPool");
+const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
@@ -212,10 +214,14 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     // create price reader
     const priceReader = await PriceReader.new(addressUpdater.address, ftsoRegistry.address);
     // create agent vault factory
-    const agentVaultFactory = await AgentVaultFactory.new();
-    // create collateral pool and token factory
-    const collateralPoolFactory = await CollateralPoolFactory.new();
-    const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new();
+    const agentVaultImplementation = await AgentVault.new(constants.ZERO_ADDRESS);
+    const agentVaultFactory = await AgentVaultFactory.new(agentVaultImplementation.address);
+    // create collateral pool factory
+    const collateralPoolImplementation = await CollateralPool.new(constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, 0, 0, 0);
+    const collateralPoolFactory = await CollateralPoolFactory.new(collateralPoolImplementation.address);
+    // create collateral pool token factory
+    const collateralPoolTokenImplementation = await CollateralPoolToken.new(constants.ZERO_ADDRESS, "", "");
+    const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(collateralPoolTokenImplementation.address);
     // create allow-all agent whitelist
     const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance, true);
     await agentOwnerRegistry.setAllowAll(true, { from: governance });

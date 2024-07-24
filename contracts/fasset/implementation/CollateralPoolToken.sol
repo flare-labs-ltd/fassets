@@ -22,15 +22,22 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
         uint128 end;
     }
 
-    address public collateralPool;  // immutable because there is no setter, but made mutable for simpler verification
+    address public collateralPool;  // practically immutable because there is no setter
+
+    string private tokenName;       // practically immutable because there is no setter
+    string private tokenSymbol;     // practically immutable because there is no setter
+
     mapping(address => TimelockQueue) private timelocksByAccount;
     bool private ignoreTimelocked;
+    bool private initialized;
 
     modifier onlyCollateralPool {
         require(msg.sender == collateralPool, "only collateral pool");
         _;
     }
 
+    // Only used in some tests.
+    // The implementation in production will always be deployed with all zero address for collateral pool.
     constructor(
         address _collateralPool,
         string memory _tokenName,
@@ -38,7 +45,37 @@ contract CollateralPoolToken is IICollateralPoolToken, ERC20 {
     )
         ERC20(_tokenName, _tokenSymbol)
     {
+        initialize(_collateralPool, _tokenName, _tokenSymbol);
+    }
+
+    function initialize(
+        address _collateralPool,
+        string memory _tokenName,
+        string memory _tokenSymbol
+    )
+        public
+    {
+        require(!initialized, "already initialized");
+        initialized = true;
+        // init vars
         collateralPool = _collateralPool;
+        tokenName = _tokenName;
+        tokenSymbol = _tokenSymbol;
+    }
+
+    /**
+     * @dev Returns the name of the token.
+     */
+    function name() public view virtual override returns (string memory) {
+        return tokenName;
+    }
+
+    /**
+     * @dev Returns the symbol of the token, usually a shorter version of the
+     * name.
+     */
+    function symbol() public view virtual override returns (string memory) {
+        return tokenSymbol;
     }
 
     function mint(

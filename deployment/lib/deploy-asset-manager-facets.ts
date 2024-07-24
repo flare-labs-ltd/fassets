@@ -1,7 +1,7 @@
 import { Artifact, HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DiamondCut, FacetCutAction } from '../../lib/utils/diamond';
 import { ContractStore } from "./contracts";
-import { deployedCodeMatches } from './deploy-utils';
+import { deployedCodeMatches, waitFinalize } from './deploy-utils';
 
 const assetManagerInterfaces: string[] = [
     'IIAssetManager'
@@ -37,19 +37,19 @@ const assetManagerFacets = [
     'AgentPingFacet'
 ];
 
-export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore) {
+export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore, deployer: string) {
     for (const facetName of assetManagerFacets) {
-        await deployFacet(hre, facetName, contracts);
+        await deployFacet(hre, facetName, contracts, deployer);
     }
 }
 
 // deploy facet unless it is already dpeloyed with identical code (facets must be stateless and have zero-arg constructor)
-export async function deployFacet(hre: HardhatRuntimeEnvironment, facetName: string, contracts: ContractStore) {
+export async function deployFacet(hre: HardhatRuntimeEnvironment, facetName: string, contracts: ContractStore, deployer: string) {
     const artifact = hre.artifacts.readArtifactSync(facetName);
     const alreadyDeployed = await deployedCodeMatches(artifact, contracts.get(facetName)?.address);
     if (!alreadyDeployed) {
         const contractFactory = hre.artifacts.require(facetName);
-        const instance = await contractFactory.new() as Truffle.ContractInstance;
+        const instance = await waitFinalize(hre, deployer, () => contractFactory.new({ from: deployer })) as Truffle.ContractInstance;
         contracts.add(facetName, `${facetName}.sol`, instance.address);
         console.log(`Deployed facet ${facetName}`);
         return instance.address;

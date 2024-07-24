@@ -8,18 +8,14 @@ import "hardhat-gas-reporter";
 import { task } from "hardhat/config";
 import path from "path";
 import 'solidity-coverage';
-import {
-    deployAgentOwnerRegistry, deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory,
-    deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployUserWhitelist, switchAllToProductionMode,
-    verifyAssetManager, verifyAssetManagerController, verifyCollateralPool, verifyFAssetToken
-} from "./deployment/lib/deploy-fasset-contracts";
-import { linkContracts } from "./deployment/lib/link-contracts";
-import "./type-extensions";
-
-// import config used for compilation
 import { FAssetContractStore } from "./deployment/lib/contracts";
-import { networkConfigName } from "./deployment/lib/deploy-utils";
+import { deployAssetManager, deployAssetManagerController, switchAllToProductionMode } from "./deployment/lib/deploy-asset-manager";
+import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPoolFactory, deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployUserWhitelist } from "./deployment/lib/deploy-asset-manager-dependencies";
 import { deployCuts } from "./deployment/lib/deploy-cuts";
+import { networkConfigName } from "./deployment/lib/deploy-utils";
+import { linkContracts } from "./deployment/lib/link-contracts";
+import { verifyAssetManager, verifyAssetManagerController, verifyCollateralPool, verifyFAssetToken } from "./deployment/lib/verify-fasset-contracts";
+import "./type-extensions";
 
 
 task("link-contracts", "Link contracts with external libraries")

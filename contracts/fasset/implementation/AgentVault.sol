@@ -14,7 +14,9 @@ import "../interfaces/IIAssetManager.sol";
 contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
     using SafeERC20 for IERC20;
 
-    IIAssetManager public immutable assetManager;
+    IIAssetManager public assetManager; // practicaly immutable
+
+    bool private initialized;
 
     IERC20[] private usedTokens;
 
@@ -36,7 +38,15 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         _;
     }
 
+    // Only used in some tests.
+    // The implementation in production will always be deployed with address(0) for _assetManager.
     constructor(IIAssetManager _assetManager) {
+        initialize(_assetManager);
+    }
+
+    function initialize(IIAssetManager _assetManager) public {
+        require(!initialized, "already initialized");
+        initialized = true;
         assetManager = _assetManager;
     }
 

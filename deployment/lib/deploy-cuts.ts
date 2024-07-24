@@ -4,7 +4,7 @@ import { DiamondCutJson, DiamondCutJsonFacet, DiamondCutJsonInit } from "./Diamo
 import { JsonParameterSchema } from "./JsonParameterSchema";
 import { ContractStore } from "./contracts";
 import { deployFacet } from "./deploy-asset-manager-facets";
-import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts } from "./deploy-utils";
+import { ZERO_ADDRESS, abiEncodeCall, loadDeployAccounts, waitFinalize } from "./deploy-utils";
 
 const diamondCutJsonSchema = new JsonParameterSchema<DiamondCutJson>(require('../cuts/diamond-cuts.schema.json'));
 
@@ -18,11 +18,12 @@ export async function deployCuts(hre: HardhatRuntimeEnvironment, contracts: Cont
 
 async function deployCutsOnSingleDiamond(hre: HardhatRuntimeEnvironment, contracts: ContractStore, diamondName: string, cuts: DiamondCutJson, execute: boolean) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
+    const { deployer } = loadDeployAccounts(hre);
     const diamondAddress = contracts.getAddress(diamondName);
     const IDiamondLoupe = artifacts.require("IDiamondLoupe");
     const diamondLoupeInstance = await IDiamondLoupe.at(diamondAddress);
     const deployedSelectors = await DiamondSelectors.fromLoupe(diamondLoupeInstance);
-    const newSelectors = await createNewSelectors(hre, contracts, cuts);
+    const newSelectors = await createNewSelectors(hre, contracts, cuts, deployer);
     const diamondCuts = deployedSelectors.createCuts(newSelectors);
     console.log(`------------------------------- ${diamondName} ---------------------------------`);
     console.log(`CUTS:`, diamondCuts);
@@ -33,8 +34,7 @@ async function deployCutsOnSingleDiamond(hre: HardhatRuntimeEnvironment, contrac
     const diamondCutInstance = await IDiamondCut.at(diamondAddress);
     const productionMode = await diamondCutInstance.productionMode();
     if (execute && !productionMode) {
-        const { deployer } = loadDeployAccounts(hre);
-        await diamondCutInstance.diamondCut(diamondCuts, initAddress, initCalldata, { from: deployer });
+        await waitFinalize(hre, deployer, () => diamondCutInstance.diamondCut(diamondCuts, initAddress, initCalldata, { from: deployer }));
     } else {
         console.log(`---- Diamond cut not executed. Data for manual execution on ${diamondName}: ----`);
         console.log("ADDRESS:", diamondAddress);
@@ -42,18 +42,18 @@ async function deployCutsOnSingleDiamond(hre: HardhatRuntimeEnvironment, contrac
     }
 }
 
-async function createNewSelectors(hre: HardhatRuntimeEnvironment, contracts: ContractStore, cuts: DiamondCutJson) {
+async function createNewSelectors(hre: HardhatRuntimeEnvironment, contracts: ContractStore, cuts: DiamondCutJson, deployer: string) {
     let selectors = new DiamondSelectors();
     for (const facet of cuts.facets) {
-        const facetSelectors = await createFacetSelectors(hre, contracts, facet);
+        const facetSelectors = await createFacetSelectors(hre, contracts, facet, deployer);
         selectors = selectors.merge(facetSelectors);
     }
     return selectors;
 }
 
-async function createFacetSelectors(hre: HardhatRuntimeEnvironment, contracts: ContractStore, facet: DiamondCutJsonFacet) {
+async function createFacetSelectors(hre: HardhatRuntimeEnvironment, contracts: ContractStore, facet: DiamondCutJsonFacet, deployer: string) {
     const contract = hre.artifacts.require(facet.contract) as Truffle.Contract<Truffle.ContractInstance>;
-    const address = await deployFacet(hre, facet.contract, contracts);
+    const address = await deployFacet(hre, facet.contract, contracts, deployer);
     const instance = await contract.at(address);
     const methodFilter = facet.methods && ((abi: AbiItem) => facet.methods!.includes(abi.name!));
     let facetSelectors = DiamondSelectors.fromABI(instance, methodFilter);
