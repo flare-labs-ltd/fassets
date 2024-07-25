@@ -103,116 +103,129 @@ library SettingsUpdater {
         if (_method == UPDATE_CONTRACTS) {
             _updateContracts(_params);
         } else if (_method == SET_TIME_FOR_PAYMENT) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setTimeForPayment(_params);
         } else if (_method == SET_PAYMENT_CHALLENGE_REWARD) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setPaymentChallengeReward(_params);
         } else if (_method == SET_WHITELIST) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setWhitelist(_params);
         } else if (_method == SET_AGENT_OWNER_REGISTRY) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setAgentOwnerRegistry(_params);
         } else if (_method == SET_AGENT_VAULT_FACTORY) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setAgentVaultFactory(_params);
         } else if (_method == SET_COLLATERAL_POOL_FACTORY) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setCollateralPoolFactory(_params);
         } else if (_method == SET_COLLATERAL_POOL_TOKEN_FACTORY) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setCollateralPoolTokenFactory(_params);
         } else if (_method == SET_PRICE_READER) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setPriceReader(_params);
         } else if (_method == SET_SC_PROOF_VERIFIER) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setSCProofVerifier(_params);
         } else if (_method == SET_MIN_UPDATE_REPEAT_TIME_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setMinUpdateRepeatTimeSeconds(_params);
         } else if (_method == SET_LOT_SIZE_AMG) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setLotSizeAmg(_params);
         } else if (_method == SET_MIN_UNDERLYING_BACKING_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setMinUnderlyingBackingBips(_params);
         } else if (_method == SET_COLLATERAL_RESERVATION_FEE_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setCollateralReservationFeeBips(_params);
         } else if (_method == SET_REDEMPTION_FEE_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setRedemptionFeeBips(_params);
         } else if (_method == SET_REDEMPTION_DEFAULT_FACTOR_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setRedemptionDefaultFactorBips(_params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_AFTER_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setConfirmationByOthersAfterSeconds(_params);
         } else if (_method == SET_CONFIRMATION_BY_OTHERS_REWARD_USD5) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setConfirmationByOthersRewardUSD5(_params);
         } else if (_method == SET_MAX_REDEEMED_TICKETS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setMaxRedeemedTickets(_params);
         } else if (_method == SET_WITHDRAWAL_OR_DESTROY_WAIT_MIN_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setWithdrawalOrDestroyWaitMinSeconds(_params);
         } else if (_method == SET_CCB_TIME_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setCcbTimeSeconds(_params);
         } else if (_method == SET_ATTESTATION_WINDOW_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setAttestationWindowSeconds(_params);
         } else if (_method == SET_AVERAGE_BLOCK_TIME_MS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setAverageBlockTimeMS(_params);
         } else if (_method == SET_MAX_TRUSTED_PRICE_AGE_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setMaxTrustedPriceAgeSeconds(_params);
         } else if (_method == SET_ANNOUNCED_UNDERLYING_CONFIRMATION_MIN_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setAnnouncedUnderlyingConfirmationMinSeconds(_params);
         } else if (_method == SET_MINTING_POOL_HOLDINGS_REQUIRED_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setMintingPoolHoldingsRequiredBIPS(_params);
         } else if (_method == SET_MINTING_CAP_AMG) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setMintingCapAMG(_params);
         } else if (_method == SET_TOKEN_INVALIDATION_TIME_MIN_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setTokenInvalidationTimeMinSeconds(_params);
         } else if (_method == SET_VAULT_COLLATERAL_BUY_FOR_FLARE_FACTOR_BIPS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setVaultCollateralBuyForFlareFactorBIPS(_params);
         } else if (_method == SET_AGENT_EXIT_AVAILABLE_TIMELOCK_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setAgentExitAvailableTimelockSeconds(_params);
         } else if (_method == SET_AGENT_FEE_CHANGE_TIMELOCK_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setAgentFeeChangeTimelockSeconds(_params);
         } else if (_method == SET_AGENT_MINTING_CR_CHANGE_TIMELOCK_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setAgentMintingCRChangeTimelockSeconds(_params);
         } else if (_method == SET_POOL_EXIT_AND_TOPUP_CHANGE_TIMELOCK_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setPoolExitAndTopupChangeTimelockSeconds(_params);
         } else if (_method == SET_AGENT_SETTING_UPDATE_WINDOW_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setAgentTimelockedOperationWindowSeconds(_params);
         } else if (_method == SET_COLLATERAL_POOL_TOKEN_TIMELOCK_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setCollateralPoolTokenTimelockSeconds(_params);
         } else if (_method == SET_LIQUIDATION_STEP_SECONDS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setLiquidationStepSeconds(_params);
         } else if (_method == SET_LIQUIDATION_PAYMENT_FACTORS) {
-            _checkEnoughTimeSinceLastUpdate(_method);
+            checkEnoughTimeSinceLastUpdate(_method);
             _setLiquidationPaymentFactors(_params);
         } else {
             revert("update: invalid method");
         }
+    }
+
+    function checkEnoughTimeSinceLastUpdate(
+        bytes32 _method
+    )
+        internal
+    {
+        UpdaterState storage _state = _getUpdaterState();
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        uint256 lastUpdate = _state.lastUpdate[_method];
+        require(lastUpdate == 0 || block.timestamp >= lastUpdate + settings.minUpdateRepeatTimeSeconds,
+            "too close to previous update");
+        _state.lastUpdate[_method] = block.timestamp;
     }
 
     function _getUpdaterState() private pure returns (UpdaterState storage _state) {
@@ -222,19 +235,6 @@ library SettingsUpdater {
         assembly {
             _state.slot := position
         }
-    }
-
-    function _checkEnoughTimeSinceLastUpdate(
-        bytes32 _method
-    )
-        private
-    {
-        UpdaterState storage _state = _getUpdaterState();
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        uint256 lastUpdate = _state.lastUpdate[_method];
-        require(lastUpdate == 0 || block.timestamp >= lastUpdate + settings.minUpdateRepeatTimeSeconds,
-            "too close to previous update");
-        _state.lastUpdate[_method] = block.timestamp;
     }
 
     function _updateContracts(

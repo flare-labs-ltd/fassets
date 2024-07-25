@@ -7,12 +7,6 @@ const assetManagerInterfaces: string[] = [
     'IIAssetManager'
 ];
 
-// allow deploy and later add interfaces as diamond cut (for test deploys)
-const assetManagerOptionalInterfaces: string[] = [
-];
-
-const assetManagerInitContract = 'AssetManagerInit';
-
 const assetManagerFacets = [
     'AssetManagerDiamondCutFacet',
     'DiamondLoupeFacet',
@@ -67,21 +61,24 @@ export async function createDiamondCutsForAllAssetManagerFacets(hre: HardhatRunt
         const artifact = hre.artifacts.readArtifactSync(facetName);
         diamondCuts.push(await createDiamondCut(artifact, facetAddress, interfaceSelectors));
     }
-    // verify every required selector is included in some cut
-    for (const cut of diamondCuts) {
-        for (const selector of cut.functionSelectors) {
-            interfaceSelectors.delete(selector);
+    return diamondCuts;
+}
+
+export async function checkAllAssetManagerMethodsImplemented(hre: HardhatRuntimeEnvironment, contractAddress: string) {
+    const artifacts = hre.artifacts as Truffle.Artifacts;
+    const interfaceSelectors = createInterfaceSelectorMap(hre, assetManagerInterfaces);
+    const interfaceSelectorSet = new Set(interfaceSelectors.keys());
+    const loupe = await artifacts.require("IDiamondLoupe").at(contractAddress);
+    const facets = await loupe.facets();
+    for (const facet of facets) {
+        for (const selector of facet.functionSelectors) {
+            interfaceSelectorSet.delete(selector);
         }
     }
-    const optionalInterfaceMap = createInterfaceSelectorMap(hre, assetManagerOptionalInterfaces);
-    for (const selector of optionalInterfaceMap.keys()) {
-        interfaceSelectors.delete(selector);
-    }
-    if (interfaceSelectors.size > 0) {
-        const missing = Array.from(interfaceSelectors).map(sel => interfaceSelectorMap.get(sel)?.name);
+    if (interfaceSelectorSet.size > 0) {
+        const missing = Array.from(interfaceSelectorSet).map(sel => interfaceSelectors.get(sel)?.name);
         throw new Error(`Deployed facets are missing methods ${missing.join(", ")}`);
     }
-    return diamondCuts;
 }
 
 export async function createDiamondCut(artifact: Artifact, address: string, selectorFilter: Set<string>): Promise<DiamondCut> {

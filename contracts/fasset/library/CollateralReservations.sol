@@ -224,8 +224,9 @@ library CollateralReservations {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         // timeshift amortizes for the time that passed from the last underlying block update
         uint64 timeshift = block.timestamp.toUint64() - state.currentUnderlyingBlockUpdatedAt;
+        uint64 blockshift = (uint256(timeshift) * 1000 / settings.averageBlockTimeMS).toUint64();
         _lastUnderlyingBlock =
-            state.currentUnderlyingBlock + settings.underlyingBlocksForPayment;
+            state.currentUnderlyingBlock + blockshift + settings.underlyingBlocksForPayment;
         _lastUnderlyingTimestamp =
             state.currentUnderlyingBlockTimestamp + timeshift + settings.underlyingSecondsForPayment;
     }

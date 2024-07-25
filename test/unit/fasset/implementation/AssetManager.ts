@@ -1,11 +1,12 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralClass, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerInitSettings, AssetManagerSettings, CollateralClass, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
+import { DiamondCut } from "../../../../lib/utils/diamond";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
-import { AgentVaultInstance, IIAssetManagerInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, WNatInstance, AssetManagerInitInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { deployAssetManagerFacets, newAssetManager, newAssetManagerDiamond } from "../../../utils/fasset/CreateAssetManager";
@@ -14,7 +15,6 @@ import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnect
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
-import { DiamondCut } from "../../../../lib/utils/diamond";
 
 const Whitelist = artifacts.require('Whitelist');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
@@ -44,7 +44,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let wNat: WNatInstance;
     let usdc: ERC20MockInstance;
     let ftsos: TestFtsos;
-    let settings: AssetManagerSettings;
+    let settings: AssetManagerInitSettings;
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
@@ -235,6 +235,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const resSettings = web3ResultStruct(await assetManager.getSettings());
             settings.fAsset = fAsset.address;
             settings.assetManagerController = assetManagerController;
+            (resSettings as AssetManagerInitSettings).redemptionPaymentExtensionSeconds = await assetManager.redemptionPaymentExtensionSeconds();
             assertWeb3DeepEqual(resSettings, settings);
             assert.equal(await assetManager.assetManagerController(), assetManagerController);
         });
@@ -1342,7 +1343,61 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assertWeb3Equal(agentInfo.freeUnderlyingBalanceUBA, lotsToUBA(1).add(agentFeeShareUBA));
         });
-    });
+
+        it("should extend redemption payment time", async () => {
+            // define redeemer and its underlying address
+            const redeemer = accounts[83];
+            const underlyingRedeemer = "redeemer"
+            // create available agentVault and mint f-assets
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(10));
+            // perform redemption requests
+            const times1: number[] = [];
+            const blocks1: number[] = [];
+            for (let i = 0; i < 10; i++) {
+                const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
+                const timestamp = chain.lastBlockTimestamp();
+                const block = chain.blockHeight();
+                const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
+                times1.push(Number(redemptionRequest.lastUnderlyingTimestamp) - timestamp);
+                blocks1.push(Number(redemptionRequest.lastUnderlyingBlock) - Number(block));
+            }
+            for (let i = 1; i < 10; i++) {
+                assert.equal(times1[i] - times1[i - 1], 10);
+                assert.isAtLeast(blocks1[i], blocks1[i - 1]);
+            }
+            assert.isAtLeast(blocks1[9] - blocks1[0], 5);
+        });
+
+        it("should not extend redemption payment time when setting is 0", async () => {
+            // define redeemer and its underlying address
+            const redeemer = accounts[83];
+            const underlyingRedeemer = "redeemer"
+            // create available agentVault and mint f-assets
+            const agentVault = await createAvailableAgentWithEOA(agentOwner1, underlyingAgent1);
+            await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(10));
+            // set redemptionPaymentExtensionSeconds setting to 0 (needs two steps and timeskip due to validation)
+            await assetManager.setRedemptionPaymentExtensionSeconds(3, { from: governance });
+            await time.increase(86400);
+            await assetManager.setRedemptionPaymentExtensionSeconds(0, { from: governance });
+            // default a redemption
+            const times1: number[] = [];
+            const blocks1: number[] = [];
+            for (let i = 0; i < 10; i++) {
+                const redemptionRequestTx = await assetManager.redeem(1, underlyingRedeemer, constants.ZERO_ADDRESS, { from: redeemer });
+                const timestamp = chain.lastBlockTimestamp();
+                const block = chain.blockHeight();
+                const redemptionRequest = findRequiredEvent(redemptionRequestTx, "RedemptionRequested").args;
+                times1.push(Number(redemptionRequest.lastUnderlyingTimestamp) - timestamp);
+                blocks1.push(Number(redemptionRequest.lastUnderlyingBlock) - Number(block));
+                // console.log(times1[i], blocks1[i]);
+            }
+            for (let i = 1; i < 10; i++) {
+                assert.isAtMost(times1[i] - times1[i - 1], 2);
+                assert.isAtMost(blocks1[i] - blocks1[i - 1], 2);
+            }
+        });
+});
 
     describe("agent underlying", () => {
 
@@ -1582,11 +1637,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const IDiamondCut = artifacts.require("IDiamondCut");
             const IGoverned = artifacts.require("IGoverned");
             const IAgentPing = artifacts.require("IAgentPing");
+            const IRedemptionTimeExtension = artifacts.require("IRedemptionTimeExtension");
             const iERC165 = await IERC165.at(assetManager.address);
             const iDiamondLoupe = await IDiamondLoupe.at(assetManager.address);
             const iDiamondCut = await IDiamondCut.at(assetManager.address);
             const iGoverned = await IGoverned.at(assetManager.address);
             const iAgentPing = await IAgentPing.at(assetManager.address);
+            const iRedemptionTimeExtension = await IRedemptionTimeExtension.at(assetManager.address);
             const iAssetManager = await IAssetManager.at(assetManager.address);
             const iiAssetManager = await IIAssetManager.at(assetManager.address);
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iERC165.abi)));
@@ -1594,7 +1651,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iDiamondCut.abi)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iGoverned.abi)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iAgentPing.abi)));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iAssetManager.abi, [iERC165.abi, iDiamondLoupe.abi, iAgentPing.abi])));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iAssetManager.abi, [iERC165.abi, iDiamondLoupe.abi, iAgentPing.abi, iRedemptionTimeExtension.abi])));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iiAssetManager.abi, [iAssetManager.abi, iGoverned.abi, iDiamondCut.abi])));
             assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });

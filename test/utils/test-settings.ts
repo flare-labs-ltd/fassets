@@ -1,20 +1,28 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerSettings, CollateralType, CollateralClass } from "../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerInitSettings, AssetManagerSettings, CollateralClass, CollateralType } from "../../lib/fasset/AssetManagerTypes";
+import { ChainInfo } from "../../lib/fasset/ChainInfo";
 import { PaymentReference } from "../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../lib/utils/events/truffle";
-import { DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, toBIPS, toBNExp } from "../../lib/utils/helpers";
+import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp } from "../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
-    AddressUpdaterInstance, AgentVaultFactoryInstance, IIAssetManagerInstance, SCProofVerifierInstance,
-    CollateralPoolFactoryInstance, ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
-    IWhitelistInstance, StateConnectorMockInstance, WNatInstance, CollateralPoolTokenFactoryInstance, IPriceReaderInstance, AgentOwnerRegistryInstance
+    AddressUpdaterInstance,
+    AgentOwnerRegistryInstance,
+    AgentVaultFactoryInstance,
+    CollateralPoolFactoryInstance,
+    CollateralPoolTokenFactoryInstance,
+    ERC20MockInstance, FtsoMockInstance, FtsoRegistryMockInstance, GovernanceSettingsInstance,
+    IIAssetManagerInstance,
+    IPriceReaderInstance,
+    IWhitelistInstance,
+    SCProofVerifierInstance,
+    StateConnectorMockInstance, WNatInstance
 } from "../../typechain-truffle";
 import { TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
 import { MockChain, MockChainWallet } from "./fasset/MockChain";
 import { setDefaultVPContract } from "./token-test-helpers";
-import { ChainInfo } from "../../lib/fasset/ChainInfo";
 
 const AgentVault = artifacts.require("AgentVault");
 const WNat = artifacts.require("WNat");
@@ -49,10 +57,10 @@ export interface TestSettingsContracts {
     stablecoins: Record<string, ERC20MockInstance>,
 }
 
-export type TestSettingOptions = Partial<AssetManagerSettings>;
+export type TestSettingOptions = Partial<AssetManagerInitSettings>;
 
-export function createTestSettings(contracts: TestSettingsContracts, ci: TestChainInfo, options?: TestSettingOptions): AssetManagerSettings {
-    const result: AssetManagerSettings = {
+export function createTestSettings(contracts: TestSettingsContracts, ci: TestChainInfo, options?: TestSettingOptions): AssetManagerInitSettings {
+    const result: AssetManagerInitSettings = {
         assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
         fAsset: constants.ZERO_ADDRESS,                     // replaced in newAssetManager(...)
         agentVaultFactory: contracts.agentVaultFactory.address,
@@ -105,6 +113,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         liquidationCollateralFactorBIPS: [toBIPS(1.2), toBIPS(1.6), toBIPS(2.0)],
         liquidationFactorVaultCollateralBIPS: [toBIPS(1), toBIPS(1), toBIPS(1)],
         diamondCutMinTimelockSeconds: 1 * HOURS,
+        redemptionPaymentExtensionSeconds: 10,
     };
     return Object.assign(result, options ?? {});
 }

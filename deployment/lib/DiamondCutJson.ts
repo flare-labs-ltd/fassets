@@ -3,6 +3,7 @@ export interface DiamondCutJsonFacet {
     methods?: string[]; // expose only the methods with given names
     exposedInterfaces?: string[]; // expose only the methods from these interfaces
 }
+
 export interface DiamondCutJsonInit {
     contract: string;
     method: string;

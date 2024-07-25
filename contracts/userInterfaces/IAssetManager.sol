@@ -11,12 +11,13 @@ import "./data/AgentSettings.sol";
 import "./data/AvailableAgentInfo.sol";
 import "./IAssetManagerEvents.sol";
 import "./IAgentPing.sol";
+import "./IRedemptionTimeExtension.sol";
 
 
 /**
  * Asset manager publicly callable methods.
  */
-interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPing {
+interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPing, IRedemptionTimeExtension {
     ////////////////////////////////////////////////////////////////////////////////////
     // Basic system information
 

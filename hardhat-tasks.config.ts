@@ -99,7 +99,7 @@ task("diamond-cut", "Create diamond cut defined by JSON file.")
     .setAction(async ({ json, execute }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        await deployCuts(hre, contracts, json, execute);
+        await deployCuts(hre, contracts, json, { execute: execute, verbose: true });
     });
 
 

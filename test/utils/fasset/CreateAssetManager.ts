@@ -1,15 +1,16 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
-import { findEvent } from "../../../lib/utils/events/truffle";
-import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { AssetManagerControllerInstance, IIAssetManagerInstance, FAssetInstance, GovernanceSettingsInstance, AssetManagerInitInstance } from "../../../typechain-truffle";
-import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
+import { AssetManagerInitSettings, AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { DiamondCut, FacetCutAction } from "../../../lib/utils/diamond";
+import { findEvent } from "../../../lib/utils/events/truffle";
 import { abiEncodeCall } from "../../../lib/utils/helpers";
+import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
+import { AssetManagerControllerInstance, AssetManagerInitInstance, FAssetInstance, GovernanceSettingsInstance, IDiamondCutInstance, IDiamondLoupeInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
+import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
 
 const IIAssetManager = artifacts.require('IIAssetManager');
 const AssetManager = artifacts.require('AssetManager');
 const AssetManagerInit = artifacts.require('AssetManagerInit');
+const GovernedFacet = artifacts.require('GovernedFacet');
 const FAsset = artifacts.require('FAsset');
 
 export async function newAssetManager(
@@ -18,7 +19,7 @@ export async function newAssetManager(
     name: string,
     symbol: string,
     decimals: number,
-    assetManagerSettings: AssetManagerSettings,
+    assetManagerSettings: AssetManagerInitSettings,
     collateralTokens: CollateralType[],
     assetName = name,
     assetSymbol = symbol,
@@ -30,7 +31,6 @@ export async function newAssetManager(
     // 0x8... is not a contract, but it is valid non-zero address so it will work in tests where we don't switch to production mode
     const governanceSettings = options?.governanceSettings ?? "0x8000000000000000000000000000000000000000";
     const updateExecutor = options?.updateExecutor ?? governanceAddress;
-    const [diamondCuts, assetManagerInit] = await deployAssetManagerFacets();
     const fAsset = await FAsset.new(governanceAddress, name, symbol, assetName, assetSymbol, decimals);
     const assetManagerControllerAddress = typeof assetManagerController === 'string' ? assetManagerController : assetManagerController.address;
     assetManagerSettings = web3DeepNormalize({
@@ -39,7 +39,12 @@ export async function newAssetManager(
         fAsset: fAsset.address
     });
     collateralTokens = web3DeepNormalize(collateralTokens);
+    // deploy
+    const [diamondCuts, assetManagerInit, interfaceSelectors] = await deployAssetManagerFacets();
     const assetManager = await newAssetManagerDiamond(diamondCuts, assetManagerInit, governanceSettings, governanceAddress, assetManagerSettings, collateralTokens);
+    await deployRedemptionTimeExtensionFacet(governanceAddress, assetManager, assetManagerSettings, interfaceSelectors);
+    await checkAllMethodsImplemented(assetManager, interfaceSelectors);
+    // add to controller
     if (typeof assetManagerController !== 'string') {
         const res = await assetManagerController.addAssetManager(assetManager.address, { from: governanceAddress });
         await waitForTimelock(res, assetManagerController, updateExecutor);
@@ -61,6 +66,19 @@ export async function newAssetManagerDiamond(diamondCuts: DiamondCut[], assetMan
     return await IIAssetManager.at(assetManagerDiamond.address);
 }
 
+async function deployRedemptionTimeExtensionFacet(governanceAddress: string, assetManager: IIAssetManagerInstance, assetManagerSettings: AssetManagerInitSettings, interfaceSelectors: Map<string, AbiItem>) {
+    const governedFacet = await GovernedFacet.at(assetManager.address);
+    const governedFacetSelectors = getInterfaceSelectorMap(governedFacet.abi);
+    const diamondCuts = [
+        await deployFacet('RedemptionTimeExtensionFacet', interfaceSelectors, governedFacetSelectors),
+    ];
+    const RedemptionTimeExtensionFacet = artifacts.require("RedemptionTimeExtensionFacet");
+    const redemptionTimeExtensionFacet = await RedemptionTimeExtensionFacet.at(diamondCuts[0].facetAddress);
+    const initParameters = abiEncodeCall(redemptionTimeExtensionFacet,
+        c => c.initRedemptionTimeExtensionFacet(assetManagerSettings.redemptionPaymentExtensionSeconds));
+    await assetManager.diamondCut(diamondCuts, redemptionTimeExtensionFacet.address, initParameters, { from: governanceAddress });
+}
+
 // simulate waiting for governance timelock
 export async function waitForTimelock<C extends Truffle.ContractInstance>(response: Truffle.TransactionResponse<any> | Promise<Truffle.TransactionResponse<any>>, contract: C, executorAddress: string) {
     const res = await response as Truffle.TransactionResponse<GovernanceCallTimelocked>;
@@ -72,14 +90,13 @@ export async function waitForTimelock<C extends Truffle.ContractInstance>(respon
     }
 }
 
-export async function deployAssetManagerFacets(): Promise<[DiamondCut[], AssetManagerInitInstance]> {
+export interface IMembership<T> { has(x: T): boolean }
+
+export async function deployAssetManagerFacets(): Promise<[DiamondCut[], AssetManagerInitInstance, Map<string, AbiItem>]> {
     const assetManagerInit = await AssetManagerInit.new();
     // create filters
     const iiAssetManager = await IIAssetManager.at(assetManagerInit.address);
-    const interfaceSelectorMap = new Map(iiAssetManager.abi
-        .filter(it => it.type === 'function')
-        .map(it => [web3.eth.abi.encodeFunctionSignature(it), it]));
-    const interfaceSelectors = new Set(interfaceSelectorMap.keys());
+    const interfaceSelectors = getInterfaceSelectorMap(iiAssetManager.abi);
     // create cuts
     const diamondCuts = [
         await deployFacet('AssetManagerDiamondCutFacet', interfaceSelectors),
@@ -105,23 +122,35 @@ export async function deployAssetManagerFacets(): Promise<[DiamondCut[], AssetMa
         await deployFacet('AgentPingFacet', interfaceSelectors),
     ];
     // verify every required selector is included in some cut
-    for (const cut of diamondCuts) {
-        for (const selector of cut.functionSelectors) {
-            interfaceSelectors.delete(selector);
-        }
-    }
-    if (interfaceSelectors.size > 0) {
-        const missing = Array.from(interfaceSelectors).map(sel => interfaceSelectorMap.get(sel)?.name);
-        throw new Error(`Deployed facets are missing methods ${missing.join(", ")}`);
-    }
-    return [diamondCuts, assetManagerInit];
+    return [diamondCuts, assetManagerInit, interfaceSelectors];
 }
 
-export async function deployFacet(facetName: string, filterSelectors: Set<string>): Promise<DiamondCut> {
+async function checkAllMethodsImplemented(loupe: IDiamondLoupeInstance, interfaceSelectors: Map<string, AbiItem>) {
+    const interfaceSelectorSet = new Set(interfaceSelectors.keys());
+    const facets = await loupe.facets();
+    for (const facet of facets) {
+        for (const selector of facet.functionSelectors) {
+            interfaceSelectorSet.delete(selector);
+        }
+    }
+    if (interfaceSelectorSet.size > 0) {
+        const missing = Array.from(interfaceSelectorSet).map(sel => interfaceSelectors.get(sel)?.name);
+        throw new Error(`Deployed facets are missing methods ${missing.join(", ")}`);
+    }
+}
+
+function getInterfaceSelectorMap(abiItems: AbiItem[]) {
+    const interfaceSelectorPairs = abiItems
+        .filter(it => it.type === 'function')
+        .map(it => [web3.eth.abi.encodeFunctionSignature(it), it] as const);
+    return new Map(interfaceSelectorPairs);
+}
+
+export async function deployFacet(facetName: string, filterSelectors: IMembership<string>, excludeSelectors: IMembership<string> = new Set()): Promise<DiamondCut> {
     const contract = artifacts.require(facetName as any) as Truffle.ContractNew<any>;
     const instance = await contract.new() as Truffle.ContractInstance;
     const instanceSelectors = instance.abi.map(it => web3.eth.abi.encodeFunctionSignature(it));
-    const exposedSelectors = instanceSelectors.filter(sel => filterSelectors.has(sel));
+    const exposedSelectors = instanceSelectors.filter(sel => filterSelectors.has(sel) && !excludeSelectors.has(sel));
     if (exposedSelectors.length === 0) {
         throw new Error(`No exposed methods in ${facetName}`);
     }

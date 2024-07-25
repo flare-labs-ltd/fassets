@@ -1,0 +1,23 @@
+{
+    "$schema": "./diamond-cuts.schema.json",
+    "diamond": ["AssetManager_FBTC", "AssetManager_FXRP"],
+    "facets": [
+        {
+            "contract": "RedemptionTimeExtensionFacet",
+            "exposedInterfaces": ["IRedemptionTimeExtension"]
+        },
+        {
+            "contract": "RedemptionRequestsFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        },
+        {
+            "contract": "MintingFacet",
+            "exposedInterfaces": ["IIAssetManager"]
+        }
+    ],
+    "init": {
+        "contract": "RedemptionTimeExtensionFacet",
+        "method": "initRedemptionTimeExtensionFacet",
+        "args": [15]
+    }
+}

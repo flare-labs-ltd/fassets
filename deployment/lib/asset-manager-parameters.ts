@@ -460,6 +460,12 @@ export interface AssetManagerParameters {
     collateralPoolTokenTimelockSeconds: integer;
 
     /**
+     * When there are many redemption requests in short time, agent gets
+     * up to this amount of extra payment time per redemeption.
+     */
+    redemptionPaymentExtensionSeconds: integer;
+
+    /**
      * Minimum time that the system must wait before performing diamond cut.
      * The actual timelock is the maximum of this setting and GovernanceSettings.timelock.
      */

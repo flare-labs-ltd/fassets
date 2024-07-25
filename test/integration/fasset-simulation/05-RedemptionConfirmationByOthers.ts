@@ -222,6 +222,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, minted.mintedAmountUBA, { from: minter.address });
             // perform redemption
+            await context.updateUnderlyingBlock();
             const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(lots);
             assertWeb3Equal(remainingLots, 0);
             assert.equal(dustChanges.length, 0);
@@ -229,7 +230,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager simulation
             const request = redemptionRequests[0];
             assert.equal(request.agentVault, agent.vaultAddress);
             // mine some blocks to create overflow block
-            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment; i++) {
+            for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment + 10; i++) {
                 await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
             }
             // test rewarding for redemption payment default
