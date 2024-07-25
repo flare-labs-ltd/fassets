@@ -1,5 +1,5 @@
 import { constants } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerInitSettings, AssetManagerSettings, CollateralClass, CollateralType } from "../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, AssetManagerSettings, CollateralClass, CollateralType } from "../../lib/fasset/AssetManagerTypes";
 import { ChainInfo } from "../../lib/fasset/ChainInfo";
 import { PaymentReference } from "../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
@@ -21,6 +21,7 @@ import {
 } from "../../typechain-truffle";
 import { TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
+import { AssetManagerInitSettings } from "./fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "./fasset/MockChain";
 import { setDefaultVPContract } from "./token-test-helpers";
 

@@ -1,12 +1,12 @@
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerInitSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { DiamondCut, DiamondSelectors, FacetCutAction } from "../../../../lib/utils/diamond";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { executeTimelockedGovernanceCall } from "../../../utils/contract-test-helpers";
-import { deployAssetManagerFacets, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
+import { AssetManagerInitSettings, deployAssetManagerFacets, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
