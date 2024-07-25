@@ -322,12 +322,12 @@
   {
     "name": "MintingFacet",
     "contractName": "MintingFacet.sol",
-    "address": "0xC966D1cbefe1a453760400990989EB6D40754610"
+    "address": "0xbc520170714b608981616225787143a996006d92"
   },
   {
     "name": "RedemptionRequestsFacet",
     "contractName": "RedemptionRequestsFacet.sol",
-    "address": "0xb5507F50a4795a84a1b472D0aeee0dD235047eda"
+    "address": "0x2076c98665987F0a66B2233375E781675E6dCa63"
   },
   {
     "name": "RedemptionConfirmationsFacet",
@@ -403,5 +403,10 @@
     "name": "AgentPingFacet",
     "contractName": "AgentPingFacet.sol",
     "address": "0x9d895ef93dD9F0C06476125E475A6674E9FDeE83"
+  },
+  {
+    "name": "RedemptionTimeExtensionFacet",
+    "contractName": "RedemptionTimeExtensionFacet.sol",
+    "address": "0x21A74ecb7da8778e88F6aFd74dAfe359727C0Cc5"
   }
 ]
