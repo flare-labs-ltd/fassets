@@ -1,11 +1,11 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerInitSettings, AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
 import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsInstance, IERC165Contract, IIAssetManagerInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
+import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";

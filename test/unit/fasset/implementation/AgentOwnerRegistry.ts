@@ -1,5 +1,5 @@
 import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AssetManagerInitSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../../../lib/utils/events/truffle";
@@ -7,7 +7,7 @@ import { erc165InterfaceId, toBNExp } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentOwnerRegistryInstance, AgentVaultInstance, AssetManagerControllerInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
+import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";

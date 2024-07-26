@@ -1,11 +1,15 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AssetManagerInitSettings, AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { DiamondCut, FacetCutAction } from "../../../lib/utils/diamond";
 import { findEvent } from "../../../lib/utils/events/truffle";
 import { abiEncodeCall } from "../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../lib/utils/web3normalize";
-import { AssetManagerControllerInstance, AssetManagerInitInstance, FAssetInstance, GovernanceSettingsInstance, IDiamondCutInstance, IDiamondLoupeInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
+import { AssetManagerControllerInstance, AssetManagerInitInstance, FAssetInstance, GovernanceSettingsInstance, IDiamondLoupeInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
 import { GovernanceCallTimelocked } from "../../../typechain-truffle/AssetManagerController";
+
+export interface AssetManagerInitSettings extends AssetManagerSettings {
+    redemptionPaymentExtensionSeconds: string | number | BN;
+}
 
 const IIAssetManager = artifacts.require('IIAssetManager');
 const AssetManager = artifacts.require('AssetManager');

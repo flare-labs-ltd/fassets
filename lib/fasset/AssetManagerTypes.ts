@@ -1,11 +1,7 @@
-import { AssetManagerContract, AssetManagerInitInstance, IIAssetManagerInstance } from "../../typechain-truffle";
+import { AssetManagerInitInstance, IIAssetManagerInstance } from "../../typechain-truffle";
 
 type _AssetManagerSettings = Parameters<AssetManagerInitInstance['init']>[2];
 export interface AssetManagerSettings extends _AssetManagerSettings {}
-
-export interface AssetManagerInitSettings extends AssetManagerSettings {
-    redemptionPaymentExtensionSeconds: string | number | BN;
-}
 
 export enum CollateralClass {
     POOL = 1,

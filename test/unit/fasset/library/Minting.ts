@@ -1,5 +1,5 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { AgentSettings, AssetManagerInitSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
+import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { lotSize } from "../../../../lib/fasset/Conversions";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
@@ -12,7 +12,7 @@ import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { precomputeContractAddress } from "../../../utils/contract-test-helpers";
 import { AgentCollateral } from "../../../utils/fasset/AgentCollateral";
-import { newAssetManager } from "../../../utils/fasset/CreateAssetManager";
+import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
