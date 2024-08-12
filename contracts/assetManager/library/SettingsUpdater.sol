@@ -37,6 +37,10 @@ library SettingsUpdater {
         keccak256("setPriceReader(address)");
     bytes32 internal constant SET_SC_PROOF_VERIFIER =
         keccak256("setSCProofVerifier(address)");
+    bytes32 internal constant SET_CLEANER_CONTRACT =
+        keccak256("setCleanerContract(address)");
+    bytes32 internal constant SET_CLEANUP_BLOCK_NUMBER_MANAGER =
+        keccak256("setCleanupBlockNumberManager(address)");
     bytes32 internal constant SET_MIN_UPDATE_REPEAT_TIME_SECONDS =
         keccak256("setMinUpdateRepeatTimeSeconds(uint256)");
     bytes32 internal constant SET_LOT_SIZE_AMG =
@@ -129,6 +133,12 @@ library SettingsUpdater {
         } else if (_method == SET_SC_PROOF_VERIFIER) {
             checkEnoughTimeSinceLastUpdate(_method);
             _setSCProofVerifier(_params);
+        } else if (_method == SET_CLEANER_CONTRACT) {
+            checkEnoughTimeSinceLastUpdate(_method);
+            _setCleanerContract(_params);
+        } else if (_method == SET_CLEANUP_BLOCK_NUMBER_MANAGER) {
+            checkEnoughTimeSinceLastUpdate(_method);
+            _setCleanupBlockNumberManager(_params);
         } else if (_method == SET_MIN_UPDATE_REPEAT_TIME_SECONDS) {
             checkEnoughTimeSinceLastUpdate(_method);
             _setMinUpdateRepeatTimeSeconds(_params);
@@ -394,6 +404,30 @@ library SettingsUpdater {
         // update
         settings.scProofVerifier = value;
         emit AMEvents.ContractChanged("scProofVerifier", value);
+    }
+
+    function _setCleanerContract(
+        bytes calldata _params
+    )
+        private
+    {
+        address value = abi.decode(_params, (address));
+        // validate
+        // update
+        Globals.getFAsset().setCleanerContract(value);
+        emit AMEvents.ContractChanged("cleanerContract", value);
+    }
+
+    function _setCleanupBlockNumberManager(
+        bytes calldata _params
+    )
+        private
+    {
+        address value = abi.decode(_params, (address));
+        // validate
+        // update
+        Globals.getFAsset().setCleanupBlockNumberManager(value);
+        emit AMEvents.ContractChanged("cleanupBlockNumberManager", value);
     }
 
     function _setMinUpdateRepeatTimeSeconds(

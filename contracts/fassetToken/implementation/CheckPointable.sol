@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../interfaces/ICheckPointable.sol";
 import "../library/CheckPointHistory.sol";
 import "../library/CheckPointsByAddress.sol";
-import "../library/CheckPointHistoryCache.sol";
 
 /**
  * @title Check Pointable ERC20 Behavior
@@ -14,7 +13,6 @@ import "../library/CheckPointHistoryCache.sol";
 abstract contract CheckPointable is ICheckPointable {
     using CheckPointHistory for CheckPointHistory.CheckPointHistoryState;
     using CheckPointsByAddress for CheckPointsByAddress.CheckPointsByAddressState;
-    using CheckPointHistoryCache for CheckPointHistoryCache.CacheState;
     using SafeMath for uint256;
 
     // The number of history cleanup steps executed for every write operation.
@@ -24,7 +22,6 @@ abstract contract CheckPointable is ICheckPointable {
     // Private member variables
     CheckPointsByAddress.CheckPointsByAddressState private balanceHistory;
     CheckPointHistory.CheckPointHistoryState private totalSupply;
-    CheckPointHistoryCache.CacheState private totalSupplyCache;
 
     // Historic data for the blocks before `cleanupBlockNumber` can be erased,
     // history before that block should never be used since it can be inconsistent.
@@ -108,22 +105,6 @@ abstract contract CheckPointable is ICheckPointable {
     }
 
     /**
-     * @notice Total amount of tokens at a specific `_blockNumber`.
-     * @param _blockNumber The block number when the _totalSupply is queried
-     * @return _totalSupply The total amount of tokens at `_blockNumber`
-     **/
-    function _totalSupplyAtCached(uint256 _blockNumber) internal
-        notBeforeCleanupBlock(_blockNumber)
-        returns(uint256 _totalSupply)
-    {
-        // use cache only for the past (the value will never change)
-        require(_blockNumber < block.number, "Can only be used for past blocks");
-        (uint256 value, bool cacheCreated) = totalSupplyCache.valueAt(totalSupply, _blockNumber);
-        if (cacheCreated) emit CreatedTotalSupplyCache(_blockNumber);
-        return value;
-    }
-
-    /**
      * @notice Transmit token `_amount` `_from` address `_to` address of checkpoints at current block.
      * @param _from The address of the sender.
      * @param _to The address of the receiver.
@@ -198,16 +179,5 @@ abstract contract CheckPointable is ICheckPointable {
      */
     function totalSupplyHistoryCleanup(uint256 _count) external onlyCleaner returns (uint256) {
         return totalSupply.cleanupOldCheckpoints(_count, cleanupBlockNumber);
-    }
-
-    /**
-     * Delete total supply cache entry that expired (i.e. is before `cleanupBlockNumber`).
-     * Method can only be called from the `cleanerContract` (which may be a proxy to external cleaners).
-     * @param _blockNumber the block number for which total supply value was cached
-     * @return the number of cache entries deleted (always 0 or 1)
-     */
-    function totalSupplyCacheCleanup(uint256 _blockNumber) external onlyCleaner returns (uint256) {
-        require(_blockNumber < cleanupBlockNumber, "No cleanup after cleanup block");
-        return totalSupplyCache.deleteAt(_blockNumber);
     }
 }

@@ -11,7 +11,7 @@ library AssetManagerSettings {
         address assetManagerController;
 
         // The f-asset contract managed by this asset manager.
-        // Type: IFAsset
+        // Type: IIFAsset
         // immutable
         address fAsset;
 

@@ -141,6 +141,22 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_SC_PROOF_VERIFIER, abi.encode(_value));
     }
 
+    function setCleanerContract(IIAssetManager[] memory _assetManagers, address _value)
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_CLEANER_CONTRACT, abi.encode(_value));
+    }
+
+    function setCleanupBlockNumberManager(IIAssetManager[] memory _assetManagers, address _value)
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_CLEANUP_BLOCK_NUMBER_MANAGER, abi.encode(_value));
+    }
+
     function setMinUpdateRepeatTimeSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance

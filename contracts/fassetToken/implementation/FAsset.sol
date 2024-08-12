@@ -3,13 +3,12 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "flare-smart-contracts/contracts/token/interface/IICleanable.sol";
-import "../interfaces/IFAsset.sol";
+import "../interfaces/IIFAsset.sol";
 import "../../governance/implementation/Governed.sol";
 import "./CheckPointable.sol";
 
 
-contract FAsset is IFAsset, IERC165, IICleanable, ERC20, CheckPointable {
+contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
     /**
      * The name of the underlying asset.
      */
@@ -210,6 +209,7 @@ contract FAsset is IFAsset, IERC165, IICleanable, ERC20, CheckPointable {
             || _interfaceId == type(IERC20Metadata).interfaceId
             || _interfaceId == type(ICheckPointable).interfaceId
             || _interfaceId == type(IFAsset).interfaceId
+            || _interfaceId == type(IIFAsset).interfaceId
             || _interfaceId == type(IICleanable).interfaceId;
     }
 }

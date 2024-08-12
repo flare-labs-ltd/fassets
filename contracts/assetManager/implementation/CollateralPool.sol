@@ -9,11 +9,11 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/Transfers.sol";
+import "../../userInterfaces/IFAsset.sol";
 import "../interfaces/IWNat.sol";
 import "../interfaces/IIAssetManager.sol";
 import "../interfaces/IIAgentVault.sol";
 import "../interfaces/IICollateralPool.sol";
-import "../../fassetToken/interfaces/IFAsset.sol";
 import "../interfaces/IICollateralPoolToken.sol";
 
 
@@ -21,7 +21,7 @@ import "../interfaces/IICollateralPoolToken.sol";
 contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
     using SafeCast for uint256;
     using SafePct for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IFAsset;
     using SafeERC20 for IWNat;
 
     struct AssetData {
@@ -41,7 +41,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
 
     address public agentVault;          // practically immutable because there is no setter
     IIAssetManager public assetManager; // practically immutable because there is no setter
-    IERC20 public fAsset;               // practically immutable because there is no setter
+    IFAsset public fAsset;               // practically immutable because there is no setter
     IICollateralPoolToken public token; // only changed once at deploy time
 
     IWNat public wNat;
@@ -95,7 +95,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         // init vars
         agentVault = _agentVault;
         assetManager = IIAssetManager(_assetManager);
-        fAsset = IERC20(_fAsset);
+        fAsset = IFAsset(_fAsset);
         // for proxy implementation, assetManager will be 0
         wNat = address(assetManager) != address(0) ? assetManager.getWNat() : IWNat(address(0));
         exitCollateralRatioBIPS = _exitCollateralRatioBIPS;
@@ -861,7 +861,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         external
         nonReentrant
     {
-        require(IFAsset(address(fAsset)).terminated(), "f-asset not terminated");
+        require(fAsset.terminated(), "f-asset not terminated");
         uint256 tokens = token.balanceOf(msg.sender);
         require(tokens > 0, "nothing to withdraw");
         uint256 natShare = tokens.mulDiv(totalCollateral, token.totalSupply());

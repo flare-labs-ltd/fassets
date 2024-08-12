@@ -120,11 +120,13 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             const IICleanable = artifacts.require("flare-smart-contracts/contracts/token/interface/IICleanable.sol:IICleanable" as "IICleanable");
             const ICheckPointable = artifacts.require("ICheckPointable");
             const IFasset = artifacts.require("IFAsset");
+            const IIFasset = artifacts.require("IIFAsset");
             //
             const iERC165 = await IERC165.at(fAsset.address);
             const iERC20 = await IERC20.at(fAsset.address);
             const iERC20Metadata = await IERC20Metadata.at(fAsset.address);
             const iFasset = await IFasset.at(fAsset.address);
+            const iiFasset = await IIFasset.at(fAsset.address);
             const iCheckPointable = await ICheckPointable.at(fAsset.address);
             const iiCleanable = await IICleanable.at(fAsset.address);
             //
@@ -132,8 +134,9 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iERC20.abi)));
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iERC20Metadata.abi, [iERC20.abi])));
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iCheckPointable.abi)));
-            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iFasset.abi, [iERC20.abi, iERC20Metadata.abi, iCheckPointable.abi])));
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iFasset.abi, [iERC20.abi, iERC20Metadata.abi])));
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iiCleanable.abi)));
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iiFasset.abi, [iFasset.abi, iCheckPointable.abi, iiCleanable.abi])));
             assert.isFalse(await fAsset.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });

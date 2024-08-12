@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../fassetToken/interfaces/IFAsset.sol";
+import "../../fassetToken/interfaces/IIFAsset.sol";
 import "../interfaces/IWNat.sol";
 import "../../userInterfaces/data/AssetManagerSettings.sol";
 import "../../userInterfaces/IAgentOwnerRegistry.sol";
@@ -41,10 +41,10 @@ library Globals {
 
     function getFAsset()
         internal view
-        returns (IFAsset)
+        returns (IIFAsset)
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        return IFAsset(settings.fAsset);
+        return IIFAsset(settings.fAsset);
     }
 
     function getAgentOwnerRegistry()
