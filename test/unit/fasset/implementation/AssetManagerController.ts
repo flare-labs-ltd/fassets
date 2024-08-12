@@ -907,6 +907,21 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(timelock_info, "ContractChanged", { name: "scProofVerifier", value: addr });
         });
 
+        it("should set cleaner contract", async () => {
+            const addr = randomAddress();
+            const res = await assetManagerController.setCleanerContract([assetManager.address], addr, { from: governance });
+            expectEvent(res, "ContractChanged", { name: "cleanerContract", value: addr });
+            assert.equal(await fAsset.cleanerContract(), addr);
+        });
+
+        it("should set cleanup block number manager after timelock", async () => {
+            const addr = randomAddress();
+            const res = await assetManagerController.setCleanupBlockNumberManager([assetManager.address], addr, { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "ContractChanged", { name: "cleanupBlockNumberManager", value: addr });
+            assert.equal(await fAsset.cleanupBlockNumberManager(), addr);
+        });
+
         it("should set price reader", async () => {
             const addr = randomAddress();
             //Only governance can set price reader

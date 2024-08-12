@@ -587,7 +587,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         // perform some payment with correct minting reference and wrong amount
         await minter.performPayment(crt.paymentAddress, 100, crt.paymentReference);
         // mine some blocks to create overflow block
-        for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment + 10; i++) {
+        for (let i = 0; i <= context.chainInfo.underlyingBlocksForPayment + 20; i++) {
             await minter.wallet.addTransaction(minter.underlyingAddress, minter.underlyingAddress, 1, null);
         }
         // test rewarding for mint default

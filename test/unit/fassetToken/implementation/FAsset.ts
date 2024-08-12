@@ -1,6 +1,6 @@
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
 import { erc165InterfaceId } from "../../../../lib/utils/helpers";
-import { FAssetInstance, IERC165Contract, IERC20Contract, IICleanableContract, IIVPTokenContract, IVPTokenContract } from "../../../../typechain-truffle";
+import { FAssetInstance } from "../../../../typechain-truffle";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
@@ -67,6 +67,13 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             assertWeb3Equal(balance.toNumber(), amount);
         });
 
+        it('should not transfer FAsset to self', async function () {
+            await fAsset.setAssetManager(assetManager, { from: governance });
+            const amount = 100;
+            await fAsset.mint(accounts[1], amount, { from: assetManager });
+            await expectRevert(fAsset.transfer(accounts[1], amount, { from: accounts[1] }), "Cannot transfer to self");
+        });
+
         it('only asset manager should be able to mint FAssets', async function () {
             await fAsset.setAssetManager(assetManager, { from: governance });
             const amount = 100;
@@ -109,6 +116,165 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             await fAsset.terminate({ from: assetManager });
             const res = fAsset.transfer(accounts[2], 50, { from: accounts[1]});
             await expectRevert(res, "f-asset terminated");
+        });
+    });
+
+    describe("history cleanup", async function() {
+        beforeEach(async () => {
+            await fAsset.setAssetManager(assetManager, { from: governance });
+            await fAsset.setCleanupBlockNumberManager(accounts[8], { from: assetManager });
+        });
+
+        it("some methods may only be cleaned by asset manager", async () => {
+            await expectRevert(fAsset.setCleanerContract(accounts[8]), "only asset manager");
+            await expectRevert(fAsset.setCleanupBlockNumberManager(accounts[8]), "only asset manager");
+        });
+
+        it("cleanup block number may only be called by the cleanup block number manager", async () => {
+            await expectRevert(fAsset.setCleanupBlockNumber(5), "only cleanup block manager");
+        });
+
+        it("calling history cleanup methods directly is forbidden", async () => {
+            // Assemble
+            await fAsset.mint(accounts[1], 100, { from: assetManager });
+            await fAsset.mint(accounts[2], 100, { from: assetManager });
+            const blk1 = await web3.eth.getBlockNumber();
+            const blk2 = await web3.eth.getBlockNumber();
+            // Act
+            await fAsset.setCleanupBlockNumber(blk2, { from: accounts[8] });
+            // Assert
+            await expectRevert(fAsset.totalSupplyHistoryCleanup(1), "Only cleaner contract");
+            await expectRevert(fAsset.balanceHistoryCleanup(accounts[1], 1), "Only cleaner contract");
+        });
+
+        it("cleaning empty history is a no-op", async () => {
+            // Assemble
+            const blk1 = await web3.eth.getBlockNumber();
+            await time.advanceBlock();
+            const blk2 = await web3.eth.getBlockNumber();
+            await fAsset.setCleanerContract(accounts[5], { from: assetManager });
+            await fAsset.setCleanupBlockNumber(blk2, { from: accounts[8] });
+            // Act
+            await fAsset.totalSupplyHistoryCleanup(1, { from: accounts[5] });
+            await fAsset.balanceHistoryCleanup(accounts[1], 1, { from: accounts[5] });
+            // Assert
+            assertWeb3Equal(await fAsset.totalSupply(), 0);
+            assertWeb3Equal(await fAsset.totalSupplyAt(blk2), 0);
+            assertWeb3Equal(await fAsset.balanceOf(accounts[1]), 0);
+            assertWeb3Equal(await fAsset.balanceOf(accounts[2]), 0);
+            assertWeb3Equal(await fAsset.totalSupplyHistoryCleanup.call(1, { from: accounts[5] }), 0);
+            assertWeb3Equal(await fAsset.balanceHistoryCleanup.call(accounts[1], 1, { from: accounts[5] }), 0);
+        });
+
+        it("cleaning history enough times cleans everything available", async () => {
+            // Assemble
+            await fAsset.mint(accounts[1], 100, { from: assetManager });
+            await fAsset.mint(accounts[2], 100, { from: assetManager });
+            const blk1 = await web3.eth.getBlockNumber();
+            await fAsset.mint(accounts[1], 100, { from: assetManager });
+            await fAsset.transfer(accounts[2], 50, { from: accounts[1] });
+            await fAsset.burn(accounts[2], 50, { from: assetManager });
+            const blk2 = await web3.eth.getBlockNumber();
+            await fAsset.setCleanerContract(accounts[5], { from: assetManager });
+            await fAsset.setCleanupBlockNumber(blk2, { from: accounts[8] });
+            // verify initial
+            assertWeb3Equal(await fAsset.cleanupBlockNumber(), blk2);
+            assertWeb3Equal(await fAsset.totalSupplyHistoryCleanup.call(10, { from: accounts[5] }), 3);
+            assertWeb3Equal(await fAsset.balanceHistoryCleanup.call(accounts[1], 10, { from: accounts[5] }), 2);
+            // Act
+            for (let i = 0; i < 3; i++) {
+                await fAsset.totalSupplyHistoryCleanup(1, { from: accounts[5] });
+                await fAsset.balanceHistoryCleanup(accounts[1], 1, { from: accounts[5] });
+            }
+            // Assert
+            assertWeb3Equal(await fAsset.totalSupplyHistoryCleanup.call(1, { from: accounts[5] }), 0);
+            assertWeb3Equal(await fAsset.balanceHistoryCleanup.call(accounts[1], 1, { from: accounts[5] }), 0);
+        });
+
+        it("reading before cleanup block number is forbidden", async () => {
+            // Assemble
+            await fAsset.mint(accounts[1], 150, { from: assetManager });
+            await fAsset.mint(accounts[2], 150, { from: assetManager });
+            const blk1 = await web3.eth.getBlockNumber();
+            await fAsset.transfer(accounts[2], 50, { from: accounts[1] });
+            await fAsset.burn(accounts[2], 50, { from: assetManager });
+            const blk2 = await web3.eth.getBlockNumber();
+            await fAsset.setCleanerContract(accounts[5], { from: assetManager });
+            await fAsset.setCleanupBlockNumber(blk2, { from: accounts[8] });
+            // Assert
+            await expectRevert(fAsset.totalSupplyAt(blk1), "CheckPointable: reading from cleaned-up block");
+            await expectRevert(fAsset.balanceOfAt(accounts[1], blk1), "CheckPointable: reading from cleaned-up block");
+        });
+
+        it("cleanup block number must be in correct range", async () => {
+            // Assemble
+            await fAsset.mint(accounts[1], 150, { from: assetManager });
+            await fAsset.mint(accounts[2], 150, { from: assetManager });
+            const blk1 = await web3.eth.getBlockNumber();
+            await fAsset.transfer(accounts[2], 50, { from: accounts[1] });
+            await fAsset.burn(accounts[2], 50, { from: assetManager });
+            const blk2 = await web3.eth.getBlockNumber();
+            await fAsset.setCleanerContract(accounts[5], { from: assetManager });
+            await fAsset.setCleanupBlockNumber(blk2, { from: accounts[8] });
+            // Assert
+            await expectRevert(fAsset.setCleanupBlockNumber(blk1, { from: accounts[8] }), "Cleanup block number must never decrease");
+            const lastBlock = await time.latestBlock();
+            await expectRevert(fAsset.setCleanupBlockNumber(lastBlock.addn(1), { from: accounts[8] }), "Cleanup block must be in the past");
+        });
+
+        it("values at cleanup block are still available after cleanup", async () => {
+            // Assemble
+            await fAsset.mint(accounts[1], 150, { from: assetManager });
+            await fAsset.mint(accounts[2], 150, { from: assetManager });
+            await fAsset.transfer(accounts[2], 50, { from: accounts[1] });
+            await fAsset.burn(accounts[2], 50, { from: assetManager });
+            const blk2 = await web3.eth.getBlockNumber();
+            await fAsset.setCleanerContract(accounts[5], { from: assetManager });
+            await fAsset.setCleanupBlockNumber(blk2, { from: accounts[8] });
+            // Assert
+            assertWeb3Equal(await fAsset.cleanupBlockNumber(), blk2);
+            // there should be opportunities to clean
+            assertWeb3Equal(await fAsset.totalSupplyHistoryCleanup.call(1, { from: accounts[5] }), 1);
+            assertWeb3Equal(await fAsset.balanceHistoryCleanup.call(accounts[1], 1, { from: accounts[5] }), 1);
+            assertWeb3Equal(await fAsset.balanceHistoryCleanup.call(accounts[2], 1, { from: accounts[5] }), 1);
+            // Act
+            for (let i = 0; i < 5; i++) {
+                await fAsset.totalSupplyHistoryCleanup(1, { from: accounts[5] });
+                await fAsset.balanceHistoryCleanup(accounts[1], 1, { from: accounts[5] });
+                await fAsset.balanceHistoryCleanup(accounts[2], 1, { from: accounts[5] });
+            }
+            // Assert
+            // everything should be cleaned before cleanup block
+            assertWeb3Equal(await fAsset.totalSupplyHistoryCleanup.call(1, { from: accounts[5] }), 0);
+            assertWeb3Equal(await fAsset.balanceHistoryCleanup.call(accounts[1], 1, { from: accounts[5] }), 0);
+            assertWeb3Equal(await fAsset.balanceHistoryCleanup.call(accounts[2], 1, { from: accounts[5] }), 0);
+            // the state at blk2 should still be ok
+            // wNat.delegatesOfAt
+            assertWeb3Equal(await fAsset.totalSupplyAt(blk2), 250);
+            assertWeb3Equal(await fAsset.balanceOfAt(accounts[1], blk2), 100);
+            assertWeb3Equal(await fAsset.balanceOfAt(accounts[2], blk2), 150);
+        });
+
+        it("cleaning history twice when is allowed and is a no-op if everything was emptied the first time", async () => {
+            // Assemble
+            await fAsset.mint(accounts[1], 100, { from: assetManager });
+            await fAsset.mint(accounts[2], 100, { from: assetManager });
+            const blk1 = await web3.eth.getBlockNumber();
+            await fAsset.mint(accounts[1], 100, { from: assetManager });
+            const blk2 = await web3.eth.getBlockNumber();
+            await fAsset.setCleanerContract(accounts[5], { from: assetManager });
+            await fAsset.setCleanupBlockNumber(blk2, { from: accounts[8] });
+            // verify initial
+            assertWeb3Equal(await fAsset.totalSupplyHistoryCleanup.call(10, { from: accounts[5] }), 2);
+            assertWeb3Equal(await fAsset.balanceHistoryCleanup.call(accounts[1], 10, { from: accounts[5] }), 1);
+            // Act
+            for (let i = 0; i < 2; i++) {
+                await fAsset.totalSupplyHistoryCleanup(10, { from: accounts[5] });
+                await fAsset.balanceHistoryCleanup(accounts[1], 10, { from: accounts[5] });
+                // Assert
+                assertWeb3Equal(await fAsset.totalSupplyHistoryCleanup.call(1, { from: accounts[5] }), 0);
+                assertWeb3Equal(await fAsset.balanceHistoryCleanup.call(accounts[1], 1, { from: accounts[5] }), 0);
+            }
         });
     });
 
