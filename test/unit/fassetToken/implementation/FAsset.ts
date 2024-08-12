@@ -1,10 +1,11 @@
 import { constants, expectRevert, time } from "@openzeppelin/test-helpers";
-import { erc165InterfaceId } from "../../../../lib/utils/helpers";
+import { abiEncodeCall, erc165InterfaceId } from "../../../../lib/utils/helpers";
 import { FAssetInstance } from "../../../../typechain-truffle";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
 const FAsset = artifacts.require('FAsset');
+const FAssetProxy = artifacts.require('FAssetProxy');
 
 contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async accounts => {
     let fAsset: FAssetInstance;
@@ -12,7 +13,9 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
     const assetManager = accounts[11];
 
     async function initialize() {
-        fAsset = await FAsset.new("FEthereum", "FETH", "Ethereum", "ETH", 18, { from: governance });
+        const fAssetImpl = await FAsset.new();
+        const fAssetProxy = await FAssetProxy.new(fAssetImpl.address, "FEthereum", "FETH", "Ethereum", "ETH", 18, { from: governance });
+        fAsset = await FAsset.at(fAssetProxy.address);
         return { fAsset };
     }
 
@@ -275,6 +278,56 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
                 assertWeb3Equal(await fAsset.totalSupplyHistoryCleanup.call(1, { from: accounts[5] }), 0);
                 assertWeb3Equal(await fAsset.balanceHistoryCleanup.call(accounts[1], 1, { from: accounts[5] }), 0);
             }
+        });
+    });
+
+    describe("fasset proxy upgrade", () => {
+        beforeEach(async () => {
+            await fAsset.setAssetManager(assetManager, { from: governance });
+        });
+
+        it("should upgrade via upgradeTo", async () => {
+            const proxyAddress = fAsset.address;
+            const fAssetProxy = await FAssetProxy.at(proxyAddress);
+            assertWeb3Equal(await fAsset.symbol(), "FETH");
+            // upgrade
+            const newFAssetImpl = await FAsset.new();
+            await fAssetProxy.upgradeTo(newFAssetImpl.address, { from: assetManager });
+            // check
+            assertWeb3Equal(fAsset.address, proxyAddress);
+            assertWeb3Equal(await fAssetProxy.implementation(), newFAssetImpl.address);
+            assertWeb3Equal(await fAsset.name(), "FEthereum");
+            assertWeb3Equal(await fAsset.symbol(), "FETH");
+            assertWeb3Equal(await fAsset.decimals(), 18);
+        });
+
+        it("should upgrade via upgradeToAndCall", async () => {
+            const proxyAddress = fAsset.address;
+            const fAssetProxy = await FAssetProxy.at(proxyAddress);
+            assertWeb3Equal(await fAsset.symbol(), "FETH");
+            // upgrade
+            const newFAssetImpl = await FAsset.new();
+            const callData = abiEncodeCall(fAsset, f => f.mint(accounts[18], 1234));
+            await fAssetProxy.upgradeToAndCall(newFAssetImpl.address, callData, { from: assetManager });
+            // check
+            assertWeb3Equal(fAsset.address, proxyAddress);
+            assertWeb3Equal(await fAssetProxy.implementation(), newFAssetImpl.address);
+            assertWeb3Equal(await fAsset.name(), "FEthereum");
+            assertWeb3Equal(await fAsset.symbol(), "FETH");
+            assertWeb3Equal(await fAsset.decimals(), 18);
+            // fake init call should mint (allowed because the sender is assetManager)
+            assertWeb3Equal(await fAsset.balanceOf(accounts[18]), 1234);
+        });
+
+        it("calling initialize in upgradeToAndCall should fail and pass the revert message to outside", async () => {
+            const proxyAddress = fAsset.address;
+            const fAssetProxy = await FAssetProxy.at(proxyAddress);
+            assertWeb3Equal(await fAsset.symbol(), "FETH");
+            // upgrade
+            const newFAssetImpl = await FAsset.new();
+            const callData = abiEncodeCall(fAsset, f => f.initialize("FXRP", "FXRP", "XRP", "XRP", 6));
+            await expectRevert(fAssetProxy.upgradeToAndCall(newFAssetImpl.address, callData, { from: assetManager }),
+                "already initialized");
         });
     });
 

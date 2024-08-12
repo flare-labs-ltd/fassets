@@ -44,12 +44,15 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const AssetManager = artifacts.require("AssetManager");
     const AssetManagerInit = artifacts.require("AssetManagerInit");
     const FAsset = artifacts.require('FAsset');
+    const FAssetProxy = artifacts.require('FAssetProxy');
 
     const { deployer } = loadDeployAccounts(hre);
     const parameters = assetManagerParameters.load(parametersFile);
 
-    const fAsset = await waitFinalize(hre, deployer,
-        () => FAsset.new(parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals, { from: deployer }));
+    const fAssetImplAddress = await deployFacet(hre, "FAsset", contracts, deployer);
+    const fAssetProxy = await waitFinalize(hre, deployer,
+        () => FAssetProxy.new(fAssetImplAddress, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals, { from: deployer }));
+    const fAsset = await FAsset.at(fAssetProxy.address);
 
     const poolCollateral = convertCollateralType(contracts, parameters.poolCollateral, CollateralClass.POOL);
     const vaultCollateral = parameters.vaultCollaterals.map(p => convertCollateralType(contracts, p, CollateralClass.VAULT));

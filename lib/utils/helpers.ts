@@ -502,6 +502,6 @@ export function erc165InterfaceId(abi: AbiItem[], inheritedAbis: AbiItem[][] = [
 /**
  * ABI encode method call, typesafe when used with typechain.
  */
-export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, call: (inst: I) => any) {
+export function abiEncodeCall<I extends Truffle.ContractInstance>(instance: I, call: (inst: I) => any): string {
     return call(instance.contract.methods).encodeABI();
 }

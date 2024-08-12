@@ -44,29 +44,42 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
      */
     uint64 public terminatedAt = 0;
 
+    string private _name;
+    string private _symbol;
     uint8 private _decimals;
 
     // the address that created this contract and is allowed to set initial settings
     address private _deployer;
+    bool private _initialized;
 
     modifier onlyAssetManager() {
         require(msg.sender == assetManager, "only asset manager");
         _;
     }
 
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        string memory _assetName,
-        string memory _assetSymbol,
-        uint8 _assetDecimals
-    )
-        ERC20(_name, _symbol)
+    constructor()
+        ERC20("", "")
     {
+        _initialized = true;
+    }
+
+    function initialize(
+        string memory name_,
+        string memory symbol_,
+        string memory assetName_,
+        string memory assetSymbol_,
+        uint8 decimals_
+    )
+        external
+    {
+        require(!_initialized, "already initialized");
+        _initialized = true;
         _deployer = msg.sender;
-        assetName = _assetName;
-        assetSymbol = _assetSymbol;
-        _decimals = _assetDecimals;
+        _name = name_;
+        _symbol = symbol_;
+        _decimals = decimals_;
+        assetName = assetName_;
+        assetSymbol = assetSymbol_;
     }
 
     /**
@@ -129,7 +142,20 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
     }
 
     /**
-     * Implements IERC20Metadata method for configurable number of decimals.
+     * Returns the name of the token.
+     */
+    function name() public view virtual override(ERC20, IERC20Metadata) returns (string memory) {
+        return _name;
+    }
+
+    /**
+     * Returns the symbol of the token, usually a shorter version of the name.
+     */
+    function symbol() public view virtual override(ERC20, IERC20Metadata) returns (string memory) {
+        return _symbol;
+    }
+    /**
+     * Implements IERC20Metadata method and returns configurable number of decimals.
      */
     function decimals() public view virtual override(ERC20, IERC20Metadata) returns (uint8) {
         return _decimals;
