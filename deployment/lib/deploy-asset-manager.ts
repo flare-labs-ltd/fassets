@@ -49,7 +49,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const parameters = assetManagerParameters.load(parametersFile);
 
     const fAsset = await waitFinalize(hre, deployer,
-        () => FAsset.new(deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals, { from: deployer }));
+        () => FAsset.new(parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals, { from: deployer }));
 
     const poolCollateral = convertCollateralType(contracts, parameters.poolCollateral, CollateralClass.POOL);
     const vaultCollateral = parameters.vaultCollaterals.map(p => convertCollateralType(contracts, p, CollateralClass.VAULT));

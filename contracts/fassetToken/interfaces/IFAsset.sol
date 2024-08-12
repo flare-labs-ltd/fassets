@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "./ICheckPointable.sol";
 
-/**
- * Here we declare only the functionalities related to AssetManager.
- */
-interface IFAsset {
+
+interface IFAsset is IERC20, IERC20Metadata, ICheckPointable {
     /**
      * Mints `_amount` od fAsset.
      * Only the assetManager corresponding to this fAsset may call `mint()`.

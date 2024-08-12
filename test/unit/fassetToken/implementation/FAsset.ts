@@ -12,7 +12,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
     const assetManager = accounts[11];
 
     async function initialize() {
-        fAsset = await FAsset.new(governance, "FEthereum", "FETH", "Ethereum", "ETH", 18);
+        fAsset = await FAsset.new("FEthereum", "FETH", "Ethereum", "ETH", 18, { from: governance });
         return { fAsset };
     }
 
@@ -31,7 +31,7 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
 
         it('should not set asset manager if not governance', async function () {
             const promise = fAsset.setAssetManager(assetManager);
-            await expectRevert(promise, "only governance")
+            await expectRevert(promise, "only deployer")
         });
 
         it('should not set asset manager to zero address', async function () {
@@ -114,24 +114,26 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
 
     describe("ERC-165 interface identification", () => {
         it("should properly respond to supportsInterface", async () => {
-            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as any) as any as IERC165Contract;
-            const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20" as any) as any as IERC20Contract;
+            const IERC165 = artifacts.require("@openzeppelin/contracts/utils/introspection/IERC165.sol:IERC165" as "IERC165");
+            const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20" as "IERC20");
+            const IERC20Metadata = artifacts.require("@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol:IERC20Metadata" as "IERC20Metadata");
+            const IICleanable = artifacts.require("flare-smart-contracts/contracts/token/interface/IICleanable.sol:IICleanable" as "IICleanable");
+            const ICheckPointable = artifacts.require("ICheckPointable");
             const IFasset = artifacts.require("IFAsset");
-            const IVPToken = artifacts.require("flare-smart-contracts/contracts/userInterfaces/IVPToken.sol:IVPToken" as any) as any as IVPTokenContract;
-            const IIVPToken = artifacts.require("flare-smart-contracts/contracts/token/interface/IIVPToken.sol:IIVPToken" as any) as any as IIVPTokenContract;
-            const IICleanable = artifacts.require("flare-smart-contracts/contracts/token/interface/IICleanable.sol:IICleanable" as any) as any as IICleanableContract;
+            //
             const iERC165 = await IERC165.at(fAsset.address);
             const iERC20 = await IERC20.at(fAsset.address);
+            const iERC20Metadata = await IERC20Metadata.at(fAsset.address);
             const iFasset = await IFasset.at(fAsset.address);
-            const iVPToken = await IVPToken.at(fAsset.address);
-            const iiVPToken = await IIVPToken.at(fAsset.address);
+            const iCheckPointable = await ICheckPointable.at(fAsset.address);
             const iiCleanable = await IICleanable.at(fAsset.address);
+            //
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iERC165.abi)));
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iERC20.abi)));
-            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iVPToken.abi, [iERC20.abi])));
-            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iFasset.abi)));
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iERC20Metadata.abi, [iERC20.abi])));
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iCheckPointable.abi)));
+            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iFasset.abi, [iERC20.abi, iERC20Metadata.abi, iCheckPointable.abi])));
             assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iiCleanable.abi)));
-            assert.isTrue(await fAsset.supportsInterface(erc165InterfaceId(iiVPToken.abi, [iVPToken.abi, iiCleanable.abi])));
             assert.isFalse(await fAsset.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });

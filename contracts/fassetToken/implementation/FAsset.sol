@@ -1,12 +1,31 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.7.6;
+pragma solidity 0.8.23;
 
-import { IERC165, IERC20, IVPToken, IIVPToken, IICleanable, VPToken }
-    from "../../../flattened/FlareSmartContracts.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "flare-smart-contracts/contracts/token/interface/IICleanable.sol";
 import "../interfaces/IFAsset.sol";
+import "../../governance/implementation/Governed.sol";
+import "./CheckPointable.sol";
 
 
-contract FAsset is IFAsset, VPToken, IERC165 {
+contract FAsset is IFAsset, IERC165, IICleanable, ERC20, CheckPointable {
+    /**
+     * The name of the underlying asset.
+     */
+    string public override assetName;
+
+    /**
+     * The symbol of the underlying asset.
+     */
+    string public override assetSymbol;
+
+    /**
+     * The contract that is allowed to set cleanupBlockNumber.
+     * Usually this will be an instance of CleanupBlockNumberManager.
+     */
+    address public cleanupBlockNumberManager;
+
     /**
      * Get the asset manager, corresponding to this fAsset.
      * fAssets and asset managers are in 1:1 correspondence.
@@ -26,34 +45,29 @@ contract FAsset is IFAsset, VPToken, IERC165 {
      */
     uint64 public terminatedAt = 0;
 
-    /**
-     * The name of the underlying asset.
-     */
-    string public override assetName;
+    uint8 private _decimals;
 
-    /**
-     * The symbol of the underlying asset.
-     */
-    string public override assetSymbol;
+    // the address that created this contract and is allowed to set initial settings
+    address private _deployer;
 
-    modifier onlyAssetManager {
+    modifier onlyAssetManager() {
         require(msg.sender == assetManager, "only asset manager");
         _;
     }
 
     constructor(
-        address _governance,
         string memory _name,
         string memory _symbol,
         string memory _assetName,
         string memory _assetSymbol,
-        uint8 _decimals
+        uint8 _assetDecimals
     )
-        VPToken(_governance, _name, _symbol)
+        ERC20(_name, _symbol)
     {
-        _setupDecimals(_decimals);
+        _deployer = msg.sender;
         assetName = _assetName;
         assetSymbol = _assetSymbol;
+        _decimals = _assetDecimals;
     }
 
     /**
@@ -62,8 +76,8 @@ contract FAsset is IFAsset, VPToken, IERC165 {
      */
     function setAssetManager(address _assetManager)
         external
-        onlyGovernance
     {
+        require (msg.sender == _deployer, "only deployer");
         require(_assetManager != address(0), "zero asset manager");
         require(assetManager == address(0), "cannot replace asset manager");
         assetManager = _assetManager;
@@ -115,6 +129,57 @@ contract FAsset is IFAsset, VPToken, IERC165 {
         return terminatedAt != 0;
     }
 
+    /**
+     * Implements IERC20Metadata method for configurable number of decimals.
+     */
+    function decimals() public view virtual override(ERC20, IERC20Metadata) returns (uint8) {
+        return _decimals;
+    }
+
+    /**
+     * Set the cleanup block number.
+     * Historic data for the blocks before `cleanupBlockNumber` can be erased,
+     * history before that block should never be used since it can be inconsistent.
+     * In particular, cleanup block number must be before current vote power block.
+     * @param _blockNumber The new cleanup block number.
+     */
+    function setCleanupBlockNumber(uint256 _blockNumber)
+        external override
+    {
+        require(msg.sender == cleanupBlockNumberManager, "only cleanup block manager");
+        _setCleanupBlockNumber(_blockNumber);
+    }
+
+    /**
+     * Get the current cleanup block number.
+     */
+    function cleanupBlockNumber()
+        external view override
+        returns (uint256)
+    {
+        return _cleanupBlockNumber();
+    }
+
+    /**
+     * Set the contract that is allowed to call history cleaning methods.
+     */
+    function setCleanerContract(address _cleanerContract)
+        external override
+        onlyAssetManager
+    {
+        _setCleanerContract(_cleanerContract);
+    }
+
+    /**
+     * Set the contract that is allowed to set cleanupBlockNumber.
+     * Usually this will be an instance of CleanupBlockNumberManager.
+     */
+    function setCleanupBlockNumberManager(address _cleanupBlockNumberManager)
+        external
+        onlyAssetManager
+    {
+        cleanupBlockNumberManager = _cleanupBlockNumberManager;
+    }
 
     /**
      * Prevent transfer if f-asset is terminated.
@@ -124,12 +189,13 @@ contract FAsset is IFAsset, VPToken, IERC165 {
         address _to,
         uint256 _amount
     )
-        internal
-        override (VPToken)
+        internal override
     {
         require(terminatedAt == 0, "f-asset terminated");
         require(_from == address(0) || balanceOf(_from) >= _amount, "f-asset balance too low");
-        VPToken._beforeTokenTransfer(_from, _to, _amount);
+        require(_from != _to, "Cannot transfer to self");
+        // update balance history
+        _updateBalanceHistoryAtTransfer(_from, _to, _amount);
     }
 
     /**
@@ -141,9 +207,9 @@ contract FAsset is IFAsset, VPToken, IERC165 {
     {
         return _interfaceId == type(IERC165).interfaceId
             || _interfaceId == type(IERC20).interfaceId
-            || _interfaceId == type(IVPToken).interfaceId
+            || _interfaceId == type(IERC20Metadata).interfaceId
+            || _interfaceId == type(ICheckPointable).interfaceId
             || _interfaceId == type(IFAsset).interfaceId
-            || _interfaceId == type(IIVPToken).interfaceId
             || _interfaceId == type(IICleanable).interfaceId;
     }
 }

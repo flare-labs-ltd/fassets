@@ -2,6 +2,7 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "../interfaces/ICheckPointable.sol";
 import "../library/CheckPointHistory.sol";
 import "../library/CheckPointsByAddress.sol";
 import "../library/CheckPointHistoryCache.sol";
@@ -10,7 +11,7 @@ import "../library/CheckPointHistoryCache.sol";
  * @title Check Pointable ERC20 Behavior
  * @notice ERC20 behavior which adds balance check point features.
  **/
-abstract contract CheckPointable {
+abstract contract CheckPointable is ICheckPointable {
     using CheckPointHistory for CheckPointHistory.CheckPointHistoryState;
     using CheckPointsByAddress for CheckPointsByAddress.CheckPointsByAddressState;
     using CheckPointHistoryCache for CheckPointHistoryCache.CacheState;
