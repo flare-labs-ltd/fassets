@@ -106,10 +106,9 @@ export class Agent extends AssetContextClient {
         // get vault contract at agent's vault address address
         const agentVault = await AgentVault.at(args.agentVault);
         // get collateral pool
-        const collateralPool = await CollateralPool.at(args.collateralPool);
+        const collateralPool = await CollateralPool.at(args.creationData.collateralPool);
         // get pool token
-        const poolTokenAddress = await collateralPool.poolToken();
-        const collateralPoolToken = await CollateralPoolToken.at(poolTokenAddress);
+        const collateralPoolToken = await CollateralPoolToken.at(args.creationData.collateralPoolToken);
         // create object
         const ownerManagementAddress = Agent.getManagementAddress(ownerAddress);
         return new Agent(ctx, ownerManagementAddress, agentVault, collateralPool, collateralPoolToken, wallet, settings,

@@ -1,5 +1,4 @@
 import { constants } from "@openzeppelin/test-helpers";
-import fs from "fs";
 import { IAssetContext } from "../../../lib/fasset/IAssetContext";
 import { InitialAgentData } from "../../../lib/state/TrackedAgentState";
 import { TrackedState } from "../../../lib/state/TrackedState";
@@ -9,10 +8,10 @@ import { IEvmEvents } from "../../../lib/utils/events/IEvmEvents";
 import { EventExecutionQueue } from "../../../lib/utils/events/ScopedEvents";
 import { EvmEvent } from "../../../lib/utils/events/common";
 import { sumBN, toBN } from "../../../lib/utils/helpers";
+import { LogFile } from "../../../lib/utils/logging";
 import { SparseArray } from "../../utils/SparseMatrix";
 import { FuzzingAgentState } from "./FuzzingAgentState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
-import { LogFile } from "../../../lib/utils/logging";
 
 export type FuzzingStateLogRecord = {
     text: string;

@@ -31,11 +31,13 @@ library FullAgentInfo {
         Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
         CollateralTypeInt.Data storage collateral = agent.getVaultCollateral();
         CollateralTypeInt.Data storage poolCollateral = agent.getPoolCollateral();
+        IICollateralPool collateralPool = agent.collateralPool;
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
         _info.status = _getAgentStatusInfo(agent);
         _info.ownerManagementAddress = agent.ownerManagementAddress;
         _info.ownerWorkAddress = Globals.getAgentOwnerRegistry().getWorkAddress(_info.ownerManagementAddress);
-        _info.collateralPool = address(agent.collateralPool);
+        _info.collateralPool = address(collateralPool);
+        _info.collateralPoolToken = address(collateralPool.poolToken());
         _info.underlyingAddressString = agent.underlyingAddressString;
         _info.publiclyAvailable = agent.availableAgentsPos != 0;
         _info.vaultCollateralToken = collateral.token;
@@ -49,6 +51,7 @@ library FullAgentInfo {
         _info.totalVaultCollateralWei = collateralData.agentCollateral.fullCollateral;
         _info.freeVaultCollateralWei = collateralData.agentCollateral.freeCollateralWei(agent);
         _info.vaultCollateralRatioBIPS = cr.vaultCR;
+        _info.poolWNatToken = poolCollateral.token;
         _info.totalPoolCollateralNATWei = collateralData.poolCollateral.fullCollateral;
         _info.freePoolCollateralNATWei = collateralData.poolCollateral.freeCollateralWei(agent);
         _info.poolCollateralRatioBIPS = cr.poolCR;

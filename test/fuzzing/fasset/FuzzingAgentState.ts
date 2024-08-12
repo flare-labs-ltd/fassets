@@ -1,30 +1,30 @@
 import { constants } from "@openzeppelin/test-helpers";
 import BN from "bn.js";
+import { closeSync } from "fs";
 import { AgentInfo, AgentStatus, CollateralClass, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
 import { NAT_WEI } from "../../../lib/fasset/Conversions";
 import { CollateralPoolEvents, CollateralPoolTokenEvents } from "../../../lib/fasset/IAssetContext";
+import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { Prices } from "../../../lib/state/Prices";
 import { InitialAgentData, TrackedAgentState } from "../../../lib/state/TrackedAgentState";
 import { ITransaction } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { EvmEventArgs } from "../../../lib/utils/events/IEvmEvents";
 import { EvmEvent } from "../../../lib/utils/events/common";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, expectErrors, formatBN, latestBlockTimestamp, requireNotNull, sumBN, toBN } from "../../../lib/utils/helpers";
+import { openNewFile } from "../../../lib/utils/file-utils";
+import { BN_ZERO, expectErrors, formatBN, latestBlockTimestamp, sumBN, toBN } from "../../../lib/utils/helpers";
 import { ILogger } from "../../../lib/utils/logging";
 import { CollateralPoolInstance, CollateralPoolTokenInstance } from "../../../typechain-truffle";
+import { Entered, Exited } from "../../../typechain-truffle/CollateralPool";
 import {
     AgentAvailable, AvailableAgentExited, CollateralReservationDeleted, CollateralReserved, DustChanged, LiquidationPerformed, MintingExecuted, MintingPaymentDefault,
     RedeemedInCollateral, RedemptionDefault, RedemptionPaymentBlocked, RedemptionPaymentFailed, RedemptionPerformed, RedemptionRequested, RedemptionTicketCreated,
     RedemptionTicketDeleted, RedemptionTicketUpdated, SelfClose, UnderlyingBalanceToppedUp, UnderlyingWithdrawalAnnounced, UnderlyingWithdrawalCancelled, UnderlyingWithdrawalConfirmed
 } from "../../../typechain-truffle/IIAssetManager";
-import { Entered, Exited } from "../../../typechain-truffle/CollateralPool";
 import { SparseArray } from "../../utils/SparseMatrix";
+import { BalanceTrackingList, BalanceTrackingRow } from "./AgentBalanceTracking";
 import { FuzzingState, FuzzingStateLogRecord } from "./FuzzingState";
 import { FuzzingStateComparator } from "./FuzzingStateComparator";
-import { BalanceTrackingList, BalanceTrackingRow } from "./AgentBalanceTracking";
-import { PaymentReference } from "../../../lib/fasset/PaymentReference";
-import { openNewFile } from "../../../lib/utils/file-utils";
-import { closeSync } from "fs";
 
 export interface CollateralReservation {
     id: number;
@@ -80,8 +80,6 @@ export class FuzzingAgentState extends TrackedAgentState {
 
     override parent!: FuzzingState;
 
-    poolTokenAddress?: string;
-
     // collections
     collateralReservations: Map<number, CollateralReservation> = new Map();
     redemptionTickets: Map<number, RedemptionTicket> = new Map();
@@ -115,8 +113,7 @@ export class FuzzingAgentState extends TrackedAgentState {
 
     async initializePoolState() {
         const collateralPool: ContractWithEvents<CollateralPoolInstance, CollateralPoolEvents> = await CollateralPool.at(this.collateralPoolAddress);
-        this.poolTokenAddress = await collateralPool.poolToken();
-        const collateralPoolToken: ContractWithEvents<CollateralPoolTokenInstance, CollateralPoolTokenEvents> = await CollateralPoolToken.at(this.poolTokenAddress);
+        const collateralPoolToken: ContractWithEvents<CollateralPoolTokenInstance, CollateralPoolTokenEvents> = await CollateralPoolToken.at(this.collateralPoolTokenAddress);
         // pool eneter and exit event
         this.parent.truffleEvents.event(collateralPool, 'Entered').immediate().subscribe(args => this.handlePoolEnter(args));
         this.parent.truffleEvents.event(collateralPool, 'Exited').immediate().subscribe(args => this.handlePoolExit(args));
@@ -577,7 +574,7 @@ export class FuzzingAgentState extends TrackedAgentState {
         // pool fees
         const MAX_ERR = 10; // virtual fee calculation is approximate and may have rounding errors
         const collateralPool = await CollateralPool.at(this.collateralPoolAddress);
-        const collateralPoolToken = await CollateralPoolToken.at(requireNotNull(this.poolTokenAddress));
+        const collateralPoolToken = await CollateralPoolToken.at(this.collateralPoolTokenAddress);
         const collateralPoolName = this.poolName();
         checker.checkEquality(`${collateralPoolName}.totalPoolFees`, await this.parent.context.fAsset.balanceOf(this.collateralPoolAddress), this.totalPoolFee);
         checker.checkEquality(`${collateralPoolName}.totalPoolTokens`, await collateralPoolToken.totalSupply(), this.poolTokenBalances.total());

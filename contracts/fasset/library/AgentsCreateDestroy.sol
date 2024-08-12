@@ -112,7 +112,7 @@ library AgentsCreateDestroy {
         agent.allAgentsPos = state.allAgents.length.toUint32();
         state.allAgents.push(address(agentVault));
         // notify
-        _emitAgentVaultCreated(ownerManagementAddress, address(agentVault), address(agent.collateralPool),
+        _emitAgentVaultCreated(ownerManagementAddress, address(agentVault), agent.collateralPool,
             avb.standardAddress, _settings);
         return address(agentVault);
     }
@@ -224,17 +224,27 @@ library AgentsCreateDestroy {
     function _emitAgentVaultCreated(
         address _ownerManagementAddress,
         address _agentVault,
-        address _collateralPool,
+        IICollateralPool _collateralPool,
         string memory _underlyingAddress,
         AgentSettings.Data calldata _settings
     )
         private
     {
-        emit AMEvents.AgentVaultCreated(_ownerManagementAddress, _agentVault, _collateralPool, _underlyingAddress,
-            address(_settings.vaultCollateralToken), _settings.feeBIPS, _settings.poolFeeShareBIPS,
-            _settings.mintingVaultCollateralRatioBIPS, _settings.mintingPoolCollateralRatioBIPS,
-            _settings.buyFAssetByAgentFactorBIPS, _settings.poolExitCollateralRatioBIPS,
-            _settings.poolTopupCollateralRatioBIPS, _settings.poolTopupTokenPriceFactorBIPS);
+        AMEvents.AgentVaultCreationData memory data;
+        data.collateralPool = address(_collateralPool);
+        data.collateralPoolToken = address(_collateralPool.poolToken());
+        data.vaultCollateralToken = address(_settings.vaultCollateralToken);
+        data.poolWNatToken = address(_collateralPool.wNat());
+        data.underlyingAddress = _underlyingAddress;
+        data.feeBIPS = _settings.feeBIPS;
+        data.poolFeeShareBIPS = _settings.poolFeeShareBIPS;
+        data.mintingVaultCollateralRatioBIPS = _settings.mintingVaultCollateralRatioBIPS;
+        data.mintingPoolCollateralRatioBIPS = _settings.mintingPoolCollateralRatioBIPS;
+        data.buyFAssetByAgentFactorBIPS = _settings.buyFAssetByAgentFactorBIPS;
+        data.poolExitCollateralRatioBIPS = _settings.poolExitCollateralRatioBIPS;
+        data.poolTopupCollateralRatioBIPS = _settings.poolTopupCollateralRatioBIPS;
+        data.poolTopupTokenPriceFactorBIPS = _settings.poolTopupTokenPriceFactorBIPS;
+        emit AMEvents.AgentVaultCreated(_ownerManagementAddress, _agentVault, data);
     }
 
     // Returns management owner's address, given either work or management address.

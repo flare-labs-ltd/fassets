@@ -6,23 +6,29 @@ pragma solidity 0.8.23;
  * All asset manager events.
  */
 library AMEvents {
+    struct AgentVaultCreationData {
+        address collateralPool;
+        address collateralPoolToken;
+        string underlyingAddress;
+        address vaultCollateralToken;
+        address poolWNatToken;
+        uint256 feeBIPS;
+        uint256 poolFeeShareBIPS;
+        uint256 mintingVaultCollateralRatioBIPS;
+        uint256 mintingPoolCollateralRatioBIPS;
+        uint256 buyFAssetByAgentFactorBIPS;
+        uint256 poolExitCollateralRatioBIPS;
+        uint256 poolTopupCollateralRatioBIPS;
+        uint256 poolTopupTokenPriceFactorBIPS;
+    }
+
     /**
      * A new agent vault was created.
      */
     event AgentVaultCreated(
         address indexed owner,
         address indexed agentVault,
-        address indexed collateralPool,
-        string underlyingAddress,
-        address vaultCollateralToken,
-        uint256 feeBIPS,
-        uint256 poolFeeShareBIPS,
-        uint256 mintingVaultCollateralRatioBIPS,
-        uint256 mintingPoolCollateralRatioBIPS,
-        uint256 buyFAssetByAgentFactorBIPS,
-        uint256 poolExitCollateralRatioBIPS,
-        uint256 poolTopupCollateralRatioBIPS,
-        uint256 poolTopupTokenPriceFactorBIPS);
+        AgentVaultCreationData creationData);
 
     /**
      * Agent has announced destroy (close) of agent vault and will be able to

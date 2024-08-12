@@ -14,7 +14,7 @@ import { TrackedState } from "./TrackedState";
 
 const MAX_UINT256 = toBN(1).shln(256).subn(1);
 
-export type InitialAgentData = EventArgs<AgentVaultCreated> & { poolWNat: string };
+export type InitialAgentData = EventArgs<AgentVaultCreated>;
 
 export class TrackedAgentState {
     constructor(
@@ -23,18 +23,19 @@ export class TrackedAgentState {
     ) {
         this.address = data.agentVault;
         this.owner = data.owner;
-        this.underlyingAddressString = data.underlyingAddress;
-        this.collateralPoolAddress = data.collateralPool;
-        this.vaultCollateral = parent.collaterals.get(CollateralClass.VAULT, data.vaultCollateralToken);
-        this.poolWNatCollateral = parent.collaterals.get(CollateralClass.POOL, data.poolWNat);
-        this.feeBIPS = toBN(data.feeBIPS);
-        this.poolFeeShareBIPS = toBN(data.poolFeeShareBIPS);
-        this.mintingVaultCollateralRatioBIPS = toBN(data.mintingVaultCollateralRatioBIPS);
-        this.mintingPoolCollateralRatioBIPS = toBN(data.mintingPoolCollateralRatioBIPS);
-        this.buyFAssetByAgentFactorBIPS = toBN(data.buyFAssetByAgentFactorBIPS);
-        this.poolExitCollateralRatioBIPS = toBN(data.poolExitCollateralRatioBIPS);
-        this.poolTopupCollateralRatioBIPS = toBN(data.poolTopupCollateralRatioBIPS);
-        this.poolTopupTokenPriceFactorBIPS = toBN(data.poolTopupTokenPriceFactorBIPS);
+        this.underlyingAddressString = data.creationData.underlyingAddress;
+        this.collateralPoolAddress = data.creationData.collateralPool;
+        this.collateralPoolTokenAddress = data.creationData.collateralPoolToken;
+        this.vaultCollateral = parent.collaterals.get(CollateralClass.VAULT, data.creationData.vaultCollateralToken);
+        this.poolWNatCollateral = parent.collaterals.get(CollateralClass.POOL, data.creationData.poolWNatToken);
+        this.feeBIPS = toBN(data.creationData.feeBIPS);
+        this.poolFeeShareBIPS = toBN(data.creationData.poolFeeShareBIPS);
+        this.mintingVaultCollateralRatioBIPS = toBN(data.creationData.mintingVaultCollateralRatioBIPS);
+        this.mintingPoolCollateralRatioBIPS = toBN(data.creationData.mintingPoolCollateralRatioBIPS);
+        this.buyFAssetByAgentFactorBIPS = toBN(data.creationData.buyFAssetByAgentFactorBIPS);
+        this.poolExitCollateralRatioBIPS = toBN(data.creationData.poolExitCollateralRatioBIPS);
+        this.poolTopupCollateralRatioBIPS = toBN(data.creationData.poolTopupCollateralRatioBIPS);
+        this.poolTopupTokenPriceFactorBIPS = toBN(data.creationData.poolTopupTokenPriceFactorBIPS);
     }
 
     // identifying addresses
@@ -42,6 +43,7 @@ export class TrackedAgentState {
     owner: string;
     underlyingAddressString: string;
     collateralPoolAddress: string;
+    collateralPoolTokenAddress: string;
 
     // agent's settings
     vaultCollateral: CollateralType;
