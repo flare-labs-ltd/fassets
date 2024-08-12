@@ -13,7 +13,7 @@ import "../interfaces/IWNat.sol";
 import "../interfaces/IIAssetManager.sol";
 import "../interfaces/IIAgentVault.sol";
 import "../interfaces/IICollateralPool.sol";
-import "../interfaces/IFAsset.sol";
+import "../../fassetToken/interfaces/IFAsset.sol";
 import "../interfaces/IICollateralPoolToken.sol";
 
 

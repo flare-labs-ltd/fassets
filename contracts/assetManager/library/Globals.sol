@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../interfaces/IFAsset.sol";
+import "../../fassetToken/interfaces/IFAsset.sol";
 import "../interfaces/IWNat.sol";
 import "../../userInterfaces/data/AssetManagerSettings.sol";
 import "../../userInterfaces/IAgentOwnerRegistry.sol";
