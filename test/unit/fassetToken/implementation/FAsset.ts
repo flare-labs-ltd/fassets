@@ -329,6 +329,15 @@ contract(`FAsset.sol; ${getTestFile(__filename)}; FAsset basic tests`, async acc
             await expectRevert(fAssetProxy.upgradeToAndCall(newFAssetImpl.address, callData, { from: assetManager }),
                 "already initialized");
         });
+
+        it("only asset manager can upgrade", async () => {
+            const fAssetProxy = await FAssetProxy.at(fAsset.address);
+            // upgrade
+            const newFAssetImpl = await FAsset.new();
+            await expectRevert(fAssetProxy.upgradeTo(newFAssetImpl.address), "only asset manager");
+            const callData = abiEncodeCall(fAsset, f => f.mint(accounts[18], 1234));
+            await expectRevert(fAssetProxy.upgradeToAndCall(newFAssetImpl.address, callData), "only asset manager");
+        });
     });
 
     describe("ERC-165 interface identification", () => {

@@ -922,6 +922,20 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             assert.equal(await fAsset.cleanupBlockNumberManager(), addr);
         });
 
+        it("should revert upgrading fasset after timelock when address 0 is provided", async () => {
+            const res = assetManagerController.upgradeFAssetImplementation([assetManager.address], constants.ZERO_ADDRESS, "0x", { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert(timelock_info, "address zero");
+        });
+
+        it("should set state connector proof verifier after timelock", async () => {
+            const FAsset = artifacts.require('FAsset');
+            const impl = await FAsset.new();
+            const res = await assetManagerController.upgradeFAssetImplementation([assetManager.address], impl.address, "0x", { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "ContractChanged", { name: "fAsset", value: impl.address });
+        });
+
         it("should set price reader", async () => {
             const addr = randomAddress();
             //Only governance can set price reader

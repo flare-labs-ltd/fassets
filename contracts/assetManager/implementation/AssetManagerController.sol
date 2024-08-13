@@ -157,6 +157,19 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_CLEANUP_BLOCK_NUMBER_MANAGER, abi.encode(_value));
     }
 
+    // if callData is not empty, it is abi encoded call to init function in the new proxy implementation
+    function upgradeFAssetImplementation(
+        IIAssetManager[] memory _assetManagers,
+        address _implementation,
+        bytes memory _callData
+    )
+        external
+        onlyGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.UPGRADE_FASSET_IMPLEMENTATION, abi.encode(_implementation, _callData));
+    }
+
     function setMinUpdateRepeatTimeSeconds(IIAssetManager[] memory _assetManagers, uint256 _value)
         external
         onlyGovernance

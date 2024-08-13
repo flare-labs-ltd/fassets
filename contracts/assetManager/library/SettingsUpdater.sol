@@ -3,6 +3,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../../fassetToken/interfaces/IITransparentProxy.sol";
 import "../../utils/lib/SafePct.sol";
 import "./AMEvents.sol";
 import "./Globals.sol";
@@ -41,6 +42,8 @@ library SettingsUpdater {
         keccak256("setCleanerContract(address)");
     bytes32 internal constant SET_CLEANUP_BLOCK_NUMBER_MANAGER =
         keccak256("setCleanupBlockNumberManager(address)");
+    bytes32 internal constant UPGRADE_FASSET_IMPLEMENTATION =
+        keccak256("upgradeFAssetImplementation(address)");
     bytes32 internal constant SET_MIN_UPDATE_REPEAT_TIME_SECONDS =
         keccak256("setMinUpdateRepeatTimeSeconds(uint256)");
     bytes32 internal constant SET_LOT_SIZE_AMG =
@@ -139,6 +142,9 @@ library SettingsUpdater {
         } else if (_method == SET_CLEANUP_BLOCK_NUMBER_MANAGER) {
             checkEnoughTimeSinceLastUpdate(_method);
             _setCleanupBlockNumberManager(_params);
+        } else if (_method == UPGRADE_FASSET_IMPLEMENTATION) {
+            checkEnoughTimeSinceLastUpdate(_method);
+            _upgradeFAssetImplementation(_params);
         } else if (_method == SET_MIN_UPDATE_REPEAT_TIME_SECONDS) {
             checkEnoughTimeSinceLastUpdate(_method);
             _setMinUpdateRepeatTimeSeconds(_params);
@@ -428,6 +434,19 @@ library SettingsUpdater {
         // update
         Globals.getFAsset().setCleanupBlockNumberManager(value);
         emit AMEvents.ContractChanged("cleanupBlockNumberManager", value);
+    }
+
+    function _upgradeFAssetImplementation(
+        bytes calldata _params
+    )
+        private
+    {
+        (address value, bytes memory callData) = abi.decode(_params, (address, bytes));
+        // validate
+        require(value != address(0), "address zero");
+        // update
+        IITransparentProxy(address(Globals.getFAsset())).upgradeToAndCall(value, callData);
+        emit AMEvents.ContractChanged("fAsset", value);
     }
 
     function _setMinUpdateRepeatTimeSeconds(
