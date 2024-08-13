@@ -28,6 +28,7 @@ const assetManagerFacets = [
     'SettingsManagementFacet',
     'AgentVaultAndPoolSupportFacet',
     'SystemStateManagementFacet',
+    'EmergencyPauseFacet',
     'AgentPingFacet'
 ];
 

@@ -22,6 +22,11 @@ abstract contract AssetManagerBase {
         _;
     }
 
+    modifier notEmergencyPaused {
+        _checkEmergencyPauseNotActive();
+        _;
+    }
+
     function _checkOnlyAssetManagerController() private view {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(msg.sender == settings.assetManagerController, "only asset manager controller");
@@ -36,5 +41,10 @@ abstract contract AssetManagerBase {
         if (settings.whitelist != address(0)) {
             require(IWhitelist(settings.whitelist).isWhitelisted(msg.sender), "not whitelisted");
         }
+    }
+
+    function _checkEmergencyPauseNotActive() private view {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        require(state.emergencyPausedUntil <= block.timestamp, "emergency pause active");
     }
 }

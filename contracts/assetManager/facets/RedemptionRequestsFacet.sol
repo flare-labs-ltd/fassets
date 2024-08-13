@@ -34,6 +34,7 @@ contract RedemptionRequestsFacet is AssetManagerBase {
     )
         external payable
         onlyWhitelistedSender
+        notEmergencyPaused
         returns (uint256 _redeemedAmountUBA)
     {
         return RedemptionRequests.redeem(msg.sender, _lots.toUint64(), _redeemerUnderlyingAddressString, _executor);
@@ -51,6 +52,7 @@ contract RedemptionRequestsFacet is AssetManagerBase {
         address payable _executor
     )
         external payable
+        notEmergencyPaused
     {
         RedemptionRequests.redeemFromAgent(_agentVault, _receiver, _amountUBA, _receiverUnderlyingAddress, _executor);
     }
@@ -67,6 +69,7 @@ contract RedemptionRequestsFacet is AssetManagerBase {
         uint256 _amountUBA
     )
         external
+        notEmergencyPaused
     {
         RedemptionRequests.redeemFromAgentInCollateral(_agentVault, _receiver, _amountUBA);
     }

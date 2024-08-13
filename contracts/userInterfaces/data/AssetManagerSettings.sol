@@ -271,5 +271,13 @@ library AssetManagerSettings {
         // Minimum time that the system must wait before performing diamond cut.
         // The actual timelock is the maximum of this setting and GovernanceSettings.timelock.
         uint64 diamondCutMinTimelockSeconds;
+
+        // The maximum total pause that can be triggered by non-governance (but governance allowed) caller.
+        // The duration count can be reset by the governance.
+        uint64 maxEmergencyPauseDurationSeconds;
+
+        // The amount of time since last emergency pause after which the total pause duration counter
+        // will reset automatically.
+        uint64 emergencyPauseDurationResetAfterSeconds;
     }
 }

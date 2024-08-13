@@ -489,4 +489,15 @@ interface IAssetManagerEvents {
         uint8 collateralClass,
         address collateralToken,
         uint256 validUntil);
+
+    /**
+     * Emergency pause was triggered.
+     */
+    event EmergencyPaused(
+        uint256 _pausedUntil);
+
+    /**
+     * Emergency pause was canceled.
+     */
+    event EmergencyPauseCanceled();
 }

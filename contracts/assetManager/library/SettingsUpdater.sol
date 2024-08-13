@@ -100,6 +100,8 @@ library SettingsUpdater {
         keccak256("setLiquidationStepSeconds(uint256)");
     bytes32 internal constant SET_LIQUIDATION_PAYMENT_FACTORS =
         keccak256("setLiquidationPaymentFactors(uint256[],uint256[])");
+    bytes32 internal constant SET_EMERGENCY_PAUSE_PARAMETERS =
+        keccak256("setEmergencyPauseParameters(uint256,uint256)");
 
     function callUpdate(
         bytes32 _method,
@@ -226,6 +228,9 @@ library SettingsUpdater {
         } else if (_method == SET_LIQUIDATION_PAYMENT_FACTORS) {
             checkEnoughTimeSinceLastUpdate(_method);
             _setLiquidationPaymentFactors(_params);
+        } else if (_method == SET_EMERGENCY_PAUSE_PARAMETERS) {
+            checkEnoughTimeSinceLastUpdate(_method);
+            _setEmergencyPauseParameters(_params);
         } else {
             revert("update: invalid method");
         }
@@ -865,5 +870,34 @@ library SettingsUpdater {
         // emit events
         emit AMEvents.SettingArrayChanged("liquidationCollateralFactorBIPS", liquidationFactors);
         emit AMEvents.SettingArrayChanged("liquidationFactorVaultCollateralBIPS", vaultCollateralFactors);
+    }
+
+    function _setEmergencyPauseParameters(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        (uint256 maxEmergencyPauseDurationSeconds, uint256 emergencyPauseDurationResetAfterSeconds) =
+            abi.decode(_params, (uint256, uint256));
+        // validate
+        require(maxEmergencyPauseDurationSeconds > 0, "cannot be zero");
+        require(maxEmergencyPauseDurationSeconds <= settings.maxEmergencyPauseDurationSeconds * 4,
+            "increase too big");
+        require(maxEmergencyPauseDurationSeconds >= settings.maxEmergencyPauseDurationSeconds / 4,
+            "decrease too big");
+        require(emergencyPauseDurationResetAfterSeconds > 0, "cannot be zero");
+        require(emergencyPauseDurationResetAfterSeconds <= settings.emergencyPauseDurationResetAfterSeconds * 4,
+            "increase too big");
+        require(emergencyPauseDurationResetAfterSeconds >= settings.emergencyPauseDurationResetAfterSeconds / 4,
+            "decrease too big");
+        // update
+        settings.maxEmergencyPauseDurationSeconds = maxEmergencyPauseDurationSeconds.toUint64();
+        settings.emergencyPauseDurationResetAfterSeconds = emergencyPauseDurationResetAfterSeconds.toUint64();
+        // emit events
+        emit AMEvents.SettingChanged("maxEmergencyPauseDurationSeconds",
+            maxEmergencyPauseDurationSeconds);
+        emit AMEvents.SettingChanged("emergencyPauseDurationResetAfterSeconds",
+            emergencyPauseDurationResetAfterSeconds);
     }
 }

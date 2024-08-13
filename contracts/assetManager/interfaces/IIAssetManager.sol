@@ -39,6 +39,22 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
     function attachController(bool attached) external;
 
     ////////////////////////////////////////////////////////////////////////////////////
+    // Emergency pause
+
+    /**
+     * Trigger pause of most operations.
+     */
+    function emergencyPause(bool _byGovernance, uint256 _duration, bool _resetTotalDuration)
+        external;
+
+    /**
+     * Emergency pause details, useful for monitors.
+     */
+    function emergencyPauseDetails()
+        external view
+        returns (uint256 _pausedUntil, uint256 _totalPauseDuration, bool _pausedByGovernance);
+
+    ////////////////////////////////////////////////////////////////////////////////////
     // Upgrade
 
     /**

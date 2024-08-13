@@ -1,5 +1,5 @@
-import { AgentInfo, AssetManagerSettings, CollateralClass } from "../../../lib/fasset/AssetManagerTypes";
-import { BN_ZERO, MAX_BIPS, exp10, maxBN, minBN, toBN } from "../../../lib/utils/helpers";
+import { AgentInfo, AgentStatus, AssetManagerSettings, CollateralClass } from "../../../lib/fasset/AssetManagerTypes";
+import { BN_ZERO, MAX_BIPS, exp10, formatBN, maxBN, minBN, toBN } from "../../../lib/utils/helpers";
 import { IIAssetManagerInstance } from "../../../typechain-truffle";
 import { CollateralData, CollateralDataFactory, CollateralKind } from "./CollateralData";
 

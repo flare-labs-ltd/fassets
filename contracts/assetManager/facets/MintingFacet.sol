@@ -38,6 +38,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         external payable
         onlyAttached
         onlyWhitelistedSender
+        notEmergencyPaused
     {
         CollateralReservations.reserveCollateral(msg.sender, _agentVault,
             _lots.toUint64(), _maxMintingFeeBIPS.toUint64(), _executor);
@@ -137,6 +138,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
     )
         external
         onlyAttached
+        notEmergencyPaused
         nonReentrant
     {
         Minting.selfMint(_payment, _agentVault, _lots.toUint64());

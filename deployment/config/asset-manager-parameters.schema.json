@@ -185,6 +185,10 @@
             "description": "Minimum time that the system must wait before performing diamond cut.\nThe actual timelock is the maximum of this setting and GovernanceSettings.timelock.",
             "type": "integer"
         },
+        "emergencyPauseDurationResetAfterSeconds": {
+            "description": "The amount of time since last emergency pause after which the total pause duration counter\nwill reset automatically.",
+            "type": "integer"
+        },
         "fAssetName": {
             "description": "The name of the f-asset.",
             "type": "string"
@@ -217,6 +221,10 @@
             "description": "Lot size in base unit of underlying asset (e.g. satoshi or wei).\nMay change, which affects subsequent mintings and redemptions.",
             "pattern": "^[0-9 ]+$",
             "type": "string"
+        },
+        "maxEmergencyPauseDurationSeconds": {
+            "description": "The maximum total pause that can be triggered by non-governance (but governance allowed) caller.\nThe duration count can be reset by the governance.",
+            "type": "integer"
         },
         "maxRedeemedTickets": {
             "description": "To prevent unbounded work, the number of tickets redeemed in a single request is limited.",
@@ -367,12 +375,14 @@
         "confirmationByOthersAfterSeconds",
         "confirmationByOthersRewardUSD5",
         "diamondCutMinTimelockSeconds",
+        "emergencyPauseDurationResetAfterSeconds",
         "fAssetName",
         "fAssetSymbol",
         "liquidationCollateralFactorBIPS",
         "liquidationFactorVaultCollateralBIPS",
         "liquidationStepSeconds",
         "lotSize",
+        "maxEmergencyPauseDurationSeconds",
         "maxRedeemedTickets",
         "maxTrustedPriceAgeSeconds",
         "minUnderlyingBackingBIPS",

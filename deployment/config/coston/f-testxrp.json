@@ -96,5 +96,7 @@
     "agentTimelockedOperationWindowSeconds": 3600,
     "collateralPoolTokenTimelockSeconds": 60,
     "diamondCutMinTimelockSeconds": 7200,
+    "maxEmergencyPauseDurationSeconds": 86400,
+    "emergencyPauseDurationResetAfterSeconds": 604800,
     "redemptionPaymentExtensionSeconds": 30
 }

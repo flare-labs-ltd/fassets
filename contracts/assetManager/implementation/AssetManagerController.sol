@@ -2,6 +2,7 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdater.sol";
 import "../interfaces/IWNat.sol";
 import "../interfaces/IIAssetManager.sol";
@@ -12,6 +13,8 @@ import "../library/SettingsUpdater.sol";
 
 
 contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEvents, IERC165 {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     // New address in case this controller was replaced.
     // Note: this code contains no checks that replacedBy==0, because when replaced,
     // all calls to AssetManager's updateSettings/pause/terminate will fail anyway
@@ -20,6 +23,8 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     mapping(address => uint256) private assetManagerIndex;
     IIAssetManager[] private assetManagers;
+
+    EnumerableSet.AddressSet private emergencyPauseSenders;
 
     constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, address _addressUpdater)
         Governed(_governanceSettings, _initialGovernance)
@@ -575,6 +580,61 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         if (assetManagerController != address(this)) {
             replacedBy = assetManagerController;
         }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Emergency pause
+
+    function emergencyPause(
+        IIAssetManager[] memory _assetManagers,
+        uint256 _duration
+    )
+        external
+    {
+        require(emergencyPauseSenders.contains(msg.sender), "only emergency pause senders");
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _checkAssetManager(_assetManagers[i]).emergencyPause(false, _duration, false);
+        }
+    }
+
+    function emergencyPauseByGovernance(
+        IIAssetManager[] memory _assetManagers,
+        uint256 _duration,
+        bool _resetTotalDuration
+    )
+        external
+        onlyImmediateGovernance
+    {
+        for (uint256 i = 0; i < _assetManagers.length; i++) {
+            _checkAssetManager(_assetManagers[i]).emergencyPause(true, _duration, _resetTotalDuration);
+        }
+    }
+
+    function addEmergencyPauseSender(address _address)
+        external
+        onlyImmediateGovernance
+    {
+        emergencyPauseSenders.add(_address);
+    }
+
+    function removeEmergencyPauseSender(address _address)
+        external
+        onlyImmediateGovernance
+    {
+        emergencyPauseSenders.remove(_address);
+    }
+
+    function setEmergencyPauseParameters(
+        IIAssetManager[] memory _assetManagers,
+        uint256 _maxEmergencyPauseDurationSeconds,
+        uint256 _emergencyPauseDurationResetAfterSeconds
+    )
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_EMERGENCY_PAUSE_PARAMETERS,
+            abi.encode(_maxEmergencyPauseDurationSeconds, _emergencyPauseDurationResetAfterSeconds));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

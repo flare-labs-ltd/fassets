@@ -66,10 +66,24 @@ library AssetManagerState {
         // The timestamp (on this network) when the underlying block was last updated
         uint64 currentUnderlyingBlockUpdatedAt;
 
-        // If non-zero, asset manager is paused and has been paused at the time indicated by timestamp mintingPausedAt.
-        // When asset manager is paused, no new mintings can be done.
-        // It is an extreme measure, which can be used in case there is a dangerous hole in the system.
+        // If non-zero, minting is paused and has been paused at the time indicated by timestamp mintingPausedAt.
+        // When asset manager is paused, no new mintings can be done, but redemptions still work.
+        // It is usually used when the asset manager is going to be terminated and upgraded afterwards.
         uint64 mintingPausedAt;
+
+        // If non-zero, asset manager is paused and will be paused until the time indicated.
+        // When asset manager is paused, all dangerous operations ar blocked (mintings, redemptions, etc.).
+        // It is an extreme measure, which can be used in case there is a dangerous hole in the system.
+        uint64 emergencyPausedUntil;
+
+        // When emergency pause is not done by governance, the total allowed pause is limited.
+        // So the caller must state the duration after which the pause will automatically end.
+        // When total pauses exceed the max allowed length, pausing is only allowed by the governance.
+        // A emergencyPause call by the governance optionally resets the total duration counter to 0.
+        uint64 emergencyPausedTotalDuration;
+
+        // When emergency pause was triggered by governance, only governance can unpause.
+        bool emergencyPausedByGovernance;
 
         // When true, asset manager has been added to the asset manager controller.
         // Even though the asset manager controller address is set at the construction time, the manager may not

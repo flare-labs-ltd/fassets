@@ -189,6 +189,8 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         agentTimelockedOperationWindowSeconds: parameters.agentTimelockedOperationWindowSeconds,
         collateralPoolTokenTimelockSeconds: parameters.collateralPoolTokenTimelockSeconds,
         diamondCutMinTimelockSeconds: parameters.diamondCutMinTimelockSeconds,
+        maxEmergencyPauseDurationSeconds: parameters.maxEmergencyPauseDurationSeconds,
+        emergencyPauseDurationResetAfterSeconds: parameters.emergencyPauseDurationResetAfterSeconds,
     };
 }
 

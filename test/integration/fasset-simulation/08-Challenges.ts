@@ -214,7 +214,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // try to challenge
             await expectRevert(challenger.illegalPaymentChallenge(agent, txhash), "matching redemption active");
             // check agent status
-            await agent.checkAgentInfo({ status: AgentStatus.NORMAL, redeemingUBA: 0 }, false);
+            await agent.checkAgentInfo({ status: AgentStatus.NORMAL, redeemingUBA: 0 }, "reset");
         });
 
         it("free balance negative challenge - multiple transactions", async () => {

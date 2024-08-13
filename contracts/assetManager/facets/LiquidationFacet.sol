@@ -19,6 +19,7 @@ contract LiquidationFacet is AssetManagerBase {
     )
         external
         onlyWhitelistedSender
+        notEmergencyPaused
         returns (uint8 _liquidationStatus, uint256 _liquidationStartAt)
     {
         (Agent.LiquidationPhase phase, uint256 startTs) = Liquidation.startLiquidation(_agentVault);
@@ -45,6 +46,7 @@ contract LiquidationFacet is AssetManagerBase {
     )
         external
         onlyWhitelistedSender
+        notEmergencyPaused
         returns (uint256 _liquidatedAmountUBA, uint256 _amountPaidVault, uint256 _amountPaidPool)
     {
         return Liquidation.liquidate(_agentVault, _amountUBA);
