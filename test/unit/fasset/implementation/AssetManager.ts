@@ -652,12 +652,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     describe("pause minting and terminate fasset", () => {
         it("should pause and terminate only after 30 days", async () => {
             const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            assert.isFalse(await assetManager.paused());
-            await assetManager.pause({ from: assetManagerController });
-            assert.isTrue(await assetManager.paused());
+            assert.isFalse(await assetManager.mintingPaused());
+            await assetManager.pauseMinting({ from: assetManagerController });
+            assert.isTrue(await assetManager.mintingPaused());
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP / 2);
-            await assetManager.pause({ from: assetManagerController });
-            assert.isTrue(await assetManager.paused());
+            await assetManager.pauseMinting({ from: assetManagerController });
+            assert.isTrue(await assetManager.mintingPaused());
             await expectRevert(assetManager.terminate({ from: assetManagerController }), "asset manager not paused enough");
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP / 2);
             assert.isFalse(await fAsset.terminated());
@@ -665,35 +665,35 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.terminate({ from: assetManagerController });
             assert.isTrue(await fAsset.terminated());
             assert.isTrue(await assetManager.terminated());
-            await expectRevert(assetManager.unpause({ from: assetManagerController }), "f-asset terminated");
+            await expectRevert(assetManager.unpauseMinting({ from: assetManagerController }), "f-asset terminated");
         });
 
         it("should unpause if not yet terminated", async () => {
-            await assetManager.pause({ from: assetManagerController });
-            assert.isTrue(await assetManager.paused());
-            await assetManager.unpause({ from: assetManagerController });
-            assert.isFalse(await assetManager.paused());
+            await assetManager.pauseMinting({ from: assetManagerController });
+            assert.isTrue(await assetManager.mintingPaused());
+            await assetManager.unpauseMinting({ from: assetManagerController });
+            assert.isFalse(await assetManager.mintingPaused());
         });
 
         it("should not pause if not called from asset manager controller", async () => {
-            const promise = assetManager.pause({ from: accounts[0] });
+            const promise = assetManager.pauseMinting({ from: accounts[0] });
             await expectRevert(promise, "only asset manager controller");
-            assert.isFalse(await assetManager.paused());
+            assert.isFalse(await assetManager.mintingPaused());
         });
 
         it("should not unpause if not called from asset manager controller", async () => {
-            await assetManager.pause({ from: assetManagerController });
-            assert.isTrue(await assetManager.paused());
-            const promise = assetManager.unpause({ from: accounts[0] });
+            await assetManager.pauseMinting({ from: assetManagerController });
+            assert.isTrue(await assetManager.mintingPaused());
+            const promise = assetManager.unpauseMinting({ from: accounts[0] });
             await expectRevert(promise, "only asset manager controller");
-            assert.isTrue(await assetManager.paused());
+            assert.isTrue(await assetManager.mintingPaused());
         });
 
         it("should not terminate if not called from asset manager controller", async () => {
             const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            assert.isFalse(await assetManager.paused());
-            await assetManager.pause({ from: assetManagerController });
-            assert.isTrue(await assetManager.paused());
+            assert.isFalse(await assetManager.mintingPaused());
+            await assetManager.pauseMinting({ from: assetManagerController });
+            assert.isTrue(await assetManager.mintingPaused());
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP);
             const promise = assetManager.terminate({ from: accounts[0] });
             await expectRevert(promise, "only asset manager controller");
@@ -705,7 +705,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(1));
             // terminate f-asset
             const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            await assetManager.pause({ from: assetManagerController });
+            await assetManager.pauseMinting({ from: assetManagerController });
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP);
             await assetManager.terminate({ from: assetManagerController });
             // buy back the collateral
@@ -732,7 +732,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(10));
             // terminate f-asset
             const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            await assetManager.pause({ from: assetManagerController });
+            await assetManager.pauseMinting({ from: assetManagerController });
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP);
             await assetManager.terminate({ from: assetManagerController });
             // buy back the collateral

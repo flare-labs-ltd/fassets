@@ -46,13 +46,13 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
      * All other operations continue normally.
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
-    function pause() external;
+    function pauseMinting() external;
 
     /**
      * If f-asset was not terminated yet, minting can continue.
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
-    function unpause() external;
+    function unpauseMinting() external;
 
     /**
      * When f-asset is terminated, no transfers can be made anymore.

@@ -29,22 +29,22 @@ contract SystemStateManagementFacet is AssetManagerBase {
      * All other operations continue normally.
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
-    function pause()
+    function pauseMinting()
         external
         onlyAssetManagerController
     {
-        StateUpdater.pause();
+        StateUpdater.pauseMinting();
     }
 
     /**
      * If f-asset was not terminated yet, minting can continue.
      * NOTE: may not be called directly - only through asset manager controller by governance.
      */
-    function unpause()
+    function unpauseMinting()
         external
         onlyAssetManagerController
     {
-        StateUpdater.unpause();
+        StateUpdater.unpauseMinting();
     }
 
     /**

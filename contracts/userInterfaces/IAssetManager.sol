@@ -93,7 +93,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * In the paused state, minting is disabled, but all other operations (e.g. redemptions, liquidation) still work.
      * Paused asset manager can be later unpaused.
      */
-    function paused()
+    function mintingPaused()
         external view
         returns (bool);
 

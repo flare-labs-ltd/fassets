@@ -44,28 +44,28 @@ library StateUpdater {
         }
     }
 
-    function pause()
+    function pauseMinting()
         internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        if (state.pausedAt == 0) {
-            state.pausedAt = block.timestamp.toUint64();
+        if (state.mintingPausedAt == 0) {
+            state.mintingPausedAt = block.timestamp.toUint64();
         }
     }
 
-    function unpause()
+    function unpauseMinting()
         internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         require(!Globals.getFAsset().terminated(), "f-asset terminated");
-        state.pausedAt = 0;
+        state.mintingPausedAt = 0;
     }
 
     function terminate()
         internal
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        require(state.pausedAt != 0 && block.timestamp > state.pausedAt + MINIMUM_PAUSE_BEFORE_STOP,
+        require(state.mintingPausedAt != 0 && block.timestamp > state.mintingPausedAt + MINIMUM_PAUSE_BEFORE_STOP,
             "asset manager not paused enough");
         Globals.getFAsset().terminate();
     }

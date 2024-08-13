@@ -467,24 +467,24 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
      * When asset manager is paused, no new minting can be made.
      * All other operations continue normally.
      */
-    function pause(IIAssetManager[] calldata _assetManagers)
+    function pauseMinting(IIAssetManager[] calldata _assetManagers)
         external
         onlyImmediateGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).pause();
+            _checkAssetManager(_assetManagers[i]).pauseMinting();
         }
     }
 
     /**
      * If f-asset was not terminated yet, minting can continue.
      */
-    function unpause(IIAssetManager[] calldata _assetManagers)
+    function unpauseMinting(IIAssetManager[] calldata _assetManagers)
         external
         onlyImmediateGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).unpause();
+            _checkAssetManager(_assetManagers[i]).unpauseMinting();
         }
     }
 

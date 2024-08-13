@@ -264,8 +264,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const crt2 = await minter2.reserveCollateral(agent.vaultAddress, lots2);
             const tx2Hash = await minter2.performMintingPayment(crt2);
             // pause asset manager
-            await context.assetManagerController.pause([context.assetManager.address], { from: governance });
-            assert.isTrue(await context.assetManager.paused());
+            await context.assetManagerController.pauseMinting([context.assetManager.address], { from: governance });
+            assert.isTrue(await context.assetManager.mintingPaused());
             // existing minting can be executed, new minting is not possible
             const minted2 = await agent.executeMinting(crt2, tx2Hash, minter2);
             await expectRevert(minter1.reserveCollateral(agent.vaultAddress, lots1), "minting paused");

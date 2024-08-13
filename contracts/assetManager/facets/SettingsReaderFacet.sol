@@ -101,12 +101,12 @@ contract SettingsReaderFacet is AssetManagerBase {
     /**
      * True if asset manager is paused.
      */
-    function paused()
+    function mintingPaused()
         external view
         returns (bool)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
-        return state.pausedAt != 0;
+        return state.mintingPausedAt != 0;
     }
 
     /**
