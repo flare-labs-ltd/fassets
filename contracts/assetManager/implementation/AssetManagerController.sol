@@ -585,28 +585,23 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Emergency pause
 
-    function emergencyPause(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _duration
-    )
+    function emergencyPause(IIAssetManager[] memory _assetManagers, uint256 _duration)
         external
     {
-        require(emergencyPauseSenders.contains(msg.sender), "only emergency pause senders");
+        bool byGovernance = msg.sender == governance();
+        require(byGovernance || emergencyPauseSenders.contains(msg.sender),
+            "only governance or emergency pause senders");
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).emergencyPause(false, _duration, false);
+            _checkAssetManager(_assetManagers[i]).emergencyPause(byGovernance, _duration);
         }
     }
 
-    function emergencyPauseByGovernance(
-        IIAssetManager[] memory _assetManagers,
-        uint256 _duration,
-        bool _resetTotalDuration
-    )
+    function resetEmergencyPauseTotalDuration(IIAssetManager[] memory _assetManagers)
         external
         onlyImmediateGovernance
     {
         for (uint256 i = 0; i < _assetManagers.length; i++) {
-            _checkAssetManager(_assetManagers[i]).emergencyPause(true, _duration, _resetTotalDuration);
+            _checkAssetManager(_assetManagers[i]).resetEmergencyPauseTotalDuration();
         }
     }
 

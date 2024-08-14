@@ -493,8 +493,8 @@ interface IAssetManagerEvents {
     /**
      * Emergency pause was triggered.
      */
-    event EmergencyPaused(
-        uint256 _pausedUntil);
+    event EmergencyPauseTriggered(
+        uint256 pausedUntil);
 
     /**
      * Emergency pause was canceled.

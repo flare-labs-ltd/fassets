@@ -12,7 +12,7 @@ import "./AssetManagerBase.sol";
 contract EmergencyPauseFacet is AssetManagerBase {
     using SafeCast for uint256;
 
-    function emergencyPause(bool _byGovernance, uint256 _duration, bool _resetTotalDuration)
+    function emergencyPause(bool _byGovernance, uint256 _duration)
         external
         onlyAssetManagerController
     {
@@ -21,14 +21,11 @@ contract EmergencyPauseFacet is AssetManagerBase {
         if (_byGovernance) {
             state.emergencyPausedUntil = (block.timestamp + _duration).toUint64();
             state.emergencyPausedByGovernance = true;
-            if (_resetTotalDuration) {
-                state.emergencyPausedTotalDuration = 0;
-            }
         } else {
-            AssetManagerSettings.Data storage settings = Globals.getSettings();
             if (pausedAtStart && state.emergencyPausedByGovernance) {
                 revert("paused by governance");
             }
+            AssetManagerSettings.Data storage settings = Globals.getSettings();
             if (state.emergencyPausedUntil + settings.emergencyPauseDurationResetAfterSeconds <= block.timestamp) {
                 state.emergencyPausedTotalDuration = 0;
             }
@@ -41,11 +38,19 @@ contract EmergencyPauseFacet is AssetManagerBase {
             state.emergencyPausedTotalDuration = (endTime - projectedStartTime).toUint64();
             state.emergencyPausedByGovernance = false;
         }
-        if (!pausedAtStart && _paused()) {
-            emit AMEvents.EmergencyPaused(state.emergencyPausedUntil);
-        } else if (pausedAtStart && !_paused()) {
+        if (_paused()) {
+            emit AMEvents.EmergencyPauseTriggered(state.emergencyPausedUntil);
+        } else if (pausedAtStart) {
             emit AMEvents.EmergencyPauseCanceled();
         }
+    }
+
+    function resetEmergencyPauseTotalDuration()
+        external
+        onlyAssetManagerController
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        state.emergencyPausedTotalDuration = 0;
     }
 
     function emergencyPaused()
