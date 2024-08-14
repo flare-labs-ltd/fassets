@@ -89,25 +89,5 @@ library PaymentConfirmations {
         if (_state.verifiedPaymentsForDayStart == 0) {
             _state.verifiedPaymentsForDayStart = day;
         }
-        // cleanup one old payment hash (> 14 days) for each new payment hash
-        _cleanupPaymentVerification(_state);
-    }
-
-    function _cleanupPaymentVerification(State storage _state) private {
-        uint256 startDay = _state.verifiedPaymentsForDayStart;
-        if (startDay == 0 || startDay >= block.timestamp / DAY - VERIFICATION_CLEANUP_DAYS) return;
-        bytes32 first = _state.verifiedPaymentsForDay[startDay];
-        if (first != 0) {
-            bytes32 next = _state.verifiedPayments[first];
-            _state.verifiedPayments[first] = 0;
-            if (next == first) {    // last one in the list points to itself
-                _state.verifiedPaymentsForDay[startDay] = 0;
-                _state.verifiedPaymentsForDayStart = startDay + 1;
-            } else {
-                _state.verifiedPaymentsForDay[startDay] = next;
-            }
-        } else {
-            _state.verifiedPaymentsForDayStart = startDay + 1;
-        }
     }
 }
