@@ -15,6 +15,7 @@ import { MockChain, MockChainWallet, MockTransactionOptionsWithFee } from "../..
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { AssetContext, AssetContextClient } from "./AssetContext";
 import { Minter } from "./Minter";
+import { AssetManagerEvents } from "../../../lib/fasset/IAssetContext";
 
 const AgentVault = artifacts.require('AgentVault');
 const CollateralPool = artifacts.require('CollateralPool');
@@ -106,10 +107,9 @@ export class Agent extends AssetContextClient {
         // get vault contract at agent's vault address address
         const agentVault = await AgentVault.at(args.agentVault);
         // get collateral pool
-        const collateralPool = await CollateralPool.at(args.collateralPool);
+        const collateralPool = await CollateralPool.at(args.creationData.collateralPool);
         // get pool token
-        const poolTokenAddress = await collateralPool.poolToken();
-        const collateralPoolToken = await CollateralPoolToken.at(poolTokenAddress);
+        const collateralPoolToken = await CollateralPoolToken.at(args.creationData.collateralPoolToken);
         // create object
         const ownerManagementAddress = Agent.getManagementAddress(ownerAddress);
         return new Agent(ctx, ownerManagementAddress, agentVault, collateralPool, collateralPoolToken, wallet, settings,
@@ -186,7 +186,7 @@ export class Agent extends AssetContextClient {
         assert.equal(args.agentVault, this.vaultAddress);
     }
 
-    async exitAndDestroy(collateral: BNish) {
+    async exitAndDestroy(expectedCollateral?: BNish) {
         // exit available
         await this.exitAvailable();
         // withdraw pool fees
@@ -218,7 +218,9 @@ export class Agent extends AssetContextClient {
         const ownerVaultCollateralBalance = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
         await this.destroy();
         const ownerVaultCollateralBalanceAfterDestroy = await vaultCollateralToken.balanceOf(this.ownerWorkAddress);
-        assertWeb3Equal(ownerVaultCollateralBalanceAfterDestroy.sub(ownerVaultCollateralBalance), collateral);
+        if (expectedCollateral != null) {
+            assertWeb3Equal(ownerVaultCollateralBalanceAfterDestroy.sub(ownerVaultCollateralBalance), expectedCollateral);
+        }
     }
 
     async exitAndDestroyWithTerminatedFAsset(collateral: BNish) {
@@ -322,6 +324,17 @@ export class Agent extends AssetContextClient {
     async cancelUnderlyingWithdrawal(request: EventArgs<UnderlyingWithdrawalAnnounced>) {
         const res = await this.assetManager.cancelUnderlyingWithdrawal(this.agentVault.address, { from: this.ownerWorkAddress });
         return requiredEventArgs(res, 'UnderlyingWithdrawalCancelled');
+    }
+
+    async performRedemptions(requests: EventArgs<RedemptionRequested>[]) {
+        const results: Record<string, Truffle.TransactionResponse<AssetManagerEvents>> = {};
+        for (const request of requests) {
+            if (request.agentVault !== this.vaultAddress) continue;
+            const txHash = await this.performRedemptionPayment(request);
+            const proof = await this.attestationProvider.provePayment(txHash, this.underlyingAddress, request.paymentAddress);
+            const res = await this.assetManager.confirmRedemptionPayment(proof, request.requestId, { from: this.ownerWorkAddress });
+            results[String(request.requestId)] = res;
+        }
     }
 
     async performRedemptionPayment(request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
@@ -520,7 +533,7 @@ export class Agent extends AssetContextClient {
 
     lastAgentInfoCheck: CheckAgentInfo = CHECK_DEFAULTS;
 
-    async checkAgentInfo(check: CheckAgentInfo, keepPreviousChecks: boolean = true) {
+    async checkAgentInfo(check: CheckAgentInfo, previousCheck: "inherit" | "reset" = "inherit") {
         const agentCollateral = await this.getAgentCollateral();
         const agentInfo = agentCollateral.agentInfo;
         // collateral calculation checks
@@ -535,7 +548,7 @@ export class Agent extends AssetContextClient {
         assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.vault), agentInfo.vaultCollateralRatioBIPS);
         assertWeb3Equal(agentCollateral.collateralRatioBIPS(agentCollateral.pool), agentInfo.poolCollateralRatioBIPS);
         // keep the check from prevous
-        if (keepPreviousChecks) {
+        if (previousCheck === "inherit") {
             check = { ...this.lastAgentInfoCheck, ...check };
         }
         for (const key of Object.keys(check) as Array<keyof CheckAgentInfo>) {

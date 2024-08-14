@@ -32,7 +32,7 @@ export class FuzzingPoolTokenHolder extends FuzzingActor {
                 const agent = randomChoice(Array.from(this.state.agents.values()));
                 this.poolInfo = {
                     pool: this.getContract<CollateralPoolInstance>(agent.collateralPoolAddress),
-                    poolToken: this.getContract<CollateralPoolTokenInstance>(requireNotNull(agent.poolTokenAddress)),
+                    poolToken: this.getContract<CollateralPoolTokenInstance>(agent.collateralPoolTokenAddress),
                 };
             }
             const natPrice = this.state.prices.getNat();

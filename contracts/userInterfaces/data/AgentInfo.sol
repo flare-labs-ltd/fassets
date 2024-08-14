@@ -33,6 +33,9 @@ library AgentInfo {
         // Agent's collateral pool address
         address collateralPool;
 
+        // Agent collateral pool's pool token address
+        address collateralPoolToken;
+
         // Underlying address as string - to be used for minting payments.
         // For most other purposes, you use underlyingAddressHash, which is `keccak256(underlyingAddressString)`.
         string underlyingAddressString;
@@ -78,6 +81,10 @@ library AgentInfo {
         // For calculation, the system checks both FTSO prices and trusted provider's prices and uses
         // the ones that give higher ratio.
         uint256 vaultCollateralRatioBIPS;
+
+        // The token identifier of the agent's current vault collateral.
+        // Token identifier can be used to call AssetManager.getCollateralType().
+        IERC20 poolWNatToken;
 
         // Total amount of NAT collateral in agent's pool.
         uint256 totalPoolCollateralNATWei;

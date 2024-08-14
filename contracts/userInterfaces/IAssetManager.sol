@@ -86,6 +86,23 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
         returns (bool);
 
     ////////////////////////////////////////////////////////////////////////////////////
+    // Emergency pause
+
+    /**
+     * If true, the system is in emergency pause mode and most operations (mint, redeem, liquidate) are disabled.
+     */
+    function emergencyPaused()
+        external view
+        returns (bool);
+
+    /**
+     * The time when emergency pause mode will end automatically.
+     */
+    function emergencyPausedUntil()
+        external view
+        returns (uint256);
+
+    ////////////////////////////////////////////////////////////////////////////////////
     // Asset manager upgrading state
 
     /**
@@ -93,7 +110,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * In the paused state, minting is disabled, but all other operations (e.g. redemptions, liquidation) still work.
      * Paused asset manager can be later unpaused.
      */
-    function paused()
+    function mintingPaused()
         external view
         returns (bool);
 

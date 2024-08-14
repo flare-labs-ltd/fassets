@@ -4,7 +4,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { DiamondCut } from "../../../../lib/utils/diamond";
 import { findRequiredEvent, requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { BN_ZERO, BNish, DAYS, HOURS, MAX_BIPS, WEEKS, erc165InterfaceId, toBIPS, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, AssetManagerInitInstance, ERC20MockInstance, FAssetInstance, FtsoMockInstance, IERC165Contract, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -652,12 +652,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     describe("pause minting and terminate fasset", () => {
         it("should pause and terminate only after 30 days", async () => {
             const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            assert.isFalse(await assetManager.paused());
-            await assetManager.pause({ from: assetManagerController });
-            assert.isTrue(await assetManager.paused());
+            assert.isFalse(await assetManager.mintingPaused());
+            await assetManager.pauseMinting({ from: assetManagerController });
+            assert.isTrue(await assetManager.mintingPaused());
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP / 2);
-            await assetManager.pause({ from: assetManagerController });
-            assert.isTrue(await assetManager.paused());
+            await assetManager.pauseMinting({ from: assetManagerController });
+            assert.isTrue(await assetManager.mintingPaused());
             await expectRevert(assetManager.terminate({ from: assetManagerController }), "asset manager not paused enough");
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP / 2);
             assert.isFalse(await fAsset.terminated());
@@ -665,35 +665,35 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.terminate({ from: assetManagerController });
             assert.isTrue(await fAsset.terminated());
             assert.isTrue(await assetManager.terminated());
-            await expectRevert(assetManager.unpause({ from: assetManagerController }), "f-asset terminated");
+            await expectRevert(assetManager.unpauseMinting({ from: assetManagerController }), "f-asset terminated");
         });
 
         it("should unpause if not yet terminated", async () => {
-            await assetManager.pause({ from: assetManagerController });
-            assert.isTrue(await assetManager.paused());
-            await assetManager.unpause({ from: assetManagerController });
-            assert.isFalse(await assetManager.paused());
+            await assetManager.pauseMinting({ from: assetManagerController });
+            assert.isTrue(await assetManager.mintingPaused());
+            await assetManager.unpauseMinting({ from: assetManagerController });
+            assert.isFalse(await assetManager.mintingPaused());
         });
 
         it("should not pause if not called from asset manager controller", async () => {
-            const promise = assetManager.pause({ from: accounts[0] });
+            const promise = assetManager.pauseMinting({ from: accounts[0] });
             await expectRevert(promise, "only asset manager controller");
-            assert.isFalse(await assetManager.paused());
+            assert.isFalse(await assetManager.mintingPaused());
         });
 
         it("should not unpause if not called from asset manager controller", async () => {
-            await assetManager.pause({ from: assetManagerController });
-            assert.isTrue(await assetManager.paused());
-            const promise = assetManager.unpause({ from: accounts[0] });
+            await assetManager.pauseMinting({ from: assetManagerController });
+            assert.isTrue(await assetManager.mintingPaused());
+            const promise = assetManager.unpauseMinting({ from: accounts[0] });
             await expectRevert(promise, "only asset manager controller");
-            assert.isTrue(await assetManager.paused());
+            assert.isTrue(await assetManager.mintingPaused());
         });
 
         it("should not terminate if not called from asset manager controller", async () => {
             const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            assert.isFalse(await assetManager.paused());
-            await assetManager.pause({ from: assetManagerController });
-            assert.isTrue(await assetManager.paused());
+            assert.isFalse(await assetManager.mintingPaused());
+            await assetManager.pauseMinting({ from: assetManagerController });
+            assert.isTrue(await assetManager.mintingPaused());
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP);
             const promise = assetManager.terminate({ from: accounts[0] });
             await expectRevert(promise, "only asset manager controller");
@@ -705,7 +705,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(1));
             // terminate f-asset
             const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            await assetManager.pause({ from: assetManagerController });
+            await assetManager.pauseMinting({ from: assetManagerController });
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP);
             await assetManager.terminate({ from: assetManagerController });
             // buy back the collateral
@@ -732,7 +732,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, accounts[83], toBN(10));
             // terminate f-asset
             const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            await assetManager.pause({ from: assetManagerController });
+            await assetManager.pauseMinting({ from: assetManagerController });
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP);
             await assetManager.terminate({ from: assetManagerController });
             // buy back the collateral
@@ -2145,5 +2145,136 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
                 expect(maxLiquidationAmountUBA.toString()).to.equal("0");
             })
         })
+
+        describe("emergency pause", () => {
+            async function triggerPauseAndCheck(byGovernance: boolean, duration: number, opts: { expectedEnd?: BN, expectedDuration?: number } = {}) {
+                const response = await assetManager.emergencyPause(byGovernance, duration, { from: assetManagerController });
+                const pauseTime = await time.latest();
+                const expectedPauseEnd = opts.expectedEnd ?? pauseTime.addn(opts.expectedDuration ?? duration);
+                expectEvent(response, "EmergencyPauseTriggered", { pausedUntil: expectedPauseEnd });
+                // check simple
+                assert.isTrue(await assetManager.emergencyPaused());
+                assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedPauseEnd);
+                return [pauseTime, expectedPauseEnd];
+            }
+
+            it("only asset manager controller can pause", async () => {
+                await expectRevert(assetManager.emergencyPause(false, 100), "only asset manager controller");
+            });
+
+            it("pause details should work", async () => {
+                // pause by 12 hours first
+                const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
+                // check details
+                const { 0: emergencyPausedUntil1, 1: emergencyPausedTotalDuration1, 2: emergencyPausedByGovernance1 } = await assetManager.emergencyPauseDetails();
+                assertWeb3Equal(emergencyPausedUntil1, expectedEnd1);
+                assert.equal(Number(emergencyPausedTotalDuration1), 12 * HOURS);
+                assert.isFalse(emergencyPausedByGovernance1);
+                // pause by 8 hours by governance
+                const [time2, expectedEnd2] = await triggerPauseAndCheck(true, 20 * HOURS);
+                // check details
+                const { 0: emergencyPausedUntil2, 1: emergencyPausedTotalDuration2, 2: emergencyPausedByGovernance2 } = await assetManager.emergencyPauseDetails();
+                assertWeb3Equal(emergencyPausedUntil2, expectedEnd2);
+                assert.equal(Number(emergencyPausedTotalDuration2), 12 * HOURS);    // total used duration not affected by governance calls
+                assert.isTrue(emergencyPausedByGovernance2);
+            });
+
+            it("pausing with 0 time unpauses", async () => {
+                // pause by 12 hours first
+                const [time1, expectedEnd1] = await triggerPauseAndCheck(false, 12 * HOURS);
+                // after 1 hour pause should still be on
+                await time.increase(1 * HOURS);
+                assert.isTrue(await assetManager.emergencyPaused());
+                assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedEnd1);
+                // unpause
+                await assetManager.emergencyPause(false, 0, { from: assetManagerController });
+                assert.isFalse(await assetManager.emergencyPaused());
+                assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
+                // now there should be approx. 1 hours spent
+                const { 1: emergencyPausedTotalDuration2 } = await assetManager.emergencyPauseDetails();
+                assert.approximately(Number(emergencyPausedTotalDuration2), 1 * HOURS, 10);
+            });
+
+            it("total emergency pauses by 3rd party are limited", async () => {
+                // pause by 12 hours first
+                const [time1] = await triggerPauseAndCheck(false, 12 * HOURS);
+                // after 1 hour, extend by 15 hours
+                await time.increaseTo(time1.addn(1 * HOURS - 1));
+                await triggerPauseAndCheck(false, 15 * HOURS, { expectedEnd: time1.addn(16 * HOURS) });
+                // after 10 more hours pause should still be on
+                await time.increase(10 * HOURS);
+                assert.isTrue(await assetManager.emergencyPaused());
+                // after 5 more hours, the pause should have ended
+                await time.increase(5 * HOURS);
+                assert.isFalse(await assetManager.emergencyPaused());
+                // creating new pause for 12 hours, should only give us 8 hours now (total is 24)
+                await triggerPauseAndCheck(false, 12 * HOURS, { expectedDuration: 8 * HOURS });
+                // after 12 more hours, the pause should have ended
+                await time.increase(12 * HOURS);
+                assert.isFalse(await assetManager.emergencyPaused());
+                // all the time is used up, calling pause again has no effect
+                const res4 = await assetManager.emergencyPause(false, 12 * HOURS, { from: assetManagerController });
+                expectEvent.notEmitted(res4, "EmergencyPauseTriggered");
+                assert.isFalse(await assetManager.emergencyPaused());
+                assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
+                // after 1 week, the pause time accounting is reset
+                await time.increase(1 * WEEKS);
+                // now the full pause time can be triggered again
+                await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
+            });
+
+            it("governence can pause anytime and for unlimited time", async () => {
+                // use up all pause time
+                await triggerPauseAndCheck(false, 30 * HOURS, { expectedDuration: 24 * HOURS });
+                // after 24 hours, the pause should have ended
+                await time.increase(24 * HOURS);
+                assert.isFalse(await assetManager.emergencyPaused());
+                // all the time is used up, calling pause again has no effect
+                const res2 = await assetManager.emergencyPause(false, 12 * HOURS, { from: assetManagerController });
+                expectEvent.notEmitted(res2, "EmergencyPauseTriggered");
+                assert.isFalse(await assetManager.emergencyPaused());
+                assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
+                // but governance can still pause and for more than 24 hours
+                await triggerPauseAndCheck(true, 48 * HOURS, { expectedDuration: 48 * HOURS });
+                // after 40 more hours pause should still be on
+                await time.increase(40 * HOURS);
+                assert.isTrue(await assetManager.emergencyPaused());
+                // after 8 more hours, the pause should have ended
+                await time.increase(8 * HOURS);
+                assert.isFalse(await assetManager.emergencyPaused());
+            });
+
+            it("governence can reset pause time", async () => {
+                // use up all pause time
+                await triggerPauseAndCheck(false, 24 * HOURS, { expectedDuration: 24 * HOURS });
+                // after 24 hours, the pause should have ended
+                await time.increase(24 * HOURS);
+                assert.isFalse(await assetManager.emergencyPaused());
+                // reset
+                await assetManager.resetEmergencyPauseTotalDuration({ from: assetManagerController });
+                // now we can use all time again
+                await triggerPauseAndCheck(true, 24 * HOURS, { expectedDuration: 24 * HOURS });
+            });
+
+            it("others cannot pause/unpause when governance pause is active", async () => {
+                // governance pause
+                const [time1, expectedEnd1] = await triggerPauseAndCheck(true, 4 * HOURS, { expectedDuration: 4 * HOURS });
+                // wait a bit, pause still active
+                await time.increase(2 * HOURS);
+                assert.isTrue(await assetManager.emergencyPaused());
+                // try to unpause
+                await expectRevert(assetManager.emergencyPause(false, 0, { from: assetManagerController }), "paused by governance");
+                // try to increase pause
+                await expectRevert(assetManager.emergencyPause(false, 12 * HOURS, { from: assetManagerController }), "paused by governance");
+                // still the same pause
+                assert.isTrue(await assetManager.emergencyPaused());
+                assertWeb3Equal(await assetManager.emergencyPausedUntil(), expectedEnd1);
+                // governance can unpause
+                await assetManager.emergencyPause(true, 0, { from: assetManagerController });
+                assert.isFalse(await assetManager.emergencyPaused());
+                assertWeb3Equal(await assetManager.emergencyPausedUntil(), 0);
+            });
+
+        });
     })
 });

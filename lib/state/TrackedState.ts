@@ -14,8 +14,6 @@ import { Prices } from "./Prices";
 import { tokenContract } from "./TokenPrice";
 import { InitialAgentData, TrackedAgentState } from "./TrackedAgentState";
 
-const CollateralPool = artifacts.require("CollateralPool");
-
 export class TrackedState {
     constructor(
         public context: IAssetContext,
@@ -126,7 +124,7 @@ export class TrackedState {
 
     private registerAgentHandlers() {
         // agent create / destroy
-        this.assetManagerEvent('AgentVaultCreated').subscribe(args => this.createAgentVault({ ...args, poolWNat: this.poolWNatColateral.token }));
+        this.assetManagerEvent('AgentVaultCreated').subscribe(args => this.createAgentVault(args));
         this.assetManagerEvent('AgentDestroyed').subscribe(args => this.destroyAgent(args.agentVault));
         // status changes
         this.assetManagerEvent('AgentInCCB').subscribe(args => this.getAgentTriggerAdd(args.agentVault)?.handleStatusChange(AgentStatus.CCB, args.timestamp));
@@ -209,22 +207,24 @@ export class TrackedState {
 
     async createAgentVaultWithCurrentState(address: string) {
         const agentInfo = await this.context.assetManager.getAgentInfo(address);
-        const poolWNat = await CollateralPool.at(agentInfo.collateralPool).then(pool => pool.wNat());
         const agent = this.createAgentVault({
             agentVault: address,
             owner: agentInfo.ownerManagementAddress,
-            underlyingAddress: agentInfo.underlyingAddressString,
-            collateralPool: agentInfo.collateralPool,
-            vaultCollateralToken: agentInfo.vaultCollateralToken,
-            poolWNat: poolWNat,
-            feeBIPS: agentInfo.feeBIPS,
-            poolFeeShareBIPS: agentInfo.poolFeeShareBIPS,
-            mintingVaultCollateralRatioBIPS: agentInfo.mintingVaultCollateralRatioBIPS,
-            mintingPoolCollateralRatioBIPS: agentInfo.mintingPoolCollateralRatioBIPS,
-            buyFAssetByAgentFactorBIPS: agentInfo.buyFAssetByAgentFactorBIPS,
-            poolExitCollateralRatioBIPS: agentInfo.poolExitCollateralRatioBIPS,
-            poolTopupCollateralRatioBIPS: agentInfo.poolTopupCollateralRatioBIPS,
-            poolTopupTokenPriceFactorBIPS: agentInfo.poolTopupTokenPriceFactorBIPS,
+            creationData: {
+                collateralPool: agentInfo.collateralPool,
+                collateralPoolToken: agentInfo.collateralPoolToken,
+                underlyingAddress: agentInfo.underlyingAddressString,
+                vaultCollateralToken: agentInfo.vaultCollateralToken,
+                poolWNatToken: agentInfo.poolWNatToken,
+                feeBIPS: agentInfo.feeBIPS,
+                poolFeeShareBIPS: agentInfo.poolFeeShareBIPS,
+                mintingVaultCollateralRatioBIPS: agentInfo.mintingVaultCollateralRatioBIPS,
+                mintingPoolCollateralRatioBIPS: agentInfo.mintingPoolCollateralRatioBIPS,
+                buyFAssetByAgentFactorBIPS: agentInfo.buyFAssetByAgentFactorBIPS,
+                poolExitCollateralRatioBIPS: agentInfo.poolExitCollateralRatioBIPS,
+                poolTopupCollateralRatioBIPS: agentInfo.poolTopupCollateralRatioBIPS,
+                poolTopupTokenPriceFactorBIPS: agentInfo.poolTopupTokenPriceFactorBIPS,
+            }
         });
         agent.initializeState(agentInfo);
     }
@@ -232,8 +232,8 @@ export class TrackedState {
     createAgentVault(data: InitialAgentData) {
         const agent = this.newAgent(data);
         this.agents.set(data.agentVault, agent);
-        this.agentsByUnderlying.set(data.underlyingAddress, agent);
-        this.agentsByPool.set(data.collateralPool, agent);
+        this.agentsByUnderlying.set(data.creationData.underlyingAddress, agent);
+        this.agentsByPool.set(data.creationData.collateralPool, agent);
         return agent;
     }
 

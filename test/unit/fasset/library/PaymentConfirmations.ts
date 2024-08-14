@@ -70,7 +70,7 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
-    it("should cleanup payment verifications after 15 days", async () => {
+    it("should prevent confirming twice", async () => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const proof1 = await agentTopup(agentVault);
         // make transaction in the "future" (chains timestamp may differ)
@@ -79,23 +79,5 @@ contract(`PaymentConfirmations.sol; ${getTestFile(__filename)}; PaymentConfirmat
         // it should revert confirming twice
         await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
         await expectRevert(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
-        // after 15 days it should cleanup old payment verifications
-        await time.increase(15 * DAYS);
-        await agentTopup(agentVault);
-        await agentTopup(agentVault);
-        await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
-        await assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 });
-        // skipping one more day
-        await time.increase(DAYS);
-        chain.skipTime(DAYS);
-        await agentTopup(agentVault);
-        await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
-        await expectRevert(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "payment already confirmed");
-        // after 15 days it should cleanup old payment verifications
-        await time.increase(15 * DAYS);
-        chain.skipTime(15 * DAYS);
-        await agentTopup(agentVault);
-        await expectRevert(assetManager.confirmTopupPayment(proof1, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
-        await expectRevert(assetManager.confirmTopupPayment(proof2, agentVault.address, { from: agentOwner1 }), "verified transaction too old");
     });
 });

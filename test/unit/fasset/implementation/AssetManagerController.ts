@@ -907,6 +907,35 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             expectEvent(timelock_info, "ContractChanged", { name: "scProofVerifier", value: addr });
         });
 
+        it("should set cleaner contract", async () => {
+            const addr = randomAddress();
+            const res = await assetManagerController.setCleanerContract([assetManager.address], addr, { from: governance });
+            expectEvent(res, "ContractChanged", { name: "cleanerContract", value: addr });
+            assert.equal(await fAsset.cleanerContract(), addr);
+        });
+
+        it("should set cleanup block number manager after timelock", async () => {
+            const addr = randomAddress();
+            const res = await assetManagerController.setCleanupBlockNumberManager([assetManager.address], addr, { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "ContractChanged", { name: "cleanupBlockNumberManager", value: addr });
+            assert.equal(await fAsset.cleanupBlockNumberManager(), addr);
+        });
+
+        it("should revert upgrading fasset after timelock when address 0 is provided", async () => {
+            const res = assetManagerController.upgradeFAssetImplementation([assetManager.address], constants.ZERO_ADDRESS, "0x", { from: governance });
+            const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
+            await expectRevert(timelock_info, "address zero");
+        });
+
+        it("should set state connector proof verifier after timelock", async () => {
+            const FAsset = artifacts.require('FAsset');
+            const impl = await FAsset.new();
+            const res = await assetManagerController.upgradeFAssetImplementation([assetManager.address], impl.address, "0x", { from: governance });
+            const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
+            expectEvent(timelock_info, "ContractChanged", { name: "fAsset", value: impl.address });
+        });
+
         it("should set price reader", async () => {
             const addr = randomAddress();
             //Only governance can set price reader
@@ -1123,12 +1152,12 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     describe("pause, unpause and terminate", () => {
         it("should pause and terminate only after 30 days", async () => {
             const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            assert.isFalse(await assetManager.paused());
-            await assetManagerController.pause([assetManager.address], { from: governance });
-            assert.isTrue(await assetManager.paused());
+            assert.isFalse(await assetManager.mintingPaused());
+            await assetManagerController.pauseMinting([assetManager.address], { from: governance });
+            assert.isTrue(await assetManager.mintingPaused());
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP / 2);
-            await assetManagerController.pause([assetManager.address], { from: governance });
-            assert.isTrue(await assetManager.paused());
+            await assetManagerController.pauseMinting([assetManager.address], { from: governance });
+            assert.isTrue(await assetManager.mintingPaused());
             await expectRevert(assetManagerController.terminate([assetManager.address], { from: governance }), "asset manager not paused enough");
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP / 2);
             assert.isFalse(await fAsset.terminated());
@@ -1136,7 +1165,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await assetManagerController.terminate([assetManager.address], { from: governance })
             assert.isTrue(await fAsset.terminated());
             assert.isTrue(await assetManager.terminated());
-            await expectRevert(assetManagerController.unpause([assetManager.address], { from: governance }), "f-asset terminated");
+            await expectRevert(assetManagerController.unpauseMinting([assetManager.address], { from: governance }), "f-asset terminated");
         });
 
         it("controler shouldn't be able to terminate asset manager that he is not managing", async () => {
@@ -1148,31 +1177,31 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should unpause if not yet terminated", async () => {
-            await assetManagerController.pause([assetManager.address], { from: governance });
-            assert.isTrue(await assetManager.paused());
-            await assetManagerController.unpause([assetManager.address], { from: governance });
-            assert.isFalse(await assetManager.paused());
+            await assetManagerController.pauseMinting([assetManager.address], { from: governance });
+            assert.isTrue(await assetManager.mintingPaused());
+            await assetManagerController.unpauseMinting([assetManager.address], { from: governance });
+            assert.isFalse(await assetManager.mintingPaused());
         });
 
         it("should not pause if not called from governance", async () => {
-            const promise = assetManagerController.pause([assetManager.address], { from: accounts[0] });
+            const promise = assetManagerController.pauseMinting([assetManager.address], { from: accounts[0] });
             await expectRevert(promise, "only governance");
-            assert.isFalse(await assetManager.paused());
+            assert.isFalse(await assetManager.mintingPaused());
         });
 
         it("should not unpause if not called from governance", async () => {
-            await assetManagerController.pause([assetManager.address], { from: governance });
-            assert.isTrue(await assetManager.paused());
-            const promise = assetManagerController.unpause([assetManager.address], { from: accounts[0] })
+            await assetManagerController.pauseMinting([assetManager.address], { from: governance });
+            assert.isTrue(await assetManager.mintingPaused());
+            const promise = assetManagerController.unpauseMinting([assetManager.address], { from: accounts[0] })
             await expectRevert(promise, "only governance");
-            assert.isTrue(await assetManager.paused());
+            assert.isTrue(await assetManager.mintingPaused());
         });
 
         it("should not terminate if not called from governance", async () => {
             const MINIMUM_PAUSE_BEFORE_STOP = 30 * DAYS;
-            assert.isFalse(await assetManager.paused());
-            await assetManagerController.pause([assetManager.address], { from: governance });
-            assert.isTrue(await assetManager.paused());
+            assert.isFalse(await assetManager.mintingPaused());
+            await assetManagerController.pauseMinting([assetManager.address], { from: governance });
+            assert.isTrue(await assetManager.mintingPaused());
             await time.increase(MINIMUM_PAUSE_BEFORE_STOP);
             const promise = assetManagerController.terminate([assetManager.address], { from: accounts[0] })
             await expectRevert(promise, "only governance");

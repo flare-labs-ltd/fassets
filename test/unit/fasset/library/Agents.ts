@@ -5,7 +5,7 @@ import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { SourceId } from "../../../../lib/underlying-chain/SourceId";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
-import { BNish, toBN, toBNExp, toWei } from "../../../../lib/utils/helpers";
+import { BNish, toBN, toBNExp, toWei, ZERO_ADDRESS } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
@@ -141,7 +141,13 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const agentSettings = createTestAgentSettings(usdc.address);
         const res = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 });
         // assert
-        expectEvent(res, "AgentVaultCreated", { owner: agentOwner1, underlyingAddress: underlyingAgent1 });
+        expectEvent(res, "AgentVaultCreated", { owner: agentOwner1 });
+        const args = requiredEventArgs(res, "AgentVaultCreated");
+        assert.equal(args.creationData.underlyingAddress, underlyingAgent1);
+        assert.notEqual(args.creationData.collateralPool, ZERO_ADDRESS);
+        assert.notEqual(args.creationData.collateralPoolToken, ZERO_ADDRESS);
+        assert.equal(args.creationData.vaultCollateralToken, usdc.address);
+        assert.notEqual(args.creationData.collateralPoolToken, contracts.wNat.address);
     });
 
     it("should create agent from owner's work address", async () => {
@@ -159,7 +165,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         const res = await assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: ownerWorkAddress });
         // assert
         // the owner returned in the AgentVaultCreated event must be management address
-        expectEvent(res, "AgentVaultCreated", { owner: agentOwner1, underlyingAddress: underlyingAgent1 });
+        expectEvent(res, "AgentVaultCreated", { owner: agentOwner1 });
     });
 
     it("should detect if pool token suffix is reserved", async () => {

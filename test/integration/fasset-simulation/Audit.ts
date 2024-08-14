@@ -145,7 +145,7 @@ contract(`Audit.ts; ${getTestFile(__filename)}; Audit tests`, async accounts => 
         const response = await context.assetManager.createAgentVault(web3DeepNormalize(addressValidityProof), web3DeepNormalize(agentSettings), { from: agentOwner1 });
         const created = requiredEventArgs(response, 'AgentVaultCreated');
         const agentVault = await AgentVault.at(created.agentVault);
-        const collateralPool = await CollateralPool.at(created.collateralPool);
+        const collateralPool = await CollateralPool.at(created.creationData.collateralPool);
         const poolTokenAddress = await collateralPool.poolToken();
         const collateralPoolToken = await CollateralPoolToken.at(poolTokenAddress);
         // create object

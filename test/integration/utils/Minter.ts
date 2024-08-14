@@ -50,6 +50,13 @@ export class Minter extends AssetContextClient {
         return requiredEventArgs(res, 'MintingExecuted');
     }
 
+    async performMinting(agent: string, lots: BNish) {
+        const crt = await this.reserveCollateral(agent, lots);
+        const txHash = await this.performMintingPayment(crt);
+        const minted = await this.executeMinting(crt, txHash);
+        return [minted, crt, txHash] as const;
+    }
+
     async getCollateralReservationFee(lots: BNish) {
         return await this.assetManager.collateralReservationFee(lots);
     }

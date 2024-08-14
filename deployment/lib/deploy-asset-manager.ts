@@ -44,12 +44,15 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const AssetManager = artifacts.require("AssetManager");
     const AssetManagerInit = artifacts.require("AssetManagerInit");
     const FAsset = artifacts.require('FAsset');
+    const FAssetProxy = artifacts.require('FAssetProxy');
 
     const { deployer } = loadDeployAccounts(hre);
     const parameters = assetManagerParameters.load(parametersFile);
 
-    const fAsset = await waitFinalize(hre, deployer,
-        () => FAsset.new(deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals, { from: deployer }));
+    const fAssetImplAddress = await deployFacet(hre, "FAsset", contracts, deployer);
+    const fAssetProxy = await waitFinalize(hre, deployer,
+        () => FAssetProxy.new(fAssetImplAddress, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals, { from: deployer }));
+    const fAsset = await FAsset.at(fAssetProxy.address);
 
     const poolCollateral = convertCollateralType(contracts, parameters.poolCollateral, CollateralClass.POOL);
     const vaultCollateral = parameters.vaultCollaterals.map(p => convertCollateralType(contracts, p, CollateralClass.VAULT));
@@ -86,7 +89,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     // save to contracts
     const symbol = parameters.fAssetSymbol;
     contracts.add(`AssetManager_${symbol}`, "AssetManager.sol", assetManager.address, { mustSwitchToProduction: true });
-    contracts.add(symbol, "FAsset.sol", fAsset.address, { mustSwitchToProduction: true });
+    contracts.add(symbol, "FAssetProxy.sol", fAsset.address);
 
     if (standalone) {
         console.log(`NOTE: perform governance call 'AssetManagerController(${contracts.AssetManagerController?.address}).addAssetManager(${assetManager.address})'`);
@@ -186,6 +189,8 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         agentTimelockedOperationWindowSeconds: parameters.agentTimelockedOperationWindowSeconds,
         collateralPoolTokenTimelockSeconds: parameters.collateralPoolTokenTimelockSeconds,
         diamondCutMinTimelockSeconds: parameters.diamondCutMinTimelockSeconds,
+        maxEmergencyPauseDurationSeconds: parameters.maxEmergencyPauseDurationSeconds,
+        emergencyPauseDurationResetAfterSeconds: parameters.emergencyPauseDurationResetAfterSeconds,
     };
 }
 

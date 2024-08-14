@@ -114,6 +114,8 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         liquidationCollateralFactorBIPS: [toBIPS(1.2), toBIPS(1.6), toBIPS(2.0)],
         liquidationFactorVaultCollateralBIPS: [toBIPS(1), toBIPS(1), toBIPS(1)],
         diamondCutMinTimelockSeconds: 1 * HOURS,
+        maxEmergencyPauseDurationSeconds: 1 * DAYS,
+        emergencyPauseDurationResetAfterSeconds: 7 * DAYS,
         redemptionPaymentExtensionSeconds: 10,
     };
     return Object.assign(result, options ?? {});

@@ -470,4 +470,16 @@ export interface AssetManagerParameters {
      * The actual timelock is the maximum of this setting and GovernanceSettings.timelock.
      */
     diamondCutMinTimelockSeconds: integer;
+
+    /**
+     * The maximum total pause that can be triggered by non-governance (but governance allowed) caller.
+     * The duration count can be reset by the governance.
+     */
+    maxEmergencyPauseDurationSeconds: integer;
+
+    /**
+     * The amount of time since last emergency pause after which the total pause duration counter
+     * will reset automatically.
+     */
+    emergencyPauseDurationResetAfterSeconds: integer;
 }
