@@ -89,7 +89,7 @@ export async function deployAssetManager(hre: HardhatRuntimeEnvironment, paramet
     // save to contracts
     const symbol = parameters.fAssetSymbol;
     contracts.add(`AssetManager_${symbol}`, "AssetManager.sol", assetManager.address, { mustSwitchToProduction: true });
-    contracts.add(symbol, "FAsset.sol", fAsset.address);
+    contracts.add(symbol, "FAssetProxy.sol", fAsset.address);
 
     if (standalone) {
         console.log(`NOTE: perform governance call 'AssetManagerController(${contracts.AssetManagerController?.address}).addAssetManager(${assetManager.address})'`);
