@@ -411,6 +411,12 @@ contract(`FtsoV2PriceStore.sol; ${getTestFile(__filename)}; FtsoV2PriceStore bas
             expect(feeds.toString()).to.eq(feedIds.toString());
         });
 
+        it("should get feed ids and decimals", async () => {
+            let {0: feeds, 1: decimals} = await priceStore.getFeedIdsWithDecimals();
+            expect(feeds.toString()).to.eq(feedIds.toString());
+            expect(decimals.toString()).to.eq(feedDecimals.toString());
+        });
+
         it("should get feed id for symbol", async () => {
             let flrFeed = await priceStore.getFeedId("FLR");
             expect(flrFeed).to.eq(feedIds[0]);

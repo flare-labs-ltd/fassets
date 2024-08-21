@@ -43,20 +43,27 @@ interface IPricePublisher {
 
     /**
      * Returns the list of required feed ids.
-     * @return feedIds The list of feed ids.
+     * @return The list of feed ids.
      */
     function getFeedIds() external view returns (bytes21[] memory);
 
     /**
+     * Returns the list of required feed ids with decimals (for the trusted providers).
+     * @return _feedIds The list of feed ids.
+     * @return _decimals The list of feed decimals.
+     */
+    function getFeedIdsWithDecimals() external view returns (bytes21[] memory _feedIds, int8[] memory _decimals);
+
+    /**
      * Returns the feed id for the given symbol.
      * @param _symbol The symbol.
-     * @return feedId The feed id.
+     * @return The feed id.
      */
     function getFeedId(string memory _symbol) external view returns (bytes21);
 
     /**
      * Returns the trusted providers list.
-     * @return trustedProviders The list of trusted providers.
+     * @return The list of trusted providers.
      */
     function getTrustedProviders() external view returns (address[] memory);
 }

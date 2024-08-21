@@ -268,6 +268,17 @@ contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, A
     /**
      * @inheritdoc IPricePublisher
      */
+    function getFeedIdsWithDecimals() external view returns (bytes21[] memory _feedIds, int8[] memory _decimals) {
+        _feedIds = feedIds;
+        _decimals = new int8[](_feedIds.length);
+        for (uint256 i = 0; i < _feedIds.length; i++) {
+            _decimals[i] = latestPrices[_feedIds[i]].trustedDecimals;
+        }
+    }
+
+    /**
+     * @inheritdoc IPricePublisher
+     */
     function getFeedId(string memory _symbol) external view returns (bytes21) {
         return symbolToFeedId[_symbol];
     }
