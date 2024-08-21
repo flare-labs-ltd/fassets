@@ -1,9 +1,9 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CollateralClass } from "../../lib/fasset/AssetManagerTypes";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
-import { FAssetContractStore } from "./contracts";
+import { ContractStore, FAssetContractStore } from "./contracts";
 import { assetManagerParameters, convertCollateralType, createAssetManagerSettings } from "./deploy-asset-manager";
-import { createDiamondCutsForAllAssetManagerFacets } from "./deploy-asset-manager-facets";
+import { assetManagerFacets, createDiamondCutsForAllAssetManagerFacets } from "./deploy-asset-manager-facets";
 import { abiEncodeCall, loadDeployAccounts } from "./deploy-utils";
 
 export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contracts: FAssetContractStore) {
@@ -101,5 +101,20 @@ export async function verifyCollateralPool(hre: HardhatRuntimeEnvironment, poolA
     } catch (e: any) {
         console.error(`Error verifying CollateralPoolToken: ${e.message ?? e}`);
         process.exitCode = 1;
+    }
+}
+
+export async function verifyAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore) {
+    for (const facetName of assetManagerFacets) {
+        try {
+            console.log(`Verifying facet ${facetName}...`);
+            const facetAddress = contracts.getAddress(facetName);
+            await hre.run("verify:verify", {
+                address: facetAddress,
+                constructorArguments: []
+            });
+        } catch (error) {
+            console.error(`!!! Error verifying facet ${facetName}: ${error}`);
+        }
     }
 }

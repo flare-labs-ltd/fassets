@@ -7,7 +7,7 @@ const assetManagerInterfaces: string[] = [
     'IIAssetManager'
 ];
 
-const assetManagerFacets = [
+export const assetManagerFacets = [
     'AssetManagerDiamondCutFacet',
     'DiamondLoupeFacet',
     'AgentInfoFacet',

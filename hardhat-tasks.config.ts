@@ -14,7 +14,7 @@ import { deployAgentOwnerRegistry, deployAgentVaultFactory, deployCollateralPool
 import { deployCuts } from "./deployment/lib/deploy-cuts";
 import { networkConfigName } from "./deployment/lib/deploy-utils";
 import { linkContracts } from "./deployment/lib/link-contracts";
-import { verifyAssetManager, verifyAssetManagerController, verifyCollateralPool, verifyFAssetToken } from "./deployment/lib/verify-fasset-contracts";
+import { verifyAllAssetManagerFacets, verifyAssetManager, verifyAssetManagerController, verifyCollateralPool, verifyFAssetToken } from "./deployment/lib/verify-fasset-contracts";
 import "./type-extensions";
 
 
@@ -84,6 +84,13 @@ task("verify-collateral-pool", "Verify deployed collateral pool and its correspo
     .addPositionalParam("poolAddress", "Collateral pool address.")
     .setAction(async ({ poolAddress }, hre) => {
         await verifyCollateralPool(hre, poolAddress);
+    });
+
+task("verify-asset-manager-facets", "Verify all asset manager facets.")
+    .setAction(async ({ }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await verifyAllAssetManagerFacets(hre, contracts);
     });
 
 task("switch-to-production", "Switch all deployed files to production mode.")
