@@ -121,6 +121,7 @@ contract RedemptionRequestsFacet is AssetManagerBase {
         uint256 _amountUBA
     )
         external
+        notEmergencyPaused
         returns (uint256 _closedAmountUBA)
     {
         // in SelfClose.selfClose we check that only agent can do this
