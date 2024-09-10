@@ -4,6 +4,7 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../interfaces/IIFAsset.sol";
+import "../../assetManager/interfaces/IIAssetManager.sol";
 import "../../governance/implementation/Governed.sol";
 import "./CheckPointable.sol";
 
@@ -43,6 +44,8 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
      * (i.e. they burn market value of backed f-assets in collateral to release the rest of the collateral).
      */
     uint64 public terminatedAt = 0;
+
+    bool private _internalTransfer;
 
     string private _name;
     string private _symbol;
@@ -209,11 +212,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
     /**
      * Prevent transfer if f-asset is terminated.
      */
-    function _beforeTokenTransfer(
-        address _from,
-        address _to,
-        uint256 _amount
-    )
+    function _beforeTokenTransfer(address _from, address _to, uint256 _amount)
         internal override
     {
         require(terminatedAt == 0, "f-asset terminated");
@@ -221,6 +220,22 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
         require(_from != _to, "Cannot transfer to self");
         // update balance history
         _updateBalanceHistoryAtTransfer(_from, _to, _amount);
+    }
+
+    /**
+     * Charge the fee for fasset transfer (not for minting or burning).
+     */
+    function _afterTokenTransfer(address _from, address _to, uint256 _amount)
+        internal override
+    {
+        if (_internalTransfer || _from == address(0) || _to == address(0)) return;
+        address feePayer = tx.origin;
+        uint256 transferFee = IIAssetManager(assetManager).fassetTransferFeeAmount(_amount);
+        require(balanceOf(feePayer) >= transferFee, "balance too low for transfer fee");
+        _internalTransfer = true;
+        _transfer(feePayer, assetManager, transferFee);
+        _internalTransfer = false;
+        IIAssetManager(assetManager).fassetTransferFeePaid(transferFee);
     }
 
     /**
