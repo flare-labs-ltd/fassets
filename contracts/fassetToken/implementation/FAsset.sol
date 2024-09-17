@@ -229,6 +229,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
         internal override
     {
         if (_internalTransfer || _from == address(0) || _to == address(0)) return;
+        // solhint-disable-next-line avoid-tx-origin
         address feePayer = tx.origin;
         uint256 transferFee = IIAssetManager(assetManager).fassetTransferFeeAmount(_amount);
         require(balanceOf(feePayer) >= transferFee, "balance too low for transfer fee");

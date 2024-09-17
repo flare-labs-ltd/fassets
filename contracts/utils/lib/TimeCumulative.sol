@@ -49,17 +49,23 @@ library TimeCumulative {
         }
     }
 
-    function cleanup(Data storage _data, uint256 _untilTimestamp, uint256 _maxPoints) internal {
+    function cleanup(Data storage _data, uint256 _keepFromTimestamp, uint256 _maxPoints) internal {
         uint256 start = _data.startIndex;
         uint256 end = _data.endIndex;
         uint256 count = 0;
-        // must leave at least 1 point before _untilTimestamp
-        while (count < _maxPoints && start + 1 < end && _data.points[start + 1].timestamp < _untilTimestamp) {
+        // must leave at least 1 point before _keepFromTimestamp
+        while (count < _maxPoints && start + 1 < end && _data.points[start + 1].timestamp < _keepFromTimestamp) {
             delete _data.points[start];
             ++start;
             ++count;
         }
         _data.startIndex = start.toUint64();
+    }
+
+    function lastValue(Data storage _data) internal view returns (uint64) {
+        if (_data.endIndex == 0) return 0;
+        assert(_data.endIndex > _data.startIndex);
+        return _data.points[_data.endIndex - 1].value;
     }
 
     function cumulativeTo(Data storage _data, uint256 _ts) internal view returns (uint256) {

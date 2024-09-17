@@ -113,6 +113,8 @@ library Agents {
         internal
     {
         _agent.mintedAMG = _agent.mintedAMG + _valueAMG;
+        AssetManagerState.State storage state = AssetManagerState.get();
+        TransferFeeTracking.increaseMinting(state.transferFeeTracking, _agent.vaultAddress(), _valueAMG);
     }
 
     function releaseMintedAssets(
@@ -122,6 +124,8 @@ library Agents {
         internal
     {
         _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
+        AssetManagerState.State storage state = AssetManagerState.get();
+        TransferFeeTracking.decreaseMinting(state.transferFeeTracking, _agent.vaultAddress(), _valueAMG);
     }
 
     function startRedeemingAssets(
@@ -136,6 +140,8 @@ library Agents {
             _agent.poolRedeemingAMG += _valueAMG;
         }
         _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
+        AssetManagerState.State storage state = AssetManagerState.get();
+        TransferFeeTracking.decreaseMinting(state.transferFeeTracking, _agent.vaultAddress(), _valueAMG);
     }
 
     function endRedeemingAssets(
