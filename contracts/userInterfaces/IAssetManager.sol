@@ -844,4 +844,11 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
         BalanceDecreasingTransaction.Proof[] calldata _payments,
         address _agentVault
     ) external;
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // FAsset transfer fee
+
+    function claimTransferFees()
+        external
+        returns (uint256 _claimedAmount, uint256 _remainingUnclaimedEpochs);
 }

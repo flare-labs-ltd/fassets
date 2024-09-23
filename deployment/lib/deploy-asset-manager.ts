@@ -191,6 +191,10 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         diamondCutMinTimelockSeconds: parameters.diamondCutMinTimelockSeconds,
         maxEmergencyPauseDurationSeconds: parameters.maxEmergencyPauseDurationSeconds,
         emergencyPauseDurationResetAfterSeconds: parameters.emergencyPauseDurationResetAfterSeconds,
+        transferFeeMillionths: parameters.transferFeeMillionths,
+        transferFeeClaimFirstEpochStartTs: parameters.transferFeeClaimFirstEpochStartTs,
+        transferFeeClaimEpochDurationSeconds: parameters.transferFeeClaimEpochDurationSeconds,
+        transferFeeClaimMaxUnexpiredEpochs: parameters.transferFeeClaimMaxUnexpiredEpochs,
     };
 }
 

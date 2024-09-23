@@ -29,7 +29,8 @@ export const assetManagerFacets = [
     'AgentVaultAndPoolSupportFacet',
     'SystemStateManagementFacet',
     'EmergencyPauseFacet',
-    'AgentPingFacet'
+    'AgentPingFacet',
+    'TransferFeeFacet',
 ];
 
 export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore, deployer: string) {

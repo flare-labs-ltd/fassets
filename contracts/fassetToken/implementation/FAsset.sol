@@ -210,6 +210,17 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
     }
 
     /**
+     * Return the amount of fees that will be charged for the transfer of _transferAmount.
+     * The fees are paid by the external account the initiated the transaction.
+     */
+    function transferFeeAmount(uint256 _transferAmount)
+        external view
+        returns (uint256)
+    {
+        return IIAssetManager(assetManager).fassetTransferFeeAmount(_transferAmount);
+    }
+
+    /**
      * Prevent transfer if f-asset is terminated.
      */
     function _beforeTokenTransfer(address _from, address _to, uint256 _amount)
@@ -228,6 +239,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
     function _afterTokenTransfer(address _from, address _to, uint256 _amount)
         internal override
     {
+        // fee is not paid for minting, redeeming and internal transfers (transfering fee to asset manager)
         if (_internalTransfer || _from == address(0) || _to == address(0)) return;
         // solhint-disable-next-line avoid-tx-origin
         address feePayer = tx.origin;

@@ -500,4 +500,12 @@ interface IAssetManagerEvents {
      * Emergency pause was canceled.
      */
     event EmergencyPauseCanceled();
+
+    /**
+     * An agent has claimed their share of transfer fees.
+     */
+    event TransferFeesClaimed(
+        address indexed agentVault,
+        uint256 claimedAmount,
+        uint256 remainingUnclaimedEpochs);
 }

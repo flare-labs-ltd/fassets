@@ -279,5 +279,22 @@ library AssetManagerSettings {
         // The amount of time since last emergency pause after which the total pause duration counter
         // will reset automatically.
         uint64 emergencyPauseDurationResetAfterSeconds;
+
+        // The fee paid for FAsset transfers.
+        // Unlike other ratios that are in BIPS, this one is in millionths (1/1000000), which is 1/100 of a BIP.
+        // This is because the values can be very small, just a few BIPS.
+        uint32 transferFeeMillionths;
+
+        // Transfer fees are collected for each "epoch" and can be claimed after the epoch ends.
+        // This setting marks the start timestamp of the epoch 0.
+        uint64 transferFeeClaimFirstEpochStartTs;
+
+        // Transfer fees are collected for each "epoch" and can be claimed after the epoch ends.
+        // This setting is the epoch duration (in seconds).
+        uint64 transferFeeClaimEpochDurationSeconds;
+
+        // After a while, the epochs become unclaimable and the fees in there are transfered to the latest epoch.
+        // This setting is the epoch duration (in seconds).
+        uint64 transferFeeClaimMaxUnexpiredEpochs;
     }
 }
