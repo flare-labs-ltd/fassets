@@ -885,7 +885,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
 
     function agentTransferFeeShare(address _agentVault, uint256 _maxEpochsToClaim)
         external view
-        returns (uint256 _feeShareUBA, uint256 _remainingUnclaimedEpochs);
+        returns (uint256 _feeShareUBA);
 
     function agentTransferFeeShareForEpoch(address _agentVault, uint256 _epoch)
         external view

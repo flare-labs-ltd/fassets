@@ -30,7 +30,9 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents {
     {
         TransferFeeTracking.Data storage data = _getTransferFeeData();
         (_claimedAmountUBA, _remainingUnclaimedEpochs) = data.claimFees(_agentVault, _maxEpochsToClaim);
-        Globals.getFAsset().transferInternally(_recipient, _claimedAmountUBA);
+        IIFAsset fAsset = Globals.getFAsset();
+        // TODO: transfer a part to the pool
+        fAsset.transferInternally(_recipient, _claimedAmountUBA);
         emit TransferFeesClaimed(_agentVault, _recipient, _claimedAmountUBA, _remainingUnclaimedEpochs);
     }
 
@@ -80,10 +82,10 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents {
 
     function agentTransferFeeShare(address _agentVault, uint256 _maxEpochsToClaim)
         external view
-        returns (uint256 _feeShareUBA, uint256 _remainingUnclaimedEpochs)
+        returns (uint256 _feeShareUBA)
     {
         TransferFeeTracking.Data storage data = _getTransferFeeData();
-        return data.calculateAgentFeeShare(_agentVault, _maxEpochsToClaim);
+        (_feeShareUBA,) = data.calculateAgentFeeShare(_agentVault, _maxEpochsToClaim);
     }
 
     function agentTransferFeeShareForEpoch(address _agentVault, uint256 _epoch)
