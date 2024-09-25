@@ -217,7 +217,19 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
         external view
         returns (uint256)
     {
-        return IIAssetManager(assetManager).fassetTransferFeeAmount(_transferAmount);
+        return IIAssetManager(assetManager).fassetFeeForTransfer(_transferAmount);
+    }
+
+    /**
+     * Transfer without charging fee. Used for transferring fees to agents.
+     */
+    function transferInternally(address _to, uint256 _amount)
+        external
+        onlyAssetManager
+    {
+        _internalTransfer = true;
+        _transfer(msg.sender, _to, _amount);
+        _internalTransfer = false;
     }
 
     /**
@@ -243,7 +255,7 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
         if (_internalTransfer || _from == address(0) || _to == address(0)) return;
         // solhint-disable-next-line avoid-tx-origin
         address feePayer = tx.origin;
-        uint256 transferFee = IIAssetManager(assetManager).fassetTransferFeeAmount(_amount);
+        uint256 transferFee = IIAssetManager(assetManager).fassetFeeForTransfer(_amount);
         require(balanceOf(feePayer) >= transferFee, "balance too low for transfer fee");
         _internalTransfer = true;
         _transfer(feePayer, assetManager, transferFee);

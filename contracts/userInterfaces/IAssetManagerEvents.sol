@@ -506,6 +506,7 @@ interface IAssetManagerEvents {
      */
     event TransferFeesClaimed(
         address indexed agentVault,
-        uint256 claimedAmount,
+        address _recipient,
+        uint256 claimedAmountUBA,
         uint256 remainingUnclaimedEpochs);
 }

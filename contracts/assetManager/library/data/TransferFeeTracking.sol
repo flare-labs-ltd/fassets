@@ -18,7 +18,7 @@ library TransferFeeTracking {
 
     struct ClaimEpoch {
         uint128 totalFees;
-        uint128 cumulativeMinted;
+        uint128 claimedFees;
     }
 
     struct Data {
@@ -36,8 +36,6 @@ library TransferFeeTracking {
     }
 
     uint256 internal constant CLEANUP_HISTORY_POINTS = 2;
-    uint256 internal constant MAX_SINGLE_CLAIM_EPOCHS = type(uint128).max;
-    uint128 internal constant UNINITIALIZED = type(uint128).max;
 
     function initialize(
         Data storage _data,
@@ -70,57 +68,44 @@ library TransferFeeTracking {
     }
 
     function addFees(Data storage _data, uint256 _amount) internal {
-        if (_amount == 0) return;
         uint256 epoch = currentEpoch(_data);
-        ClaimEpoch storage claimEpoch = _data.epochs[epoch];
-        // Is epoch initialized yet (if it is, totalFees will always be > 0, because we always add nonzero amount)?
-        // Note that "gaps" between initialized epochs can occur if there are no transfers
-        // (and therefore no collected fees) for more than an epoch duration; however, they are harmless.
-        if (claimEpoch.totalFees == 0 && claimEpoch.cumulativeMinted == 0) {
-            claimEpoch.cumulativeMinted = UNINITIALIZED;
-        }
         // if an epoch is expired, delete the data and transfer all fees to current epoch
         _cleanupOneExpiredEpoch(_data, epoch);
         // add new fees to total
-        claimEpoch.totalFees += _amount.toUint128();
+        _data.epochs[epoch].totalFees += _amount.toUint128();
     }
 
-    function claimFees(Data storage _data, address _agentVault) internal returns (uint256, uint256) {
+    function claimFees(Data storage _data, address _agentVault, uint256 _maxClaimEpochs)
+        internal
+        returns (uint256 _claimedFees, uint256 _remainingUnclaimedEpochs)
+    {
         AgentData storage agent = _data.agents[_agentVault];
-        if (agent.firstUnclaimedEpoch < _data.firstClaimableEpoch) {
-            agent.firstUnclaimedEpoch = _data.firstClaimableEpoch;
-        }
         uint256 currentEpochNo = currentEpoch(_data);
-        uint256 claimUntil = Math.min(currentEpochNo, agent.firstUnclaimedEpoch + MAX_SINGLE_CLAIM_EPOCHS);
-        uint256 totalFees = 0;
-        while (agent.firstUnclaimedEpoch < claimUntil) {
-            totalFees += claimFeesForSingleEpoch(_data, agent);
+        uint256 firstUnclaimedEpoch = Math.max(agent.firstUnclaimedEpoch, _data.firstClaimableEpoch);
+        uint256 claimUntilEpoch = Math.min(currentEpochNo, firstUnclaimedEpoch + _maxClaimEpochs);
+        _claimedFees = 0;
+        for (uint256 epoch = firstUnclaimedEpoch; epoch < claimUntilEpoch; epoch++) {
+            uint256 feeShare = agentFeeShare(_data, agent, epoch);
+            _claimedFees += feeShare;
+            _data.epochs[epoch].claimedFees += feeShare.toUint128();
         }
-        uint256 remainingUnclaimedEpochs = currentEpochNo - agent.firstUnclaimedEpoch;
-        return (totalFees, remainingUnclaimedEpochs);
+        agent.firstUnclaimedEpoch = claimUntilEpoch.toUint64();
+        _remainingUnclaimedEpochs = currentEpochNo - claimUntilEpoch;
     }
 
-    function claimFeesForSingleEpoch(Data storage _data, AgentData storage agent) internal returns (uint256) {
-        uint256 epoch = agent.firstUnclaimedEpoch;
-        assert(epoch >= _data.firstClaimableEpoch && epoch < currentEpoch(_data));
-        ClaimEpoch storage claimEpoch = _data.epochs[epoch];
-        // mark epoch claimed by the agent
-        ++agent.firstUnclaimedEpoch;
-        // skip epochs with 0 total fees (they are just gaps when no transfers were done in whole epoch)
-        if (claimEpoch.totalFees == 0) return 0;
-        // init claim epoch total minted amount if necessary
-        if (claimEpoch.cumulativeMinted == UNINITIALIZED) {
-            claimEpoch.cumulativeMinted = _epochCumulative(_data, _data.totalMintingHistory, epoch).toUint128();
+    function calculateAgentFeeShare(Data storage _data, address _agentVault, uint256 _maxClaimEpochs)
+        internal view
+        returns (uint256 _claimedFees, uint256 _remainingUnclaimedEpochs)
+    {
+        AgentData storage agent = _data.agents[_agentVault];
+        uint256 currentEpochNo = currentEpoch(_data);
+        uint256 firstUnclaimedEpoch = Math.max(agent.firstUnclaimedEpoch, _data.firstClaimableEpoch);
+        uint256 claimUntilEpoch = Math.min(currentEpochNo, firstUnclaimedEpoch + _maxClaimEpochs);
+        _claimedFees = 0;
+        for (uint256 epoch = firstUnclaimedEpoch; epoch < claimUntilEpoch; epoch++) {
+            _claimedFees += agentFeeShare(_data, agent, epoch);
         }
-        // calculate agent's share
-        uint256 agentCumulativeMinted = _epochCumulative(_data, agent.mintingHistory, epoch);
-        assert(agentCumulativeMinted <= claimEpoch.cumulativeMinted);
-        if (agentCumulativeMinted == 0) return 0;
-        uint256 feeShare = SafePct.mulDiv(claimEpoch.totalFees, agentCumulativeMinted, claimEpoch.cumulativeMinted);
-        // remove from totals
-        claimEpoch.totalFees -= feeShare.toUint128();
-        claimEpoch.cumulativeMinted -= agentCumulativeMinted.toUint128();
-        return feeShare;
+        _remainingUnclaimedEpochs = currentEpochNo - claimUntilEpoch;
     }
 
     function currentEpoch(Data storage _data) internal view returns (uint256) {
@@ -131,8 +116,24 @@ library TransferFeeTracking {
         return _data.firstEpochStartTs + _data.epochDuration * _epoch;
     }
 
-    function _epochCumulative(Data storage _data, TimeCumulative.Data storage _tc, uint256 _epoch)
-        private view
+    function epochClaimable(Data storage _data, uint256 _epoch) internal view returns (bool) {
+        return _epoch >= _data.firstClaimableEpoch && _epoch < currentEpoch(_data);
+    }
+
+    function agentFeeShare(Data storage _data, AgentData storage _agent, uint256 _epoch)
+        internal view
+        returns (uint256)
+    {
+        ClaimEpoch storage claimEpoch = _data.epochs[_epoch];
+        uint256 agentCumulativeMinted = epochCumulative(_data, _agent.mintingHistory, _epoch);
+        uint256 totalCumulativeMinted = epochCumulative(_data, _data.totalMintingHistory, _epoch);
+        assert(agentCumulativeMinted <= totalCumulativeMinted);
+        if (agentCumulativeMinted == 0) return 0;
+        return SafePct.mulDiv(claimEpoch.totalFees, agentCumulativeMinted, totalCumulativeMinted);
+    }
+
+    function epochCumulative(Data storage _data, TimeCumulative.Data storage _tc, uint256 _epoch)
+        internal view
         returns (uint256)
     {
         return _tc.intervalCumulative(epochTimestamp(_data, _epoch), epochTimestamp(_data, _epoch + 1));
@@ -141,7 +142,10 @@ library TransferFeeTracking {
     function _cleanupOneExpiredEpoch(Data storage _data, uint256 _currentEpoch) private {
         uint256 firstClaimableEpoch = _data.firstClaimableEpoch;
         if (firstClaimableEpoch + _data.maxUnexpiredEpochs < _currentEpoch) {
-            _data.epochs[_currentEpoch].totalFees += _data.epochs[firstClaimableEpoch].totalFees;
+            ClaimEpoch storage expiringEpoch = _data.epochs[firstClaimableEpoch];
+            // transfer remaining fees to the current epoch
+            _data.epochs[_currentEpoch].totalFees += expiringEpoch.totalFees - expiringEpoch.claimedFees;
+            // cleanup epoch data
             delete _data.epochs[firstClaimableEpoch];
             _data.firstClaimableEpoch = uint64(firstClaimableEpoch + 1);
         }

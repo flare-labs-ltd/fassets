@@ -16,7 +16,7 @@ import { AgentOwnerRegistryInstance, IIAssetManagerInstance, FAssetInstance, Whi
 import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
-import { createTestCollaterals, createTestSettings } from "../../utils/test-settings";
+import { createTestCollaterals, createTestSettings, TestSettingOptions } from "../../utils/test-settings";
 import { CommonContext } from "./CommonContext";
 import { TestChainInfo } from "./TestChainInfo";
 
@@ -27,6 +27,7 @@ const Whitelist = artifacts.require('Whitelist');
 export interface SettingsOptions {
     // optional settings
     collaterals?: CollateralType[];
+    testSettings?: TestSettingOptions;
     // optional contracts
     whitelist?: ContractWithEvents<WhitelistInstance, WhitelistEvents>;
     agentOwnerRegistry?: ContractWithEvents<AgentOwnerRegistryInstance, AgentOwnerRegistryEvents>;
@@ -253,7 +254,7 @@ export class AssetContext implements IAssetContext {
         // create collaterals
         const testSettingsContracts = { ...common, agentOwnerRegistry };
         // create settings
-        const settings = createTestSettings(testSettingsContracts, chainInfo);
+        const settings = createTestSettings(testSettingsContracts, chainInfo, options.testSettings);
         const collaterals = options.collaterals ?? createTestCollaterals(testSettingsContracts, chainInfo);
         // create asset manager
         const [assetManager, fAsset] = await newAssetManager(common.governance, common.assetManagerController,
