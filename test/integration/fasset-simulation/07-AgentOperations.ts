@@ -329,7 +329,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             //await agent.exitAndDestroyWithTerminatedFAsset(fullAgentCollateral.sub(buybackAgentVaultCollateral));
         });
 
-        it("agent shouldn't be able to withdraw collateral if it makes CR fall to low", async () => {
+        it("agent shouldn't be able to withdraw collateral if it makes CR fall too low", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             // make agent available

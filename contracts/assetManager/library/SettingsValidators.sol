@@ -16,8 +16,8 @@ library SettingsValidators {
     )
         internal pure
     {
-        require(_underlyingSeconds <= MAXIMUM_PROOF_WINDOW, "value to high");
-        require(_underlyingBlocks * _averageBlockTimeMS / 1000 <= MAXIMUM_PROOF_WINDOW, "value to high");
+        require(_underlyingSeconds <= MAXIMUM_PROOF_WINDOW, "value too high");
+        require(_underlyingBlocks * _averageBlockTimeMS / 1000 <= MAXIMUM_PROOF_WINDOW, "value too high");
     }
 
     function validateLiquidationFactors(

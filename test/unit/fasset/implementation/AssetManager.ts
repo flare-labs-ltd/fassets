@@ -316,7 +316,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.announceAgentSettingUpdate(agentVault.address, "feeBIPS", 200000000, { from: agentOwner1 });
             await time.increase(agentFeeChangeTimelock);
             let res = assetManager.executeAgentSettingUpdate(agentVault.address, "feeBIPS", { from: agentOwner1 });
-            await expectRevert(res, "fee to high");
+            await expectRevert(res, "fee too high");
         });
 
         it("should correctly update agent setting pool fee share BIPS", async () => {
@@ -329,13 +329,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(agentInfo.poolFeeShareBIPS.toString(), "2000");
         });
 
-        it("should not update agent setting pool fee share BIPS if value to high", async () => {
+        it("should not update agent setting pool fee share BIPS if value too high", async () => {
             const agentFeeChangeTimelock = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolFeeShareBIPS", 20000000, { from: agentOwner1 });
             await time.increase(agentFeeChangeTimelock);
             let res = assetManager.executeAgentSettingUpdate(agentVault.address, "poolFeeShareBIPS", { from: agentOwner1 });
-            await expectRevert(res, "value to high");
+            await expectRevert(res, "value too high");
         });
 
         it("should correctly update agent setting minting VaultCollateral collateral ratio BIPS", async () => {
@@ -393,7 +393,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", 2, { from: agentOwner1 });
             await time.increase(agentPoolExitCRChangeTimelock);
             let res = assetManager.executeAgentSettingUpdate(agentVault.address, "poolExitCollateralRatioBIPS", { from: agentOwner1 });
-            await expectRevert(res, "value to low")
+            await expectRevert(res, "value too low")
         });
 
         it("should not update agent setting pool exit collateral ratio BIPS if increase too big", async () => {
@@ -423,7 +423,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await assetManager.announceAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", 2, { from: agentOwner1 });
             await time.increase(agentPoolTopupCRChangeTimelock);
             let res = assetManager.executeAgentSettingUpdate(agentVault.address, "poolTopupCollateralRatioBIPS", { from: agentOwner1 });
-            await expectRevert(res, "value to low")
+            await expectRevert(res, "value too low")
         });
 
         it("should correctly update agent setting pool topup token price factor BIPS", async () => {
@@ -864,12 +864,12 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             let newSettings21 = createTestSettings(contracts, testChainInfo.eth)
             newSettings21.underlyingSecondsForPayment = 25 * HOURS;
             let res21 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings21, collaterals);
-            await expectRevert(res21, "value to high");
+            await expectRevert(res21, "value too high");
 
             let newSettings22 = createTestSettings(contracts, testChainInfo.eth)
             newSettings22.underlyingBlocksForPayment = toBN(Math.round(25 * HOURS / testChainInfo.eth.blockTime));
             let res22 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings22, collaterals);
-            await expectRevert(res22, "value to high");
+            await expectRevert(res22, "value too high");
         });
 
         it("should validate settings - other validators", async () => {

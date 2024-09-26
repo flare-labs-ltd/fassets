@@ -680,12 +680,12 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             let underlyingBlocksForPayment1 = toBN(Math.round(25 * HOURS / testChainInfo.eth.blockTime));
             let underlyingSecondsForPayment1 = toBN(currentSettings.underlyingSecondsForPayment).muln(2);
             const res1 = await assetManagerController.setTimeForPayment([assetManager.address], underlyingBlocksForPayment1, underlyingSecondsForPayment1, { from: governance });
-            await expectRevert(waitForTimelock(res1, assetManagerController, updateExecutor), "value to high");
+            await expectRevert(waitForTimelock(res1, assetManagerController, updateExecutor), "value too high");
             // seconds too high
             let underlyingBlocksForPayment2 = toBN(currentSettings.underlyingBlocksForPayment).muln(2);
             let underlyingSecondsForPayment2 = toBN(25 * HOURS);
             const res2 = await assetManagerController.setTimeForPayment([assetManager.address], underlyingBlocksForPayment2, underlyingSecondsForPayment2, { from: governance });
-            await expectRevert(waitForTimelock(res2, assetManagerController, updateExecutor), "value to high");
+            await expectRevert(waitForTimelock(res2, assetManagerController, updateExecutor), "value too high");
             // blocks zero
             let underlyingBlocksForPayment3 = 0;
             let underlyingSecondsForPayment3 = toBN(currentSettings.underlyingSecondsForPayment).muln(2);

@@ -49,7 +49,7 @@ library Agents {
     )
         internal
     {
-        require(_feeBIPS < SafePct.MAX_BIPS, "fee to high");
+        require(_feeBIPS < SafePct.MAX_BIPS, "fee too high");
         _agent.feeBIPS = _feeBIPS.toUint16();
     }
 
@@ -59,7 +59,7 @@ library Agents {
     )
         internal
     {
-        require(_poolFeeShareBIPS < SafePct.MAX_BIPS, "value to high");
+        require(_poolFeeShareBIPS < SafePct.MAX_BIPS, "value too high");
         _agent.poolFeeShareBIPS = _poolFeeShareBIPS.toUint16();
     }
 
@@ -80,7 +80,7 @@ library Agents {
     {
         CollateralTypeInt.Data storage collateral = getPoolCollateral(_agent);
         uint256 minCR = Math.max(_agent.mintingPoolCollateralRatioBIPS, collateral.minCollateralRatioBIPS);
-        require(_poolExitCollateralRatioBIPS >= minCR, "value to low");
+        require(_poolExitCollateralRatioBIPS >= minCR, "value too low");
         uint256 currentExitCR = _agent.collateralPool.exitCollateralRatioBIPS();
         require(_poolExitCollateralRatioBIPS <= currentExitCR * 3 / 2, "increase too big");
         _agent.collateralPool.setExitCollateralRatioBIPS(_poolExitCollateralRatioBIPS);
@@ -93,7 +93,7 @@ library Agents {
         internal
     {
         CollateralTypeInt.Data storage collateral = getPoolCollateral(_agent);
-        require(_poolTopupCollateralRatioBIPS >= collateral.minCollateralRatioBIPS, "value to low");
+        require(_poolTopupCollateralRatioBIPS >= collateral.minCollateralRatioBIPS, "value too low");
         _agent.collateralPool.setTopupCollateralRatioBIPS(_poolTopupCollateralRatioBIPS);
     }
 
