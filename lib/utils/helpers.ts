@@ -340,15 +340,25 @@ export class Future<T> {
 /**
  * Return a copy of list, sorted by comparisonKey.
  */
-export function sorted<T, K>(list: Iterable<T>, comparisonKey: (e: T) => K): T[];
+export function sorted<T, K>(list: Iterable<T>, comparisonKey: (e: T) => K, compare?: (x: K, y: K) => number): T[];
 export function sorted<T>(list: Iterable<T>): T[];
-export function sorted<T, K>(list: Iterable<T>, comparisonKey: (e: T) => K = (x: any) => x) {
+export function sorted<T, K>(list: Iterable<T>, comparisonKey: (e: T) => K = identity, compare: (x: K, y: K) => number = naturalCompare) {
     const array = Array.from(list);
     array.sort((a, b) => {
         const aKey = comparisonKey(a), bKey = comparisonKey(b);
-        return aKey < bKey ? -1 : (aKey > bKey ? 1 : 0);
+        return compare(aKey, bKey);
     });
     return array;
+}
+
+function identity(x: any) {
+    return x;
+}
+
+function naturalCompare(x: any, y: any): number {
+    if (x < y) return -1;
+    if (x > y) return 1;
+    return 0;
 }
 
 export interface PromiseValue<T> {

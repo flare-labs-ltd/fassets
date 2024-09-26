@@ -271,6 +271,13 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
     {
         // Fee is not paid for minting, redeeming and internal transfers (transfering fee to asset manager).
         if (_internalTransfer || _from == address(0) || _to == address(0)) return;
+        _payTransferFee(_amount);
+    }
+
+    function _payTransferFee(uint256 _amount) private {
+        uint256 transferFee = IIAssetManager(assetManager).fassetFeeForTransfer(_amount);
+        // if fees are not enabled (fee percentage set to 0), do nothing
+        if (transferFee == 0) return;
         // Decide which account pays the fee.
         // By default it is tx.origin, which matches the way transaction gas is paid,
         // but the payment can be assigned to a different account (which must give enough allowance to tx.origin).
@@ -282,7 +289,6 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
         }
         // The two requires are present so that the caller can tell the difference between too low balance/allowance
         // for the payment and too low balance/allowance for the transfer fee.
-        uint256 transferFee = IIAssetManager(assetManager).fassetFeeForTransfer(_amount);
         require(balanceOf(feePayer) >= transferFee, "balance too low for transfer fee");
         if (feePayer != origin) {
             require(allowance(feePayer, origin) >= transferFee, "allowance too low for transfer fee");

@@ -531,6 +531,15 @@ export class Agent extends AssetContextClient {
         await this.assetManager.buybackAgentCollateral(this.agentVault.address, { from: this.ownerWorkAddress, value: buybackCost });
     }
 
+    async transferFeeShare(maxEpochs: BNish = this.context.settings.transferFeeClaimMaxUnexpiredEpochs) {
+        return await this.context.assetManager.agentTransferFeeShare(this.vaultAddress, maxEpochs);
+    }
+
+    async claimTransferFees(recipient: string, maxEpochs: BNish = this.context.settings.transferFeeClaimMaxUnexpiredEpochs) {
+        const res = await this.context.assetManager.claimTransferFees(this.vaultAddress, recipient, maxEpochs, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, "TransferFeesClaimed");
+    }
+
     lastAgentInfoCheck: CheckAgentInfo = CHECK_DEFAULTS;
 
     async checkAgentInfo(check: CheckAgentInfo, previousCheck: "inherit" | "reset" = "inherit") {

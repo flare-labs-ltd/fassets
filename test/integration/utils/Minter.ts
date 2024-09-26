@@ -1,7 +1,7 @@
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
-import { requiredEventArgs } from "../../../lib/utils/events/truffle";
-import { BN_ZERO, BNish, ZERO_ADDRESS, requireNotNull, toBN } from "../../../lib/utils/helpers";
+import { filterEvents, requiredEventArgs } from "../../../lib/utils/events/truffle";
+import { BN_ZERO, BNish, ZERO_ADDRESS, requireNotNull, sorted, toBN } from "../../../lib/utils/helpers";
 import { CollateralReserved } from "../../../typechain-truffle/IIAssetManager";
 import { MockChain, MockChainWallet } from "../../utils/fasset/MockChain";
 import { AssetContext, AssetContextClient } from "./AssetContext";
@@ -63,5 +63,12 @@ export class Minter extends AssetContextClient {
 
     async performPayment(paymentAddress: string, paymentAmount: BNish, paymentReference: string | null = null) {
         return this.wallet.addTransaction(this.underlyingAddress, paymentAddress, paymentAmount, paymentReference);
+    }
+
+    async transferFAsset(target: string, amount: BNish) {
+        const res = await this.context.fAsset.transfer(target, amount, { from: this.address });
+        const transferEvents = sorted(filterEvents(res, "Transfer"), ev => toBN(ev.args.value), (x, y) => -x.cmp(y));
+        assert.isAtLeast(transferEvents.length, 1, "Missing event Transfer");
+        return { ...transferEvents[0].args, fee: transferEvents[1]?.args.value };
     }
 }
