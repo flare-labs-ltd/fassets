@@ -23,6 +23,21 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents {
         _;
     }
 
+    function setTransferFeeMillionths(uint256 _value)
+        external
+        onlyAssetManagerController
+        rateLimited
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        // validate
+        uint256 currentValue = settings.transferFeeMillionths;
+        require(_value <= currentValue * 4 + 1000, "increase too big");
+        require(_value >= currentValue / 4, "decrease too big");
+        // update
+        settings.transferFeeMillionths = _value.toUint32();
+        emit SettingChanged("transferFeeMillionths", _value);
+    }
+
     function claimTransferFees(address _agentVault, address _recipient, uint256 _maxEpochsToClaim)
         external
         onlyAgentVaultOwner(_agentVault)
