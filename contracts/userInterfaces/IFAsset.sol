@@ -6,6 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 
 interface IFAsset is IERC20, IERC20Metadata {
+    ////////////////////////////////////////////////////////////////////////////////////
+    // System information
+
     /**
      * The name of the underlying asset.
      */
@@ -33,4 +36,27 @@ interface IFAsset is IERC20, IERC20Metadata {
      * (i.e. they burn market value of backed f-assets in collateral to release the rest of the collateral).
      */
     function terminated() external view returns (bool);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Transfer fee payment
+
+    /**
+     * Transfer fees are normally paid by the account that ran the transaction (tx.origin).
+     * But it is possible to assign some other account to pay transfer fees.
+     * Of course, that other account must set the allowance high enough.
+     * @param _payingAccount the account that pays fees for fasset transactions
+     *  where tx.origin is the caller of this method; if it is `address(0)` the caller pays fees for itself
+     */
+    function setTransferFeesPaidBy(address _payingAccount)
+        external;
+
+    /**
+     * The account that will take over paying the transfer fees for another account (`_origin`).
+     * @param _origin the account for which the fee paying account is queried
+     * @return _payingAccount the account that pays fees for fasset transactions originated by `_account`;
+     *  if it is `address(0)` the `_origin` pays fees for itself
+     */
+    function transferFeesPaidBy(address _origin)
+        external view
+        returns (address _payingAccount);
 }

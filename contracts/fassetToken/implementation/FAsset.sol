@@ -27,6 +27,11 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
     address public cleanupBlockNumberManager;
 
     /**
+     * The account that will take over paying the transfer fees for another account (`_origin`).
+     */
+    mapping(address _origin => address _payingAccount) public transferFeesPaidBy;
+
+    /**
      * Get the asset manager, corresponding to this fAsset.
      * fAssets and asset managers are in 1:1 correspondence.
      */
@@ -96,6 +101,19 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
         require(_assetManager != address(0), "zero asset manager");
         require(assetManager == address(0), "cannot replace asset manager");
         assetManager = _assetManager;
+    }
+
+    /**
+     * Transfer fees are normally paid by the account that ran the transaction (tx.origin).
+     * But it is possible to assign some other account to pay transfer fees.
+     * Of course, that other account must set the allowance high enough.
+     * @param _payingAccount the account that pays fees for fasset transactions
+     *  where tx.origin is the caller of this method
+     */
+    function setTransferFeesPaidBy(address _payingAccount)
+        external
+    {
+        transferFeesPaidBy[msg.sender] = _payingAccount;
     }
 
     /**
@@ -251,15 +269,30 @@ contract FAsset is IIFAsset, IERC165, ERC20, CheckPointable {
     function _afterTokenTransfer(address _from, address _to, uint256 _amount)
         internal override
     {
-        // fee is not paid for minting, redeeming and internal transfers (transfering fee to asset manager)
+        // Fee is not paid for minting, redeeming and internal transfers (transfering fee to asset manager).
         if (_internalTransfer || _from == address(0) || _to == address(0)) return;
+        // Decide which account pays the fee.
+        // By default it is tx.origin, which matches the way transaction gas is paid,
+        // but the payment can be assigned to a different account (which must give enough allowance to tx.origin).
         // solhint-disable-next-line avoid-tx-origin
-        address feePayer = tx.origin;
+        address origin = tx.origin;
+        address feePayer = transferFeesPaidBy[origin];
+        if (feePayer == address(0)) {
+            feePayer = origin;
+        }
+        // The two requires are present so that the caller can tell the difference between too low balance/allowance
+        // for the payment and too low balance/allowance for the transfer fee.
         uint256 transferFee = IIAssetManager(assetManager).fassetFeeForTransfer(_amount);
         require(balanceOf(feePayer) >= transferFee, "balance too low for transfer fee");
+        if (feePayer != origin) {
+            require(allowance(feePayer, origin) >= transferFee, "allowance too low for transfer fee");
+            _spendAllowance(feePayer, origin, transferFee);
+        }
+        // Make internal transfer, otherwise the system will try to charge fee for the fee transfer.
         _internalTransfer = true;
         _transfer(feePayer, assetManager, transferFee);
         _internalTransfer = false;
+        // Update fee accounting on asset manager.
         IIAssetManager(assetManager).fassetTransferFeePaid(transferFee);
     }
 
