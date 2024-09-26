@@ -862,14 +862,15 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * Claim FAsset transfer fees by an agent.
      * NOTE: may only be called by the agent vault owner
      * @param _agentVault the agent vault for which to claim
-     * @param _recipient the account that will receive fasset fees
+     * @param _recipient the account that will receive agent's share of fasset fees
      * @param _maxEpochsToClaim limit the number of epochs to claim, to avoid using too much gas
-     * @return _claimedAmountUBA total claimed amount in FAsset UBA
+     * @return _agentClaimedUBA agent's share of total claimed amount in FAsset UBA
+     * @return _poolClaimedUBA pool share of total claimed amount in FAsset UBA
      * @return _remainingUnclaimedEpochs nonzero when _maxEpochsToClaim is smaller then the number of unclaimed epochs
      */
     function claimTransferFees(address _agentVault, address _recipient, uint256 _maxEpochsToClaim)
         external
-        returns (uint256 _claimedAmountUBA, uint256 _remainingUnclaimedEpochs);
+        returns (uint256 _agentClaimedUBA, uint256 _poolClaimedUBA, uint256 _remainingUnclaimedEpochs);
 
     function currentTransferFeeEpoch()
         external view

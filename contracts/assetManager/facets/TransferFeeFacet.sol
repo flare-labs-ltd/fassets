@@ -26,14 +26,19 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents {
     function claimTransferFees(address _agentVault, address _recipient, uint256 _maxEpochsToClaim)
         external
         onlyAgentVaultOwner(_agentVault)
-        returns (uint256 _claimedAmountUBA, uint256 _remainingUnclaimedEpochs)
+        returns (uint256 _agentClaimedUBA, uint256 _poolClaimedUBA, uint256 _remainingUnclaimedEpochs)
     {
         TransferFeeTracking.Data storage data = _getTransferFeeData();
-        (_claimedAmountUBA, _remainingUnclaimedEpochs) = data.claimFees(_agentVault, _maxEpochsToClaim);
+        (uint256 claimedUBA, uint256 unclaimedEpochs) = data.claimFees(_agentVault, _maxEpochsToClaim);
+        Agent.State storage agent = Agent.get(_agentVault);
         IIFAsset fAsset = Globals.getFAsset();
-        // TODO: transfer a part to the pool
-        fAsset.transferInternally(_recipient, _claimedAmountUBA);
-        emit TransferFeesClaimed(_agentVault, _recipient, _claimedAmountUBA, _remainingUnclaimedEpochs);
+        _poolClaimedUBA = SafePct.mulBips(claimedUBA, agent.poolFeeShareBIPS);
+        _agentClaimedUBA = claimedUBA - _poolClaimedUBA;
+        _remainingUnclaimedEpochs = unclaimedEpochs;
+        fAsset.transferInternally(_recipient, _agentClaimedUBA);
+        fAsset.transferInternally(address(agent.collateralPool), _poolClaimedUBA);
+        agent.collateralPool.fAssetFeeDeposited(_poolClaimedUBA);
+        emit TransferFeesClaimed(_agentVault, _recipient, _agentClaimedUBA, _poolClaimedUBA, unclaimedEpochs);
     }
 
     function fassetTransferFeePaid(uint256 _fee)

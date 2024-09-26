@@ -1,5 +1,5 @@
 import { expectRevert } from "@openzeppelin/test-helpers";
-import { formatBN, HOURS, toBN, toWei, WEEKS } from "../../../lib/utils/helpers";
+import { formatBN, HOURS, MAX_BIPS, toBN, toWei, WEEKS } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -72,6 +72,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(10000));
             const redeemer = await Redeemer.create(context, userAddress2, underlyingUser2);
+            const agentInfo = await agent.getAgentInfo();
             await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
             mockChain.mine(10);
             await context.updateUnderlyingBlock();
@@ -98,7 +99,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(claimableAmount1, transferFee);
             await context.assetManager.claimTransferFees(agent.vaultAddress, agent.ownerWorkAddress, 10, { from: agent.ownerWorkAddress });
             const ownerFBalance = await context.fAsset.balanceOf(agent.ownerWorkAddress);
-            assertWeb3Equal(ownerFBalance, transferFee);
+            const poolFeeShare = transferFee.mul(toBN(agentInfo.poolFeeShareBIPS)).divn(MAX_BIPS);
+            const agentFeeShare = transferFee.sub(poolFeeShare);
+            assertWeb3Equal(ownerFBalance, agentFeeShare);
+            const poolFBalance = await context.fAsset.balanceOf(agentInfo.collateralPool);
+            const poolExpected = toBN(minted.poolFeeUBA).add(poolFeeShare);
+            assertWeb3Equal(poolFBalance, poolExpected);
             // const [requests] = await redeemer.requestRedemption(lots);
             // // redemption payments can be performed and confirmed in pause
             // await context.assetManagerController.emergencyPause([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
