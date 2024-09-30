@@ -66,9 +66,6 @@ export class Minter extends AssetContextClient {
     }
 
     async transferFAsset(target: string, amount: BNish) {
-        const res = await this.context.fAsset.transfer(target, amount, { from: this.address });
-        const transferEvents = sorted(filterEvents(res, "Transfer"), ev => toBN(ev.args.value), (x, y) => -x.cmp(y));
-        assert.isAtLeast(transferEvents.length, 1, "Missing event Transfer");
-        return { ...transferEvents[0].args, fee: transferEvents[1]?.args.value };
+        return await this.context.transferFAsset(this.address, target, amount);
     }
 }

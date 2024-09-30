@@ -1,7 +1,7 @@
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevert } from "@openzeppelin/test-helpers";
 import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
-import { MAX_BIPS, toBN, toWei, WEEKS } from "../../../lib/utils/helpers";
+import { BNish, MAX_BIPS, toBN, toWei, WEEKS } from "../../../lib/utils/helpers";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
@@ -12,6 +12,7 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
+import { assertApproximatelyEqual } from "../../utils/approximation";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations - transfer fees`, async accounts => {
     const governance = accounts[10];
@@ -51,6 +52,18 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             }
         });
         return { commonContext, context };
+    }
+
+    async function transferFeeEpochData(context: AssetContext, epoch: BNish) {
+        const { 0: startTs, 1: endTs, 2: totalFees, 3: claimedFees, 4: claimable, 5: expired } =
+            await context.assetManager.transferFeeEpochData(epoch);
+        return { startTs, endTs, totalFees, claimedFees, claimable, expired };
+    }
+
+    async function agentTransferFeeEpochData(agent: Agent, epoch: BNish) {
+        const { 0: totalFees, 1: cumulativeMinted, 2: totalCumulativeMinted, 3: claimable, 4: claimed } =
+            await agent.context.assetManager.agentTransferFeeEpochData(agent.vaultAddress, epoch);
+        return { totalFees, cumulativeMinted, totalCumulativeMinted, claimable, claimed };
     }
 
     beforeEach(async () => {
@@ -93,9 +106,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assert.isAbove(Number(transferFee), 100);
             assertWeb3Equal(startBalance.sub(endBalance), transferAmount.add(transferFee));
             // at this epoch, claimable amount should be 0, though fees are collected
-            const { 2: totalFees } = await context.assetManager.transferFeeEpochData(currentEpoch);
+            const epochData = await transferFeeEpochData(context, currentEpoch);
             const claimableAmount0 = await agent.transferFeeShare(10);
-            assertWeb3Equal(totalFees, transferFee);
+            assertWeb3Equal(epochData.totalFees, transferFee);
             assertWeb3Equal(claimableAmount0, 0);
             // skip 1 epoch and claim
             await time.increase(epochDuration);
@@ -130,8 +143,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const agentInfo = await agent.getAgentInfo();
             assertWeb3Equal(agentInfo.mintedUBA, minted.poolFeeUBA);
             // and no fee was charged
-            const { 2: totalFees } = await context.assetManager.transferFeeEpochData(currentEpoch);
-            assertWeb3Equal(totalFees, 0);
+            const epochData = await transferFeeEpochData(context, currentEpoch);
+            assertWeb3Equal(epochData.totalFees, 0);
         });
 
         it("other account can pay transfer fee", async () => {
@@ -161,14 +174,58 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(transfer.value, transferAmount);
             assert.isBelow(Number(transfer.fee), Number(transfer.value) / 100);
             assert.isAbove(Number(transfer.fee), 0);
-            const { 2: totalFees } = await context.assetManager.transferFeeEpochData(currentEpoch);
-            assertWeb3Equal(transfer.fee, totalFees);
+            const epochData = await transferFeeEpochData(context, currentEpoch);
+            assertWeb3Equal(transfer.fee, epochData.totalFees);
             // minter2 has paid the fee
             assertWeb3Equal(await context.fAsset.balanceOf(minter2.address), toBN(minted2.mintedAmountUBA).sub(toBN(transfer.fee)));
         });
 
         it("multiple agents split the fees according to average minted amount", async () => {
-            // TODO
+            const agent1 = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            await agent1.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
+            const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
+            await agent2.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
+            const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, userAddress2, underlyingUser2);
+            mockChain.mine(10);
+            await context.updateUnderlyingBlock();
+            //
+            const firstEpoch = Number(await context.assetManager.currentTransferFeeEpoch());
+            const start = await time.latest();
+            const epochDuration = Number(context.settings.transferFeeClaimEpochDurationSeconds);
+            const lotSize = Number(context.lotSize());
+            // do some minting, redeeming and transfers
+            const [minted1] = await minter.performMinting(agent1.vaultAddress, 10);
+            const [minted2] = await minter.performMinting(agent2.vaultAddress, 30);
+            // give minter enough extra to cover transfer fees (mind that this charges some transfer fees too)
+            await agent1.withdrawPoolFees(await agent1.poolFeeBalance(), minter.address);
+            //
+            await time.increaseTo(start + 0.5 * epochDuration);
+            await minter.transferFAsset(redeemer.address, 30 * lotSize);
+            const [rrqs1] = await redeemer.requestRedemption(20);
+            await Agent.dispatchRedemptionRequests([agent1, agent2], rrqs1);
+            //
+            await time.increaseTo(start + 1.5 * epochDuration);
+            await minter.transferFAsset(redeemer.address, 10 * lotSize);
+            const [rrqs2] = await redeemer.requestRedemption(20);
+            await Agent.dispatchRedemptionRequests([agent1, agent2], rrqs2);
+            // backing for epoch1: total = 40 lots for 1/2 epoch, 20 lots for 1/2 epoch = 30 lots avg
+            //   ag1: 10 lots for 1/2 epoch -> 10 * 1/2 / 30 = 1/6 share
+            //   ag2: 30 lots for 1/2 epoch, 20 lots for 1/2 epoch -> (30 * 1/2 + 20 * 1/2) / 30 = 25/30 = 5/6 share
+            // backing for epoch2: total = 20 lots for 1/2 epoch = 10 lots avg
+            //   ag1: 0
+            //   ag2: 20 lots for 1/2 epoch -> 10 / 10 = 25/30 = 1 share
+            const ep1agent1 = await agentTransferFeeEpochData(agent1, firstEpoch);
+            const ep2agent1 = await agentTransferFeeEpochData(agent1, firstEpoch + 1);
+            const ep1agent2 = await agentTransferFeeEpochData(agent2, firstEpoch);
+            const ep2agent2 = await agentTransferFeeEpochData(agent2, firstEpoch + 1);
+            assertWeb3Equal(ep1agent1.totalCumulativeMinted, ep1agent2.totalCumulativeMinted);
+            assertWeb3Equal(ep2agent1.totalCumulativeMinted, ep2agent2.totalCumulativeMinted);
+            assertApproximatelyEqual(ep1agent1.totalCumulativeMinted, 30 * lotSize, 'relative', 1e-3);
+            assertApproximatelyEqual(ep2agent1.totalCumulativeMinted, 10 * lotSize, 'relative', 1e-3);
+            assertApproximatelyEqual(ep1agent2.cumulativeMinted, ep1agent2.totalCumulativeMinted.muln(5 / 6), 'relative', 1e-3);
+            assertApproximatelyEqual(ep2agent1.cumulativeMinted, ep2agent1.totalCumulativeMinted.muln(0), 'relative', 1e-3);
+            assertApproximatelyEqual(ep2agent2.cumulativeMinted, ep2agent2.totalCumulativeMinted.muln(1), 'relative', 1e-3);
         });
     });
 });

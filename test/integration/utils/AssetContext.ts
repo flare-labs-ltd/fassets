@@ -10,8 +10,8 @@ import { UnderlyingChainEvents } from "../../../lib/underlying-chain/UnderlyingC
 import { IBlockChain } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
-import { ContractWithEvents } from "../../../lib/utils/events/truffle";
-import { BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
+import { ContractWithEvents, filterEvents } from "../../../lib/utils/events/truffle";
+import { BNish, requireNotNull, sorted, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
 import { AgentOwnerRegistryInstance, IIAssetManagerInstance, FAssetInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
@@ -149,6 +149,13 @@ export class AssetContext implements IAssetContext {
         const proof = await this.attestationProvider.proveConfirmedBlockHeightExists(this.attestationWindowSeconds());
         await this.assetManager.updateCurrentBlock(proof);
         return toNumber(proof.data.requestBody.blockNumber) + toNumber(proof.data.responseBody.numberOfConfirmations);
+    }
+
+    async transferFAsset(from: string, to: string, amount: BNish) {
+        const res = await this.fAsset.transfer(to, amount, { from });
+        const transferEvents = sorted(filterEvents(res, "Transfer"), ev => toBN(ev.args.value), (x, y) => -x.cmp(y));
+        assert.isAtLeast(transferEvents.length, 1, "Missing event Transfer");
+        return { ...transferEvents[0].args, fee: transferEvents[1]?.args.value };
     }
 
     attestationWindowSeconds() {
