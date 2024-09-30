@@ -64,12 +64,11 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents {
         data.addFees(_fee);
     }
 
-    function fassetFeeForTransfer(uint256 _transferAmount)
+    function transferFeeMillionths()
         external view
-        returns (uint256 _transferAmountUBA)
+        returns (uint256)
     {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
-        return SafePct.mulDiv(_transferAmount, settings.transferFeeMillionths, 1000000);
+        return Globals.getSettings().transferFeeMillionths;
     }
 
     // information methods

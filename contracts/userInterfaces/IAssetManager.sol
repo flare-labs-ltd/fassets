@@ -848,16 +848,6 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
     ////////////////////////////////////////////////////////////////////////////////////
     // FAsset transfer fee
 
-
-    /**
-     * The amount of fees that will be paid for the FAsset transfer.
-     * The fees will be collected from the external account that started the toplevel transaction.
-     * @param _transferAmountUBA the amount to be transfered
-     */
-    function fassetFeeForTransfer(uint256 _transferAmountUBA)
-        external view
-        returns (uint256 _transferFeeUBA);
-
     /**
      * Claim FAsset transfer fees by an agent.
      * NOTE: may only be called by the agent vault owner

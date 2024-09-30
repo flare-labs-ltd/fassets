@@ -74,5 +74,6 @@ export function assertApproximateMatch(value: BNish, expected: Approximation, me
 
 export function assertApproximatelyEqual(value: BNish, expected: BNish, approximationType: 'absolute' | 'relative', maxError: BNish, message?: string) {
     const approximation = approximationType === 'absolute' ? Approximation.absolute(expected, maxError) : Approximation.relative(expected, Number(maxError));
+    // console.log(`value: ${value},  expected: ${expected},  error: ${toBN(value).sub(toBN(expected))},  relativeErr: ${approximation.relativeError(value)}`);
     approximation.assertMatches(value, message);
 }

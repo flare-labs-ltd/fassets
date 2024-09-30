@@ -241,6 +241,10 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
     ////////////////////////////////////////////////////////////////////////////////////
     // FAsset transfer fee
 
+    function transferFeeMillionths()
+        external view
+        returns (uint256);
+
     function fassetTransferFeePaid(uint256 _fee)
         external;
 

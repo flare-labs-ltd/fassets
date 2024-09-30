@@ -326,7 +326,7 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'UnderlyingWithdrawalCancelled');
     }
 
-    static async dispatchRedemptionRequests(agents: Agent[], requests: EventArgs<RedemptionRequested>[]) {
+    static async performRedemptions(agents: Agent[], requests: EventArgs<RedemptionRequested>[]) {
         const results: Record<string, Truffle.TransactionResponse<AssetManagerEvents>> = {};
         for (const request of requests) {
             const agent = agents.find(ag => ag.vaultAddress === request.agentVault);
@@ -341,7 +341,7 @@ export class Agent extends AssetContextClient {
     }
 
     async performRedemptions(requests: EventArgs<RedemptionRequested>[]) {
-        return await Agent.dispatchRedemptionRequests([this], requests);
+        return await Agent.performRedemptions([this], requests);
     }
 
     async performRedemptionPayment(request: EventArgs<RedemptionRequested>, options?: MockTransactionOptionsWithFee) {
