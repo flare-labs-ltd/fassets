@@ -222,7 +222,7 @@
   {
     "name": "PriceReader",
     "contractName": "PriceReader.sol",
-    "address": "0xeBF92a31DAEF96Fe68E3d747d7233aE63B2Cf98C"
+    "address": "0x14150aEeced5c1b318b0a78b0bBd8ca73ac891e4"
   },
   {
     "name": "AgentOwnerRegistry",
@@ -388,5 +388,10 @@
     "name": "SystemStateManagementFacet",
     "contractName": "SystemStateManagementFacet.sol",
     "address": "0x7F9918B5c7A7914748Ceb6174Ffc71bAC46E6346"
+  },
+  {
+    "name": "Relay",
+    "contractName": "Relay.sol",
+    "address": "0x32D46A1260BB2D8C9d5Ab1C9bBd7FF7D7CfaabCC"
   }
 ]

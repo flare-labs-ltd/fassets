@@ -11,8 +11,8 @@ import 'solidity-coverage';
 import {
     deployAgentOwnerRegistry,
     deployAgentVaultFactory, deployAssetManager, deployAssetManagerController, deployCollateralPoolFactory,
-    deployCollateralPoolTokenFactory, deployPriceReader, deploySCProofVerifier, deployUserWhitelist, switchAllToProductionMode, verifyAssetManager, verifyAssetManagerController,
-    verifyFAssetToken
+    deployCollateralPoolTokenFactory, deployPriceReaderV2, deploySCProofVerifier, deployUserWhitelist, switchAllToProductionMode, verifyAssetManager, verifyAssetManagerController,
+    verifyFAssetToken, verifyFtsoV2PriceStore
 } from "./deployment/lib/deploy-fasset-contracts";
 import { linkContracts } from "./deployment/lib/link-contracts";
 import "./type-extensions";
@@ -35,7 +35,7 @@ task("deploy-asset-manager-dependencies", "Deploy some or all asset managers. Op
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await deploySCProofVerifier(hre, contracts);
-        await deployPriceReader(hre, contracts);
+        await deployPriceReaderV2(hre, contracts);
         await deployAgentOwnerRegistry(hre, contracts);
         await deployUserWhitelist(hre, contracts);
         await deployAgentVaultFactory(hre, contracts);
@@ -83,6 +83,13 @@ task("verify-asset-manager-controller", "Verify deployed asset manager controlle
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await verifyAssetManagerController(hre, contracts);
+    });
+
+task("verify-price-reader-v2", "Verify deployed asset manager controller.")
+    .setAction(async ({ }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await verifyFtsoV2PriceStore(hre, contracts);
     });
 
 task("switch-to-production", "Switch all deployed files to production mode.")
