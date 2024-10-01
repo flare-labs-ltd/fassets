@@ -491,22 +491,38 @@ export function improveConsoleLog(inspectDepth: number = 10) {
     util.inspect.defaultOptions.depth = inspectDepth;
 }
 
+type InterfaceDef = AbiItem[] | Truffle.Contract<any> | string;
+
 /**
  * Get ERC-165 interface id from interface ABI.
  */
-export function erc165InterfaceId(abi: AbiItem[], inheritedAbis: AbiItem[][] = []) {
+export function erc165InterfaceId(mainInterface: InterfaceDef, inheritedInterfaces: InterfaceDef[] = []) {
+    function extractAbi(interfaceDef: InterfaceDef) {
+        if (Array.isArray(interfaceDef)) {
+            return interfaceDef;
+        } else if (typeof interfaceDef === "string") {
+            return contractMetadata(artifacts.require(interfaceDef as any)).abi;
+        } else {
+            return contractMetadata(interfaceDef).abi;
+        }
+    }
     let result = BN_ZERO;
-    const inheritesSigs = new Set(inheritedAbis
+    const inheritesSigs = new Set(inheritedInterfaces
+        .map(extractAbi)
         .flat(1)
         .filter(it => it.type === 'function')
         .map(it => web3.eth.abi.encodeFunctionSignature(it)));
-    for (const item of abi) {
+    for (const item of extractAbi(mainInterface)) {
         if (item.type !== 'function') continue;
         const signature = web3.eth.abi.encodeFunctionSignature(item);
         if (inheritesSigs.has(signature)) continue;
         result = result.xor(web3.utils.toBN(signature));
     }
     return '0x' + result.toString(16, 8);
+}
+
+export function contractMetadata(contract: Truffle.Contract<any>): { contractName: string, abi: AbiItem[] } {
+    return (contract as any)._json;
 }
 
 /**
