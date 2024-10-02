@@ -2,15 +2,22 @@
 pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./AssetManagerBase.sol";
+import "../../diamond/facets/GovernedFacet.sol";
+import "../../diamond/library/LibDiamond.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
+import "../../userInterfaces/ITransferFees.sol";
 import "../../utils/lib/SafePct.sol";
+import "../library/SettingsUpdater.sol";
 import "../library/data/TransferFeeTracking.sol";
+import "../library/TransferFees.sol";
 import "../library/Agents.sol";
 
 
-contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents {
+contract TransferFeeFacet is AssetManagerBase, GovernedFacet, IAssetManagerEvents, ITransferFees {
     using TransferFeeTracking for TransferFeeTracking.Data;
+    using SafeCast for *;
 
     modifier onlyAgentVaultOwner(address _agentVault) {
         Agents.requireAgentVaultOwner(_agentVault);
@@ -23,18 +30,39 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents {
         _;
     }
 
+    // this method is not accessible through diamond proxy
+    // it is only used for initialization when the contract is added after proxy deploy
+    function initTransferFeeFacet(
+        uint256 _transferFeeMillionths,
+        uint256 _firstEpochStartTs,
+        uint256 _epochDuration,
+        uint256 _maxUnexpiredEpochs
+    )
+        external
+    {
+        LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
+        require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
+        ds.supportedInterfaces[type(IRedemptionTimeExtension).interfaceId] = true;
+        // init settings
+        TransferFees.State storage state = TransferFees.getState();
+        TransferFeeTracking.Data storage data = state.transferFeeTracking;
+        require(_transferFeeMillionths <= 1e6, "millionths value too high");
+        state.transferFeeMillionths = _transferFeeMillionths.toUint32();
+        data.initialize(_firstEpochStartTs.toUint64(), _epochDuration.toUint64(), _maxUnexpiredEpochs.toUint64());
+    }
+
     function setTransferFeeMillionths(uint256 _value)
         external
-        onlyAssetManagerController
-        rateLimited
+        onlyImmediateGovernance
     {
-        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        SettingsUpdater.checkEnoughTimeSinceLastUpdate(keccak256("TransferFeeFacet.setTransferFeeMillionths"));
+        TransferFees.State storage state = TransferFees.getState();
         // validate
-        uint256 currentValue = settings.transferFeeMillionths;
+        uint256 currentValue = state.transferFeeMillionths;
         require(_value <= currentValue * 4 + 1000, "increase too big");
         require(_value >= currentValue / 4, "decrease too big");
         // update
-        settings.transferFeeMillionths = _value.toUint32();
+        state.transferFeeMillionths = _value.toUint32();
         emit SettingChanged("transferFeeMillionths", _value);
     }
 
@@ -68,7 +96,8 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents {
         external view
         returns (uint256)
     {
-        return Globals.getSettings().transferFeeMillionths;
+        TransferFees.State storage state = TransferFees.getState();
+        return state.transferFeeMillionths;
     }
 
     // information methods
@@ -117,6 +146,22 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents {
         return claimable ? data.agentFeeShare(agent, _epoch) : 0;
     }
 
+    function transferFeeClaimingSettings()
+        external view
+        returns(
+            uint256 _firstEpochStartTs,
+            uint256 _epochDuration,
+            uint256 _maxUnexpiredEpochs,
+            uint256 _firstClaimableEpoch
+        )
+    {
+        TransferFeeTracking.Data storage data = _getTransferFeeData();
+        _firstEpochStartTs = data.firstEpochStartTs;
+        _epochDuration = data.epochDuration;
+        _maxUnexpiredEpochs = data.maxUnexpiredEpochs;
+        _firstClaimableEpoch = data.firstClaimableEpoch;
+    }
+
     function transferFeeEpochData(uint256 _epoch)
         external view
         returns (
@@ -157,7 +202,7 @@ contract TransferFeeFacet is AssetManagerBase, IAssetManagerEvents {
     }
 
     function _getTransferFeeData() private view returns (TransferFeeTracking.Data storage) {
-        AssetManagerState.State storage state = AssetManagerState.get();
+        TransferFees.State storage state = TransferFees.getState();
         return state.transferFeeTracking;
     }
 }

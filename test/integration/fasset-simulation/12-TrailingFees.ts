@@ -41,14 +41,17 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let mockStateConnectorClient: MockStateConnectorClient;
     let settings: AssetManagerSettings;
 
+    async function transferFeeClaimingSettings(context: AssetContext) {
+        const { 0: firstEpochStartTs, 1: epochDuration, 2: maxUnexpiredEpochs, 3: firstClaimableEpoch } =
+            await context.assetManager.transferFeeClaimingSettings();
+        const transferFeeMillionths = await context.assetManager.transferFeeMillionths();
+        return { transferFeeMillionths, firstEpochStartTs, epochDuration, maxUnexpiredEpochs, firstClaimableEpoch };
+    }
+
     async function transferFeeEpochData(context: AssetContext, epoch: BNish) {
         const { 0: startTs, 1: endTs, 2: totalFees, 3: claimedFees, 4: claimable, 5: expired } =
             await context.assetManager.transferFeeEpochData(epoch);
         return { startTs, endTs, totalFees, claimedFees, claimable, expired };
-    }
-
-    function epochAverage(cumulative: BNish) {
-        return toBN(cumulative).divn(epochDuration);
     }
 
     async function agentTransferFeeEpochData(agent: Agent, epoch: BNish) {
@@ -57,6 +60,10 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         // console.log(agent.underlyingAddress, `epoch ${epoch}`,
         //     deepFormat({ totalFees, avgMinted: epochAverage(cumulativeMinted), totalAvgMinted: epochAverage(totalCumulativeMinted), claimable, claimed }));
         return { totalFees, cumulativeMinted, totalCumulativeMinted, claimable, claimed };
+    }
+
+    function epochAverage(cumulative: BNish) {
+        return toBN(cumulative).divn(epochDuration);
     }
 
     const UNLIMITED = toBN(1).shln(255);
@@ -106,6 +113,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             mockChain.mine(10);
             await context.updateUnderlyingBlock();
             const currentEpoch = await context.assetManager.currentTransferFeeEpoch();
+            const trfSettings = await transferFeeClaimingSettings(context);
             // perform minting
             const lots = 3;
             const [minted] = await minter.performMinting(agent.vaultAddress, lots);
@@ -117,7 +125,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const startBalance = await context.fAsset.balanceOf(minter.address);
             const transfer = await minter.transferFAsset(redeemer.address, transferAmount);
             const endBalance = await context.fAsset.balanceOf(minter.address);
-            const transferFee = transferAmount.mul(toBN(settings.transferFeeMillionths)).divn(1e6);
+            const transferFee = transferAmount.mul(toBN(trfSettings.transferFeeMillionths)).divn(1e6);
             assertWeb3Equal(transfer.fee, transferFee);
             assert.isAbove(Number(transferFee), 100);
             assertWeb3Equal(startBalance.sub(endBalance), transferAmount.add(transferFee));
@@ -209,7 +217,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const firstEpoch = Number(await context.assetManager.currentTransferFeeEpoch());
             const firstEpochData = transferFeeEpochData(context, firstEpoch);
             const start = await time.latest();
-            const epochDuration = Number(context.settings.transferFeeClaimEpochDurationSeconds);
+            const trfSettings = await transferFeeClaimingSettings(context);
+            const epochDuration = Number(trfSettings.epochDuration);
             const lotSize = context.lotSize();
             // do some minting, redeeming and transfers
             const [minted1] = await minter.performMinting(agent1.vaultAddress, 10);

@@ -500,4 +500,14 @@ library AMEvents {
      * Emergency pause was canceled.
      */
     event EmergencyPauseCanceled();
+
+    /**
+     * An agent has claimed their share of transfer fees.
+     */
+    event TransferFeesClaimed(
+        address indexed agentVault,
+        address _recipient,
+        uint256 agentClaimedUBA,
+        uint256 poolClaimedUBA,
+        uint256 remainingUnclaimedEpochs);
 }

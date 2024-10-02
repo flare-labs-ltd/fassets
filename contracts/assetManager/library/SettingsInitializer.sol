@@ -20,17 +20,6 @@ library SettingsInitializer {
     {
         _validateSettings(_settings);
         _setAllSettings(_settings);
-        _initializeState(_settings);
-    }
-
-    function _initializeState(
-        AssetManagerSettings.Data memory _settings
-    )
-        private
-    {
-        AssetManagerState.State storage state = AssetManagerState.get();
-        TransferFeeTracking.initialize(state.transferFeeTracking, _settings.transferFeeClaimFirstEpochStartTs,
-            _settings.transferFeeClaimEpochDurationSeconds, _settings.transferFeeClaimMaxUnexpiredEpochs);
     }
 
     function _setAllSettings(

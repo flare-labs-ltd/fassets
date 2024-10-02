@@ -237,35 +237,4 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
     function isAgentVaultOwner(address _agentVault, address _address)
         external view
         returns (bool);
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    // FAsset transfer fee
-
-    function transferFeeMillionths()
-        external view
-        returns (uint256);
-
-    function fassetTransferFeePaid(uint256 _fee)
-        external;
-
-    function transferFeeEpochData(uint256 _epoch)
-        external view
-        returns (
-            uint256 _startTs,
-            uint256 _endTs,
-            uint256 _totalFees,
-            uint256 _claimedFees,
-            bool _claimable,
-            bool _expired
-        );
-
-    function agentTransferFeeEpochData(address _agentVault, uint256 _epoch)
-        external view
-        returns (
-            uint256 _totalFees,
-            uint256 _cumulativeMinted,
-            uint256 _totalCumulativeMinted,
-            bool _claimable,
-            bool _claimed
-        );
 }

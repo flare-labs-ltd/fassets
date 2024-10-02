@@ -12,12 +12,20 @@ import "./data/AvailableAgentInfo.sol";
 import "./IAssetManagerEvents.sol";
 import "./IAgentPing.sol";
 import "./IRedemptionTimeExtension.sol";
+import "./ITransferFees.sol";
 
 
 /**
  * Asset manager publicly callable methods.
  */
-interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPing, IRedemptionTimeExtension {
+interface IAssetManager is
+    IERC165,
+    IDiamondLoupe,
+    IAssetManagerEvents,
+    IAgentPing,
+    IRedemptionTimeExtension,
+    ITransferFees
+{
     ////////////////////////////////////////////////////////////////////////////////////
     // Basic system information
 
@@ -844,42 +852,4 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
         BalanceDecreasingTransaction.Proof[] calldata _payments,
         address _agentVault
     ) external;
-
-    ////////////////////////////////////////////////////////////////////////////////////
-    // FAsset transfer fee
-
-    /**
-     * Claim FAsset transfer fees by an agent.
-     * NOTE: may only be called by the agent vault owner
-     * @param _agentVault the agent vault for which to claim
-     * @param _recipient the account that will receive agent's share of fasset fees
-     * @param _maxEpochsToClaim limit the number of epochs to claim, to avoid using too much gas
-     * @return _agentClaimedUBA agent's share of total claimed amount in FAsset UBA
-     * @return _poolClaimedUBA pool share of total claimed amount in FAsset UBA
-     * @return _remainingUnclaimedEpochs nonzero when _maxEpochsToClaim is smaller then the number of unclaimed epochs
-     */
-    function claimTransferFees(address _agentVault, address _recipient, uint256 _maxEpochsToClaim)
-        external
-        returns (uint256 _agentClaimedUBA, uint256 _poolClaimedUBA, uint256 _remainingUnclaimedEpochs);
-
-    function currentTransferFeeEpoch()
-        external view
-        returns (uint256);
-
-    function firstClaimableTransferFeeEpoch()
-        external view
-        returns (uint256);
-
-    function agentUnclaimedTransferFeeEpochs(address _agentVault)
-        external view
-        returns (uint256 _first, uint256 _count);
-
-    function agentTransferFeeShare(address _agentVault, uint256 _maxEpochsToClaim)
-        external view
-        returns (uint256 _feeShareUBA);
-
-    function agentTransferFeeShareForEpoch(address _agentVault, uint256 _epoch)
-        external view
-        returns (uint256);
-
 }

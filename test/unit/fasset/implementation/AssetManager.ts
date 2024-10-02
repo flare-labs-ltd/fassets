@@ -233,9 +233,19 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.notEqual(resFAsset, constants.ZERO_ADDRESS);
             assert.equal(resFAsset, fAsset.address);
             const resSettings = web3ResultStruct(await assetManager.getSettings());
+            const resInitSettings = resSettings as AssetManagerInitSettings;
             settings.fAsset = fAsset.address;
             settings.assetManagerController = assetManagerController;
-            (resSettings as AssetManagerInitSettings).redemptionPaymentExtensionSeconds = await assetManager.redemptionPaymentExtensionSeconds();
+            // add RedemptionTimeExtensionFacet settings
+            resInitSettings.redemptionPaymentExtensionSeconds = await assetManager.redemptionPaymentExtensionSeconds();
+            // add TransferFeeFacet settings
+            const { 0: firstEpochStartTs, 1: epochDuration, 2: maxUnexpiredEpochs, 3: firstClaimableEpoch } =
+                await assetManager.transferFeeClaimingSettings();
+            resInitSettings.transferFeeClaimFirstEpochStartTs = firstEpochStartTs;
+            resInitSettings.transferFeeClaimEpochDurationSeconds = epochDuration;
+            resInitSettings.transferFeeClaimMaxUnexpiredEpochs = maxUnexpiredEpochs;
+            resInitSettings.transferFeeMillionths = await assetManager.transferFeeMillionths();
+            //
             assertWeb3DeepEqual(resSettings, settings);
             assert.equal(await assetManager.assetManagerController(), assetManagerController);
         });

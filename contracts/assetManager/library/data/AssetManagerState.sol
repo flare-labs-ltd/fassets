@@ -9,7 +9,6 @@ import "./UnderlyingAddressOwnership.sol";
 import "./CollateralReservation.sol";
 import "./Redemption.sol";
 import "./CollateralTypeInt.sol";
-import "./TransferFeeTracking.sol";
 
 
 library AssetManagerState {
@@ -47,9 +46,6 @@ library AssetManagerState {
 
         // verified payment hashes; expire in 5 days
         PaymentConfirmations.State paymentConfirmations;
-
-        // transfer fee tracking and claiming
-        TransferFeeTracking.Data transferFeeTracking;
 
         // New ids (listed together to save storage); all must be incremented before assigning, so 0 means empty
         uint64 newCrtId;
