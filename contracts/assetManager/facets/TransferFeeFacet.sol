@@ -46,10 +46,9 @@ contract TransferFeeFacet is AssetManagerBase, GovernedFacet, IAssetManagerEvent
         require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
         ds.supportedInterfaces[type(IRedemptionTimeExtension).interfaceId] = true;
         // init settings
-        TransferFees.State storage state = TransferFees.getState();
-        TransferFeeTracking.Data storage data = state.transferFeeTracking;
         require(_transferFeeMillionths <= 1e6, "millionths value too high");
-        state.transferFeeMillionths = _transferFeeMillionths.toUint32();
+        TransferFees.updateTransferFeeMillionths(_transferFeeMillionths, 0);
+        TransferFeeTracking.Data storage data = _getTransferFeeData();
         data.initialize(_firstEpochStartTs.toUint64(), _epochDuration.toUint64(), _maxUnexpiredEpochs.toUint64());
     }
 
@@ -77,19 +76,19 @@ contract TransferFeeFacet is AssetManagerBase, GovernedFacet, IAssetManagerEvent
         }
     }
 
-    function setTransferFeeMillionths(uint256 _value)
+    function setTransferFeeMillionths(uint256 _value, uint256 _scheduledAt)
         external
         onlyImmediateGovernance
     {
         SettingsUpdater.checkEnoughTimeSinceLastUpdate(keccak256("TransferFeeFacet.setTransferFeeMillionths"));
-        TransferFees.State storage state = TransferFees.getState();
         // validate
-        uint256 currentValue = state.transferFeeMillionths;
+        uint256 currentValue = TransferFees.transferFeeMillionths();
+        require(_value <= 1e6, "millionths value too high");
         require(_value <= currentValue * 4 + 1000, "increase too big");
         require(_value >= currentValue / 4, "decrease too big");
         // update
-        state.transferFeeMillionths = _value.toUint32();
-        emit SettingChanged("transferFeeMillionths", _value);
+        TransferFees.updateTransferFeeMillionths(_value, _scheduledAt);
+        emit TransferFeeChangeScheduled(_value, _scheduledAt);
     }
 
     function claimTransferFees(address _agentVault, address _recipient, uint256 _maxEpochsToClaim)
@@ -122,8 +121,7 @@ contract TransferFeeFacet is AssetManagerBase, GovernedFacet, IAssetManagerEvent
         external view
         returns (uint256)
     {
-        TransferFees.State storage state = TransferFees.getState();
-        return state.transferFeeMillionths;
+        return TransferFees.transferFeeMillionths();
     }
 
     // information methods

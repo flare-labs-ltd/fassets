@@ -6,6 +6,10 @@ pragma solidity >=0.7.6 <0.9;
  * FAsset transfer (trailing) fees.
  */
 interface ITransferFees {
+    event TransferFeeChangeScheduled(
+        uint256 nextTransferFeeMillionths,
+        uint256 scheduledAt);
+
     /**
      * Claim FAsset transfer fees by an agent.
      * NOTE: may only be called by the agent vault owner
@@ -44,7 +48,7 @@ interface ITransferFees {
         external view
         returns (uint256);
 
-    function setTransferFeeMillionths(uint256 _value)
+    function setTransferFeeMillionths(uint256 _value, uint256 _scheduledAt)
         external;
 
     function transferFeeClaimingSettings()
