@@ -18,14 +18,9 @@ library TransferFees {
         TransferFeeTracking.Data transferFeeTracking;
     }
 
-    function increaseMinting(address _agentVault, uint64 _amountAMG) internal {
+    function updateMintingHistory(address _agentVault, uint64 _amountAMG) internal {
         State storage state = getState();
-        TransferFeeTracking.increaseMinting(state.transferFeeTracking, _agentVault, _amountAMG);
-    }
-
-    function decreaseMinting(address _agentVault, uint64 _amountAMG) internal {
-        State storage state = getState();
-        TransferFeeTracking.decreaseMinting(state.transferFeeTracking, _agentVault, _amountAMG);
+        TransferFeeTracking.updateMintingHistory(state.transferFeeTracking, _agentVault, _amountAMG);
     }
 
     bytes32 internal constant STATE_POSITION = keccak256("fasset.TransferFees.State");

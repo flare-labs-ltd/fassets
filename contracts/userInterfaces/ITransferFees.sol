@@ -47,12 +47,6 @@ interface ITransferFees {
     function setTransferFeeMillionths(uint256 _value)
         external;
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    // Internal methods
-
-    function fassetTransferFeePaid(uint256 _fee)
-        external;
-
     function transferFeeClaimingSettings()
         external view
         returns(
@@ -61,6 +55,15 @@ interface ITransferFees {
             uint256 _maxUnexpiredEpochs,
             uint256 _firstClaimableEpoch
         );
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Internal methods
+
+    function fassetTransferFeePaid(uint256 _fee)
+        external;
+
+    function initAgentsMintingHistory(address[] calldata _agentVaults)
+        external;
 
     function transferFeeEpochData(uint256 _epoch)
         external view

@@ -114,7 +114,7 @@ library Agents {
         internal
     {
         _agent.mintedAMG = _agent.mintedAMG + _valueAMG;
-        TransferFees.increaseMinting(_agent.vaultAddress(), _valueAMG);
+        TransferFees.updateMintingHistory(_agent.vaultAddress(), _agent.mintedAMG);
     }
 
     function releaseMintedAssets(
@@ -124,7 +124,7 @@ library Agents {
         internal
     {
         _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
-        TransferFees.decreaseMinting(_agent.vaultAddress(), _valueAMG);
+        TransferFees.updateMintingHistory(_agent.vaultAddress(), _agent.mintedAMG);
     }
 
     function startRedeemingAssets(
@@ -138,8 +138,7 @@ library Agents {
         if (!_poolSelfCloseRedemption) {
             _agent.poolRedeemingAMG += _valueAMG;
         }
-        _agent.mintedAMG = SafeMath64.sub64(_agent.mintedAMG, _valueAMG, "not enough minted");
-        TransferFees.decreaseMinting(_agent.vaultAddress(), _valueAMG);
+        releaseMintedAssets(_agent, _valueAMG);
     }
 
     function endRedeemingAssets(

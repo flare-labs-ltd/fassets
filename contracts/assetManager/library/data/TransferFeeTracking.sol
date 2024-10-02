@@ -53,17 +53,29 @@ library TransferFeeTracking {
         _data.firstClaimableEpoch = currentEpoch(_data).toUint64();
     }
 
-    function increaseMinting(Data storage _data, address _agentVault, uint64 _amountAMG) internal {
+    /**
+     * Add a checkpoint to agent if its minting history is empty.
+     * Only needed if the history tracking is added when the agents already have nonzero minting
+     * (e.g. if this lib is deployed by diamond cut), since "no checkpoint in the past" is equivalent
+     * to a checkpoint with zero value.
+     */
+    function initMintingHistory(Data storage _data, address _agentVault, uint64 _amountAMG) internal {
         AgentData storage agent = _data.agents[_agentVault];
-        agent.mintingHistory.addDataPoint(block.timestamp, agent.mintingHistory.lastValue() + _amountAMG);
-        _data.totalMintingHistory.addDataPoint(block.timestamp, _data.totalMintingHistory.lastValue() + _amountAMG);
-        _cleanupSomeHistory(_data, agent);
+        if (agent.mintingHistory.endIndex == 0) {
+            updateMintingHistory(_data, _agentVault, _amountAMG);
+        }
     }
 
-    function decreaseMinting(Data storage _data, address _agentVault, uint64 _amountAMG) internal {
+    /**
+     * Create a new checkpoint for the agent and the total (or update the last one if the timestamp didn't
+     * change since the last checkpoint was created).
+     */
+    function updateMintingHistory(Data storage _data, address _agentVault, uint64 _amountAMG) internal {
         AgentData storage agent = _data.agents[_agentVault];
-        agent.mintingHistory.addDataPoint(block.timestamp, agent.mintingHistory.lastValue() - _amountAMG);
-        _data.totalMintingHistory.addDataPoint(block.timestamp, _data.totalMintingHistory.lastValue() - _amountAMG);
+        uint64 prevAmount = agent.mintingHistory.lastValue();
+        uint64 prevTotal = _data.totalMintingHistory.lastValue();
+        agent.mintingHistory.addDataPoint(block.timestamp, _amountAMG);
+        _data.totalMintingHistory.addDataPoint(block.timestamp, prevTotal + _amountAMG - prevAmount);
         _cleanupSomeHistory(_data, agent);
     }
 

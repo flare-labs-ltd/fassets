@@ -30,8 +30,10 @@ contract TransferFeeFacet is AssetManagerBase, GovernedFacet, IAssetManagerEvent
         _;
     }
 
-    // this method is not accessible through diamond proxy
-    // it is only used for initialization when the contract is added after proxy deploy
+    /**
+     * @dev This method is not accessible through diamond proxy,
+     * it is only used for initialization when the contract is added after proxy deploy.
+     */
     function initTransferFeeFacet(
         uint256 _transferFeeMillionths,
         uint256 _firstEpochStartTs,
@@ -49,6 +51,30 @@ contract TransferFeeFacet is AssetManagerBase, GovernedFacet, IAssetManagerEvent
         require(_transferFeeMillionths <= 1e6, "millionths value too high");
         state.transferFeeMillionths = _transferFeeMillionths.toUint32();
         data.initialize(_firstEpochStartTs.toUint64(), _epochDuration.toUint64(), _maxUnexpiredEpochs.toUint64());
+    }
+
+    /**
+     * This method is only needed if this facet was deployed by diamond cut when some agents already
+     * back nonzero minting.
+     * This method is no-op if the agent already has some history checkpoints or it has 0 minting,
+     * so it is safe to be called by anybody. E.g. it won't do anything unless it is called after a dimanod cut with
+     * some agents already backing some mintings and it will do nothing when called the second time on the same agent.
+     * If this method is not called, the agents will be automatically initialized on first minting or redemption,
+     * but they may miss out on some tracking fees for the duration between the diamond cut and the first
+     * subsequent minting or redemption.
+     * @param _agentVaults the agent vaults to be initialized; the caller should make a snapshot array of all
+     * agents' addresses before the diamond cut and then call this method with suitably sized chunks of that array
+     */
+    function initAgentsMintingHistory(address[] calldata _agentVaults)
+        external
+    {
+        TransferFeeTracking.Data storage data = _getTransferFeeData();
+        for (uint256 i = 0; i < _agentVaults.length; i++) {
+            Agent.State storage agent = Agent.get(_agentVaults[i]);
+            if (agent.mintedAMG > 0) {
+                data.initMintingHistory(_agentVaults[i], agent.mintedAMG);
+            }
+        }
     }
 
     function setTransferFeeMillionths(uint256 _value)
