@@ -51,15 +51,6 @@ interface ITransferFees {
     function setTransferFeeMillionths(uint256 _value, uint256 _scheduledAt)
         external;
 
-    function transferFeeClaimingSettings()
-        external view
-        returns(
-            uint256 _firstEpochStartTs,
-            uint256 _epochDuration,
-            uint256 _maxUnexpiredEpochs,
-            uint256 _firstClaimableEpoch
-        );
-
     ////////////////////////////////////////////////////////////////////////////////////
     // Internal methods
 
@@ -69,24 +60,43 @@ interface ITransferFees {
     function initAgentsMintingHistory(address[] calldata _agentVaults)
         external;
 
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Methods for testing and inspection
+
+    struct TransferFeeSettings {
+        uint256 transferFeeMillionths;
+        uint256 firstEpochStartTs;
+        uint256 epochDuration;
+        uint256 maxUnexpiredEpochs;
+        uint256 firstClaimableEpoch;
+    }
+
+    struct TransferFeeEpochData {
+        uint256 startTs;
+        uint256 endTs;
+        uint256 totalFees;
+        uint256 claimedFees;
+        bool claimable;
+        bool expired;
+    }
+
+    struct TransferFeeCalculationDataForAgent {
+        uint256 totalFees;
+        uint256 cumulativeMinted;
+        uint256 totalCumulativeMinted;
+        bool claimable;
+        bool claimed;
+    }
+
+    function transferFeeSettings()
+        external view
+        returns (TransferFeeSettings memory);
+
     function transferFeeEpochData(uint256 _epoch)
         external view
-        returns (
-            uint256 _startTs,
-            uint256 _endTs,
-            uint256 _totalFees,
-            uint256 _claimedFees,
-            bool _claimable,
-            bool _expired
-        );
+        returns (TransferFeeEpochData memory);
 
-    function agentTransferFeeEpochData(address _agentVault, uint256 _epoch)
+    function transferFeeCalculationDataForAgent(address _agentVault, uint256 _epoch)
         external view
-        returns (
-            uint256 _totalFees,
-            uint256 _cumulativeMinted,
-            uint256 _totalCumulativeMinted,
-            bool _claimable,
-            bool _claimed
-        );
+        returns (TransferFeeCalculationDataForAgent memory);
 }

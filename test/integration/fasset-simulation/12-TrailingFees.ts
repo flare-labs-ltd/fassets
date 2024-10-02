@@ -1,9 +1,9 @@
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { expectRevert } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings } from "../../../lib/fasset/AssetManagerTypes";
-import { BNish, deepFormat, MAX_BIPS, toBN, toWei, WEEKS, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { BNish, DAYS, MAX_BIPS, toBN, toWei, WEEKS, ZERO_ADDRESS } from "../../../lib/utils/helpers";
+import { FAssetInstance, IIAssetManagerInstance } from "../../../typechain-truffle";
+import { assertApproximatelyEqual } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
 import { assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
@@ -12,7 +12,6 @@ import { CommonContext } from "../utils/CommonContext";
 import { Minter } from "../utils/Minter";
 import { Redeemer } from "../utils/Redeemer";
 import { testChainInfo } from "../utils/TestChainInfo";
-import { assertApproximatelyEqual } from "../../utils/approximation";
 
 contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager simulations - transfer fees`, async accounts => {
     const governance = accounts[10];
@@ -38,29 +37,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     let commonContext: CommonContext;
     let context: AssetContext;
     let mockChain: MockChain;
-    let mockStateConnectorClient: MockStateConnectorClient;
-    let settings: AssetManagerSettings;
-
-    async function transferFeeClaimingSettings(context: AssetContext) {
-        const { 0: firstEpochStartTs, 1: epochDuration, 2: maxUnexpiredEpochs, 3: firstClaimableEpoch } =
-            await context.assetManager.transferFeeClaimingSettings();
-        const transferFeeMillionths = await context.assetManager.transferFeeMillionths();
-        return { transferFeeMillionths, firstEpochStartTs, epochDuration, maxUnexpiredEpochs, firstClaimableEpoch };
-    }
-
-    async function transferFeeEpochData(context: AssetContext, epoch: BNish) {
-        const { 0: startTs, 1: endTs, 2: totalFees, 3: claimedFees, 4: claimable, 5: expired } =
-            await context.assetManager.transferFeeEpochData(epoch);
-        return { startTs, endTs, totalFees, claimedFees, claimable, expired };
-    }
-
-    async function agentTransferFeeEpochData(agent: Agent, epoch: BNish) {
-        const { 0: totalFees, 1: cumulativeMinted, 2: totalCumulativeMinted, 3: claimable, 4: claimed } =
-            await agent.context.assetManager.agentTransferFeeEpochData(agent.vaultAddress, epoch);
-        // console.log(agent.underlyingAddress, `epoch ${epoch}`,
-        //     deepFormat({ totalFees, avgMinted: epochAverage(cumulativeMinted), totalAvgMinted: epochAverage(totalCumulativeMinted), claimable, claimed }));
-        return { totalFees, cumulativeMinted, totalCumulativeMinted, claimable, claimed };
-    }
+    let assetManager: IIAssetManagerInstance;
+    let fAsset: FAssetInstance;
 
     function epochAverage(cumulative: BNish) {
         return toBN(cumulative).divn(epochDuration);
@@ -69,11 +47,11 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     const UNLIMITED = toBN(1).shln(255);
 
     async function setFAssetFeesPaidBy(origin: string, feePayer: string, maxFeeAmount: BNish, method: () => Promise<void>,) {
-        await context.fAsset.approve(origin, maxFeeAmount, { from: feePayer });
-        await context.fAsset.setTransferFeesPaidBy(feePayer, { from: origin });
+        await fAsset.approve(origin, maxFeeAmount, { from: feePayer });
+        await fAsset.setTransferFeesPaidBy(feePayer, { from: origin });
         await method();
-        await context.fAsset.setTransferFeesPaidBy(ZERO_ADDRESS, { from: origin });
-        await context.fAsset.approve(origin, 0, { from: feePayer });
+        await fAsset.setTransferFeesPaidBy(ZERO_ADDRESS, { from: origin });
+        await fAsset.approve(origin, 0, { from: feePayer });
     }
 
     async function initialize() {
@@ -91,19 +69,12 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
     beforeEach(async () => {
         ({ commonContext, context } = await loadFixtureCopyVars(initialize));
-        settings = context.settings;
+        assetManager = context.assetManager;
+        fAsset = context.fAsset;
         mockChain = context.chain as MockChain;
-        mockStateConnectorClient = context.stateConnectorClient as MockStateConnectorClient;
     });
 
-    describe("transfer fees charging and claiming", () => {
-        it("current epoch should be same as first claimable at start", async () => {
-            const currentEpoch = await context.assetManager.currentTransferFeeEpoch();
-            const firstClaimableEpoch = await context.assetManager.firstClaimableTransferFeeEpoch();
-            assertWeb3Equal(currentEpoch, 20);
-            assertWeb3Equal(firstClaimableEpoch, 20);
-        });
-
+    describe("transfer fees charging", () => {
         it("should charge transfer fee and agent can claim", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, userAddress1, underlyingUser1, context.lotSize().muln(100));
@@ -112,8 +83,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
             mockChain.mine(10);
             await context.updateUnderlyingBlock();
-            const currentEpoch = await context.assetManager.currentTransferFeeEpoch();
-            const trfSettings = await transferFeeClaimingSettings(context);
+            const currentEpoch = await assetManager.currentTransferFeeEpoch();
+            const trfSettings = await assetManager.transferFeeSettings();
             // perform minting
             const lots = 3;
             const [minted] = await minter.performMinting(agent.vaultAddress, lots);
@@ -122,15 +93,15 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 "balance too low for transfer fee");
             // transfer and check that fee was subtracted
             const transferAmount = context.lotSize().muln(2);
-            const startBalance = await context.fAsset.balanceOf(minter.address);
+            const startBalance = await fAsset.balanceOf(minter.address);
             const transfer = await minter.transferFAsset(redeemer.address, transferAmount);
-            const endBalance = await context.fAsset.balanceOf(minter.address);
+            const endBalance = await fAsset.balanceOf(minter.address);
             const transferFee = transferAmount.mul(toBN(trfSettings.transferFeeMillionths)).divn(1e6);
             assertWeb3Equal(transfer.fee, transferFee);
             assert.isAbove(Number(transferFee), 100);
             assertWeb3Equal(startBalance.sub(endBalance), transferAmount.add(transferFee));
             // at this epoch, claimable amount should be 0, though fees are collected
-            const epochData = await transferFeeEpochData(context, currentEpoch);
+            const epochData = await assetManager.transferFeeEpochData(currentEpoch);
             const claimableAmount0 = await agent.transferFeeShare(10);
             assertWeb3Equal(epochData.totalFees, transferFee);
             assertWeb3Equal(claimableAmount0, 0);
@@ -139,13 +110,13 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const claimableAmount1 = await agent.transferFeeShare(10);
             assertWeb3Equal(claimableAmount1, transferFee);
             const claimed = await agent.claimTransferFees(agent.ownerWorkAddress, 10);
-            const ownerFBalance = await context.fAsset.balanceOf(agent.ownerWorkAddress);
+            const ownerFBalance = await fAsset.balanceOf(agent.ownerWorkAddress);
             const poolFeeShare = transferFee.mul(toBN(agentInfo.poolFeeShareBIPS)).divn(MAX_BIPS);
             const agentFeeShare = transferFee.sub(poolFeeShare);
             assertWeb3Equal(ownerFBalance, agentFeeShare);
             assertWeb3Equal(agentFeeShare, claimed.agentClaimedUBA);
             assertWeb3Equal(poolFeeShare, claimed.poolClaimedUBA);
-            const poolFBalance = await context.fAsset.balanceOf(agentInfo.collateralPool);
+            const poolFBalance = await fAsset.balanceOf(agentInfo.collateralPool);
             const poolExpected = toBN(minted.poolFeeUBA).add(poolFeeShare);
             assertWeb3Equal(poolFBalance, poolExpected);
         });
@@ -157,7 +128,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
             mockChain.mine(10);
             await context.updateUnderlyingBlock();
-            const currentEpoch = await context.assetManager.currentTransferFeeEpoch();
+            const currentEpoch = await assetManager.currentTransferFeeEpoch();
             // perform minting and redemption
             const lots = 2;
             const [minted] = await minter.performMinting(agent.vaultAddress, lots);
@@ -167,7 +138,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const agentInfo = await agent.getAgentInfo();
             assertWeb3Equal(agentInfo.mintedUBA, minted.poolFeeUBA);
             // and no fee was charged
-            const epochData = await transferFeeEpochData(context, currentEpoch);
+            const epochData = await assetManager.transferFeeEpochData(currentEpoch);
             assertWeb3Equal(epochData.totalFees, 0);
         });
 
@@ -178,30 +149,40 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.depositCollateralsAndMakeAvailable(toWei(1e8), toWei(1e8));
             mockChain.mine(10);
             await context.updateUnderlyingBlock();
-            const currentEpoch = await context.assetManager.currentTransferFeeEpoch();
+            const currentEpoch = await assetManager.currentTransferFeeEpoch();
             // perform mintings
             const lots = 1;
             const [minted1] = await minter1.performMinting(agent.vaultAddress, lots);
             const [minted2] = await minter2.performMinting(agent.vaultAddress, lots);
             // change transfer payer
-            await context.fAsset.setTransferFeesPaidBy(minter2.address, { from: minter1.address });
+            await fAsset.setTransferFeesPaidBy(minter2.address, { from: minter1.address });
             // of course the other has to agree
             await expectRevert(minter1.transferFAsset(userAddress3, minted1.mintedAmountUBA),
                 "allowance too low for transfer fee");
             // after approval, minter1 should be able to transfer whole amount
             const transferAmount = toBN(minted1.mintedAmountUBA);
-            await context.fAsset.approve(minter1.address, transferAmount.divn(1000), { from: minter2.address });
-            assertWeb3Equal(await context.fAsset.balanceOf(minter1.address), transferAmount);
+            await fAsset.approve(minter1.address, transferAmount.divn(1000), { from: minter2.address });
+            assertWeb3Equal(await fAsset.balanceOf(minter1.address), transferAmount);
             const transfer = await minter1.transferFAsset(userAddress3, transferAmount);
-            assertWeb3Equal(await context.fAsset.balanceOf(minter1.address), 0);
-            assertWeb3Equal(await context.fAsset.balanceOf(userAddress3), transferAmount);
+            assertWeb3Equal(await fAsset.balanceOf(minter1.address), 0);
+            assertWeb3Equal(await fAsset.balanceOf(userAddress3), transferAmount);
             assertWeb3Equal(transfer.value, transferAmount);
             assert.isBelow(Number(transfer.fee), Number(transfer.value) / 100);
             assert.isAbove(Number(transfer.fee), 0);
-            const epochData = await transferFeeEpochData(context, currentEpoch);
+            const epochData = await assetManager.transferFeeEpochData(currentEpoch);
             assertWeb3Equal(transfer.fee, epochData.totalFees);
             // minter2 has paid the fee
-            assertWeb3Equal(await context.fAsset.balanceOf(minter2.address), toBN(minted2.mintedAmountUBA).sub(toBN(transfer.fee)));
+            assertWeb3Equal(await fAsset.balanceOf(minter2.address), toBN(minted2.mintedAmountUBA).sub(toBN(transfer.fee)));
+        });
+
+    });
+
+    describe("transfer fee claim epochs", () => {
+        it("current epoch should be same as first claimable at start", async () => {
+            const currentEpoch = await assetManager.currentTransferFeeEpoch();
+            const firstClaimableEpoch = await assetManager.firstClaimableTransferFeeEpoch();
+            assertWeb3Equal(currentEpoch, 20);
+            assertWeb3Equal(firstClaimableEpoch, 20);
         });
 
         it("multiple agents split the fees according to average minted amount", async () => {
@@ -214,10 +195,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             mockChain.mine(10);
             await context.updateUnderlyingBlock();
             //
-            const firstEpoch = Number(await context.assetManager.currentTransferFeeEpoch());
-            const firstEpochData = transferFeeEpochData(context, firstEpoch);
+            const firstEpoch = Number(await assetManager.currentTransferFeeEpoch());
             const start = await time.latest();
-            const trfSettings = await transferFeeClaimingSettings(context);
+            const trfSettings = await assetManager.transferFeeSettings();
             const epochDuration = Number(trfSettings.epochDuration);
             const lotSize = context.lotSize();
             // do some minting, redeeming and transfers
@@ -249,16 +229,18 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await Agent.performRedemptions([agent1, agent2], rrqs2);
             await agent1.checkAgentInfo({ mintedUBA: toBN(lotSize).muln(0).add(poolFees1) });
             await agent2.checkAgentInfo({ mintedUBA: toBN(lotSize).muln(0).add(poolFees2) });
+            //
+            await time.increaseTo(start + 2.5 * epochDuration);
             // backing for epoch1: total = 40 lots for 1/2 epoch, 20 lots for 1/2 epoch = 30 lots avg
             //   ag1: 10 lots for 1/2 epoch -> 10 * 1/2 / 30 = 1/6 share
             //   ag2: 30 lots for 1/2 epoch, 20 lots for 1/2 epoch -> (30 * 1/2 + 20 * 1/2) / 30 = 25/30 = 5/6 share
             // backing for epoch2: total = 20 lots for 1/2 epoch = 10 lots avg
             //   ag1: 0
             //   ag2: 20 lots for 1/2 epoch -> 10 / 10 = 25/30 = 1 share
-            const ep1agent1 = await agentTransferFeeEpochData(agent1, firstEpoch);
-            const ep2agent1 = await agentTransferFeeEpochData(agent1, firstEpoch + 1);
-            const ep1agent2 = await agentTransferFeeEpochData(agent2, firstEpoch);
-            const ep2agent2 = await agentTransferFeeEpochData(agent2, firstEpoch + 1);
+            const ep1agent1 = await assetManager.transferFeeCalculationDataForAgent(agent1.vaultAddress, firstEpoch);
+            const ep1agent2 = await assetManager.transferFeeCalculationDataForAgent(agent2.vaultAddress, firstEpoch);
+            const ep2agent1 = await assetManager.transferFeeCalculationDataForAgent(agent1.vaultAddress, firstEpoch + 1);
+            const ep2agent2 = await assetManager.transferFeeCalculationDataForAgent(agent2.vaultAddress, firstEpoch + 1);
             assertWeb3Equal(ep1agent1.totalCumulativeMinted, ep1agent2.totalCumulativeMinted);
             assertWeb3Equal(ep2agent1.totalCumulativeMinted, ep2agent2.totalCumulativeMinted);
             const ep1TotalAvgNoFee = epochAverage(ep1agent1.totalCumulativeMinted).sub(poolFeesTotal);
@@ -269,6 +251,65 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertApproximatelyEqual(epochAverage(ep1agent2.cumulativeMinted), ep1TotalAvgNoFee.muln(5).divn(6).add(poolFees2), 'relative', 1e-3);
             assertApproximatelyEqual(epochAverage(ep2agent1.cumulativeMinted), ep2TotalAvgNoFee.muln(0).add(poolFees1), 'relative', 1e-3);
             assertApproximatelyEqual(epochAverage(ep2agent2.cumulativeMinted), ep2TotalAvgNoFee.muln(1).add(poolFees2), 'relative', 1e-3);
+            // fees should be split accordingly
+            const fee1agent1 = await assetManager.agentTransferFeeShareForEpoch(agent1.vaultAddress, firstEpoch);
+            const fee1agent2 = await assetManager.agentTransferFeeShareForEpoch(agent2.vaultAddress, firstEpoch);
+            const fee2agent1 = await assetManager.agentTransferFeeShareForEpoch(agent1.vaultAddress, firstEpoch + 1);
+            const fee2agent2 = await assetManager.agentTransferFeeShareForEpoch(agent2.vaultAddress, firstEpoch + 1);
+            assertApproximatelyEqual(fee1agent1, toBN(ep1agent1.cumulativeMinted).mul(toBN(ep1agent1.totalFees)).div(toBN(ep1agent1.totalCumulativeMinted)), 'relative', 1e-3);
+            assertApproximatelyEqual(fee1agent2, toBN(ep1agent2.cumulativeMinted).mul(toBN(ep1agent2.totalFees)).div(toBN(ep1agent2.totalCumulativeMinted)), 'relative', 1e-3);
+            assertApproximatelyEqual(fee2agent1, toBN(ep2agent1.cumulativeMinted).mul(toBN(ep2agent1.totalFees)).div(toBN(ep2agent1.totalCumulativeMinted)), 'relative', 1e-3);
+            assertApproximatelyEqual(fee2agent2, toBN(ep2agent2.cumulativeMinted).mul(toBN(ep2agent2.totalFees)).div(toBN(ep2agent2.totalCumulativeMinted)), 'relative', 1e-3);
+            // total fees should match
+            const totalFeeAgent1 = await assetManager.agentTransferFeeShare(agent1.vaultAddress, 10);
+            const totalFeeAgent2 = await assetManager.agentTransferFeeShare(agent2.vaultAddress, 10);
+            assertWeb3Equal(fee1agent1.add(fee2agent1), totalFeeAgent1);
+            assertWeb3Equal(fee1agent2.add(fee2agent2), totalFeeAgent2);
+            // claimed amounts should match
+            const agent1balPre = await fAsset.balanceOf(agent1.ownerWorkAddress);
+            const agent1claim = await agent1.claimTransferFees(agent1.ownerWorkAddress, 10);
+            const agent1balPost = await fAsset.balanceOf(agent1.ownerWorkAddress);
+            assertWeb3Equal(toBN(agent1claim.agentClaimedUBA).add(toBN(agent1claim.poolClaimedUBA)), totalFeeAgent1);
+            assertWeb3Equal(agent1balPost.sub(agent1balPre), agent1claim.agentClaimedUBA);
+            //
+            const agent2balPre = await fAsset.balanceOf(agent2.ownerWorkAddress);
+            const agent2claim = await agent2.claimTransferFees(agent2.ownerWorkAddress, 10);
+            const agent2balPost = await fAsset.balanceOf(agent2.ownerWorkAddress);
+            assertWeb3Equal(toBN(agent2claim.agentClaimedUBA).add(toBN(agent2claim.poolClaimedUBA)), totalFeeAgent2);
+            assertWeb3Equal(agent2balPost.sub(agent2balPre), agent2claim.agentClaimedUBA);
+        });
+    });
+
+    describe("transfer fee settings", () => {
+        it("transfer fee share can be updated with scheduled effect", async () => {
+            const startTime = await time.latest();
+            const startFee = await assetManager.transferFeeMillionths();
+            assertWeb3Equal(startFee, 200);
+            // update fee to 500 in 100 sec
+            await assetManager.setTransferFeeMillionths(500, startTime + 100, { from: governance});
+            assertWeb3Equal(await assetManager.transferFeeMillionths(), startFee);
+            await time.increase(50);
+            assertWeb3Equal(await assetManager.transferFeeMillionths(), startFee);
+            await time.increase(50);
+            assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
+            // update fee again, to 400
+            await time.increase(1 * DAYS);  // skip to avoid too close updates
+            await assetManager.setTransferFeeMillionths(400, await time.latest() + 200, { from: governance });
+            assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
+            await time.increase(100);
+            assertWeb3Equal(await assetManager.transferFeeMillionths(), 500);
+            await time.increase(100);
+            assertWeb3Equal(await assetManager.transferFeeMillionths(), 400);
+            // update in past/now/0 updates immediately
+            await time.increase(1 * DAYS);
+            await assetManager.setTransferFeeMillionths(300, startTime, { from: governance });
+            assertWeb3Equal(await assetManager.transferFeeMillionths(), 300);
+            await time.increase(1 * DAYS);
+            await assetManager.setTransferFeeMillionths(150, await time.latest() + 1, { from: governance });
+            assertWeb3Equal(await assetManager.transferFeeMillionths(), 150);
+            await time.increase(1 * DAYS);
+            await assetManager.setTransferFeeMillionths(100, 0, { from: governance });
+            assertWeb3Equal(await assetManager.transferFeeMillionths(), 100);
         });
     });
 });

@@ -44,7 +44,7 @@ contract TransferFeeFacet is AssetManagerBase, GovernedFacet, IAssetManagerEvent
     {
         LibDiamond.DiamondStorage storage ds = LibDiamond.diamondStorage();
         require(ds.supportedInterfaces[type(IERC165).interfaceId], "diamond not initialized");
-        ds.supportedInterfaces[type(IRedemptionTimeExtension).interfaceId] = true;
+        ds.supportedInterfaces[type(ITransferFees).interfaceId] = true;
         // init settings
         require(_transferFeeMillionths <= 1e6, "millionths value too high");
         TransferFees.updateTransferFeeMillionths(_transferFeeMillionths, 0);
@@ -170,59 +170,49 @@ contract TransferFeeFacet is AssetManagerBase, GovernedFacet, IAssetManagerEvent
         return claimable ? data.agentFeeShare(agent, _epoch) : 0;
     }
 
-    function transferFeeClaimingSettings()
+    function transferFeeSettings()
         external view
-        returns(
-            uint256 _firstEpochStartTs,
-            uint256 _epochDuration,
-            uint256 _maxUnexpiredEpochs,
-            uint256 _firstClaimableEpoch
-        )
+        returns (TransferFeeSettings memory)
     {
         TransferFeeTracking.Data storage data = _getTransferFeeData();
-        _firstEpochStartTs = data.firstEpochStartTs;
-        _epochDuration = data.epochDuration;
-        _maxUnexpiredEpochs = data.maxUnexpiredEpochs;
-        _firstClaimableEpoch = data.firstClaimableEpoch;
+        return TransferFeeSettings({
+            transferFeeMillionths: TransferFees.transferFeeMillionths(),
+            firstEpochStartTs: data.firstEpochStartTs,
+            epochDuration: data.epochDuration,
+            maxUnexpiredEpochs: data.maxUnexpiredEpochs,
+            firstClaimableEpoch: data.firstClaimableEpoch
+        });
     }
 
     function transferFeeEpochData(uint256 _epoch)
         external view
-        returns (
-            uint256 _startTs,
-            uint256 _endTs,
-            uint256 _totalFees,
-            uint256 _claimedFees,
-            bool _claimable,
-            bool _expired
-        )
+        returns (TransferFeeEpochData memory)
     {
         TransferFeeTracking.Data storage data = _getTransferFeeData();
-        _startTs = data.epochTimestamp(_epoch);
-        _endTs = data.epochTimestamp(_epoch + 1);
-        _totalFees = data.epochs[_epoch].totalFees;
-        _claimedFees = data.epochs[_epoch].claimedFees;
-        _claimable = data.epochClaimable(_epoch);
-        _expired = _epoch < data.firstClaimableEpoch;
+        return TransferFeeEpochData({
+            startTs: data.epochTimestamp(_epoch),
+            endTs: data.epochTimestamp(_epoch + 1),
+            totalFees: data.epochs[_epoch].totalFees,
+            claimedFees: data.epochs[_epoch].claimedFees,
+            claimable: data.epochClaimable(_epoch),
+            expired: _epoch < data.firstClaimableEpoch
+        });
     }
 
-    function agentTransferFeeEpochData(address _agentVault, uint256 _epoch)
+    function transferFeeCalculationDataForAgent(address _agentVault, uint256 _epoch)
         external view
-        returns (
-            uint256 _totalFees,
-            uint256 _cumulativeMinted,
-            uint256 _totalCumulativeMinted,
-            bool _claimable,
-            bool _claimed
-        )
+        returns (TransferFeeCalculationDataForAgent memory)
     {
         TransferFeeTracking.Data storage data = _getTransferFeeData();
         TransferFeeTracking.AgentData storage agent = data.agents[_agentVault];
-        _totalFees = data.epochs[_epoch].totalFees;
-        _cumulativeMinted = data.epochCumulative(agent.mintingHistory, _epoch);
-        _totalCumulativeMinted = data.epochCumulative(data.totalMintingHistory, _epoch);
-        _claimable = data.epochClaimable(_epoch);
-        _claimed = _claimable && _epoch < agent.firstUnclaimedEpoch;
+        bool epochClaimable = data.epochClaimable(_epoch);
+        return TransferFeeCalculationDataForAgent({
+            totalFees: data.epochs[_epoch].totalFees,
+            cumulativeMinted: data.epochCumulative(agent.mintingHistory, _epoch),
+            totalCumulativeMinted: data.epochCumulative(data.totalMintingHistory, _epoch),
+            claimable: epochClaimable,
+            claimed: epochClaimable && _epoch < agent.firstUnclaimedEpoch
+        });
     }
 
     function _getTransferFeeData() private view returns (TransferFeeTracking.Data storage) {
