@@ -6,6 +6,19 @@ pragma solidity >=0.7.6 <0.9;
  * FAsset transfer (trailing) fees.
  */
 interface ITransferFees {
+    /**
+     * An agent has claimed their share of transfer fees.
+     */
+    event TransferFeesClaimed(
+        address indexed agentVault,
+        address recipient,
+        uint256 agentClaimedUBA,
+        uint256 poolClaimedUBA,
+        uint256 remainingUnclaimedEpochs);
+
+    /**
+     * Transfer fee will change at timestamp `scheduledAt`.
+     */
     event TransferFeeChangeScheduled(
         uint256 nextTransferFeeMillionths,
         uint256 scheduledAt);

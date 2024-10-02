@@ -61,8 +61,8 @@ contract TransferFeeFacet is AssetManagerBase, GovernedFacet, IAssetManagerEvent
      * If this method is not called, the agents will be automatically initialized on first minting or redemption,
      * but they may miss out on some tracking fees for the duration between the diamond cut and the first
      * subsequent minting or redemption.
-     * @param _agentVaults the agent vaults to be initialized; the caller should make a snapshot array of all
-     * agents' addresses before the diamond cut and then call this method with suitably sized chunks of that array
+     * @param _agentVaults the agent vaults to be initialized; the caller should read the array of all
+     * agents' addresses after the diamond cut and then call this method with suitably sized chunks of that array
      */
     function initAgentsMintingHistory(address[] calldata _agentVaults)
         external
