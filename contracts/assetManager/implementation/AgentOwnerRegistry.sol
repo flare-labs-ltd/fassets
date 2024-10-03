@@ -35,7 +35,7 @@ contract AgentOwnerRegistry is Whitelist, IAgentOwnerRegistry {
         string memory _iconUrl
     )
         external
-        onlyImmediateGovernance
+        onlyGovernanceOrManager
     {
         _addAddressToWhitelist(_managementAddress);
         _setAgentData(_managementAddress, _name, _description, _iconUrl);

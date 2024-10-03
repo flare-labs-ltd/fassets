@@ -247,7 +247,21 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
             const name = "Agent 1";
             const description = "This is first agent";
             const iconUrl = "https://some.address/icon.jpg";
-            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: accounts[1] }), "only governance");
+            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: accounts[1] }), "only governance or manager");
+        });
+
+        it("manager can also set agent data", async () => {
+            const manager = accounts[15];
+            const name = "Agent 1";
+            const description = "This is first agent";
+            const iconUrl = "https://some.address/icon.jpg";
+            // cannot whitelist before being set
+            await expectRevert(agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: manager }), "only governance or manager");
+            //
+            await waitForTimelock(agentOwnerRegistry.setManager(manager, { from: governance }), agentOwnerRegistry, governance);
+            // now it should work
+            const res = await agentOwnerRegistry.whitelistAndDescribeAgent(agentOwner1, name, description, iconUrl, { from: manager });
+            expectEvent(res, "AgentDataChanged");
         });
     });
 
