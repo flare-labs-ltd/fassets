@@ -24,14 +24,14 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
      * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains
      * f-assets. Otherwise the agent collects the collateral reservation fee.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
-     * NOTE: the owner of the agent vault must be whitelisted agent.
+     * NOTE: the owner of the agent vault must be in the AgentOwnerRegistry.
      * @param _agentVault agent vault address
      * @param _lots the number of lots for which to reserve collateral
      * @param _maxMintingFeeBIPS maximum minting fee (BIPS) that can be charged by the agent - best is just to
      *      copy current agent's published fee; used to prevent agent from front-running reservation request
      *      and increasing fee (that would mean that the minter would have to pay raised fee or forfeit
      *      collateral reservation fee)
-     * @param _executor the account that is allowed to represent minter in `executeMinting()`
+     * @param _executor the account that is allowed to execute minting (besides minter and agent)
      */
     function reserveCollateral(
         address _agentVault,
