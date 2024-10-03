@@ -325,6 +325,31 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         await assetManager.unstickMinting(proof, crt.collateralReservationId, { from: agentOwner1, value: burnNats });
     });
 
+    it("should merge redemption tickets when two consecutive mintings go to the same agent", async () => {
+        // init
+        const poolFeeShareBIPS = toBIPS(0.4);
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { poolFeeShareBIPS });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act/1
+        const crt = await reserveCollateral(agentVault.address, 1);
+        const txHash = await performMintingPayment(crt);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const res = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        // act/2
+        const crt2 = await reserveCollateral(agentVault.address, 1);
+        const txHash2 = await performMintingPayment(crt2);
+        const proof2 = await attestationProvider.provePayment(txHash2, underlyingMinter1, crt2.paymentAddress);
+        const res2 = await assetManager.executeMinting(proof2, crt2.collateralReservationId, { from: minterAddress1 });
+        // assert
+        const ticketValue1 = toBN(crt.valueUBA);    // no fee - only whole lots are assigned to ticket
+        const ticketValue2 = toBN(crt2.valueUBA);
+        expectEvent(res, "MintingExecuted");
+        expectEvent(res, "RedemptionTicketCreated", { ticketValueUBA: ticketValue1 });
+        expectEvent(res2, "MintingExecuted");
+        expectEvent.notEmitted(res2, "RedemptionTicketCreated");
+        expectEvent(res2, "RedemptionTicketUpdated", { ticketValueUBA: ticketValue1.add(ticketValue2) });
+    });
+
     it("should self-mint", async () => {
         // init
         const feeBIPS = toBIPS("10%");

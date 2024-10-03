@@ -499,6 +499,40 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             }
         });
 
+        it("mint and redeem f-assets (many redemption tickets to the same agent are merged at minting, so can be redeemed at once)", async () => {
+            const N = 25;
+            const MT = 20;  // max tickets redeemed
+            const fullAgentCollateral = toWei(3e8);
+            const underlyingAddress = (i: number) => `${underlyingAgent1}_vault_${i}`;
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
+            // perform minting
+            let totalMinted = BN_ZERO;
+            for (let i = 0; i < N; i++) {
+                await context.updateUnderlyingBlock();
+                const [minted] = await minter.performMinting(agent.vaultAddress, 1);
+                assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(1));
+                totalMinted = totalMinted.add(toBN(minted.mintedAmountUBA));
+            }
+            // redeemer "buys" f-assets
+            await context.fAsset.transfer(redeemer.address, totalMinted, { from: minter.address });
+            // request redemption
+            const executorFee = toBNExp(N + 0.5, 9);  // 25.5 gwei, 0.5 gwei should be lost
+            const executor = accounts[88];
+            await context.updateUnderlyingBlock();
+            const [redemptionRequests, remainingLots, dustChanges] = await redeemer.requestRedemption(N, executor, executorFee);
+            // validate redemption requests
+            assertWeb3Equal(remainingLots, 0);  // should only redeem 20 tickets out of 25
+            assert.equal(redemptionRequests.length, 1);
+            const totalExecutorFee = sumBN(redemptionRequests, rq => toBN(rq.executorFeeNatWei));
+            assertWeb3Equal(totalExecutorFee, toBNExp(N, 9));
+            assert.equal(dustChanges.length, 0);
+            // perform redemptions
+            await agent.performRedemptions(redemptionRequests);
+        });
+
         it("mint and redeem f-assets (one redemption ticket - two redeemers)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));

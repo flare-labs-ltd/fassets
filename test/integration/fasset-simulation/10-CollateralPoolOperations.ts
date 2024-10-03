@@ -366,16 +366,20 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
 
     it("self close exit test, incomplete self close", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { poolExitCollateralRatioBIPS: 1000000 });
+        const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
         const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
         // make agent available one lot worth of pool collateral
         const fullAgentVaultCollateral = toWei(3e8);
         const fullAgentPoolCollateral = toWei(3e8);
         await agent.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
+        await agent2.depositCollateralsAndMakeAvailable(fullAgentVaultCollateral, fullAgentPoolCollateral);
         // minter mints multiple times to create a lot of tickets
-        for (let i = 0; i <= 30; i++) {
+        for (let i = 0; i <= 60; i++) {
             const lots = 1;
-            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            // alternate between two agents so that tickets don't get merged
+            const vaultAddress = i % 2 == 0 ? agent.vaultAddress : agent2.vaultAddress;
+            const crt = await minter.reserveCollateral(vaultAddress, lots);
             const txHash1 = await minter.performMintingPayment(crt);
             const minted = await minter.executeMinting(crt, txHash1);
         }
