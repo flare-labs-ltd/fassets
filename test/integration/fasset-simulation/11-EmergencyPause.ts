@@ -77,7 +77,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // redemption payments can be performed and confirmed in pause
             await context.assetManagerController.emergencyPause([context.assetManager.address], 1 * HOURS, { from: emergencyAddress1 });
             await agent.performRedemptions(requests);
-            await agent.exitAndDestroy();
+            // but self close is prevented
+            await expectRevert(agent.selfClose(10), "emergency pause active");
         });
 
         it("pause liquidation", async () => {
