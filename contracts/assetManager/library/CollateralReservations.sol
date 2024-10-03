@@ -46,7 +46,6 @@ library CollateralReservations {
         // poolCollateral is WNat, so we can use its price
         uint256 reservationFee = _reservationFee(collateralData.poolCollateral.amgToTokenWeiPrice, valueAMG);
         require(msg.value >= reservationFee, "inappropriate fee amount");
-        (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
         state.newCrtId += PaymentReference.randomizedIdSkip();
         uint64 crtId = state.newCrtId;   // pre-increment - id can never be 0
         // create in-memory cr and then put it to storage to not go out-of-stack
@@ -56,14 +55,65 @@ library CollateralReservations {
         cr.reservationFeeNatWei = reservationFee.toUint128();
         cr.agentVault = _agentVault;
         cr.minter = _minter;
-        cr.firstUnderlyingBlock = state.currentUnderlyingBlock;
-        cr.lastUnderlyingBlock = lastUnderlyingBlock;
-        cr.lastUnderlyingTimestamp = lastUnderlyingTimestamp;
         cr.executor = _executor;
         cr.executorFeeNatGWei = ((msg.value - reservationFee) / Conversion.GWEI).toUint64();
+
+        if (agent.identityVerificationType != 0) {
+            cr.identityVerificationStartTimestamp = block.timestamp.toUint64();
+            _emitIdentityVerificationRequiredEvent(agent, cr, crtId);
+        } else {
+            (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
+            cr.firstUnderlyingBlock = state.currentUnderlyingBlock;
+            cr.lastUnderlyingBlock = lastUnderlyingBlock;
+            cr.lastUnderlyingTimestamp = lastUnderlyingTimestamp;
+            _emitCollateralReservationEvent(agent, cr, crtId);
+        }
         state.crts[crtId] = cr;
-        // emit event
-        _emitCollateralReservationEvent(agent, cr, crtId);
+    }
+
+    function approveCollateralReservation(
+        uint64 _crtId
+    )
+        internal
+    {
+        CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
+        Agent.State storage agent = Agent.get(crt.agentVault);
+        Agents.requireAgentVaultOwner(agent);
+        require(crt.identityVerificationStartTimestamp != 0, "identity verification not required");
+        crt.identityVerificationStartTimestamp = 0;
+        (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
+        AssetManagerState.State storage state = AssetManagerState.get();
+        crt.firstUnderlyingBlock = state.currentUnderlyingBlock;
+        crt.lastUnderlyingBlock = lastUnderlyingBlock;
+        crt.lastUnderlyingTimestamp = lastUnderlyingTimestamp;
+        _emitCollateralReservationEvent(agent, crt, _crtId);
+    }
+
+    function rejectCollateralReservation(
+        uint64 _crtId
+    )
+        internal
+    {
+        CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
+        Agent.State storage agent = Agent.get(crt.agentVault);
+        Agents.requireAgentVaultOwner(agent);
+        require(crt.identityVerificationStartTimestamp != 0,
+            "identity verification not required or collateral reservation already approved");
+        _rejectOrCancelCollateralReservation(crt, _crtId);
+    }
+
+    function cancelCollateralReservation(
+        uint64 _crtId
+    )
+        internal
+    {
+        CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
+        require(crt.minter == msg.sender, "only minter");
+        require(crt.identityVerificationStartTimestamp != 0, "collateral reservation already approved");
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        require(crt.identityVerificationStartTimestamp + settings.cancelCollateralReservationAfterSeconds <
+            block.timestamp, "collateral reservation cancellation too early");
+        _rejectOrCancelCollateralReservation(crt, _crtId);
     }
 
     function mintingPaymentDefault(
@@ -73,6 +123,7 @@ library CollateralReservations {
         internal
     {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
+        require(crt.identityVerificationStartTimestamp == 0, "collateral reservation not approved");
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
         // check requirements
@@ -107,6 +158,7 @@ library CollateralReservations {
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
+        require(crt.identityVerificationStartTimestamp == 0, "collateral reservation not approved");
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
         // verify proof
@@ -182,6 +234,21 @@ library CollateralReservations {
         state.totalReservedCollateralAMG += reservationAMG;
     }
 
+    function _emitIdentityVerificationRequiredEvent(
+        Agent.State storage _agent,
+        CollateralReservation.Data memory _cr,
+        uint64 _crtId
+    )
+        private
+    {
+        emit AMEvents.IdentityVerificationRequired(
+            _agent.vaultAddress(),
+            _cr.minter,
+            _crtId,
+            Conversion.convertAmgToUBA(_cr.valueAMG),
+            _cr.underlyingFeeUBA);
+    }
+
     function _emitCollateralReservationEvent(
         Agent.State storage _agent,
         CollateralReservation.Data memory _cr,
@@ -202,6 +269,28 @@ library CollateralReservations {
             PaymentReference.minting(_crtId),
             _cr.executor,
             _cr.executorFeeNatGWei * Conversion.GWEI);
+    }
+
+    function _rejectOrCancelCollateralReservation(
+        CollateralReservation.Data storage crt,
+        uint64 _crtId
+    )
+        private
+    {
+        uint256 totalFee = crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI;
+
+        // guarded against reentrancy in MintingFacet
+        /* solhint-disable avoid-low-level-calls */
+        //slither-disable-next-line arbitrary-send-eth
+        (bool success, ) = crt.minter.call{value: totalFee}("");
+        /* solhint-enable avoid-low-level-calls */
+        if (!success) {
+            // if failed, burn the fee
+            Agents.burnDirectNAT(totalFee);
+        }
+
+        // release agent's reserved collateral
+        releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
     }
 
     function _reservationAMG(

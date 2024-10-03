@@ -106,6 +106,15 @@ library Agents {
         _agent.collateralPool.setTopupTokenPriceFactorBIPS(_poolTopupTokenPriceFactorBIPS);
     }
 
+    function setIdentityVerificationType(
+        Agent.State storage _agent,
+        uint256 _identityVerificationType
+    )
+        internal
+    {
+        _agent.identityVerificationType = _identityVerificationType.toUint32();
+    }
+
     function allocateMintedAssets(
         Agent.State storage _agent,
         uint64 _valueAMG

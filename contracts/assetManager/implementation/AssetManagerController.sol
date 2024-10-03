@@ -419,6 +419,17 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_LIQUIDATION_PAYMENT_FACTORS, abi.encode(_paymentFactors, _vaultCollateralFactors));
     }
 
+    function setCancelCollateralReservationAfterSeconds(
+        IIAssetManager[] memory _assetManagers,
+        uint256 _value
+    )
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_CANCEL_COLLATERAL_RESERVATION_AFTER_SECONDS, abi.encode(_value));
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Collateral tokens
 

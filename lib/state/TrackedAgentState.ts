@@ -36,6 +36,7 @@ export class TrackedAgentState {
         this.poolExitCollateralRatioBIPS = toBN(data.creationData.poolExitCollateralRatioBIPS);
         this.poolTopupCollateralRatioBIPS = toBN(data.creationData.poolTopupCollateralRatioBIPS);
         this.poolTopupTokenPriceFactorBIPS = toBN(data.creationData.poolTopupTokenPriceFactorBIPS);
+        this.identityVerificationType = toBN(data.creationData.identityVerificationType);
     }
 
     // identifying addresses
@@ -56,6 +57,7 @@ export class TrackedAgentState {
     poolExitCollateralRatioBIPS: BN;
     poolTopupCollateralRatioBIPS: BN;
     poolTopupTokenPriceFactorBIPS: BN;
+    identityVerificationType: BN;
 
     // status
     status: AgentStatus = AgentStatus.NORMAL;
@@ -118,8 +120,8 @@ export class TrackedAgentState {
     // handlers: agent settings
 
     handleSettingChanged(name: string, value: BNish) {
-        if (!["feeBIPS", "poolFeeShareBIPS", "mintingVaultCollateralRatioBIPS", "mintingPoolCollateralRatioBIPS",
-            "buyFAssetByAgentFactorBIPS", "poolExitCollateralRatioBIPS", "poolTopupCollateralRatioBIPS", "poolTopupTokenPriceFactorBIPS"].includes(name)) return;
+        if (!["feeBIPS", "poolFeeShareBIPS", "mintingVaultCollateralRatioBIPS", "mintingPoolCollateralRatioBIPS", "buyFAssetByAgentFactorBIPS",
+            "poolExitCollateralRatioBIPS", "poolTopupCollateralRatioBIPS", "poolTopupTokenPriceFactorBIPS", "identityVerificationType"].includes(name)) return;
         this[name as AgentSetting] = toBN(value);
     }
 

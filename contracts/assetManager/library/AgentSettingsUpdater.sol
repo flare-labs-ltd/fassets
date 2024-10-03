@@ -18,6 +18,7 @@ library AgentSettingsUpdater {
     bytes32 internal constant POOL_EXIT_COLLATERAL_RATIO_BIPS = keccak256("poolExitCollateralRatioBIPS");
     bytes32 internal constant POOL_TOPUP_COLLATERAL_RATIO_BIPS = keccak256("poolTopupCollateralRatioBIPS");
     bytes32 internal constant POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS = keccak256("poolTopupTokenPriceFactorBIPS");
+    bytes32 internal constant IDENTITY_VERIFICATION_TYPE = keccak256("identityVerificationType");
 
     function announceUpdate(
         address _agentVault,
@@ -72,6 +73,7 @@ library AgentSettingsUpdater {
         delete _agent.settingUpdates[POOL_EXIT_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[POOL_TOPUP_COLLATERAL_RATIO_BIPS];
         delete _agent.settingUpdates[POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS];
+        delete _agent.settingUpdates[IDENTITY_VERIFICATION_TYPE];
     }
 
     function _executeUpdate(
@@ -97,6 +99,8 @@ library AgentSettingsUpdater {
             Agents.setPoolTopupCollateralRatioBIPS(_agent, _value);
         } else if (_hash == POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS) {
             Agents.setPoolTopupTokenPriceFactorBIPS(_agent, _value);
+        } else if (_hash == IDENTITY_VERIFICATION_TYPE) {
+            Agents.setIdentityVerificationType(_agent, _value);
         } else {
             assert(false);
         }
@@ -123,7 +127,8 @@ library AgentSettingsUpdater {
             hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS ||
             hash == POOL_EXIT_COLLATERAL_RATIO_BIPS ||
             hash == POOL_TOPUP_COLLATERAL_RATIO_BIPS ||
-            hash == POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS;
+            hash == POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS ||
+            hash == IDENTITY_VERIFICATION_TYPE;
         require(settingNameValid, "invalid setting name");
         return hash;
     }

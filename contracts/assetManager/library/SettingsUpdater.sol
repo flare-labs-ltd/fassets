@@ -102,6 +102,8 @@ library SettingsUpdater {
         keccak256("setLiquidationPaymentFactors(uint256[],uint256[])");
     bytes32 internal constant SET_EMERGENCY_PAUSE_PARAMETERS =
         keccak256("setEmergencyPauseParameters(uint256,uint256)");
+    bytes32 internal constant SET_CANCEL_COLLATERAL_RESERVATION_AFTER_SECONDS =
+        keccak256("setCancelCollateralReservationAfterSeconds(uint256)");
 
     function callUpdate(
         bytes32 _method,
@@ -231,6 +233,9 @@ library SettingsUpdater {
         } else if (_method == SET_EMERGENCY_PAUSE_PARAMETERS) {
             checkEnoughTimeSinceLastUpdate(_method);
             _setEmergencyPauseParameters(_params);
+        } else if (_method == SET_CANCEL_COLLATERAL_RESERVATION_AFTER_SECONDS) {
+            checkEnoughTimeSinceLastUpdate(_method);
+            _setCancelCollateralReservationAfterSeconds(_params);
         } else {
             revert("update: invalid method");
         }
@@ -899,5 +904,19 @@ library SettingsUpdater {
             maxEmergencyPauseDurationSeconds);
         emit AMEvents.SettingChanged("emergencyPauseDurationResetAfterSeconds",
             emergencyPauseDurationResetAfterSeconds);
+    }
+
+    function _setCancelCollateralReservationAfterSeconds(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value > 0, "value too small");
+        // update
+        settings.cancelCollateralReservationAfterSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("cancelCollateralReservationAfterSeconds", value);
     }
 }

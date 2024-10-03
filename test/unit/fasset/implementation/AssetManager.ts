@@ -435,6 +435,16 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.poolTopupTokenPriceFactorBIPS.toString(), "9000");
         });
+
+        it("should correctly update agent setting identity verification type", async () => {
+            const agentPoolTopupPriceFactorChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
+            const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "identityVerificationType", 1, { from: agentOwner1 });
+            await time.increase(agentPoolTopupPriceFactorChangeTimelock);
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "identityVerificationType", { from: agentOwner1 });
+            const agentInfo = await assetManager.getAgentInfo(agentVault.address);
+            assert.equal(agentInfo.identityVerificationType.toString(), "1");
+        });
     });
 
     describe("collateral tokens", () => {

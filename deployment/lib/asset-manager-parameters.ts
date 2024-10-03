@@ -482,4 +482,10 @@ export interface AssetManagerParameters {
      * will reset automatically.
      */
     emergencyPauseDurationResetAfterSeconds: integer;
+
+    /**
+     * The amount of time since last emergency pause after which the total pause duration counter
+     * will reset automatically.
+     */
+    cancelCollateralReservationAfterSeconds: integer;
 }

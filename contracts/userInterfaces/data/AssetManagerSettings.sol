@@ -279,5 +279,9 @@ library AssetManagerSettings {
         // The amount of time since last emergency pause after which the total pause duration counter
         // will reset automatically.
         uint64 emergencyPauseDurationResetAfterSeconds;
+
+        // The amount of time after which the collateral reservation can be cancelled the
+        // identity verification is not completed.
+        uint64 cancelCollateralReservationAfterSeconds;
     }
 }

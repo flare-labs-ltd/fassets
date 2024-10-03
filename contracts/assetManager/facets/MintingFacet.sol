@@ -15,8 +15,12 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
      * Before paying underlying assets for minting, minter has to reserve collateral and
      * pay collateral reservation fee. Collateral is reserved at ratio of agent's agentMinCollateralRatio
      * to requested lots NAT market price.
-     * On success the minter receives instructions for underlying payment (value, fee and payment reference)
-     * in event CollateralReserved. Then the minter has to pay `value + fee` on the underlying chain.
+     * If agent requires identity verification then IdentityVerificationRequired event is emitted and
+     * the minter has to wait for the agent to approve or reject the reservation. If there is no response within
+     * the `cancelCollateralReservationAfterSeconds`, the minter can cancel the reservation and get the fee back.
+     * If identity verification is not required the minter receives instructions for underlying payment
+     * (value, fee and payment reference) in event CollateralReserved.
+     * Then the minter has to pay `value + fee` on the underlying chain.
      * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains
      * f-assets. Otherwise the agent collects the collateral reservation fee.
      * NOTE: may only be called by a whitelisted caller when whitelisting is enabled.
@@ -42,6 +46,51 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
     {
         CollateralReservations.reserveCollateral(msg.sender, _agentVault,
             _lots.toUint64(), _maxMintingFeeBIPS.toUint64(), _executor);
+    }
+
+    /**
+     * Agent approves the collateral reservation request after checking the minter's identity.
+     * NOTE: may only be called by the agent vault owner.
+     * @param _collateralReservationId collateral reservation id
+     */
+    function approveCollateralReservation(
+        uint256 _collateralReservationId
+    )
+        external
+        notEmergencyPaused
+    {
+        CollateralReservations.approveCollateralReservation(_collateralReservationId.toUint64());
+    }
+
+    /**
+     * Agent rejects the collateral reservation request after checking the minter's identity.
+     * The collateral reservation fee is returned to the minter.
+     * NOTE: may only be called by the agent vault owner.
+     * @param _collateralReservationId collateral reservation id
+     */
+    function rejectCollateralReservation(
+        uint256 _collateralReservationId
+    )
+        external
+        nonReentrant
+    {
+        CollateralReservations.rejectCollateralReservation(_collateralReservationId.toUint64());
+    }
+
+    /**
+     * Minter cancels the collateral reservation request if the agent didn't respond in time.
+     * The collateral reservation fee is returned to the minter.
+     * It can only be called after `cancelCollateralReservationAfterSeconds` from the collateral reservation request.
+     * NOTE: may only be called by the minter.
+     * @param _collateralReservationId collateral reservation id
+     */
+    function cancelCollateralReservation(
+        uint256 _collateralReservationId
+    )
+        external
+        nonReentrant
+    {
+        CollateralReservations.cancelCollateralReservation(_collateralReservationId.toUint64());
     }
 
     /**

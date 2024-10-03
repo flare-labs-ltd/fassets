@@ -142,6 +142,10 @@
             "minimum": 0,
             "type": "integer"
         },
+        "cancelCollateralReservationAfterSeconds": {
+            "description": "The amount of time since last emergency pause after which the total pause duration counter\nwill reset automatically.",
+            "type": "integer"
+        },
         "ccbTimeSeconds": {
             "description": "Agent can remain in CCB for this much time, after that liquidation starts automatically.",
             "minimum": 0,
@@ -368,6 +372,7 @@
         "averageBlockTimeMS",
         "burnAddress",
         "buybackCollateralFactorBIPS",
+        "cancelCollateralReservationAfterSeconds",
         "ccbTimeSeconds",
         "chainName",
         "collateralPoolTokenTimelockSeconds",

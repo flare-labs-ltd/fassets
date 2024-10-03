@@ -108,6 +108,8 @@ library AgentsCreateDestroy {
         agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
         agent.setPoolTopupCollateralRatioBIPS(_settings.poolTopupCollateralRatioBIPS);
         agent.setPoolTopupTokenPriceFactorBIPS(_settings.poolTopupTokenPriceFactorBIPS);
+        // identity verification type
+        agent.setIdentityVerificationType(_settings.identityVerificationType);
         // add to the list of all agents
         agent.allAgentsPos = state.allAgents.length.toUint32();
         state.allAgents.push(address(agentVault));
@@ -244,6 +246,7 @@ library AgentsCreateDestroy {
         data.poolExitCollateralRatioBIPS = _settings.poolExitCollateralRatioBIPS;
         data.poolTopupCollateralRatioBIPS = _settings.poolTopupCollateralRatioBIPS;
         data.poolTopupTokenPriceFactorBIPS = _settings.poolTopupTokenPriceFactorBIPS;
+        data.identityVerificationType = _settings.identityVerificationType;
         emit AMEvents.AgentVaultCreated(_ownerManagementAddress, _agentVault, data);
     }
 

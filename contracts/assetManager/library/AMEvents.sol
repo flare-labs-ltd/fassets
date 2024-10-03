@@ -20,6 +20,7 @@ library AMEvents {
         uint256 poolExitCollateralRatioBIPS;
         uint256 poolTopupCollateralRatioBIPS;
         uint256 poolTopupTokenPriceFactorBIPS;
+        uint256 identityVerificationType;
     }
 
     /**
@@ -113,6 +114,17 @@ library AMEvents {
         address indexed agentVault,
         uint8 collateralClass,
         address token);
+
+    /**
+     * Minter reserved collateral, paid the reservation fee. Agent's collateral was reserved.
+     * Agent needs to approve or reject the reservation according to the minter's identity.
+     */
+    event IdentityVerificationRequired(
+        address indexed agentVault,
+        address indexed minter,
+        uint256 indexed collateralReservationId,
+        uint256 valueUBA,
+        uint256 feeUBA);
 
     /**
      * Minter reserved collateral, paid the reservation fee, and is expected to pay the underlying funds.
