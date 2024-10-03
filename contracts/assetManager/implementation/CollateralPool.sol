@@ -207,6 +207,12 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         require(assetData.poolNatBalance == natShare ||
             assetData.poolNatBalance - natShare >= MIN_NAT_BALANCE_AFTER_EXIT,
             "collateral left after exit is too low and non-zero");
+        // special case after termination - we don't care about fees or CR anymore and we must avoid fasset transfer
+        if (fAsset.terminated()) {
+            token.burn(msg.sender, _tokenShare, true); // when f-asset is terminated all tokens are free tokens
+            _transferWNat(msg.sender, natShare);
+            return (natShare, 0);
+        }
         require(_staysAboveCR(assetData, natShare, exitCollateralRatioBIPS),
             "collateral ratio falls below exitCR");
         (uint256 debtFAssetFeeShare, uint256 freeFAssetFeeShare) = _getDebtAndFreeFAssetFeesFromTokenShare(
@@ -854,19 +860,6 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         returns (bool)
     {
         return assetManager.isAgentVaultOwner(agentVault, _address);
-    }
-
-    // in case of f-asset termination
-    function withdrawCollateralWhenFAssetTerminated()
-        external
-        nonReentrant
-    {
-        require(fAsset.terminated(), "f-asset not terminated");
-        uint256 tokens = token.balanceOf(msg.sender);
-        require(tokens > 0, "nothing to withdraw");
-        uint256 natShare = tokens.mulDiv(totalCollateral, token.totalSupply());
-        token.burn(msg.sender, tokens, true); // when f-asset is terminated all tokens are free tokens
-        _transferWNat(msg.sender, natShare);
     }
 
     /**

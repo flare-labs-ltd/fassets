@@ -1,5 +1,5 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { MAX_BIPS, ZERO_ADDRESS, toBN, toWei } from "../../../lib/utils/helpers";
+import { MAX_BIPS, ZERO_ADDRESS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { requiredEventArgsFrom } from "../../utils/Web3EventDecoder";
 import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
 import { calculateReceivedNat } from "../../utils/eth";
@@ -440,7 +440,7 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         expectEvent(response, "Exited");
     });
 
-    it("withdraw collateral when FAsset is terminated", async () => {
+    it("can withdraw collateral when FAsset is terminated", async () => {
         const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
         const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(1e8));
         // make agent available
@@ -455,19 +455,24 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         // minter enters the pool
         const minterPoolDeposit1 = toWei(10000);
         await agent.collateralPool.enter(0, false, { from: minter.address, value: minterPoolDeposit1 });
-        // Cant withdraw collateral if fasset is not terminated
-        let res = agent.collateralPool.withdrawCollateralWhenFAssetTerminated({ from: minter.address });
-        await expectRevert(res, "f-asset not terminated");
+        // terminate fasset
         await impersonateContract(context.assetManager.address, toBN(512526332000000000), accounts[0]);
         await context.fAsset.terminate({ from: context.assetManager.address });
         await stopImpersonatingContract(context.assetManager.address);
+        //
+        const tokenBalance = await agent.collateralPoolToken.balanceOf(minter.address);
+        // self close exit will fail transfering fassets
+        await context.fAsset.approve(agent.collateralPool.address, toBNExp(1, 30), { from: minter.address });
+        await expectRevert(agent.collateralPool.selfCloseExit(tokenBalance, true, underlyingMinter1, ZERO_ADDRESS, { from: minter.address }), "f-asset terminated");
+        // ordinary exit will work
         const natBalanceBefore = await context.wNat.balanceOf(minter.address);
-        await agent.collateralPool.withdrawCollateralWhenFAssetTerminated({ from: minter.address });
+        await agent.collateralPool.exit(tokenBalance, 0, { from: minter.address }); // exit type doesn't matter now
+        const tokenBalanceAfter = await agent.collateralPoolToken.balanceOf(minter.address);
+        assertWeb3Equal(tokenBalanceAfter, 0);
         const natBalanceAfter = await context.wNat.balanceOf(minter.address);
         assertWeb3Equal(natBalanceAfter.sub(natBalanceBefore), minterPoolDeposit1);
-        //Should revert if there is no collateral to withdraw
-        res = agent.collateralPool.withdrawCollateralWhenFAssetTerminated({ from: minter.address });
-        await expectRevert(res, "nothing to withdraw");
+        // cannot exit again
+        await expectRevert(agent.collateralPool.exit(tokenBalance, 0, { from: minter.address }), "token balance too low");
     });
 
     it("should check if agent doesn't pay underlying - the redeemer must only get vault collateral (special case for pool redemptions)", async () => {

@@ -144,11 +144,6 @@ interface ICollateralPool {
         returns(uint256 _claimedAmount);
 
     /**
-     * In case of f-asset termination, withdraw all of sender's collateral
-     */
-    function withdrawCollateralWhenFAssetTerminated() external;
-
-    /**
      * Get the ERC20 pool token used by this collateral pool
      */
     function poolToken()

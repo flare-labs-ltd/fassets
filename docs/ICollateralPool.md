@@ -23,8 +23,6 @@ NOTE: only the owner of the pool's corresponding agent vault may call this metho
 **setAutoClaiming** - Set executors that can then automatically claim rewards and airdrop.
 NOTE: only the owner of the pool's corresponding agent vault may call this method.
 
-**withdrawCollateralWhenFAssetTerminated** - In case of f-asset termination, withdraw all of sender's collateral
-
 **poolToken** - Get the ERC20 pool token used by this collateral pool
 
 **agentVault** - Get the vault of the agent that owns this collateral pool

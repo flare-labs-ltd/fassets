@@ -24,4 +24,9 @@ contract ERC20Mock is ERC20 {
         _burn(msg.sender, amount);
         payable(msg.sender).transfer(amount);
     }
+
+    // to simulate FAsset in some collateral pool tests
+    function terminated() external pure returns (bool) {
+        return false;
+    }
 }
