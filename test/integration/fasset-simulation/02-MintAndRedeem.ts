@@ -596,6 +596,44 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.exitAndDestroy(fullAgentCollateral);
         });
 
+        it("mint and redeem f-assets (mint from free underlying)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform self-minting
+            const lots = 3;
+            await agent.checkAgentInfo({ totalVaultCollateralWei: fullAgentCollateral, freeUnderlyingBalanceUBA: 0, mintedUBA: 0 });
+            // topup enough to mint later
+            const mintAmountUBA = context.convertLotsToUBA(lots);
+            const mintPoolFeeUBA = toBN(mintAmountUBA).mul(toBN(agent.settings.feeBIPS)).divn(MAX_BIPS).mul(toBN(agent.settings.poolFeeShareBIPS)).divn(MAX_BIPS);
+            const topupUBA = toBN(mintAmountUBA).add(mintPoolFeeUBA.muln(2));   // add pool fee for 2 mintings
+            const topupTx = await agent.performTopupPayment(topupUBA);
+            await agent.confirmTopupPayment(topupTx);
+            // now teh agent can mint from free inderlying
+            const minted = await agent.mintFromFreeUnderlying(lots);
+            assertWeb3Equal(minted.mintedAmountUBA, mintAmountUBA);
+            assertWeb3Equal(minted.poolFeeUBA, mintPoolFeeUBA);
+            await agent.checkAgentInfo({ mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA), freeUnderlyingBalanceUBA: mintPoolFeeUBA });
+            // perform self close
+            const [dustChanges, selfClosedUBA] = await agent.selfClose(minted.mintedAmountUBA);
+            await agent.checkAgentInfo({ mintedUBA: minted.poolFeeUBA, freeUnderlyingBalanceUBA: mintAmountUBA.add(mintPoolFeeUBA) });
+            assertWeb3Equal(selfClosedUBA, minted.mintedAmountUBA);
+            assert.equal(dustChanges.length, 2);    // initially dust is cleared and then re-created
+            // now the underlying is free again, so agent can re-mint
+            const minted2 = await agent.mintFromFreeUnderlying(lots);
+            assertWeb3Equal(minted2.mintedAmountUBA, mintAmountUBA);
+            assertWeb3Equal(minted2.poolFeeUBA, mintPoolFeeUBA);
+            await agent.checkAgentInfo({ mintedUBA: minted2.mintedAmountUBA.add(minted.poolFeeUBA).add(minted2.poolFeeUBA), freeUnderlyingBalanceUBA: 0 });
+            // self close again
+            await agent.selfClose(minted.mintedAmountUBA);
+            await agent.checkAgentInfo({ mintedUBA: mintPoolFeeUBA.muln(2), freeUnderlyingBalanceUBA: mintAmountUBA });
+            // agent can exit now
+            await agent.exitAndDestroy(fullAgentCollateral);
+        });
+
         it("mint and redeem f-assets (self-close)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));

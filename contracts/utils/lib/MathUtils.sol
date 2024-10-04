@@ -10,4 +10,11 @@ library MathUtils {
         uint256 remainder = x % rounding;
         return remainder == 0 ? x : x - remainder + rounding;
     }
+
+    /**
+     * Return the positive part of `_a - _b`.
+     */
+    function subOrZero(uint256 _a, uint256 _b) internal pure returns (uint256) {
+        return _a > _b ? _a - _b : 0;
+    }
 }

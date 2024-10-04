@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/Transfers.sol";
+import "../../utils/lib/MathUtils.sol";
 import "../../userInterfaces/IFAsset.sol";
 import "../interfaces/IWNat.sol";
 import "../interfaces/IIAssetManager.sol";
@@ -342,7 +343,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 natWei = assetData.poolNatBalance.mulDiv(_tokenAmountWei, assetData.poolTokenSupply);
         uint256 requiredFAssets = _getFAssetRequiredToNotSpoilCR(assetData, natWei);
         uint256 fAssetFees = _fAssetFeesOf(assetData, msg.sender);
-        return subOrZero(requiredFAssets, fAssetFees);
+        return MathUtils.subOrZero(requiredFAssets, fAssetFees);
     }
 
     /**
@@ -402,7 +403,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 natRequiredToTopup = _aux > _assetData.poolNatBalance * _assetData.assetPriceDiv ?
             _aux / _assetData.assetPriceDiv - _assetData.poolNatBalance : 0;
         uint256 collateralForTopupPricing = Math.min(_collateral, natRequiredToTopup);
-        uint256 collateralAtStandardPrice = subOrZero(_collateral, collateralForTopupPricing);
+        uint256 collateralAtStandardPrice = MathUtils.subOrZero(_collateral, collateralForTopupPricing);
         uint256 collateralAtTopupPrice = collateralForTopupPricing.mulDiv(
             SafePct.MAX_BIPS, topupTokenPriceFactorBIPS);
         uint256 tokenShareAtTopupPrice = poolConsideredEmpty ?
@@ -434,7 +435,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         // - debtFAsset = virtualFAsset + 1 > virtualFAsset
         // - freeFAsset > totalFAssetFees (not necessarily by 1, but should be small)
         if (_exitType == TokenExitType.MAXIMIZE_FEE_WITHDRAWAL) {
-            uint256 freeFAsset = subOrZero(virtualFAsset, debtFAsset);
+            uint256 freeFAsset = MathUtils.subOrZero(virtualFAsset, debtFAsset);
             freeFAssetFeeShare = Math.min(fAssetShare, freeFAsset);
             debtFAssetFeeShare = fAssetShare - freeFAssetFeeShare;
         } else if (_exitType == TokenExitType.MINIMIZE_FEE_DEBT) {
@@ -464,7 +465,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         if (_staysAboveCR(_assetData, 0, exitCollateralRatioBIPS)) {
             // f-asset required for CR to stay above exitCR (might not be needed)
             // solve (N - n) / (p / q (F - f)) >= cr get f = max(0, F - q (N - n) / (p cr))
-            return subOrZero(_assetData.agentBackedFAsset, _assetData.assetPriceDiv *
+            return MathUtils.subOrZero(_assetData.agentBackedFAsset, _assetData.assetPriceDiv *
                 (_assetData.poolNatBalance - _natShare) * SafePct.MAX_BIPS /
                 (_assetData.assetPriceMul * exitCollateralRatioBIPS)
             ); // _assetPriceMul > 0, exitCR > 1
@@ -488,7 +489,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         if (_staysAboveCR(_assetData, 0, exitCollateralRatioBIPS)) {
             // nat required for CR to stay above exitCR (might not be needed)
             // solve (N - n) / (p / q (F - f)) >= cr get n = max(0, N - p (F - f) cr / q)
-            return subOrZero(_assetData.poolNatBalance,
+            return MathUtils.subOrZero(_assetData.poolNatBalance,
                 (_assetData.assetPriceMul * (_assetData.agentBackedFAsset - _fAssetShare))
                 .mulBips(exitCollateralRatioBIPS) / _assetData.assetPriceDiv
             );
@@ -535,10 +536,10 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 virtualFAssetFees = _virtualFAssetFeesOf(_assetData, _account);
         uint256 debtFAssetFees = _fAssetFeeDebtOf[_account];
         // note: rounding errors can make debtFassets larger than virtualFassets by at most one
-        // this can happen only when user has no free f-assets (that is why subOrZero)
+        // this can happen only when user has no free f-assets (that is why MathUtils.subOrZero)
         // note: rounding errors can make freeFassets larger than total pool f-asset fees by small amounts
         // (that is why Math.min)
-        return Math.min(subOrZero(virtualFAssetFees, debtFAssetFees), _assetData.poolFAssetFees);
+        return Math.min(MathUtils.subOrZero(virtualFAssetFees, debtFAssetFees), _assetData.poolFAssetFees);
     }
 
     function _debtFreeTokensOf(
@@ -553,7 +554,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         uint256 debtFassets = _fAssetFeeDebtOf[_account];
         if (debtFassets == 0) return tokens; // prevents poolVirtualFAssetFees = 0
         uint256 virtualFassets = _assetData.poolVirtualFAssetFees.mulDiv(tokens, _assetData.poolTokenSupply);
-        uint256 freeFassets = subOrZero(virtualFassets, debtFassets);
+        uint256 freeFassets = MathUtils.subOrZero(virtualFassets, debtFassets);
         return _assetData.poolTokenSupply.mulDiv(freeFassets, _assetData.poolVirtualFAssetFees);
     }
 
@@ -705,7 +706,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         returns (uint256)
     {
         AssetData memory assetData = _getAssetData();
-        return subOrZero(token.balanceOf(_account), _debtFreeTokensOf(assetData, _account));
+        return MathUtils.subOrZero(token.balanceOf(_account), _debtFreeTokensOf(assetData, _account));
     }
 
     /**
@@ -872,12 +873,5 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         return _interfaceId == type(IERC165).interfaceId
             || _interfaceId == type(ICollateralPool).interfaceId
             || _interfaceId == type(IICollateralPool).interfaceId;
-    }
-
-    function subOrZero(uint256 _a, uint256 _b)
-        private pure
-        returns (uint256)
-    {
-        return _a > _b ? _a - _b : 0;
     }
 }

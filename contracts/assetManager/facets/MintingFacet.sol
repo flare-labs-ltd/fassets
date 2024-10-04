@@ -121,8 +121,8 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
     }
 
     /**
-     * Agent can mint against himself. In that case, this is a one-step process, skipping collateral reservation
-     * and no collateral reservation fee payment.
+     * Agent can mint against himself.
+     * This is a one-step process, skipping collateral reservation and collateral reservation fee payment.
      * Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
      * NOTE: may only be called by the agent vault owner.
      * NOTE: the caller must be a whitelisted agent.
@@ -139,8 +139,28 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         external
         onlyAttached
         notEmergencyPaused
-        nonReentrant
     {
         Minting.selfMint(_payment, _agentVault, _lots.toUint64());
     }
+
+    /**
+     * If an agent has enough free underlying, they can mint immediatelly without any underlying payment.
+     * This is a one-step process, skipping collateral reservation and collateral reservation fee payment.
+     * Moreover, the agent doesn't have to be on the publicly available agents list to self-mint.
+     * NOTE: may only be called by the agent vault owner.
+     * NOTE: the caller must be a whitelisted agent.
+     * @param _agentVault agent vault address
+     * @param _lots number of lots to mint
+     */
+    function mintFromFreeUnderlying(
+        address _agentVault,
+        uint64 _lots
+    )
+        external
+        onlyAttached
+        notEmergencyPaused
+    {
+        Minting.mintFromFreeUnderlying(_agentVault, _lots);
+    }
+
 }

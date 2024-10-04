@@ -472,6 +472,11 @@ export class Agent extends AssetContextClient {
         return requiredEventArgs(res, 'MintingExecuted');
     }
 
+    async mintFromFreeUnderlying(lots: BNish) {
+        const res = await this.assetManager.mintFromFreeUnderlying(this.agentVault.address, lots, { from: this.ownerWorkAddress });
+        return requiredEventArgs(res, 'MintingExecuted');
+    }
+
     async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN, liquidationCancelledEvent: EventArgs<LiquidationEnded>]> {
         const res = await this.assetManager.selfClose(this.agentVault.address, amountUBA, { from: this.ownerWorkAddress });
         const dustChangedEvents = filterEvents(res, 'DustChanged').map(e => e.args);

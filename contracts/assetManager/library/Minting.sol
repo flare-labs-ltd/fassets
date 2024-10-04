@@ -14,6 +14,7 @@ import "./TransactionAttestation.sol";
 
 library Minting {
     using SafePct for *;
+    using SafeCast for *;
     using RedemptionQueue for RedemptionQueue.State;
     using PaymentConfirmations for PaymentConfirmations.State;
     using AgentCollateral for Collateral.CombinedData;
@@ -45,8 +46,8 @@ library Minting {
         require(_payment.data.responseBody.blockNumber >= crt.firstUnderlyingBlock,
             "minting payment too old");
         // execute minting
-        _performMinting(agent, _crtId, crt.minter, crt.valueAMG, uint256(_payment.data.responseBody.receivedAmount),
-            calculatePoolFee(agent, crt.underlyingFeeUBA));
+        _performMinting(agent, _crtId, crt.minter, crt.valueAMG, true,
+            uint256(_payment.data.responseBody.receivedAmount), calculatePoolFee(agent, crt.underlyingFeeUBA));
         // pay to executor if they called this method
         uint256 unclaimedExecutorFee = crt.executorFeeNatGWei * Conversion.GWEI;
         if (msg.sender == crt.executor) {
@@ -93,11 +94,34 @@ library Minting {
         // and selfMint call, the paid assets would otherwise be stuck; in this way they are converted to free balance
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);  // guarded by require
         if (_lots > 0) {
-            _performMinting(agent, 0, msg.sender, valueAMG, receivedAmount, poolFeeUBA);
+            _performMinting(agent, 0, msg.sender, valueAMG, true, receivedAmount, poolFeeUBA);
         } else {
             UnderlyingBalance.increaseBalance(agent, receivedAmount);
             emit AMEvents.MintingExecuted(_agentVault, 0, 0, receivedAmount, 0);
         }
+    }
+
+    function mintFromFreeUnderlying(
+        address _agentVault,
+        uint64 _lots
+    )
+        internal
+    {
+        AssetManagerState.State storage state = AssetManagerState.get();
+        Agent.State storage agent = Agent.get(_agentVault);
+        Agents.requireAgentVaultOwner(agent);
+        Agents.requireWhitelistedAgentVaultOwner(agent);
+        Collateral.CombinedData memory collateralData = AgentCollateral.combinedData(agent);
+        require(state.mintingPausedAt == 0, "minting paused");
+        require(agent.status == Agent.Status.NORMAL, "self-mint invalid agent status");
+        require(collateralData.freeCollateralLots(agent) >= _lots, "not enough free collateral");
+        uint64 valueAMG = _lots * Globals.getSettings().lotSizeAMG;
+        checkMintingCap(valueAMG);
+        uint256 mintValueUBA = Conversion.convertAmgToUBA(valueAMG);
+        uint256 poolFeeUBA = calculatePoolFee(agent, mintValueUBA.mulBips(agent.feeBIPS));
+        uint256 requiredUnderlyingAfter = UnderlyingBalance.requiredUnderlyingUBA(agent) + mintValueUBA + poolFeeUBA;
+        require(requiredUnderlyingAfter.toInt256() <= agent.underlyingBalanceUBA, "free underlying balance to small");
+        _performMinting(agent, 0, msg.sender, valueAMG, false, 0, poolFeeUBA);
     }
 
     function checkMintingCap(
@@ -130,6 +154,7 @@ library Minting {
         uint64 _crtId,
         address _minter,
         uint64 _mintValueAMG,
+        bool _receivedUnderlyingPayment,
         uint256 _receivedAmountUBA,
         uint256 _poolFeeUBA
     )
@@ -150,11 +175,14 @@ library Minting {
         Agents.allocateMintedAssets(_agent, _mintValueAMG + poolFeeAMG);
         Agents.createRedemptionTicket(_agent, ticketValueAMG);
         Agents.changeDust(_agent, newDustAMG);
-        // update agent balance with deposited amount
-        UnderlyingBalance.increaseBalance(_agent, _receivedAmountUBA);
-        // perform minting
+        // update agent balance with deposited amount (received amount is 0 in mintFromFreeUnderlying)
         uint256 mintValueUBA = Conversion.convertAmgToUBA(_mintValueAMG);
-        uint256 agentFeeUBA = _receivedAmountUBA - mintValueUBA - _poolFeeUBA;
+        uint256 agentFeeUBA = 0;
+        if (_receivedUnderlyingPayment) {
+            UnderlyingBalance.increaseBalance(_agent, _receivedAmountUBA);
+            agentFeeUBA = _receivedAmountUBA - mintValueUBA - _poolFeeUBA;
+        }
+        // perform minting
         Globals.getFAsset().mint(_minter, mintValueUBA);
         Globals.getFAsset().mint(address(_agent.collateralPool), _poolFeeUBA);
         _agent.collateralPool.fAssetFeeDeposited(_poolFeeUBA);
