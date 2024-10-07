@@ -1,5 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AgentInfo, AgentSetting, AgentSettings, AgentStatus } from "../../../lib/fasset/AssetManagerTypes";
+import { AgentInfo, AgentSetting, AgentSettings, AgentStatus, RedemptionTicketInfo } from "../../../lib/fasset/AssetManagerTypes";
 import { PaymentReference } from "../../../lib/fasset/PaymentReference";
 import { IBlockChainWallet } from "../../../lib/underlying-chain/interfaces/IBlockChainWallet";
 import { EventArgs } from "../../../lib/utils/events/common";
@@ -643,5 +643,16 @@ export class Agent extends AssetContextClient {
         const totalBackedUBA = await this.getTotalBackedAssetUBA();
         const toMintUBA = poolBalanceWei.mul(assetPriceDiv).muln(MAX_BIPS).div(assetPriceMul).divn(ratioBIPS).sub(totalBackedUBA);
         return this.context.convertUBAToLots(toMintUBA);
+    }
+
+    async getRedemptionQueue(pageSize: BNish) {
+        const result: RedemptionTicketInfo[] = [];
+        let firstTicketId = BN_ZERO;
+        do {
+            const { 0: chunk, 1: nextId } = await this.assetManager.agentRedemptionQueue(this.vaultAddress, firstTicketId, pageSize);
+            result.splice(result.length, 0, ...chunk);
+            firstTicketId = nextId;
+        } while (!firstTicketId.eqn(0));
+        return result;
     }
 }

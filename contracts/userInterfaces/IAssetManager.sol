@@ -9,6 +9,7 @@ import "./data/CollateralType.sol";
 import "./data/AgentInfo.sol";
 import "./data/AgentSettings.sol";
 import "./data/AvailableAgentInfo.sol";
+import "./data/RedemptionTicketInfo.sol";
 import "./IAssetManagerEvents.sol";
 import "./IAgentPing.sol";
 import "./IRedemptionTimeExtension.sol";
@@ -744,6 +745,39 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
         uint256 _amountUBA
     ) external
         returns (uint256 _closedAmountUBA);
+
+    ////////////////////////////////////////////////////////////////////////////////////
+    // Redemption info
+
+    /**
+     * Return (part of) the redemption queue.
+     * @param _firstRedemptionTicketId the ticket id to start listing from; if 0, starts from the beginning
+     * @param _pageSize the maximum number of redemption tickets to return
+     * @return _queue the (part of) the redemption queue; maximum length is _pageSize
+     * @return _nextRedemptionTicketId works as a cursor - if the _pageSize is reached and there are more tickets,
+     *  it is the first ticket id not returned; if the end is reached, it is 0
+     */
+    function redemptionQueue(
+        uint256 _firstRedemptionTicketId,
+        uint256 _pageSize
+    ) external view
+        returns (RedemptionTicketInfo.Data[] memory _queue, uint256 _nextRedemptionTicketId);
+
+    /**
+     * Return (part of) the redemption queue for a specific agent.
+     * @param _agentVault the agent vault address of the queried agent
+     * @param _firstRedemptionTicketId the ticket id to start listing from; if 0, starts from the beginning
+     * @param _pageSize the maximum number of redemption tickets to return
+     * @return _queue the (part of) the redemption queue; maximum length is _pageSize
+     * @return _nextRedemptionTicketId works as a cursor - if the _pageSize is reached and there are more tickets,
+     *  it is the first ticket id not returned; if the end is reached, it is 0
+     */
+    function agentRedemptionQueue(
+        address _agentVault,
+        uint256 _firstRedemptionTicketId,
+        uint256 _pageSize
+    ) external view
+        returns (RedemptionTicketInfo.Data[] memory _queue, uint256 _nextRedemptionTicketId);
 
     ////////////////////////////////////////////////////////////////////////////////////
     // Dust

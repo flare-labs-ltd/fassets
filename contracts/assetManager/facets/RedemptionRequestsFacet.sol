@@ -4,6 +4,7 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../library/AgentsExternal.sol";
 import "../library/RedemptionRequests.sol";
+import "../library/RedemptionQueueInfo.sol";
 import "./AssetManagerBase.sol";
 
 
@@ -144,5 +145,43 @@ contract RedemptionRequestsFacet is AssetManagerBase {
         external
     {
         AgentsExternal.convertDustToTicket(_agentVault);
+    }
+
+    /**
+     * Return (part of) the redemption queue.
+     * @param _firstRedemptionTicketId the ticket id to start listing from; if 0, starts from the beginning
+     * @param _pageSize the maximum number of redemption tickets to return
+     * @return _queue the (part of) the redemption queue; maximum length is _pageSize
+     * @return _nextRedemptionTicketId works as a cursor - if the _pageSize is reached and there are more tickets,
+     *  it is the first ticket id not returned; if the end is reached, it is 0
+     */
+    function redemptionQueue(
+        uint256 _firstRedemptionTicketId,
+        uint256 _pageSize
+    )
+        external view
+        returns (RedemptionTicketInfo.Data[] memory _queue, uint256 _nextRedemptionTicketId)
+    {
+        return RedemptionQueueInfo.redemptionQueue(_firstRedemptionTicketId, _pageSize);
+    }
+
+    /**
+     * Return (part of) the redemption queue for a specific agent.
+     * @param _agentVault the agent vault address of the queried agent
+     * @param _firstRedemptionTicketId the ticket id to start listing from; if 0, starts from the beginning
+     * @param _pageSize the maximum number of redemption tickets to return
+     * @return _queue the (part of) the redemption queue; maximum length is _pageSize
+     * @return _nextRedemptionTicketId works as a cursor - if the _pageSize is reached and there are more tickets,
+     *  it is the first ticket id not returned; if the end is reached, it is 0
+     */
+    function agentRedemptionQueue(
+        address _agentVault,
+        uint256 _firstRedemptionTicketId,
+        uint256 _pageSize
+    )
+        external view
+        returns (RedemptionTicketInfo.Data[] memory _queue, uint256 _nextRedemptionTicketId)
+    {
+        return RedemptionQueueInfo.agentRedemptionQueue(_agentVault, _firstRedemptionTicketId, _pageSize);
     }
 }

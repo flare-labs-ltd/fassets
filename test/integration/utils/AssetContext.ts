@@ -1,5 +1,5 @@
 import { time } from "@openzeppelin/test-helpers";
-import { AssetManagerSettings, CollateralType } from "../../../lib/fasset/AssetManagerTypes";
+import { AssetManagerSettings, CollateralType, RedemptionTicketInfo } from "../../../lib/fasset/AssetManagerTypes";
 import { convertAmgToTokenWei, convertAmgToUBA, convertTokenWeiToAMG, convertUBAToAmg } from "../../../lib/fasset/Conversions";
 import { AgentOwnerRegistryEvents, AssetManagerEvents, FAssetEvents, IAssetContext, WhitelistEvents } from "../../../lib/fasset/IAssetContext";
 import { CollateralPrice } from "../../../lib/state/CollateralPrice";
@@ -11,7 +11,7 @@ import { IBlockChain } from "../../../lib/underlying-chain/interfaces/IBlockChai
 import { IStateConnectorClient } from "../../../lib/underlying-chain/interfaces/IStateConnectorClient";
 import { EventScope } from "../../../lib/utils/events/ScopedEvents";
 import { ContractWithEvents } from "../../../lib/utils/events/truffle";
-import { BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
+import { BN_ZERO, BNish, requireNotNull, toBN, toBNExp, toNumber } from "../../../lib/utils/helpers";
 import { AgentOwnerRegistryInstance, IIAssetManagerInstance, FAssetInstance, WhitelistInstance } from "../../../typechain-truffle";
 import { newAssetManager, waitForTimelock } from "../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../utils/fasset/MockChain";
@@ -236,6 +236,17 @@ export class AssetContext implements IAssetContext {
         const ownerTokenCall = web3.eth.abi.encodeFunctionCall({ type: 'function', name: 'ownerToken', inputs: [] }, []);
         await governanceVotePower.givenMethodReturnAddress(ownerTokenCall, this.wNat.address);
         return governanceVotePower;
+    }
+
+    async getRedemptionQueue(pageSize: BNish) {
+        const result: RedemptionTicketInfo[] = [];
+        let firstTicketId = BN_ZERO;
+        do {
+            const { 0: chunk, 1: nextId } = await this.assetManager.redemptionQueue(firstTicketId, pageSize);
+            result.splice(result.length, 0, ...chunk);
+            firstTicketId = nextId;
+        } while (!firstTicketId.eqn(0));
+        return result;
     }
 
     static async createTest(common: CommonContext, chainInfo: TestChainInfo, options: SettingsOptions = {}): Promise<AssetContext> {

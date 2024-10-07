@@ -3,7 +3,7 @@ import { BN_ZERO, MAX_BIPS, sumBN, toBN, toBNExp, toWei } from "../../../lib/uti
 import { Approximation } from "../../utils/approximation";
 import { MockChain } from "../../utils/fasset/MockChain";
 import { getTestFile, loadFixtureCopyVars } from "../../utils/test-helpers";
-import { assertWeb3Equal } from "../../utils/web3assertions";
+import { assertWeb3DeepEqual, assertWeb3Equal } from "../../utils/web3assertions";
 import { Agent } from "../utils/Agent";
 import { AssetContext } from "../utils/AssetContext";
 import { CommonContext } from "../utils/CommonContext";
@@ -465,6 +465,17 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
                 assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(1));
                 totalMinted = totalMinted.add(toBN(minted.mintedAmountUBA));
             }
+            // check redemption tickets
+            const allTickets = await context.getRedemptionQueue(10);
+            assertWeb3Equal(allTickets.length, N);
+            for (let i = 0; i < N; i++) {
+                const agentTickets = await agents[i].getRedemptionQueue(10);
+                assertWeb3Equal(agentTickets.length, 1);
+                assertWeb3DeepEqual(agentTickets[0], allTickets[i]);
+                // check data
+                assertWeb3Equal(allTickets[i].ticketValueUBA, context.lotSize());
+                assertWeb3Equal(allTickets[i].agentVault, agents[i].vaultAddress);
+            }
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, totalMinted, { from: minter.address });
             // request redemption
@@ -502,6 +513,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         it("mint and redeem f-assets (many redemption tickets to the same agent are merged at minting, so can be redeemed at once)", async () => {
             const N = 25;
             const MT = 20;  // max tickets redeemed
+            const lotSize = context.lotSize();
             const fullAgentCollateral = toWei(3e8);
             const underlyingAddress = (i: number) => `${underlyingAgent1}_vault_${i}`;
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
@@ -510,12 +522,21 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // perform minting
             let totalMinted = BN_ZERO;
+            let totalPoolFee = BN_ZERO;
             for (let i = 0; i < N; i++) {
                 await context.updateUnderlyingBlock();
                 const [minted] = await minter.performMinting(agent.vaultAddress, 1);
                 assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(1));
                 totalMinted = totalMinted.add(toBN(minted.mintedAmountUBA));
+                totalPoolFee = totalPoolFee.add(toBN(minted.poolFeeUBA));
             }
+            assertWeb3Equal(totalMinted, lotSize.muln(N));
+            // check redemption tickets (there should be only 1)
+            const totalTicketAmount = totalMinted.add(totalPoolFee.div(lotSize).mul(lotSize));  // whole lots of pool fee get added to ticket
+            const allTickets = await context.getRedemptionQueue(10);
+            assertWeb3Equal(allTickets.length, 1);
+            assertWeb3Equal(allTickets[0].ticketValueUBA, totalTicketAmount);
+            assertWeb3Equal(allTickets[0].agentVault, agent.vaultAddress);
             // redeemer "buys" f-assets
             await context.fAsset.transfer(redeemer.address, totalMinted, { from: minter.address });
             // request redemption
