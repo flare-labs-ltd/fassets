@@ -244,19 +244,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             // act
             const newSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             newSettings.collateralReservationFeeBIPS = 150;
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setCollateralReservationFeeBips(uint256)")),
-                web3.eth.abi.encodeParameters(['uint256'], [150]),
-                { from: assetManagerController });
+            await assetManager.setCollateralReservationFeeBips(150, { from: assetManagerController });
             // assert
             const res = web3ResultStruct(await assetManager.getSettings());
             assertWeb3DeepEqual(newSettings, res);
-        });
-
-        it("should revert update settings - invalid method", async () => {
-            let res = assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("invalidMethod")),
-                constants.ZERO_ADDRESS,
-                { from: assetManagerController });
-            await expectRevert(res,"update: invalid method");
         });
     });
 
@@ -595,9 +586,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should set pool collateral token", async () => {
             const newWnat = await ERC20Mock.new("Wrapped NAT", "WNAT");
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IWNat)")),
-                web3.eth.abi.encodeParameters(['address', 'address'], [assetManagerController, newWnat.address]),
-                { from: assetManagerController });
+            await assetManager.updateSystemContracts(assetManagerController, newWnat.address, { from: assetManagerController });
             const token = await assetManager.getCollateralType(CollateralClass.POOL, newWnat.address);
             assertWeb3Equal(token.token, newWnat.address);
         });
@@ -608,9 +597,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             //Calling upgrade before updating contract won't do anything (just a branch test)
             await assetManager.upgradeWNatContract(agentVault.address, {from: agentOwner1});
             //Update wnat contract
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IWNat)")),
-                web3.eth.abi.encodeParameters(['address', 'address'], [assetManagerController, newWnat.address]),
-                { from: assetManagerController });
+            await assetManager.updateSystemContracts(assetManagerController, newWnat.address, { from: assetManagerController });
             //Random address shouldn't be able to upgrade wNat contract
             let tx = assetManager.upgradeWNatContract(agentVault.address, {from: accounts[5]});
             await expectRevert(tx, "only agent vault owner");
@@ -632,9 +619,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentOwnerRegistry = await AgentOwnerRegistry.new(governanceSettings.address, governance, false);
             await agentOwnerRegistry.switchToProductionMode({ from: governance });
             await agentOwnerRegistry.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentOwnerRegistry(address)")),
-                web3.eth.abi.encodeParameters(['address'], [agentOwnerRegistry.address]),
-                { from: assetManagerController });
+            await assetManager.setAgentOwnerRegistry(agentOwnerRegistry.address, { from: assetManagerController });
             // assert
             const addressValidityProof = await attestationProvider.proveAddressValidity(underlyingAgent1);
             assert.isTrue(addressValidityProof.data.responseBody.isValid);
@@ -754,11 +739,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             let wnatNewAddress = accounts[23];
             const oldSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
             const oldWNat = await assetManager.getWNat();
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IWNat)")),
-                web3.eth.abi.encodeParameters(['address', 'address'], [assetManagerController, wnatNewAddress]),
-                { from: assetManagerController });
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentVaultFactory(address)")),
-                web3.eth.abi.encodeParameters(['address'], [agentVaultFactoryNewAddress]), { from: assetManagerController });
+            await assetManager.updateSystemContracts(assetManagerController, wnatNewAddress, { from: assetManagerController });
+            await assetManager.setAgentVaultFactory(agentVaultFactoryNewAddress, { from: assetManagerController });
             const res = web3ResultStruct(await assetManager.getSettings());
             const resWNat = await assetManager.getWNat();
             assert.notEqual(oldSettings.agentVaultFactory, res.agentVaultFactory)
@@ -769,11 +751,8 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
 
         it("should not update contract addresses", async () => {
             const oldSettings: AssetManagerSettings = web3ResultStruct(await assetManager.getSettings());
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,IWNat)")),
-                web3.eth.abi.encodeParameters(['address', 'address'], [assetManagerController, contracts.wNat.address]),
-                { from: assetManagerController });
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setAgentVaultFactory(address)")),
-                web3.eth.abi.encodeParameters(['address'], [contracts.agentVaultFactory.address]), { from: assetManagerController });
+            await assetManager.updateSystemContracts(assetManagerController, contracts.wNat.address, { from: assetManagerController });
+            await assetManager.setAgentVaultFactory(contracts.agentVaultFactory.address, { from: assetManagerController });
             const res = web3ResultStruct(await assetManager.getSettings());
             assertWeb3DeepEqual(res, oldSettings)
         });
@@ -1638,12 +1617,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const IGoverned = artifacts.require("IGoverned");
             const IAgentPing = artifacts.require("IAgentPing");
             const IRedemptionTimeExtension = artifacts.require("IRedemptionTimeExtension");
+            const IISettingsManagement = artifacts.require("IISettingsManagement");
             const iERC165 = await IERC165.at(assetManager.address);
             const iDiamondLoupe = await IDiamondLoupe.at(assetManager.address);
             const iDiamondCut = await IDiamondCut.at(assetManager.address);
             const iGoverned = await IGoverned.at(assetManager.address);
             const iAgentPing = await IAgentPing.at(assetManager.address);
             const iRedemptionTimeExtension = await IRedemptionTimeExtension.at(assetManager.address);
+            const iiSettingsManagement = await IISettingsManagement.at(assetManager.address);
             const iAssetManager = await IAssetManager.at(assetManager.address);
             const iiAssetManager = await IIAssetManager.at(assetManager.address);
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iERC165.abi)));
@@ -1652,7 +1633,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iGoverned.abi)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iAgentPing.abi)));
             assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iAssetManager.abi, [iERC165.abi, iDiamondLoupe.abi, iAgentPing.abi, iRedemptionTimeExtension.abi])));
-            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iiAssetManager.abi, [iAssetManager.abi, iGoverned.abi, iDiamondCut.abi])));
+            assert.isTrue(await assetManager.supportsInterface(erc165InterfaceId(iiAssetManager.abi, [iAssetManager.abi, iGoverned.abi, iDiamondCut.abi, iiSettingsManagement.abi])));
             assert.isFalse(await assetManager.supportsInterface('0xFFFFFFFF'));  // must not support invalid interface
         });
     });
@@ -1660,9 +1641,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     describe("branch tests", () => {
         it("random address shouldn't be able to update settings", async () => {
             let wnatNewAddress = accounts[23];
-            const r = assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("updateContracts(address,address)")),
-                web3.eth.abi.encodeParameters(['address', 'address'], [assetManagerController, wnatNewAddress]),
-                { from: accounts[29] });
+            const r = assetManager.updateSystemContracts(assetManagerController, wnatNewAddress, { from: accounts[29] });
             await expectRevert(r, "only asset manager controller");
         });
 
@@ -1697,9 +1676,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
             await whitelist.switchToProductionMode({ from: governance });
             await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
-                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
-                { from: assetManagerController });
+            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
@@ -1741,9 +1718,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
             await whitelist.switchToProductionMode({ from: governance });
             await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
-                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
-                { from: assetManagerController });
+            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
             const redeemer = accounts[83];
             const underlyingRedeemer = "redeemer"
             await mintFassets(agentVault, agentOwner1, underlyingAgent1, redeemer, toBN(1));
@@ -1765,9 +1740,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
             await whitelist.switchToProductionMode({ from: governance });
             await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
-                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
-                { from: assetManagerController });
+            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
             const r = assetManager.illegalPaymentChallenge(proof, agentVault.address, { from: challenger });
             await expectRevert(r, "not whitelisted");
         });
@@ -1788,9 +1761,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
             await whitelist.switchToProductionMode({ from: governance });
             await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
-                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
-                { from: assetManagerController });
+            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
             const r = assetManager.doublePaymentChallenge(proof1, proof2, agentVault.address, { from: challenger });
             await expectRevert(r, "not whitelisted");
         });
@@ -1814,9 +1785,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
             await whitelist.switchToProductionMode({ from: governance });
             await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
-                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
-                { from: assetManagerController });
+            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
             // make a challenge
             const r = assetManager.freeBalanceNegativeChallenge([proof], agentVault.address, { from: challenger });
             await expectRevert(r, "not whitelisted");
@@ -1836,9 +1805,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
             await whitelist.switchToProductionMode({ from: governance });
             await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
-                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
-                { from: assetManagerController });
+            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
             const r = assetManager.startLiquidation(agentVault.address, { from: accounts[83] });
             await expectRevert(r, "not whitelisted");
         });
@@ -1860,9 +1827,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const whitelist = await Whitelist.new(governanceSettings.address, governance, false);
             await whitelist.switchToProductionMode({ from: governance });
             await whitelist.addAddressToWhitelist(whitelistedAccount, { from: governance });
-            await assetManager.updateSettings(web3.utils.soliditySha3Raw(web3.utils.asciiToHex("setWhitelist(address)")),
-                web3.eth.abi.encodeParameters(['address'], [whitelist.address]),
-                { from: assetManagerController });
+            await assetManager.setWhitelist(whitelist.address, { from: assetManagerController });
             const r = assetManager.liquidate(agentVault.address, lotsToUBA(2), { from: liquidator });
             await expectRevert(r, "not whitelisted");
         });

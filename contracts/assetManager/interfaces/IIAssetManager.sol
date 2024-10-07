@@ -5,24 +5,15 @@ import "../../diamond/interfaces/IDiamondCut.sol";
 import "../../governance/interfaces/IGoverned.sol";
 import "../../userInterfaces/IAssetManager.sol";
 import "./IWNat.sol";
+import "./IISettingsManagement.sol";
 
 
 /**
  * Asset Manager methods used internally in AgentVault, CollateralPool and AssetManagerController.
  */
-interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
+interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut, IISettingsManagement {
     ////////////////////////////////////////////////////////////////////////////////////
     // Settings update
-
-    /**
-     * Update all settings with validation.
-     * This method cannot be called directly, it has to be called through assetManagerController.
-     * NOTE: may not be called directly - only through asset manager controller by governance.
-     */
-    function updateSettings(
-        bytes32 _method,
-        bytes calldata _params
-    ) external;
 
     /**
      * When `attached` is true, asset manager has been added to the asset manager controller.

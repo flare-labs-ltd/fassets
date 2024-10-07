@@ -30,7 +30,7 @@ contract RedemptionTimeExtensionFacet is AssetManagerBase, GovernedFacet, IRedem
         external
         onlyImmediateGovernance
     {
-        SettingsUpdater.checkEnoughTimeSinceLastUpdate(SET_REDEMPTION_PAYMENT_EXTENSION_SECONDS);
+        SettingsUpdater.checkEnoughTimeSinceLastUpdate();
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 currentValue = RedemptionTimeExtension.redemptionPaymentExtensionSeconds();
         require(_value <= currentValue * 4 + settings.averageBlockTimeMS / 1000, "increase too big");
