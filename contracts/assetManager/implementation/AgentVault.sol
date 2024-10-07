@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../../openzeppelin/security/ReentrancyGuard.sol";
 import "../../utils/lib/Transfers.sol";
-import "../interfaces/IICollateralPool.sol";
 import "../interfaces/IWNat.sol";
 import "../interfaces/IIAgentVault.sol";
 import "../interfaces/IIAssetManager.sol";
@@ -73,8 +72,7 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         external
         onlyOwner
     {
-        collateralPool().withdrawFees(_amount);
-        assetManager.fAsset().safeTransfer(_recipient, _amount);
+        collateralPool().withdrawFeesTo(_amount, _recipient);
     }
 
     function redeemCollateralPoolTokens(uint256 _amount, address payable _recipient)
@@ -82,14 +80,9 @@ contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
         onlyOwner
         nonReentrant
     {
-        IICollateralPool pool = IICollateralPool(address(collateralPool()));
+        ICollateralPool pool = collateralPool();
         assetManager.beforeCollateralWithdrawal(pool.poolToken(), _amount);
-        internalWithdrawal = true;
-        (uint256 natShare, uint256 fassetShare) =
-            pool.exit(_amount, ICollateralPool.TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
-        internalWithdrawal = false;
-        Transfers.transferNAT(_recipient, natShare);
-        assetManager.fAsset().safeTransfer(_recipient, fassetShare);
+        pool.exitTo(_amount, _recipient, ICollateralPool.TokenExitType.MAXIMIZE_FEE_WITHDRAWAL);
     }
 
     // must call `token.approve(vault, amount)` before for each token in _tokens

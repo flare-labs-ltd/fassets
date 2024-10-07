@@ -196,6 +196,30 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         nonReentrant
         returns (uint256, uint256)
     {
+        return _exitTo(_tokenShare, payable(msg.sender), _exitType);
+    }
+
+    /**
+     * @notice Exits the pool by liquidating the given amount of pool tokens
+     * @param _tokenShare   The amount of pool tokens to be liquidated
+     *                      Must be positive and smaller or equal to the sender's token balance
+     * @param _recipient    The address to which NATs and FAsset fees will be transfered
+     * @param _exitType     An enum describing the ratio used to liquidate debt and free tokens
+     */
+    // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
+    function exitTo(uint256 _tokenShare, address payable _recipient, TokenExitType _exitType)
+        external
+        nonReentrant
+        returns (uint256, uint256)
+    {
+        return _exitTo(_tokenShare, _recipient, _exitType);
+    }
+
+    // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
+    function _exitTo(uint256 _tokenShare, address payable _recipient, TokenExitType _exitType)
+        private
+        returns (uint256, uint256)
+    {
         require(_tokenShare > 0, "token share is zero");
         require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
         AssetData memory assetData = _getAssetData();
@@ -211,7 +235,7 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         // special case after termination - we don't care about fees or CR anymore and we must avoid fasset transfer
         if (fAsset.terminated()) {
             token.burn(msg.sender, _tokenShare, true); // when f-asset is terminated all tokens are free tokens
-            _transferWNat(msg.sender, natShare);
+            _transferWNat(_recipient, natShare);
             return (natShare, 0);
         }
         require(_staysAboveCR(assetData, natShare, exitCollateralRatioBIPS),
@@ -220,13 +244,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
             assetData, msg.sender, _tokenShare, _exitType);
         // transfer/burn assets
         if (freeFAssetFeeShare > 0) {
-            _transferFAsset(address(this), msg.sender, freeFAssetFeeShare);
+            _transferFAsset(address(this), _recipient, freeFAssetFeeShare);
         }
         if (debtFAssetFeeShare > 0) {
             _burnFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
         }
         token.burn(msg.sender, _tokenShare, false);
-        _withdrawWNatTo(payable(msg.sender), natShare);
+        _withdrawWNatTo(_recipient, natShare);
         // emit event
         emit Exited(msg.sender, _tokenShare, natShare, freeFAssetFeeShare, 0, _fAssetFeeDebtOf[msg.sender]);
         return (natShare, freeFAssetFeeShare);
@@ -255,9 +279,49 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         external payable
         nonReentrant
     {
+        _selfCloseExitTo(_tokenShare, _redeemToCollateral, payable(msg.sender), _redeemerUnderlyingAddress, _executor);
+    }
+
+    /**
+     * @notice Exits the pool by liquidating the given amount of pool tokens and redeeming
+     *  f-assets in a way that either preserves the pool collateral ratio or keeps it above exit CR
+     * @param _tokenShare                   The amount of pool tokens to be liquidated
+     *                                      Must be positive and smaller or equal to the sender's token balance
+     * @param _redeemToCollateral           Specifies if redeemed f-assets should be exchanged to vault collateral
+     *                                      by the agent
+     * @param _recipient                    The address to which NATs and FAsset fees will be transfered
+     * @param _redeemerUnderlyingAddress    Redeemer's address on the underlying chain
+     * @param _executor                     The account that is allowed to execute redemption default
+     * @notice F-assets will be redeemed in collateral if their value does not exceed one lot
+     * @notice All f-asset fees will be redeemed along with potential additionally required f-assets taken
+     *  from the sender's f-asset account
+     */
+    // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
+    function selfCloseExitTo(
+        uint256 _tokenShare,
+        bool _redeemToCollateral,
+        address payable _recipient,
+        string memory _redeemerUnderlyingAddress,
+        address payable _executor
+    )
+        external payable
+        nonReentrant
+    {
+        _selfCloseExitTo(_tokenShare, _redeemToCollateral, _recipient, _redeemerUnderlyingAddress, _executor);
+    }
+
+    // slither-disable-next-line reentrancy-eth         // guarded by nonReentrant
+    function _selfCloseExitTo(
+        uint256 _tokenShare,
+        bool _redeemToCollateral,
+        address payable _recipient,
+        string memory _redeemerUnderlyingAddress,
+        address payable _executor
+    )
+        private
+    {
         require(_tokenShare > 0, "token share is zero");
-        uint256 tokenBalance = token.balanceOf(msg.sender);
-        require(_tokenShare <= tokenBalance, "token balance too low");
+        require(_tokenShare <= token.balanceOf(msg.sender), "token balance too low");
         AssetData memory assetData = _getAssetData();
         require(assetData.poolTokenSupply == _tokenShare ||
             assetData.poolTokenSupply - _tokenShare >= MIN_TOKEN_SUPPLY_AFTER_EXIT,
@@ -299,11 +363,11 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         if (requiredFAssets > 0) {
             if (requiredFAssets < assetManager.lotSize() || _redeemToCollateral) {
                 assetManager.redeemFromAgentInCollateral(
-                    agentVault, msg.sender, requiredFAssets);
+                    agentVault, _recipient, requiredFAssets);
             } else {
                 // automatically pass `msg.value` to `redeemFromAgent` for the executor fee
                 assetManager.redeemFromAgent{ value: msg.value }(
-                    agentVault, msg.sender, requiredFAssets, _redeemerUnderlyingAddress, _executor);
+                    agentVault, _recipient, requiredFAssets, _redeemerUnderlyingAddress, _executor);
             }
         }
         // sort out the sender's f-asset fees that were spent on redemption
@@ -321,13 +385,13 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         }
         // transfer/burn tokens
         if (freeFAssetFeeShare > 0) {
-            _transferFAsset(address(this), msg.sender, freeFAssetFeeShare);
+            _transferFAsset(address(this), _recipient, freeFAssetFeeShare);
         }
         if (debtFAssetFeeShare > 0) {
             _burnFAssetFeeDebt(msg.sender, debtFAssetFeeShare);
         }
         token.burn(msg.sender, _tokenShare, false);
-        _withdrawWNatTo(payable(msg.sender), natShare);
+        _withdrawWNatTo(_recipient, natShare);
         // emit event
         emit Exited(msg.sender, _tokenShare, natShare, spentFAssetFees, requiredFAssets, _fAssetFeeDebtOf[msg.sender]);
     }
@@ -355,12 +419,37 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         external
         nonReentrant
     {
+        _withdrawFeesTo(_fAssets, msg.sender);
+    }
+
+    /**
+     * @notice Collect f-asset fees by locking free tokens
+     * @param _fAssets      The amount of f-asset fees to withdraw
+     *                      Must be positive and smaller or equal to the sender's fAsset fees.
+     * @param _recipient    The address to which FAsset fees will be transfered
+     */
+    function withdrawFeesTo(uint256 _fAssets, address _recipient)
+        external
+        nonReentrant
+    {
+        _withdrawFeesTo(_fAssets, _recipient);
+    }
+
+    /**
+     * @notice Collect f-asset fees by locking free tokens
+     * @param _fAssets      The amount of f-asset fees to withdraw
+     *                      Must be positive and smaller or equal to the sender's reward f-assets
+     * @param _recipient    The address to which NATs and FAsset fees will be transfered
+     */
+    function _withdrawFeesTo(uint256 _fAssets, address _recipient)
+        private
+    {
         require(_fAssets > 0, "trying to withdraw zero f-assets");
         AssetData memory assetData = _getAssetData();
         uint256 freeFAssetFeeShare = _fAssetFeesOf(assetData, msg.sender);
         require(_fAssets <= freeFAssetFeeShare, "free f-asset balance too small");
         _mintFAssetFeeDebt(msg.sender, _fAssets);
-        _transferFAsset(address(this), msg.sender, _fAssets);
+        _transferFAsset(address(this), _recipient, _fAssets);
         // emit event
         emit Exited(msg.sender, 0, 0, freeFAssetFeeShare, 0, _fAssetFeeDebtOf[msg.sender]);
     }
