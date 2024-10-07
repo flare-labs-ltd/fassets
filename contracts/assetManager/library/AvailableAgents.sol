@@ -8,6 +8,7 @@ import "./data/AssetManagerState.sol";
 import "./AMEvents.sol";
 import "./Agents.sol";
 import "./AgentCollateral.sol";
+import "./FullAgentInfo.sol";
 
 library AvailableAgents {
     using SafeCast for uint256;
@@ -126,7 +127,8 @@ library AvailableAgents {
                 feeBIPS: agent.feeBIPS,
                 mintingVaultCollateralRatioBIPS: agentCR,
                 mintingPoolCollateralRatioBIPS: poolCR,
-                freeCollateralLots: collateralData.freeCollateralLots(agent)
+                freeCollateralLots: collateralData.freeCollateralLots(agent),
+                status: FullAgentInfo.getAgentStatus(agent)
             });
         }
     }

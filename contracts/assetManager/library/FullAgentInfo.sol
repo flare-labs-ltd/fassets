@@ -33,7 +33,7 @@ library FullAgentInfo {
         CollateralTypeInt.Data storage poolCollateral = agent.getPoolCollateral();
         IICollateralPool collateralPool = agent.collateralPool;
         Liquidation.CRData memory cr = Liquidation.getCollateralRatiosBIPS(agent);
-        _info.status = _getAgentStatusInfo(agent);
+        _info.status = getAgentStatus(agent);
         _info.ownerManagementAddress = agent.ownerManagementAddress;
         _info.ownerWorkAddress = Globals.getAgentOwnerRegistry().getWorkAddress(_info.ownerManagementAddress);
         _info.collateralPool = address(collateralPool);
@@ -81,10 +81,10 @@ library FullAgentInfo {
         _info.poolTopupTokenPriceFactorBIPS = agent.collateralPool.topupTokenPriceFactorBIPS();
     }
 
-    function _getAgentStatusInfo(
+    function getAgentStatus(
         Agent.State storage _agent
     )
-        private view
+        internal view
         returns (AgentInfo.Status)
     {
         Agent.Status status = _agent.status;

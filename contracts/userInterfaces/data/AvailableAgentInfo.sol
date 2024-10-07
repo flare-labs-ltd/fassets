@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.7.6 <0.9;
 
+import "./AgentInfo.sol";
+
 
 library AvailableAgentInfo {
     struct Data {
@@ -20,5 +22,8 @@ library AvailableAgentInfo {
         // Note: the value is only informative since it can can change at any time
         // due to price changes, reservation, minting, redemption, or even lot size change.
         uint256 freeCollateralLots;
+
+        // The agent status, as for getAgentInfo().
+        AgentInfo.Status status;
     }
 }

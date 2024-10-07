@@ -50,8 +50,63 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
     });
 
     describe("simple scenarios - price change liquidation", () => {
+        it("ccb due to price change (turns into liquidation after time) (NAT price change, pool collateral ratio unsafe)", async () => {
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
+            const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
+            const liquidator = await Liquidator.create(context, liquidatorAddress1);
+            // make agent available
+            const fullAgentCollateral = toWei(3e8);
+            await agent.depositCollateralsAndMakeAvailable(fullAgentCollateral, fullAgentCollateral);
+            // update block
+            await context.updateUnderlyingBlock();
+            // perform minting
+            const lots = 3;
+            const crt = await minter.reserveCollateral(agent.vaultAddress, lots);
+            const txHash = await minter.performMintingPayment(crt);
+            const minted = await minter.executeMinting(crt, txHash);
+            assertWeb3Equal(minted.mintedAmountUBA, context.convertLotsToUBA(lots));
+            // price change
+            await context.natFtso.setCurrentPrice(100, 0);
+            await context.natFtso.setCurrentPriceFromTrustedProviders(100, 0);
+            // start ccb
+            const [ccb, ccbStartTimestamp] = await liquidator.startLiquidation(agent);
+            assert.isTrue(ccb);
+            const info = await agent.checkAgentInfo({
+                totalVaultCollateralWei: fullAgentCollateral,
+                freeUnderlyingBalanceUBA: minted.agentFeeUBA,
+                mintedUBA: minted.mintedAmountUBA.add(minted.poolFeeUBA),
+                status: AgentStatus.CCB
+            });
+            assertWeb3Equal(info.ccbStartTimestamp, ccbStartTimestamp);
+            const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
+            assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
+            // ccb status should show in available agent info
+            const { 0: availableAgentInfos1 } = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
+            assert.equal(Number(availableAgentInfos1[0].status), AgentStatus.CCB);
+            // skip some time
+            await time.increase(300);
+            // now the agent should be in liquidation
+            await agent.checkAgentInfo({
+                status: AgentStatus.LIQUIDATION
+            });
+            const { 0: availableAgentInfos2 } = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
+            assert.equal(Number(availableAgentInfos2[0].status), AgentStatus.LIQUIDATION);
+            // do a complete safe-close
+            await context.fAsset.transfer(agent.ownerWorkAddress, minted.mintedAmountUBA, { from: minter.address });
+            await agent.selfClose(minted.mintedAmountUBA);
+            // now the status should be normal again
+            await agent.checkAgentInfo({
+                status: AgentStatus.NORMAL,
+                mintedUBA: minted.poolFeeUBA,
+                freeUnderlyingBalanceUBA: toBN(minted.agentFeeUBA).add(toBN(minted.mintedAmountUBA))
+            });
+            const { 0: availableAgentInfos3 } = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
+            assert.equal(Number(availableAgentInfos3[0].status), AgentStatus.NORMAL);
+            // agent can exit now
+            await agent.exitAndDestroy();
+        });
 
-        it("ccb due to price change (no liquidation due to collateral deposit)(NAT price change, pool collateral ration unsafe)", async () => {
+        it("ccb due to price change (no liquidation due to collateral deposit)(NAT price change, pool collateral ratio unsafe)", async () => {
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             const liquidator = await Liquidator.create(context, liquidatorAddress1);
@@ -80,6 +135,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             assertWeb3Equal(info.ccbStartTimestamp, ccbStartTimestamp);
             const ccbTimeSeconds = (await context.assetManager.getSettings()).ccbTimeSeconds;
             assertWeb3Equal(info.liquidationStartTimestamp, toBN(ccbStartTimestamp).add(toBN(ccbTimeSeconds)));
+            // ccb status should show in available agent info
+            const { 0: availableAgentInfos } = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
+            assert.equal(Number(availableAgentInfos[0].status), AgentStatus.CCB);
             // deposit collateral
             const additionalCollateral = toWei(4e6);
             await agent.depositVaultCollateral(additionalCollateral);

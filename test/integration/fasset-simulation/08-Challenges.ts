@@ -92,6 +92,9 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // check that agent cannot withdraw or even announce withdrawal when being fully liquidated
             await expectRevert(agent.announceVaultCollateralWithdrawal(fullAgentCollateral), "withdrawal ann: invalid status");
             await expectRevert(agent.withdrawVaultCollateral(fullAgentCollateral), "withdrawal: invalid status");
+            // full liquidation status should show in available agent info
+            const { 0: availableAgentInfos } = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
+            assert.equal(Number(availableAgentInfos[0].status), AgentStatus.FULL_LIQUIDATION);
             // check that agent cannot exit
             await expectRevert(agent.exitAndDestroy(fullAgentCollateral.sub(reward)), "agent still backing f-assets");
         });
