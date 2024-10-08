@@ -14,7 +14,7 @@ export interface AssetManagerInitSettings extends AssetManagerSettings {
 const IIAssetManager = artifacts.require('IIAssetManager');
 const AssetManager = artifacts.require('AssetManager');
 const AssetManagerInit = artifacts.require('AssetManagerInit');
-const GovernedFacet = artifacts.require('GovernedFacet');
+const GovernedProxyImplementation = artifacts.require('GovernedProxyImplementation');
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
 
@@ -75,7 +75,7 @@ export async function newAssetManagerDiamond(diamondCuts: DiamondCut[], assetMan
 }
 
 async function deployRedemptionTimeExtensionFacet(governanceAddress: string, assetManager: IIAssetManagerInstance, assetManagerSettings: AssetManagerInitSettings, interfaceSelectors: Map<string, AbiItem>) {
-    const governedFacet = await GovernedFacet.at(assetManager.address);
+    const governedFacet = await GovernedProxyImplementation.at(assetManager.address);
     const governedFacetSelectors = getInterfaceSelectorMap(governedFacet.abi);
     const diamondCuts = [
         await deployFacet('RedemptionTimeExtensionFacet', interfaceSelectors, governedFacetSelectors),

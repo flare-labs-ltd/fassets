@@ -7,10 +7,10 @@ import "../../userInterfaces/IRedemptionTimeExtension.sol";
 import "../library/data/RedemptionTimeExtension.sol";
 import "../library/SettingsUpdater.sol";
 import "../../diamond/library/LibDiamond.sol";
-import "../../diamond/facets/GovernedFacet.sol";
+import "../../governance/implementation/GovernedProxyImplementation.sol";
 import "./AssetManagerBase.sol";
 
-contract RedemptionTimeExtensionFacet is AssetManagerBase, GovernedFacet, IRedemptionTimeExtension {
+contract RedemptionTimeExtensionFacet is AssetManagerBase, GovernedProxyImplementation, IRedemptionTimeExtension {
     bytes32 internal constant SET_REDEMPTION_PAYMENT_EXTENSION_SECONDS =
         keccak256("RedemptionTimeExtensionFacet.setRedemptionPaymentExtensionSeconds(uint256)");
 
