@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/MathUtils.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Globals.sol";
 import "./Agents.sol";
 import "./Conversion.sol";
@@ -86,7 +86,7 @@ library Liquidation {
         // burn liquidated fassets
         Redemptions.burnFAssets(msg.sender, _liquidatedAmountUBA);
         // notify about liquidation
-        emit AMEvents.LiquidationPerformed(_agentVault, msg.sender, _liquidatedAmountUBA);
+        emit IAssetManagerEvents.LiquidationPerformed(_agentVault, msg.sender, _liquidatedAmountUBA);
     }
 
     // Cancel liquidation, requires that agent is healthy.
@@ -116,7 +116,7 @@ library Liquidation {
             _agent.initialLiquidationPhase = Agent.LiquidationPhase.LIQUIDATION;
         }
         _agent.status = Agent.Status.FULL_LIQUIDATION;
-        emit AMEvents.FullLiquidationStarted(_agent.vaultAddress(), block.timestamp);
+        emit IAssetManagerEvents.FullLiquidationStarted(_agent.vaultAddress(), block.timestamp);
     }
 
     // Cancel liquidation if the agent is healthy.
@@ -139,7 +139,7 @@ library Liquidation {
             _agent.liquidationStartedAt = 0;
             _agent.initialLiquidationPhase = Agent.LiquidationPhase.NONE;
             _agent.collateralsUnderwater = 0;
-            emit AMEvents.LiquidationEnded(_agent.vaultAddress());
+            emit IAssetManagerEvents.LiquidationEnded(_agent.vaultAddress());
         }
     }
 
@@ -278,9 +278,9 @@ library Liquidation {
             _agent.collateralsUnderwater =
                 (newPhase == newPhaseVault ? Agent.LF_VAULT : 0) | (newPhase == newPhasePool ? Agent.LF_POOL : 0);
             if (newPhase == Agent.LiquidationPhase.CCB) {
-                emit AMEvents.AgentInCCB(_agent.vaultAddress(), block.timestamp);
+                emit IAssetManagerEvents.AgentInCCB(_agent.vaultAddress(), block.timestamp);
             } else {
-                emit AMEvents.LiquidationStarted(_agent.vaultAddress(), block.timestamp);
+                emit IAssetManagerEvents.LiquidationStarted(_agent.vaultAddress(), block.timestamp);
             }
             return newPhase;
         }

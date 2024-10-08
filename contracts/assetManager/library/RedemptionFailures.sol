@@ -4,7 +4,7 @@ pragma solidity 0.8.23;
 import "../../stateConnector/interfaces/ISCProofVerifier.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Redemptions.sol";
 import "./Conversion.sol";
 import "./AgentCollateral.sol";
@@ -101,7 +101,7 @@ library RedemptionFailures {
         Agents.endRedeemingAssets(_agent, _request.valueAMG, _request.poolSelfClose);
         // underlying balance is not added to free balance yet, because we don't know if there was a late payment
         // it will be (or was already) updated in call to finishRedemptionWithoutPayment (or confirmRedemptionPayment)
-        emit AMEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
+        emit IAssetManagerEvents.RedemptionDefault(_agent.vaultAddress(), _request.redeemer, _redemptionRequestId,
             _request.underlyingValueUBA, paidC1Wei, paidPoolWei);
     }
 

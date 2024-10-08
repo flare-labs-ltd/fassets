@@ -3,7 +3,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Globals.sol";
 import "./TransactionAttestation.sol";
 
@@ -39,7 +39,7 @@ library StateUpdater {
         }
         if (changed) {
             state.currentUnderlyingBlockUpdatedAt = block.timestamp.toUint64();
-            emit AMEvents.CurrentUnderlyingBlockUpdated(
+            emit IAssetManagerEvents.CurrentUnderlyingBlockUpdated(
                 state.currentUnderlyingBlock, state.currentUnderlyingBlockTimestamp, block.timestamp);
         }
     }

@@ -11,7 +11,7 @@ import "../interfaces/IIAssetManagerController.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Conversion.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
@@ -134,7 +134,7 @@ library AgentsCreateDestroy {
             agent.status = Agent.Status.DESTROYING;
             uint256 destroyAllowedAt = block.timestamp + settings.withdrawalWaitMinSeconds;
             agent.destroyAllowedAt = destroyAllowedAt.toUint64();
-            emit AMEvents.AgentDestroyAnnounced(_agentVault, destroyAllowedAt);
+            emit IAssetManagerEvents.AgentDestroyAnnounced(_agentVault, destroyAllowedAt);
         }
         return agent.destroyAllowedAt;
     }
@@ -169,7 +169,7 @@ library AgentsCreateDestroy {
         AgentSettingsUpdater.clearPendingUpdates(agent);
         Agent.deleteStorage(agent);
         // notify
-        emit AMEvents.AgentDestroyed(_agentVault);
+        emit IAssetManagerEvents.AgentDestroyed(_agentVault);
     }
 
     function isPoolTokenSuffixReserved(string memory _suffix)
@@ -219,7 +219,7 @@ library AgentsCreateDestroy {
         }
     }
 
-    // Basically the same as `emit AMEvents.AgentVaultCreated`.
+    // Basically the same as `emit IAssetManagerEvents.AgentVaultCreated`.
     // Must be a separate method as workaround for EVM 16 stack variables limit.
     function _emitAgentVaultCreated(
         address _ownerManagementAddress,
@@ -230,7 +230,7 @@ library AgentsCreateDestroy {
     )
         private
     {
-        AMEvents.AgentVaultCreationData memory data;
+        IAssetManagerEvents.AgentVaultCreationData memory data;
         data.collateralPool = address(_collateralPool);
         data.collateralPoolToken = address(_collateralPool.poolToken());
         data.vaultCollateralToken = address(_settings.vaultCollateralToken);
@@ -244,7 +244,7 @@ library AgentsCreateDestroy {
         data.poolExitCollateralRatioBIPS = _settings.poolExitCollateralRatioBIPS;
         data.poolTopupCollateralRatioBIPS = _settings.poolTopupCollateralRatioBIPS;
         data.poolTopupTokenPriceFactorBIPS = _settings.poolTopupTokenPriceFactorBIPS;
-        emit AMEvents.AgentVaultCreated(_ownerManagementAddress, _agentVault, data);
+        emit IAssetManagerEvents.AgentVaultCreated(_ownerManagementAddress, _agentVault, data);
     }
 
     // Returns management owner's address, given either work or management address.

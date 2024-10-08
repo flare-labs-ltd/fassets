@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
 import "./data/RedemptionTimeExtension.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Conversion.sol";
 import "./Redemptions.sol";
 import "./Liquidation.sol";
@@ -62,7 +62,7 @@ library RedemptionRequests {
         }
         // notify redeemer of incomplete requests
         if (redeemedLots < _lots) {
-            emit AMEvents.RedemptionRequestIncomplete(_redeemer, _lots - redeemedLots);
+            emit IAssetManagerEvents.RedemptionRequestIncomplete(_redeemer, _lots - redeemedLots);
         }
         // burn the redeemed value of fassets
         uint256 redeemedUBA = Conversion.convertLotsToUBA(redeemedLots);
@@ -111,7 +111,7 @@ library RedemptionRequests {
         uint256 paymentWei = Conversion.convertAmgToTokenWei(closedAMG, priceAmgToWei)
             .mulBips(agent.buyFAssetByAgentFactorBIPS);
         Agents.payoutFromVault(agent, _redeemer, paymentWei);
-        emit AMEvents.RedeemedInCollateral(_agentVault, _redeemer, closedUBA, paymentWei);
+        emit IAssetManagerEvents.RedeemedInCollateral(_agentVault, _redeemer, closedUBA, paymentWei);
         // burn the closed assets
         Redemptions.burnFAssets(msg.sender, closedUBA);
     }
@@ -133,7 +133,7 @@ library RedemptionRequests {
         // try to pull agent out of liquidation
         Liquidation.endLiquidationIfHealthy(agent);
         // send event
-        emit AMEvents.SelfClose(_agentVault, closedUBA);
+        emit IAssetManagerEvents.SelfClose(_agentVault, closedUBA);
         return closedUBA;
     }
 
@@ -160,7 +160,8 @@ library RedemptionRequests {
         Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
         // emit event
         uint256 valueUBA = Conversion.convertAmgToUBA(request.valueAMG);
-        emit AMEvents.RedemptionRejected(request.agentVault, request.redeemer, _redemptionRequestId, valueUBA);
+        emit IAssetManagerEvents.RedemptionRejected(request.agentVault, request.redeemer,
+            _redemptionRequestId, valueUBA);
         // delete redemption request at end
         Redemptions.deleteRedemptionRequest(_redemptionRequestId);
     }
@@ -254,7 +255,7 @@ library RedemptionRequests {
     )
         private
     {
-        emit AMEvents.RedemptionRequested(
+        emit IAssetManagerEvents.RedemptionRequested(
             _request.agentVault,
             _request.redeemer,
             _requestId,

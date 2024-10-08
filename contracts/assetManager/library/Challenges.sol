@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../../stateConnector/interfaces/ISCProofVerifier.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Conversion.sol";
 import "./Agents.sol";
 import "./Liquidation.sol";
@@ -68,7 +68,7 @@ library Challenges {
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events
-        emit AMEvents.IllegalPaymentConfirmed(_agentVault, _payment.data.requestBody.transactionId);
+        emit IAssetManagerEvents.IllegalPaymentConfirmed(_agentVault, _payment.data.requestBody.transactionId);
     }
 
     function doublePaymentChallenge(
@@ -99,7 +99,7 @@ library Challenges {
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events
-        emit AMEvents.DuplicatePaymentConfirmed(_agentVault, _payment1.data.requestBody.transactionId,
+        emit IAssetManagerEvents.DuplicatePaymentConfirmed(_agentVault, _payment1.data.requestBody.transactionId,
             _payment2.data.requestBody.transactionId);
     }
 
@@ -147,7 +147,7 @@ library Challenges {
         // start liquidation and reward challengers
         _liquidateAndRewardChallenger(agent, msg.sender, agent.mintedAMG);
         // emit events
-        emit AMEvents.UnderlyingBalanceTooLow(_agentVault, balanceAfterPayments, requiredBalance);
+        emit IAssetManagerEvents.UnderlyingBalanceTooLow(_agentVault, balanceAfterPayments, requiredBalance);
     }
 
     function _liquidateAndRewardChallenger(

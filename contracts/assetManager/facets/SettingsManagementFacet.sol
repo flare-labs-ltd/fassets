@@ -3,9 +3,9 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "../../fassetToken/interfaces/IITransparentProxy.sol";
 import "../../utils/lib/SafePct.sol";
-import "../library/AMEvents.sol";
 import "../library/Globals.sol";
 import "../library/CollateralTypes.sol";
 import "../library/SettingsUpdater.sol";
@@ -13,7 +13,7 @@ import "../library/SettingsValidators.sol";
 import "./AssetManagerBase.sol";
 
 
-contract SettingsManagementFacet is AssetManagerBase {
+contract SettingsManagementFacet is AssetManagerBase, IAssetManagerEvents {
     using SafeCast for uint256;
     using SafePct for *;
 
@@ -36,7 +36,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         // update assetManagerController
         if (settings.assetManagerController != _controller) {
             settings.assetManagerController = _controller;
-            emit AMEvents.ContractChanged("assetManagerController", address(_controller));
+            emit ContractChanged("assetManagerController", address(_controller));
         }
         // update wNat
         IWNat oldWNat = Globals.getWNat();
@@ -45,7 +45,7 @@ contract SettingsManagementFacet is AssetManagerBase {
             data.validUntil = 0;
             data.token = _wNat;
             CollateralTypes.setPoolWNatCollateralType(data);
-            emit AMEvents.ContractChanged("wNat", address(_wNat));
+            emit ContractChanged("wNat", address(_wNat));
         }
     }
 
@@ -58,7 +58,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         // validate
         // update
         settings.whitelist = _value;
-        emit AMEvents.ContractChanged("whitelist", _value);
+        emit ContractChanged("whitelist", _value);
     }
 
     function setAgentOwnerRegistry(address _value)
@@ -71,7 +71,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value != address(0), "address zero");
         // update
         settings.agentOwnerRegistry = _value;
-        emit AMEvents.ContractChanged("agentOwnerRegistry", _value);
+        emit ContractChanged("agentOwnerRegistry", _value);
     }
 
     function setAgentVaultFactory(address _value)
@@ -84,7 +84,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value != address(0), "address zero");
         // update
         settings.agentVaultFactory = _value;
-        emit AMEvents.ContractChanged("agentVaultFactory", _value);
+        emit ContractChanged("agentVaultFactory", _value);
     }
 
     function setCollateralPoolFactory(address _value)
@@ -97,7 +97,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value != address(0), "address zero");
         // update
         settings.collateralPoolFactory = _value;
-        emit AMEvents.ContractChanged("collateralPoolFactory", _value);
+        emit ContractChanged("collateralPoolFactory", _value);
     }
 
     function setCollateralPoolTokenFactory(address _value)
@@ -110,7 +110,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value != address(0), "address zero");
         // update
         settings.collateralPoolTokenFactory = _value;
-        emit AMEvents.ContractChanged("collateralPoolTokenFactory", _value);
+        emit ContractChanged("collateralPoolTokenFactory", _value);
     }
 
     function setPriceReader(address _value)
@@ -123,7 +123,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value != address(0), "address zero");
         // update
         settings.priceReader = _value;
-        emit AMEvents.ContractChanged("priceReader", _value);
+        emit ContractChanged("priceReader", _value);
     }
 
     function setSCProofVerifier(address _value)
@@ -136,7 +136,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value != address(0), "address zero");
         // update
         settings.scProofVerifier = _value;
-        emit AMEvents.ContractChanged("scProofVerifier", _value);
+        emit ContractChanged("scProofVerifier", _value);
     }
 
     function setCleanerContract(address _value)
@@ -148,7 +148,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         // validate
         // update
         fAsset.setCleanerContract(_value);
-        emit AMEvents.ContractChanged("cleanerContract", _value);
+        emit ContractChanged("cleanerContract", _value);
     }
 
     function setCleanupBlockNumberManager(address _value)
@@ -160,7 +160,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         // validate
         // update
         fAsset.setCleanupBlockNumberManager(_value);
-        emit AMEvents.ContractChanged("cleanupBlockNumberManager", _value);
+        emit ContractChanged("cleanupBlockNumberManager", _value);
     }
 
     function upgradeFAssetImplementation(address _value, bytes memory callData)
@@ -173,7 +173,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value != address(0), "address zero");
         // update
         fAssetProxy.upgradeToAndCall(_value, callData);
-        emit AMEvents.ContractChanged("fAsset", _value);
+        emit ContractChanged("fAsset", _value);
     }
 
     function setTimeForPayment(uint256 _underlyingBlocks, uint256 _underlyingSeconds)
@@ -189,8 +189,8 @@ contract SettingsManagementFacet is AssetManagerBase {
         // update
         settings.underlyingBlocksForPayment = _underlyingBlocks.toUint64();
         settings.underlyingSecondsForPayment = _underlyingSeconds.toUint64();
-        emit AMEvents.SettingChanged("underlyingBlocksForPayment", _underlyingBlocks);
-        emit AMEvents.SettingChanged("underlyingSecondsForPayment", _underlyingSeconds);
+        emit SettingChanged("underlyingBlocksForPayment", _underlyingBlocks);
+        emit SettingChanged("underlyingSecondsForPayment", _underlyingSeconds);
     }
 
     function setPaymentChallengeReward(uint256 _rewardNATWei, uint256 _rewardBIPS)
@@ -207,8 +207,8 @@ contract SettingsManagementFacet is AssetManagerBase {
         // update
         settings.paymentChallengeRewardUSD5 = _rewardNATWei.toUint128();
         settings.paymentChallengeRewardBIPS = _rewardBIPS.toUint16();
-        emit AMEvents.SettingChanged("paymentChallengeRewardUSD5", _rewardNATWei);
-        emit AMEvents.SettingChanged("paymentChallengeRewardBIPS", _rewardBIPS);
+        emit SettingChanged("paymentChallengeRewardUSD5", _rewardNATWei);
+        emit SettingChanged("paymentChallengeRewardBIPS", _rewardBIPS);
     }
 
     function setMinUpdateRepeatTimeSeconds(uint256 _value)
@@ -221,7 +221,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value > 0, "cannot be zero");
         // update
         settings.minUpdateRepeatTimeSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("minUpdateRepeatTimeSeconds", _value);
+        emit SettingChanged("minUpdateRepeatTimeSeconds", _value);
     }
 
     function setLotSizeAmg(uint256 _value)
@@ -240,7 +240,7 @@ contract SettingsManagementFacet is AssetManagerBase {
             "lot size bigger than minting cap");
         // update
         settings.lotSizeAMG = _value.toUint64();
-        emit AMEvents.SettingChanged("lotSizeAMG", _value);
+        emit SettingChanged("lotSizeAMG", _value);
     }
 
     function setMinUnderlyingBackingBips(uint256 _value)
@@ -258,7 +258,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= settings.minUnderlyingBackingBIPS / 2, "decrease too big");
         // update
         settings.minUnderlyingBackingBIPS = _value.toUint16();
-        emit AMEvents.SettingChanged("minUnderlyingBackingBIPS", _value);
+        emit SettingChanged("minUnderlyingBackingBIPS", _value);
     }
 
     function setMaxTrustedPriceAgeSeconds(uint256 _value)
@@ -273,7 +273,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= settings.maxTrustedPriceAgeSeconds / 2, "fee decrease too big");
         // update
         settings.maxTrustedPriceAgeSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("maxTrustedPriceAgeSeconds", _value);
+        emit SettingChanged("maxTrustedPriceAgeSeconds", _value);
     }
 
     function setCollateralReservationFeeBips(uint256 _value)
@@ -289,7 +289,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= settings.collateralReservationFeeBIPS / 4, "fee decrease too big");
         // update
         settings.collateralReservationFeeBIPS = _value.toUint16();
-        emit AMEvents.SettingChanged("collateralReservationFeeBIPS", _value);
+        emit SettingChanged("collateralReservationFeeBIPS", _value);
     }
 
     function setRedemptionFeeBips(uint256 _value)
@@ -305,7 +305,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= settings.redemptionFeeBIPS / 4, "fee decrease too big");
         // update
         settings.redemptionFeeBIPS = _value.toUint16();
-        emit AMEvents.SettingChanged("redemptionFeeBIPS", _value);
+        emit SettingChanged("redemptionFeeBIPS", _value);
     }
 
     function setRedemptionDefaultFactorBips(uint256 _vaultFactor, uint256 _poolFactor)
@@ -327,9 +327,9 @@ contract SettingsManagementFacet is AssetManagerBase {
             "fee decrease too big");
         // update
         settings.redemptionDefaultFactorVaultCollateralBIPS = _vaultFactor.toUint32();
-        emit AMEvents.SettingChanged("redemptionDefaultFactorVaultCollateralBIPS", _vaultFactor);
+        emit SettingChanged("redemptionDefaultFactorVaultCollateralBIPS", _vaultFactor);
         settings.redemptionDefaultFactorPoolBIPS = _poolFactor.toUint32();
-        emit AMEvents.SettingChanged("redemptionDefaultFactorPoolBIPS", _poolFactor);
+        emit SettingChanged("redemptionDefaultFactorPoolBIPS", _poolFactor);
     }
 
     function setConfirmationByOthersAfterSeconds(uint256 _value)
@@ -342,7 +342,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= 2 hours, "must be at least two hours");
         // update
         settings.confirmationByOthersAfterSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("confirmationByOthersAfterSeconds", _value);
+        emit SettingChanged("confirmationByOthersAfterSeconds", _value);
     }
 
     function setConfirmationByOthersRewardUSD5(uint256 _value)
@@ -357,7 +357,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= settings.confirmationByOthersRewardUSD5 / 4, "fee decrease too big");
         // update
         settings.confirmationByOthersRewardUSD5 = _value.toUint128();
-        emit AMEvents.SettingChanged("confirmationByOthersRewardUSD5", _value);
+        emit SettingChanged("confirmationByOthersRewardUSD5", _value);
     }
 
     function setMaxRedeemedTickets(uint256 _value)
@@ -372,7 +372,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= settings.maxRedeemedTickets / 4, "decrease too big");
         // update
         settings.maxRedeemedTickets = _value.toUint16();
-        emit AMEvents.SettingChanged("maxRedeemedTickets", _value);
+        emit SettingChanged("maxRedeemedTickets", _value);
     }
 
     function setWithdrawalOrDestroyWaitMinSeconds(uint256 _value)
@@ -387,7 +387,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value <= settings.withdrawalWaitMinSeconds + 10 minutes, "increase too big");
         // update
         settings.withdrawalWaitMinSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("withdrawalWaitMinSeconds", _value);
+        emit SettingChanged("withdrawalWaitMinSeconds", _value);
     }
 
     function setCcbTimeSeconds(uint256 _value)
@@ -402,7 +402,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= settings.ccbTimeSeconds / 2, "decrease too big");
         // update
         settings.ccbTimeSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("ccbTimeSeconds", _value);
+        emit SettingChanged("ccbTimeSeconds", _value);
     }
 
     function setAttestationWindowSeconds(uint256 _value)
@@ -415,7 +415,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= 1 days, "window too small");
         // update
         settings.attestationWindowSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("attestationWindowSeconds", _value);
+        emit SettingChanged("attestationWindowSeconds", _value);
     }
 
     function setAverageBlockTimeMS(uint256 _value)
@@ -430,7 +430,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= settings.averageBlockTimeMS / 2, "decrease too big");
         // update
         settings.averageBlockTimeMS = _value.toUint32();
-        emit AMEvents.SettingChanged("averageBlockTimeMS", _value);
+        emit SettingChanged("averageBlockTimeMS", _value);
     }
 
     function setAnnouncedUnderlyingConfirmationMinSeconds(uint256 _value)
@@ -443,7 +443,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value <= 1 hours, "confirmation time too big");
         // update
         settings.announcedUnderlyingConfirmationMinSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("announcedUnderlyingConfirmationMinSeconds", _value);
+        emit SettingChanged("announcedUnderlyingConfirmationMinSeconds", _value);
     }
 
     function setMintingPoolHoldingsRequiredBIPS(uint256 _value)
@@ -456,7 +456,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value <= settings.mintingPoolHoldingsRequiredBIPS * 4 + SafePct.MAX_BIPS, "value too big");
         // update
         settings.mintingPoolHoldingsRequiredBIPS = _value.toUint32();
-        emit AMEvents.SettingChanged("mintingPoolHoldingsRequiredBIPS", _value);
+        emit SettingChanged("mintingPoolHoldingsRequiredBIPS", _value);
     }
 
     function setMintingCapAmg(uint256 _value)
@@ -469,7 +469,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value == 0 || _value >= settings.lotSizeAMG, "value too small");
         // update
         settings.mintingCapAMG = _value.toUint64();
-        emit AMEvents.SettingChanged("mintingCapAMG", _value);
+        emit SettingChanged("mintingCapAMG", _value);
     }
 
     function setTokenInvalidationTimeMinSeconds(uint256 _value)
@@ -481,7 +481,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         // validate
         // update
         settings.tokenInvalidationTimeMinSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("tokenInvalidationTimeMinSeconds", _value);
+        emit SettingChanged("tokenInvalidationTimeMinSeconds", _value);
     }
 
     function setVaultCollateralBuyForFlareFactorBIPS(uint256 _value)
@@ -494,7 +494,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= SafePct.MAX_BIPS, "value too small");
         // update
         settings.vaultCollateralBuyForFlareFactorBIPS = _value.toUint32();
-        emit AMEvents.SettingChanged("vaultCollateralBuyForFlareFactorBIPS", _value);
+        emit SettingChanged("vaultCollateralBuyForFlareFactorBIPS", _value);
     }
 
     function setAgentExitAvailableTimelockSeconds(uint256 _value)
@@ -507,7 +507,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value <= settings.agentExitAvailableTimelockSeconds * 4 + 1 weeks);
         // update
         settings.agentExitAvailableTimelockSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("agentExitAvailableTimelockSeconds", _value);
+        emit SettingChanged("agentExitAvailableTimelockSeconds", _value);
     }
 
     function setAgentFeeChangeTimelockSeconds(uint256 _value)
@@ -520,7 +520,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value <= settings.agentFeeChangeTimelockSeconds * 4 + 1 days);
         // update
         settings.agentFeeChangeTimelockSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("agentFeeChangeTimelockSeconds", _value);
+        emit SettingChanged("agentFeeChangeTimelockSeconds", _value);
     }
 
     function setAgentMintingCRChangeTimelockSeconds(uint256 _value)
@@ -533,7 +533,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value <= settings.agentMintingCRChangeTimelockSeconds * 4 + 1 days);
         // update
         settings.agentMintingCRChangeTimelockSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("agentMintingCRChangeTimelockSeconds", _value);
+        emit SettingChanged("agentMintingCRChangeTimelockSeconds", _value);
     }
 
     function setPoolExitAndTopupChangeTimelockSeconds(uint256 _value)
@@ -546,7 +546,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value <= settings.poolExitAndTopupChangeTimelockSeconds * 4 + 1 days);
         // update
         settings.poolExitAndTopupChangeTimelockSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("poolExitAndTopupChangeTimelockSeconds", _value);
+        emit SettingChanged("poolExitAndTopupChangeTimelockSeconds", _value);
     }
 
     function setAgentTimelockedOperationWindowSeconds(uint256 _value)
@@ -559,7 +559,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= 1 minutes, "value too small");
         // update
         settings.agentTimelockedOperationWindowSeconds = _value.toUint64();
-        emit AMEvents.SettingChanged("agentTimelockedOperationWindowSeconds", _value);
+        emit SettingChanged("agentTimelockedOperationWindowSeconds", _value);
     }
 
     function setCollateralPoolTokenTimelockSeconds(uint256 _value)
@@ -572,7 +572,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_value >= 1 minutes, "value too small");
         // update
         settings.collateralPoolTokenTimelockSeconds = _value.toUint32();
-        emit AMEvents.SettingChanged("collateralPoolTokenTimelockSeconds", _value);
+        emit SettingChanged("collateralPoolTokenTimelockSeconds", _value);
     }
 
     function setLiquidationStepSeconds(uint256 _stepSeconds)
@@ -587,7 +587,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         require(_stepSeconds >= settings.liquidationStepSeconds / 2, "decrease too big");
         // update
         settings.liquidationStepSeconds = _stepSeconds.toUint64();
-        emit AMEvents.SettingChanged("liquidationStepSeconds", _stepSeconds);
+        emit SettingChanged("liquidationStepSeconds", _stepSeconds);
     }
 
     function setLiquidationPaymentFactors(
@@ -609,8 +609,8 @@ contract SettingsManagementFacet is AssetManagerBase {
             settings.liquidationFactorVaultCollateralBIPS.push(_vaultCollateralFactors[i].toUint32());
         }
         // emit events
-        emit AMEvents.SettingArrayChanged("liquidationCollateralFactorBIPS", _liquidationFactors);
-        emit AMEvents.SettingArrayChanged("liquidationFactorVaultCollateralBIPS", _vaultCollateralFactors);
+        emit SettingArrayChanged("liquidationCollateralFactorBIPS", _liquidationFactors);
+        emit SettingArrayChanged("liquidationFactorVaultCollateralBIPS", _vaultCollateralFactors);
     }
 
     function setMaxEmergencyPauseDurationSeconds(uint256 _value)
@@ -626,7 +626,7 @@ contract SettingsManagementFacet is AssetManagerBase {
         // update
         settings.maxEmergencyPauseDurationSeconds = _value.toUint64();
         // emit events
-        emit AMEvents.SettingChanged("maxEmergencyPauseDurationSeconds", _value);
+        emit SettingChanged("maxEmergencyPauseDurationSeconds", _value);
     }
 
     function setEmergencyPauseDurationResetAfterSeconds(uint256 _value)
@@ -642,6 +642,6 @@ contract SettingsManagementFacet is AssetManagerBase {
         // update
         settings.emergencyPauseDurationResetAfterSeconds = _value.toUint64();
         // emit events
-        emit AMEvents.SettingChanged("emergencyPauseDurationResetAfterSeconds", _value);
+        emit SettingChanged("emergencyPauseDurationResetAfterSeconds", _value);
     }
 }

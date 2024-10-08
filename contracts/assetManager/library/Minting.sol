@@ -5,7 +5,7 @@ import "../../stateConnector/interfaces/ISCProofVerifier.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/Transfers.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Agents.sol";
 import "./UnderlyingBalance.sol";
 import "./CollateralReservations.sol";
@@ -97,7 +97,7 @@ library Minting {
             _performMinting(agent, 0, msg.sender, valueAMG, true, receivedAmount, poolFeeUBA);
         } else {
             UnderlyingBalance.increaseBalance(agent, receivedAmount);
-            emit AMEvents.MintingExecuted(_agentVault, 0, 0, receivedAmount, 0);
+            emit IAssetManagerEvents.MintingExecuted(_agentVault, 0, 0, receivedAmount, 0);
         }
     }
 
@@ -187,6 +187,7 @@ library Minting {
         Globals.getFAsset().mint(address(_agent.collateralPool), _poolFeeUBA);
         _agent.collateralPool.fAssetFeeDeposited(_poolFeeUBA);
         // notify
-        emit AMEvents.MintingExecuted(_agent.vaultAddress(), _crtId, mintValueUBA, agentFeeUBA, _poolFeeUBA);
+        emit IAssetManagerEvents.MintingExecuted(_agent.vaultAddress(), _crtId, mintValueUBA,
+            agentFeeUBA, _poolFeeUBA);
     }
 }

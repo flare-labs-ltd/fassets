@@ -3,7 +3,7 @@ pragma solidity >=0.7.6 <0.9;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Agents.sol";
 
 
@@ -35,7 +35,7 @@ library AgentSettingsUpdater {
             value: _value.toUint128(),
             validAt: validAt.toUint64()
         });
-        emit AMEvents.AgentSettingChangeAnnounced(_agentVault, _name, _value, validAt);
+        emit IAssetManagerEvents.AgentSettingChangeAnnounced(_agentVault, _name, _value, validAt);
         return validAt;
     }
 
@@ -55,7 +55,7 @@ library AgentSettingsUpdater {
         require(update.validAt + settings.agentTimelockedOperationWindowSeconds >= block.timestamp,
             "update not valid anymore");
         _executeUpdate(agent, hash, update.value);
-        emit AMEvents.AgentSettingChanged(_agentVault, _name, update.value);
+        emit IAssetManagerEvents.AgentSettingChanged(_agentVault, _name, update.value);
         delete agent.settingUpdates[hash];
     }
 

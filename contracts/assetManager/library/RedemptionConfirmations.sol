@@ -3,7 +3,7 @@ pragma solidity 0.8.23;
 
 import "../../stateConnector/interfaces/ISCProofVerifier.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Redemptions.sol";
 import "./RedemptionFailures.sol";
 import "./Liquidation.sol";
@@ -44,12 +44,12 @@ library RedemptionConfirmations {
             Agents.endRedeemingAssets(agent, request.valueAMG, request.poolSelfClose);
             // notify
             if (_payment.data.responseBody.status == TransactionAttestation.PAYMENT_SUCCESS) {
-                emit AMEvents.RedemptionPerformed(request.agentVault, request.redeemer,  _redemptionRequestId,
-                    _payment.data.requestBody.transactionId, request.underlyingValueUBA,
+                emit IAssetManagerEvents.RedemptionPerformed(request.agentVault, request.redeemer,
+                    _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
                     _payment.data.responseBody.spentAmount);
             } else {    // _payment.status == TransactionAttestation.PAYMENT_BLOCKED
-                emit AMEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer, _redemptionRequestId,
-                    _payment.data.requestBody.transactionId, request.underlyingValueUBA,
+                emit IAssetManagerEvents.RedemptionPaymentBlocked(request.agentVault, request.redeemer,
+                    _redemptionRequestId, _payment.data.requestBody.transactionId, request.underlyingValueUBA,
                     _payment.data.responseBody.spentAmount);
             }
         } else {
@@ -63,8 +63,9 @@ library RedemptionConfirmations {
                 RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
             }
             // notify
-            emit AMEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer, _redemptionRequestId,
-                _payment.data.requestBody.transactionId, _payment.data.responseBody.spentAmount, failureReason);
+            emit IAssetManagerEvents.RedemptionPaymentFailed(request.agentVault, request.redeemer,
+                _redemptionRequestId, _payment.data.requestBody.transactionId,
+                _payment.data.responseBody.spentAmount, failureReason);
         }
         // agent has finished with redemption - account for used underlying balance and free the remainder
         UnderlyingBalance.updateBalance(agent, -_payment.data.responseBody.spentAmount);

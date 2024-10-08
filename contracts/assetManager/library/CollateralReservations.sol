@@ -6,7 +6,7 @@ import "../interfaces/IIAgentVault.sol";
 import "../../utils/lib/SafeMath64.sol";
 import "../../utils/lib/SafePct.sol";
 import "./data/AssetManagerState.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Conversion.sol";
 import "./Agents.sol";
 import "./Minting.sol";
@@ -89,7 +89,7 @@ library CollateralReservations {
             "minting non-payment proof window too short");
         // send event
         uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFee(agent, crt.underlyingFeeUBA);
-        emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
+        emit IAssetManagerEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // share collateral reservation fee between the agent's vault and pool
         uint256 totalFee = crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI;
         uint256 poolFeeShare = totalFee.mulBips(agent.poolFeeShareBIPS);
@@ -126,7 +126,7 @@ library CollateralReservations {
         // send event
         uint256 reservedValueUBA = Conversion.convertAmgToUBA(crt.valueAMG) +
             Minting.calculatePoolFee(agent, crt.underlyingFeeUBA);
-        emit AMEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
+        emit IAssetManagerEvents.CollateralReservationDeleted(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
         // release agent's reserved collateral
         releaseCollateralReservation(crt, _crtId);  // crt can't be used after this
     }
@@ -189,7 +189,7 @@ library CollateralReservations {
     )
         private
     {
-        emit AMEvents.CollateralReserved(
+        emit IAssetManagerEvents.CollateralReserved(
             _agent.vaultAddress(),
             _cr.minter,
             _crtId,

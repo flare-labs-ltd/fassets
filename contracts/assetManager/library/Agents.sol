@@ -7,7 +7,7 @@ import "../../utils/lib/SafeMath64.sol";
 import "../interfaces/IIAgentVault.sol";
 import "./data/AssetManagerState.sol";
 import "./data/Collateral.sol";
-import "./AMEvents.sol";
+import "../../userInterfaces/IAssetManagerEvents.sol";
 import "./Globals.sol";
 import "./Conversion.sol";
 import "./CollateralTypes.sol";
@@ -165,12 +165,12 @@ library Agents {
             // last ticket is from the same agent - merge the new ticket with the last
             lastTicket.valueAMG += _ticketValueAMG;
             uint256 ticketValueUBA = Conversion.convertAmgToUBA(lastTicket.valueAMG);
-            emit AMEvents.RedemptionTicketUpdated(vaultAddress, lastTicketId, ticketValueUBA);
+            emit IAssetManagerEvents.RedemptionTicketUpdated(vaultAddress, lastTicketId, ticketValueUBA);
         } else {
             // either queue is empty or the last ticket belongs to another agent - create new ticket
             uint64 ticketId = state.redemptionQueue.createRedemptionTicket(vaultAddress, _ticketValueAMG);
             uint256 ticketValueUBA = Conversion.convertAmgToUBA(_ticketValueAMG);
-            emit AMEvents.RedemptionTicketCreated(vaultAddress, ticketId, ticketValueUBA);
+        emit IAssetManagerEvents.RedemptionTicketCreated(vaultAddress, ticketId, ticketValueUBA);
         }
     }
 
@@ -183,7 +183,7 @@ library Agents {
         if (_agent.dustAMG == _newDustAMG) return;
         _agent.dustAMG = _newDustAMG;
         uint256 dustUBA = Conversion.convertAmgToUBA(_newDustAMG);
-        emit AMEvents.DustChanged(_agent.vaultAddress(), dustUBA);
+        emit IAssetManagerEvents.DustChanged(_agent.vaultAddress(), dustUBA);
     }
 
     function increaseDust(
