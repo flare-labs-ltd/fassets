@@ -4,16 +4,23 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "flare-smart-contracts/contracts/addressUpdater/interface/IIAddressUpdater.sol";
 import "../interfaces/IWNat.sol";
 import "../interfaces/IIAssetManager.sol";
 import "../interfaces/IISettingsManagement.sol";
 import "../../userInterfaces/IAssetManagerEvents.sol";
-import "../../governance/implementation/Governed.sol";
+import "../../governance/implementation/GovernedProxyImplementation.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
 
 
-contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEvents, IERC165 {
+contract AssetManagerController is
+    UUPSUpgradeable,
+    GovernedProxyImplementation,
+    AddressUpdatable,
+    IAssetManagerEvents,
+    IERC165
+{
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // New address in case this controller was replaced.
@@ -27,10 +34,25 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
 
     EnumerableSet.AddressSet private emergencyPauseSenders;
 
-    constructor(IGovernanceSettings _governanceSettings, address _initialGovernance, address _addressUpdater)
-        Governed(_governanceSettings, _initialGovernance)
-        AddressUpdatable(_addressUpdater)
+    constructor()
+        GovernedProxyImplementation()
+        AddressUpdatable(address(0))
     {
+    }
+
+    /**
+     * Proxyable initialization method. Can be called only once, from the proxy constructor
+     * (single call is assured by GovernedBase.initialise).
+     */
+    function initialize(
+        IGovernanceSettings _governanceSettings,
+        address _initialGovernance,
+        address _addressUpdater
+    )
+        external
+    {
+        GovernedBase.initialise(_governanceSettings, _initialGovernance);
+        AddressUpdatable.setAddressUpdaterValue(_addressUpdater);
     }
 
     /**
@@ -87,6 +109,37 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
     {
         return assetManagerIndex[_assetManager] != 0;
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // UUPS Proxy
+
+    /**
+     * See UUPSUpgradeable.upgradeTo
+     */
+    function upgradeTo(address newImplementation)
+        public override
+        onlyGovernance
+        onlyProxy
+    {
+        _upgradeToAndCallUUPS(newImplementation, new bytes(0), false);
+    }
+
+    /**
+     * See UUPSUpgradeable.upgradeToAndCall
+     */
+    function upgradeToAndCall(address newImplementation, bytes memory data)
+        public payable override
+        onlyGovernance
+        onlyProxy
+    {
+        _upgradeToAndCallUUPS(newImplementation, data, true);
+    }
+
+    /**
+     * Unused. just to present to satisfy UUPSUpgradeable requirement.
+     * The real check is in onlyGovernance modifier on upgradeTo and upgradeToAndCall.
+     */
+    function _authorizeUpgrade(address newImplementation) internal override {}
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Setters

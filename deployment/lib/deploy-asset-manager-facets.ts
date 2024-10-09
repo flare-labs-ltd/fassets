@@ -39,14 +39,14 @@ export async function deployAllAssetManagerFacets(hre: HardhatRuntimeEnvironment
 }
 
 // deploy facet unless it is already dpeloyed with identical code (facets must be stateless and have zero-arg constructor)
-export async function deployFacet(hre: HardhatRuntimeEnvironment, facetName: string, contracts: ContractStore, deployer: string) {
-    const artifact = hre.artifacts.readArtifactSync(facetName);
+export async function deployFacet(hre: HardhatRuntimeEnvironment, facetName: string, contracts: ContractStore, deployer: string, facetArtifactName = facetName) {
+    const artifact = hre.artifacts.readArtifactSync(facetArtifactName);
     const alreadyDeployed = await deployedCodeMatches(artifact, contracts.get(facetName)?.address);
     if (!alreadyDeployed) {
-        const contractFactory = hre.artifacts.require(facetName);
+        const contractFactory = hre.artifacts.require(facetArtifactName);
         const instance = await waitFinalize(hre, deployer, () => contractFactory.new({ from: deployer })) as Truffle.ContractInstance;
-        contracts.add(facetName, `${facetName}.sol`, instance.address);
-        console.log(`Deployed facet ${facetName}`);
+        contracts.add(facetName, `${facetArtifactName}.sol`, instance.address);
+        console.log(facetArtifactName === facetName ? `Deployed facet ${facetName}` : `Deployed facet ${facetName} from ${facetArtifactName}.sol`);
         return instance.address;
     } else {
         return contracts.getRequired(facetName).address;

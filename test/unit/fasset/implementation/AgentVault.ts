@@ -5,14 +5,13 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { erc165InterfaceId, toBN, toWei } from "../../../../lib/utils/helpers";
 import { AgentVaultInstance, AssetManagerControllerInstance, AssetManagerMockInstance, CollateralPoolInstance, CollateralPoolTokenInstance, ERC20MockInstance, FAssetInstance, IERC165Contract, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
+import { AssetManagerInitSettings, newAssetManager, newAssetManagerController } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal } from "../../../utils/web3assertions";
 
-const AssetManagerController = artifacts.require('AssetManagerController');
 const AgentVault = artifacts.require("AgentVault");
 const MockContract = artifacts.require('MockContract');
 const ERC20Mock = artifacts.require("ERC20Mock");
@@ -73,7 +72,7 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         // create FTSOs for nat, stablecoins and asset and set some price
         ftsos = await createTestFtsos(contracts.ftsoRegistry, ci);
         // create asset manager controller (don't switch to production)
-        assetManagerController = await AssetManagerController.new(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
+        assetManagerController = await newAssetManagerController(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci);

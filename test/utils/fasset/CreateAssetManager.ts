@@ -17,6 +17,14 @@ const AssetManagerInit = artifacts.require('AssetManagerInit');
 const GovernedProxyImplementation = artifacts.require('GovernedProxyImplementation');
 const FAsset = artifacts.require('FAsset');
 const FAssetProxy = artifacts.require('FAssetProxy');
+const AssetManagerController = artifacts.require('AssetManagerController');
+const AssetManagerControllerProxy = artifacts.require('AssetManagerControllerProxy');
+
+export async function newAssetManagerController(governanceSettings: string, initialGovernance: string, addressUpdater: string) {
+    const assetManagerControllerImpl = await AssetManagerController.new();
+    const assetManagerControllerProxy = await AssetManagerControllerProxy.new(assetManagerControllerImpl.address, governanceSettings, initialGovernance, addressUpdater);
+    return await AssetManagerController.at(assetManagerControllerProxy.address);
+}
 
 export async function newAssetManager(
     governanceAddress: string,

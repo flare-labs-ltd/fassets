@@ -3,18 +3,18 @@ import { AssetManagerSettings, CollateralType } from "../../../../lib/fasset/Ass
 import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationHelper";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BN_ZERO, DAYS, HOURS, MAX_BIPS, MINUTES, WEEKS, erc165InterfaceId, randomAddress, toBIPS, toBN, toStringExp } from "../../../../lib/utils/helpers";
-import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsInstance, IERC165Contract, IIAssetManagerInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
+import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControllerInstance, ERC20MockInstance, FAssetInstance, GovernanceSettingsInstance, IERC165Contract, IIAssetManagerInstance, TestUUPSProxyImplInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
+import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
+import { getStorageAt } from "@nomicfoundation/hardhat-network-helpers";
 
 const AddressUpdater = artifacts.require('AddressUpdater');
 const Whitelist = artifacts.require('Whitelist');
-const AssetManagerController = artifacts.require('AssetManagerController');
 const AddressUpdatableMock = artifacts.require('AddressUpdatableMock');
 
 contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager controller basic tests`, async accounts => {
@@ -56,7 +56,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         whitelist = await Whitelist.new(contracts.governanceSettings.address, governance, false);
         await whitelist.switchToProductionMode({ from: governance });
         // create asset manager controller
-        assetManagerController = await AssetManagerController.new(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
+        assetManagerController = await newAssetManagerController(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
         await assetManagerController.switchToProductionMode({ from: governance });
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
@@ -1145,8 +1145,61 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             const res2 = assetManagerController.deprecateCollateralType([assetManager.address],2, newToken.token,toBN(currentSettings.tokenInvalidationTimeMinSeconds).subn(1) ,{ from: governance });
             await expectRevert(res2, "deprecation time to short");
         });
+    });
 
+    describe("proxy upgrade", async () => {
+        const TestUUPSProxyImpl = artifacts.require("TestUUPSProxyImpl");
+        let newImplementation: TestUUPSProxyImplInstance;
 
+        beforeEach(async () => {
+            newImplementation = await TestUUPSProxyImpl.new();
+        });
+
+        it("should upgrade", async () => {
+            const mockProxy = await TestUUPSProxyImpl.at(assetManagerController.address);
+            await expectRevert.unspecified(mockProxy.testResult());
+            const res = await assetManagerController.upgradeTo(newImplementation.address, { from: governance });
+            await waitForTimelock(res, assetManagerController, updateExecutor);
+            const testResult = await mockProxy.testResult();
+            assert.equal(testResult, "test proxy");
+        });
+
+        it("should be able to revert upgrade", async () => {
+            async function readAddressAt(address: string, index: string) {
+                const b32Addr = await getStorageAt(address, index);
+                const addr = web3.utils.padLeft(web3.utils.toHex(web3.utils.toBN(b32Addr)), 40);
+                return web3.utils.toChecksumAddress(addr);
+            }
+            const originalImplAddr = await readAddressAt(assetManagerController.address, "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc");
+            const mockProxy = await TestUUPSProxyImpl.at(assetManagerController.address);
+            await expectRevert.unspecified(mockProxy.testResult());
+            // upgrade
+            const res = await assetManagerController.upgradeTo(newImplementation.address, { from: governance });
+            await waitForTimelock(res, assetManagerController, updateExecutor);
+            const testResult = await mockProxy.testResult();
+            assert.equal(testResult, "test proxy");
+            await expectRevert.unspecified(assetManagerController.getAssetManagers());
+            // upgrade back
+            const res2 = await assetManagerController.upgradeTo(originalImplAddr, { from: governance });
+            await waitForTimelock(res2, assetManagerController, updateExecutor);
+            await expectRevert.unspecified(mockProxy.testResult());
+            const assetManagers = await assetManagerController.getAssetManagers();
+            assert.equal(assetManagers.length, 1);
+        });
+
+        it("should not upgrade to a contract that is not UUPS proxy implementation", async () => {
+            const res = await assetManagerController.upgradeTo(wNat.address, { from: governance });
+            await expectRevert(waitForTimelock(res, assetManagerController, updateExecutor), "ERC1967Upgrade: new implementation is not UUPS");
+        });
+
+        it("should wait for timelock on upgrade", async () => {
+            const res = await assetManagerController.upgradeTo(newImplementation.address, { from: governance });
+            expectEvent(res, "GovernanceCallTimelocked");
+        });
+
+        it("only governance can upgrade", async () => {
+            await expectRevert(assetManagerController.upgradeTo(newImplementation.address), "only governance");
+        });
     });
 
     describe("pause, unpause and terminate", () => {

@@ -12,6 +12,7 @@ import { GENESIS_GOVERNANCE_ADDRESS } from "../../utils/constants";
 import { setDefaultVPContract } from "../../utils/token-test-helpers";
 import { testChainInfo, TestNatInfo, testNatInfo } from "./TestChainInfo";
 import { constants } from "@openzeppelin/test-helpers";
+import { newAssetManagerController } from "../../utils/fasset/CreateAssetManager";
 
 const AgentVault = artifacts.require("AgentVault");
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
@@ -21,7 +22,6 @@ const CollateralPoolToken = artifacts.require("CollateralPoolToken");
 const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 const SCProofVerifier = artifacts.require('SCProofVerifier');
 const FtsoV1PriceReader = artifacts.require('FtsoV1PriceReader');
-const AssetManagerController = artifacts.require('AssetManagerController');
 const AddressUpdater = artifacts.require('AddressUpdater');
 const WNat = artifacts.require('WNat');
 const ERC20Mock = artifacts.require("ERC20Mock");
@@ -98,7 +98,7 @@ export class CommonContext {
         const collateralPoolTokenImplementation = await CollateralPoolToken.new(constants.ZERO_ADDRESS, "", "");
         const collateralPoolTokenFactory = await CollateralPoolTokenFactory.new(collateralPoolTokenImplementation.address);
         // create asset manager controller
-        const assetManagerController = await AssetManagerController.new(governanceSettings.address, governance, addressUpdater.address);
+        const assetManagerController = await newAssetManagerController(governanceSettings.address, governance, addressUpdater.address);
         await assetManagerController.switchToProductionMode({ from: governance });
         // collect
         return new CommonContext(governance, governanceSettings, addressUpdater, assetManagerController, stateConnector,

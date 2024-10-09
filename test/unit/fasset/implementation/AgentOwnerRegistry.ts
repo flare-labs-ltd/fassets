@@ -7,7 +7,7 @@ import { erc165InterfaceId, toBNExp } from "../../../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../../../lib/utils/web3normalize";
 import { AgentOwnerRegistryInstance, AgentVaultInstance, AssetManagerControllerInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance, WhitelistInstance } from "../../../../typechain-truffle";
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
-import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
+import { AssetManagerInitSettings, newAssetManager, newAssetManagerController, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
 import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
@@ -15,7 +15,6 @@ import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCo
 
 const Whitelist = artifacts.require('Whitelist');
 const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
-const AssetManagerController = artifacts.require('AssetManagerController');
 const AgentVault = artifacts.require('AgentVault');
 
 contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner registry tests`, async accounts => {
@@ -72,7 +71,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         whitelist = await Whitelist.new(contracts.governanceSettings.address, governance, false);
         await whitelist.switchToProductionMode({ from: governance });
         // create asset manager controller
-        assetManagerController = await AssetManagerController.new(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
+        assetManagerController = await newAssetManagerController(contracts.governanceSettings.address, governance, contracts.addressUpdater.address);
         await assetManagerController.switchToProductionMode({ from: governance });
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);

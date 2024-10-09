@@ -19,11 +19,14 @@ export async function deployAssetManagerController(hre: HardhatRuntimeEnvironmen
     console.log(`Deploying AssetManagerController`);
 
     const AssetManagerController = artifacts.require("AssetManagerController");
+    const AssetManagerControllerProxy = artifacts.require("AssetManagerControllerProxy");
 
     const { deployer } = loadDeployAccounts(hre);
 
-    const assetManagerController = await waitFinalize(hre, deployer,
-        () => AssetManagerController.new(contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address, { from: deployer }));
+    const assetManagerControllerImplAddress = await deployFacet(hre, "AssetManagerControllerImplementation", contracts, deployer, "AssetManagerController");
+    const assetManagerControllerProxy = await waitFinalize(hre, deployer,
+        () => AssetManagerControllerProxy.new(assetManagerControllerImplAddress, contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address, { from: deployer }));
+    const assetManagerController = await AssetManagerController.at(assetManagerControllerProxy.address);
 
     contracts.add("AssetManagerController", "AssetManagerController.sol", assetManagerController.address, { mustSwitchToProduction: true });
 
