@@ -11,6 +11,7 @@
       "check-send-result": "error",
       "compiler-version": ["off", "0.8.23"],
       "const-name-snakecase": "error",
+      "custom-errors": "off",
       "func-name-mixedcase": "error",
       "gas-custom-errors": "off",
       "ordering": "off",

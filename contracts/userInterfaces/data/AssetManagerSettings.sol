@@ -280,8 +280,29 @@ library AssetManagerSettings {
         // will reset automatically.
         uint64 emergencyPauseDurationResetAfterSeconds;
 
-        // The amount of time after which the collateral reservation can be cancelled the
+        // The amount of time after which the collateral reservation can be cancelled if the
         // identity verification is not completed.
+        // rate-limited
         uint64 cancelCollateralReservationAfterSeconds;
+
+        // Time window inside which the agent can reject the redemption request.
+        // rate-limited
+        uint64 rejectRedemptionRequestWindowSeconds;
+
+        // Time window inside which the agent can take over the redemption request from another agent
+        // that has rejected it.
+        // rate-limited
+        uint64 takeOverRedemptionRequestWindowSeconds;
+
+        // On redemption rejection, without take over, redeemer is compensated with
+        // redemption value recalculated in flare/sgb times redemption failure factor.
+        // Expressed in BIPS, e.g. 12000 for factor of 1.2.
+        // This is the part of factor paid from agent's vault collateral.
+        // rate-limited
+        uint32 rejectedRedemptionDefaultFactorVaultCollateralBIPS;
+
+        // This is the part of rejected redemption factor paid from agent's pool collateral.
+        // rate-limited
+        uint32 rejectedRedemptionDefaultFactorPoolBIPS;
     }
 }

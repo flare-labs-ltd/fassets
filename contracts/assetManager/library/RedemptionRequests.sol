@@ -9,6 +9,7 @@ import "./data/RedemptionTimeExtension.sol";
 import "./AMEvents.sol";
 import "./Conversion.sol";
 import "./Redemptions.sol";
+import "./RedemptionFailures.sol";
 import "./Liquidation.sol";
 import "./TransactionAttestation.sol";
 
@@ -116,6 +117,78 @@ library RedemptionRequests {
         Redemptions.burnFAssets(msg.sender, closedUBA);
     }
 
+    function rejectRedemptionRequest(
+        uint64 _redemptionRequestId
+    )
+        internal
+    {
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
+        Agent.State storage agent = Agent.get(request.agentVault);
+        // only owner can call
+        Agents.requireAgentVaultOwner(agent);
+        // only if identity verification is enabled
+        require(agent.identityVerificationType != 0, "identity verification disabled");
+        require(request.status == Redemption.Status.ACTIVE, "not active");
+        require(request.rejectionTimestamp == 0, "already rejected");
+        require(request.takeOverTimestamp == 0, "already taken over");
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        require(request.timestamp + settings.rejectRedemptionRequestWindowSeconds > block.timestamp,
+            "reject redemption request window closed");
+        request.rejectionTimestamp = block.timestamp.toUint64();
+        // in case of pool self close, the only way to reject is to default
+        if (request.poolSelfClose) {
+            // release agent collateral
+            RedemptionFailures.executeDefaultPayment(agent, request, _redemptionRequestId);
+            // burn the executor fee
+            Redemptions.payOrBurnExecutorFee(request);
+            // delete redemption request at end
+            Redemptions.deleteRedemptionRequest(_redemptionRequestId);
+        } else {
+            // emit event
+            emit AMEvents.RedemptionRequestRejected(request.agentVault, request.redeemer, _redemptionRequestId);
+            // keep redemption request for take over or default
+        }
+    }
+
+    function takeOverRedemptionRequest(
+        address _agentVault,
+        uint64 _redemptionRequestId
+    )
+        internal
+    {
+        Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
+        Agent.State storage oldAgent = Agent.get(request.agentVault);
+        Agent.State storage newAgent = Agent.get(_agentVault);
+        // only owner can call
+        Agents.requireAgentVaultOwner(newAgent);
+        require(request.status == Redemption.Status.ACTIVE, "not active");
+        require(request.rejectionTimestamp != 0, "not rejected");
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        require(request.rejectionTimestamp + settings.takeOverRedemptionRequestWindowSeconds > block.timestamp,
+            "take over redemption request window closed");
+        (uint64 closedAMG, ) = Redemptions.closeTickets(newAgent, request.valueAMG, false);
+        require(closedAMG > 0, "no tickets");
+        uint256 executorFeeNatGWei = uint256(request.executorFeeNatGWei) * closedAMG / request.valueAMG;
+        // create redemption request
+        AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
+        uint64 newRedemptionRequestId = _createRedemptionRequest(redemption, request.redeemer,
+            request.redeemerUnderlyingAddressString, true, request.executor, executorFeeNatGWei.toUint64());
+        Redemption.Request storage newRequest = Redemptions.getRedemptionRequest(newRedemptionRequestId);
+        newRequest.takeOverTimestamp = block.timestamp.toUint64();
+        if (request.valueAMG > closedAMG) {
+            // update old request
+            request.valueAMG -= closedAMG;
+            request.executorFeeNatGWei -= executorFeeNatGWei.toUint64();
+            uint128 redeemedValueUBA = Conversion.convertAmgToUBA(request.valueAMG).toUint128();
+            request.underlyingValueUBA = redeemedValueUBA;
+            request.underlyingFeeUBA = redeemedValueUBA.mulBips(Globals.getSettings().redemptionFeeBIPS).toUint128();
+        } else {
+            // delete old request
+            Redemptions.deleteRedemptionRequest(_redemptionRequestId);
+        }
+        Agents.createRedemptionTicket(oldAgent, closedAMG);
+    }
+
     function selfClose(
         address _agentVault,
         uint256 _amountUBA
@@ -124,7 +197,7 @@ library RedemptionRequests {
         returns (uint256)
     {
         Agent.State storage agent = Agent.get(_agentVault);
-        Agents.requireAgentVaultOwner(_agentVault);
+        Agents.requireAgentVaultOwner(agent);
         require(_amountUBA != 0, "self close of 0");
         uint64 amountAMG = Conversion.convertUBAToAmg(_amountUBA);
         (, uint256 closedUBA) = Redemptions.closeTickets(agent, amountAMG, true);
@@ -146,7 +219,7 @@ library RedemptionRequests {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage agent = Agent.get(request.agentVault);
         // only owner can call
-        require(Agents.isOwner(agent, msg.sender), "only agent vault owner");
+        Agents.requireAgentVaultOwner(agent);
         // check proof
         TransactionAttestation.verifyAddressValidity(_proof);
         // the actual redeemer's address must be validated
@@ -217,13 +290,14 @@ library RedemptionRequests {
         uint64 _executorFeeNatGWei
     )
         private
+        returns (uint64 _requestId)
     {
         AssetManagerState.State storage state = AssetManagerState.get();
         // validate redemption address
         bytes32 underlyingAddressHash = keccak256(bytes(_redeemerUnderlyingAddressString));
         // create request
         uint128 redeemedValueUBA = Conversion.convertAmgToUBA(_data.valueAMG).toUint128();
-        uint64 requestId = _newRequestId(_poolSelfClose);
+        _requestId = _newRequestId(_poolSelfClose);
         // create in-memory request and then put it to storage to not go out-of-stack
         Redemption.Request memory request;
         request.redeemerUnderlyingAddressHash = underlyingAddressHash;
@@ -239,12 +313,13 @@ library RedemptionRequests {
         request.poolSelfClose = _poolSelfClose;
         request.executor = _executor;
         request.executorFeeNatGWei = _executorFeeNatGWei;
-        state.redemptionRequests[requestId] = request;
+        request.redeemerUnderlyingAddressString = _redeemerUnderlyingAddressString;
+        state.redemptionRequests[_requestId] = request;
         // decrease mintedAMG and mark it to redeemingAMG
         // do not add it to freeBalance yet (only after failed redemption payment)
         Agents.startRedeemingAssets(Agent.get(_data.agentVault), _data.valueAMG, _poolSelfClose);
         // emit event to remind agent to pay
-        _emitRedemptionRequestedEvent(request, requestId, _redeemerUnderlyingAddressString);
+        _emitRedemptionRequestedEvent(request, _requestId, _redeemerUnderlyingAddressString);
     }
 
     function _emitRedemptionRequestedEvent(

@@ -27,6 +27,7 @@ library RedemptionConfirmations {
         bool isAgent = Agents.isOwner(agent, msg.sender);
         require(isAgent || _othersCanConfirmPayment(agent, request, _payment),
             "only agent vault owner");
+        require(request.rejectionTimestamp == 0, "rejected redemption cannot be confirmed");
         // verify transaction
         TransactionAttestation.verifyPayment(_payment);
         // payment reference must match

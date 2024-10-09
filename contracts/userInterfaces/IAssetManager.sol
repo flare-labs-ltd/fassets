@@ -685,8 +685,30 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
         returns (uint256 _redeemedAmountUBA);
 
     /**
+     * In case agent requires identity verification the redemption request can be rejected by the agent.
+     * Any other agent can take over the redemption request.
+     * If no agent takes over the redemption, the redeemer can request the default payment.
+     * NOTE: may only be called by the owner of the agent vault in the redemption request
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function rejectRedemptionRequest(
+        uint256 _redemptionRequestId
+    ) external;
+
+    /**
+     * The agent can take over the rejected redemption request - it cannot be rejected again.
+     * NOTE: may only be called by the owner of the agent vault
+     * @param _agentVault agent vault address
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function takeOverRedemptionRequest(
+        address _agentVault,
+        uint256 _redemptionRequestId
+    ) external;
+
+    /**
      * If the redeemer provides invalid address, the agent should provide the proof of address invalidity
-     * from the state connector. With this, the agent's obligations are fulfiled and they can keep the underlying.
+     * from the state connector. With this, the agent's obligations are fulfilled and they can keep the underlying.
      * NOTE: may only be called by the owner of the agent vault in the redemption request
      * NOTE: also checks that redeemer's address is normalized, so the redeemer must normalize their address,
      *   otherwise it will be rejected!
@@ -731,6 +753,20 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      */
     function redemptionPaymentDefault(
         ReferencedPaymentNonexistence.Proof calldata _proof,
+        uint256 _redemptionRequestId
+    ) external;
+
+    /**
+     * If the agent rejected the redemption request and no other agent took over the redemption,
+     * the redeemer calls this method and receives payment in collateral (with some extra).
+     * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
+     * remaining collateral.
+     * NOTE: may only be called by the redeemer (= creator of the redemption request),
+     *   the executor appointed by the redeemer,
+     *   or the agent owner (= owner of the agent vault in the redemption request)
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function rejectedRedemptionPaymentDefault(
         uint256 _redemptionRequestId
     ) external;
 

@@ -192,6 +192,10 @@ export function createAssetManagerSettings(contracts: FAssetContractStore, param
         maxEmergencyPauseDurationSeconds: parameters.maxEmergencyPauseDurationSeconds,
         emergencyPauseDurationResetAfterSeconds: parameters.emergencyPauseDurationResetAfterSeconds,
         cancelCollateralReservationAfterSeconds: parameters.cancelCollateralReservationAfterSeconds,
+        rejectRedemptionRequestWindowSeconds: parameters.rejectRedemptionRequestWindowSeconds,
+        takeOverRedemptionRequestWindowSeconds: parameters.takeOverRedemptionRequestWindowSeconds,
+        rejectedRedemptionDefaultFactorVaultCollateralBIPS: parameters.rejectedRedemptionDefaultFactorVaultCollateralBIPS,
+        rejectedRedemptionDefaultFactorPoolBIPS: parameters.rejectedRedemptionDefaultFactorPoolBIPS,
     };
 }
 

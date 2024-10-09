@@ -198,6 +198,14 @@ library AMEvents {
         uint256 executorFeeNatWei);
 
     /**
+     * Agent rejected the redemption request because of the redeemer's identity.
+     */
+    event RedemptionRequestRejected(
+        address indexed agentVault,
+        address indexed redeemer,
+        uint64 indexed requestId);
+
+    /**
      * Agent rejected the redemption payment because the redeemer's address is invalid.
      */
     event RedemptionRejected(
@@ -270,7 +278,7 @@ library AMEvents {
 
     /**
      * Due to self-close exit, some of the agent's backed fAssets were redeemed,
-     * but the redemption was immediatelly paid in collateral so no redemption process is started.
+     * but the redemption was immediately paid in collateral so no redemption process is started.
      */
     event RedeemedInCollateral(
         address indexed agentVault,

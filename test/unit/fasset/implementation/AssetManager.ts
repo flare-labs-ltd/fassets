@@ -437,10 +437,10 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         });
 
         it("should correctly update agent setting identity verification type", async () => {
-            const agentPoolTopupPriceFactorChangeTimelock = (await assetManager.getSettings()).poolExitAndTopupChangeTimelockSeconds;
+            const agentFeeChangeTimelockSeconds = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
             await assetManager.announceAgentSettingUpdate(agentVault.address, "identityVerificationType", 1, { from: agentOwner1 });
-            await time.increase(agentPoolTopupPriceFactorChangeTimelock);
+            await time.increase(agentFeeChangeTimelockSeconds);
             await assetManager.executeAgentSettingUpdate(agentVault.address, "identityVerificationType", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             assert.equal(agentInfo.identityVerificationType.toString(), "1");

@@ -104,6 +104,12 @@ library SettingsUpdater {
         keccak256("setEmergencyPauseParameters(uint256,uint256)");
     bytes32 internal constant SET_CANCEL_COLLATERAL_RESERVATION_AFTER_SECONDS =
         keccak256("setCancelCollateralReservationAfterSeconds(uint256)");
+    bytes32 internal constant SET_REJECT_REDEMPTION_REQUEST_WINDOW_SECONDS =
+        keccak256("setRejectRedemptionRequestWindowSeconds(uint256)");
+    bytes32 internal constant SET_TAKE_OVER_REDEMPTION_REQUEST_WINDOW_SECONDS =
+        keccak256("setTakeOverRedemptionRequestWindowSeconds(uint256)");
+    bytes32 internal constant SET_REJECTED_REDEMPTION_DEFAULT_FACTOR_BIPS =
+        keccak256("setRejectedRedemptionDefaultFactorBips(uint256,uint256)");
 
     function callUpdate(
         bytes32 _method,
@@ -236,6 +242,15 @@ library SettingsUpdater {
         } else if (_method == SET_CANCEL_COLLATERAL_RESERVATION_AFTER_SECONDS) {
             checkEnoughTimeSinceLastUpdate(_method);
             _setCancelCollateralReservationAfterSeconds(_params);
+        } else if (_method == SET_REJECT_REDEMPTION_REQUEST_WINDOW_SECONDS) {
+            checkEnoughTimeSinceLastUpdate(_method);
+            _setRejectRedemptionRequestWindowSeconds(_params);
+        } else if (_method == SET_TAKE_OVER_REDEMPTION_REQUEST_WINDOW_SECONDS) {
+            checkEnoughTimeSinceLastUpdate(_method);
+            _setTakeOverRedemptionRequestWindowSeconds(_params);
+        } else if (_method == SET_REJECTED_REDEMPTION_DEFAULT_FACTOR_BIPS) {
+            checkEnoughTimeSinceLastUpdate(_method);
+            _setRejectedRedemptionDefaultFactorBips(_params);
         } else {
             revert("update: invalid method");
         }
@@ -571,9 +586,10 @@ library SettingsUpdater {
         (uint256 vaultF, uint256 poolF) = abi.decode(_params, (uint256, uint256));
         // validate
         require(vaultF + poolF > SafePct.MAX_BIPS, "bips value too low");
-        require(vaultF <= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(12000), "fee increase too big");
+        require(vaultF <= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(12000) + 1000,
+            "fee increase too big");
         require(vaultF >= settings.redemptionDefaultFactorVaultCollateralBIPS.mulBips(8333), "fee decrease too big");
-        require(poolF <= settings.redemptionDefaultFactorPoolBIPS.mulBips(12000), "fee increase too big");
+        require(poolF <= settings.redemptionDefaultFactorPoolBIPS.mulBips(12000) + 1000, "fee increase too big");
         require(poolF >= settings.redemptionDefaultFactorPoolBIPS.mulBips(8333), "fee decrease too big");
         // update
         settings.redemptionDefaultFactorVaultCollateralBIPS = vaultF.toUint32();
@@ -914,9 +930,73 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
-        require(value > 0, "value too small");
+        require(value > 0, "cannot be zero");
+        require(value <= settings.cancelCollateralReservationAfterSeconds * 4 + 1 minutes,
+            "increase too big");
+        require(value >= settings.cancelCollateralReservationAfterSeconds / 4,
+            "decrease too big");
         // update
         settings.cancelCollateralReservationAfterSeconds = value.toUint64();
         emit AMEvents.SettingChanged("cancelCollateralReservationAfterSeconds", value);
+    }
+
+    function _setRejectRedemptionRequestWindowSeconds(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value > 0, "cannot be zero");
+        require(value <= settings.rejectRedemptionRequestWindowSeconds * 4 + 1 minutes,
+            "increase too big");
+        require(value >= settings.rejectRedemptionRequestWindowSeconds / 4,
+            "decrease too big");
+        // update
+        settings.rejectRedemptionRequestWindowSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("rejectRedemptionRequestWindowSeconds", value);
+    }
+
+    function _setTakeOverRedemptionRequestWindowSeconds(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        uint256 value = abi.decode(_params, (uint256));
+        // validate
+        require(value >= 0, "cannot be zero");
+        require(value <= settings.takeOverRedemptionRequestWindowSeconds * 4 + 1 minutes,
+            "increase too big");
+        require(value >= settings.takeOverRedemptionRequestWindowSeconds / 4,
+            "decrease too big");
+        // update
+        settings.takeOverRedemptionRequestWindowSeconds = value.toUint64();
+        emit AMEvents.SettingChanged("takeOverRedemptionRequestWindowSeconds", value);
+    }
+
+    function _setRejectedRedemptionDefaultFactorBips(
+        bytes calldata _params
+    )
+        private
+    {
+        AssetManagerSettings.Data storage settings = Globals.getSettings();
+        (uint256 vaultF, uint256 poolF) = abi.decode(_params, (uint256, uint256));
+        // validate
+        require(vaultF + poolF > SafePct.MAX_BIPS, "bips value too low");
+        require(vaultF <= settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS.mulBips(12000) + 1000,
+            "fee increase too big");
+        require(vaultF >= settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS.mulBips(8333),
+            "fee decrease too big");
+        require(poolF <= settings.rejectedRedemptionDefaultFactorPoolBIPS.mulBips(12000) + 1000,
+            "fee increase too big");
+        require(poolF >= settings.rejectedRedemptionDefaultFactorPoolBIPS.mulBips(8333),
+            "fee decrease too big");
+        // update
+        settings.rejectedRedemptionDefaultFactorVaultCollateralBIPS = vaultF.toUint32();
+        emit AMEvents.SettingChanged("rejectedRedemptionDefaultFactorVaultCollateralBIPS", vaultF);
+        settings.rejectedRedemptionDefaultFactorPoolBIPS = poolF.toUint32();
+        emit AMEvents.SettingChanged("rejectedRedemptionDefaultFactorPoolBIPS", poolF);
     }
 }

@@ -496,10 +496,10 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
 
         it("should revert redemption default factor bips", async () => {
             const currentSettings = await assetManager.getSettings();
-            let redemptionDefaultFactorVaultCollateralBIPS_big = toBN(currentSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(12001).divn(10_000);
+            let redemptionDefaultFactorVaultCollateralBIPS_big = toBN(currentSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(12001).divn(10_000).addn(1000);
             let redemptionDefaultFactorVaultCollateralBIPS_low = MAX_BIPS;
             let redemptionDefaultFactorPoolBIPS = toBN(currentSettings.redemptionDefaultFactorPoolBIPS);
-            let redemptionDefaultFactorAgentPool_big = toBN(currentSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(12001).divn(10_000);
+            let redemptionDefaultFactorAgentPool_big = toBN(currentSettings.redemptionDefaultFactorVaultCollateralBIPS).muln(12001).divn(10_000).addn(1000);
             let redemptionDefaultFactorAgentPool_low = 100;
             let redemptionDefaultFactorBIPS_new = 1_3000;
 

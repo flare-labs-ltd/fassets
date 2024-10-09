@@ -4,7 +4,7 @@ import { ChainInfo } from "../../lib/fasset/ChainInfo";
 import { PaymentReference } from "../../lib/fasset/PaymentReference";
 import { AttestationHelper } from "../../lib/underlying-chain/AttestationHelper";
 import { findRequiredEvent } from "../../lib/utils/events/truffle";
-import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBN, toBNExp } from "../../lib/utils/helpers";
+import { DAYS, HOURS, MAX_BIPS, MINUTES, toBIPS, toBNExp } from "../../lib/utils/helpers";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
 import {
     AddressUpdaterInstance,
@@ -118,6 +118,10 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         emergencyPauseDurationResetAfterSeconds: 7 * DAYS,
         redemptionPaymentExtensionSeconds: 10,
         cancelCollateralReservationAfterSeconds: 30,
+        rejectRedemptionRequestWindowSeconds: 120,
+        takeOverRedemptionRequestWindowSeconds: 120,
+        rejectedRedemptionDefaultFactorVaultCollateralBIPS: toBIPS(1.05),
+        rejectedRedemptionDefaultFactorPoolBIPS: toBIPS(0.05),
     };
     return Object.assign(result, options ?? {});
 }
@@ -187,7 +191,7 @@ export function createTestAgentSettings(vaultCollateralTokenAddress: string, opt
         buyFAssetByAgentFactorBIPS: toBIPS(0.9),
         poolTopupCollateralRatioBIPS: toBIPS(2.1),
         poolTopupTokenPriceFactorBIPS: toBIPS(0.8),
-        identityVerificationType: toBN(0),
+        identityVerificationType: 0,
     };
     return { ...defaults, ...(options ?? {}) };
 }

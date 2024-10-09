@@ -1,3 +1,5 @@
+import { int } from "hardhat/internal/core/params/argumentTypes";
+
 // Mapped to integer in JSON schema.
 type integer = number;
 
@@ -484,8 +486,37 @@ export interface AssetManagerParameters {
     emergencyPauseDurationResetAfterSeconds: integer;
 
     /**
-     * The amount of time since last emergency pause after which the total pause duration counter
-     * will reset automatically.
+     * The amount of time after which the collateral reservation can be cancelled if the
+     * identity verification is not completed.
+     * @minimum 1
      */
     cancelCollateralReservationAfterSeconds: integer;
+
+    /**
+     * Time window inside which the agent can reject the redemption request.
+     * @minimum 1
+     */
+    rejectRedemptionRequestWindowSeconds: integer;
+
+    /**
+     * Time window inside which the agent can take over the redemption request from another agent
+     * that has rejected it.
+     * @minimum 1
+     */
+    takeOverRedemptionRequestWindowSeconds: integer;
+
+    /**
+     * On redemption rejection, without take over, redeemer is compensated with
+     * redemption value recalculated in flare/sgb times redemption failure factor.
+     * Expressed in BIPS, e.g. 12000 for factor of 1.2.
+     * This is the part of factor paid from agent's vault collateral.
+     * @minimum 0
+     */
+    rejectedRedemptionDefaultFactorVaultCollateralBIPS: integer;
+
+    /**
+     * This is the part of rejected redemption factor paid from agent's pool collateral.
+     * @minimum 0
+     */
+    rejectedRedemptionDefaultFactorPoolBIPS: integer;
 }

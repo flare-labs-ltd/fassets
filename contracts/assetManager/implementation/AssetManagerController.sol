@@ -430,6 +430,40 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_CANCEL_COLLATERAL_RESERVATION_AFTER_SECONDS, abi.encode(_value));
     }
 
+    function setRejectRedemptionRequestWindowSeconds(
+        IIAssetManager[] memory _assetManagers,
+        uint256 _value
+    )
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_REJECT_REDEMPTION_REQUEST_WINDOW_SECONDS, abi.encode(_value));
+    }
+
+    function setTakeOverRedemptionRequestWindowSeconds(
+        IIAssetManager[] memory _assetManagers,
+        uint256 _value
+    )
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_TAKE_OVER_REDEMPTION_REQUEST_WINDOW_SECONDS, abi.encode(_value));
+    }
+
+    function setRejectedRedemptionDefaultFactorBips(
+        IIAssetManager[] memory _assetManagers,
+        uint256 _vaultF,
+        uint256 _poolF
+    )
+        external
+        onlyImmediateGovernance
+    {
+        _setValueOnManagers(_assetManagers,
+            SettingsUpdater.SET_REJECTED_REDEMPTION_DEFAULT_FACTOR_BIPS, abi.encode(_vaultF, _poolF));
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Collateral tokens
 

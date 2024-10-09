@@ -108,7 +108,8 @@ library AgentSettingsUpdater {
 
     function _getTimelock(bytes32 _hash) private view returns (uint64) {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        if (_hash == FEE_BIPS || _hash == POOL_FEE_SHARE_BIPS || _hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS) {
+        if (_hash == FEE_BIPS || _hash == POOL_FEE_SHARE_BIPS ||
+            _hash == BUY_FASSET_BY_AGENT_FACTOR_BIPS || _hash == IDENTITY_VERIFICATION_TYPE) {
             return settings.agentFeeChangeTimelockSeconds;
         } else if (_hash == MINTING_VAULT_COLLATERAL_RATIO_BIPS || _hash == MINTING_POOL_COLLATERAL_RATIO_BIPS) {
             return settings.agentMintingCRChangeTimelockSeconds;

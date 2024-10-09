@@ -30,6 +30,24 @@ contract RedemptionDefaultsFacet is AssetManagerBase {
     }
 
     /**
+     * If the agent rejected the redemption request and no other agent took over the redemption,
+     * the redeemer calls this method and receives payment in collateral (with some extra).
+     * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
+     * remaining collateral.
+     * NOTE: may only be called by the redeemer (= creator of the redemption request),
+     *   the executor appointed by the redeemer,
+     *   or the agent owner (= owner of the agent vault in the redemption request)
+     * @param _redemptionRequestId id of an existing redemption request
+     */
+    function rejectedRedemptionPaymentDefault(
+        uint256 _redemptionRequestId
+    )
+        external
+    {
+        RedemptionFailures.rejectedRedemptionPaymentDefault(_redemptionRequestId.toUint64());
+    }
+
+    /**
      * If the agent hasn't performed the payment, the agent can close the redemption request to free underlying funds.
      * It can be done immediately after the redeemer or agent calls redemptionPaymentDefault,
      * or this method can trigger the default payment without proof, but only after enough time has passed so that

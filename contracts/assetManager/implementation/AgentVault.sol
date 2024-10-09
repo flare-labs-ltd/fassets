@@ -14,7 +14,7 @@ import "../interfaces/IIAssetManager.sol";
 contract AgentVault is ReentrancyGuard, IIAgentVault, IERC165 {
     using SafeERC20 for IERC20;
 
-    IIAssetManager public assetManager; // practicaly immutable
+    IIAssetManager public assetManager; // practically immutable
 
     bool private initialized;
 

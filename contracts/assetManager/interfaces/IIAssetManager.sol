@@ -152,7 +152,7 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
     /**
      * To avoid unlimited work, the maximum number of redemption tickets closed in redemption, self close
      * or liquidation is limited. This means that a single redemption/self close/liquidation is limited.
-     * This function calculates the maximum single rededemption amount.
+     * This function calculates the maximum single redemption amount.
      */
     function maxRedemptionFromAgent(address _agentVault)
         external view
@@ -182,7 +182,7 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
     ) external;
 
     ////////////////////////////////////////////////////////////////////////////////////
-    // View functions used internally by agent valt and collateral pool.
+    // View functions used internally by agent vault and collateral pool.
 
     /**
      * Get current WNat contract set in the asset manager.
@@ -222,7 +222,7 @@ interface IIAssetManager is IAssetManager, IGoverned, IDiamondCut {
 
     /**
      * Check if `_token` is either vault collateral token for `_agentVault` or the pool token.
-     * These types of tokens cannot be simply transfered from the agent vault, but can only be
+     * These types of tokens cannot be simply transferred from the agent vault, but can only be
      * withdrawn after announcement if they are not backing any f-assets.
      * Used internally by agent vault.
      */

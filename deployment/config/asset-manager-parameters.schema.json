@@ -143,7 +143,8 @@
             "type": "integer"
         },
         "cancelCollateralReservationAfterSeconds": {
-            "description": "The amount of time since last emergency pause after which the total pause duration counter\nwill reset automatically.",
+            "description": "The amount of time after which the collateral reservation can be cancelled if the\nidentity verification is not completed.",
+            "minimum": 1,
             "type": "integer"
         },
         "ccbTimeSeconds": {
@@ -308,6 +309,21 @@
             "description": "When there are many redemption requests in short time, agent gets\nup to this amount of extra payment time per redemeption.",
             "type": "integer"
         },
+        "rejectRedemptionRequestWindowSeconds": {
+            "description": "Time window inside which the agent can reject the redemption request.",
+            "minimum": 1,
+            "type": "integer"
+        },
+        "rejectedRedemptionDefaultFactorPoolBIPS": {
+            "description": "This is the part of rejected redemption factor paid from agent's pool collateral.",
+            "minimum": 0,
+            "type": "integer"
+        },
+        "rejectedRedemptionDefaultFactorVaultCollateralBIPS": {
+            "description": "On redemption rejection, without take over, redeemer is compensated with\nredemption value recalculated in flare/sgb times redemption failure factor.\nExpressed in BIPS, e.g. 12000 for factor of 1.2.\nThis is the part of factor paid from agent's vault collateral.",
+            "minimum": 0,
+            "type": "integer"
+        },
         "requireEOAAddressProof": {
             "description": "For some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address.\nThis must be done by presenting a payment proof from that address.",
             "type": "boolean"
@@ -316,6 +332,11 @@
             "description": "The proof verifier contract for state connector prrofs.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'SCProofVerifier' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
+        },
+        "takeOverRedemptionRequestWindowSeconds": {
+            "description": "Time window inside which the agent can take over the redemption request from another agent\nthat has rejected it.",
+            "minimum": 1,
+            "type": "integer"
         },
         "tokenInvalidationTimeMinSeconds": {
             "description": "Minimum time from the moment token is deprecated to when it becomes invalid and agents still using\nit as vault collateral get liquidated.",
@@ -403,7 +424,11 @@
         "redemptionDefaultFactorVaultCollateralBIPS",
         "redemptionFeeBIPS",
         "redemptionPaymentExtensionSeconds",
+        "rejectRedemptionRequestWindowSeconds",
+        "rejectedRedemptionDefaultFactorPoolBIPS",
+        "rejectedRedemptionDefaultFactorVaultCollateralBIPS",
         "requireEOAAddressProof",
+        "takeOverRedemptionRequestWindowSeconds",
         "tokenInvalidationTimeMinSeconds",
         "underlyingBlocksForPayment",
         "underlyingSecondsForPayment",
