@@ -224,7 +224,7 @@ export class TrackedState {
                 poolExitCollateralRatioBIPS: agentInfo.poolExitCollateralRatioBIPS,
                 poolTopupCollateralRatioBIPS: agentInfo.poolTopupCollateralRatioBIPS,
                 poolTopupTokenPriceFactorBIPS: agentInfo.poolTopupTokenPriceFactorBIPS,
-                identityVerificationType: agentInfo.identityVerificationType,
+                handShakeType: agentInfo.handShakeType,
             }
         });
         agent.initializeState(agentInfo);

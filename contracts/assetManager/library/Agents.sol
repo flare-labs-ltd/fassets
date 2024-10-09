@@ -106,13 +106,13 @@ library Agents {
         _agent.collateralPool.setTopupTokenPriceFactorBIPS(_poolTopupTokenPriceFactorBIPS);
     }
 
-    function setIdentityVerificationType(
+    function setHandShakeType(
         Agent.State storage _agent,
-        uint256 _identityVerificationType
+        uint256 _handShakeType
     )
         internal
     {
-        _agent.identityVerificationType = _identityVerificationType.toUint32();
+        _agent.handShakeType = _handShakeType.toUint32();
     }
 
     function allocateMintedAssets(

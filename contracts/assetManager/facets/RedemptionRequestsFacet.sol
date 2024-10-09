@@ -26,7 +26,7 @@ contract RedemptionRequestsFacet is AssetManagerBase {
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
-     * @return _redeemedAmountUBA the actual redeemed amount; may be less then requested if there are not enough
+     * @return _redeemedAmountUBA the actual redeemed amount; may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function redeem(
@@ -77,7 +77,7 @@ contract RedemptionRequestsFacet is AssetManagerBase {
     }
 
     /**
-     * In case agent requires identity verification the redemption request can be rejected by the agent.
+     * In case the agent requires hand-shake, the redemption request can be rejected by the agent.
      * Any other agent can take over the redemption request.
      * If no agent takes over the redemption, the redeemer can request the default payment.
      * NOTE: may only be called by the owner of the agent vault in the redemption request
@@ -146,7 +146,7 @@ contract RedemptionRequestsFacet is AssetManagerBase {
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _amountUBA amount of f-assets to self-close
-     * @return _closedAmountUBA the actual self-closed amount, may be less then requested if there are not enough
+     * @return _closedAmountUBA the actual self-closed amount, may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function selfClose(

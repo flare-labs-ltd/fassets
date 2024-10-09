@@ -527,10 +527,10 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * Before paying underlying assets for minting, minter has to reserve collateral and
      * pay collateral reservation fee. Collateral is reserved at ratio of agent's agentMinCollateralRatio
      * to requested lots NAT market price.
-     * If agent requires identity verification then IdentityVerificationRequired event is emitted and
+     * If the agent requires hand-shake, then HandShakeRequired event is emitted and
      * the minter has to wait for the agent to approve or reject the reservation. If there is no response within
      * the `cancelCollateralReservationAfterSeconds`, the minter can cancel the reservation and get the fee back.
-     * If identity verification is not required the minter receives instructions for underlying payment
+     * If hand-shake is not required, the minter receives instructions for underlying payment
      * (value, fee and payment reference) in event CollateralReserved.
      * Then the minter has to pay `value + fee` on the underlying chain.
      * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains
@@ -674,7 +674,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * @param _lots number of lots to redeem
      * @param _redeemerUnderlyingAddressString the address to which the agent must transfer underlying amount
      * @param _executor the account that is allowed to execute redemption default (besides redeemer and agent)
-     * @return _redeemedAmountUBA the actual redeemed amount; may be less then requested if there are not enough
+     * @return _redeemedAmountUBA the actual redeemed amount; may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function redeem(
@@ -685,7 +685,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
         returns (uint256 _redeemedAmountUBA);
 
     /**
-     * In case agent requires identity verification the redemption request can be rejected by the agent.
+     * In case agent requires hand-shake the redemption request can be rejected by the agent.
      * Any other agent can take over the redemption request.
      * If no agent takes over the redemption, the redeemer can request the default payment.
      * NOTE: may only be called by the owner of the agent vault in the redemption request
@@ -792,7 +792,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * NOTE: may only be called by the agent vault owner.
      * @param _agentVault agent vault address
      * @param _amountUBA amount of f-assets to self-close
-     * @return _closedAmountUBA the actual self-closed amount, may be less then requested if there are not enough
+     * @return _closedAmountUBA the actual self-closed amount, may be less than requested if there are not enough
      *      redemption tickets available or the maximum redemption ticket limit is reached
      */
     function selfClose(

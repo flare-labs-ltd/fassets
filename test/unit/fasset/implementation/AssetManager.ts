@@ -436,14 +436,14 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             assert.equal(agentInfo.poolTopupTokenPriceFactorBIPS.toString(), "9000");
         });
 
-        it("should correctly update agent setting identity verification type", async () => {
+        it("should correctly update agent setting hand-shake type", async () => {
             const agentFeeChangeTimelockSeconds = (await assetManager.getSettings()).agentFeeChangeTimelockSeconds;
             const agentVault = await createAgentVaultWithEOA(agentOwner1, underlyingAgent1);
-            await assetManager.announceAgentSettingUpdate(agentVault.address, "identityVerificationType", 1, { from: agentOwner1 });
+            await assetManager.announceAgentSettingUpdate(agentVault.address, "handShakeType", 1, { from: agentOwner1 });
             await time.increase(agentFeeChangeTimelockSeconds);
-            await assetManager.executeAgentSettingUpdate(agentVault.address, "identityVerificationType", { from: agentOwner1 });
+            await assetManager.executeAgentSettingUpdate(agentVault.address, "handShakeType", { from: agentOwner1 });
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-            assert.equal(agentInfo.identityVerificationType.toString(), "1");
+            assert.equal(agentInfo.handShakeType.toString(), "1");
         });
     });
 

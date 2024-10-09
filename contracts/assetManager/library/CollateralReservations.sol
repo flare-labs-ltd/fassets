@@ -58,9 +58,9 @@ library CollateralReservations {
         cr.executor = _executor;
         cr.executorFeeNatGWei = ((msg.value - reservationFee) / Conversion.GWEI).toUint64();
 
-        if (agent.identityVerificationType != 0) {
-            cr.identityVerificationStartTimestamp = block.timestamp.toUint64();
-            _emitIdentityVerificationRequiredEvent(agent, cr, crtId);
+        if (agent.handShakeType != 0) {
+            cr.handShakeStartTimestamp = block.timestamp.toUint64();
+            _emitHandShakeRequiredEvent(agent, cr, crtId);
         } else {
             (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
             cr.firstUnderlyingBlock = state.currentUnderlyingBlock;
@@ -79,8 +79,8 @@ library CollateralReservations {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
-        require(crt.identityVerificationStartTimestamp != 0, "identity verification not required");
-        crt.identityVerificationStartTimestamp = 0;
+        require(crt.handShakeStartTimestamp != 0, "hand-shake not required");
+        crt.handShakeStartTimestamp = 0;
         (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
         AssetManagerState.State storage state = AssetManagerState.get();
         crt.firstUnderlyingBlock = state.currentUnderlyingBlock;
@@ -97,8 +97,8 @@ library CollateralReservations {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
-        require(crt.identityVerificationStartTimestamp != 0,
-            "identity verification not required or collateral reservation already approved");
+        require(crt.handShakeStartTimestamp != 0,
+            "hand-shake not required or collateral reservation already approved");
         _rejectOrCancelCollateralReservation(crt, _crtId);
     }
 
@@ -109,9 +109,9 @@ library CollateralReservations {
     {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         require(crt.minter == msg.sender, "only minter");
-        require(crt.identityVerificationStartTimestamp != 0, "collateral reservation already approved");
+        require(crt.handShakeStartTimestamp != 0, "collateral reservation already approved");
         AssetManagerSettings.Data storage settings = Globals.getSettings();
-        require(crt.identityVerificationStartTimestamp + settings.cancelCollateralReservationAfterSeconds <
+        require(crt.handShakeStartTimestamp + settings.cancelCollateralReservationAfterSeconds <
             block.timestamp, "collateral reservation cancellation too early");
         _rejectOrCancelCollateralReservation(crt, _crtId);
     }
@@ -123,7 +123,7 @@ library CollateralReservations {
         internal
     {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
-        require(crt.identityVerificationStartTimestamp == 0, "collateral reservation not approved");
+        require(crt.handShakeStartTimestamp == 0, "collateral reservation not approved");
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
         // check requirements
@@ -158,7 +158,7 @@ library CollateralReservations {
     {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
-        require(crt.identityVerificationStartTimestamp == 0, "collateral reservation not approved");
+        require(crt.handShakeStartTimestamp == 0, "collateral reservation not approved");
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
         // verify proof
@@ -234,14 +234,14 @@ library CollateralReservations {
         state.totalReservedCollateralAMG += reservationAMG;
     }
 
-    function _emitIdentityVerificationRequiredEvent(
+    function _emitHandShakeRequiredEvent(
         Agent.State storage _agent,
         CollateralReservation.Data memory _cr,
         uint64 _crtId
     )
         private
     {
-        emit AMEvents.IdentityVerificationRequired(
+        emit AMEvents.HandShakeRequired(
             _agent.vaultAddress(),
             _cr.minter,
             _crtId,

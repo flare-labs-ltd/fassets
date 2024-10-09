@@ -26,7 +26,7 @@ library Minting {
         internal
     {
         CollateralReservation.Data storage crt = CollateralReservations.getCollateralReservation(_crtId);
-        require(crt.identityVerificationStartTimestamp == 0, "collateral reservation not approved");
+        require(crt.handShakeStartTimestamp == 0, "collateral reservation not approved");
         Agent.State storage agent = Agent.get(crt.agentVault);
         // verify transaction
         TransactionAttestation.verifyPaymentSuccess(_payment);

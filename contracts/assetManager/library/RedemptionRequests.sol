@@ -126,8 +126,8 @@ library RedemptionRequests {
         Agent.State storage agent = Agent.get(request.agentVault);
         // only owner can call
         Agents.requireAgentVaultOwner(agent);
-        // only if identity verification is enabled
-        require(agent.identityVerificationType != 0, "identity verification disabled");
+        // only if hand-shake is enabled
+        require(agent.handShakeType != 0, "hand-shake disabled");
         require(request.status == Redemption.Status.ACTIVE, "not active");
         require(request.rejectionTimestamp == 0, "already rejected");
         require(request.takeOverTimestamp == 0, "already taken over");
@@ -166,15 +166,20 @@ library RedemptionRequests {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(request.rejectionTimestamp + settings.takeOverRedemptionRequestWindowSeconds > block.timestamp,
             "take over redemption request window closed");
-        (uint64 closedAMG, ) = Redemptions.closeTickets(newAgent, request.valueAMG, false);
+        (uint64 closedAMG, uint256 closedUBA) = Redemptions.closeTickets(newAgent, request.valueAMG, false);
         require(closedAMG > 0, "no tickets");
         uint256 executorFeeNatGWei = uint256(request.executorFeeNatGWei) * closedAMG / request.valueAMG;
         // create redemption request
         AgentRedemptionData memory redemption = AgentRedemptionData(_agentVault, closedAMG);
         uint64 newRedemptionRequestId = _createRedemptionRequest(redemption, request.redeemer,
-            request.redeemerUnderlyingAddressString, true, request.executor, executorFeeNatGWei.toUint64());
+            request.redeemerUnderlyingAddressString, false, request.executor, executorFeeNatGWei.toUint64());
+        // emit event
+        emit AMEvents.RedemptionRequestTakenOver(request.agentVault, request.redeemer, _redemptionRequestId,
+            closedUBA, _agentVault, newRedemptionRequestId);
+        // set the take over timestamp, so that new request cannot be rejected again
         Redemption.Request storage newRequest = Redemptions.getRedemptionRequest(newRedemptionRequestId);
         newRequest.takeOverTimestamp = block.timestamp.toUint64();
+        // update old request or delete it
         if (request.valueAMG > closedAMG) {
             // update old request
             request.valueAMG -= closedAMG;

@@ -15,10 +15,10 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
      * Before paying underlying assets for minting, minter has to reserve collateral and
      * pay collateral reservation fee. Collateral is reserved at ratio of agent's agentMinCollateralRatio
      * to requested lots NAT market price.
-     * If agent requires identity verification then IdentityVerificationRequired event is emitted and
+     * If the agent requires hand-shake, then HandShakeRequired event is emitted and
      * the minter has to wait for the agent to approve or reject the reservation. If there is no response within
      * the `cancelCollateralReservationAfterSeconds`, the minter can cancel the reservation and get the fee back.
-     * If identity verification is not required the minter receives instructions for underlying payment
+     * If hand-shake is not required, the minter receives instructions for underlying payment
      * (value, fee and payment reference) in event CollateralReserved.
      * Then the minter has to pay `value + fee` on the underlying chain.
      * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains

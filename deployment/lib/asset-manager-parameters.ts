@@ -487,7 +487,7 @@ export interface AssetManagerParameters {
 
     /**
      * The amount of time after which the collateral reservation can be cancelled if the
-     * identity verification is not completed.
+     * hand-shake is not completed.
      * @minimum 1
      */
     cancelCollateralReservationAfterSeconds: integer;

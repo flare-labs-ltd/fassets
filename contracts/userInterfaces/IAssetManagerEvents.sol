@@ -20,7 +20,7 @@ interface IAssetManagerEvents {
         uint256 poolExitCollateralRatioBIPS;
         uint256 poolTopupCollateralRatioBIPS;
         uint256 poolTopupTokenPriceFactorBIPS;
-        uint256 identityVerificationType;
+        uint256 handShakeType;
     }
 
     /**
@@ -119,7 +119,7 @@ interface IAssetManagerEvents {
      * Minter reserved collateral, paid the reservation fee. Agent's collateral was reserved.
      * Agent needs to approve or reject the reservation according to the minter's identity.
      */
-    event IdentityVerificationRequired(
+    event HandShakeRequired(
         address indexed agentVault,
         address indexed minter,
         uint256 indexed collateralReservationId,
@@ -204,6 +204,17 @@ interface IAssetManagerEvents {
         address indexed agentVault,
         address indexed redeemer,
         uint64 indexed requestId);
+
+    /**
+     * Agent's rejected redemption request was taken over by another agent.
+     */
+    event RedemptionRequestTakenOver(
+        address indexed agentVault,
+        address indexed redeemer,
+        uint64 indexed requestId,
+        uint256 valueTakenOverUBA,
+        address newAgentVault,
+        uint64 newRequestId);
 
     /**
      * Agent rejected the redemption payment because the redeemer's address is invalid.
