@@ -124,6 +124,7 @@ library AvailableAgents {
             (uint256 poolCR,) = AgentCollateral.mintingMinCollateralRatio(agent, Collateral.Kind.POOL);
             _agents[i - _start] = AvailableAgentInfo.Data({
                 agentVault: agentVault,
+                ownerManagementAddress: agent.ownerManagementAddress,
                 feeBIPS: agent.feeBIPS,
                 mintingVaultCollateralRatioBIPS: agentCR,
                 mintingPoolCollateralRatioBIPS: poolCR,

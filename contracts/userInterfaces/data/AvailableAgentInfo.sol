@@ -9,6 +9,9 @@ library AvailableAgentInfo {
         // Agent vault address.
         address agentVault;
 
+        // The management address of the agent vault's owner.
+        address ownerManagementAddress;
+
         // Agent's minting fee in BIPS.
         uint256 feeBIPS;
 

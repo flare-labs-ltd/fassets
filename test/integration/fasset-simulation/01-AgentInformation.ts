@@ -148,6 +148,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const availableAgents2 = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
             assert.equal(availableAgents2[0].length, 1);
             assert.equal(availableAgents2[0][0].agentVault, agent1.agentVault.address);
+            assert.equal(availableAgents2[0][0].ownerManagementAddress, agent1.ownerManagementAddress);
             assertWeb3Equal(availableAgents2[0][0].feeBIPS, 500);
             assertWeb3Equal(availableAgents2[0][0].mintingVaultCollateralRatioBIPS, 1_8000);
             assertWeb3Equal(availableAgents2[0][0].mintingPoolCollateralRatioBIPS, 2_8000);
@@ -159,12 +160,14 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             const availableAgents3 = await context.assetManager.getAvailableAgentsDetailedList(0, 10);
             assert.equal(availableAgents3[0].length, 2);
             assert.equal(availableAgents3[0][0].agentVault, agent1.agentVault.address);
+            assert.equal(availableAgents3[0][0].ownerManagementAddress, agent1.ownerManagementAddress);
             assertWeb3Equal(availableAgents3[0][0].feeBIPS, 500);
             assertWeb3Equal(availableAgents3[0][0].mintingVaultCollateralRatioBIPS, 1_8000);
             assertWeb3Equal(availableAgents3[0][0].mintingPoolCollateralRatioBIPS, 2_8000);
             assertWeb3Equal(availableAgents3[0][0].freeCollateralLots, (await agent1.getAgentCollateral()).freeCollateralLots());
             assertWeb3Equal(availableAgents3[0][0].status, AgentStatus.NORMAL);
             assert.equal(availableAgents3[0][1].agentVault, agent2.agentVault.address);
+            assert.equal(availableAgents3[0][1].ownerManagementAddress, agent2.ownerManagementAddress);
             assertWeb3Equal(availableAgents3[0][1].feeBIPS, 600);
             assertWeb3Equal(availableAgents3[0][1].mintingVaultCollateralRatioBIPS, 1_9000);
             assertWeb3Equal(availableAgents3[0][1].mintingPoolCollateralRatioBIPS, 2_9000);
