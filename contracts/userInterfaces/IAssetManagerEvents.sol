@@ -341,7 +341,9 @@ interface IAssetManagerEvents {
     event LiquidationPerformed(
         address indexed agentVault,
         address indexed liquidator,
-        uint256 valueUBA);
+        uint256 valueUBA,
+        uint256 paidVaultCollateralWei,
+        uint256 paidPoolCollateralWei);
 
     /**
      * Agent exited liquidation state as agent's position was healthy again and not in full liquidation.

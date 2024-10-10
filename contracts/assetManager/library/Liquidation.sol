@@ -86,7 +86,8 @@ library Liquidation {
         // burn liquidated fassets
         Redemptions.burnFAssets(msg.sender, _liquidatedAmountUBA);
         // notify about liquidation
-        emit IAssetManagerEvents.LiquidationPerformed(_agentVault, msg.sender, _liquidatedAmountUBA);
+        emit IAssetManagerEvents.LiquidationPerformed(_agentVault, msg.sender,
+            _liquidatedAmountUBA, _amountPaidC1, _amountPaidPool);
     }
 
     // Cancel liquidation, requires that agent is healthy.
