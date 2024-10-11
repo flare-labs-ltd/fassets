@@ -82,6 +82,7 @@ export class FAssetContractStore extends ContractStore implements FAssetContract
     get WNat() { return this.getRequired('WNat'); }
     get FtsoRegistry() { return this.getRequired('FtsoRegistry'); }
     get FtsoManager() { return this.getRequired('FtsoManager'); }
+    get Relay() { return this.getRequired('Relay'); }
     // fasset
     get SCProofVerifier() { return this.get('SCProofVerifier'); }
     get AgentVaultFactory() { return this.get('AgentVaultFactory'); }
