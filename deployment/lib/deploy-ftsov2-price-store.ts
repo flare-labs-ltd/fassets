@@ -12,28 +12,27 @@ export async function deployPriceReaderV2(hre: HardhatRuntimeEnvironment, contra
     const { deployer } = loadDeployAccounts(hre);
     const network = networkConfigName(hre);
 
-    const ftsoV2PriceStore = await FtsoV2PriceStore.new(
-        contracts.GovernanceSettings.address, deployer, deployer,
-        network === 'songbird' || network === 'coston' ? 1658429955 : 1658430000, 90, 100);
+    const firstVotingRoundStartTs = network === 'songbird' || network === 'coston' ? 1658429955 : 1658430000;
+    const ftsoV2PriceStore = await FtsoV2PriceStore.new(contracts.GovernanceSettings.address, deployer, deployer, firstVotingRoundStartTs, 90, 100);
     await ftsoV2PriceStore.updateContractAddresses(encodeContractNames(["AddressUpdater", "Relay"]), [contracts.AddressUpdater.address, contracts.Relay.address], { from: deployer });
 
-    // await ftsoV2PriceStore.setTrustedProviders(["0xaec76c9b8fa7e13699e7dffbf7abfae5e943f1c1"], 1, { from: deployer });
-    // await ftsoV2PriceStore.updateSettings(
-    //     encodeFeedIds([
-    //         {category : 1, name: "SGB/USD"},
-    //         {category : 1, name: "BTC/USD"},
-    //         {category : 1, name: "XRP/USD"},
-    //         {category : 1, name: "DOGE/USD"},
-    //         {category : 1, name: "ETH/USD"},
-    //         {category : 1, name: "USDC/USD"},
-    //         {category : 1, name: "USDT/USD"}
-    //     ]),
-    //     ["CFLR", "testBTC", "testXRP", "testDOGE", "testETH", "testUSDC", "testUSDT"],
-    //     [7, 2, 5, 5, 3, 5, 5],
-    //     { from: deployer });
+    await ftsoV2PriceStore.setTrustedProviders(["0xaec76c9b8fa7e13699e7dffbf7abfae5e943f1c1"], 1, { from: deployer });
+    await ftsoV2PriceStore.updateSettings(
+        encodeFeedIds([
+            {category : 1, name: "SGB/USD"},
+            {category : 1, name: "BTC/USD"},
+            {category : 1, name: "XRP/USD"},
+            {category : 1, name: "DOGE/USD"},
+            {category : 1, name: "ETH/USD"},
+            {category : 1, name: "USDC/USD"},
+            {category : 1, name: "USDT/USD"}
+        ]),
+        ["CFLR", "testBTC", "testXRP", "testDOGE", "testETH", "testUSDC", "testUSDT"],
+        [7, 2, 5, 5, 3, 5, 5],
+        { from: deployer });
 
-    contracts.add("PriceReader", "PriceReader.sol", ftsoV2PriceStore.address, { mustSwitchToProduction: true });
-    console.error(ftsoV2PriceStore.address)
+    contracts.add("PriceReader", "FtsoV2PriceStore.sol", ftsoV2PriceStore.address);
+    contracts.add("FtsoV2PriceStore", "FtsoV2PriceStore.sol", ftsoV2PriceStore.address, { mustSwitchToProduction: true });
 }
 
 export interface IFeedId {
