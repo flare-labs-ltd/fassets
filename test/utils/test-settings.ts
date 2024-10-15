@@ -42,7 +42,7 @@ const CollateralPoolFactory = artifacts.require("CollateralPoolFactory");
 const CollateralPoolTokenFactory = artifacts.require("CollateralPoolTokenFactory");
 const AgentOwnerRegistry = artifacts.require("AgentOwnerRegistry");
 
-export interface TestSettingsContracts {
+export interface TestSettingsCommonContracts {
     governanceSettings: GovernanceSettingsInstance;
     addressUpdater: AddressUpdaterInstance;
     agentVaultFactory: AgentVaultFactoryInstance;
@@ -53,14 +53,17 @@ export interface TestSettingsContracts {
     priceReader: IPriceReaderInstance,
     whitelist?: IWhitelistInstance;
     agentOwnerRegistry: AgentOwnerRegistryInstance;
-    ftsoRegistry: FtsoRegistryMockInstance;
     wNat: WNatInstance,
     stablecoins: Record<string, ERC20MockInstance>,
 }
 
+export interface TestSettingsContracts extends TestSettingsCommonContracts {
+    ftsoRegistry: FtsoRegistryMockInstance;
+}
+
 export type TestSettingOptions = Partial<AssetManagerInitSettings>;
 
-export function createTestSettings(contracts: TestSettingsContracts, ci: TestChainInfo, options?: TestSettingOptions): AssetManagerInitSettings {
+export function createTestSettings(contracts: TestSettingsCommonContracts, ci: TestChainInfo, options?: TestSettingOptions): AssetManagerInitSettings {
     const result: AssetManagerInitSettings = {
         assetManagerController: constants.ZERO_ADDRESS,     // replaced in newAssetManager(...)
         fAsset: constants.ZERO_ADDRESS,                     // replaced in newAssetManager(...)
@@ -121,7 +124,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
     return Object.assign(result, options ?? {});
 }
 
-export function createTestCollaterals(contracts: TestSettingsContracts, ci: ChainInfo): CollateralType[] {
+export function createTestCollaterals(contracts: TestSettingsCommonContracts, ci: ChainInfo): CollateralType[] {
     const poolCollateral: CollateralType = {
         collateralClass: CollateralClass.POOL,
         token: contracts.wNat.address,

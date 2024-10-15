@@ -62,15 +62,10 @@ export class AssetContext implements IAssetContext {
     collateralPoolTokenFactory = this.common.collateralPoolTokenFactory;
     scProofVerifier = this.common.scProofVerifier;
     priceReader = this.common.priceReader;
-    ftsoRegistry = this.common.ftsoRegistry;
-    ftsoManager = this.common.ftsoManager;
+    priceStore = this.common.priceStore;
     natInfo = this.common.natInfo;
     wNat = this.common.wNat;
     stablecoins = this.common.stablecoins;
-    ftsos = this.common.ftsos;
-
-    natFtso = requireNotNull(this.ftsos[this.natInfo.symbol]);
-    assetFtso = requireNotNull(this.ftsos[this.chainInfo.symbol]);
 
     usdc = this.stablecoins.USDC;
     usdt = this.stablecoins.USDT;
