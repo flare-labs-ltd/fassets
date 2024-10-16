@@ -79,7 +79,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         return toNumber(proof.data.requestBody.blockNumber) + toNumber(proof.data.responseBody.numberOfConfirmations);
     }
 
-    async function mintAndRedeem(agentVault: AgentVaultInstance, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, underlyingRedeemerAddress: string, redeemerAddress: string, updateBlock: boolean) {
+    async function mintAndRedeem(agentVault: AgentVaultInstance, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, underlyingRedeemerAddress: string, redeemerAddress: string, updateBlock: boolean, approveCollateralReservation: boolean = false, agentOwner: string = agentOwner1) {
         // minter
         chain.mint(underlyingMinterAddress, toBNExp(10000, 18));
         if (updateBlock) await updateUnderlyingBlock();
@@ -88,7 +88,15 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
         const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress, value: crFee });
-        const crt = requiredEventArgs(resAg, 'CollateralReserved');
+        let crt;
+        if (approveCollateralReservation) {
+            const args = requiredEventArgs(resAg, 'HandShakeRequired');
+            // approve reservation
+            const tx1 = await assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner });
+            crt = requiredEventArgs(tx1, 'CollateralReserved');
+        } else {
+            crt = requiredEventArgs(resAg, 'CollateralReserved');
+        }
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
         const proof = await attestationProvider.provePayment(txHash, underlyingMinterAddress, crt.paymentAddress);
@@ -103,7 +111,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         return request;
     }
 
-    async function mintAndRedeemFromAgent(agentVault: AgentVaultInstance, collateralPool: string, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, underlyingRedeemerAddress: string, redeemerAddress: string, updateBlock: boolean) {
+    async function mintAndRedeemFromAgent(agentVault: AgentVaultInstance, collateralPool: string, chain: MockChain, underlyingMinterAddress: string, minterAddress: string, underlyingRedeemerAddress: string, redeemerAddress: string, updateBlock: boolean, approveCollateralReservation: boolean = false, agentOwner: string = agentOwner1) {
         // minter
         chain.mint(underlyingMinterAddress, toBNExp(10000, 18));
         if (updateBlock) await updateUnderlyingBlock();
@@ -112,7 +120,15 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
         const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress, value: crFee });
-        const crt = requiredEventArgs(resAg, 'CollateralReserved');
+        let crt;
+        if (approveCollateralReservation) {
+            const args = requiredEventArgs(resAg, 'HandShakeRequired');
+            // approve reservation
+            const tx1 = await assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner });
+            crt = requiredEventArgs(tx1, 'CollateralReserved');
+        } else {
+            crt = requiredEventArgs(resAg, 'CollateralReserved');
+        }
         const paymentAmount = crt.valueUBA.add(crt.feeUBA);
         const txHash = await wallet.addTransaction(underlyingMinterAddress, crt.paymentAddress, paymentAmount, crt.paymentReference);
         const proof = await attestationProvider.provePayment(txHash, underlyingMinterAddress, crt.paymentAddress);
@@ -276,7 +292,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(resRe, "redemption payment too old");
     });
 
-    it("should fail redemption payment - already deafulted (should not happen in practice)", async () => {
+    it("should fail redemption payment - already defaulted (should not happen in practice)", async () => {
         // init
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
@@ -336,7 +352,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const feeBIPS = toBIPS("10%");
         const poolFeeShareBIPS = toBIPS(0.4);
         const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS, poolFeeShareBIPS });
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e8));
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e8));
         // perform self-minting
         const lots = 3;
         const paymentAmount = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA)).muln(lots);
@@ -470,7 +486,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
             request.firstUnderlyingBlock.toNumber() + 1, request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
-        const res =  assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
+        const res = assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
         await expectRevert(res, 'redemption non-payment proof window too short');
     });
 
@@ -550,7 +566,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         //20 tickets = 492059 gas, 50 tickets = 884188 gas, 100 tickets = 1537804 gas, 200 tickets = 2845226 gas,
         //500 tickets= 6769180 gas, 1000 tickets = 13314728 gas, 2000 = 26426919 gas,
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e10));
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e10));
         // minter
         chain.mint(underlyingMinter1, toBNExp(10000000, 18));
         await updateUnderlyingBlock();
@@ -572,7 +588,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         }
         // perform minting
         //Mine a large amount then redeem this large amount
-        const lots = allLots+200;
+        const lots = allLots + 200;
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
         const crFee = await assetManager.collateralReservationFee(lots);
         const resAg = await assetManager.reserveCollateral(agentVault.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
@@ -591,7 +607,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
 
     it("mint and redeem from agent and redeem from agent in collateral branch test", async () => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e10));
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e10));
         // minter
         chain.mint(underlyingMinter1, toBNExp(10000000, 18));
         await updateUnderlyingBlock();
@@ -611,10 +627,10 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
         await impersonateContract(collateralPool.address, toBN(512526332000000000), accounts[0]);
         //Only collateral pool can redeem from agent
-        const rs = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, constants.ZERO_ADDRESS, { from:  accounts[15] });
+        const rs = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, constants.ZERO_ADDRESS, { from: accounts[15] });
         await expectRevert(rs, "only collateral pool");
         //Redeeming from agent and agent in collateral with amount 0 should not work
-        const resR = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, constants.ZERO_ADDRESS, { from:  collateralPool.address });
+        const resR = assetManager.redeemFromAgent(agentVault.address, redeemerAddress1, 0, underlyingRedeemer1, constants.ZERO_ADDRESS, { from: collateralPool.address });
         await expectRevert(resR, "redemption of 0");
         const resRC = assetManager.redeemFromAgentInCollateral(agentVault.address, redeemerAddress1, 0, { from: collateralPool.address });
         await expectRevert(resRC, "redemption of 0");
@@ -624,8 +640,8 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
     it("redeem from agent where minting is done from 2 agents", async () => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         const agentVault2 = await createAgent(agentOwner2, underlyingAgent2);
-        await depositAndMakeAgentAvailable(agentVault, agentOwner1,toWei(3e10));
-        await depositAndMakeAgentAvailable(agentVault2, agentOwner2,toWei(3e10));
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1, toWei(3e10));
+        await depositAndMakeAgentAvailable(agentVault2, agentOwner2, toWei(3e10));
         // minter
         chain.mint(underlyingMinter1, toBNExp(10000000, 18));
         await updateUnderlyingBlock();
@@ -703,7 +719,7 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(promise, "address valid");
         const agentInfo3 = await assetManager.getAgentInfo(agentVault.address);
         assert.equal(Number(agentInfo3.freeCollateralLots), Number(agentInfo1.freeCollateralLots) - 3);
-});
+    });
 
     it("mint and redeem with address validation - only owner", async () => {
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
@@ -724,5 +740,271 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(assetManager.rejectInvalidRedemption(proof, request.requestId, { from: agentOwner1 }),
             "wrong address");
     });
+
+    it("should reject redemption request", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // reject redemption request
+        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        // check
+        const args = requiredEventArgs(res, 'RedemptionRequestRejected');
+        assertWeb3Equal(args.requestId, request.requestId);
+        assertWeb3Equal(args.agentVault, agentVault.address);
+        assertWeb3Equal(args.redeemer, redeemerAddress1);
+    });
+
+    it("should not reject redemption request - hand-shake disabled", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 0 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true);
+        // reject redemption request
+        const promise = assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "hand-shake disabled");
+    });
+
+    it("should not reject redemption request - request is not active", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+
+        // mine blocks in which underlying assets were not redeemed
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
+            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
+        }
+
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
+        expectEvent(res, 'RedemptionDefault');
+
+        // try to reject redemption request
+        const promise = assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "not active");
+    });
+
+    it("should not reject redemption request - only owner", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        const promise = assetManager.rejectRedemptionRequest(request.requestId);
+        await expectRevert(promise, "only agent vault owner");
+    });
+
+    it("should not reject redemption request - request window closed", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // move time to close the rejection request window
+        await time.increase(Number(settings.rejectRedemptionRequestWindowSeconds));
+        const promise = assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "reject redemption request window closed");
+    });
+
+    it("should reject redemption request - pool self close", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        collateralPool = await CollateralPool.at(await assetManager.getCollateralPool(agentVault.address));
+        // mint and redeem from agent
+        const request = await mintAndRedeemFromAgent(agentVault, collateralPool.address, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // reject redemption request
+        const burnAddressBalance = await web3.eth.getBalance(settings.burnAddress);
+        const tx = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        expectEvent(tx, 'RedemptionDefault');
+        const burnAddressBalanceAfter = await web3.eth.getBalance(settings.burnAddress);
+        assertWeb3Equal(toBN(burnAddressBalanceAfter).sub(toBN(burnAddressBalance)), request.executorFeeNatWei);
+        // redemption request should be deleted
+        const promise = assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "invalid request id");
+    });
+
+    it("should not confirm redemption payment if redemption is rejected", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // reject redemption request
+        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        // try to perform redemption payment
+        const paymentAmt = request.valueUBA.sub(request.feeUBA);
+        const tx1Hash = await wallet.addTransaction(underlyingAgent1, request.paymentAddress, paymentAmt, request.paymentReference);
+        const proofR = await attestationProvider.provePayment(tx1Hash, underlyingAgent1, request.paymentAddress);
+        let promise = assetManager.confirmRedemptionPayment(proofR, request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "rejected redemption cannot be confirmed");
+    });
+
+    it("should revert rejected redemption payment default - redemption not rejected", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // try to perform rejected redemption default payment
+        const promise = assetManager.rejectedRedemptionPaymentDefault(request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "only rejected redemption");
+    });
+
+    it("should revert rejected redemption payment default - invalid redemption status", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // mine blocks in which underlying assets were not redeemed
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
+            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
+        }
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        //  will change redemption status to defaulted
+        const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
+        expectEvent(res, 'RedemptionDefault');
+
+        // try to perform rejected redemption default payment
+        const promise = assetManager.rejectedRedemptionPaymentDefault(request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "invalid redemption status");
+    });
+
+    it("should revert rejected redemption payment default - too early", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // reject redemption request
+        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        const args = requiredEventArgs(res, 'RedemptionRequestRejected');
+        // try to perform rejected redemption default payment
+        const promise = assetManager.rejectedRedemptionPaymentDefault(request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "rejected redemption default too early");
+    });
+
+    it("should revert rejected redemption payment default - only redeemer, executor or agent", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // reject redemption request
+        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        const args = requiredEventArgs(res, 'RedemptionRequestRejected');
+        // move for take over request window
+        await time.increase(Number(settings.takeOverRedemptionRequestWindowSeconds));
+        // try to perform rejected redemption default payment
+        const promise = assetManager.rejectedRedemptionPaymentDefault(request.requestId, { from: accounts[987] });
+        await expectRevert(promise, "only redeemer, executor or agent");
+    });
+
+    it("should executed default payment if redemption is rejected", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // reject redemption request
+        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        requiredEventArgs(res, 'RedemptionRequestRejected');
+        // move for take over request window
+        await time.increase(Number(settings.takeOverRedemptionRequestWindowSeconds));
+        // try to perform rejected redemption default payment
+        const burnAddressBalance = await web3.eth.getBalance(settings.burnAddress);
+        const tx = await assetManager.rejectedRedemptionPaymentDefault(request.requestId, { from: agentOwner1 });
+        expectEvent(tx, 'RedemptionDefault');
+        // executor fee should be burned
+        const burnAddressBalanceAfter = await web3.eth.getBalance(settings.burnAddress);
+        assertWeb3Equal(toBN(burnAddressBalanceAfter).sub(toBN(burnAddressBalance)), request.executorFeeNatWei);
+        // redemption request should be deleted
+        const promise = assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "invalid request id");
+    });
+
+    it("should executed default payment if redemption is rejected - executor executes", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // reject redemption request
+        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        requiredEventArgs(res, 'RedemptionRequestRejected');
+        // move for take over request window
+        await time.increase(Number(settings.takeOverRedemptionRequestWindowSeconds));
+        // try to perform rejected redemption default payment
+        const burnAddressBalance = await web3.eth.getBalance(settings.burnAddress);
+        const executorBalanceBefore = await web3.eth.getBalance(executorAddress1);
+        const tx = await assetManager.rejectedRedemptionPaymentDefault(request.requestId, { from: executorAddress1 });
+        expectEvent(tx, 'RedemptionDefault');
+        // executor fee should be sent to executor
+        const burnAddressBalanceAfter = await web3.eth.getBalance(settings.burnAddress);
+        assertWeb3Equal(toBN(burnAddressBalanceAfter).sub(toBN(burnAddressBalance)), 0);
+        const executorBalanceAfter = await web3.eth.getBalance(executorAddress1);
+        assertWeb3Equal(toBN(executorBalanceAfter).sub(toBN(executorBalanceBefore)), request.executorFeeNatWei.sub(toBN(tx.receipt.gasUsed).mul(toBN(tx.receipt.effectiveGasPrice))));
+        // redemption request should be deleted
+        const promise = assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "invalid request id");
+    });
+
+    it.only("should revert take over redemption request - redemption request not active", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+
+        // mine blocks in which underlying assets were not redeemed
+        for (let i = 0; i <= chainInfo.underlyingBlocksForPayment * 25; i++) {
+            await wallet.addTransaction(underlyingMinter1, underlyingMinter1, 1, null);
+        }
+
+        const proof = await attestationProvider.proveReferencedPaymentNonexistence(request.paymentAddress, request.paymentReference, request.valueUBA.sub(request.feeUBA),
+            request.firstUnderlyingBlock.toNumber(), request.lastUnderlyingBlock.toNumber(), request.lastUnderlyingTimestamp.toNumber());
+        const res = await assetManager.redemptionPaymentDefault(proof, request.requestId, { from: redeemerAddress1 });
+        expectEvent(res, 'RedemptionDefault');
+
+        // try to reject redemption request
+        const promise = assetManager.takeOverRedemptionRequest(agentVault.address, request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "not active");
+    });
+
+    it.only("should revert take over redemption request - only agent owner", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+
+        // try to reject redemption request
+        const promise = assetManager.takeOverRedemptionRequest(agentVault.address, request.requestId, { from: accounts[0] });
+        await expectRevert(promise, "only agent vault owner");
+    });
+
+    it.only("should revert take over redemption request - not rejected", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+
+        // try to reject redemption request
+        const promise = assetManager.takeOverRedemptionRequest(agentVault.address, request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "not rejected");
+    });
+
+    it.only("should revert take over redemption request - request window closed", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+
+        // reject redemption request
+        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        requiredEventArgs(res, 'RedemptionRequestRejected');
+
+        // move time to close the rejection request window
+        await time.increase(Number(settings.rejectRedemptionRequestWindowSeconds));
+
+        // try to take over redemption request
+        const promise = assetManager.takeOverRedemptionRequest(agentVault.address, request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "take over redemption request window closed");
+    });
+
+    it.only("should revert take over redemption request - no tickets", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+
+        // reject redemption request
+        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        requiredEventArgs(res, 'RedemptionRequestRejected');
+
+        const agentVault2 = await createAgent(agentOwner2, underlyingAgent2, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault2, agentOwner2);
+        // agent 2 didn't mint anything yet - has no tickets
+        const promise = assetManager.takeOverRedemptionRequest(agentVault2.address, request.requestId, { from: agentOwner2 });
+        await expectRevert(promise, "no tickets");
+    });
+
 
 });

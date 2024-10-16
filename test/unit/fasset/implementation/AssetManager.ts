@@ -880,6 +880,27 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             newSettings22.underlyingBlocksForPayment = toBN(Math.round(25 * HOURS / testChainInfo.eth.blockTime));
             let res22 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings22, collaterals);
             await expectRevert(res22, "value too high");
+
+            let newSettings23 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings23.cancelCollateralReservationAfterSeconds = 0;
+            let res23 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings23, collaterals);
+            await expectRevert(res23, "cannot be zero");
+
+            let newSettings24 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings24.rejectRedemptionRequestWindowSeconds = 0;
+            let res24 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings24, collaterals);
+            await expectRevert(res24, "cannot be zero");
+
+            let newSettings25 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings25.takeOverRedemptionRequestWindowSeconds = 0;
+            let res25 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings25, collaterals);
+            await expectRevert(res25, "cannot be zero");
+
+            let newSettings26 = createTestSettings(contracts, testChainInfo.eth)
+            newSettings26.rejectedRedemptionDefaultFactorVaultCollateralBIPS = 9999;
+            newSettings26.rejectedRedemptionDefaultFactorPoolBIPS = 0;
+            let res26 = newAssetManager(governance, assetManagerController, "Ethereum", "ETH", 18, newSettings26, collaterals);
+            await expectRevert(res26, "bips value too low");
         });
 
         it("should validate settings - other validators", async () => {
