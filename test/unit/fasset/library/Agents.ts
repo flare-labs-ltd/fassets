@@ -148,6 +148,7 @@ contract(`Agent.sol; ${getTestFile(__filename)}; Agent basic tests`, async accou
         assert.notEqual(args.creationData.collateralPoolToken, ZERO_ADDRESS);
         assert.equal(args.creationData.vaultCollateralToken, usdc.address);
         assert.notEqual(args.creationData.collateralPoolToken, contracts.wNat.address);
+        assert.equal(args.creationData.handShakeType, toBN(0));
     });
 
     it("should create agent from owner's work address", async () => {

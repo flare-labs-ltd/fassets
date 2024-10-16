@@ -966,7 +966,7 @@ library SettingsUpdater {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         uint256 value = abi.decode(_params, (uint256));
         // validate
-        require(value >= 0, "cannot be zero");
+        require(value > 0, "cannot be zero");
         require(value <= settings.takeOverRedemptionRequestWindowSeconds * 4 + 1 minutes,
             "increase too big");
         require(value >= settings.takeOverRedemptionRequestWindowSeconds / 4,

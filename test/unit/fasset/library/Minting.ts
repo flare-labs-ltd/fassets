@@ -1,4 +1,4 @@
-import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
+import { constants, expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
 import { AgentSettings, CollateralType } from "../../../../lib/fasset/AssetManagerTypes";
 import { lotSize } from "../../../../lib/fasset/Conversions";
 import { PaymentReference } from "../../../../lib/fasset/PaymentReference";
@@ -304,6 +304,29 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const promise = assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
         // assert
         await expectRevert(promise, "minting payment too small");
+    });
+
+    it("should not execute minting if collateral reservation is not approved", async () => {
+        // init
+        const feeBIPS = toBIPS("50%");
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const agentVault1 = await createAgent(accounts[123], accounts[234], { feeBIPS: feeBIPS, handShakeType: 0 });
+        await depositAndMakeAgentAvailable(agentVault1, accounts[123]);
+        // act
+        const lots = 1;
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
+        const args = requiredEventArgs(tx, "HandShakeRequired");
+        const crt = await reserveCollateral(agentVault1.address, 1);
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA).subn(1);
+        chain.mint(underlyingMinter1, paymentAmount);
+        const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        // it doesn't matter what kind of proof we provide, the transaction should fail
+        const promise = assetManager.executeMinting(proof, args.collateralReservationId, { from: minterAddress1 });
+        // assert
+        await expectRevert(promise, "collateral reservation not approved");
     });
 
     it("should unstick minting", async () => {
