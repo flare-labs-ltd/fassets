@@ -1006,5 +1006,138 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         await expectRevert(promise, "no tickets");
     });
 
+    it("should take over redemption request", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // reject redemption request
+        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        requiredEventArgs(res, 'RedemptionRequestRejected');
+        // agent which will take over the redemption request
+        const agentVault1 = await createAgent(agentOwner2, underlyingAgent2, { handShakeType: 0 });
+        await depositAndMakeAgentAvailable(agentVault1, agentOwner2);
+        // agent needs to have some tickets
+        const lots = 3;
+        const agentInfo = await assetManager.getAgentInfo(agentVault1.address);
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const resAg = await assetManager.reserveCollateral(agentVault1.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
+        let crt;
+        crt = requiredEventArgs(resAg, 'CollateralReserved');
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+        const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const res1 = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        requiredEventArgs(res1, 'MintingExecuted');
 
+        // take over redemption request
+        const tx = await assetManager.takeOverRedemptionRequest(agentVault1.address, request.requestId, { from: agentOwner2 });
+        const args = requiredEventArgs(tx, 'RedemptionRequestTakenOver');
+        assertWeb3Equal(args.agentVault, agentVault.address);
+        assertWeb3Equal(args.newAgentVault, agentVault1.address);
+        // request value is 3 lots, which is the same as value of opened ticket of agent 2
+        // old redemption request should be deleted
+        const promise = assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "invalid request id");
+        const args1 = requiredEventArgs(tx, 'RedemptionTicketCreated');
+        // old agent vault gets new ticket
+        assertWeb3Equal(args1.agentVault, request.agentVault);
+    });
+
+    it("should take over only part of redemption request", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // reject redemption request
+        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        requiredEventArgs(res, 'RedemptionRequestRejected');
+        // agent which will take over the redemption request
+        const agentVault1 = await createAgent(agentOwner2, underlyingAgent2, { handShakeType: 0 });
+        await depositAndMakeAgentAvailable(agentVault1, agentOwner2);
+        // agent needs to have some tickets
+        const lots = 1;
+        const agentInfo = await assetManager.getAgentInfo(agentVault1.address);
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const resAg = await assetManager.reserveCollateral(agentVault1.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
+        const crt = requiredEventArgs(resAg, 'CollateralReserved');
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+        const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const res1 = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        requiredEventArgs(res1, 'MintingExecuted');
+
+        // take over redemption request
+        const tx = await assetManager.takeOverRedemptionRequest(agentVault1.address, request.requestId, { from: agentOwner2 });
+        const args = requiredEventArgs(tx, 'RedemptionRequestTakenOver');
+        assertWeb3Equal(args.agentVault, agentVault.address);
+        assertWeb3Equal(args.newAgentVault, agentVault1.address);
+        // request value is 3 lots, which is more than a value of opened ticket of agent 2
+        // old redemption request should not be deleted - should skip "invalid request id" revert and revert with "already rejected" instead
+        const promise = assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        await expectRevert(promise, "already rejected");
+        const args1 = requiredEventArgs(tx, 'RedemptionTicketCreated');
+        // old request should be updated
+
+        // old agent vault gets new ticket
+        assertWeb3Equal(args1.agentVault, request.agentVault);
+
+        // 2 lots can still be redeemed
+        const agentOwner3 = accounts[333];
+        const underlyingAgent3 = accounts[334];
+        const agentVault2 = await createAgent(agentOwner3, underlyingAgent3, { handShakeType: 0 });
+        await depositAndMakeAgentAvailable(agentVault2, agentOwner3);
+        const lots1 = 2;
+        const agentInfo1 = await assetManager.getAgentInfo(agentVault2.address);
+        const crFee1 = await assetManager.collateralReservationFee(lots1);
+        const resAg1 = await assetManager.reserveCollateral(agentVault2.address, lots1, agentInfo1.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee1 });
+        const crt1 = requiredEventArgs(resAg1, 'CollateralReserved');
+        const paymentAmount1 = crt1.valueUBA.add(crt1.feeUBA);
+        const txHash1 = await wallet.addTransaction(underlyingMinter1, crt1.paymentAddress, paymentAmount1, crt1.paymentReference);
+        const proof1 = await attestationProvider.provePayment(txHash1, underlyingMinter1, crt1.paymentAddress);
+        const res2 = await assetManager.executeMinting(proof1, crt1.collateralReservationId, { from: minterAddress1 });
+        requiredEventArgs(res2, 'MintingExecuted');
+        // take over remaining of the redemption request
+        const tx1 = await assetManager.takeOverRedemptionRequest(agentVault2.address, request.requestId, { from: agentOwner3 });
+        const args2 = requiredEventArgs(tx1, 'RedemptionRequestTakenOver');
+        assertWeb3Equal(args2.agentVault, agentVault.address);
+        assertWeb3Equal(args2.newAgentVault, agentVault2.address);
+        // old redemption request should be deleted
+        const promise1 = assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        await expectRevert(promise1, "invalid request id");
+        const args3 = requiredEventArgs(tx1, 'RedemptionTicketCreated');
+        // old agent vault gets new ticket
+        assertWeb3Equal(args3.agentVault, request.agentVault);
+    });
+
+    it("should revert rejecting redemption request if already taken over", async () => {
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        const request = await mintAndRedeem(agentVault, chain, underlyingMinter1, minterAddress1, underlyingRedeemer1, redeemerAddress1, true, true, agentOwner1);
+        // reject redemption request
+        const res = await assetManager.rejectRedemptionRequest(request.requestId, { from: agentOwner1 });
+        requiredEventArgs(res, 'RedemptionRequestRejected');
+        // agent which will take over the redemption request
+        const agentVault1 = await createAgent(agentOwner2, underlyingAgent2, { handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault1, agentOwner2);
+        // agent needs to have some tickets
+        const lots = 1;
+        const agentInfo = await assetManager.getAgentInfo(agentVault1.address);
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const resAg = await assetManager.reserveCollateral(agentVault1.address, lots, agentInfo.feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
+        const hs = requiredEventArgs(resAg, 'HandShakeRequired');
+        const resAg1 = await assetManager.approveCollateralReservation(hs.collateralReservationId, { from: agentOwner2 });
+        const crt = requiredEventArgs(resAg1, 'CollateralReserved');
+        const paymentAmount = crt.valueUBA.add(crt.feeUBA);
+        const txHash = await wallet.addTransaction(underlyingMinter1, crt.paymentAddress, paymentAmount, crt.paymentReference);
+        const proof = await attestationProvider.provePayment(txHash, underlyingMinter1, crt.paymentAddress);
+        const res1 = await assetManager.executeMinting(proof, crt.collateralReservationId, { from: minterAddress1 });
+        requiredEventArgs(res1, 'MintingExecuted');
+
+        // take over redemption request
+        const tx = await assetManager.takeOverRedemptionRequest(agentVault1.address, request.requestId, { from: agentOwner2 });
+        const args = requiredEventArgs(tx, 'RedemptionRequestTakenOver');
+
+        // try to reject redemption request
+        const promise = assetManager.rejectRedemptionRequest(args.newRequestId, { from: agentOwner2 });
+        await expectRevert(promise, "already taken over");
+    });
 });
