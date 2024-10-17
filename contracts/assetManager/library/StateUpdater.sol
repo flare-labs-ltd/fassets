@@ -13,7 +13,7 @@ library StateUpdater {
 
     uint256 internal constant MINIMUM_PAUSE_BEFORE_STOP = 30 days;
 
-    function updateCurrentBlock(ConfirmedBlockHeightExists.Proof calldata _proof)
+    function updateCurrentBlock(IConfirmedBlockHeightExists.Proof calldata _proof)
         internal
     {
         TransactionAttestation.verifyConfirmedBlockHeightExists(_proof);

@@ -131,7 +131,7 @@ contract RedemptionRequestsFacet is AssetManagerBase {
      * @param _redemptionRequestId id of an existing redemption request
      */
     function rejectInvalidRedemption(
-        AddressValidity.Proof calldata _proof,
+        IAddressValidity.Proof calldata _proof,
         uint256 _redemptionRequestId
     )
         external

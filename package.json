@@ -70,6 +70,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "4.9.2",
     "flare-smart-contracts": "git+https://gitlab.com/flarenetwork/flare-smart-contracts.git#flare-distribution-to-delegators",
+    "flare-smart-contracts-v2": "git+https://github.com/flare-foundation/flare-smart-contracts-v2.git",
     "@flarenetwork/state-connector-protocol": "1.0.0-beta.3"
   },
   "devDependencies": {

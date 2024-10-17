@@ -32,12 +32,14 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
      *      and increasing fee (that would mean that the minter would have to pay raised fee or forfeit
      *      collateral reservation fee)
      * @param _executor the account that is allowed to execute minting (besides minter and agent)
+     * @param _minterUnderlyingAddresses array of minter's underlying addresses - needed only if hand-shake is required
      */
     function reserveCollateral(
         address _agentVault,
         uint256 _lots,
         uint256 _maxMintingFeeBIPS,
-        address payable _executor
+        address payable _executor,
+        string[] calldata _minterUnderlyingAddresses
     )
         external payable
         onlyAttached
@@ -45,7 +47,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
         notEmergencyPaused
     {
         CollateralReservations.reserveCollateral(msg.sender, _agentVault,
-            _lots.toUint64(), _maxMintingFeeBIPS.toUint64(), _executor);
+            _lots.toUint64(), _maxMintingFeeBIPS.toUint64(), _executor, _minterUnderlyingAddresses);
     }
 
     /**
@@ -121,7 +123,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
      * @param _collateralReservationId collateral reservation id
      */
     function executeMinting(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         uint256 _collateralReservationId
     )
         external
@@ -139,7 +141,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
      * @param _collateralReservationId id of a collateral reservation created by the minter
      */
     function mintingPaymentDefault(
-        ReferencedPaymentNonexistence.Proof calldata _proof,
+        IReferencedPaymentNonexistence.Proof calldata _proof,
         uint256 _collateralReservationId
     )
         external
@@ -160,7 +162,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
      * @param _collateralReservationId collateral reservation id
      */
     function unstickMinting(
-        ConfirmedBlockHeightExists.Proof calldata _proof,
+        IConfirmedBlockHeightExists.Proof calldata _proof,
         uint256 _collateralReservationId
     )
         external payable
@@ -181,7 +183,7 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
      * @param _lots number of lots to mint
      */
     function selfMint(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         address _agentVault,
         uint256 _lots
     )

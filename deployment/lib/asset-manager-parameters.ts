@@ -73,7 +73,7 @@ export interface AssetManagerParameters {
     // Common parameters (for all f-assets in this network)
 
     /**
-     * Address for burning native currency (e.g. for collateral reservation fee afetr successful minting).
+     * Address for burning native currency (e.g. for collateral reservation fee after successful minting).
      * @pattern ^0x[0-9a-fA-F]{40}$
      */
     burnAddress: string;
@@ -114,7 +114,7 @@ export interface AssetManagerParameters {
     collateralPoolTokenFactory?: string;
 
     /**
-     * The proof verifier contract for state connector prrofs.
+     * The proof verifier contract for state connector proofs.
      * Can be a contract address (0x...) or a name in contracts.json.
      * Optional, default is 'SCProofVerifier' in contracts.json.
      * @pattern ^\w+$
@@ -388,7 +388,7 @@ export interface AssetManagerParameters {
 
     /**
      * Minimum time that has to pass between underlying withdrawal announcement and the confirmation.
-     * Any value is ok, but higher values give more security agains multiple announcement attack by a miner.
+     * Any value is ok, but higher values give more security against multiple announcement attack by a miner.
      * Shouldn't be much bigger than state connector response time, so that payments can be confirmed without
      * extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
      * @minimum 0
@@ -397,7 +397,7 @@ export interface AssetManagerParameters {
 
     /**
      * Ratio at which the agents can buy back their collateral when f-asset is terminated.
-     * Typically a bit more than 1 to incentivise agents to buy f-assets and self-close instead.
+     * Typically a bit more than 1 to incentivize agents to buy f-assets and self-close instead.
      * @minimum 0
      */
     buybackCollateralFactorBIPS: integer;
@@ -463,7 +463,7 @@ export interface AssetManagerParameters {
 
     /**
      * When there are many redemption requests in short time, agent gets
-     * up to this amount of extra payment time per redemeption.
+     * up to this amount of extra payment time per redemption.
      */
     redemptionPaymentExtensionSeconds: integer;
 

@@ -25,7 +25,8 @@ library CollateralReservations {
         address _agentVault,
         uint64 _lots,
         uint64 _maxMintingFeeBIPS,
-        address payable _executor
+        address payable _executor,
+        string[] calldata _minterUnderlyingAddresses
     )
         internal
     {
@@ -59,8 +60,16 @@ library CollateralReservations {
         cr.executorFeeNatGWei = ((msg.value - reservationFee) / Conversion.GWEI).toUint64();
 
         if (agent.handShakeType != 0) {
+            require(_minterUnderlyingAddresses.length > 0, "minter underlying addresses required");
+            bytes32[] memory hashes = new bytes32[](_minterUnderlyingAddresses.length);
+            hashes[0] = keccak256(bytes(_minterUnderlyingAddresses[0]));
+            for (uint256 i = 1; i < _minterUnderlyingAddresses.length; i++) {
+                hashes[i] = keccak256(bytes(_minterUnderlyingAddresses[i]));
+                require(hashes[i] > hashes[i - 1], "minter underlying addresses not sorted");
+            }
+            cr.minterUnderlyingAddressesHash = keccak256(abi.encodePacked(hashes));
             cr.handShakeStartTimestamp = block.timestamp.toUint64();
-            _emitHandShakeRequiredEvent(agent, cr, crtId);
+            _emitHandShakeRequiredEvent(agent, cr, crtId, _minterUnderlyingAddresses);
         } else {
             (uint64 lastUnderlyingBlock, uint64 lastUnderlyingTimestamp) = _lastPaymentBlock();
             cr.firstUnderlyingBlock = state.currentUnderlyingBlock;
@@ -99,6 +108,7 @@ library CollateralReservations {
         Agents.requireAgentVaultOwner(agent);
         require(crt.handShakeStartTimestamp != 0,
             "hand-shake not required or collateral reservation already approved");
+        emit AMEvents.CollateralReservationRejected(crt.agentVault, crt.minter, _crtId);
         _rejectOrCancelCollateralReservation(crt, _crtId);
     }
 
@@ -113,11 +123,12 @@ library CollateralReservations {
         AssetManagerSettings.Data storage settings = Globals.getSettings();
         require(crt.handShakeStartTimestamp + settings.cancelCollateralReservationAfterSeconds <
             block.timestamp, "collateral reservation cancellation too early");
+        emit AMEvents.CollateralReservationCancelled(crt.agentVault, crt.minter, _crtId);
         _rejectOrCancelCollateralReservation(crt, _crtId);
     }
 
     function mintingPaymentDefault(
-        ReferencedPaymentNonexistence.Proof calldata _nonPayment,
+        IReferencedPaymentNonexistence.Proof calldata _nonPayment,
         uint64 _crtId
     )
         internal
@@ -151,7 +162,7 @@ library CollateralReservations {
     }
 
     function unstickMinting(
-        ConfirmedBlockHeightExists.Proof calldata _proof,
+        IConfirmedBlockHeightExists.Proof calldata _proof,
         uint64 _crtId
     )
         internal
@@ -237,7 +248,8 @@ library CollateralReservations {
     function _emitHandShakeRequiredEvent(
         Agent.State storage _agent,
         CollateralReservation.Data memory _cr,
-        uint64 _crtId
+        uint64 _crtId,
+        string[] calldata _minterUnderlyingAddresses
     )
         private
     {
@@ -245,6 +257,7 @@ library CollateralReservations {
             _agent.vaultAddress(),
             _cr.minter,
             _crtId,
+            _minterUnderlyingAddresses,
             Conversion.convertAmgToUBA(_cr.valueAMG),
             _cr.underlyingFeeUBA);
     }

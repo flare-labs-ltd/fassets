@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../stateConnector/interfaces/ISCProofVerifier.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "./data/AssetManagerState.sol";
 import "./Globals.sol";
 
@@ -14,7 +14,7 @@ library TransactionAttestation {
     uint8 internal constant PAYMENT_BLOCKED = 2;
 
     function verifyPaymentSuccess(
-        Payment.Proof calldata _proof
+        IPayment.Proof calldata _proof
     )
         internal view
     {
@@ -23,12 +23,12 @@ library TransactionAttestation {
     }
 
     function verifyPayment(
-        Payment.Proof calldata _proof
+        IPayment.Proof calldata _proof
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = Globals.getSettings();
-        ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
+        IFdcVerification scProofVerifier = IFdcVerification(_settings.scProofVerifier);
         require(_proof.data.sourceId == _settings.chainId, "invalid chain");
         require(scProofVerifier.verifyPayment(_proof), "legal payment not proved");
         require(_confirmationCannotBeCleanedUp(_proof.data.responseBody.blockTimestamp),
@@ -36,12 +36,12 @@ library TransactionAttestation {
     }
 
     function verifyBalanceDecreasingTransaction(
-        BalanceDecreasingTransaction.Proof calldata _proof
+        IBalanceDecreasingTransaction.Proof calldata _proof
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = Globals.getSettings();
-        ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
+        IFdcVerification scProofVerifier = IFdcVerification(_settings.scProofVerifier);
         require(_proof.data.sourceId == _settings.chainId, "invalid chain");
         require(scProofVerifier.verifyBalanceDecreasingTransaction(_proof), "transaction not proved");
         require(_confirmationCannotBeCleanedUp(_proof.data.responseBody.blockTimestamp),
@@ -49,34 +49,34 @@ library TransactionAttestation {
     }
 
     function verifyConfirmedBlockHeightExists(
-        ConfirmedBlockHeightExists.Proof calldata _proof
+        IConfirmedBlockHeightExists.Proof calldata _proof
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = Globals.getSettings();
-        ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
+        IFdcVerification scProofVerifier = IFdcVerification(_settings.scProofVerifier);
         require(_proof.data.sourceId == _settings.chainId, "invalid chain");
         require(scProofVerifier.verifyConfirmedBlockHeightExists(_proof), "block height not proved");
     }
 
     function verifyReferencedPaymentNonexistence(
-        ReferencedPaymentNonexistence.Proof calldata _proof
+        IReferencedPaymentNonexistence.Proof calldata _proof
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = Globals.getSettings();
-        ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
+        IFdcVerification scProofVerifier = IFdcVerification(_settings.scProofVerifier);
         require(_proof.data.sourceId == _settings.chainId, "invalid chain");
         require(scProofVerifier.verifyReferencedPaymentNonexistence(_proof), "non-payment not proved");
     }
 
     function verifyAddressValidity(
-        AddressValidity.Proof calldata _proof
+        IAddressValidity.Proof calldata _proof
     )
         internal view
     {
         AssetManagerSettings.Data storage _settings = Globals.getSettings();
-        ISCProofVerifier scProofVerifier = ISCProofVerifier(_settings.scProofVerifier);
+        IFdcVerification scProofVerifier = IFdcVerification(_settings.scProofVerifier);
         require(_proof.data.sourceId == _settings.chainId, "invalid chain");
         require(scProofVerifier.verifyAddressValidity(_proof), "address validity not proved");
     }

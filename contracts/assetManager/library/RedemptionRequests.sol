@@ -216,7 +216,7 @@ library RedemptionRequests {
     }
 
     function rejectInvalidRedemption(
-        AddressValidity.Proof calldata _proof,
+        IAddressValidity.Proof calldata _proof,
         uint64 _redemptionRequestId
     )
         internal

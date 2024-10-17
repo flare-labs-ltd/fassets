@@ -61,11 +61,11 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         await assetManager.makeAgentAvailable(agentVault.address, { from: owner });
     }
 
-    async function reserveCollateral(agentVault: string, lots: BNish) {
+    async function reserveCollateral(agentVault: string, lots: BNish, underlyingAddresses?: string[]) {
         const agentInfo = await assetManager.getAgentInfo(agentVault);
         const crFee = await assetManager.collateralReservationFee(lots);
         const totalNatFee = crFee.add(toWei(0.1));
-        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, executorAddress1,
+        const res = await assetManager.reserveCollateral(agentVault, lots, agentInfo.feeBIPS, executorAddress1, underlyingAddresses ?? [],
             { from: minterAddress1, value: totalNatFee });
         return requiredEventArgs(res, 'CollateralReserved');
     }

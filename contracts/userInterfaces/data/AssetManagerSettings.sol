@@ -48,11 +48,11 @@ library AssetManagerSettings {
         address agentOwnerRegistry;
 
         // Attestation client verifies and decodes attestation proofs.
-        // Type: ISCProofVerifier
+        // Type: IFdcVerification
         // changed via address updater
         address scProofVerifier;
 
-        // The address where bunrned NAt is sent.
+        // The address where burned NAt is sent.
         // (E.g. collateral reservation fee is burned on successful minting.)
         // immutable
         address payable burnAddress;

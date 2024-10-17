@@ -21,7 +21,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase {
      * @param _redemptionRequestId id of an existing redemption request
      */
     function redemptionPaymentDefault(
-        ReferencedPaymentNonexistence.Proof calldata _proof,
+        IReferencedPaymentNonexistence.Proof calldata _proof,
         uint256 _redemptionRequestId
     )
         external
@@ -58,7 +58,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase {
      * @param _redemptionRequestId id of an existing, but already defaulted, redemption request
      */
     function finishRedemptionWithoutPayment(
-        ConfirmedBlockHeightExists.Proof calldata _proof,
+        IConfirmedBlockHeightExists.Proof calldata _proof,
         uint256 _redemptionRequestId
     )
         external

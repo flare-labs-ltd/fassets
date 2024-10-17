@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../../stateConnector/interfaces/ISCProofVerifier.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "./PaymentConfirmations.sol";
 import "./PaymentReference.sol";
 
@@ -46,7 +46,7 @@ library UnderlyingAddressOwnership {
 
     function claimWithProof(
         State storage _state,
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         PaymentConfirmations.State storage _paymentVerification,
         address _owner
     )

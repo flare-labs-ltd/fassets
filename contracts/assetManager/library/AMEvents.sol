@@ -123,6 +123,7 @@ library AMEvents {
         address indexed agentVault,
         address indexed minter,
         uint256 indexed collateralReservationId,
+        string[] minterUnderlyingAddresses,
         uint256 valueUBA,
         uint256 feeUBA);
 
@@ -143,6 +144,24 @@ library AMEvents {
         bytes32 paymentReference,
         address executor,
         uint256 executorFeeNatWei);
+
+    /**
+     * Agent rejected the collateral reservation request because of the minter's identity.
+     * Reserved collateral was released.
+     */
+    event CollateralReservationRejected(
+        address indexed agentVault,
+        address indexed minter,
+        uint256 indexed collateralReservationId);
+
+    /**
+     * Minter cancelled the collateral reservation request because of the agent's inactivity.
+     * Reserved collateral was released.
+     */
+    event CollateralReservationCancelled(
+        address indexed agentVault,
+        address indexed minter,
+        uint256 indexed collateralReservationId);
 
     /**
      * Minter paid underlying funds in time and received the fassets.

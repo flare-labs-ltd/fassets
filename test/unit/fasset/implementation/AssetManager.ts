@@ -1126,7 +1126,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
             const executorFee = toWei(0.1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, executor,
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, executor, [],
                 { from: minter, value: reservationFee.add(executorFee) });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // make and prove the payment transaction
@@ -1158,7 +1158,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
             const executorFee = toWei(0.1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, executor,
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, executor, [],
                 { from: minter, value: reservationFee.add(executorFee) });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // make and prove the payment transaction
@@ -1185,7 +1185,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
             const totalFee = reservationFee.add(toWei(0.1));    // 0.1 for executor fee
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, accounts[81],
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, accounts[81], [],
                 { from: minter, value: totalFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             assertWeb3Equal(crt.valueUBA, lotsToUBA(1));
@@ -1220,7 +1220,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
                 { from: minter, value: reservationFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // don't mint f-assets for a long time (> 24 hours)
@@ -1714,7 +1714,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
+            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
                 { from: minter, value: reservationFee });
             await expectRevert(r, "not attached");
         });
@@ -1735,11 +1735,11 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
             // Try to reserve collateral from non whitelisted address
-            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
+            const r = assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
                 { from: minter, value: reservationFee });
             await expectRevert(r, "not whitelisted");
             //Whitelisted account should be able to reserve collateral
-            const res = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
+            const res = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
                 { from: whitelistedAccount, value: reservationFee });
             expectEvent(res,"CollateralReserved");
         });
@@ -2057,7 +2057,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             const minter = accounts[80];
             const agentInfo = await assetManager.getAgentInfo(agentVault.address);
             const reservationFee = await assetManager.collateralReservationFee(1);
-            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS,
+            const tx = await assetManager.reserveCollateral(agentVault.address, 1, agentInfo.feeBIPS, constants.ZERO_ADDRESS, [],
                 { from: minter, value: reservationFee });
             const crt = findRequiredEvent(tx, "CollateralReserved").args;
             // don't mint f-assets for a long time (> 24 hours)

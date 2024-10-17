@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../../stateConnector/interfaces/ISCProofVerifier.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "../../utils/lib/SafePct.sol";
 import "../../utils/lib/Transfers.sol";
 import "./data/AssetManagerState.sol";
@@ -20,7 +20,7 @@ library Minting {
     using Agent for Agent.State;
 
     function executeMinting(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         uint64 _crtId
     )
         internal
@@ -62,7 +62,7 @@ library Minting {
     }
 
     function selfMint(
-        Payment.Proof calldata _payment,
+        IPayment.Proof calldata _payment,
         address _agentVault,
         uint64 _lots
     )

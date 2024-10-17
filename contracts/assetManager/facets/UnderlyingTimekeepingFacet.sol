@@ -16,7 +16,7 @@ contract UnderlyingTimekeepingFacet is AssetManagerBase {
      * @param _proof proof that a block with given number and timestamp exists
      */
     function updateCurrentBlock(
-        ConfirmedBlockHeightExists.Proof calldata _proof
+        IConfirmedBlockHeightExists.Proof calldata _proof
     )
         external
     {

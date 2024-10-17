@@ -34,7 +34,7 @@ library AgentsCreateDestroy {
     }
 
     function claimAddressWithEOAProof(
-        Payment.Proof calldata _payment
+        IPayment.Proof calldata _payment
     )
         internal
     {
@@ -57,7 +57,7 @@ library AgentsCreateDestroy {
 
     function createAgentVault(
         IIAssetManager _assetManager,
-        AddressValidity.Proof calldata _addressProof,
+        IAddressValidity.Proof calldata _addressProof,
         AgentSettings.Data calldata _settings
     )
         internal
@@ -73,7 +73,7 @@ library AgentsCreateDestroy {
         Agents.requireWhitelisted(ownerManagementAddress);
         // require valid address
         TransactionAttestation.verifyAddressValidity(_addressProof);
-        AddressValidity.ResponseBody memory avb = _addressProof.data.responseBody;
+        IAddressValidity.ResponseBody memory avb = _addressProof.data.responseBody;
         require(avb.isValid, "address invalid");
         // create agent vault
         IAgentVaultFactory agentVaultFactory = IAgentVaultFactory(Globals.getSettings().agentVaultFactory);
