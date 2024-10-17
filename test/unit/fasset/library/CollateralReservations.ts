@@ -5,7 +5,7 @@ import { AttestationHelper } from "../../../../lib/underlying-chain/AttestationH
 import { EventArgs } from "../../../../lib/utils/events/common";
 import { requiredEventArgs } from "../../../../lib/utils/events/truffle";
 import { BNish, toBN, toWei } from "../../../../lib/utils/helpers";
-import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance } from "../../../../typechain-truffle";
+import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerInstance, WNatInstance, MinterMockInstance } from "../../../../typechain-truffle";
 import { CollateralReserved } from "../../../../typechain-truffle/IIAssetManager";
 import { TestChainInfo, testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
@@ -205,6 +205,28 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         await assetManager.rejectCollateralReservation(args.collateralReservationId, { from: agentOwner1 });
         const minterBalanceAfter = await web3.eth.getBalance(minterAddress1);
         assertWeb3Equal(toBN(minterBalanceBefore).add(crFee), minterBalanceAfter);
+    });
+
+    it("should reject collateral reservation and burn fee", async () => {
+        // init
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        await depositAndMakeAgentAvailable(agentVault, agentOwner1);
+        // act
+        const lots = 1;
+        const MinterMock = artifacts.require("MinterMock");
+        const minterMock: MinterMockInstance = await MinterMock.new();
+        await minterMock.receiveFunds({ from: minterAddress1, value: "100" });
+        const crFee = await assetManager.collateralReservationFee(lots);
+        const tx = await minterMock.reserveCollateral(assetManager.address, agentVault.address, lots, feeBIPS, noExecutorAddress, ["addr1"], { from: minterAddress1, value: crFee });
+        let rec = await web3.eth.getTransactionReceipt(tx.tx);
+        const topics = rec.logs[0].topics;
+        const crId = topics[3];
+        // reject reservation
+        // returning fee to minter should fail - fee should be burned
+        const burnAddressBalance = await web3.eth.getBalance(settings.burnAddress);
+        await assetManager.rejectCollateralReservation(crId, { from: agentOwner1 });
+        const burnAddressBalanceAfter = await web3.eth.getBalance(settings.burnAddress);
+        assertWeb3Equal(toBN(burnAddressBalance).add(crFee), burnAddressBalanceAfter);
     });
 
     it("should revert rejecting reservation if already approved", async () => {
