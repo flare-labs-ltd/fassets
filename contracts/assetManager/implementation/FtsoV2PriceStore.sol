@@ -7,17 +7,8 @@ import "../../governance/implementation/Governed.sol";
 import "../../governance/implementation/AddressUpdatable.sol";
 import "../interfaces/IPriceReader.sol";
 import "../interfaces/IPricePublisher.sol";
+import "../interfaces/IRelay.sol";
 
-
-interface IRelay {
-    /**
-     * Returns the Merkle root for given protocol id and voting round id.
-     * @param _protocolId The protocol id.
-     * @param _votingRoundId The voting round id.
-     * @return _merkleRoot The Merkle root.
-     */
-    function merkleRoots(uint256 _protocolId, uint256 _votingRoundId) external view returns (bytes32 _merkleRoot);
-}
 
 contract FtsoV2PriceStore is Governed, IPriceReader, IPricePublisher, IERC165, AddressUpdatable {
     using MerkleProof for bytes32[];
