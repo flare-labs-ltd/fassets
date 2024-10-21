@@ -1,5 +1,5 @@
 import { expectEvent, expectRevert, time } from "@openzeppelin/test-helpers";
-import { MAX_BIPS, ZERO_ADDRESS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
+import { MAX_BIPS, ZERO_ADDRESS, toBIPS, toBN, toBNExp, toWei } from "../../../lib/utils/helpers";
 import { requiredEventArgsFrom } from "../../utils/Web3EventDecoder";
 import { impersonateContract, stopImpersonatingContract } from "../../utils/contract-test-helpers";
 import { calculateReceivedNat } from "../../utils/eth";
@@ -52,6 +52,21 @@ contract(`CollateralPoolOperations.sol; ${getTestFile(__filename)}; Collateral p
         ({ commonContext, context } = await loadFixtureCopyVars(initialize));
         mockChain = context.chain as MockChain;
         mockStateConnectorClient = context.stateConnectorClient as MockStateConnectorClient;
+    });
+
+    it("agent should never be able to set poolTopupCollateralRatio > poolExitCollateralRatio", async () => {
+        await expectRevert(Agent.createTest(context, agentOwner1, underlyingAgent1, {
+            poolTopupCollateralRatioBIPS: toBIPS(2.5),
+            poolExitCollateralRatioBIPS: toBIPS(2.4),
+        }), "value too low");
+        // but this should succeed
+        const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, {
+            poolTopupCollateralRatioBIPS: toBIPS(2.4),
+            poolExitCollateralRatioBIPS: toBIPS(2.5),
+        })
+        // trying to set value later should fail also
+        await expectRevert(agent.changeSettings({ poolExitCollateralRatioBIPS: toBIPS(2.3) }), "value too low");
+        await expectRevert(agent.changeSettings({ poolTopupCollateralRatioBIPS: toBIPS(2.6) }), "value too high");
     });
 
     it("should test minter entering the pool, then redeeming and agent collecting pool fees", async () => {
