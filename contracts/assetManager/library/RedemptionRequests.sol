@@ -158,6 +158,7 @@ library RedemptionRequests {
     {
         Redemption.Request storage request = Redemptions.getRedemptionRequest(_redemptionRequestId);
         Agent.State storage oldAgent = Agent.get(request.agentVault);
+        require(request.agentVault != _agentVault, "same agent");
         Agent.State storage newAgent = Agent.get(_agentVault);
         // only owner can call
         Agents.requireAgentVaultOwner(newAgent);
@@ -191,6 +192,9 @@ library RedemptionRequests {
             // delete old request
             Redemptions.deleteRedemptionRequest(_redemptionRequestId);
         }
+        // create new redemption ticket - decrease redeemingAMG and add back to mintedAMG
+        Agents.endRedeemingAssets(oldAgent, closedAMG, false);
+        Agents.allocateMintedAssets(oldAgent, closedAMG);
         Agents.createRedemptionTicket(oldAgent, closedAMG);
     }
 

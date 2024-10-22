@@ -8,7 +8,7 @@ import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { executeTimelockedGovernanceCall } from "../../../utils/contract-test-helpers";
 import { AssetManagerInitSettings, deployAssetManagerFacets, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 
@@ -28,7 +28,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
     let usdt: ERC20MockInstance;
 
@@ -46,19 +46,19 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager diamond te
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci);
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol,
             { governanceSettings: contracts.governanceSettings, updateExecutor: executor });
         await assetManager.switchToProductionMode({ from: governance });
-        return { contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
+        return { contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
     }
 
     beforeEach(async () => {
-        ({ contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
+        ({ contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
     });
 
     describe("governed with extra timelock", () => {

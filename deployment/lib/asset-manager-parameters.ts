@@ -114,17 +114,17 @@ export interface AssetManagerParameters {
     collateralPoolTokenFactory?: string;
 
     /**
-     * The proof verifier contract for state connector proofs.
+     * The proof verifier contract for Flare data connector proofs.
      * Can be a contract address (0x...) or a name in contracts.json.
-     * Optional, default is 'SCProofVerifier' in contracts.json.
+     * Optional, default is 'FdcVerification' in contracts.json.
      * @pattern ^\w+$
      */
-    scProofVerifier?: string;
+    fdcVerification?: string;
 
     /**
      * Price reader contract is a simple abstraction of FTSO system.
      * Can be a contract address (0x...) or a name in contracts.json.
-     * Optional, default is 'SCProofVerifier' in contracts.json.
+     * Optional, default is 'FdcVerification' in contracts.json.
      * @pattern ^\w+$
      */
     priceReader?: string;
@@ -150,7 +150,7 @@ export interface AssetManagerParameters {
     // F-asset (chain) specific parameters
 
     /**
-     * Chain name; must match the state connector chainId, when encoded as bytes.
+     * Chain name; must match the Flare data connector chainId, when encoded as bytes.
      * @minimum 0
      */
     chainName: string;
@@ -389,7 +389,7 @@ export interface AssetManagerParameters {
     /**
      * Minimum time that has to pass between underlying withdrawal announcement and the confirmation.
      * Any value is ok, but higher values give more security against multiple announcement attack by a miner.
-     * Shouldn't be much bigger than state connector response time, so that payments can be confirmed without
+     * Shouldn't be much bigger than Flare data connector response time, so that payments can be confirmed without
      * extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
      * @minimum 0
      */

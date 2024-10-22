@@ -38,6 +38,9 @@ library Minting {
             "invalid minting reference");
         require(_payment.data.responseBody.receivingAddressHash == agent.underlyingAddressHash,
             "not minting agent's address");
+        require(crt.sourceAddressesRoot == bytes32(0) ||
+                crt.sourceAddressesRoot == _payment.data.responseBody.sourceAddressesRoot, // hand shake was required
+            "invalid minter underlying addresses root");
         uint256 mintValueUBA = Conversion.convertAmgToUBA(crt.valueAMG);
         require(_payment.data.responseBody.receivedAmount >= SafeCast.toInt256(mintValueUBA + crt.underlyingFeeUBA),
             "minting payment too small");

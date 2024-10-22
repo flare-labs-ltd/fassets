@@ -949,10 +949,10 @@
     "@ethersproject/properties" "^5.7.0"
     "@ethersproject/strings" "^5.7.0"
 
-"@flarenetwork/state-connector-protocol@1.0.0-beta.3":
-  version "1.0.0-beta.3"
-  resolved "https://registry.yarnpkg.com/@flarenetwork/state-connector-protocol/-/state-connector-protocol-1.0.0-beta.3.tgz#212586df636abd105911f0751fb27d22cd8f5da2"
-  integrity sha512-VDkhP+DgVcLj6ibn2ui613349SmjkfhR5pCs4P+DBSerbMVnyWR1yhI8zP4fXrLNcxR2F9qFyn6L9SIBCMGnGw==
+"@flarenetwork/state-connector-protocol@1.0.0-beta.6":
+  version "1.0.0-beta.6"
+  resolved "https://registry.yarnpkg.com/@flarenetwork/state-connector-protocol/-/state-connector-protocol-1.0.0-beta.6.tgz#6c84cf07871711445d25b6745e9024c3fdbd5397"
+  integrity sha512-QjevdVRZ3TSfm5Q/8VuFQm3HeVsTTifvg1hCzTKysBXY5tt2DXVOCne38kKXNI4ZYzBZStF7t5bqs9YaNbMAVg==
   dependencies:
     "@openzeppelin/contracts" "^4.9.3"
     ethers "^6.7.1"
@@ -5232,7 +5232,7 @@ find-up@^6.3.0:
 
 "flare-smart-contracts-v2@git+https://github.com/flare-foundation/flare-smart-contracts-v2.git":
   version "0.0.1"
-  resolved "git+https://github.com/flare-foundation/flare-smart-contracts-v2.git#0e69fca2c980d1c19792b5a8bdcc61e502d32368"
+  resolved "git+https://github.com/flare-foundation/flare-smart-contracts-v2.git#48d173f0ff86aae325464e26fbacf383abe53475"
   dependencies:
     "@openzeppelin/contracts" "5.0.2"
     "@typescript-eslint/eslint-plugin" "^7.3.1"

@@ -10,7 +10,7 @@ import { AgentVaultInstance, ERC20MockInstance, FAssetInstance, IIAssetManagerIn
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgent, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 
@@ -27,7 +27,7 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
 
     // addresses
@@ -75,17 +75,17 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
+        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset } = await loadFixtureCopyVars(initialize));
     });
 
     it("should not verify payment - legal payment not proved", async () => {
@@ -98,8 +98,8 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
 
     it("should not verify payment - invalid chain", async () => {
         const chainId: SourceId = SourceId.DOGE;
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainId);
         chain.mint(underlyingAgent1, 10001);
         const txHash = await wallet.addTransaction(underlyingAgent1, underlyingAgent1, 1, PaymentReference.addressOwnership(agentOwner1), { maxFee: 100 });
         const proof = await attestationProvider.provePayment(txHash, underlyingAgent1, underlyingAgent1);
@@ -130,8 +130,8 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
             await wallet.addTransaction(minterUnderlying, minterUnderlying, 1, null);
         }
         const chainId: SourceId = SourceId.DOGE;
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainId);
         const proof = await attestationProvider.proveReferencedPaymentNonexistence(crt.paymentAddress, crt.paymentReference, crt.valueUBA.sub(crt.feeUBA),
             crt.firstUnderlyingBlock.toNumber(), crt.lastUnderlyingBlock.toNumber(), crt.lastUnderlyingTimestamp.toNumber());
         const res = assetManager.mintingPaymentDefault(proof, crt.collateralReservationId, { from: agentOwner1 });
@@ -151,8 +151,8 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
         const agentVault = await createAgent(agentOwner1, underlyingAgent1);
         let txHash = await wallet.addTransaction(underlyingAgent1, randomAddress(), 1, PaymentReference.redemption(0));
         const chainId: SourceId = SourceId.DOGE;
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainId);
         let proof = await attestationProvider.proveBalanceDecreasingTransaction(txHash, underlyingAgent1);
         let res = assetManager.illegalPaymentChallenge(proof, agentVault.address);
         await expectRevert(res, 'invalid chain');
@@ -169,8 +169,8 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
     it("should not update current block - invalid chain", async () => {
         await createAgent(agentOwner1, underlyingAgent1);
         const chainId: SourceId = SourceId.DOGE;
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainId);
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         let res = assetManager.updateCurrentBlock(proof);
         await expectRevert(res, "invalid chain")
@@ -178,8 +178,8 @@ contract(`TransactionAttestation.sol; ${getTestFile(__filename)}; Transaction at
 
     it("should not verify address validity - invalid chain", async () => {
         const chainId: SourceId = SourceId.DOGE;
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, chainId);
         const proof = await attestationProvider.proveAddressValidity("MY_ADDRESS");
         const promise = assetManager.createAgentVault(
             web3DeepNormalize(proof), web3DeepNormalize(createTestAgentSettings(usdc.address)), { from: agentOwner1 });

@@ -11,7 +11,7 @@ import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "../../../utils/constants";
 import { AssetManagerInitSettings, deployAssetManagerFacets, newAssetManager, newAssetManagerDiamond } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3DeepEqual, assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
@@ -48,7 +48,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
     let usdt: ERC20MockInstance;
 
@@ -188,7 +188,7 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
     function skipToProofUnavailability(lastUnderlyingBlock: BNish, lastUnderlyingTimestamp: BNish) {
         chain.skipTimeTo(Number(lastUnderlyingTimestamp));
         chain.mine(Number(lastUnderlyingBlock) - chain.blockHeight() + 1);
-        chain.skipTime(stateConnectorClient.queryWindowSeconds + 1);
+        chain.skipTime(flareDataConnectorClient.queryWindowSeconds + 1);
         chain.mine(chain.finalizationBlocks);
     }
 
@@ -205,17 +205,17 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create asset manager
         collaterals = createTestCollaterals(contracts, ci);
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true, announcedUnderlyingConfirmationMinSeconds: 10 });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol);
-        return { contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
+        return { contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt };
     }
 
     beforeEach(async () => {
-        ({ contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
+        ({ contracts, diamondCuts, assetManagerInit, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, collaterals, settings, assetManager, fAsset, usdt } = await loadFixtureCopyVars(initialize));
     });
 
     describe("set and update settings / properties", () => {
@@ -1954,13 +1954,13 @@ contract(`AssetManager.sol; ${getTestFile(__filename)}; Asset manager basic test
             await expectRevert(res, "zero collateralPoolTokenFactory address");
         });
 
-        it("validate settings scProofVerifier address cannot be zero", async () => {
+        it("validate settings fdcVerification address cannot be zero", async () => {
             const Collaterals = web3DeepNormalize(collaterals);
             const Settings = web3DeepNormalize(settings);
             Settings.fAsset = accounts[5];
-            Settings.scProofVerifier = constants.ZERO_ADDRESS;
+            Settings.fdcVerification = constants.ZERO_ADDRESS;
             let res = newAssetManagerDiamond(diamondCuts, assetManagerInit, contracts.governanceSettings, governance, Settings, Collaterals);
-            await expectRevert(res, "zero scProofVerifier address");
+            await expectRevert(res, "zero fdcVerification address");
         });
 
         it("validate settings priceReader address cannot be zero", async () => {

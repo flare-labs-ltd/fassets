@@ -11,7 +11,7 @@ The minted FAssets are secured by collateral, which is in the form of ERC20 toke
 Two novel protocols, available on Flare and Songbird blockchains, enable the FAsset system to operate:
 
 - **FTSO** contracts which provide decentralised price feeds for multiple tokens.
-- Flare’s **State Connector**, which bridges payment data from any connected chain.
+- Flare’s **FDC**, which bridges payment data from any connected chain.
 
 ## Development
 

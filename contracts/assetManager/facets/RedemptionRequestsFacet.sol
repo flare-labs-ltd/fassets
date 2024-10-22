@@ -122,8 +122,8 @@ contract RedemptionRequestsFacet is AssetManagerBase {
     }
 
     /**
-     * If the redeemer provides invalid address, the agent should provide the proof of address invalidity
-     * from the state connector. With this, the agent's obligations are fulfilled and they can keep the underlying.
+     * If the redeemer provides invalid address, the agent should provide the proof of address invalidity from the
+     * Flare data connector. With this, the agent's obligations are fulfilled and they can keep the underlying.
      * NOTE: may only be called by the owner of the agent vault in the redemption request
      * NOTE: also checks that redeemer's address is normalized, so the redeemer must normalize their address,
      *   otherwise it will be rejected!

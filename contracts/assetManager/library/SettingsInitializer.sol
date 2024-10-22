@@ -46,7 +46,7 @@ library SettingsInitializer {
         require(_settings.agentVaultFactory != address(0), "zero agentVaultFactory address");
         require(_settings.collateralPoolFactory != address(0), "zero collateralPoolFactory address");
         require(_settings.collateralPoolTokenFactory != address(0), "zero collateralPoolTokenFactory address");
-        require(_settings.scProofVerifier != address(0), "zero scProofVerifier address");
+        require(_settings.fdcVerification != address(0), "zero fdcVerification address");
         require(_settings.priceReader != address(0), "zero priceReader address");
         require(_settings.agentOwnerRegistry != address(0), "zero agentOwnerRegistry address");
 

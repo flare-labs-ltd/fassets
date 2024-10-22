@@ -50,7 +50,7 @@ library AssetManagerSettings {
         // Attestation client verifies and decodes attestation proofs.
         // Type: IFdcVerification
         // changed via address updater
-        address scProofVerifier;
+        address fdcVerification;
 
         // The address where burned NAt is sent.
         // (E.g. collateral reservation fee is burned on successful minting.)
@@ -208,7 +208,7 @@ library AssetManagerSettings {
 
         // Minimum time that has to pass between underlying withdrawal announcement and the confirmation.
         // Any value is ok, but higher values give more security against multiple announcement attack by a miner.
-        // Shouldn't be much bigger than state connector response time, so that payments can be confirmed without
+        // Shouldn't be much bigger than Flare data connector response time, so that payments can be confirmed without
         // extra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).
         // rate-limited
         uint64 announcedUnderlyingConfirmationMinSeconds;

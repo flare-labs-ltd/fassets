@@ -9,7 +9,7 @@ import { AgentOwnerRegistryInstance, AgentVaultInstance, AssetManagerControllerI
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestAgentSettings, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 
@@ -32,7 +32,7 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
     let whitelist: WhitelistInstance;
     let agentOwnerRegistry: AgentOwnerRegistryInstance;
@@ -66,8 +66,8 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create whitelist
         whitelist = await Whitelist.new(contracts.governanceSettings.address, governance, false);
         await whitelist.switchToProductionMode({ from: governance });
@@ -85,11 +85,11 @@ contract(`AgentOwnerRegistry.sol; ${getTestFile(__filename)}; Agent owner regist
 
         const res = await assetManagerController.setAgentOwnerRegistry([assetManager.address], agentOwnerRegistry.address, { from: governance });
         await waitForTimelock(res, assetManagerController, updateExecutor);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry };
+        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry } =
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, agentOwnerRegistry } =
             await loadFixtureCopyVars(initialize));
     });
 

@@ -138,7 +138,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
             SettingsUpdater.SET_PRICE_READER, abi.encode(_value));
     }
 
-    function setSCProofVerifier(IIAssetManager[] memory _assetManagers, address _value)
+    function setFdcVerification(IIAssetManager[] memory _assetManagers, address _value)
         external
         onlyGovernance
     {

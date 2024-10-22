@@ -12,6 +12,7 @@ import "./Agents.sol";
 import "./Minting.sol";
 import "./AgentCollateral.sol";
 import "./TransactionAttestation.sol";
+import "./MerkleTree.sol";
 
 
 library CollateralReservations {
@@ -62,12 +63,13 @@ library CollateralReservations {
         if (agent.handShakeType != 0) {
             require(_minterUnderlyingAddresses.length > 0, "minter underlying addresses required");
             bytes32[] memory hashes = new bytes32[](_minterUnderlyingAddresses.length);
-            hashes[0] = keccak256(bytes(_minterUnderlyingAddresses[0]));
+            // double hash the addresses (to prevent second pre-image attack) and check if they are sorted
+            hashes[0] = _doubleHash(_minterUnderlyingAddresses[0]);
             for (uint256 i = 1; i < _minterUnderlyingAddresses.length; i++) {
-                hashes[i] = keccak256(bytes(_minterUnderlyingAddresses[i]));
+                hashes[i] = _doubleHash(_minterUnderlyingAddresses[i]);
                 require(hashes[i] > hashes[i - 1], "minter underlying addresses not sorted");
             }
-            cr.minterUnderlyingAddressesHash = keccak256(abi.encodePacked(hashes));
+            cr.sourceAddressesRoot = MerkleTree.calculateMerkleRoot(hashes);
             cr.handShakeStartTimestamp = block.timestamp.toUint64();
             _emitHandShakeRequiredEvent(agent, cr, crtId, _minterUnderlyingAddresses);
         } else {
@@ -135,6 +137,10 @@ library CollateralReservations {
     {
         CollateralReservation.Data storage crt = getCollateralReservation(_crtId);
         require(crt.handShakeStartTimestamp == 0, "collateral reservation not approved");
+        require(!_nonPayment.data.requestBody.checkSourceAddresses && crt.sourceAddressesRoot == bytes32(0) ||
+            _nonPayment.data.requestBody.checkSourceAddresses &&
+            crt.sourceAddressesRoot == _nonPayment.data.requestBody.sourceAddressesRoot,
+            "invalid check or source addresses root");
         Agent.State storage agent = Agent.get(crt.agentVault);
         Agents.requireAgentVaultOwner(agent);
         // check requirements
@@ -149,6 +155,7 @@ library CollateralReservations {
             "minting default too early");
         require(_nonPayment.data.requestBody.minimalBlockNumber <= crt.firstUnderlyingBlock,
             "minting non-payment proof window too short");
+
         // send event
         uint256 reservedValueUBA = underlyingValueUBA + Minting.calculatePoolFee(agent, crt.underlyingFeeUBA);
         emit AMEvents.MintingPaymentDefault(crt.agentVault, crt.minter, _crtId, reservedValueUBA);
@@ -342,5 +349,12 @@ library CollateralReservations {
     {
         uint256 valueNATWei = Conversion.convertAmgToTokenWei(_valueAMG, amgToTokenWeiPrice);
         return valueNATWei.mulBips(Globals.getSettings().collateralReservationFeeBIPS);
+    }
+
+    function _doubleHash(string memory _str)
+        private pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(keccak256(bytes(_str))));
     }
 }

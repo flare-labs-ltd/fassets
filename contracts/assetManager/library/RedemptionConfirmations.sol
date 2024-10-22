@@ -128,7 +128,7 @@ library RedemptionConfirmations {
             return (false, "redemption payment too late");
         } else if (request.status == Redemption.Status.DEFAULTED) {
             // Redemption is already defaulted, although the payment was not too late.
-            // This indicates a problem in state connector, which gives proofs of both valid payment and nonpayment,
+            // This indicates a problem in FDC, which gives proofs of both valid payment and nonpayment,
             // but we cannot solve it here. So we just return as failed and the off-chain code should alert.
             return (false, "redemption payment too late");
         }

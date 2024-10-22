@@ -37,7 +37,7 @@ library SettingsUpdater {
     bytes32 internal constant SET_PRICE_READER =
         keccak256("setPriceReader(address)");
     bytes32 internal constant SET_SC_PROOF_VERIFIER =
-        keccak256("setSCProofVerifier(address)");
+        keccak256("setFdcVerification(address)");
     bytes32 internal constant SET_CLEANER_CONTRACT =
         keccak256("setCleanerContract(address)");
     bytes32 internal constant SET_CLEANUP_BLOCK_NUMBER_MANAGER =
@@ -145,7 +145,7 @@ library SettingsUpdater {
             _setPriceReader(_params);
         } else if (_method == SET_SC_PROOF_VERIFIER) {
             checkEnoughTimeSinceLastUpdate(_method);
-            _setSCProofVerifier(_params);
+            _setFdcVerification(_params);
         } else if (_method == SET_CLEANER_CONTRACT) {
             checkEnoughTimeSinceLastUpdate(_method);
             _setCleanerContract(_params);
@@ -423,7 +423,7 @@ library SettingsUpdater {
         emit AMEvents.ContractChanged("priceReader", value);
     }
 
-    function _setSCProofVerifier(
+    function _setFdcVerification(
         bytes calldata _params
     )
         private
@@ -433,8 +433,8 @@ library SettingsUpdater {
         // validate
         require(value != address(0), "address zero");
         // update
-        settings.scProofVerifier = value;
-        emit AMEvents.ContractChanged("scProofVerifier", value);
+        settings.fdcVerification = value;
+        emit AMEvents.ContractChanged("fdcVerification", value);
     }
 
     function _setCleanerContract(

@@ -14,6 +14,7 @@ contract RedemptionDefaultsFacet is AssetManagerBase {
      * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
      * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
      * remaining collateral.
+     * NOTE: The attestation request must be done with `checkSourceAddresses=false`.
      * NOTE: may only be called by the redeemer (= creator of the redemption request),
      *   the executor appointed by the redeemer,
      *   or the agent owner (= owner of the agent vault in the redemption request)

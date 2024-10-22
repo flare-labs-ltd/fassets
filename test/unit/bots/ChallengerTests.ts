@@ -18,7 +18,7 @@ import { Minter } from "../../integration/utils/Minter";
 import { Redeemer } from "../../integration/utils/Redeemer";
 import { testChainInfo, TestChainInfo, testNatInfo } from "../../integration/utils/TestChainInfo";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile } from "../../utils/test-helpers";
 import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { AgentVaultInstance, ERC20MockInstance } from "../../../typechain-truffle";
@@ -105,7 +105,7 @@ contract(`ChallengerTests.ts; ${getTestFile(__filename)}; Challenger bot unit te
         interceptor.logger = logger;
         chain.logger = logger;
         // timeline.logger = logger;
-        (context.stateConnectorClient as MockStateConnectorClient).logger = logger;
+        (context.flareDataConnectorClient as MockFlareDataConnectorClient).logger = logger;
         trackedState.logger = logger;
         // actors
         agent = await Agent.createTest(context, agentOwner1, underlyingAgent1);

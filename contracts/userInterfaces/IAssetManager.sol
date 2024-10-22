@@ -600,6 +600,8 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
+     * NOTE: In case hand-shake was required, the payment must be done using only all provided addresses,
+     * so `sourceAddressesRoot` matches the calculated Merkle root, otherwise the proof will be rejected.
      * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request),
      *   the executor appointed by the minter, or the agent owner (= owner of the agent vault in CR).
      * @param _payment proof of the underlying payment (must contain exact `value + fee` amount and correct
@@ -615,6 +617,9 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * When the time for the minter to pay the underlying amount is over (i.e. the last underlying block has passed),
      * the agent can declare payment default. Then the agent collects the collateral reservation fee
      * (it goes directly to the vault), and the reserved collateral is unlocked.
+     * NOTE: In case hand-shake was required, the attestation request must be done using `checkSourceAddresses=true`
+     * and correct `sourceAddressesRoot`, otherwise the proof will be rejected. If there was no hand-shake required,
+     * the attestation request must be done with `checkSourceAddresses=false`.
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * @param _proof proof that the minter didn't pay with correct payment reference on the underlying chain
      * @param _collateralReservationId id of a collateral reservation created by the minter
@@ -709,8 +714,8 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
     ) external;
 
     /**
-     * If the redeemer provides invalid address, the agent should provide the proof of address invalidity
-     * from the state connector. With this, the agent's obligations are fulfilled and they can keep the underlying.
+     * If the redeemer provides invalid address, the agent should provide the proof of address invalidity from the
+     * Flare data connector. With this, the agent's obligations are fulfilled and they can keep the underlying.
      * NOTE: may only be called by the owner of the agent vault in the redemption request
      * NOTE: also checks that redeemer's address is normalized, so the redeemer must normalize their address,
      *   otherwise it will be rejected!
@@ -747,6 +752,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * the underlying chain), the redeemer calls this method and receives payment in collateral (with some extra).
      * The agent can also call default if the redeemer is unresponsive, to payout the redeemer and free the
      * remaining collateral.
+     * NOTE: The attestation request must be done with `checkSourceAddresses=false`.
      * NOTE: may only be called by the redeemer (= creator of the redemption request),
      *   the executor appointed by the redeemer,
      *   or the agent owner (= owner of the agent vault in the redemption request)

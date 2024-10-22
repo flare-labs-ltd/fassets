@@ -5,9 +5,14 @@
     "address": "0xD11CB940C8375c119CAe7b8A75844ec35371F2E0"
   },
   {
-    "name": "StateConnector",
-    "contractName": "StateConnector.sol",
-    "address": "0x0c13aDA1C7143Cf0a0795FFaB93eEBb6FAD6e4e3"
+    "name": "Relay",
+    "contractName": "Relay.sol",
+    "address": "0x92a6E1127262106611e1e129BB64B6D8654273F7"
+  },
+  {
+    "name": "FdcHub",
+    "contractName": "FdcHub.sol",
+    "address": "0x1c78A073E3BD2aCa4cc327d55FB0cD4f0549B55b"
   },
   {
     "name": "FlareDaemon",
@@ -215,8 +220,8 @@
     "address": "0x17c3E6318cb45B4267998940d7D65BA95A32954F"
   },
   {
-    "name": "SCProofVerifier",
-    "contractName": "SCProofVerifier.sol",
+    "name": "FdcVerification",
+    "contractName": "FdcVerification.sol",
     "address": "0x6Bd0DBbDB84F667d5C450E517760375c8Ad8De71"
   },
   {

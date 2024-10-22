@@ -7,7 +7,7 @@ import { AddressUpdatableContract, AddressUpdatableInstance, AssetManagerControl
 import { testChainInfo } from "../../../integration/utils/TestChainInfo";
 import { AssetManagerInitSettings, newAssetManager, waitForTimelock } from "../../../utils/fasset/CreateAssetManager";
 import { MockChain, MockChainWallet } from "../../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../../utils/fasset/MockFlareDataConnectorClient";
 import { getTestFile, loadFixtureCopyVars } from "../../../utils/test-helpers";
 import { TestFtsos, TestSettingsContracts, createTestCollaterals, createTestContracts, createTestFtsos, createTestSettings } from "../../../utils/test-settings";
 import { assertWeb3Equal, web3ResultStruct } from "../../../utils/web3assertions";
@@ -31,7 +31,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
     let collaterals: CollateralType[];
     let chain: MockChain;
     let wallet: MockChainWallet;
-    let stateConnectorClient: MockStateConnectorClient;
+    let flareDataConnectorClient: MockFlareDataConnectorClient;
     let attestationProvider: AttestationHelper;
     let whitelist: WhitelistInstance;
     let addressUpdatableMock : AddressUpdatableInstance;
@@ -50,8 +50,8 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         // create mock chain and attestation provider
         chain = new MockChain(await time.latest());
         wallet = new MockChainWallet(chain);
-        stateConnectorClient = new MockStateConnectorClient(contracts.stateConnector, { [ci.chainId]: chain }, 'auto');
-        attestationProvider = new AttestationHelper(stateConnectorClient, chain, ci.chainId);
+        flareDataConnectorClient = new MockFlareDataConnectorClient(contracts.fdcHub, contracts.relay, { [ci.chainId]: chain }, 'auto');
+        attestationProvider = new AttestationHelper(flareDataConnectorClient, chain, ci.chainId);
         // create whitelist
         whitelist = await Whitelist.new(contracts.governanceSettings.address, governance, false);
         await whitelist.switchToProductionMode({ from: governance });
@@ -63,11 +63,11 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         settings = createTestSettings(contracts, ci, { requireEOAAddressProof: true });
         [assetManager, fAsset] = await newAssetManager(governance, assetManagerController, ci.name, ci.symbol, ci.decimals, settings, collaterals, ci.assetName, ci.assetSymbol, { governanceSettings, updateExecutor });
         addressUpdatableMock = await AddressUpdatableMock.new(contracts.addressUpdater.address);
-        return { contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock };
+        return { contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock };
     }
 
     beforeEach(async () => {
-        ({ contracts, wNat, usdc, ftsos, chain, wallet, stateConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock } =
+        ({ contracts, wNat, usdc, ftsos, chain, wallet, flareDataConnectorClient, attestationProvider, whitelist, assetManagerController, collaterals, settings, assetManager, fAsset, addressUpdatableMock } =
             await loadFixtureCopyVars(initialize));
     });
 
@@ -895,16 +895,16 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should revert setting proof verifier after timelock when address 0 is provided", async () => {
-            const res = assetManagerController.setSCProofVerifier([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
+            const res = assetManagerController.setFdcVerification([assetManager.address], constants.ZERO_ADDRESS, { from: governance });
             const timelock_info = waitForTimelock(res, assetManagerController, updateExecutor);
             await expectRevert(timelock_info, "address zero");
         });
 
-        it("should set state connector proof verifier after timelock", async () => {
+        it("should set Flare data connector proof verifier after timelock", async () => {
             const addr = randomAddress();
-            const res = await assetManagerController.setSCProofVerifier([assetManager.address], addr, { from: governance });
+            const res = await assetManagerController.setFdcVerification([assetManager.address], addr, { from: governance });
             const timelock_info = await waitForTimelock(res, assetManagerController, updateExecutor);
-            expectEvent(timelock_info, "ContractChanged", { name: "scProofVerifier", value: addr });
+            expectEvent(timelock_info, "ContractChanged", { name: "fdcVerification", value: addr });
         });
 
         it("should set cleaner contract", async () => {
@@ -928,7 +928,7 @@ contract(`AssetManagerController.sol; ${getTestFile(__filename)}; Asset manager 
             await expectRevert(timelock_info, "address zero");
         });
 
-        it("should set state connector proof verifier after timelock", async () => {
+        it("should set Flare data connector proof verifier after timelock", async () => {
             const FAsset = artifacts.require('FAsset');
             const impl = await FAsset.new();
             const res = await assetManagerController.upgradeFAssetImplementation([assetManager.address], impl.address, "0x", { from: governance });

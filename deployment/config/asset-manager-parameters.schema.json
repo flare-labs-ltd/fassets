@@ -94,7 +94,7 @@
             "type": "string"
         },
         "announcedUnderlyingConfirmationMinSeconds": {
-            "description": "Minimum time that has to pass between underlying withdrawal announcement and the confirmation.\nAny value is ok, but higher values give more security against multiple announcement attack by a miner.\nShouldn't be much bigger than state connector response time, so that payments can be confirmed without\nextra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).",
+            "description": "Minimum time that has to pass between underlying withdrawal announcement and the confirmation.\nAny value is ok, but higher values give more security against multiple announcement attack by a miner.\nShouldn't be much bigger than Flare data connector response time, so that payments can be confirmed without\nextra wait. Should be smaller than confirmationByOthersAfterSeconds (e.g. less than 1 hour).",
             "minimum": 0,
             "type": "integer"
         },
@@ -153,7 +153,7 @@
             "type": "integer"
         },
         "chainName": {
-            "description": "Chain name; must match the state connector chainId, when encoded as bytes.",
+            "description": "Chain name; must match the Flare data connector chainId, when encoded as bytes.",
             "minimum": 0,
             "type": "string"
         },
@@ -286,7 +286,7 @@
             "type": "string"
         },
         "priceReader": {
-            "description": "Price reader contract is a simple abstraction of FTSO system.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'SCProofVerifier' in contracts.json.",
+            "description": "Price reader contract is a simple abstraction of FTSO system.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'FdcVerification' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
         },
@@ -328,8 +328,8 @@
             "description": "For some chains (e.g. Ethereum) we require that agent proves that underlying address is an EOA address.\nThis must be done by presenting a payment proof from that address.",
             "type": "boolean"
         },
-        "scProofVerifier": {
-            "description": "The proof verifier contract for state connector proofs.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'SCProofVerifier' in contracts.json.",
+        "fdcVerification": {
+            "description": "The proof verifier contract for Flare data connector proofs.\nCan be a contract address (0x...) or a name in contracts.json.\nOptional, default is 'FdcVerification' in contracts.json.",
             "pattern": "^\\w+$",
             "type": "string"
         },

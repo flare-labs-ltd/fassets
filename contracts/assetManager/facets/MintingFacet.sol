@@ -116,6 +116,8 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
+     * NOTE: In case hand-shake was required, the payment must be done using only all provided addresses,
+     * so `sourceAddressesRoot` matches the calculated Merkle root, otherwise the proof will be rejected.
      * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request),
      *   the executor appointed by the minter, or the agent owner (= owner of the agent vault in CR).
      * @param _payment proof of the underlying payment (must contain exact `value + fee` amount and correct
@@ -136,6 +138,9 @@ contract MintingFacet is AssetManagerBase, ReentrancyGuard {
      * When the time for minter to pay underlying amount is over (i.e. the last underlying block has passed),
      * the agent can declare payment default. Then the agent collects collateral reservation fee
      * (it goes directly to the vault), and the reserved collateral is unlocked.
+     * NOTE: In case hand-shake was required, the attestation request must be done using `checkSourceAddresses=true`
+     * and correct `sourceAddressesRoot`, otherwise the proof will be rejected. If there was no hand-shake required,
+     * the attestation request must be done with `checkSourceAddresses=false`.
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * @param _proof proof that the minter didn't pay with correct payment reference on the underlying chain
      * @param _collateralReservationId id of a collateral reservation created by the minter

@@ -16,8 +16,10 @@ import {
     IIAssetManagerInstance,
     IPriceReaderInstance,
     IWhitelistInstance,
-    SCProofVerifierInstance,
-    StateConnectorMockInstance, WNatInstance
+    WNatInstance,
+    IFdcVerificationInstance,
+    RelayMockInstance,
+    FdcHubMockInstance
 } from "../../typechain-truffle";
 import { TestChainInfo } from "../integration/utils/TestChainInfo";
 import { GENESIS_GOVERNANCE_ADDRESS } from "./constants";
@@ -28,11 +30,12 @@ import { setDefaultVPContract } from "./token-test-helpers";
 const AgentVault = artifacts.require("AgentVault");
 const WNat = artifacts.require("WNat");
 const AddressUpdater = artifacts.require('AddressUpdater');
-const SCProofVerifier = artifacts.require('SCProofVerifier');
+const FdcVerification = artifacts.require('FdcVerificationMock');
 const PriceReader = artifacts.require('FtsoV1PriceReader');
 const FtsoMock = artifacts.require('FtsoMock');
 const FtsoRegistryMock = artifacts.require('FtsoRegistryMock');
-const StateConnector = artifacts.require('StateConnectorMock');
+const FdcHub = artifacts.require('FdcHubMock');
+const Relay = artifacts.require('RelayMock');
 const GovernanceSettings = artifacts.require('GovernanceSettings');
 const AgentVaultFactory = artifacts.require('AgentVaultFactory');
 const ERC20Mock = artifacts.require("ERC20Mock");
@@ -48,8 +51,9 @@ export interface TestSettingsContracts {
     agentVaultFactory: AgentVaultFactoryInstance;
     collateralPoolFactory: CollateralPoolFactoryInstance;
     collateralPoolTokenFactory: CollateralPoolTokenFactoryInstance;
-    stateConnector: StateConnectorMockInstance;
-    scProofVerifier: SCProofVerifierInstance;
+    relay: RelayMockInstance;
+    fdcHub: FdcHubMockInstance;
+    fdcVerification: IFdcVerificationInstance;
     priceReader: IPriceReaderInstance,
     whitelist?: IWhitelistInstance;
     agentOwnerRegistry: AgentOwnerRegistryInstance;
@@ -67,7 +71,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         agentVaultFactory: contracts.agentVaultFactory.address,
         collateralPoolFactory: contracts.collateralPoolFactory.address,
         collateralPoolTokenFactory: contracts.collateralPoolTokenFactory.address,
-        scProofVerifier: contracts.scProofVerifier.address,
+        fdcVerification: contracts.fdcVerification.address,
         priceReader: contracts.priceReader.address,
         whitelist: contracts.whitelist?.address ?? constants.ZERO_ADDRESS,
         agentOwnerRegistry: contracts.agentOwnerRegistry?.address ?? constants.ZERO_ADDRESS,
@@ -100,7 +104,7 @@ export function createTestSettings(contracts: TestSettingsContracts, ci: TestCha
         attestationWindowSeconds: 1 * DAYS,
         averageBlockTimeMS: Math.round(ci.blockTime * 1000),
         buybackCollateralFactorBIPS: toBIPS(1.1),               // 1.1
-        announcedUnderlyingConfirmationMinSeconds: 0,           // should be higher in production (~ state connector response time, in tests sc response time is 0)
+        announcedUnderlyingConfirmationMinSeconds: 0,           // should be higher in production (~ Flare data connector response time, in tests sc response time is 0)
         agentFeeChangeTimelockSeconds: 6 * HOURS,
         agentMintingCRChangeTimelockSeconds: 1 * HOURS,
         poolExitAndTopupChangeTimelockSeconds: 2 * HOURS,
@@ -210,10 +214,12 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     await governanceSettings.initialise(governance, 60, [governance], { from: GENESIS_GOVERNANCE_ADDRESS });
     // create address updater
     const addressUpdater = await AddressUpdater.new(governance);  // don't switch to production
-    // create state connector
-    const stateConnector = await StateConnector.new();
+    // create FdcHub
+    const fdcHub = await FdcHub.new();
+    // create Relay
+    const relay = await Relay.new();
     // create attestation client
-    const scProofVerifier = await SCProofVerifier.new(stateConnector.address);
+    const fdcVerification = await FdcVerification.new(relay.address, 200);
     // create WNat token
     const wNat = await WNat.new(governance, "NetworkNative", "NAT");
     await setDefaultVPContract(wNat, governance);
@@ -226,8 +232,8 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     const ftsoRegistry = await FtsoRegistryMock.new();
     // add some addresses to address updater
     await addressUpdater.addOrUpdateContractNamesAndAddresses(
-        ["GovernanceSettings", "AddressUpdater", "StateConnector", "FtsoRegistry", "WNat"],
-        [governanceSettings.address, addressUpdater.address, stateConnector.address, ftsoRegistry.address, wNat.address],
+        ["GovernanceSettings", "AddressUpdater", "FdcHub", "Relay", "FtsoRegistry", "WNat"],
+        [governanceSettings.address, addressUpdater.address, fdcHub.address, relay.address, ftsoRegistry.address, wNat.address],
         { from: governance });
     // create price reader
     const priceReader = await PriceReader.new(addressUpdater.address, ftsoRegistry.address);
@@ -245,7 +251,7 @@ export async function createTestContracts(governance: string): Promise<TestSetti
     await agentOwnerRegistry.setAllowAll(true, { from: governance });
     //
     return {
-        governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, stateConnector, scProofVerifier,
+        governanceSettings, addressUpdater, agentVaultFactory, collateralPoolFactory, collateralPoolTokenFactory, relay, fdcHub, fdcVerification,
         priceReader, agentOwnerRegistry, ftsoRegistry, wNat, stablecoins };
 }
 

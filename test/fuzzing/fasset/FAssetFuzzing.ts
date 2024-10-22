@@ -12,7 +12,7 @@ import { CommonContext } from "../../integration/utils/CommonContext";
 import { TestChainInfo, testChainInfo } from "../../integration/utils/TestChainInfo";
 import { Web3EventDecoder } from "../../utils/Web3EventDecoder";
 import { MockChain } from "../../utils/fasset/MockChain";
-import { MockStateConnectorClient } from "../../utils/fasset/MockStateConnectorClient";
+import { MockFlareDataConnectorClient } from "../../utils/fasset/MockFlareDataConnectorClient";
 import { InclusionIterable, coinFlip, currentRealTime, getEnv, randomChoice, randomInt, randomNum, weightedRandomChoice } from "../../utils/fuzzing-utils";
 import { getTestFile } from "../../utils/test-helpers";
 import { FuzzingAgent } from "./FuzzingAgent";
@@ -100,7 +100,7 @@ contract(`FAssetFuzzing.sol; ${getTestFile(__filename)}; End to end fuzzing test
         interceptor.logger = logger;
         chain.logger = logger;
         timeline.logger = logger;
-        (context.stateConnectorClient as MockStateConnectorClient).logger = logger;
+        (context.flareDataConnectorClient as MockFlareDataConnectorClient).logger = logger;
         fuzzingState.logger = logger;
     });
 
