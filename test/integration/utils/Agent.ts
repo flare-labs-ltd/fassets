@@ -469,12 +469,12 @@ export class Agent extends AssetContextClient {
         const transactionHash = await this.wallet.addTransaction(randomAddr, this.underlyingAddress, depositUBA, PaymentReference.selfMint(this.agentVault.address));
         const proof = await this.attestationProvider.provePayment(transactionHash, null, this.underlyingAddress);
         const res = await this.assetManager.selfMint(proof, this.agentVault.address, lots, { from: this.ownerWorkAddress });
-        return requiredEventArgs(res, 'MintingExecuted');
+        return requiredEventArgs(res, 'SelfMint');
     }
 
     async mintFromFreeUnderlying(lots: BNish) {
         const res = await this.assetManager.mintFromFreeUnderlying(this.agentVault.address, lots, { from: this.ownerWorkAddress });
-        return requiredEventArgs(res, 'MintingExecuted');
+        return requiredEventArgs(res, 'SelfMint');
     }
 
     async selfClose(amountUBA: BNish): Promise<[dustChangesUBA: BN[], selfClosedValueUBA: BN, liquidationCancelledEvent: EventArgs<LiquidationEnded>]> {

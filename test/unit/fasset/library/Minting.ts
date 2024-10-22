@@ -364,11 +364,11 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const res = await assetManager.selfMint(proof, agentVault.address, lots, { from: agentOwner1 });
         // assert
-        const event = requiredEventArgs(res, 'MintingExecuted');
+        const event = requiredEventArgs(res, 'SelfMint');
         assertWeb3Equal(event.agentVault, agentVault.address);
-        assertWeb3Equal(event.collateralReservationId, 0);
+        assertWeb3Equal(event.mintFromFreeUnderlying, false);
         assertWeb3Equal(event.mintedAmountUBA, paymentAmount);
-        assertWeb3Equal(event.agentFeeUBA, 0);
+        assertWeb3Equal(event.depositedAmountUBA, paymentAmount.add(poolFee));
         assertWeb3Equal(event.poolFeeUBA, poolFee);
         const ticketCreated = requiredEventArgs(res, "RedemptionTicketCreated");
         assertWeb3Equal(ticketCreated.agentVault, agentVault.address);
@@ -389,12 +389,12 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const proof = await attestationProvider.provePayment(txHash, null, underlyingAgent1);
         const res = await assetManager.selfMint(proof, agentVault.address, 1, { from: agentOwner1 });
         // assert
-        const event = requiredEventArgs(res, 'MintingExecuted');
+        const event = requiredEventArgs(res, 'SelfMint');
         const poolFee = toBN(event.mintedAmountUBA).mul(feeBIPS).divn(MAX_BIPS).mul(poolFeeShareBIPS).divn(MAX_BIPS);
         assertWeb3Equal(event.agentVault, agentVault.address);
-        assertWeb3Equal(event.collateralReservationId, 0);
+        assertWeb3Equal(event.mintFromFreeUnderlying, false);
         assertWeb3Equal(event.mintedAmountUBA, paymentAmount.divn(2));
-        assertWeb3Equal(event.agentFeeUBA, paymentAmount.divn(2).sub(poolFee));
+        assertWeb3Equal(event.depositedAmountUBA, paymentAmount);
         assertWeb3Equal(event.poolFeeUBA, poolFee);
         const ticketCreated = requiredEventArgs(res, "RedemptionTicketCreated");
         assertWeb3Equal(ticketCreated.agentVault, agentVault.address);
@@ -539,7 +539,7 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
         const res = await assetManager.selfMint(proof, agentVault.address, 0, { from: agentOwner1 });
         const after = await assetManager.getAgentInfo(agentVault.address);
         // assert
-        expectEvent(res, 'MintingExecuted', { agentVault: agentVault.address, collateralReservationId: toBN(0), mintedAmountUBA: toBN(0), agentFeeUBA: paymentAmount });
+        expectEvent(res, 'SelfMint', { agentVault: agentVault.address, mintFromFreeUnderlying: false, mintedAmountUBA: toBN(0), depositedAmountUBA: paymentAmount, poolFeeUBA: toBN(0) });
         assertWeb3Equal(toBN(after.freeUnderlyingBalanceUBA).sub(toBN(before.freeUnderlyingBalanceUBA)), paymentAmount, "invalid self-mint topup value");
     });
 

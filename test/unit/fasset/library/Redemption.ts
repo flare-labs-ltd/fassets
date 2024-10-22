@@ -507,25 +507,25 @@ contract(`Redemption.sol; ${getTestFile(__filename)}; Redemption basic tests`, a
         const transactionHash1 = await wallet.addTransaction(randomAddr, underlyingAgent2, amountWithPoolFee, PaymentReference.selfMint(agentVault2.address));
         const proof1 = await attestationProvider.provePayment(transactionHash1, null, underlyingAgent2);
         const res1 = await assetManager.selfMint(proof1, agentVault2.address, lots, { from: agentOwner2 });
-        expectEvent(res1, "MintingExecuted");
+        expectEvent(res1, "SelfMint");
 
         chain.mint(randomAddr, amountWithPoolFee);
         const transactionHash2 = await wallet.addTransaction(randomAddr, underlyingAgent1, amountWithPoolFee, PaymentReference.selfMint(agentVault.address));
         const proof2 = await attestationProvider.provePayment(transactionHash2, null, underlyingAgent1);
         const res2 = await assetManager.selfMint(proof2, agentVault.address, lots, { from: agentOwner1 });
-        expectEvent(res2, "MintingExecuted");
+        expectEvent(res2, "SelfMint");
 
         chain.mint(randomAddr, amountWithPoolFee);
         const transactionHash3 = await wallet.addTransaction(randomAddr, underlyingAgent2, amountWithPoolFee, PaymentReference.selfMint(agentVault2.address));
         const proof3 = await attestationProvider.provePayment(transactionHash3, null, underlyingAgent2);
         const res3 = await assetManager.selfMint(proof3, agentVault2.address, lots, { from: agentOwner2 });
-        expectEvent(res3, "MintingExecuted");
+        expectEvent(res3, "SelfMint");
 
         chain.mint(randomAddr, amountWithPoolFee);
         const transactionHash4 = await wallet.addTransaction(randomAddr, underlyingAgent2, amountWithPoolFee, PaymentReference.selfMint(agentVault2.address));
         const proof4 = await attestationProvider.provePayment(transactionHash4, null, underlyingAgent2);
         const res4 = await assetManager.selfMint(proof4, agentVault2.address, lots, { from: agentOwner2 });
-        expectEvent(res4, "MintingExecuted");
+        expectEvent(res4, "SelfMint");
 
         const resSelf = await assetManager.selfClose(agentVault.address, paymentAmount, { from: agentOwner1 });
         expectEvent(resSelf, 'SelfClose');

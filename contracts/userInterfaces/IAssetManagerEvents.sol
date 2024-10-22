@@ -135,7 +135,6 @@ interface IAssetManagerEvents {
     /**
      * Minter paid underlying funds in time and received the fassets.
      * The agent's collateral is locked.
-     * This event is also emitted for self-minting. In this case, `collateralReservationId` is 0.
      */
     event MintingExecuted(
         address indexed agentVault,
@@ -163,6 +162,18 @@ interface IAssetManagerEvents {
         address indexed minter,
         uint256 indexed collateralReservationId,
         uint256 reservedAmountUBA);
+
+    /**
+     * Agent performed self minting, either by executing selfMint with underlying deposit or
+     * by executing mintFromFreeUnderlying (in this case, `mintFromFreeUnderlying` is true and
+     * `depositedAmountUBA` is zero).
+     */
+    event SelfMint(
+        address indexed agentVault,
+        bool mintFromFreeUnderlying,
+        uint256 mintedAmountUBA,
+        uint256 depositedAmountUBA,
+        uint256 poolFeeUBA);
 
     /**
      * Redeemer started the redemption process and provided fassets.

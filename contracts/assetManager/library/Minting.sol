@@ -20,6 +20,8 @@ library Minting {
     using AgentCollateral for Collateral.CombinedData;
     using Agent for Agent.State;
 
+    enum MintingType { PUBLIC, SELF_MINT, FROM_FREE_UNDERLYING }
+
     function executeMinting(
         Payment.Proof calldata _payment,
         uint64 _crtId
@@ -46,7 +48,7 @@ library Minting {
         require(_payment.data.responseBody.blockNumber >= crt.firstUnderlyingBlock,
             "minting payment too old");
         // execute minting
-        _performMinting(agent, _crtId, crt.minter, crt.valueAMG, true,
+        _performMinting(agent, MintingType.PUBLIC, _crtId, crt.minter, crt.valueAMG,
             uint256(_payment.data.responseBody.receivedAmount), calculatePoolFee(agent, crt.underlyingFeeUBA));
         // pay to executor if they called this method
         uint256 unclaimedExecutorFee = crt.executorFeeNatGWei * Conversion.GWEI;
@@ -94,10 +96,10 @@ library Minting {
         // and selfMint call, the paid assets would otherwise be stuck; in this way they are converted to free balance
         uint256 receivedAmount = uint256(_payment.data.responseBody.receivedAmount);  // guarded by require
         if (_lots > 0) {
-            _performMinting(agent, 0, msg.sender, valueAMG, true, receivedAmount, poolFeeUBA);
+            _performMinting(agent, MintingType.SELF_MINT, 0, msg.sender, valueAMG, receivedAmount, poolFeeUBA);
         } else {
             UnderlyingBalance.increaseBalance(agent, receivedAmount);
-            emit IAssetManagerEvents.MintingExecuted(_agentVault, 0, 0, receivedAmount, 0);
+            emit IAssetManagerEvents.SelfMint(_agentVault, false, 0, receivedAmount, 0);
         }
     }
 
@@ -121,7 +123,7 @@ library Minting {
         uint256 poolFeeUBA = calculatePoolFee(agent, mintValueUBA.mulBips(agent.feeBIPS));
         uint256 requiredUnderlyingAfter = UnderlyingBalance.requiredUnderlyingUBA(agent) + mintValueUBA + poolFeeUBA;
         require(requiredUnderlyingAfter.toInt256() <= agent.underlyingBalanceUBA, "free underlying balance to small");
-        _performMinting(agent, 0, msg.sender, valueAMG, false, 0, poolFeeUBA);
+        _performMinting(agent, MintingType.FROM_FREE_UNDERLYING, 0, msg.sender, valueAMG, 0, poolFeeUBA);
     }
 
     function checkMintingCap(
@@ -151,10 +153,10 @@ library Minting {
 
     function _performMinting(
         Agent.State storage _agent,
+        MintingType _mintingType,
         uint64 _crtId,
         address _minter,
         uint64 _mintValueAMG,
-        bool _receivedUnderlyingPayment,
         uint256 _receivedAmountUBA,
         uint256 _poolFeeUBA
     )
@@ -176,18 +178,21 @@ library Minting {
         Agents.createRedemptionTicket(_agent, ticketValueAMG);
         Agents.changeDust(_agent, newDustAMG);
         // update agent balance with deposited amount (received amount is 0 in mintFromFreeUnderlying)
-        uint256 mintValueUBA = Conversion.convertAmgToUBA(_mintValueAMG);
-        uint256 agentFeeUBA = 0;
-        if (_receivedUnderlyingPayment) {
-            UnderlyingBalance.increaseBalance(_agent, _receivedAmountUBA);
-            agentFeeUBA = _receivedAmountUBA - mintValueUBA - _poolFeeUBA;
-        }
+        UnderlyingBalance.increaseBalance(_agent, _receivedAmountUBA);
         // perform minting
+        uint256 mintValueUBA = Conversion.convertAmgToUBA(_mintValueAMG);
         Globals.getFAsset().mint(_minter, mintValueUBA);
         Globals.getFAsset().mint(address(_agent.collateralPool), _poolFeeUBA);
         _agent.collateralPool.fAssetFeeDeposited(_poolFeeUBA);
         // notify
-        emit IAssetManagerEvents.MintingExecuted(_agent.vaultAddress(), _crtId, mintValueUBA,
-            agentFeeUBA, _poolFeeUBA);
+        if (_mintingType == MintingType.PUBLIC) {
+            uint256 agentFeeUBA = _receivedAmountUBA - mintValueUBA - _poolFeeUBA;
+            emit IAssetManagerEvents.MintingExecuted(_agent.vaultAddress(), _crtId,
+                mintValueUBA, agentFeeUBA, _poolFeeUBA);
+        } else {
+            bool fromFreeUnderlying = _mintingType == MintingType.FROM_FREE_UNDERLYING;
+            emit IAssetManagerEvents.SelfMint(_agent.vaultAddress(), fromFreeUnderlying,
+                mintValueUBA, _receivedAmountUBA, _poolFeeUBA);
+        }
     }
 }
