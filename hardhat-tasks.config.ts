@@ -15,7 +15,7 @@ import { deployCuts } from "./deployment/lib/deploy-cuts";
 import { deployPriceReaderV2, verifyFtsoV2PriceStore } from "./deployment/lib/deploy-ftsov2-price-store";
 import { networkConfigName } from "./deployment/lib/deploy-utils";
 import { linkContracts } from "./deployment/lib/link-contracts";
-import { verifyAllAssetManagerFacets, verifyAssetManager, verifyAssetManagerController, verifyCollateralPool, verifyFAssetToken } from "./deployment/lib/verify-fasset-contracts";
+import { verifyAllAssetManagerFacets, verifyAssetManager, verifyAssetManagerController, verifyContract } from "./deployment/lib/verify-fasset-contracts";
 import "./type-extensions";
 
 
@@ -58,20 +58,21 @@ task("deploy-asset-managers", "Deploy some or all asset managers. Optionally als
         }
     });
 
+task("verify-contract", "Verify a contract in contracts.json.")
+    .addPositionalParam("contract", "name or address of the contract to verify.")
+    .addVariadicPositionalParam("constructorArgs", "constructor arguments", [])
+    .setAction(async ({ contract, constructorArgs }, hre) => {
+        const networkConfig = networkConfigName(hre);
+        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
+        await verifyContract(hre, contract, contracts, constructorArgs);
+    });
+
 task("verify-asset-manager", "Verify deployed asset manager.")
     .addParam("parametersFile", "The asset manager config file.")
     .setAction(async ({ parametersFile }, hre) => {
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await verifyAssetManager(hre, parametersFile, contracts);
-    });
-
-task("verify-fasset-token", "Verify deployed fasset token.")
-    .addParam("parametersFile", "The asset manager config file.")
-    .setAction(async ({ parametersFile }, hre) => {
-        const networkConfig = networkConfigName(hre);
-        const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
-        await verifyFAssetToken(hre, parametersFile, contracts);
     });
 
 task("verify-asset-manager-controller", "Verify deployed asset manager controller.")
@@ -86,12 +87,6 @@ task("verify-price-reader-v2", "Verify deployed asset manager controller.")
         const networkConfig = networkConfigName(hre);
         const contracts = new FAssetContractStore(`deployment/deploys/${networkConfig}.json`, true);
         await verifyFtsoV2PriceStore(hre, contracts);
-    });
-
-task("verify-collateral-pool", "Verify deployed collateral pool and its corresponding collateral pool token.")
-    .addPositionalParam("poolAddress", "Collateral pool address.")
-    .setAction(async ({ poolAddress }, hre) => {
-        await verifyCollateralPool(hre, poolAddress);
     });
 
 task("verify-asset-manager-facets", "Verify all asset manager facets.")

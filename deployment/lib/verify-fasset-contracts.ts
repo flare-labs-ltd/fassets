@@ -1,10 +1,27 @@
+import { glob } from "glob";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CollateralClass } from "../../lib/fasset/AssetManagerTypes";
 import { web3DeepNormalize } from "../../lib/utils/web3normalize";
-import { ContractStore, FAssetContractStore } from "./contracts";
+import { Contract, ContractStore, FAssetContractStore } from "./contracts";
 import { assetManagerParameters, convertCollateralType, createAssetManagerSettings } from "./deploy-asset-manager";
 import { assetManagerFacets, createDiamondCutsForAllAssetManagerFacets } from "./deploy-asset-manager-facets";
 import { abiEncodeCall, loadDeployAccounts } from "./deploy-utils";
+
+export async function verifyContract(hre: HardhatRuntimeEnvironment, contractNameOrAddress: string, contracts: FAssetContractStore, constructorArgs: string[]) {
+    const contract = contracts.get(contractNameOrAddress) ?? contracts.list().find(c => c.address === contractNameOrAddress);
+    if (contract == null) {
+        throw new Error(`Unknow contract ${contractNameOrAddress}`);
+    }
+    constructorArgs = constructorArgs.map(arg => {
+        if (arg.startsWith('@')) return contracts.getAddress(arg.slice(1));
+        return arg;
+    });
+    await hre.run("verify:verify", {
+        address: contract.address,
+        constructorArguments: constructorArgs,
+        contract: await qualifiedName(contract)
+    });
+}
 
 export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, parametersFile: string, contracts: FAssetContractStore) {
     const artifacts = hre.artifacts as Truffle.Artifacts;
@@ -17,7 +34,8 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
     const parameters = assetManagerParameters.load(parametersFile);
 
     const assetManagerContractName = `AssetManager_${parameters.fAssetSymbol}`;
-    const assetManagerAddress = contracts.getRequired(assetManagerContractName).address;
+    const assetManagerContract = contracts.getRequired(assetManagerContractName);
+    const assetManagerAddress = assetManagerContract.address;
 
     console.log(`Verifying ${assetManagerContractName} at ${assetManagerAddress}...`);
 
@@ -39,18 +57,8 @@ export async function verifyAssetManager(hre: HardhatRuntimeEnvironment, paramet
 
     await hre.run("verify:verify", {
         address: assetManagerAddress,
-        constructorArguments: [diamondCuts, assetManagerInitAddress, initParameters]
-    });
-}
-
-export async function verifyFAssetToken(hre: HardhatRuntimeEnvironment, parametersFile: string, contracts: FAssetContractStore) {
-    const { deployer } = loadDeployAccounts(hre);
-    const parameters = assetManagerParameters.load(parametersFile);
-    const fAssetAddress = contracts.getRequired(parameters.fAssetSymbol).address;
-    console.log(`Verifying ${parameters.fAssetSymbol} at ${fAssetAddress}...`);
-    await hre.run("verify:verify", {
-        address: fAssetAddress,
-        constructorArguments: [deployer, parameters.fAssetName, parameters.fAssetSymbol, parameters.assetName, parameters.assetSymbol, parameters.assetDecimals]
+        constructorArguments: [diamondCuts, assetManagerInitAddress, initParameters],
+        contract: await qualifiedName(assetManagerContract)
     });
 }
 
@@ -58,63 +66,39 @@ export async function verifyAssetManagerController(hre: HardhatRuntimeEnvironmen
     const { deployer } = loadDeployAccounts(hre);
     await hre.run("verify:verify", {
         address: contracts.AssetManagerController!.address,
-        constructorArguments: [contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address]
+        constructorArguments: [contracts.GovernanceSettings.address, deployer, contracts.AddressUpdater.address],
+        contract: await qualifiedName(contracts.AssetManagerController!)
     });
-}
-
-export async function verifyCollateralPool(hre: HardhatRuntimeEnvironment, poolAddress: string) {
-    const artifacts = hre.artifacts as Truffle.Artifacts;
-
-    const CollateralPool = artifacts.require("CollateralPool");
-    const CollateralPoolToken = artifacts.require("CollateralPoolToken");
-
-    const cp = await CollateralPool.at(poolAddress);
-    const vault = await cp.agentVault();
-    const assetManager = await cp.assetManager();
-    const fasset = await cp.fAsset();
-    const exitCollateralRatioBIPS = await cp.exitCollateralRatioBIPS();
-    const topupCollateralRatioBIPS = await cp.topupCollateralRatioBIPS();
-    const topupTokenPriceFactorBIPS = await cp.topupTokenPriceFactorBIPS();
-
-    try {
-        console.log(`Verifying CollateralPool at ${poolAddress}`);
-        await hre.run("verify:verify", {
-            address: poolAddress,
-            constructorArguments: [vault, assetManager, fasset, String(exitCollateralRatioBIPS), String(topupCollateralRatioBIPS), String(topupTokenPriceFactorBIPS)]
-        });
-    } catch (e: any) {
-        console.error(`Error verifying CollateralPool: ${e.message ?? e}`);
-        process.exitCode = 1;
-    }
-
-    const tokenAddress = await cp.poolToken();
-    const cpt = await CollateralPoolToken.at(tokenAddress);
-    const cptName = await cpt.name();
-    const cptSymbol = await cpt.symbol();
-
-    try {
-        console.log(`Verifying CollateralPoolToken at ${tokenAddress}`);
-        await hre.run("verify:verify", {
-            address: tokenAddress,
-            constructorArguments: [poolAddress, cptName, cptSymbol]
-        });
-    } catch (e: any) {
-        console.error(`Error verifying CollateralPoolToken: ${e.message ?? e}`);
-        process.exitCode = 1;
-    }
 }
 
 export async function verifyAllAssetManagerFacets(hre: HardhatRuntimeEnvironment, contracts: ContractStore) {
     for (const facetName of assetManagerFacets) {
         try {
             console.log(`Verifying facet ${facetName}...`);
-            const facetAddress = contracts.getAddress(facetName);
+            const contract = contracts.getRequired(facetName);
             await hre.run("verify:verify", {
-                address: facetAddress,
-                constructorArguments: []
+                address: contract.address,
+                constructorArguments: [],
+                contract: await qualifiedName(contract)
             });
         } catch (error) {
             console.error(`!!! Error verifying facet ${facetName}: ${error}`);
         }
     }
+}
+
+async function qualifiedName(contract: Contract) {
+    const artifact = await findArtifact(contract.contractName);
+    return `${artifact}:${contract.name}`;
+}
+
+async function findArtifact(fname: string) {
+    const allPathsX = await glob(`**/${fname}`, { cwd: 'artifacts/' });
+    const allPaths = allPathsX.map(pth => pth.replace(/\\/g, '/'));
+    if (allPaths.length === 0) {
+        throw new Error(`Artifact ${fname} not found`);
+    } else if (allPaths.length >= 2) {
+        throw new Error(`Multiple paths for artifact ${fname}: ${JSON.stringify(allPaths)}`);
+    }
+    return allPaths[0];
 }
