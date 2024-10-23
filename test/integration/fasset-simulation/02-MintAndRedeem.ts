@@ -641,7 +641,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             // perform minting (hand-shake is required)
             const lots = 3;
             const crFee = await minter.getCollateralReservationFee(lots);
-            const crtHs = await minter.reserveCollateralHSRequired(agent.vaultAddress, lots,  ["underlyingAddr1"]);
+            const crtHs = await minter.reserveCollateralHSRequired(agent.vaultAddress, lots,  [minter.underlyingAddress]);
             // approve collateral reservation
             const tx1 = await context.assetManager.approveCollateralReservation(crtHs.collateralReservationId, { from: agentOwner1 });
             const crt = requiredEventArgs(tx1, "CollateralReserved");
@@ -680,7 +680,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.exitAndDestroy(fullAgentCollateral);
         });
 
-        it.only("should approve collateral reservation, mint, reject redemption request, take over and redeem f-assets", async () => {
+        it("should approve collateral reservation, mint, reject redemption request, take over and redeem f-assets", async () => {
             // create users
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { handshakeType: 1 });
             const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2, { handshakeType: 0 });
@@ -703,7 +703,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             //// perform minting for minter1 (hand-shake is required)
             const lots = 3;
             const crFee = await minter.getCollateralReservationFee(lots);
-            const crtHs = await minter.reserveCollateralHSRequired(agent.vaultAddress, lots, ["underlyingAddr1"]);
+            const crtHs = await minter.reserveCollateralHSRequired(agent.vaultAddress, lots, [minter.underlyingAddress]);
             // approve collateral reservation
             const tx1 = await context.assetManager.approveCollateralReservation(crtHs.collateralReservationId, { from: agentOwner1 });
             const crt = requiredEventArgs(tx1, "CollateralReserved");
@@ -793,7 +793,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             await agent.exitAndDestroy(fullAgentCollateral);
         });
 
-         it.only("should approve collateral reservation, mint, reject redemption request, partially take over and default for the remaining", async () => {
+         it("should approve collateral reservation, mint, reject redemption request, partially take over and default for the remaining", async () => {
             // create users
             const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { handshakeType: 1 });
             const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2, { handshakeType: 0 });
@@ -816,7 +816,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
             //// perform minting for minter1 (hand-shake is required)
             const lots1 = 3;
             const crFee1 = await minter.getCollateralReservationFee(lots1);
-            const crtHs = await minter.reserveCollateralHSRequired(agent.vaultAddress, lots1, ["underlyingAddr1"]);
+            const crtHs = await minter.reserveCollateralHSRequired(agent.vaultAddress, lots1, [minter.underlyingAddress]);
             // approve collateral reservation
             const tx1 = await context.assetManager.approveCollateralReservation(crtHs.collateralReservationId, { from: agentOwner1 });
             const crt = requiredEventArgs(tx1, "CollateralReserved");

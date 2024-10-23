@@ -1,6 +1,6 @@
 import Web3 from "web3";
 import { constants } from "@openzeppelin/test-helpers";
-import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
+import { AddressValidity, BalanceDecreasingTransaction, ConfirmedBlockHeightExists, MerkleTree, Payment, ReferencedPaymentNonexistence } from "@flarenetwork/state-connector-protocol";
 import { TX_FAILED, TxInputOutput } from "../../../lib/underlying-chain/interfaces/IBlockChain";
 import { BN_ZERO } from "../../../lib/utils/helpers";
 import { MockChain, MockChainTransaction } from "./MockChain";
@@ -36,15 +36,16 @@ export class MockAttestationProver {
     payment(transactionHash: string, inUtxo: number, utxo: number): Payment.ResponseBody {
         const { transaction, block } = this.findTransaction('payment', transactionHash);
         const sourceAddressHash = Web3.utils.soliditySha3Raw(transaction.inputs[Number(inUtxo)][0]);
-        const add = Web3.utils.soliditySha3(Web3.utils.soliditySha3("underlyingAddr1")!);
         const receivingAddressHash = Web3.utils.soliditySha3Raw(transaction.outputs[Number(utxo)][0]);
         const spent = totalSpentValue(transaction, sourceAddressHash);
         const received = totalReceivedValue(transaction, receivingAddressHash);
+        const sourceAddressesHashes = transaction.inputs.map((input: TxInputOutput) => Web3.utils.soliditySha3Raw(Web3.utils.soliditySha3Raw(input[0])));
+        sourceAddressesHashes.sort();
         return {
             blockNumber: String(block.number),
             blockTimestamp: String(block.timestamp),
             sourceAddressHash: sourceAddressHash,
-            sourceAddressesRoot: add!,
+            sourceAddressesRoot: new MerkleTree(sourceAddressesHashes).root!,
             receivingAddressHash: receivingAddressHash,
             intendedReceivingAddressHash: receivingAddressHash,
             standardPaymentReference: transaction.reference ?? constants.ZERO_BYTES32,
