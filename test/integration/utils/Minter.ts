@@ -44,7 +44,7 @@ export class Minter extends AssetContextClient {
         const totalNatFee = executorAddress ? crFee.add(toBN(requireNotNull(executorFeeNatWei, "executor fee required if executor used"))) : crFee;
         const res = await this.assetManager.reserveCollateral(agent, lots, agentInfo.feeBIPS, executorAddress ?? ZERO_ADDRESS, underlyingAddresses ?? [],
             { from: this.address, value: totalNatFee });
-        return requiredEventArgs(res, 'HandShakeRequired');
+        return requiredEventArgs(res, 'HandshakeRequired');
     }
 
     async performMintingPayment(crt: EventArgs<CollateralReserved>) {

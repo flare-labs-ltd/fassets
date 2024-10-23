@@ -625,7 +625,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
         });
 
         it("should approve collateral reservation, mint and redeem f-assets", async () => {
-            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { handShakeType: 1 });
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { handshakeType: 1 });
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
             // make agent available
@@ -682,8 +682,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
         it.only("should approve collateral reservation, mint, reject redemption request, take over and redeem f-assets", async () => {
             // create users
-            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { handShakeType: 1 });
-            const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2, { handShakeType: 0 });
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { handshakeType: 1 });
+            const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2, { handshakeType: 0 });
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             const minter2 = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.underlyingAmount(10000));
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
@@ -795,8 +795,8 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
          it.only("should approve collateral reservation, mint, reject redemption request, partially take over and default for the remaining", async () => {
             // create users
-            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { handShakeType: 1 });
-            const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2, { handShakeType: 0 });
+            const agent = await Agent.createTest(context, agentOwner1, underlyingAgent1, { handshakeType: 1 });
+            const agent2 = await Agent.createTest(context, agentOwner2, underlyingAgent2, { handshakeType: 0 });
             const minter = await Minter.createTest(context, minterAddress1, underlyingMinter1, context.underlyingAmount(10000));
             const minter2 = await Minter.createTest(context, minterAddress2, underlyingMinter2, context.underlyingAmount(10000));
             const redeemer = await Redeemer.create(context, redeemerAddress1, underlyingRedeemer1);
@@ -921,5 +921,7 @@ contract(`AssetManagerSimulation.sol; ${getTestFile(__filename)}; Asset manager 
 
             await agent.exitAndDestroy(fullAgentCollateral.sub(defaultArgs.redeemedVaultCollateralWei));
         });
+
+
     });
 });
