@@ -310,21 +310,23 @@ contract(`AgentVault.sol; ${getTestFile(__filename)}; AgentVault unit tests`, as
         assert.equal(invocationCount.toNumber(), 1);
     });
 
-    it("should claim ftso rewards", async () => {
+    it("should claim rewards", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const rewardManagerMock = await MockContract.new();
-        await agentVault.claimFtsoRewards(rewardManagerMock.address, 5, owner, { from: owner });
+        await agentVault.claimDelegationRewards(rewardManagerMock.address, 5, owner, [], { from: owner });
         const claimReward = web3.eth.abi.encodeFunctionCall({type: "function", name: "claim",
-            inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_rewardEpoch", type: "uint256" }, { name: "_wrap", type: "bool" }]} as AbiItem,
-            [agentVault.address, owner, 5, false] as any[]);
+            inputs: [{ name: "_rewardOwner", type: "address" }, { name: "_recipient", type: "address" }, { name: "_rewardEpoch", type: "uint24" }, { name: "_wrap", type: "bool" },
+                {components: [{name: "merkleProof", type: "bytes32[]"}, {components: [{name: "rewardEpochId", type: "uint24"}, {name: "beneficiary", type: "bytes20"},
+                {name: "amount",type: "uint120"}, {name: "claimType", type: "uint8"}], name: "body", type: "tuple"}], name: "_proofs",type: "tuple[]"}]} as AbiItem,
+            [agentVault.address, owner, 5, false, []] as any[]);
         const invocationCount = await rewardManagerMock.invocationCountForCalldata.call(claimReward);
         assert.equal(invocationCount.toNumber(), 1);
     });
 
-    it("cannot claim ftso rewards if not owner", async () => {
+    it("cannot claim rewards if not owner", async () => {
         const agentVault = await AgentVault.new(assetManagerMock.address);
         const rewardManagerMock = await MockContract.new();
-        const claimPromise = agentVault.claimFtsoRewards(rewardManagerMock.address, 5, owner, { from: accounts[2] });
+        const claimPromise = agentVault.claimDelegationRewards(rewardManagerMock.address, 5, owner, [], { from: accounts[2] });
         await expectRevert(claimPromise, "only owner");
     });
 

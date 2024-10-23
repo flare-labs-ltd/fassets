@@ -143,7 +143,7 @@ contract AssetManagerController is Governed, AddressUpdatable, IAssetManagerEven
         onlyGovernance
     {
         _setValueOnManagers(_assetManagers,
-            SettingsUpdater.SET_SC_PROOF_VERIFIER, abi.encode(_value));
+            SettingsUpdater.SET_FDC_VERIFICATION, abi.encode(_value));
     }
 
     function setCleanerContract(IIAssetManager[] memory _assetManagers, address _value)

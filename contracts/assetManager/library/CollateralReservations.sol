@@ -299,7 +299,7 @@ library CollateralReservations {
     {
         uint256 totalFee = crt.reservationFeeNatWei + crt.executorFeeNatGWei * Conversion.GWEI;
 
-        // guarded against reentrancy in MintingFacet
+        // guarded against reentrancy in CollateralReservationsFacet
         /* solhint-disable avoid-low-level-calls */
         //slither-disable-next-line arbitrary-send-eth
         (bool success, ) = crt.minter.call{value: totalFee}("");

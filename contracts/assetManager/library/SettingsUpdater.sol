@@ -36,7 +36,7 @@ library SettingsUpdater {
         keccak256("setCollateralPoolTokenFactory(address)");
     bytes32 internal constant SET_PRICE_READER =
         keccak256("setPriceReader(address)");
-    bytes32 internal constant SET_SC_PROOF_VERIFIER =
+    bytes32 internal constant SET_FDC_VERIFICATION =
         keccak256("setFdcVerification(address)");
     bytes32 internal constant SET_CLEANER_CONTRACT =
         keccak256("setCleanerContract(address)");
@@ -143,7 +143,7 @@ library SettingsUpdater {
         } else if (_method == SET_PRICE_READER) {
             checkEnoughTimeSinceLastUpdate(_method);
             _setPriceReader(_params);
-        } else if (_method == SET_SC_PROOF_VERIFIER) {
+        } else if (_method == SET_FDC_VERIFICATION) {
             checkEnoughTimeSinceLastUpdate(_method);
             _setFdcVerification(_params);
         } else if (_method == SET_CLEANER_CONTRACT) {

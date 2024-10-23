@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "flare-smart-contracts-v2/contracts/userInterfaces/IFdcVerification.sol";
 import "flare-smart-contracts-v2/contracts/userInterfaces/IRelay.sol";
 

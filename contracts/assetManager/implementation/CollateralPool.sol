@@ -811,15 +811,16 @@ contract CollateralPool is IICollateralPool, ReentrancyGuard, IERC165 {
         wNat.governanceVotePower().undelegate();
     }
 
-    function claimFtsoRewards(
-        IFtsoRewardManager _ftsoRewardManager,
-        uint256 _lastRewardEpoch
+    function claimDelegationRewards(
+        IRewardManager _rewardManager,
+        uint24 _lastRewardEpoch,
+        IRewardManager.RewardClaimWithProof[] calldata _proofs
     )
         external
         onlyAgent
         returns (uint256)
     {
-        uint256 claimed = _ftsoRewardManager.claim(address(this), payable(address(this)), _lastRewardEpoch, true);
+        uint256 claimed = _rewardManager.claim(address(this), payable(address(this)), _lastRewardEpoch, true, _proofs);
         totalCollateral += claimed;
         return claimed;
     }

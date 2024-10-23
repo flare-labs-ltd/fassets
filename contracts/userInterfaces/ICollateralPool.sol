@@ -2,9 +2,9 @@
 pragma solidity >=0.7.6 <0.9;
 pragma abicoder v2;
 
-import "flare-smart-contracts/contracts/userInterfaces/IFtsoRewardManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IClaimSetupManager.sol";
 import "flare-smart-contracts/contracts/userInterfaces/IDistributionToDelegators.sol";
+import "flare-smart-contracts-v2/contracts/userInterfaces/IRewardManager.sol";
 import "./ICollateralPoolToken.sol";
 
 
@@ -123,23 +123,24 @@ interface ICollateralPool {
     ) external;
 
     /**
-     * Delegate FTSO vote power for the wrapped native tokens held in this vault.
+     * Delegate WNat vote power for the wrapped native tokens held in this vault.
      * NOTE: only the owner of the pool's corresponding agent vault may call this method.
      */
     function delegate(address _to, uint256 _bips) external;
 
     /**
-     * Clear FTSO delegation.
+     * Clear WNat delegation.
      */
     function undelegateAll() external;
 
     /**
-     * Claim the FTSO rewards earned by delegating the vote power for the pool.
+     * Claim the rewards earned by delegating the vote power for the pool.
      * NOTE: only the owner of the pool's corresponding agent vault may call this method.
      */
-    function claimFtsoRewards(
-        IFtsoRewardManager _ftsoRewardManager,
-        uint256 _lastRewardEpoch
+    function claimDelegationRewards(
+        IRewardManager _rewardManager,
+        uint24 _lastRewardEpoch,
+        IRewardManager.RewardClaimWithProof[] calldata _proofs
     ) external
         returns(uint256 _claimedAmount);
 
