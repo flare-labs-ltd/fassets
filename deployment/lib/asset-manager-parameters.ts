@@ -1,5 +1,3 @@
-import { int } from "hardhat/internal/core/params/argumentTypes";
-
 // Mapped to integer in JSON schema.
 type integer = number;
 
@@ -487,7 +485,7 @@ export interface AssetManagerParameters {
 
     /**
      * The amount of time after which the collateral reservation can be cancelled if the
-     * hand-shake is not completed.
+     * handshake is not completed.
      * @minimum 1
      */
     cancelCollateralReservationAfterSeconds: integer;

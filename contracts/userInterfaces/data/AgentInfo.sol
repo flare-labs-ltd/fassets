@@ -182,8 +182,8 @@ library AgentInfo {
         // The discount to pool token price when entering and pool CR is below pool topup CR.
         uint256 poolTopupTokenPriceFactorBIPS;
 
-        // Agent's hand-shake type - minting or redeeming can be rejected.
+        // Agent's handshake type - minting or redeeming can be rejected.
         // 0 - no verification, 1 - manual verification, ...
-        uint256 handShakeType;
+        uint256 handshakeType;
     }
 }

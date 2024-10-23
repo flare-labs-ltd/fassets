@@ -309,15 +309,15 @@ contract(`Minting.sol; ${getTestFile(__filename)}; Minting basic tests`, async a
     it("should not execute minting if collateral reservation is not approved", async () => {
         // init
         const feeBIPS = toBIPS("50%");
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
-        const agentVault1 = await createAgent(accounts[123], accounts[234], { feeBIPS: feeBIPS, handShakeType: 0 });
+        const agentVault1 = await createAgent(accounts[123], accounts[234], { feeBIPS: feeBIPS, handshakeType: 0 });
         await depositAndMakeAgentAvailable(agentVault1, accounts[123]);
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, constants.ZERO_ADDRESS, { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandShakeRequired");
+        const args = requiredEventArgs(tx, "HandshakeRequired");
         const crt = await reserveCollateral(agentVault1.address, 1);
         const paymentAmount = crt.valueUBA.add(crt.feeUBA).subn(1);
         chain.mint(underlyingMinter1, paymentAmount);

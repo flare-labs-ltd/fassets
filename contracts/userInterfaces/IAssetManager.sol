@@ -527,10 +527,10 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * Before paying underlying assets for minting, minter has to reserve collateral and
      * pay collateral reservation fee. Collateral is reserved at ratio of agent's agentMinCollateralRatio
      * to requested lots NAT market price.
-     * If the agent requires hand-shake, then HandShakeRequired event is emitted and
+     * If the agent requires handshake, then HandshakeRequired event is emitted and
      * the minter has to wait for the agent to approve or reject the reservation. If there is no response within
      * the `cancelCollateralReservationAfterSeconds`, the minter can cancel the reservation and get the fee back.
-     * If hand-shake is not required, the minter receives instructions for underlying payment
+     * If handshake is not required, the minter receives instructions for underlying payment
      * (value, fee and payment reference) in event CollateralReserved.
      * Then the minter has to pay `value + fee` on the underlying chain.
      * If the minter pays the underlying amount, the collateral reservation fee is burned and minter obtains
@@ -544,7 +544,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      *      and increasing fee (that would mean that the minter would have to pay raised fee or forfeit
      *      collateral reservation fee)
      * @param _executor the account that is allowed to execute minting (besides minter and agent)
-     * @param _minterUnderlyingAddresses array of minter's underlying addresses - needed only if hand-shake is required
+     * @param _minterUnderlyingAddresses array of minter's underlying addresses - needed only if handshake is required
      */
     function reserveCollateral(
         address _agentVault,
@@ -600,7 +600,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
     /**
      * After obtaining proof of underlying payment, the minter calls this method to finish the minting
      * and collect the minted f-assets.
-     * NOTE: In case hand-shake was required, the payment must be done using only all provided addresses,
+     * NOTE: In case handshake was required, the payment must be done using only all provided addresses,
      * so `sourceAddressesRoot` matches the calculated Merkle root, otherwise the proof will be rejected.
      * NOTE: may only be called by the minter (= creator of CR, the collateral reservation request),
      *   the executor appointed by the minter, or the agent owner (= owner of the agent vault in CR).
@@ -617,8 +617,8 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
      * When the time for the minter to pay the underlying amount is over (i.e. the last underlying block has passed),
      * the agent can declare payment default. Then the agent collects the collateral reservation fee
      * (it goes directly to the vault), and the reserved collateral is unlocked.
-     * NOTE: In case hand-shake was required, the attestation request must be done using `checkSourceAddresses=true`
-     * and correct `sourceAddressesRoot`, otherwise the proof will be rejected. If there was no hand-shake required,
+     * NOTE: In case handshake was required, the attestation request must be done using `checkSourceAddresses=true`
+     * and correct `sourceAddressesRoot`, otherwise the proof will be rejected. If there was no handshake required,
      * the attestation request must be done with `checkSourceAddresses=false`.
      * NOTE: may only be called by the owner of the agent vault in the collateral reservation request.
      * @param _proof proof that the minter didn't pay with correct payment reference on the underlying chain
@@ -692,7 +692,7 @@ interface IAssetManager is IERC165, IDiamondLoupe, IAssetManagerEvents, IAgentPi
         returns (uint256 _redeemedAmountUBA);
 
     /**
-     * In case agent requires hand-shake the redemption request can be rejected by the agent.
+     * In case agent requires handshake the redemption request can be rejected by the agent.
      * Any other agent can take over the redemption request.
      * If no agent takes over the redemption, the redeemer can request the default payment.
      * NOTE: may only be called by the owner of the agent vault in the redemption request

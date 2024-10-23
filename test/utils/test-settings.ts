@@ -195,7 +195,7 @@ export function createTestAgentSettings(vaultCollateralTokenAddress: string, opt
         buyFAssetByAgentFactorBIPS: toBIPS(0.9),
         poolTopupCollateralRatioBIPS: toBIPS(2.1),
         poolTopupTokenPriceFactorBIPS: toBIPS(0.8),
-        handShakeType: 0,
+        handshakeType: 0,
     };
     return { ...defaults, ...(options ?? {}) };
 }

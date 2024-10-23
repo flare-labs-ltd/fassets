@@ -77,7 +77,7 @@ contract RedemptionRequestsFacet is AssetManagerBase {
     }
 
     /**
-     * In case the agent requires hand-shake, the redemption request can be rejected by the agent.
+     * In case the agent requires handshake, the redemption request can be rejected by the agent.
      * Any other agent can take over the redemption request.
      * If no agent takes over the redemption, the redeemer can request the default payment.
      * NOTE: may only be called by the owner of the agent vault in the redemption request

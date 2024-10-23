@@ -18,7 +18,7 @@ library AgentSettingsUpdater {
     bytes32 internal constant POOL_EXIT_COLLATERAL_RATIO_BIPS = keccak256("poolExitCollateralRatioBIPS");
     bytes32 internal constant POOL_TOPUP_COLLATERAL_RATIO_BIPS = keccak256("poolTopupCollateralRatioBIPS");
     bytes32 internal constant POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS = keccak256("poolTopupTokenPriceFactorBIPS");
-    bytes32 internal constant HAND_SHAKE_TYPE = keccak256("handShakeType");
+    bytes32 internal constant HAND_SHAKE_TYPE = keccak256("handshakeType");
 
     function announceUpdate(
         address _agentVault,
@@ -100,7 +100,7 @@ library AgentSettingsUpdater {
         } else if (_hash == POOL_TOPUP_TOKEN_PRICE_FACTOR_BIPS) {
             Agents.setPoolTopupTokenPriceFactorBIPS(_agent, _value);
         } else if (_hash == HAND_SHAKE_TYPE) {
-            Agents.setHandShakeType(_agent, _value);
+            Agents.setHandshakeType(_agent, _value);
         } else {
             assert(false);
         }

@@ -12,8 +12,8 @@ library MerkleTree {
     /// Calculates the Merkle root given fixed leaves
     /// @param leaves The leaves to calculate the Merkle root for
     /// If negative, no Merkle proof is calculated
-    /// @notice It uses Flare Merkle tree implementation
-    /// see: https://gitlab.com/flarenetwork/state-connector-protocol/-/blob/main/specs/scProtocol/merkle-tree.md
+    /// @notice It uses Flare Merkle tree implementation, see:
+    /// https://github.com/flare-foundation/songbird-state-connector-protocol/blob/main/specs/scProtocol/merkle-tree.md
     /// The algorithm is optimized to calculate Merkle root with minimal amount of allocated additional memory.
     /// For n leafs, it only uses O(log(n)) additional memory.
     /// The full Merkle tree with n leaves is represented as an array of length 2*n-1.
@@ -24,7 +24,10 @@ library MerkleTree {
     /// The algorithm is essentially an iterative version of the recursive algorithm using a stack.
     function calculateMerkleRoot(
         bytes32[] memory leaves
-    ) internal pure returns (bytes32 root) {
+    )
+        internal pure
+        returns (bytes32 root)
+    {
         require(leaves.length > 0, "Must have at least one leaf");
         if (leaves.length == 1) {
             return leaves[0];

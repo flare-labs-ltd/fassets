@@ -281,7 +281,7 @@ library AssetManagerSettings {
         uint64 emergencyPauseDurationResetAfterSeconds;
 
         // The amount of time after which the collateral reservation can be cancelled if the
-        // hand-shake is not completed.
+        // handshake is not completed.
         // rate-limited
         uint64 cancelCollateralReservationAfterSeconds;
 

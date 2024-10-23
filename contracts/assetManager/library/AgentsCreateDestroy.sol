@@ -108,8 +108,8 @@ library AgentsCreateDestroy {
         agent.setPoolExitCollateralRatioBIPS(_settings.poolExitCollateralRatioBIPS);
         agent.setPoolTopupCollateralRatioBIPS(_settings.poolTopupCollateralRatioBIPS);
         agent.setPoolTopupTokenPriceFactorBIPS(_settings.poolTopupTokenPriceFactorBIPS);
-        // hand-shake type
-        agent.setHandShakeType(_settings.handShakeType);
+        // handshake type
+        agent.setHandshakeType(_settings.handshakeType);
         // add to the list of all agents
         agent.allAgentsPos = state.allAgents.length.toUint32();
         state.allAgents.push(address(agentVault));
@@ -246,7 +246,7 @@ library AgentsCreateDestroy {
         data.poolExitCollateralRatioBIPS = _settings.poolExitCollateralRatioBIPS;
         data.poolTopupCollateralRatioBIPS = _settings.poolTopupCollateralRatioBIPS;
         data.poolTopupTokenPriceFactorBIPS = _settings.poolTopupTokenPriceFactorBIPS;
-        data.handShakeType = _settings.handShakeType;
+        data.handshakeType = _settings.handshakeType;
         emit AMEvents.AgentVaultCreated(_ownerManagementAddress, _agentVault, data);
     }
 

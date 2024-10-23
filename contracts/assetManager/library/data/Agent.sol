@@ -163,9 +163,9 @@ library Agent {
         // Agent's pending setting updates.
         mapping(bytes32 => SettingUpdate) settingUpdates;
 
-        // Agent's hand-shake type - minting or redeeming can be rejected.
+        // Agent's handshake type - minting or redeeming can be rejected.
         // 0 - no verification, 1 - manual verification, ...
-        uint32 handShakeType;
+        uint32 handshakeType;
 
         // Only used for calculating Agent.State size. See deleteStorage() below.
         uint256[1] _endMarker;

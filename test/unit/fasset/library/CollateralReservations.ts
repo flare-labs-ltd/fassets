@@ -123,11 +123,11 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         assertWeb3Equal(args.feeUBA, lotSize.muln(lots * feeBIPS).divn(10000));
     });
 
-    it("should reserve collateral and require a hand-shake", async () => {
+    it("should reserve collateral and require a handshake", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         const agentInfo = await assetManager.getAgentInfo(agentVault.address);
-        assertWeb3Equal(agentInfo.handShakeType, 1);
+        assertWeb3Equal(agentInfo.handshakeType, 1);
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
@@ -136,7 +136,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         // assert
         const settings = await assetManager.getSettings();
         const lotSize = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
-        const args = requiredEventArgs(tx, "HandShakeRequired");
+        const args = requiredEventArgs(tx, "HandshakeRequired");
         assertWeb3Equal(args.agentVault, agentVault.address);
         assert.isAbove(Number(args.collateralReservationId), 0);
         assertWeb3Equal(args.minter, minterAddress1);
@@ -144,15 +144,15 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
         assertWeb3Equal(args.feeUBA, lotSize.muln(lots * feeBIPS).divn(10000));
     });
 
-    it("should reserve collateral, require a hand-shake and approve reservation", async () => {
+    it("should reserve collateral, require a handshake and approve reservation", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandShakeRequired");
+        const args = requiredEventArgs(tx, "HandshakeRequired");
         const settings = await assetManager.getSettings();
         const lotSize = toBN(settings.lotSizeAMG).mul(toBN(settings.assetMintingGranularityUBA));
         // approve reservation
@@ -169,37 +169,37 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should revert approving collateral reservation if not called by the agent", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandShakeRequired");
+        const args = requiredEventArgs(tx, "HandshakeRequired");
         await expectRevert(assetManager.approveCollateralReservation(args.collateralReservationId), "only agent vault owner");
     });
 
-    it("should revert approving collateral reservation if hand-shake not required", async () => {
+    it("should revert approving collateral reservation if handshake not required", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 0 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 0 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
         const args = requiredEventArgs(tx, "CollateralReserved");
-        await expectRevert(assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner1 }), "hand-shake not required");
+        await expectRevert(assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner1 }), "handshake not required");
     });
 
-    it("should reserve collateral, require a hand-shake and reject reservation", async () => {
+    it("should reserve collateral, require a handshake and reject reservation", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandShakeRequired");
+        const args = requiredEventArgs(tx, "HandshakeRequired");
         // reject reservation
         const minterBalanceBefore = await web3.eth.getBalance(minterAddress1);
         await assetManager.rejectCollateralReservation(args.collateralReservationId, { from: agentOwner1 });
@@ -209,7 +209,7 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should reject collateral reservation and burn fee", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
@@ -231,28 +231,28 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should revert rejecting reservation if already approved", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandShakeRequired");
+        const args = requiredEventArgs(tx, "HandshakeRequired");
         // approve reservation
         const tx1 = await assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner1 });
         requiredEventArgs(tx1, "CollateralReserved");
-        await expectRevert(assetManager.rejectCollateralReservation(args.collateralReservationId, { from: agentOwner1 }), "hand-shake not required or collateral reservation already approved");
+        await expectRevert(assetManager.rejectCollateralReservation(args.collateralReservationId, { from: agentOwner1 }), "handshake not required or collateral reservation already approved");
     });
 
     it("should cancel collateral reservation", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandShakeRequired");
+        const args = requiredEventArgs(tx, "HandshakeRequired");
         // move time for cancelCollateralReservationAfterSeconds
         await time.increase(Number(settings.cancelCollateralReservationAfterSeconds));
         // cancel reservation
@@ -264,26 +264,26 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should not cancel collateral reservation if not called by minter", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandShakeRequired");
+        const args = requiredEventArgs(tx, "HandshakeRequired");
         // try to cancel reservation
         await expectRevert(assetManager.cancelCollateralReservation(args.collateralReservationId), "only minter");
     });
 
     it("should not cancel collateral reservation if already approved", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandShakeRequired");
+        const args = requiredEventArgs(tx, "HandshakeRequired");
         // approve reservation
         await assetManager.approveCollateralReservation(args.collateralReservationId, { from: agentOwner1 });
         // try to cancel reservation
@@ -292,13 +292,13 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should not cancel collateral reservation if called to early", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         // act
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandShakeRequired");
+        const args = requiredEventArgs(tx, "HandshakeRequired");
         // try to cancel reservation
         await expectRevert(assetManager.cancelCollateralReservation(args.collateralReservationId, { from: minterAddress1 }), "collateral reservation cancellation too early");
     });
@@ -432,13 +432,13 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should not default minting if reservation not approved", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandShakeRequired");
-        const agentVault1 = await createAgent(accounts[123], accounts[234], { feeBIPS: feeBIPS, handShakeType: 0 });
+        const args = requiredEventArgs(tx, "HandshakeRequired");
+        const agentVault1 = await createAgent(accounts[123], accounts[234], { feeBIPS: feeBIPS, handshakeType: 0 });
         await depositAndMakeAgentAvailable(agentVault1, accounts[123]);
         const crt = await reserveCollateral(agentVault1.address, 3);
         // it doesn't matter if the proof is correct
@@ -455,13 +455,13 @@ contract(`CollateralReservations.sol; ${getTestFile(__filename)}; CollateralRese
 
     it("should not unstick minting if collateral reservation is not approved", async () => {
         // init
-        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handShakeType: 1 });
+        const agentVault = await createAgent(agentOwner1, underlyingAgent1, { feeBIPS: feeBIPS, handshakeType: 1 });
         await depositAndMakeAgentAvailable(agentVault, agentOwner1);
         const lots = 1;
         const crFee = await assetManager.collateralReservationFee(lots);
         const tx = await assetManager.reserveCollateral(agentVault.address, lots, feeBIPS, noExecutorAddress, { from: minterAddress1, value: crFee });
-        const args = requiredEventArgs(tx, "HandShakeRequired");
-        const agentVault1 = await createAgent(accounts[123], accounts[234], { feeBIPS: feeBIPS, handShakeType: 0 });
+        const args = requiredEventArgs(tx, "HandshakeRequired");
+        const agentVault1 = await createAgent(accounts[123], accounts[234], { feeBIPS: feeBIPS, handshakeType: 0 });
         const proof = await attestationProvider.proveConfirmedBlockHeightExists(Number(settings.attestationWindowSeconds));
         await depositAndMakeAgentAvailable(agentVault1, accounts[123]);
         // should provide enough funds
